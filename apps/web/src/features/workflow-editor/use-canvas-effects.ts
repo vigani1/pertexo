@@ -1,6 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useEffect, useState } from 'react';
 import { edgeWeaveOrder, upstreamEdgeIds } from './model/graph-order';
+import { levelOf } from './model/graph-scopes';
 
 /** How long a passed test's path keeps flowing along the canvas. */
 const TEST_FLOW_MS = 10_000;
@@ -47,7 +48,7 @@ export function useCanvasEffects(graph: WorkflowGraphContract) {
     weaveOrder: weave?.order ?? null,
     showTestPath: (nodeId: string) => {
       setFlow({
-        edgeIds: upstreamEdgeIds(graph, nodeId),
+        edgeIds: upstreamEdgeIds(levelOf(graph, nodeId) ?? graph, nodeId),
         startedAt: Date.now(),
       });
     },

@@ -1,7 +1,14 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { flushSync } from 'react-dom';
 import type {
   NodeTestHandle,
@@ -86,19 +93,11 @@ export function EditorWorkspace({
   const { request } = actions;
   const navigation = useInspectorNavigation(request);
   const { setMobilePanel } = navigation;
-  const placement = useStepPlacement({
+  const { placement, quickAdd, addAfter, addToBody } = useStepAdding({
     store,
     definitions,
     canvasRef,
-    onPlaced: (nodeId) => {
-      if (!store.getState().inspectorScratch)
-        store.getState().selectNode(nodeId);
-    },
-  });
-  const quickAdd = useQuickAdd({
-    store,
-    definitions,
-    onAdd: placement.addAfter,
+    editable,
   });
 
   const { selectNodes, removeEdge, deleteSelection, duplicateSelection } =
@@ -168,6 +167,7 @@ export function EditorWorkspace({
           onRemoveEdge={removeEdge}
           onDropStep={placement.addAt}
           onPortDrop={quickAdd.openAtDrop}
+          onAddToBody={addToBody}
         >
           <StartPicker
             definitions={definitions}
@@ -209,9 +209,8 @@ export function EditorWorkspace({
             setMobilePanel('none');
             request({ kind: 'select', nodeIds: [] });
           }}
-          onAddStepAfter={(nodeId, returnFocus) => {
-            if (editable) quickAdd.openAfter(nodeId, returnFocus);
-          }}
+          onAddStepAfter={addAfter}
+          onAddToBody={addToBody}
           onDuplicateSelection={duplicateSelection}
           onDeleteSelection={deleteSelection}
           onRemoveEdge={removeEdge}
@@ -237,6 +236,48 @@ export function EditorWorkspace({
       }
     />
   );
+}
+
+/**
+ * How new steps are added: placed from the add-step lens or a drag, or
+ * quick-added after a step or into a For each body. A new step is selected
+ * unless the inspector holds an unfinished edit.
+ */
+function useStepAdding({
+  store,
+  definitions,
+  canvasRef,
+  editable,
+}: Readonly<{
+  store: ReturnType<typeof useEditorStoreApi>;
+  definitions: readonly NodeDefinitionCatalogItem[];
+  canvasRef: RefObject<HTMLDivElement | null>;
+  editable: boolean;
+}>) {
+  const placement = useStepPlacement({
+    store,
+    definitions,
+    canvasRef,
+    onPlaced: (nodeId) => {
+      if (!store.getState().inspectorScratch)
+        store.getState().selectNode(nodeId);
+    },
+  });
+  const quickAdd = useQuickAdd({
+    store,
+    definitions,
+    onAdd: placement.addFromQuickAdd,
+  });
+  return {
+    placement,
+    quickAdd,
+    addAfter: (nodeId: string, returnFocus: HTMLElement | null) => {
+      if (editable) quickAdd.openAfter(nodeId, returnFocus);
+    },
+    addToBody: (loopId: string, opener: HTMLElement) => {
+      if (editable) quickAdd.openInBody(loopId, opener);
+    },
+  } as const;
 }
 
 /** Canvas selection commands, all routed through the guarded request. */

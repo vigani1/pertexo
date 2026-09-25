@@ -1,15 +1,30 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import type { Edge, Node } from '@xyflow/react';
+import type { CoordinateExtent, Edge, Node } from '@xyflow/react';
 import { describeStep } from '@/features/catalog/presentation.public';
+import {
+  BODY_ORIGIN,
+  bodyFrame,
+  fromBodyPosition,
+  toBodyPosition,
+  type BodyFrame,
+} from './body-layout';
+import type { BodyIssue } from './body-rules';
+import { levelSinks } from './graph-order';
+import {
+  indexGraph,
+  isForEach,
+  type GraphLevel,
+  type WorkflowEdge,
+  type WorkflowNode,
+} from './graph-scopes';
 
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
 type Position = Readonly<{ x: number; y: number }>;
 
 /**
- * A For each step's body as its card shows it (ADR 020): the steps that run
- * once per item, the body's `item`/`ordinal` inputs and `result` output, and
- * the bounds on items and concurrency. The graph itself is untouched.
+ * A For each step's body in summary (ADR 020): the steps that run once per
+ * item, the body's `item`/`ordinal` inputs and `result` output, and the
+ * bounds on items and concurrency. The graph itself is untouched.
  */
 export type LoopSummary = Readonly<{
   maxIterations: number;
@@ -18,6 +33,13 @@ export type LoopSummary = Readonly<{
   steps: readonly Readonly<{ id: string; title: string }>[];
   inputs: readonly string[];
   outputs: readonly string[];
+}>;
+
+/** A For each container's body area on the canvas and what's wrong in it. */
+type BodyArea = Readonly<{
+  width: number;
+  height: number;
+  issues: readonly BodyIssue[];
 }>;
 
 interface WorkflowNodeData extends Record<string, unknown> {
@@ -34,6 +56,10 @@ interface WorkflowNodeData extends Record<string, unknown> {
   unsupported: boolean;
   /** The For each body, or null when the step has none yet. */
   loop: LoopSummary | null;
+  /** A For each's body area; null for every other step. */
+  body: BodyArea | null;
+  /** This step ends its For each body: its output is each item's result. */
+  bodyResult: boolean;
 }
 
 interface WorkflowEdgeData extends Record<string, unknown> {
@@ -62,7 +88,10 @@ export type CanvasDecorations = Readonly<{
   weaveOrder: ReadonlyMap<string, number> | null;
   selectedNodeIds: readonly string[];
   selectedEdgeIds: readonly string[];
+  /** Canvas positions of steps being dragged (body steps: in their card). */
   dragPositions: ReadonlyMap<string, Position>;
+  /** Client-side body issues by For each ID. */
+  bodyIssues: ReadonlyMap<string, readonly BodyIssue[]>;
 }>;
 
 const noCanvasDecorations: CanvasDecorations = Object.freeze({
@@ -72,7 +101,14 @@ const noCanvasDecorations: CanvasDecorations = Object.freeze({
   selectedNodeIds: [],
   selectedEdgeIds: [],
   dragPositions: new Map<string, Position>(),
+  bodyIssues: new Map<string, readonly BodyIssue[]>(),
 });
+
+/** Body steps stay below and right of their body's corner. */
+const BODY_EXTENT: CoordinateExtent = [
+  [BODY_ORIGIN.x, BODY_ORIGIN.y],
+  [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY],
+];
 
 export function definitionIdentity(key: string, version: number) {
   return `${key}@${String(version)}`;
@@ -89,82 +125,161 @@ export function findDefinition(
   );
 }
 
+type Projection = Readonly<{
+  definitions: ReadonlyMap<string, NodeDefinitionCatalogItem>;
+  selectedNodes: ReadonlySet<string>;
+  selectedEdges: ReadonlySet<string>;
+  labels: ReadonlyMap<string, string>;
+  decorations: CanvasDecorations;
+  nodes: WorkflowFlowNode[];
+  edges: WorkflowFlowEdge[];
+}>;
+
+type Parent = Readonly<{ id: string; frame: BodyFrame }>;
+
+/**
+ * The workflow as React Flow draws it. A For each is a container node and
+ * its body's steps are its children (drawn inside it, positioned relative
+ * to it), all the way down. The projection never changes the graph.
+ */
 export function projectWorkflowGraph(
   graph: WorkflowGraphContract,
   definitions: readonly NodeDefinitionCatalogItem[],
   decorations: CanvasDecorations = noCanvasDecorations,
 ): WorkflowFlowProjection {
-  const definitionByIdentity = new Map(
-    definitions.map((definition) => [
-      definitionIdentity(
-        definition.definition.key,
-        definition.definition.version,
-      ),
-      definition,
-    ]),
-  );
-  const selectedNodes = new Set(decorations.selectedNodeIds);
-  const selectedEdges = new Set(decorations.selectedEdgeIds);
-  const labels = new Map(graph.nodes.map((node) => [node.id, stepTitle(node)]));
-  return {
-    nodes: graph.nodes.map((node) => {
-      const definition = definitionByIdentity.get(
-        definitionIdentity(node.definition.key, node.definition.version),
-      );
-      return {
-        id: node.id,
-        type: isForEach(node) ? 'forEach' : 'workflow',
-        position: decorations.dragPositions.get(node.id) ?? node.position,
-        selected: selectedNodes.has(node.id),
-        data: {
-          label: node.label,
-          definitionKey: node.definition.key,
-          definitionVersion: node.definition.version,
-          family: definition?.family ?? 'unknown',
-          lifecycle: definition?.lifecycle,
-          inputPorts:
-            definition?.ports.inputs ?? Object.keys(node.inputMappings),
-          outputPorts: definition?.ports.outputs ?? [],
-          issueCount: decorations.issuesByNode.get(node.id) ?? 0,
-          missingConnections: (definition?.connectionRequirements ?? []).filter(
-            (requirement) => node.connectionRefs[requirement] === undefined,
-          ).length,
-          disabled: node.disabled === true,
-          unsupported: definition === undefined,
-          loop: loopSummary(node),
-        },
-      } satisfies WorkflowFlowNode;
-    }),
-    edges: graph.edges.map(
-      (edge) =>
-        ({
-          id: edge.id,
-          source: edge.source.nodeId,
-          sourceHandle: edge.source.port,
-          target: edge.target.nodeId,
-          targetHandle: edge.target.port,
-          type: 'workflow',
-          selected: selectedEdges.has(edge.id),
-          data: {
-            sourceLabel: labels.get(edge.source.nodeId) ?? 'a step',
-            targetLabel: labels.get(edge.target.nodeId) ?? 'a step',
-            flowing: decorations.flowingEdgeIds.has(edge.id),
-            weaveOrder: decorations.weaveOrder?.get(edge.id) ?? null,
-            intoIssue:
-              (decorations.issuesByNode.get(edge.target.nodeId) ?? 0) > 0,
-          },
-        }) satisfies WorkflowFlowEdge,
+  const projection: Projection = {
+    definitions: new Map(
+      definitions.map((definition) => [
+        definitionIdentity(
+          definition.definition.key,
+          definition.definition.version,
+        ),
+        definition,
+      ]),
     ),
+    selectedNodes: new Set(decorations.selectedNodeIds),
+    selectedEdges: new Set(decorations.selectedEdgeIds),
+    labels: new Map(
+      [...indexGraph(graph).nodes.values()].map(({ item }) => [
+        item.id,
+        stepTitle(item),
+      ]),
+    ),
+    decorations,
+    nodes: [],
+    edges: [],
+  };
+  projectLevel(graph, undefined, projection);
+  return { nodes: projection.nodes, edges: projection.edges };
+}
+
+function projectLevel(
+  level: GraphLevel,
+  parent: Parent | undefined,
+  projection: Projection,
+): void {
+  const sinks = parent === undefined ? [] : levelSinks(level);
+  const result = sinks.length === 1 ? sinks[0] : undefined;
+  for (const node of level.nodes) {
+    const body = node.structured?.body;
+    const frame = isForEach(node)
+      ? bodyFrame(body, draggedInBody(body, projection.decorations))
+      : undefined;
+    projection.nodes.push(
+      projectNode(node, parent, frame, node.id === result, projection),
+    );
+    if (frame !== undefined && body !== undefined)
+      projectLevel(body, { id: node.id, frame }, projection);
+  }
+  for (const edge of level.edges)
+    projection.edges.push(projectEdge(edge, projection));
+}
+
+/** Body steps being dragged, in body coordinates. */
+function draggedInBody(
+  body: GraphLevel | undefined,
+  decorations: CanvasDecorations,
+): ReadonlyMap<string, Position> {
+  const moving = new Map<string, Position>();
+  for (const node of body?.nodes ?? []) {
+    const dragged = decorations.dragPositions.get(node.id);
+    if (dragged !== undefined) moving.set(node.id, toBodyPosition(dragged));
+  }
+  return moving;
+}
+
+function projectNode(
+  node: WorkflowNode,
+  parent: Parent | undefined,
+  frame: BodyFrame | undefined,
+  bodyResult: boolean,
+  projection: Projection,
+): WorkflowFlowNode {
+  const { decorations } = projection;
+  const definition = projection.definitions.get(
+    definitionIdentity(node.definition.key, node.definition.version),
+  );
+  const shown =
+    parent === undefined
+      ? node.position
+      : fromBodyPosition(parent.frame.positions.get(node.id) ?? node.position);
+  return {
+    id: node.id,
+    type: isForEach(node) ? 'forEach' : 'workflow',
+    position: decorations.dragPositions.get(node.id) ?? shown,
+    ...(parent === undefined
+      ? {}
+      : { parentId: parent.id, extent: BODY_EXTENT }),
+    selected: projection.selectedNodes.has(node.id),
+    data: {
+      label: node.label,
+      definitionKey: node.definition.key,
+      definitionVersion: node.definition.version,
+      family: definition?.family ?? 'unknown',
+      lifecycle: definition?.lifecycle,
+      inputPorts: definition?.ports.inputs ?? Object.keys(node.inputMappings),
+      outputPorts: definition?.ports.outputs ?? [],
+      issueCount: decorations.issuesByNode.get(node.id) ?? 0,
+      missingConnections: (definition?.connectionRequirements ?? []).filter(
+        (requirement) => node.connectionRefs[requirement] === undefined,
+      ).length,
+      disabled: node.disabled === true,
+      unsupported: definition === undefined,
+      loop: loopSummary(node),
+      body:
+        frame === undefined
+          ? null
+          : {
+              width: frame.width,
+              height: frame.height,
+              issues: decorations.bodyIssues.get(node.id) ?? [],
+            },
+      bodyResult,
+    },
   };
 }
 
-const FOR_EACH_KEY = 'core.foreach';
-
-/** A For each step, drawn and inspected as a container for its body. */
-export function isForEach(
-  node: Pick<WorkflowNode, 'definition' | 'structured'>,
-): boolean {
-  return node.definition.key === FOR_EACH_KEY || node.structured !== undefined;
+function projectEdge(
+  edge: WorkflowEdge,
+  projection: Projection,
+): WorkflowFlowEdge {
+  const { decorations, labels } = projection;
+  return {
+    id: edge.id,
+    source: edge.source.nodeId,
+    sourceHandle: edge.source.port,
+    target: edge.target.nodeId,
+    targetHandle: edge.target.port,
+    type: 'workflow',
+    selected: projection.selectedEdges.has(edge.id),
+    data: {
+      sourceLabel: labels.get(edge.source.nodeId) ?? 'a step',
+      targetLabel: labels.get(edge.target.nodeId) ?? 'a step',
+      flowing: decorations.flowingEdgeIds.has(edge.id),
+      weaveOrder: decorations.weaveOrder?.get(edge.id) ?? null,
+      intoIssue: (decorations.issuesByNode.get(edge.target.nodeId) ?? 0) > 0,
+    },
+  };
 }
 
 export function loopSummary(

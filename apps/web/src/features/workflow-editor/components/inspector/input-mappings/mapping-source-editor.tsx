@@ -15,12 +15,16 @@ import {
 import { ChoiceSelect } from '../choice-select';
 import { LiteralEditor } from './literal-editor';
 
-/** The editor for a row's source: a value, a path, a step's output or code. */
+/**
+ * The editor for a row's source: a value, a path, a step's output, code, or
+ * inside a For each body the item (or its position) being worked on.
+ */
 export function MappingSourceEditor({
   nodeId,
   row,
   type,
   predecessors,
+  loopPorts,
   error,
   disabled,
   onChange,
@@ -29,6 +33,7 @@ export function MappingSourceEditor({
   row: InputMappingDraftRow;
   type: SchemaValueType | undefined;
   predecessors: readonly PredecessorOption[];
+  loopPorts: readonly string[];
   error: string | undefined;
   disabled: boolean;
   onChange: (row: InputMappingDraftRow) => void;
@@ -88,14 +93,16 @@ export function MappingSourceEditor({
           )}
         </Field>
       );
-    case 'advanced':
+    case 'structured_input':
       return (
-        <p className="rounded-md border border-white/8 bg-black/20 p-2.5 font-mono text-xs break-all text-muted-foreground">
-          Loop input · {row.source.port} {row.source.path}
-          <span className="mt-1 block font-sans text-[0.72rem]">
-            Kept exactly as it is. It can’t be edited here.
-          </span>
-        </p>
+        <LoopItemSource
+          row={row}
+          controlId={controlId}
+          loopPorts={loopPorts}
+          error={error}
+          disabled={disabled}
+          onChange={onChange}
+        />
       );
     case 'node_output':
       return (
@@ -172,6 +179,66 @@ function StepOutputSource({
         label="Output path"
         value={row.path}
         error={stepInvalid ? undefined : error}
+        disabled={disabled}
+        onChange={(path) => {
+          onChange({ ...row, path });
+        }}
+      />
+    </>
+  );
+}
+
+const loopPortLabels: Readonly<Record<string, string>> = {
+  item: 'The item',
+  ordinal: 'Its position (0, 1, 2…)',
+};
+
+/** A body step reading the item it runs for, or that item's position. */
+function LoopItemSource({
+  row,
+  controlId,
+  loopPorts,
+  error,
+  disabled,
+  onChange,
+}: Readonly<{
+  row: Extract<InputMappingDraftRow, { kind: 'structured_input' }>;
+  controlId: string;
+  loopPorts: readonly string[];
+  error: string | undefined;
+  disabled: boolean;
+  onChange: (row: InputMappingDraftRow) => void;
+}>) {
+  const errorId = `${controlId}-error`;
+  const portInvalid = error !== undefined && !loopPorts.includes(row.port);
+  const ports = loopPorts.includes(row.port)
+    ? loopPorts
+    : [...loopPorts, row.port];
+  return (
+    <>
+      <Field data-invalid={portInvalid}>
+        <FieldLabel htmlFor={`${controlId}-port`}>Read</FieldLabel>
+        <ChoiceSelect
+          id={`${controlId}-port`}
+          value={row.port}
+          disabled={disabled}
+          invalid={portInvalid}
+          {...(portInvalid ? { describedBy: errorId } : {})}
+          choices={ports.map((port) => ({
+            value: port,
+            label: loopPortLabels[port] ?? port,
+          }))}
+          onChange={(port) => {
+            if (port !== null) onChange({ ...row, port });
+          }}
+        />
+        {portInvalid ? <FieldError id={errorId}>{error}</FieldError> : null}
+      </Field>
+      <PathField
+        id={controlId}
+        label="Path in it"
+        value={row.path}
+        error={portInvalid ? undefined : error}
         disabled={disabled}
         onChange={(path) => {
           onChange({ ...row, path });

@@ -1,5 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
-import { PlugIcon, PowerOffIcon } from 'lucide-react';
+import { ArrowRightToLineIcon, PlugIcon, PowerOffIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   StepTile,
@@ -42,11 +42,21 @@ export function IssueBadge({ count }: Readonly<{ count: number }>) {
   );
 }
 
-/** Marks for steps that aren't in the catalog, need a connection and so on. */
+/**
+ * Marks for steps that aren't in the catalog, need a connection and so on,
+ * and for the step whose output is its For each body's result.
+ */
 export function NodeMarks({
   data,
 }: Readonly<{ data: WorkflowFlowNode['data'] }>) {
   const marks: ReactNode[] = [];
+  if (data.bodyResult)
+    marks.push(
+      <Mark key="result">
+        <ArrowRightToLineIcon aria-hidden="true" />
+        Gives the result
+      </Mark>,
+    );
   if (data.unsupported)
     marks.push(<Mark key="unsupported">Not in catalog</Mark>);
   if (data.missingConnections > 0)

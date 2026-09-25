@@ -1,25 +1,59 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { Connection } from '@xyflow/react';
+import { settleBodyLayout, STEP_CARD } from './body-layout';
+import {
+  canConnectSteps,
+  emptyLoopStructure,
+  findStep,
+  groupByScope,
+  indexGraph,
+  isForEach,
+  levelAt,
+  mapLevel,
+  sameScope,
+  scopeOf,
+  type GraphLevel,
+  type LevelChange,
+  type ScopePath,
+  type WorkflowEdge,
+  type WorkflowNode,
+} from './graph-scopes';
 
 // Pure graph transitions. Each returns the same graph object when nothing
-// changes, so a no-op never becomes an undo step or a save.
+// changes, so a no-op never becomes an undo step or a save. Steps and
+// connections are found wherever they live, inside For each bodies too, and
+// every change stays on the level it belongs to.
 
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
-type WorkflowEdge = WorkflowGraphContract['edges'][number];
 type Position = Readonly<{ x: number; y: number }>;
 
 export type RemovedElements = Readonly<{
   nodes: readonly WorkflowNode[];
   edges: readonly WorkflowEdge[];
+  /** The level each removed step or connection was on, by ID. */
+  scopes: Readonly<Record<string, ScopePath>>;
 }>;
 
-export function addDefinitionNode(
-  graph: WorkflowGraphContract,
+/** One end of a connection: a step and one of its ports. */
+export type PortRef = Readonly<{ nodeId: string; port: string }>;
+
+type NewIds = Readonly<{ nodeId: string; edgeId: string }>;
+
+/** Changes one level; a body is first stored in the layout it's shown in. */
+function changeLevel<Graph extends GraphLevel>(
+  graph: Graph,
+  scope: ScopePath,
+  change: LevelChange,
+): Graph {
+  return mapLevel(graph, scope, change, settleBodyLayout);
+}
+
+/** A new step of a catalog type. A For each starts with an empty body. */
+function newStep(
   definition: NodeDefinitionCatalogItem,
   position: Position,
-  id: string = crypto.randomUUID(),
-): WorkflowGraphContract {
+  id: string,
+): WorkflowNode {
   const node = {
     id,
     definition: definition.definition,
@@ -29,16 +63,26 @@ export function addDefinitionNode(
     inputMappings: {},
     connectionRefs: {},
   } satisfies WorkflowNode;
-  return { ...graph, nodes: [...graph.nodes, node] };
+  return isForEach(node) ? { ...node, structured: emptyLoopStructure() } : node;
 }
 
-/** One end of a connection: a step and one of its ports. */
-export type PortRef = Readonly<{ nodeId: string; port: string }>;
+export function addDefinitionNode(
+  graph: WorkflowGraphContract,
+  definition: NodeDefinitionCatalogItem,
+  position: Position,
+  id: string = crypto.randomUUID(),
+): WorkflowGraphContract {
+  return {
+    ...graph,
+    nodes: [...graph.nodes, newStep(definition, position, id)],
+  };
+}
 
 /**
  * Adds a step and connects it from `from` as one change, so a single undo
- * takes both back. The new step uses the input named like the source port
- * when it has one (a Merge pairs `branch-03` with `branch-03`), otherwise its
+ * takes both back. The step joins `from` on its level (inside the same
+ * body, if it's in one). It uses the input named like the source port when
+ * it has one (a Merge pairs `branch-03` with `branch-03`), otherwise its
  * first input. Returns null when that isn't possible.
  */
 export function addStepAfter(
@@ -46,28 +90,64 @@ export function addStepAfter(
   definition: NodeDefinitionCatalogItem,
   position: Position,
   from: PortRef,
-  ids: Readonly<{ nodeId: string; edgeId: string }> = {
-    nodeId: crypto.randomUUID(),
-    edgeId: crypto.randomUUID(),
-  },
+  ids: NewIds = { nodeId: crypto.randomUUID(), edgeId: crypto.randomUUID() },
 ): WorkflowGraphContract | null {
   const inputs = definition.ports.inputs;
   const targetPort = inputs.includes(from.port) ? from.port : inputs[0];
-  if (
-    targetPort === undefined ||
-    !graph.nodes.some((node) => node.id === from.nodeId)
-  )
+  const scope = scopeOf(graph, from.nodeId);
+  if (targetPort === undefined || scope === undefined) return null;
+  const node = newStep(definition, position, ids.nodeId);
+  const edge = {
+    id: ids.edgeId,
+    source: { nodeId: from.nodeId, port: from.port },
+    target: { nodeId: ids.nodeId, port: targetPort },
+  } satisfies WorkflowEdge;
+  return changeLevel(graph, scope, (level) => ({
+    ...level,
+    nodes: [...level.nodes, node],
+    edges: [...level.edges, edge],
+  }));
+}
+
+/**
+ * Adds a step inside a For each's body, connected from `from` when given
+ * (a step already in that body). A For each without a body gets one.
+ */
+export function addBodyStep(
+  graph: WorkflowGraphContract,
+  loopId: string,
+  definition: NodeDefinitionCatalogItem,
+  position: Position,
+  ids: NewIds = { nodeId: crypto.randomUUID(), edgeId: crypto.randomUUID() },
+  from?: PortRef,
+): WorkflowGraphContract | null {
+  const loop = findStep(graph, loopId);
+  const loopScope = scopeOf(graph, loopId);
+  if (loop === undefined || loopScope === undefined || !isForEach(loop))
     return null;
-  return connectWorkflowNodes(
-    addDefinitionNode(graph, definition, position, ids.nodeId),
-    {
-      source: from.nodeId,
-      sourceHandle: from.port,
-      target: ids.nodeId,
-      targetHandle: targetPort,
-    },
-    ids.edgeId,
-  );
+  const withBody =
+    loop.structured === undefined
+      ? changeLevel(graph, loopScope, (level) => ({
+          ...level,
+          nodes: level.nodes.map((node) =>
+            node.id === loopId
+              ? { ...node, structured: emptyLoopStructure() }
+              : node,
+          ),
+        }))
+      : graph;
+  const bodyScope = [...loopScope, loopId];
+  if (from !== undefined) {
+    const fromScope = scopeOf(withBody, from.nodeId);
+    return fromScope !== undefined && sameScope(fromScope, bodyScope)
+      ? addStepAfter(withBody, definition, position, from, ids)
+      : null;
+  }
+  const node = newStep(definition, position, ids.nodeId);
+  return changeLevel(withBody, bodyScope, (level) => ({
+    ...level,
+    nodes: [...level.nodes, node],
+  }));
 }
 
 export function moveWorkflowNode(
@@ -78,11 +158,24 @@ export function moveWorkflowNode(
   return moveWorkflowNodes(graph, new Map([[nodeId, position]]));
 }
 
+/** Moves steps to positions on their own level (body steps: body coordinates). */
 export function moveWorkflowNodes(
   graph: WorkflowGraphContract,
   positions: ReadonlyMap<string, Position>,
 ): WorkflowGraphContract {
-  const nodes = graph.nodes.map((node) => {
+  let next = graph;
+  for (const { scope } of groupByScope([...positions.keys()], (id) =>
+    scopeOf(graph, id),
+  ))
+    next = changeLevel(next, scope, (level) => moveIn(level, positions));
+  return next;
+}
+
+function moveIn<Level extends GraphLevel>(
+  level: Level,
+  positions: ReadonlyMap<string, Position>,
+): Level {
+  const nodes = level.nodes.map((node) => {
     const position = positions.get(node.id);
     if (
       position === undefined ||
@@ -91,9 +184,9 @@ export function moveWorkflowNodes(
       return node;
     return { ...node, position: { x: position.x, y: position.y } };
   });
-  return nodes.some((node, index) => node !== graph.nodes[index])
-    ? { ...graph, nodes }
-    : graph;
+  return nodes.some((node, index) => node !== level.nodes[index])
+    ? { ...level, nodes }
+    : level;
 }
 
 export type WorkflowNodeUpdate = Readonly<{
@@ -109,11 +202,21 @@ export function updateWorkflowNode(
   nodeId: string,
   update: WorkflowNodeUpdate,
 ): WorkflowGraphContract {
-  const target = graph.nodes.find((node) => node.id === nodeId);
-  if (target === undefined || !changesNode(target, update)) return graph;
+  const scope = scopeOf(graph, nodeId);
+  if (scope === undefined) return graph;
+  return changeLevel(graph, scope, (level) => updateIn(level, nodeId, update));
+}
+
+function updateIn<Level extends GraphLevel>(
+  level: Level,
+  nodeId: string,
+  update: WorkflowNodeUpdate,
+): Level {
+  const target = level.nodes.find((node) => node.id === nodeId);
+  if (target === undefined || !changesNode(target, update)) return level;
   return {
-    ...graph,
-    nodes: graph.nodes.map((node) => {
+    ...level,
+    nodes: level.nodes.map((node) => {
       if (node.id !== nodeId) return node;
       const updated = { ...node, ...update };
       if (updated.label === undefined) delete updated.label;
@@ -139,7 +242,21 @@ export function removeWorkflowNode(
     .graph;
 }
 
-/** Removes steps (with their connections) and connections as one change. */
+interface RemovalCollector {
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  scopes: Record<string, ScopePath>;
+}
+type Removal = Readonly<{
+  nodeIds: ReadonlySet<string>;
+  edgeIds: ReadonlySet<string>;
+  removed: RemovalCollector;
+}>;
+
+/**
+ * Removes steps (with their connections and, for a For each, its body) and
+ * connections as one change, wherever they are.
+ */
 export function removeWorkflowElements(
   graph: WorkflowGraphContract,
   selection: Readonly<{
@@ -147,153 +264,161 @@ export function removeWorkflowElements(
     edgeIds: readonly string[];
   }>,
 ): Readonly<{ graph: WorkflowGraphContract; removed: RemovedElements }> {
-  const nodeIds = new Set(selection.nodeIds);
-  const edgeIds = new Set(selection.edgeIds);
-  const removedNodes = graph.nodes.filter((node) => nodeIds.has(node.id));
-  const removedEdges = graph.edges.filter(
-    (edge) =>
+  const removal: Removal = {
+    nodeIds: new Set(selection.nodeIds),
+    edgeIds: new Set(selection.edgeIds),
+    removed: { nodes: [], edges: [], scopes: {} },
+  };
+  return { graph: removeIn(graph, [], removal), removed: removal.removed };
+}
+
+function removeIn<Level extends GraphLevel>(
+  level: Level,
+  scope: ScopePath,
+  removal: Removal,
+): Level {
+  const { nodeIds, edgeIds, removed } = removal;
+  let nodesChanged = false;
+  const nodes: WorkflowNode[] = [];
+  for (const node of level.nodes) {
+    if (nodeIds.has(node.id)) {
+      removed.nodes.push(node);
+      removed.scopes[node.id] = scope;
+      nodesChanged = true;
+      continue;
+    }
+    const kept = removeInLoop(node, [...scope, node.id], removal);
+    nodesChanged ||= kept !== node;
+    nodes.push(kept);
+  }
+  const edges = level.edges.filter((edge) => {
+    const gone =
       edgeIds.has(edge.id) ||
       nodeIds.has(edge.source.nodeId) ||
-      nodeIds.has(edge.target.nodeId),
-  );
-  if (removedNodes.length === 0 && removedEdges.length === 0)
-    return { graph, removed: { nodes: [], edges: [] } };
-  const removedEdgeIds = new Set(removedEdges.map((edge) => edge.id));
+      nodeIds.has(edge.target.nodeId);
+    if (gone) {
+      removed.edges.push(edge);
+      removed.scopes[edge.id] = scope;
+    }
+    return !gone;
+  });
+  const edgesChanged = edges.length !== level.edges.length;
+  if (!nodesChanged && !edgesChanged) return level;
   return {
-    graph: {
-      ...graph,
-      nodes:
-        removedNodes.length === 0
-          ? graph.nodes
-          : graph.nodes.filter((node) => !nodeIds.has(node.id)),
-      edges: graph.edges.filter((edge) => !removedEdgeIds.has(edge.id)),
-    },
-    removed: { nodes: removedNodes, edges: removedEdges },
+    ...level,
+    nodes: nodesChanged ? nodes : level.nodes,
+    edges: edgesChanged ? edges : level.edges,
   };
 }
 
+/** A kept For each without whatever was removed from its body. */
+function removeInLoop(
+  node: WorkflowNode,
+  scope: ScopePath,
+  removal: Removal,
+): WorkflowNode {
+  const structured = node.structured;
+  if (structured === undefined) return node;
+  const settled = settleBodyLayout(structured.body);
+  const body = removeIn(settled, scope, removal);
+  return body === settled
+    ? node
+    : { ...node, structured: { ...structured, body } };
+}
+
 /**
- * Puts removed steps and connections back. Used by an Undo toast after other
- * edits happened, so it only restores what still fits the current graph.
+ * Puts removed steps and connections back on their levels. Used by an Undo
+ * toast after other edits happened, so it only restores what still fits the
+ * current graph: a level that's gone takes its steps with it.
  */
 export function restoreWorkflowElements(
   graph: WorkflowGraphContract,
   removed: RemovedElements,
 ): WorkflowGraphContract {
-  const nodeIds = new Set(graph.nodes.map((node) => node.id));
-  const nodes = removed.nodes.filter((node) => !nodeIds.has(node.id));
-  const allNodeIds = new Set([...nodeIds, ...nodes.map((node) => node.id)]);
-  const edgeIds = new Set(graph.edges.map((edge) => edge.id));
+  const scopeFor = (id: string) => removed.scopes[id] ?? [];
+  const present = indexGraph(graph);
+  const nodes = removed.nodes.filter((node) => !present.nodes.has(node.id));
+  let next = graph;
+  for (const { scope, ids } of groupByScope(
+    nodes.map((node) => node.id),
+    scopeFor,
+  )) {
+    const adding = nodes.filter((node) => ids.includes(node.id));
+    next = changeLevel(next, scope, (level) => ({
+      ...level,
+      nodes: [...level.nodes, ...adding],
+    }));
+  }
+  const restored = indexGraph(next);
   const edges = removed.edges.filter(
     (edge) =>
-      !edgeIds.has(edge.id) &&
-      allNodeIds.has(edge.source.nodeId) &&
-      allNodeIds.has(edge.target.nodeId),
+      !restored.edges.has(edge.id) &&
+      restored.nodes.has(edge.source.nodeId) &&
+      restored.nodes.has(edge.target.nodeId),
   );
-  if (nodes.length === 0 && edges.length === 0) return graph;
-  return {
-    ...graph,
-    nodes: [...graph.nodes, ...nodes],
-    edges: [...graph.edges, ...edges],
-  };
+  for (const { scope, ids } of groupByScope(
+    edges.map((edge) => edge.id),
+    scopeFor,
+  )) {
+    const adding = edges.filter((edge) => ids.includes(edge.id));
+    next = changeLevel(next, scope, (level) => ({
+      ...level,
+      edges: [...level.edges, ...adding],
+    }));
+  }
+  return next;
 }
 
+/**
+ * Connects two steps on the same level. Returns null for anything the
+ * workflow can't hold: a missing port, a step connected to itself, a
+ * connection across a For each body's edge, or one that already exists.
+ */
 export function connectWorkflowNodes(
   graph: WorkflowGraphContract,
   connection: Connection,
   id: string = crypto.randomUUID(),
 ): WorkflowGraphContract | null {
-  if (connection.sourceHandle === null || connection.targetHandle === null)
+  const { source, sourceHandle, target, targetHandle } = connection;
+  if (sourceHandle === null || targetHandle === null) return null;
+  const scope = scopeOf(graph, source);
+  if (scope === undefined || !canConnectSteps(graph, source, target))
     return null;
-  if (connection.source === connection.target) return null;
-  const duplicate = graph.edges.some(
+  const duplicate = levelAt(graph, scope)?.edges.some(
     (edge) =>
-      edge.source.nodeId === connection.source &&
-      edge.source.port === connection.sourceHandle &&
-      edge.target.nodeId === connection.target &&
-      edge.target.port === connection.targetHandle,
+      edge.source.nodeId === source &&
+      edge.source.port === sourceHandle &&
+      edge.target.nodeId === target &&
+      edge.target.port === targetHandle,
   );
-  if (duplicate) return null;
+  if (duplicate !== false) return null;
   const edge = {
     id,
-    source: { nodeId: connection.source, port: connection.sourceHandle },
-    target: { nodeId: connection.target, port: connection.targetHandle },
+    source: { nodeId: source, port: sourceHandle },
+    target: { nodeId: target, port: targetHandle },
   } satisfies WorkflowEdge;
-  return { ...graph, edges: [...graph.edges, edge] };
-}
-
-/**
- * Copies steps with fresh IDs, offset from the originals. Connections between
- * copied steps are copied too, and mappings that read a copied step follow it.
- */
-export function duplicateWorkflowNodes(
-  graph: WorkflowGraphContract,
-  nodeIds: readonly string[],
-  createId: () => string = () => crypto.randomUUID(),
-  offset: Position = { x: 48, y: 48 },
-): Readonly<{ graph: WorkflowGraphContract; nodeIds: readonly string[] }> {
-  const wanted = new Set(nodeIds);
-  const sources = graph.nodes.filter((node) => wanted.has(node.id));
-  if (sources.length === 0) return { graph, nodeIds: [] };
-  const idMap = new Map(sources.map((node) => [node.id, createId()]));
-  const copies = sources.map((node) => ({
-    ...node,
-    id: idMap.get(node.id) ?? createId(),
-    position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
-    inputMappings: Object.fromEntries(
-      Object.entries(node.inputMappings).map(([key, source]) => [
-        key,
-        source.kind === 'node_output' && idMap.has(source.nodeId)
-          ? { ...source, nodeId: idMap.get(source.nodeId) ?? source.nodeId }
-          : source,
-      ]),
-    ),
+  return changeLevel(graph, scope, (level) => ({
+    ...level,
+    edges: [...level.edges, edge],
   }));
-  const edges = graph.edges.flatMap((edge) => {
-    const source = idMap.get(edge.source.nodeId);
-    const target = idMap.get(edge.target.nodeId);
-    if (source === undefined || target === undefined) return [];
-    return [
-      {
-        id: createId(),
-        source: { nodeId: source, port: edge.source.port },
-        target: { nodeId: target, port: edge.target.port },
-      },
-    ];
-  });
-  return {
-    graph: {
-      ...graph,
-      nodes: [...graph.nodes, ...copies],
-      edges: [...graph.edges, ...edges],
-    },
-    nodeIds: copies.map((node) => node.id),
-  };
 }
-
-/** A step card's usual size on the canvas, for placing steps near others. */
-export const STEP_CARD = Object.freeze({ width: 224, height: 64 });
-const STEP_GAP = 64;
 
 /** One card width and a gap to the right of `node`, on the same row. */
 export function positionAfter(
   node: Pick<WorkflowNode, 'position'>,
   width: number = STEP_CARD.width,
 ): Position {
-  return { x: node.position.x + width + STEP_GAP, y: node.position.y };
+  return { x: node.position.x + width + 64, y: node.position.y };
 }
 
 const CARD_CLEARANCE = 40;
 const NUDGE = 32;
 
-/** The nearest spot at or below-right of `desired` that no step occupies. */
-export function freePosition(
-  graph: WorkflowGraphContract,
-  desired: Position,
-): Position {
+/** The nearest spot at or below-right of `desired` no step on `level` uses. */
+export function freePosition(level: GraphLevel, desired: Position): Position {
   let candidate = { x: Math.round(desired.x), y: Math.round(desired.y) };
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    const taken = graph.nodes.some(
+    const taken = level.nodes.some(
       (node) =>
         Math.abs(node.position.x - candidate.x) < CARD_CLEARANCE &&
         Math.abs(node.position.y - candidate.y) < CARD_CLEARANCE,
@@ -302,36 +427,4 @@ export function freePosition(
     candidate = { x: candidate.x + NUDGE, y: candidate.y + NUDGE };
   }
   return candidate;
-}
-
-/**
- * Makes one step match another version of the graph: copies it (with its
- * connections to steps that exist here) or removes it if that version has
- * none. This is how a kept copy's edits are re-applied after a conflict.
- */
-export function adoptStepFrom(
-  graph: WorkflowGraphContract,
-  source: WorkflowGraphContract,
-  nodeId: string,
-): WorkflowGraphContract {
-  const node = source.nodes.find((candidate) => candidate.id === nodeId);
-  if (node === undefined)
-    return removeWorkflowElements(graph, { nodeIds: [nodeId], edgeIds: [] })
-      .graph;
-  const exists = graph.nodes.some((candidate) => candidate.id === nodeId);
-  const nodes = exists
-    ? graph.nodes.map((candidate) =>
-        candidate.id === nodeId ? node : candidate,
-      )
-    : [...graph.nodes, node];
-  const nodeIds = new Set(nodes.map((candidate) => candidate.id));
-  const edgeIds = new Set(graph.edges.map((edge) => edge.id));
-  const edges = source.edges.filter(
-    (edge) =>
-      (edge.source.nodeId === nodeId || edge.target.nodeId === nodeId) &&
-      !edgeIds.has(edge.id) &&
-      nodeIds.has(edge.source.nodeId) &&
-      nodeIds.has(edge.target.nodeId),
-  );
-  return { ...graph, nodes, edges: [...graph.edges, ...edges] };
 }

@@ -1,6 +1,5 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import { DatabaseIcon } from 'lucide-react';
+import { DatabaseIcon, RepeatIcon } from 'lucide-react';
 import { useState } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
@@ -12,6 +11,7 @@ import {
 } from '@/components/ui/popover';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import { findDefinition, stepTitle } from '../../../model/graph-adapter';
+import type { GraphLevel } from '../../../model/graph-scopes';
 import {
   outputFieldsOf,
   propertyPath,
@@ -20,22 +20,36 @@ import {
 
 export type InsertedSource =
   | Readonly<{ kind: 'node_output'; nodeId: string; path: string }>
-  | Readonly<{ kind: 'run_input'; path: string }>;
+  | Readonly<{ kind: 'run_input'; path: string }>
+  | Readonly<{ kind: 'structured_input'; port: string; path: string }>;
+
+/** What a body step can read about the item it runs for (ADR 020). */
+const loopFields: Readonly<
+  Record<string, Readonly<{ label: string; type: string; name: string }>>
+> = {
+  item: { label: 'Whole item', type: 'any', name: 'item' },
+  ordinal: { label: 'Position (0, 1, 2…)', type: 'integer', name: 'ordinal' },
+};
 
 /**
- * "Insert data": the output fields of steps connected right before this one
- * (from their output schema) and the run input. Picking one fills the input
- * row you were editing, or adds a row named after the field.
+ * "Insert data": inside a For each body, the item it runs for; the output
+ * fields of steps connected right before this one (from their output
+ * schema); and the run input. Picking one fills the input row you were
+ * editing, or adds a row named after the field.
  */
 export function InsertDataPicker({
   graph,
   nodeId,
+  loopPorts,
   definitions,
   disabled,
   onInsert,
 }: Readonly<{
-  graph: WorkflowGraphContract;
+  /** The level the step is on: the workflow, or the body it's in. */
+  graph: GraphLevel;
   nodeId: string;
+  /** The body's inputs when the step is inside a For each; else empty. */
+  loopPorts: readonly string[];
   definitions: readonly NodeDefinitionCatalogItem[];
   disabled: boolean;
   onInsert: (source: InsertedSource, fieldName: string) => void;
@@ -63,9 +77,45 @@ export function InsertDataPicker({
       <PopoverContent align="end" className="w-80">
         <PopoverTitle>Insert data</PopoverTitle>
         <PopoverDescription>
-          Steps connected right before this one, and the run’s input.
+          {loopPorts.length > 0
+            ? 'The item this body runs for, steps connected right before this one, and the run’s input.'
+            : 'Steps connected right before this one, and the run’s input.'}
         </PopoverDescription>
         <ul className="mt-3 flex max-h-72 flex-col gap-3 overflow-y-auto">
+          {loopPorts.length > 0 ? (
+            <li>
+              <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
+                <RepeatIcon
+                  aria-hidden="true"
+                  className="size-3.5 text-secondary"
+                />
+                This item
+              </p>
+              <ul className="mt-1 ml-3 flex flex-col border-l border-white/8 pl-2">
+                {loopPorts.map((port) => {
+                  const field = loopFields[port] ?? {
+                    label: port,
+                    type: 'any',
+                    name: port,
+                  };
+                  return (
+                    <li key={port}>
+                      <PickButton
+                        label={field.label}
+                        type={field.type}
+                        onClick={() => {
+                          pick(
+                            { kind: 'structured_input', port, path: '$' },
+                            field.name,
+                          );
+                        }}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          ) : null}
           {sources.map((source) => {
             const definition = findDefinition(definitions, source);
             const step = describeStep(

@@ -1,5 +1,5 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useState } from 'react';
+import type { GraphLevel, WorkflowNode } from './model/graph-scopes';
 import {
   inputMappingRowsFor,
   inputMappingSourceErrors,
@@ -8,8 +8,6 @@ import {
   type InputMappingDraftRow,
   type InputMappingRowErrors,
 } from './model/input-mappings';
-
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
 type MappingDraft = Readonly<{
   rows: readonly InputMappingDraftRow[];
@@ -29,11 +27,15 @@ const MAPPINGS_FIELD = 'inputs';
 export function useLiveMappings({
   node,
   graph,
+  loopPorts,
   commit,
   reportScratch,
 }: Readonly<{
   node: WorkflowNode;
-  graph: WorkflowGraphContract;
+  /** The level the step is on: the workflow, or the body it's in. */
+  graph: GraphLevel;
+  /** The body's inputs when the step is inside a For each; else empty. */
+  loopPorts: readonly string[];
   commit: (inputMappings: WorkflowNode['inputMappings']) => void;
   reportScratch: (field: string, hasScratch: boolean) => void;
 }>) {
@@ -65,7 +67,7 @@ export function useLiveMappings({
         : new Set(current.touched).add(changes.touchedRowId);
     const sequence = changes.sequence ?? current.sequence;
     const result = validateInputMappingRows(rows, graph, node.id, {
-      requireDirectPredecessor: false,
+      checkGraph: false,
     });
     if (result.inputMappings === undefined) {
       setDraft({ rows, applied: current.applied, touched, sequence });
@@ -87,9 +89,14 @@ export function useLiveMappings({
   }
 
   const validation = validateInputMappingRows(current.rows, graph, node.id, {
-    requireDirectPredecessor: false,
+    checkGraph: false,
   });
-  const warnings = inputMappingSourceErrors(current.rows, graph, node.id);
+  const warnings = inputMappingSourceErrors(
+    current.rows,
+    graph,
+    node.id,
+    loopPorts,
+  );
   const errors: Record<string, InputMappingRowErrors> = {};
   for (const row of current.rows) {
     const rowErrors = current.touched.has(row.id)

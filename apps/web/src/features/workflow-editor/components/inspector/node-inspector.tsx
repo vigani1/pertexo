@@ -1,6 +1,5 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { Connection } from '@xyflow/react';
 import { CheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -14,29 +13,41 @@ import {
 import type { EditorFocusTarget } from '../../use-editor-actions';
 import type { InspectorTab } from '../../use-inspector-navigation';
 import { updateWorkflowNode } from '../../model/graph-commands';
+import {
+  findStep,
+  isForEach,
+  type GraphLevel,
+  type WorkflowNode,
+} from '../../model/graph-scopes';
 import { createScratchTracker } from '../../use-live-field';
 import { AboutTab } from './about-tab';
 import { InputsTab } from './inputs-tab';
 import { InspectorHeader, type StepMenuActions } from './inspector-header';
+import { LoopBodySection } from './loop-body-section';
 import { fieldControlId, type NodeFormApi } from '../../model/node-form';
 import { SetupTab } from './setup-tab';
-
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
 export type NodeInspectorActions = StepMenuActions &
   Readonly<{
     onConnect: (connection: Connection) => void;
     onRemoveEdge: (edgeId: string) => void;
     onDiscardScratch: () => void;
+    /** Shows another step in the inspector, e.g. one inside this body. */
+    onSelectStep: (nodeId: string) => void;
+    /** Opens the step picker for this For each's body. */
+    onAddToBody: (opener: HTMLElement) => void;
   }>;
 
 /**
  * One step's inspector. Keyed by step, so its local scratch never leaks to
- * another step; every valid edit is applied to the draft as it happens.
+ * another step; every valid edit is applied to the draft as it happens. A
+ * step inside a For each body sees only its body: its siblings to connect
+ * and map from, and the item the body runs for.
  */
 export function NodeInspector({
   node,
   graph,
+  loopPorts,
   definition,
   definitions,
   connections,
@@ -49,7 +60,10 @@ export function NodeInspector({
   actions,
 }: Readonly<{
   node: WorkflowNode;
-  graph: WorkflowGraphContract;
+  /** The level the step is on: the workflow, or the body it's in. */
+  graph: GraphLevel;
+  /** The body's inputs when the step is inside a For each; else empty. */
+  loopPorts: readonly string[];
   definition: NodeDefinitionCatalogItem | undefined;
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
@@ -77,7 +91,7 @@ export function NodeInspector({
       reportScratch,
       commit: (update, coalesceKey) => {
         const state = store.getState();
-        const current = state.graph.nodes.find((item) => item.id === node.id);
+        const current = findStep(state.graph, node.id);
         if (current === undefined) return;
         const resolved =
           typeof update === 'function' ? update(current) : update;
@@ -133,18 +147,29 @@ export function NodeInspector({
         </TabsList>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <TabsContent value="setup" keepMounted>
-            <SetupTab
-              node={node}
-              definition={definition}
-              connections={connections}
-              workspaceId={workspaceId}
-              form={form}
-            />
+            <div className="flex flex-col gap-4">
+              {isForEach(node) ? (
+                <LoopBodySection
+                  node={node}
+                  editable={editable}
+                  onSelectStep={actions.onSelectStep}
+                  onAddStep={actions.onAddToBody}
+                />
+              ) : null}
+              <SetupTab
+                node={node}
+                definition={definition}
+                connections={connections}
+                workspaceId={workspaceId}
+                form={form}
+              />
+            </div>
           </TabsContent>
           <TabsContent value="inputs" keepMounted>
             <InputsTab
               node={node}
               graph={graph}
+              loopPorts={loopPorts}
               definition={definition}
               definitions={definitions}
               form={form}

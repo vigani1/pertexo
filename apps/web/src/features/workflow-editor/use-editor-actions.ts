@@ -3,11 +3,12 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import type { EditorStore } from './model/editor.store';
 import { stepTitle } from './model/graph-adapter';
 import {
-  duplicateWorkflowNodes,
   removeWorkflowElements,
   restoreWorkflowElements,
   type RemovedElements,
 } from './model/graph-commands';
+import { duplicateWorkflowNodes } from './model/graph-copies';
+import { scopeOf } from './model/graph-scopes';
 
 export type EditorFocusTarget = Readonly<{
   nodeId: string;
@@ -163,11 +164,13 @@ function replacesInspectedStep(
     case 'undo':
     case 'redo':
       return true;
-    case 'delete':
-      return (
-        state.selectedNodeId !== null &&
-        action.nodeIds.includes(state.selectedNodeId)
-      );
+    case 'delete': {
+      // Deleting a For each takes the steps in its body with it.
+      const inspected = state.selectedNodeId;
+      if (inspected === null) return false;
+      const around = scopeOf(state.graph, inspected) ?? [];
+      return [inspected, ...around].some((id) => action.nodeIds.includes(id));
+    }
     case 'duplicate':
       return false;
   }
