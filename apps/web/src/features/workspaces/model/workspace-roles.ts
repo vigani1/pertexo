@@ -23,15 +23,6 @@ export const ROLE_NAMES: Readonly<Record<WorkspaceRole, string>> = {
   viewer: 'Viewer',
 };
 
-/** Whole words that fit a phone-width roles matrix column. */
-export const ROLE_SHORT_NAMES: Readonly<Record<WorkspaceRole, string>> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  builder: 'Build',
-  operator: 'Ops',
-  viewer: 'View',
-};
-
 /** One line per role, for pickers: what someone with it can do. */
 export const ROLE_SUMMARIES: Readonly<Record<WorkspaceRole, string>> = {
   owner:

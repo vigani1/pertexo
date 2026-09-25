@@ -78,7 +78,7 @@ export function RunRow({
         params={{ workspaceId: workspace.id, runId: run.id }}
         {...(inWorkflow
           ? { 'aria-label': `Run from ${formatDateTime(run.createdAt)}` }
-          : { title: workflowLabel(run) })}
+          : {})}
         className={cn(
           "col-start-1 row-start-1 min-w-0 truncate font-medium text-foreground outline-none after:absolute after:inset-0 after:rounded-md after:content-[''] hover:text-accent-foreground focus-visible:after:ring-2 focus-visible:after:ring-ring/60",
           layout.link,

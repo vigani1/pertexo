@@ -2,7 +2,6 @@ import { cn } from '@/lib/utils';
 import {
   ROLE_MATRIX,
   ROLE_NAMES,
-  ROLE_SHORT_NAMES,
   WORKSPACE_ROLES,
   withArticle,
   type WorkspaceRole,
@@ -41,14 +40,11 @@ export function RolesMatrix({
                 key={role}
                 scope="col"
                 className={cn(
-                  'w-10 px-0.5 pb-2 text-center text-[0.68rem] font-semibold text-subtle-foreground sm:w-14',
+                  'w-12 px-0.5 pb-2 text-center text-[0.62rem] font-semibold text-subtle-foreground sm:w-20 sm:text-[0.7rem]',
                   role === yourRole && 'text-accent-foreground',
                 )}
               >
-                <span aria-hidden="true" className="sm:hidden">
-                  {ROLE_SHORT_NAMES[role]}
-                </span>
-                <span className="max-sm:sr-only">{ROLE_NAMES[role]}</span>
+                {ROLE_NAMES[role]}
               </th>
             ))}
           </tr>
@@ -77,8 +73,12 @@ export function RolesMatrix({
                       aria-hidden="true"
                       className={cn(
                         'relative inline-block size-2.5 rounded-full',
+                        // Your column's beads are lit; the others are
+                        // softer, so the grid isn't the brightest thing here.
                         allowed
-                          ? 'bg-action'
+                          ? role === yourRole
+                            ? 'bg-action'
+                            : 'bg-action/45'
                           : 'border border-white/18 bg-card',
                       )}
                     />

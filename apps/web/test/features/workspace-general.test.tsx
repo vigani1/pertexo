@@ -422,9 +422,9 @@ describe('workspace settings', () => {
     );
     expect(dialog.getByText(/restore it for 30 days/u)).toBeVisible();
     const confirmation = dialog.getByLabelText(
-      'Type Control Operations to confirm',
+      'Type “Control Operations” to confirm',
     );
-    const reason = dialog.getByLabelText('Reason');
+    const reason = dialog.getByLabelText('Reason (required)');
     await actor.click(reason);
     await actor.tab();
     expect(

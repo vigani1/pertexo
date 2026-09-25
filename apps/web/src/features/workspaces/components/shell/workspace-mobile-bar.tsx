@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import { Link } from '@tanstack/react-router';
+import { Link, useMatchRoute } from '@tanstack/react-router';
 import { MoreHorizontalIcon, WavesIcon, WorkflowIcon } from 'lucide-react';
 import { CoreOrb } from '@/components/patterns/core-orb';
 import {
@@ -14,7 +14,7 @@ import {
 import { spineDestinations } from './spine-destinations';
 
 const barLinkClass =
-  "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-[0.68rem] text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
+  "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-[0.68rem] text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground data-[active=true]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
 
 /** Bottom navigation for phones: Home, Workflows, Runs and More. */
 export function WorkspaceMobileBar({
@@ -37,6 +37,16 @@ export function WorkspaceMobileBar({
     ...destinations.workspace,
   ];
   const canReadRuns = workspace.capabilities.includes('run:read');
+  // Pages that live under More light More, so a page always shows where it is.
+  const matchRoute = useMatchRoute();
+  const moreActive = secondary.some(
+    (destination) =>
+      matchRoute({
+        to: destination.to,
+        params: { workspaceId: workspace.id },
+        fuzzy: true,
+      }) !== false,
+  );
   return (
     <nav
       aria-label="Workspace"
@@ -48,7 +58,10 @@ export function WorkspaceMobileBar({
         activeOptions={{ exact: true }}
         className={barLinkClass}
       >
-        <CoreOrb state="live" className="size-6" />
+        {/* The same 20px box as the icons beside it, so labels line up. */}
+        <span className="grid size-5 place-items-center">
+          <CoreOrb state="live" className="size-6" />
+        </span>
         Home
       </Link>
       <Link
@@ -70,7 +83,7 @@ export function WorkspaceMobileBar({
         </Link>
       ) : null}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetTrigger className={barLinkClass}>
+        <SheetTrigger className={barLinkClass} data-active={moreActive}>
           <MoreHorizontalIcon aria-hidden="true" />
           More
         </SheetTrigger>

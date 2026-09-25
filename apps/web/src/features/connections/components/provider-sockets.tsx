@@ -22,7 +22,7 @@ export function ProviderSockets({
   return (
     <ul
       aria-label="Services you can connect"
-      className={cn('grid gap-3', layout === 'row' && 'sm:grid-cols-3')}
+      className={cn('grid gap-3', layout === 'row' && 'lg:grid-cols-3')}
     >
       {PROVIDER_KEYS.map((provider) => (
         <li key={provider}>
@@ -39,7 +39,7 @@ export function ProviderSockets({
               <span className="block text-sm font-semibold">
                 {PROVIDERS[provider].name}
               </span>
-              <span className="block truncate text-xs text-muted-foreground">
+              <span className="block text-xs text-pretty text-muted-foreground">
                 {PROVIDERS[provider].purpose}
               </span>
             </span>

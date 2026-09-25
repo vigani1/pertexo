@@ -97,7 +97,7 @@ export function WorkspaceDeletionDialog({
       <FieldGroup>
         <LabelledField
           id={`${id}-confirmation`}
-          label={`Type ${workspaceName} to confirm`}
+          label={`Type “${workspaceName}” to confirm`}
           error={validation.error('confirmation')}
         >
           {(control) => (
@@ -118,8 +118,8 @@ export function WorkspaceDeletionDialog({
         </LabelledField>
         <LabelledField
           id={`${id}-reason`}
-          label="Reason"
-          description="Recorded with the request so other owners know why."
+          label="Reason (required)"
+          description="Other owners see it with the request."
           error={validation.error('reason')}
         >
           {(control) => (
