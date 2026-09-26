@@ -37,8 +37,9 @@ export function useRunInput() {
       })
         ? toRunIntent(input, deadline)
         : undefined,
-    reset: () => {
-      setInput('{}');
+    /** Starts over from `text`, e.g. the input a replayed run used. */
+    reset: (text = '{}') => {
+      setInput(text);
       setDeadline('');
       validation.reset();
     },

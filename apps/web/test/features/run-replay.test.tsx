@@ -37,9 +37,15 @@ function acceptedRun(id: string) {
   );
 }
 
-function installRunHandlers(capabilities: readonly string[] = operator) {
+function installRunHandlers(
+  capabilities: readonly string[] = operator,
+  input: unknown = { kind: 'none' },
+) {
   mockServer.use(
     ...identityHandlers(capabilities),
+    http.get(`${apiBase}/runs/:runId/input`, () =>
+      HttpResponse.json({ input }),
+    ),
     http.get(`${apiBase}/runs/:runId`, ({ params }) =>
       HttpResponse.json({ run: run(String(params.runId)), nodes: [] }),
     ),
@@ -79,6 +85,33 @@ describe('run replay', () => {
     expect(input).toHaveAccessibleDescription(/isn’t valid JSON/u);
     fireEvent.change(input, { target: { value: '{}' } });
     expect(input).toHaveAttribute('aria-invalid', 'false');
+  });
+
+  it('opens with the input the run used, and says when it is no longer kept', async () => {
+    installRunHandlers(operator, {
+      kind: 'inline',
+      value: { orderId: 'A-17', rush: true },
+    });
+    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    const dialog = await openReplay();
+    await waitFor(() => {
+      expect(within(dialog).getByLabelText('Replay input (JSON)')).toHaveValue(
+        JSON.stringify({ orderId: 'A-17', rush: true }, null, 2),
+      );
+    });
+    expect(dialog).toHaveAccessibleDescription(/with this run’s input/u);
+  });
+
+  it('asks for input when the run’s own is past its 30 days', async () => {
+    installRunHandlers(operator, { kind: 'expired' });
+    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    const dialog = await openReplay();
+    await waitFor(() => {
+      expect(dialog).toHaveAccessibleDescription(/no longer kept/u);
+    });
+    expect(within(dialog).getByLabelText('Replay input (JSON)')).toHaveValue(
+      '{}',
+    );
   });
 
   it('retries an unconfirmed replay with the same request and opens the new run', async () => {

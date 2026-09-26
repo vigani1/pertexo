@@ -1,5 +1,5 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunListItem } from '@pertexo/contracts/schemas/workflow-runs';
 import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import {
   formatRelativeTime,
 } from '@/lib/format-time';
 import { shortRunId, workflowLabel } from '../../model/run-list';
+import { describeListedFailure } from '../../model/run-failure';
 import { describeRunStatus } from '../../model/run-status';
 import { CopyButton } from '@/components/ui/copy-button';
 import { RunRowMenu } from '../run-actions/run-row-menu';
@@ -23,7 +24,7 @@ function StartedAt({
   nowMs,
   className,
 }: Readonly<{
-  run: WorkflowRunReadSummary;
+  run: WorkflowRunListItem;
   nowMs: number;
   className?: string;
 }>) {
@@ -56,7 +57,7 @@ export function RunRow({
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
-  run: WorkflowRunReadSummary;
+  run: WorkflowRunListItem;
   variant: RunListVariant;
   durationMs: number | undefined;
   share: number;
@@ -65,6 +66,7 @@ export function RunRow({
   const look = describeRunStatus(run.status);
   const layout = RUN_ROW_LAYOUT[variant];
   const inWorkflow = variant === 'workflow';
+  const failure = describeListedFailure(run.failedStep);
   return (
     <li
       data-slot="run-row"
@@ -123,6 +125,13 @@ export function RunRow({
           className={cn('relative z-10 md:row-start-1', layout.id)}
         />
       </div>
+      {failure.step === undefined ? null : (
+        // Where it went wrong, so the list answers "why" without a click.
+        <p className="col-span-2 row-start-4 min-w-0 truncate text-xs text-muted-foreground md:col-start-2 md:col-end-[-1] md:row-start-2 md:-mt-1">
+          at <span className="text-foreground">{failure.step}</span>
+          {failure.reason === undefined ? null : ` · ${failure.reason}`}
+        </p>
+      )}
       <ThreadBar
         share={share}
         tone={look.tone}

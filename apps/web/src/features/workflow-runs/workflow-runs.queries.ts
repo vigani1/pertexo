@@ -10,7 +10,9 @@ import type { RunHistoryFilters } from './model/run-search';
 import type { RunStatus } from './model/run-status';
 import {
   getRunsSince,
+  getWorkflowNodeRunOutput,
   getWorkflowRun,
+  getWorkflowRunInput,
   getWorkflowRunStatistics,
   getWorkflowRunsPage,
 } from './workflow-runs.api';
@@ -26,6 +28,9 @@ export const workflowRunKeys = {
     ] as const,
   detail: (userId: string, workspaceId: string, runId: string) =>
     [...workflowRunKeys.scope(userId, workspaceId), 'detail', runId] as const,
+  /** Stored run data, apart from the detail so live events don't refetch it. */
+  data: (userId: string, workspaceId: string, runId: string) =>
+    [...workflowRunKeys.scope(userId, workspaceId), 'data', runId] as const,
   statistics: (
     userId: string,
     workspaceId: string,
@@ -330,6 +335,51 @@ export function workflowRunQueryOptions(
     queryFn: ({ signal }) =>
       getWorkflowRun(apiClient, workspaceId, runId, signal),
     staleTime: 0,
+  });
+}
+
+/** A run's stored input; it never changes, so it's read once. */
+export function workflowRunInputQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  runId: string,
+) {
+  return queryOptions({
+    queryKey: [...workflowRunKeys.data(userId, workspaceId, runId), 'input'],
+    queryFn: ({ signal }) =>
+      getWorkflowRunInput(apiClient, workspaceId, runId, signal),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+/**
+ * A step run's output. It only changes when the step does, so the step's
+ * status is part of the key: a step that finishes is read again.
+ */
+export function nodeRunOutputQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  runId: string,
+  step: Readonly<{ nodeRunId: string; status: string }>,
+) {
+  return queryOptions({
+    queryKey: [
+      ...workflowRunKeys.data(userId, workspaceId, runId),
+      'output',
+      step.nodeRunId,
+      step.status,
+    ],
+    queryFn: ({ signal }) =>
+      getWorkflowNodeRunOutput(
+        apiClient,
+        workspaceId,
+        runId,
+        step.nodeRunId,
+        signal,
+      ),
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 

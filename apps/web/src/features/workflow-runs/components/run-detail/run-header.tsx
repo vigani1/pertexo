@@ -18,6 +18,8 @@ import {
   describeLiveUpdates,
   type LiveConnectionStatus,
 } from '../../model/live-updates';
+import { StatusGuide } from '@/components/patterns/status-guide';
+import { RUN_PAGE_GUIDE } from '../../model/run-guide';
 import { runDurationMs, shortRunId, workflowLabel } from '../../model/run-list';
 import {
   describeTrigger,
@@ -125,6 +127,19 @@ function RunFacts({
           stop requested <b>{formatClock(run.cancelRequestedAt)}</b>
         </MetaFact>
       )}
+      {run.replaySourceRunId == null ? null : (
+        <MetaFact>
+          replay of{' '}
+          <Link
+            to="/w/$workspaceId/runs/$runId"
+            params={{ workspaceId, runId: run.replaySourceRunId }}
+            className="font-medium text-foreground underline decoration-white/20 underline-offset-4 hover:decoration-foreground"
+          >
+            {shortRunId(run.replaySourceRunId)}
+          </Link>
+        </MetaFact>
+      )}
+      <StatusGuide sections={RUN_PAGE_GUIDE} className="-my-1 -ml-2" />
     </PageHeaderMeta>
   );
 }
@@ -224,6 +239,8 @@ export function RunHeader({
   versionNumber,
   liveStatus,
   compact,
+  replayOpen,
+  onReplayOpenChange,
   onReconnect,
   onRunAccepted,
 }: Readonly<{
@@ -237,10 +254,13 @@ export function RunHeader({
   liveStatus: LiveConnectionStatus;
   /** Phone layout: Core beside the sentence, actions in a bottom bar. */
   compact: boolean;
+  /** Replay opens from here and from the run's input, so the page owns it. */
+  replayOpen: boolean;
+  onReplayOpenChange: (open: boolean) => void;
   onReconnect: () => void;
   onRunAccepted: (runId: string) => void;
 }>) {
-  const [dialog, setDialog] = useState<'replay' | 'cancel'>();
+  const [cancelOpen, setCancelOpen] = useState(false);
   const active = isActiveRunStatus(run.status);
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
     workspace.capabilities.includes(capability);
@@ -303,10 +323,10 @@ export function RunHeader({
         canCancel={canCancel}
         canOpenWorkflow={can('workflow:read')}
         onReplay={() => {
-          setDialog('replay');
+          onReplayOpenChange(true);
         }}
         onCancel={() => {
-          setDialog('cancel');
+          setCancelOpen(true);
         }}
       />
       {can('run:replay') ? (
@@ -318,10 +338,8 @@ export function RunHeader({
           sourceRunId={run.id}
           workflowVersionId={run.workflowVersionId}
           {...(versionLabel === undefined ? {} : { versionLabel })}
-          open={dialog === 'replay'}
-          onOpenChange={(open) => {
-            setDialog(open ? 'replay' : undefined);
-          }}
+          open={replayOpen}
+          onOpenChange={onReplayOpenChange}
           onRunAccepted={onRunAccepted}
         />
       ) : null}
@@ -332,10 +350,8 @@ export function RunHeader({
           workspaceId={workspace.id}
           runId={run.id}
           workflowName={name}
-          open={dialog === 'cancel'}
-          onOpenChange={(open) => {
-            setDialog(open ? 'cancel' : undefined);
-          }}
+          open={cancelOpen}
+          onOpenChange={setCancelOpen}
         />
       ) : null}
     </header>

@@ -1,96 +1,117 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import { RotateCcwIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
-import { ArtifactDownload } from '@/features/artifacts/public';
-import type { ApiClient } from '@/lib/api/client';
+import { useQuery } from '@tanstack/react-query';
 import type { ThreadRow } from '../../model/thread-view';
+import { nodeRunOutputQueryOptions } from '../../workflow-runs.queries';
+import { describeValue, isEmptyValue } from '../../model/run-data-summary';
+import { RunInputData, type RunDataScope } from './run-data';
+
+/** Past this many steps the list names each step's status, not its data. */
+const SUMMARISED_STEPS = 25;
+
+/** What a step returned, in a few words: "1 field · 26 B", "file". */
+function ResultSummary({
+  row,
+  scope,
+}: Readonly<{ row: ThreadRow; scope: RunDataScope }>) {
+  const query = useQuery(
+    nodeRunOutputQueryOptions(
+      scope.apiClient,
+      scope.userId,
+      scope.workspace.id,
+      scope.runId,
+      { nodeRunId: row.nodeRunId ?? '', status: row.status },
+    ),
+  );
+  const data = query.data;
+  if (data === undefined) return query.isError ? 'couldn’t load' : '…';
+  if (data.kind === 'inline' && !isEmptyValue(data.value))
+    return describeValue(data.value);
+  if (data.kind === 'artifact') return 'file';
+  return row.status === 'succeeded'
+    ? 'nothing returned'
+    : row.statusLabel.toLocaleLowerCase();
+}
 
 /**
- * What went in and what came out. File outputs download from here; the
- * run's input and inline results are kept for replays but not shown, and
- * the page says so plainly.
+ * What went in and what came out: the run's input, with Replay from it, and
+ * every step that ran, each opening its Data in and Data out in the lens.
  */
 export function RunOutputsView({
   rows,
-  apiClient,
-  userId,
-  workspace,
+  scope,
+  selectedKey,
+  canReplay,
+  onReplay,
+  onSelectStep,
 }: Readonly<{
   rows: readonly ThreadRow[];
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
+  scope: RunDataScope;
+  selectedKey: string | undefined;
+  canReplay: boolean;
+  onReplay: () => void;
+  onSelectStep: (key: string) => void;
 }>) {
-  const canReadArtifacts = workspace.capabilities.includes('artifact:read');
-  const withFiles = rows.filter((row) =>
-    row.outputs.some((output) => output.kind === 'artifact'),
-  );
-  const withInline = rows.filter((row) =>
-    row.outputs.some((output) => output.kind === 'inline'),
-  );
-  const unfinished = rows.some(
-    (row) =>
-      row.status === 'running' ||
-      row.status === 'waiting' ||
-      row.status === 'ready' ||
-      row.status === 'pending',
-  );
+  const ran = rows.filter((row) => row.nodeRunId !== undefined);
+  const summarise = ran.length <= SUMMARISED_STEPS;
   return (
     <div className="grid gap-8 lg:grid-cols-2">
-      <section>
-        <h2 className="text-lg font-semibold">Input</h2>
-        <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
-          Pertexo keeps the input this run started with, so it can be replayed.
-          It isn’t shown on this page; a replay asks for the input to use.
-        </p>
-      </section>
-      <section>
-        <h2 className="text-lg font-semibold">Output</h2>
-        {withFiles.length === 0 && withInline.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {unfinished
-              ? 'No step has produced a file or a result yet.'
-              : 'No step produced a file or a result.'}
-          </p>
-        ) : null}
-        <div className="mt-3 flex flex-col gap-4">
-          {withFiles.map((row) => (
-            <div key={row.key} className="flex flex-col gap-2">
-              <h3 className="font-sans text-xs font-semibold text-subtle-foreground">
-                {row.label}
-              </h3>
-              {canReadArtifacts ? (
-                row.outputs.map((output) =>
-                  output.kind === 'artifact' ? (
-                    <ArtifactDownload
-                      key={output.artifactId}
-                      apiClient={apiClient}
-                      userId={userId}
-                      workspaceId={workspace.id}
-                      artifactId={output.artifactId}
-                    />
-                  ) : null,
-                )
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  This step produced a file, but your role can’t download files.
-                </p>
-              )}
-            </div>
-          ))}
-          {withInline.length > 0 ? (
-            <div className="flex gap-2.5 rounded-md border border-white/8 p-3 text-sm text-muted-foreground">
-              <StatusGlyph tone="neutral" className="mt-0.5" />
-              <p>
-                {withInline.map((row) => row.label).join(', ')}{' '}
-                {withInline.length === 1
-                  ? 'returned a result'
-                  : 'returned results'}
-                . Results are kept with each attempt but aren’t shown on this
-                page.
-              </p>
-            </div>
+      <section className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Run input</h2>
+          {canReplay ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onReplay}
+            >
+              <RotateCcwIcon aria-hidden="true" />
+              Replay with this input
+            </Button>
           ) : null}
         </div>
+        <p className="mt-1 mb-3 text-sm text-muted-foreground">
+          What the trigger handed to the first step.
+        </p>
+        <RunInputData scope={scope} />
+      </section>
+      <section className="min-w-0">
+        <h2 className="text-lg font-semibold">Step results</h2>
+        <p className="mt-1 mb-3 text-sm text-muted-foreground">
+          Choose a step to see the data it received and returned.
+        </p>
+        {ran.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No step has run yet.</p>
+        ) : (
+          <ul className="flex flex-col">
+            {ran.map((row) => (
+              <li key={row.key}>
+                <button
+                  type="button"
+                  aria-current={row.key === selectedKey ? 'true' : undefined}
+                  className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-white/[0.04] focus-ring aria-[current=true]:bg-action/8 motion-reduce:transition-none"
+                  onClick={() => {
+                    onSelectStep(row.key);
+                  }}
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <StatusGlyph tone={row.tone} />
+                    <span className="truncate text-sm">{row.label}</span>
+                  </span>
+                  <span className="shrink-0 font-mono text-xs text-subtle-foreground">
+                    {summarise ? (
+                      <ResultSummary row={row} scope={scope} />
+                    ) : (
+                      row.statusLabel.toLocaleLowerCase()
+                    )}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
