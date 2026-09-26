@@ -173,6 +173,13 @@ describe('thread view', () => {
       ['retry', 'scheduled'],
       ['attempt', 'running'],
     ]);
+    // Each entry is named by the event that made it: unique, and the same
+    // for as long as later events keep arriving.
+    const ids = receipt?.story.map((entry) => entry.id) ?? [];
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.every((id) => /^event-\d+:(attempt|retry)$/u.test(id))).toBe(
+      true,
+    );
     expect(receipt?.story[0]?.safeErrorCode).toBe('provider.unavailable');
     expect(receipt?.story[1]?.endedAt).toBe(at(35));
     expect(done?.status).toBe('not_started');

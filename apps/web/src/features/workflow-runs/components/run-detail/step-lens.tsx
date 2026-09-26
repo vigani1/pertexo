@@ -196,9 +196,9 @@ export function StepLens({
           </p>
         ) : (
           <ol className="flex flex-col">
-            {row.story.map((entry, index) => (
+            {row.story.map((entry) => (
               <StoryEntry
-                key={`${entry.kind}-${entry.startedAt}-${String(index)}`}
+                key={entry.id}
                 entry={entry}
                 nowMs={nowMs}
                 workspace={workspace}

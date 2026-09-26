@@ -32,6 +32,8 @@ export type StepOutcome =
   | 'skipped';
 
 export type StepStoryEntry = Readonly<{
+  /** The event that made it and its kind ("event-12:retry"), or "summary:…". */
+  id: string;
   kind: 'attempt' | 'retry' | 'wait' | 'skipped';
   outcome: StepOutcome;
   tone: StatusTone;
@@ -126,6 +128,8 @@ interface OpenSpan {
 class StepReplayBuilder {
   public readonly segments: ThreadSegment[] = [];
   public readonly story: StepStoryEntry[] = [];
+  /** The event being applied, which names the entries it makes. */
+  #source = 'summary';
   public readonly outputs: StepOutput[] = [];
   public open: OpenSpan | undefined;
   public attempts = 0;
@@ -138,7 +142,13 @@ class StepReplayBuilder {
   /** Starts that resumed a wait, which the engine numbers as attempts. */
   public resumes = 0;
 
+  /** A new entry in the story: one event makes at most one of each kind. */
+  private tell(entry: Omit<StepStoryEntry, 'id'>): void {
+    this.story.push({ id: `${this.#source}:${entry.kind}`, ...entry });
+  }
+
   public apply(event: WorkflowRunEvent): void {
+    this.#source = `event-${String(event.sequence)}`;
     const atMs = Date.parse(event.createdAt);
     const payload = event.payload;
     this.firstActivityMs ??= atMs;
@@ -217,7 +227,7 @@ class StepReplayBuilder {
     this.attempts = Math.max(this.attempts, attempt);
     this.status = 'running';
     this.open = { kind: 'attempt', startMs: atMs };
-    this.story.push({
+    this.tell({
       kind: 'attempt',
       outcome: 'running',
       tone: 'live',
@@ -245,7 +255,7 @@ class StepReplayBuilder {
       return;
     }
     this.updateLast(['wait', 'retry'], { endedAt: createdAt });
-    this.story.push({ kind: 'attempt', startedAt: createdAt, ...update });
+    this.tell({ kind: 'attempt', startedAt: createdAt, ...update });
   }
 
   private scheduleRetry(
@@ -262,7 +272,7 @@ class StepReplayBuilder {
       startMs: Date.parse(createdAt),
       ...(payload.dueAt === undefined ? {} : { dueAt: payload.dueAt }),
     };
-    this.story.push({
+    this.tell({
       kind: 'retry',
       outcome: 'scheduled',
       tone: 'waiting',
@@ -284,7 +294,7 @@ class StepReplayBuilder {
       startMs: Date.parse(createdAt),
       ...(dueAt === undefined ? {} : { dueAt }),
     };
-    this.story.push({
+    this.tell({
       kind: 'wait',
       outcome: 'waiting',
       tone: 'waiting',
@@ -304,7 +314,7 @@ class StepReplayBuilder {
       startMs,
       endMs: atMs,
     });
-    this.story.push({
+    this.tell({
       kind: 'skipped',
       outcome: 'skipped',
       tone: 'skipped',
@@ -331,6 +341,7 @@ class StepReplayBuilder {
     summary: WorkflowNodeRunSummary | undefined,
     runEndMs: number | null,
   ): void {
+    this.#source = 'summary';
     const finish =
       summary === undefined ? undefined : statusFinishes[summary.status];
     if (
@@ -414,6 +425,10 @@ export function replayFromSummary(
         ? []
         : [
             {
+              id:
+                summary.status === 'skipped'
+                  ? 'summary:skipped'
+                  : 'summary:attempt',
               kind: summary.status === 'skipped' ? 'skipped' : 'attempt',
               outcome: finish?.outcome ?? openOutcome(summary.status),
               tone,
