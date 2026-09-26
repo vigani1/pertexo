@@ -8,6 +8,7 @@ import { describeStepError } from '../../model/step-error-copy';
 import {
   stepTag,
   storyEntryMeta,
+  storyEntryReason,
   storyEntryTitle,
 } from '../../model/step-copy';
 import type { StepStoryEntry } from '../../model/step-replay';
@@ -77,6 +78,7 @@ function StoryEntry({
   nowMs: number;
   workspace: AccessibleWorkspace;
 }>) {
+  const reason = storyEntryReason(entry);
   return (
     <li className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2.5 border-t border-white/6 py-2.5 text-[0.82rem]">
       <StatusGlyph tone={entry.tone} className="mt-0.5" />
@@ -90,6 +92,9 @@ function StoryEntry({
             Pertexo retries this step on its own.
           </p>
         ) : null}
+        {reason === undefined ? null : (
+          <p className="mt-1.5 text-muted-foreground">{reason}</p>
+        )}
         {entry.safeErrorCode === undefined ? null : (
           <StepError code={entry.safeErrorCode} workspace={workspace} />
         )}

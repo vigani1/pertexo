@@ -108,3 +108,30 @@ export function storyEntryMeta(entry: StepStoryEntry, nowMs: number): string {
     ? formatClock(entry.startedAt)
     : `${formatClock(entry.startedAt)} · ${formatDurationMs(took)}`;
 }
+
+// Why a step ended the way it did, when the engine says: a Merge that
+// couldn't start, or a failure it didn't try again.
+const joinReasons: Readonly<Record<string, string>> = {
+  branch_failed: 'It didn’t start: a branch it waits for failed.',
+  branch_canceled: 'It didn’t start: a branch it waits for was canceled.',
+  insufficient_arrivals: 'It didn’t start: not enough branches reached it.',
+};
+
+/**
+ * One sentence on why a finished entry ended the way it did, or nothing
+ * when the story already says it. A failure names why there was no retry:
+ * the last attempt, a kind of failure this step doesn't retry, or a call
+ * that may already have reached the service.
+ */
+export function storyEntryReason(entry: StepStoryEntry): string | undefined {
+  const code = entry.reasonCode;
+  if (code === undefined) return undefined;
+  const join = joinReasons[code];
+  if (join !== undefined) return join;
+  if (code === 'unsafe_possible_dispatch')
+    return 'Not retried: it may already have reached the service, and trying again could do it twice.';
+  if (code === 'canceled' || entry.outcome !== 'failed') return undefined;
+  return entry.attemptNumber !== undefined && entry.attemptNumber > 1
+    ? `Pertexo stopped retrying after attempt ${String(entry.attemptNumber)}.`
+    : 'Not retried: this step doesn’t retry this kind of failure.';
+}
