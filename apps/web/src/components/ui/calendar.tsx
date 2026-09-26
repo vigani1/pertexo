@@ -227,7 +227,9 @@ export function Calendar({
                         isToday && !chosen(day) && 'text-accent-foreground',
                         onBand === 'middle' && 'text-foreground',
                         chosen(day)
-                          ? 'neon font-semibold'
+                          ? // Opaque under the wash, so the band stops at its
+                            // edge; lit from its centre, like a small orb.
+                            'neon bg-popover [--neon-wash:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_36%,transparent),color-mix(in_oklab,var(--primary)_14%,transparent)_72%)] [--neon-wash-hover:radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--primary)_48%,transparent),color-mix(in_oklab,var(--primary)_20%,transparent)_72%)] font-semibold'
                           : 'hover:border-white/12 hover:bg-white/[0.06]',
                       )}
                       onClick={() => {
@@ -240,12 +242,7 @@ export function Calendar({
                         // Today: a bead of light under the number.
                         <span
                           aria-hidden="true"
-                          className={cn(
-                            'absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full',
-                            chosen(day)
-                              ? 'bg-primary-foreground'
-                              : 'bg-primary shadow-[0_0_6px_var(--primary)]',
-                          )}
+                          className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]"
                         />
                       ) : null}
                     </button>

@@ -7,8 +7,8 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Neon. Unavailable, it turns plain grey rather than a dim cyan;
-        // while its request runs (data-pending) it keeps its light.
+        // Neon wash. Unavailable, it turns plain grey rather than a dim
+        // cyan; while its request runs (data-pending) it keeps its light.
         primary:
           'neon disabled:border-transparent disabled:bg-white/9 disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 aria-disabled:border-transparent aria-disabled:bg-white/9 aria-disabled:bg-none aria-disabled:text-muted-foreground aria-disabled:shadow-none aria-disabled:opacity-100 data-pending:disabled:neon',
         default:
