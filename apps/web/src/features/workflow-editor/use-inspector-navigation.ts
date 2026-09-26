@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { EditorAction, EditorFocusTarget } from './use-editor-actions';
 
-export type InspectorTab = 'setup' | 'inputs' | 'test' | 'about';
+export type InspectorTab = 'setup' | 'inputs' | 'test' | 'runs' | 'about';
 export type MobilePanel = 'none' | 'add' | 'inspector';
 
 /**

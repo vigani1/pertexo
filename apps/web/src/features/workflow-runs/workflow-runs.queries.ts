@@ -13,6 +13,8 @@ import {
   getWorkflowNodeRunOutput,
   getWorkflowRun,
   getWorkflowRunInput,
+  getWorkflowStepHealth,
+  getWorkflowStepRuns,
   getWorkflowRunStatistics,
   getWorkflowRunsPage,
 } from './workflow-runs.api';
@@ -335,6 +337,53 @@ export function workflowRunQueryOptions(
     queryFn: ({ signal }) =>
       getWorkflowRun(apiClient, workspaceId, runId, signal),
     staleTime: 0,
+  });
+}
+
+/** Each step across the workflow's last 100 runs (ADR 051). */
+export function stepHealthQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+) {
+  return queryOptions({
+    queryKey: [
+      ...workflowRunKeys.scope(userId, workspaceId),
+      'step-health',
+      workflowId,
+    ],
+    queryFn: ({ signal }) =>
+      getWorkflowStepHealth(apiClient, workspaceId, workflowId, signal),
+    staleTime: 30_000,
+  });
+}
+
+/** One step's latest runs in its workflow, newest first. */
+export function stepRunsQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  step: Readonly<{ workflowId: string; nodeId: string; limit: number }>,
+) {
+  return queryOptions({
+    queryKey: [
+      ...workflowRunKeys.scope(userId, workspaceId),
+      'step-runs',
+      step.workflowId,
+      step.nodeId,
+      step.limit,
+    ],
+    queryFn: ({ signal }) =>
+      getWorkflowStepRuns(
+        apiClient,
+        workspaceId,
+        step.workflowId,
+        step.nodeId,
+        step.limit,
+        signal,
+      ),
+    staleTime: 30_000,
   });
 }
 
