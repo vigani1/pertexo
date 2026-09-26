@@ -18,7 +18,7 @@ export type RunHistoryFilters = Readonly<
   >
 >;
 
-export type RunTimeRange = '1h' | '24h' | '7d' | '30d' | 'custom';
+export type RunTimeRange = '1h' | '6h' | '24h' | '7d' | '30d' | 'custom';
 export type RunPresetRange = Exclude<RunTimeRange, 'custom'>;
 
 /**
@@ -40,6 +40,7 @@ export type WorkflowRunSearch = Omit<
 
 export const runPresetRanges: readonly RunPresetRange[] = [
   '1h',
+  '6h',
   '24h',
   '7d',
   '30d',
@@ -47,6 +48,7 @@ export const runPresetRanges: readonly RunPresetRange[] = [
 
 const presetDurationsMs: Readonly<Record<RunPresetRange, number>> = {
   '1h': 3_600_000,
+  '6h': 6 * 3_600_000,
   '24h': 86_400_000,
   '7d': 7 * 86_400_000,
   '30d': 30 * 86_400_000,

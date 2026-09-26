@@ -30,25 +30,43 @@ const KEY_STEPS: Readonly<Record<string, (day: LocalDate) => LocalDate>> = {
 
 /**
  * A month of days to pick one from. Arrow keys move a day or a week, Page
- * Up/Down a month, Home/End to the week's ends; days before `min` can't be
- * chosen.
+ * Up/Down a month, Home/End to the week's ends; days before `min` or after
+ * `max` can't be chosen. With `range`, its first and last days are marked
+ * like a chosen day and the days between them are shaded.
  */
 export function Calendar({
   value,
   min,
+  max,
+  range,
   onSelect,
 }: Readonly<{
   value: LocalDate | undefined;
   min?: LocalDate;
+  max?: LocalDate;
+  range?: Readonly<{ from?: LocalDate; to?: LocalDate }>;
   onSelect: (day: LocalDate) => void;
 }>) {
   const headingId = useId();
   const today = localDateOf(new Date());
-  const [focused, setFocused] = useState<LocalDate>(value ?? min ?? today);
+  const [focused, setFocused] = useState<LocalDate>(
+    value ??
+      range?.from ??
+      min ??
+      (max !== undefined && max < today ? max : today),
+  );
   const moveFocus = useRef(false);
   const days = useRef(new Map<LocalDate, HTMLButtonElement>());
   const visible = dateOf(focused) ?? new Date();
-  const beforeMin = (day: LocalDate) => min !== undefined && day < min;
+  const outOfBounds = (day: LocalDate) =>
+    (min !== undefined && day < min) || (max !== undefined && day > max);
+  const chosen = (day: LocalDate) =>
+    day === value || day === range?.from || day === range?.to;
+  const between = (day: LocalDate) =>
+    range?.from !== undefined &&
+    range.to !== undefined &&
+    day > range.from &&
+    day < range.to;
 
   useEffect(() => {
     if (!moveFocus.current) return;
@@ -57,7 +75,9 @@ export function Calendar({
   }, [focused]);
 
   function go(day: LocalDate) {
-    setFocused(beforeMin(day) && min !== undefined ? min : day);
+    if (min !== undefined && day < min) setFocused(min);
+    else if (max !== undefined && day > max) setFocused(max);
+    else setFocused(day);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTableElement>) {
@@ -95,6 +115,7 @@ export function Calendar({
           variant="ghost"
           size="icon-sm"
           aria-label="Next month"
+          disabled={max !== undefined && sameMonth(focused, max)}
           onClick={() => {
             go(shiftMonths(focused, 1));
           }}
@@ -136,16 +157,17 @@ export function Calendar({
                       }}
                       type="button"
                       tabIndex={day === focused ? 0 : -1}
-                      disabled={beforeMin(day)}
+                      disabled={outOfBounds(day)}
                       aria-label={formatCalendarDay(date)}
-                      aria-pressed={day === value}
+                      aria-pressed={chosen(day)}
                       aria-current={day === today ? 'date' : undefined}
                       className={cn(
                         'grid size-8 place-items-center rounded-md font-mono text-[0.78rem] outline-none transition-colors hover:bg-white/8 focus-ring disabled:pointer-events-none disabled:opacity-30',
                         outside && 'text-subtle-foreground',
                         day === today &&
                           'text-accent-foreground underline decoration-primary/60 underline-offset-4',
-                        day === value &&
+                        between(day) && 'bg-action/15 text-foreground',
+                        chosen(day) &&
                           'bg-action text-action-foreground no-underline hover:bg-action-hover',
                       )}
                       onClick={() => {

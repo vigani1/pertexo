@@ -255,8 +255,10 @@ test('filters and paginates workspace history, then opens the exact run', async 
   await page.getByLabel('Workflow name').press('Enter');
   await expect(page).toHaveURL(/workflowNamePrefix=Customer/u);
   await page.getByRole('button', { name: 'When: Any time' }).click();
-  await page.getByLabel('From', { exact: true }).fill('2026-09-14');
-  await page.getByLabel('To', { exact: true }).fill('2026-09-16');
+  // Today, twice: a range of just that day.
+  const today = page.locator('button[aria-current="date"]');
+  await today.click();
+  await today.click();
   await page.getByRole('button', { name: 'Apply range' }).click();
   await expect(page).toHaveURL(/createdAtFrom=/u);
   await expect(page).toHaveURL(/range=custom/u);

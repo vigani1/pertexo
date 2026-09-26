@@ -9,6 +9,7 @@ export type RunFilterChip = Readonly<{ key: RunFilterChipKey; label: string }>;
 
 const presetLabels: Readonly<Record<RunPresetRange, string>> = {
   '1h': 'Last hour',
+  '6h': 'Last 6 hours',
   '24h': 'Last 24 hours',
   '7d': 'Last 7 days',
   '30d': 'Last 30 days',
