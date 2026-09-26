@@ -13,6 +13,7 @@ import type {
   RunEventNotificationPublisher,
 } from '@pertexo/queue';
 import type {
+  ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
   NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
@@ -46,6 +47,7 @@ export interface PreparedNodeAttempt {
         registry: NodeExecutionRegistry;
         runtime?: NodeExecutionRuntime;
         signal: AbortSignal;
+        onInputResolved?: ExecuteNodeAttemptInput['onInputResolved'];
       }
     >,
   ): Promise<NodeAttemptOutcome>;
@@ -193,6 +195,24 @@ function startNodeAttemptHeartbeat(
   });
 }
 
+/**
+ * Keeps the input the executor receives for the run page (ADR 052). It is
+ * diagnostic: a store without it, a lost lease or a failed write records
+ * nothing and the attempt carries on unchanged.
+ */
+async function recordAttemptInput(
+  runStore: NodeAttemptRunStore,
+  lease: NodeAttemptLease,
+  input: unknown,
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    await runStore.recordInput?.({ lease, input, signal });
+  } catch {
+    // The attempt's outcome never depends on recording its input.
+  }
+}
+
 async function executePreparedNodeAttempt(
   dependencies: NodeAttemptHandlerDependencies,
   lease: NodeAttemptLease,
@@ -214,6 +234,13 @@ async function executePreparedNodeAttempt(
       registry: environment.registry,
       runtime: environment.runtime,
       signal: heartbeat.executionSignal,
+      onInputResolved: (resolved) =>
+        recordAttemptInput(
+          dependencies.runStore,
+          lease,
+          resolved,
+          heartbeat.executionSignal,
+        ),
     });
   } catch (error: unknown) {
     const interruption = await resolveHeartbeatInterruption(

@@ -148,6 +148,7 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
         '0116_workspace_member_departure.sql',
         '0117_workspace_member_suspension.sql',
         '0118_workspace_ownership_transfer.sql',
+        '0119_record_step_inputs.sql',
       ]);
 
       await owner.query('begin');

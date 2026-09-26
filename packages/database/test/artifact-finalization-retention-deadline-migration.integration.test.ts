@@ -269,6 +269,7 @@ describe('artifact finalization retention deadline prior-head migration', () => 
         '0116_workspace_member_departure.sql',
         '0117_workspace_member_suspension.sql',
         '0118_workspace_ownership_transfer.sql',
+        '0119_record_step_inputs.sql',
       ]);
 
       const api = new Pool({

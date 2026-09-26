@@ -1,10 +1,7 @@
 import {
   NodeExecutionAbortedError,
   NodeExecutorFailure,
-  type JsonValue as NodeJsonValue,
-  type NodeExecutionRequest,
   type NodeExecutionResult,
-  type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
@@ -42,16 +39,21 @@ import { parsePersistedObservations } from './persisted-observations.js';
 import { providerIdempotencyKey } from './retries.js';
 import { prepareNodeAttemptInput } from './node-attempt-input.js';
 import type {
-  BranchScopePart,
-  IterationScopePart,
-  WorkflowTransitionPlan,
-} from './types.js';
+  ExecuteNodeAttemptInput,
+  NodeAttemptOutcome,
+} from './node-attempt-contract.js';
+import type { WorkflowTransitionPlan } from './types.js';
 import {
   isCoreMergeDefinition,
   isTriggerSourceDefinition,
 } from './core-definition-identities.js';
 import { assertCheckpointMatchesExecutable } from './checkpoint-executable-validation.js';
 
+export type {
+  ExecuteNodeAttemptInput,
+  NodeAttemptOutcome,
+  NodeExecutionRegistry,
+} from './node-attempt-contract.js';
 export type {
   AttemptFailureObservation,
   DeadlineExpiredObservation,
@@ -263,51 +265,6 @@ export async function advanceWorkflow(
   });
 }
 
-export interface NodeExecutionRegistry {
-  readonly execute: (
-    request: NodeExecutionRequest,
-  ) => Promise<NodeExecutionResult>;
-  readonly dispatchMode?: (
-    request: Pick<NodeExecutionRequest, 'definition' | 'executor'>,
-  ) => 'before_execute' | 'executor_controlled';
-}
-
-export interface ExecuteNodeAttemptInput {
-  readonly runId: string;
-  readonly nodeRunId: string;
-  readonly attemptId: string;
-  readonly executable: CompiledWorkflowExecutableV2;
-  readonly workflowVersionId: string;
-  readonly invocationKey: string;
-  readonly nodeId: string;
-  readonly branchPath?: readonly BranchScopePart[];
-  readonly iterationPath?: readonly IterationScopePart[];
-  readonly structuredCollection?: Readonly<{
-    readonly loopNodeId: string;
-    readonly ordinal: number;
-    readonly collection: unknown;
-    readonly collectionSize: number;
-    readonly declaredCollectionChecksum: string;
-  }>;
-  readonly runInput: unknown;
-  readonly completedNodeOutputs: unknown;
-  readonly coordinatorInput?: unknown;
-  readonly registry: NodeExecutionRegistry;
-  readonly signal: AbortSignal;
-  readonly runtime?: NodeExecutionRuntime;
-  readonly expressionEvaluator?: ExpressionEvaluator;
-}
-
-export interface NodeAttemptOutcome {
-  readonly runId: string;
-  readonly nodeRunId: string;
-  readonly attemptId: string;
-  readonly invocationKey: string;
-  readonly nodeId: string;
-  readonly kind: NodeExecutionResult['kind'];
-  readonly output: NodeJsonValue;
-}
-
 function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted)
     operationError('attempt_aborted', 'node attempt was aborted');
@@ -469,6 +426,8 @@ export async function executeNodeAttempt(
       operationError('attempt_invalid', 'settled Merge input is invalid');
     }
   }
+  // Recorded before the executor runs, so failed attempts keep it (ADR 052).
+  await input.onInputResolved?.(executionInput);
   assertNotAborted(input.signal);
   let result: NodeExecutionResult;
   try {

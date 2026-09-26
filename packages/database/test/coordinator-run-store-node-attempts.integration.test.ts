@@ -403,6 +403,62 @@ describe('Coordinator node-attempt persistence invariants', () => {
     });
   });
 
+  it('records an attempt input under its live lease, and nothing once it is lost', async () => {
+    const lease = await claimDispatchAttempt(`record-input-${randomUUID()}`);
+    const signal = new AbortController().signal;
+    const storedInput = async () =>
+      (
+        await asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query<{ input_ref: unknown }>(
+            `select input_ref from app.node_runs
+              where workspace_id=$1 and id=$2`,
+            [workspaceA, lease.nodeRunId],
+          ),
+        )
+      ).rows[0]?.input_ref;
+
+    await expect(
+      nodeAttemptStore.recordInput?.({
+        lease,
+        input: { orderId: 'A-17' },
+        signal,
+      }),
+    ).resolves.toEqual({ recorded: true });
+    const recorded = {
+      schemaVersion: 1,
+      kind: 'inline',
+      value: { orderId: 'A-17' },
+    };
+    await expect(storedInput()).resolves.toEqual(recorded);
+
+    // Over the inline bound, nothing changes.
+    await expect(
+      nodeAttemptStore.recordInput?.({
+        lease,
+        input: 'x'.repeat(300_000),
+        signal,
+      }),
+    ).resolves.toEqual({ recorded: false });
+    await expect(storedInput()).resolves.toEqual(recorded);
+
+    await asAdmin((client) =>
+      client.query(
+        `update app.node_attempts
+            set fence_token=fence_token+1
+          where workspace_id=$1 and id=$2`,
+        [workspaceA, lease.attemptId],
+      ),
+    );
+    await expect(
+      nodeAttemptStore.recordInput?.({
+        lease,
+        input: { orderId: 'B-2' },
+        signal,
+      }),
+    ).resolves.toEqual({ recorded: false });
+    await expect(storedInput()).resolves.toEqual(recorded);
+  });
+
   it('rejects independently stale lease ownership without terminal side effects', async () => {
     for (const mutation of [
       {
