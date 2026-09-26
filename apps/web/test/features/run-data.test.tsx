@@ -74,8 +74,15 @@ function nodeRun(id: string, nodeId: string, secondsAgo: number) {
   };
 }
 
-function installTwoStepRun() {
+function installTwoStepRun(recorded: unknown = { kind: 'none' }) {
   mockServer.use(
+    http.get(
+      `${apiBase}/runs/${runId}/node-runs/:nodeRunId/input`,
+      ({ params }) =>
+        HttpResponse.json({
+          input: params.nodeRunId === sendRunId ? recorded : { kind: 'none' },
+        }),
+    ),
     ...identityHandlers(capabilities),
     statisticsHandler(),
     http.get(`${apiBase}/runs/${runId}`, () =>
@@ -156,6 +163,39 @@ describe('run data', () => {
     expect(
       await screen.findByText(/The first step gets the run’s input/u),
     ).toBeVisible();
+  });
+
+  it('shows exactly what a step received when its attempt recorded it', async () => {
+    installTwoStepRun({
+      kind: 'inline',
+      value: { amount: 42, to: 'ops@example.test' },
+    });
+    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole(
+        'button',
+        { name: /^Send receipt: Succeeded/u },
+        coldStart,
+      ),
+    );
+    const lens = await screen.findByRole('dialog', { name: 'Send receipt' });
+    expect(
+      await within(lens).findByRole('group', {
+        name: 'Data in of Send receipt',
+      }),
+    ).toHaveTextContent(/amount: 42/u);
+    // Where it came from stays folded, and unread, until it's opened.
+    const origin = within(lens).getByText('Where it came from');
+    const sources = origin.closest('details');
+    expect(sources).not.toHaveTextContent(/From Fetch order/u);
+    await event.click(origin);
+    expect(sources).toHaveTextContent(/From Fetch order/u);
+    expect(
+      await within(lens).findByRole('group', {
+        name: 'Data out of Fetch order',
+      }),
+    ).toHaveTextContent(/total: 42/u);
   });
 
   it('names where a failed run went wrong in the list, and explains statuses', async () => {

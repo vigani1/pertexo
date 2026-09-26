@@ -10,6 +10,7 @@ import type { RunHistoryFilters } from './model/run-search';
 import type { RunStatus } from './model/run-status';
 import {
   getRunsSince,
+  getWorkflowNodeRunInput,
   getWorkflowNodeRunOutput,
   getWorkflowRun,
   getWorkflowRunInput,
@@ -422,6 +423,33 @@ export function nodeRunOutputQueryOptions(
     ],
     queryFn: ({ signal }) =>
       getWorkflowNodeRunOutput(
+        apiClient,
+        workspaceId,
+        runId,
+        step.nodeRunId,
+        signal,
+      ),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+/** What a step run received, recorded when its attempt starts (ADR 052). */
+export function nodeRunInputQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  runId: string,
+  step: Readonly<{ nodeRunId: string; status: string }>,
+) {
+  return queryOptions({
+    queryKey: [
+      ...workflowRunKeys.data(userId, workspaceId, runId),
+      'input-of',
+      step.nodeRunId,
+      step.status,
+    ],
+    queryFn: ({ signal }) =>
+      getWorkflowNodeRunInput(
         apiClient,
         workspaceId,
         runId,

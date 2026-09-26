@@ -1,8 +1,8 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowRunData } from '@pertexo/contracts/schemas/workflow-runs';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { Maximize2Icon, RefreshCwIcon } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDownIcon, Maximize2Icon, RefreshCwIcon } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { JsonTree } from '@/components/patterns/json-tree';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArtifactDownload } from '@/features/artifacts/public';
 import type { ApiClient } from '@/lib/api/client';
 import {
+  nodeRunInputQueryOptions,
   nodeRunOutputQueryOptions,
   workflowRunInputQueryOptions,
 } from '../../workflow-runs.queries';
@@ -269,11 +270,84 @@ export function StepOutputData({
 }
 
 /**
- * What a step received. A step nothing connects into gets the run's input;
- * any other gets what the steps connected into it returned. The exact input
- * after mappings isn't kept (ADR 050), so this is where it came from.
+ * What a step received: exactly, when its attempt recorded it (ADR 052), with
+ * where it came from folded underneath; otherwise, for runs from before, where
+ * it came from.
  */
 export function StepInputData({
+  row,
+  rows,
+  upstream,
+  scope,
+}: Readonly<{
+  row: ThreadRow;
+  rows: readonly ThreadRow[];
+  upstream: ReadonlyMap<string, readonly string[]> | undefined;
+  scope: RunDataScope;
+}>) {
+  const nodeRunId = row.nodeRunId;
+  const recorded = useQuery({
+    ...nodeRunInputQueryOptions(
+      scope.apiClient,
+      scope.userId,
+      scope.workspace.id,
+      scope.runId,
+      { nodeRunId: nodeRunId ?? '', status: row.status },
+    ),
+    enabled: nodeRunId !== undefined,
+  });
+  const sources = (
+    <InputSources row={row} rows={rows} upstream={upstream} scope={scope} />
+  );
+  if (nodeRunId === undefined || recorded.isError) return sources;
+  if (recorded.data === undefined)
+    return (
+      <div role="status" aria-label={`Loading Data in of ${row.label}`}>
+        <Skeleton className="h-16 w-full" />
+      </div>
+    );
+  if (recorded.data.kind === 'none' || recorded.data.kind === 'expired')
+    return sources;
+  return (
+    <div className="flex flex-col gap-3">
+      <RunDataValue
+        data={recorded.data}
+        title={`Data in of ${row.label}`}
+        emptyText="This step received nothing."
+        scope={scope}
+      />
+      <SourcesDisclosure>{sources}</SourcesDisclosure>
+    </div>
+  );
+}
+
+/** Mounts the sources only once opened, so their reads wait until asked. */
+function SourcesDisclosure({ children }: Readonly<{ children: ReactNode }>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details
+      className="group"
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+      }}
+    >
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-subtle-foreground outline-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
+        Where it came from
+        <ChevronDownIcon
+          aria-hidden="true"
+          className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+        />
+      </summary>
+      {open ? <div className="mt-2">{children}</div> : null}
+    </details>
+  );
+}
+
+/**
+ * Where a step's input came from. A step nothing connects into gets the
+ * run's input; any other gets what the steps connected into it returned.
+ */
+function InputSources({
   row,
   rows,
   upstream,
