@@ -171,10 +171,22 @@ export type LoomLayout = Readonly<{
 
 /**
  * The loom's geometry. The Core sits in a fixed column on the right (the
- * component overlays `CoreOrb` there): 190 px wide on roomy canvases, 72 px
- * below 640 px, with the orb's sphere radius at 36 % of its box.
+ * component overlays `CoreOrb` there): 190 px wide on roomy canvases, 56 px
+ * below 640 px so a phone's threads keep the width, with the orb's sphere
+ * radius at 36 % of its box.
  */
 const LOOM_COMPACT_WIDTH = 640;
+
+/**
+ * How tall the loom is for its lanes: a single workflow's thread doesn't sit
+ * alone in a tall empty frame, and many lanes stop growing at the cap.
+ */
+export function loomHeight(laneCount: number): number {
+  return Math.min(320, Math.max(176, 64 + laneCount * 52));
+}
+
+/** From this height a roomy loom's Core is drawn at full size. */
+export const LOOM_TALL_HEIGHT = 260;
 
 export function loomLayout(
   model: Pick<LoomModel, 'lanes'>,
@@ -184,7 +196,7 @@ export function loomLayout(
   const compact = width < LOOM_COMPACT_WIDTH;
   const labelRight = compact ? 0 : Math.min(176, width * 0.24);
   const left = compact ? 12 : labelRight + 12;
-  const coreSpace = compact ? 72 : 190;
+  const coreSpace = compact ? 56 : 190;
   const right = Math.max(left + 40, width - coreSpace);
   const top = compact ? 28 : 18;
   const bottom = height - 30;
@@ -202,7 +214,7 @@ export function loomLayout(
     core: {
       x: width - coreSpace / 2,
       y: (top + bottom) / 2,
-      radius: compact ? 23 : 52,
+      radius: compact ? 18 : height >= LOOM_TALL_HEIGHT ? 52 : 40,
     },
   };
 }

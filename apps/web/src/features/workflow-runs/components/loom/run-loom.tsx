@@ -8,6 +8,8 @@ import { useCanvasRenderer } from '@/lib/use-canvas-renderer';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import {
   runsAtPointer,
+  LOOM_TALL_HEIGHT,
+  loomHeight,
   loomLayout,
   shapeLoom,
   type LoomModel,
@@ -81,9 +83,13 @@ export function RunLoom({
     model.lanes.length === 1 ? 'workflow' : 'workflows'
   } over ${windowLabel}.`;
 
+  const height = loomHeight(model.lanes.length);
   return (
     <div className="flex flex-col gap-3">
-      <div className="@container relative h-72 overflow-hidden rounded-xl border border-white/6 bg-linear-to-b from-white/[0.018] to-transparent sm:h-80">
+      <div
+        className="@container relative overflow-hidden rounded-xl border border-white/6 bg-linear-to-b from-white/[0.018] to-transparent transition-[height] duration-300 ease-out motion-reduce:transition-none"
+        style={{ height }}
+      >
         <LoomCanvas
           model={model}
           label={summary}
@@ -103,13 +109,17 @@ export function RunLoom({
             });
           }}
         />
-        <div className="pointer-events-none absolute top-[28px] right-0 bottom-[30px] grid w-[72px] place-items-center @min-[640px]:top-[18px] @min-[640px]:w-[190px]">
+        <div className="pointer-events-none absolute top-[28px] right-0 bottom-[30px] flex w-[56px] flex-col items-center justify-center gap-1 @min-[640px]:top-[18px] @min-[640px]:w-[190px]">
           <CoreOrb
             state={model.liveCount > 0 ? 'live' : 'idle'}
             energy={coreEnergy(model.liveCount)}
-            className="size-16 @min-[640px]:size-36"
+            className={
+              height >= LOOM_TALL_HEIGHT
+                ? 'size-12 @min-[640px]:size-36'
+                : 'size-12 @min-[640px]:size-28'
+            }
           />
-          <p className="absolute bottom-3 font-mono text-[0.7rem] font-semibold text-accent-foreground/90 @max-[639px]:hidden">
+          <p className="font-mono text-[0.7rem] font-semibold text-accent-foreground/90 @max-[639px]:hidden">
             {String(model.liveCount)} running
           </p>
         </div>
