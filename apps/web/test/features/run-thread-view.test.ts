@@ -8,7 +8,10 @@ import { describe, expect, it } from 'vitest';
 import { describeRunEvent } from '@/features/workflow-runs/model/event-copy';
 import { describeRunSentence } from '@/features/workflow-runs/model/run-sentence';
 import { describeStepError } from '@/features/workflow-runs/model/step-error-copy';
-import { stepTag } from '@/features/workflow-runs/model/step-copy';
+import {
+  stepTag,
+  storyEntryReason,
+} from '@/features/workflow-runs/model/step-copy';
 import { replayStep } from '@/features/workflow-runs/model/step-replay';
 import {
   buildThreadView,
@@ -336,6 +339,89 @@ describe('a Wait step', () => {
       outcome: 'succeeded',
       startedAt: at(1),
       endedAt: at(91.03),
+    });
+  });
+
+  it('names each run of a step inside a loop by the item it ran for', () => {
+    const key = (ordinals: string) =>
+      `v1|charge|b:|i:${encodeURIComponent(ordinals)}`;
+    const view = buildThreadView({
+      run: runSummary('succeeded', { completedAt: at(9) }),
+      nodes: [
+        node('charge', 'succeeded', {
+          id: '11111111-1111-4111-8111-111111111101',
+          invocationKey: key('each:0'),
+        }),
+        node('charge', 'succeeded', {
+          id: '11111111-1111-4111-8111-111111111102',
+          invocationKey: key('each:2'),
+          startedAt: at(2),
+        }),
+        node('charge', 'succeeded', {
+          id: '11111111-1111-4111-8111-111111111103',
+          invocationKey: key('outer:1/each:4'),
+          startedAt: at(3),
+        }),
+      ],
+      events: [],
+      nowMs: start + 10_000,
+    });
+    expect(view.rows.map((row) => row.label)).toEqual([
+      'charge · item 1',
+      'charge · item 3',
+      'charge · item 2 › 5',
+    ]);
+  });
+
+  it('says why a step ended the way it did', () => {
+    const entry = {
+      id: 'event-1:attempt',
+      kind: 'attempt' as const,
+      outcome: 'failed' as const,
+      tone: 'failure' as const,
+      startedAt: at(1),
+    };
+    expect(storyEntryReason(entry)).toBeUndefined();
+    expect(
+      storyEntryReason({ ...entry, reasonCode: 'network', attemptNumber: 1 }),
+    ).toBe('Not retried: this step doesn’t retry this kind of failure.');
+    expect(
+      storyEntryReason({ ...entry, reasonCode: 'network', attemptNumber: 3 }),
+    ).toBe('Pertexo stopped retrying after attempt 3.');
+    expect(
+      storyEntryReason({ ...entry, reasonCode: 'unsafe_possible_dispatch' }),
+    ).toMatch(/may already have reached the service/u);
+    expect(
+      storyEntryReason({
+        ...entry,
+        kind: 'skipped',
+        outcome: 'skipped',
+        reasonCode: 'branch_failed',
+      }),
+    ).toBe('It didn’t start: a branch it waits for failed.');
+    expect(
+      storyEntryReason({ ...entry, reasonCode: 'canceled' }),
+    ).toBeUndefined();
+  });
+
+  it('keeps the reason a failure event gives on the story', () => {
+    const replay = replayStep(
+      [
+        nodeEvent('node.started', 1, { nodeId: 'charge', attemptNumber: 1 }),
+        nodeEvent('node.failed', 2, {
+          nodeId: 'charge',
+          attemptNumber: 1,
+          safeErrorCode: 'provider.timeout',
+          reasonCode: 'timeout',
+        }),
+      ],
+      undefined,
+      start + 2_000,
+    );
+    expect(replay.story.at(-1)).toMatchObject({
+      outcome: 'failed',
+      safeErrorCode: 'provider.timeout',
+      reasonCode: 'timeout',
     });
   });
 });

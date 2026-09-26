@@ -2,6 +2,7 @@ import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catal
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { ReactNode } from 'react';
 import { CopyButton } from '@/components/ui/copy-button';
+import { outputFieldsOf, type OutputField } from '../../model/input-mappings';
 import {
   describeConnectionRequirement,
   describeRetryBehaviour,
@@ -11,7 +12,10 @@ import {
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
-/** What this step is, how it retries, what it touches, and its ID. */
+/**
+ * What this step is, what it returns, how it retries, what it touches, and
+ * its ID.
+ */
 export function AboutTab({
   node,
   definition,
@@ -37,6 +41,9 @@ export function AboutTab({
         </Row>
       ) : (
         <>
+          <Row term="Returns">
+            <ReturnedFields fields={outputFieldsOf(definition.outputSchema)} />
+          </Row>
           <Row term="Retries">
             {describeRetryBehaviour(definition.retryClass)}
           </Row>
@@ -56,6 +63,33 @@ export function AboutTab({
         <CopyButton value={node.id} label="Copy step ID" display={node.id} />
       </Row>
     </dl>
+  );
+}
+
+/** The fields a step's result has, which the steps after it can use. */
+function ReturnedFields({
+  fields,
+}: Readonly<{ fields: readonly OutputField[] }>) {
+  if (fields.length === 0)
+    return (
+      <span className="text-muted-foreground">
+        No fixed fields. The Test tab shows a real result.
+      </span>
+    );
+  return (
+    <ul aria-label="Fields it returns" className="flex flex-wrap gap-1.5">
+      {fields.map((field) => (
+        <li
+          key={field.key}
+          className="rounded-sm border border-white/8 bg-white/[0.03] px-1.5 py-0.5 font-mono text-xs"
+        >
+          {field.key}
+          {field.type === undefined ? null : (
+            <span className="text-subtle-foreground"> · {field.type}</span>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 

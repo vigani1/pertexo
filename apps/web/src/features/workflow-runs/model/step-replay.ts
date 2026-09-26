@@ -9,56 +9,15 @@ import { describeNodeStatus, type NodeStatus } from './run-status';
 // segments, failures fray, waits and scheduled retries coil. When events are
 // missing (older than the retained window) the node summary fills in.
 
-export type ThreadEnd = 'knot' | 'fray' | 'bar' | 'cut' | 'gap';
-
-export type ThreadSegment = Readonly<{
-  kind: 'attempt' | 'wait' | 'skipped' | 'pending';
-  tone: StatusTone;
-  startMs: number;
-  /** Null while open: the segment grows to "now". */
-  endMs: number | null;
-  end?: ThreadEnd;
-}>;
-
-export type StepOutcome =
-  | 'running'
-  | 'succeeded'
-  | 'failed'
-  | 'timed_out'
-  | 'canceled'
-  | 'outcome_unknown'
-  | 'scheduled'
-  | 'waiting'
-  | 'skipped';
-
-export type StepStoryEntry = Readonly<{
-  /** The event that made it and its kind ("event-12:retry"), or "summary:…". */
-  id: string;
-  kind: 'attempt' | 'retry' | 'wait' | 'skipped';
-  outcome: StepOutcome;
-  tone: StatusTone;
-  startedAt: string;
-  attemptNumber?: number;
-  endedAt?: string;
-  dueAt?: string;
-  safeErrorCode?: string;
-}>;
-
-export type StepOutput =
-  | Readonly<{ kind: 'artifact'; artifactId: string; attemptNumber?: number }>
-  | Readonly<{ kind: 'inline'; attemptId: string; attemptNumber?: number }>;
-
-export type StepReplay = Readonly<{
-  segments: readonly ThreadSegment[];
-  story: readonly StepStoryEntry[];
-  outputs: readonly StepOutput[];
-  attempts: number;
-  status?: NodeStatus;
-  safeErrorCode?: string;
-  resumeAt?: string;
-  nodeRunId?: string;
-  firstActivityMs?: number;
-}>;
+export type { StepOutput, StepStoryEntry, ThreadSegment } from './step-story';
+import type {
+  StepOutcome,
+  StepOutput,
+  StepReplay,
+  StepStoryEntry,
+  ThreadEnd,
+  ThreadSegment,
+} from './step-story';
 
 type Finish = Readonly<{
   outcome: StepOutcome;
@@ -155,7 +114,7 @@ class StepReplayBuilder {
     this.nodeRunId ??= payload.nodeRunId;
     const finish = finishes[event.type];
     if (finish !== undefined) {
-      this.finish(finish, event.createdAt, payload.safeErrorCode);
+      this.finish(finish, event.createdAt, payload);
       this.addOutput(payload.outputRef, payload.attemptNumber);
       return;
     }
@@ -174,7 +133,7 @@ class StepReplayBuilder {
         this.wait(event.createdAt, payload.dueAt);
         return;
       case 'node.skipped':
-        this.skip(event.createdAt);
+        this.skip(event.createdAt, payload.reasonCode);
         return;
       default:
         return;
@@ -239,7 +198,13 @@ class StepReplayBuilder {
   public finish(
     finish: Finish,
     createdAt: string,
-    safeErrorCode: string | undefined,
+    {
+      safeErrorCode,
+      reasonCode,
+    }: Readonly<{
+      safeErrorCode?: string | undefined;
+      reasonCode?: string | undefined;
+    }> = {},
   ): void {
     this.close(Date.parse(createdAt), finish.tone, finish.end);
     this.status = finish.status;
@@ -249,6 +214,7 @@ class StepReplayBuilder {
       tone: finish.tone,
       endedAt: createdAt,
       ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
+      ...(reasonCode === undefined ? {} : { reasonCode }),
     };
     if (this.updateLast(['attempt'], update)) {
       this.updateLast(['wait'], { endedAt: createdAt });
@@ -263,7 +229,7 @@ class StepReplayBuilder {
     payload: WorkflowRunEvent['payload'],
   ): void {
     if (this.open?.kind === 'attempt')
-      this.finish(failedFinish, createdAt, payload.safeErrorCode);
+      this.finish(failedFinish, createdAt, payload);
     else this.close(Date.parse(createdAt), 'failure');
     this.resuming = false;
     this.status = 'waiting';
@@ -303,7 +269,7 @@ class StepReplayBuilder {
     });
   }
 
-  private skip(createdAt: string): void {
+  private skip(createdAt: string, reasonCode: string | undefined): void {
     const atMs = Date.parse(createdAt);
     const startMs = this.open?.startMs ?? atMs;
     this.open = undefined;
@@ -320,6 +286,7 @@ class StepReplayBuilder {
       tone: 'skipped',
       startedAt: createdAt,
       endedAt: createdAt,
+      ...(reasonCode === undefined ? {} : { reasonCode }),
     });
   }
 
@@ -354,7 +321,9 @@ class StepReplayBuilder {
         summary.completedAt ??
           summary.startedAt ??
           new Date(this.open.startMs).toISOString(),
-        summary.safeErrorCode ?? undefined,
+        summary.safeErrorCode === null
+          ? {}
+          : { safeErrorCode: summary.safeErrorCode },
       );
     const open = this.open;
     if (open === undefined) return;

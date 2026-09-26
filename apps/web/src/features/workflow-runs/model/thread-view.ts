@@ -233,6 +233,28 @@ function notStartedRow(
 }
 
 /**
+ * "item 3", or "item 2 › 3" in a loop inside a loop: the loop items a step
+ * ran for. The engine keys a step run `…|i:<loop>:<ordinal>/…` with ordinals
+ * from 0; anything else reads as no item.
+ */
+export function loopItemOf(invocationKey: string | undefined): string | undefined {
+  const encoded = invocationKey?.split('|i:')[1];
+  if (encoded === undefined || encoded === '') return undefined;
+  let path: string;
+  try {
+    path = decodeURIComponent(encoded);
+  } catch {
+    return undefined;
+  }
+  const ordinals = path
+    .split('/')
+    .map((part) => Number(part.split(':').at(-1)));
+  if (ordinals.some((ordinal) => !Number.isSafeInteger(ordinal) || ordinal < 0))
+    return undefined;
+  return `item ${ordinals.map((ordinal) => String(ordinal + 1)).join(' › ')}`;
+}
+
+/**
  * The Thread view: one row per step invocation in the order they started,
  * followed by steps of the version that haven't run (yet).
  */
@@ -274,9 +296,12 @@ export function buildThreadView(
       const repeated = (perNode.get(row.nodeId) ?? 0) > 1;
       const { firstActivityMs: _first, ...rest } = row;
       void _first;
-      return repeated
-        ? { ...rest, label: `${rest.label} · ${String(index)}` }
-        : rest;
+      if (!repeated) return rest;
+      const item = loopItemOf(rest.invocationKey);
+      return {
+        ...rest,
+        label: `${rest.label} · ${item ?? String(index)}`,
+      };
     });
   const invoked = new Set(invocations.map((invocation) => invocation.nodeId));
   const pending = [...labels.entries()]
