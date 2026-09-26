@@ -30,7 +30,10 @@ export function useEditorSessionVerification({
   workflowId: string;
 }>) {
   const [sessionPause, setSessionPause] = useState<PauseReason>();
-  const [verificationPending, setVerificationPending] = useState(false);
+  // The check in flight, if any: it clears only its own marker, so a check
+  // dropped when the editor's scope changed can't leave "verifying" on.
+  const [verifying, setVerifying] = useState<AbortController>();
+  const verificationPending = verifying !== undefined;
   const lifecycle = useRef({ paused: false });
   const verificationOwner = useRef<symbol | undefined>(undefined);
   const verificationAbort = useRef<AbortController | undefined>(undefined);
@@ -100,7 +103,7 @@ export function useEditorSessionVerification({
     if (owner === undefined) return;
     const controller = new AbortController();
     verificationAbort.current = controller;
-    setVerificationPending(true);
+    setVerifying(controller);
     try {
       const verifiedUser = await assertSessionIdentity(
         apiClient,
@@ -132,13 +135,9 @@ export function useEditorSessionVerification({
           : 'unverified',
       );
     } finally {
-      if (
-        verificationOwner.current === owner &&
-        verificationAbort.current === controller
-      ) {
+      if (verificationAbort.current === controller)
         verificationAbort.current = undefined;
-        setVerificationPending(false);
-      }
+      setVerifying((current) => (current === controller ? undefined : current));
     }
   }, [apiClient, pauseSession, queryClient, userId]);
 

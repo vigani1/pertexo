@@ -32,7 +32,10 @@ export function useRunReplay({
   onRunAccepted: (runId: string) => void;
 }>) {
   const queryClient = useQueryClient();
-  const [pending, setPending] = useState(false);
+  // The submission in flight, if any: each one clears only its own marker,
+  // so an answer from an earlier scope can't end a newer submission's wait.
+  const [inFlight, setInFlight] = useState<symbol>();
+  const pending = inFlight !== undefined;
   const [error, setError] = useState<string>();
   const [retryAvailable, setRetryAvailable] = useState(false);
   const attempt = useRef<RunReplayAttempt | undefined>(undefined);
@@ -49,7 +52,7 @@ export function useRunReplay({
   async function submit(command: RunReplayAttempt) {
     const submissionOwner = owner.current;
     if (submissionOwner === undefined || pending) return false;
-    setPending(true);
+    setInFlight(submissionOwner);
     setError(undefined);
     setRetryAvailable(false);
     attempt.current = command;
@@ -83,7 +86,9 @@ export function useRunReplay({
       setError(runReplayError(cause));
       return false;
     } finally {
-      if (owner.current === submissionOwner) setPending(false);
+      setInFlight((current) =>
+        current === submissionOwner ? undefined : current,
+      );
     }
   }
 
