@@ -10,6 +10,15 @@ import type { InspectorTab } from '../../use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';
 import type { ChannelLookupScope } from './slack-channel-field';
 
+function stepName(
+  node: Readonly<{ label?: string | undefined; definition: { key: string } }>,
+) {
+  const label = node.label?.trim();
+  return label === undefined || label === ''
+    ? describeStep(node.definition.key).name
+    : label;
+}
+
 /**
  * What the inspector lens shows for the current selection: one step's
  * inspector, a summary for several steps, or a hint when nothing is picked.
@@ -24,6 +33,7 @@ export function InspectorPanel({
   onTabChange,
   focusTarget,
   renderTest,
+  renderRuns,
   actions,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
@@ -36,6 +46,8 @@ export function InspectorPanel({
   focusTarget:
     (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
   renderTest: (nodeId: string, stepSideEffect: string | undefined) => ReactNode;
+  /** A step's record in real runs, when the editor can show one. */
+  renderRuns?: (nodeId: string, stepLabel: string) => ReactNode;
   actions: NodeInspectorActions;
 }>) {
   const graph = useEditorStore((state) => state.graph);
@@ -64,6 +76,9 @@ export function InspectorPanel({
           node.id,
           describeStep(node.definition.key).sideEffect,
         )}
+        {...(renderRuns === undefined
+          ? {}
+          : { runsPanel: renderRuns(node.id, stepName(node)) })}
         actions={actions}
       />
     );

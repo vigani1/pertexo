@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
@@ -59,6 +60,7 @@ export function EditorInspector({
   onAddToBody,
   onDuplicateSelection,
   onRemoveEdge,
+  renderStepRuns,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
@@ -67,6 +69,8 @@ export function EditorInspector({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   userId: string;
+  /** A step's record in real runs, for the Runs tab. */
+  renderStepRuns?: (nodeId: string, stepLabel: string) => ReactNode;
   /** Slack channel names are looked up for people who can use connections. */
   lookUpChannels: boolean;
   /** People who manage connections can add one from a step's slot. */
@@ -125,6 +129,7 @@ export function EditorInspector({
       tab={tab}
       onTabChange={onTabChange}
       focusTarget={actions.focusTarget}
+      {...(renderStepRuns === undefined ? {} : { renderRuns: renderStepRuns })}
       actions={{
         onAddAfter: (returnFocus) => {
           if (selectedNodeId !== null)

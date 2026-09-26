@@ -202,30 +202,38 @@ const UNFINISHED: ReadonlySet<ThreadRow['status']> = new Set([
   'waiting',
 ]);
 
-/** What one step run produced, once it has something to show. */
-export function StepOutputData({
-  row,
+/**
+ * What one step run produced, once it has something to show: in this run,
+ * or in any run of the workflow (`scope.runId` names which).
+ */
+export function StepRunOutput({
+  nodeRunId,
+  status,
   scope,
   title,
-}: Readonly<{ row: ThreadRow; scope: RunDataScope; title: string }>) {
-  const nodeRunId = row.nodeRunId;
+}: Readonly<{
+  nodeRunId: string | undefined;
+  status: ThreadRow['status'];
+  scope: RunDataScope;
+  title: string;
+}>) {
   const query = useQuery({
     ...nodeRunOutputQueryOptions(
       scope.apiClient,
       scope.userId,
       scope.workspace.id,
       scope.runId,
-      { nodeRunId: nodeRunId ?? '', status: row.status },
+      { nodeRunId: nodeRunId ?? '', status },
     ),
     enabled: nodeRunId !== undefined,
   });
   const nothingYet =
-    UNFINISHED.has(row.status) &&
+    UNFINISHED.has(status) &&
     (query.data === undefined || query.data.kind === 'none');
   if (nodeRunId === undefined || nothingYet)
     return (
       <Muted>
-        {row.status === 'not_started'
+        {status === 'not_started'
           ? 'This step hasn’t run, so it has no data.'
           : 'Shows up when the step finishes.'}
       </Muted>
@@ -235,11 +243,27 @@ export function StepOutputData({
       query={query}
       title={title}
       emptyText={
-        row.status === 'succeeded'
+        status === 'succeeded'
           ? 'This step finished without returning anything.'
           : 'This step didn’t return anything.'
       }
       scope={scope}
+    />
+  );
+}
+
+/** What one step run in this run produced. */
+export function StepOutputData({
+  row,
+  scope,
+  title,
+}: Readonly<{ row: ThreadRow; scope: RunDataScope; title: string }>) {
+  return (
+    <StepRunOutput
+      nodeRunId={row.nodeRunId}
+      status={row.status}
+      scope={scope}
+      title={title}
     />
   );
 }

@@ -9,6 +9,7 @@ import { FailureAlertsSection } from './components/settings/failure-alerts-secti
 import { IdentitySection } from './components/settings/identity-section';
 import { LifecycleSection } from './components/settings/lifecycle-section';
 import { RunDurationSection } from './components/settings/run-duration-section';
+import { StepHealthSection } from './components/settings/step-health-section';
 import { visibleSettingsData } from './model/settings-query';
 
 type SettingsPageProps = Readonly<{
@@ -18,7 +19,10 @@ type SettingsPageProps = Readonly<{
   workflowId: string;
 }>;
 
-/** Identity, failure alerts, run duration and lifecycle for one workflow. */
+/**
+ * Identity, failure alerts, run duration, how each step is doing, and
+ * lifecycle for one workflow.
+ */
 export function WorkflowSettingsPage(props: SettingsPageProps) {
   return (
     <SettingsSession
@@ -56,6 +60,12 @@ function SettingsSession({
         userId={user.id}
         workspace={workspace}
         workflow={visibleSettingsData(summary)}
+      />
+      <StepHealthSection
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        workflowId={workflowId}
       />
       <LifecycleSection
         apiClient={apiClient}

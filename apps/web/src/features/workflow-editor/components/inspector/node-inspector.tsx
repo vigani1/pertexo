@@ -63,6 +63,7 @@ export function NodeInspector({
   onTabChange,
   focusTarget,
   testPanel,
+  runsPanel,
   actions,
 }: Readonly<{
   node: WorkflowNode;
@@ -80,6 +81,8 @@ export function NodeInspector({
   focusTarget:
     (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
   testPanel: ReactNode;
+  /** The step's record in real runs; absent where there's none to show. */
+  runsPanel?: ReactNode;
   actions: NodeInspectorActions;
 }>) {
   const store = useEditorStoreApi();
@@ -153,6 +156,9 @@ export function NodeInspector({
           <TabsTrigger value="setup">Setup</TabsTrigger>
           <TabsTrigger value="inputs">Inputs</TabsTrigger>
           <TabsTrigger value="test">Test</TabsTrigger>
+          {runsPanel === undefined ? null : (
+            <TabsTrigger value="runs">Runs</TabsTrigger>
+          )}
           <TabsTrigger value="about">About</TabsTrigger>
         </TabsList>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
@@ -201,6 +207,8 @@ export function NodeInspector({
           <TabsContent value="test" keepMounted>
             {testPanel}
           </TabsContent>
+          {/* Only while open: it reads the step's history from real runs. */}
+          <TabsContent value="runs">{runsPanel}</TabsContent>
           <TabsContent value="about" keepMounted>
             <AboutTab node={node} definition={definition} />
           </TabsContent>

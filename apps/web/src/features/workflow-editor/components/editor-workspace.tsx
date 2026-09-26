@@ -39,6 +39,7 @@ import { ValidationSweep } from './canvas/validation-sweep';
 import { WorkflowCanvas } from './canvas/workflow-canvas';
 import { EditorLayout } from './editor-layout';
 import { EditorInspector } from './inspector/editor-inspector';
+import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';
 
 export type EditorChrome = Readonly<{
   shortcutsOpen: boolean;
@@ -221,6 +222,16 @@ export function EditorWorkspace({
           rememberedTest={lastTest.last}
           onTestFinished={lastTest.record}
           onTestPassed={effects.showTestPath}
+          renderStepRuns={(nodeId, stepLabel) => (
+            <StepHistoryPanel
+              apiClient={apiClient}
+              userId={userId}
+              workspace={workspace}
+              workflowId={workflowId}
+              nodeId={nodeId}
+              stepLabel={stepLabel}
+            />
+          )}
           onClose={() => {
             setMobilePanel('none');
             request({ kind: 'select', nodeIds: [] });

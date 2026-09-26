@@ -6,6 +6,8 @@ import {
   workflowRunReplayRequestSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunInputResponseSchema,
+  workflowStepHealthResponseSchema,
+  workflowStepRunsResponseSchema,
   workflowRunResponseSchema,
   workflowRunStartRequestSchema,
   workflowRunStartResponseSchema,
@@ -13,6 +15,8 @@ import {
   workflowRunStatisticsResponseSchema,
   type WorkflowRunCancelResponse,
   type WorkflowRunData,
+  type WorkflowStepHealthResponse,
+  type WorkflowStepRunsResponse,
   type WorkflowRunListResponse,
   type WorkflowRunResponse,
   type WorkflowRunStartResponse,
@@ -177,6 +181,42 @@ export async function getWorkflowNodeRunOutput(
     },
   });
   return response.output;
+}
+
+/** Each step across the workflow's last 100 runs (ADR 051). */
+export function getWorkflowStepHealth(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  signal?: AbortSignal,
+): Promise<WorkflowStepHealthResponse> {
+  return apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/step-health`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowStepHealthResponseSchema.parse(value),
+    },
+  });
+}
+
+/** One step's runs in the workflow's last 100 runs, newest first. */
+export function getWorkflowStepRuns(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  nodeId: string,
+  limit: number,
+  signal?: AbortSignal,
+): Promise<WorkflowStepRunsResponse> {
+  return apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/steps/${encodeURIComponent(nodeId)}/runs?limit=${String(limit)}`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowStepRunsResponseSchema.parse(value),
+    },
+  });
 }
 
 export function openWorkflowRunEvents(
