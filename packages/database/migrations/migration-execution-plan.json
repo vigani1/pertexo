@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0118_workspace_ownership_transfer.sql",
+  "transactionalThrough": "0119_record_step_inputs.sql",
   "migrations": {}
 }

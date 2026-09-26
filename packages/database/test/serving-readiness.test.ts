@@ -68,9 +68,7 @@ const startupRow = Object.freeze({
 
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0118_workspace_ownership_transfer.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0119_record_step_inputs.sql');
   });
 
   it('checks only bounded live compatibility state', async () => {

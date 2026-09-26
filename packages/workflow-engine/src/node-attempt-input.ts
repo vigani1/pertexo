@@ -12,7 +12,7 @@ import {
   type WorkflowExecutableNodeV2,
 } from './executable-workflow.js';
 import { exactKeys, operationError, record } from './operation-values.js';
-import type { ExecuteNodeAttemptInput } from './operations.js';
+import type { ExecuteNodeAttemptInput } from './node-attempt-contract.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 
 export type PreparedNodeAttemptInput = Readonly<{

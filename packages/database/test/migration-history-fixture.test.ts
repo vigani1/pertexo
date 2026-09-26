@@ -17,7 +17,7 @@ describe('retained migration history fixture', () => {
       .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/u.test(name))
       .sort();
     expect(expected).toEqual(current.slice(current.indexOf(expected[0] ?? '')));
-    expect(expected.at(-1)).toBe('0118_workspace_ownership_transfer.sql');
+    expect(expected.at(-1)).toBe('0119_record_step_inputs.sql');
   });
 
   it('returns an exact suffix and rejects a missing start', async () => {
@@ -54,6 +54,7 @@ describe('retained migration history fixture', () => {
       '0116_workspace_member_departure.sql',
       '0117_workspace_member_suspension.sql',
       '0118_workspace_ownership_transfer.sql',
+      '0119_record_step_inputs.sql',
     ]);
     await expect(
       expectedMigrationHistoryFrom('9999_missing.sql'),

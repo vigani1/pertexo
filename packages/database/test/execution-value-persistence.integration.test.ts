@@ -264,7 +264,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0118_workspace_ownership_transfer.sql',
+          migrationHead: '0119_record_step_inputs.sql',
           role: expectedRole,
         });
       } finally {

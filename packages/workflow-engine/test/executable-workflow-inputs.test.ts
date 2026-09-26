@@ -734,4 +734,49 @@ describe('input resolution production operations', () => {
     });
     expect(executions).toBe(0);
   });
+
+  it('hands over the resolved input before the executor runs, even when it fails', async () => {
+    const order: string[] = [];
+    const recorded: unknown[] = [];
+    const failing = {
+      execute: () => {
+        order.push('execute');
+        return Promise.reject(
+          new NodeExecutorFailure({
+            kind: 'failed',
+            errorKind: 'provider',
+            possiblyDispatched: false,
+          }),
+        );
+      },
+    };
+    await expect(
+      executeNodeAttempt({
+        runId: 'run-1',
+        nodeRunId: 'node-run-1',
+        attemptId: 'attempt-1',
+        executable: mappedExecutable(),
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        invocationKey: invocationKey({
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
+          nodeId: 'set',
+        }),
+        nodeId: 'set',
+        runInput: { name: 'Ada', count: 2 },
+        completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
+        registry: failing,
+        signal: new AbortController().signal,
+        onInputResolved: (input) => {
+          order.push('recorded');
+          recorded.push(input);
+          return Promise.resolve();
+        },
+      }),
+    ).rejects.toBeInstanceOf(NodeExecutorFailure);
+    expect(order).toEqual(['recorded', 'execute']);
+    expect(recorded).toEqual([
+      { expression: 5, fromNode: 3, fromRun: 'Ada', literal: null },
+    ]);
+  });
 });

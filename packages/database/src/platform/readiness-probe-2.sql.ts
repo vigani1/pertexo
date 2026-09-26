@@ -301,7 +301,7 @@ ${READINESS_ARTIFACT_CAPACITY_SQL}      (
                 'status','output_ref','current_attempt_id','current_attempt_number',
                  'resume_at','retry_due_at','safe_error_code','updated_at',
                   'started_at','completed_at','due_wakeup_at','control_kind','wait_kind',
-                  'provider_dispatch_binding'
+                  'provider_dispatch_binding','input_ref'
               ))
               or (protected.table_name='node_attempts' and attribute.attname in (
                 'status','lease_owner','lease_expires_at','fence_token',
@@ -372,6 +372,7 @@ ${READINESS_ARTIFACT_CAPACITY_SQL}      (
              ('node_runs', 'wait_kind'),
             ('node_runs', 'completed_at'),
             ('node_runs', 'safe_error_code'),
+            ('node_runs', 'input_ref'),
             ('node_runs', 'updated_at')
           ) required(table_name, column_name)
           where not has_column_privilege(

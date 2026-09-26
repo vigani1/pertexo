@@ -3,7 +3,10 @@ import type {
   NodeAttemptLease,
   PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
-import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type {
+  ExecuteNodeAttemptInput,
+  NodeExecutionRegistry,
+} from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import {
@@ -305,6 +308,7 @@ function prepareNode(
           registry: NodeExecutionRegistry;
           runtime?: NodeExecutionRuntime;
           signal: AbortSignal;
+          onInputResolved?: ExecuteNodeAttemptInput['onInputResolved'];
         }
       >,
     ) => {
@@ -337,6 +341,9 @@ function prepareNode(
           ? {}
           : { expressionEvaluator: options.expressionEvaluator }),
         ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
+        ...(input.onInputResolved === undefined
+          ? {}
+          : { onInputResolved: input.onInputResolved }),
         signal: input.signal,
       });
     },

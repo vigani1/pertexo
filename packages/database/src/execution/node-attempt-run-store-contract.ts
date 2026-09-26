@@ -180,6 +180,9 @@ export const dispatchSchema = ownedLeaseSchema
     providerDispatchBinding: providerDispatchBindingSchema.optional(),
   })
   .strict();
+export const recordInputSchema = ownedLeaseSchema
+  .extend({ input: z.unknown() })
+  .strict();
 export const heartbeatSchema = ownedLeaseSchema
   .extend({ leaseDurationSeconds: z.number().int().min(1).max(300) })
   .strict();
@@ -312,6 +315,18 @@ export interface NodeAttemptRunStore {
       abortReason?: 'canceled' | 'timed_out';
     }>
   >;
+  /**
+   * Records the input the attempt's executor is about to receive (ADR 052).
+   * Diagnostic: it records nothing, and never throws, when the lease is gone
+   * or the input is over the inline bound. A store may leave it out.
+   */
+  recordInput?(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      input: unknown;
+      signal: AbortSignal;
+    }>,
+  ): Promise<Readonly<{ recorded: boolean }>>;
   complete(
     input: Readonly<{
       lease: NodeAttemptLease;
