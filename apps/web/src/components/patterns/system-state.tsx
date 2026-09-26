@@ -55,7 +55,10 @@ export function SystemStateDescription({
   return (
     <p
       data-slot="system-state-description"
-      className={cn('leading-relaxed text-muted-foreground', className)}
+      className={cn(
+        'leading-relaxed text-pretty text-muted-foreground',
+        className,
+      )}
       {...props}
     />
   );

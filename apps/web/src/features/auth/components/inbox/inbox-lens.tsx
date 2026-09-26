@@ -85,7 +85,6 @@ export function InboxLens({
       <ProgressButton
         type="button"
         variant="default"
-        size="lg"
         className="mt-6 w-full"
         pending={pending}
         pendingLabel="Sending…"

@@ -19,7 +19,7 @@ import { AuthForm } from '../../forms/auth-form';
 
 function nameProblem(value: string): string | undefined {
   if (value.trim().length === 0)
-    return 'Add your name so teammates recognise you.';
+    return 'Add your name so teammates recognize you.';
   return value.trim().length > 256 ? 'Use 256 characters or fewer.' : undefined;
 }
 
@@ -51,8 +51,8 @@ export function SignUpLens({
     <AuthLens pending={pending} aria-labelledby="sign-up-title">
       <AuthLensTitle id="sign-up-title">Create your account</AuthLensTitle>
       <AuthLensDescription>
-        Verify your email first. Workspace access comes from an invitation or a
-        workspace you create.
+        It takes a minute: confirm your email, then create a workspace or join
+        one you’re invited to.
       </AuthLensDescription>
       <AuthForm
         className="mt-6"

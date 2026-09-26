@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AuthLens, AuthLensFooter, AuthLensTitle } from './auth-lens';
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
@@ -20,15 +20,22 @@ export function LensLoading({
   return (
     <AuthLens pending aria-labelledby="lens-loading-title">
       <AuthLensTitle id="lens-loading-title">{title}</AuthLensTitle>
-      <div role="status" className="mt-4 flex flex-col gap-4">
+      {/* The form's own shape: a subtitle, two labelled fields, the
+          command and the footer line, so the card keeps its height when
+          the form arrives. */}
+      <div role="status" className="mt-2 flex flex-col">
         <span className="sr-only">{label}</span>
         <Skeleton className="h-3 w-56" />
-        <div className="mt-4 flex flex-col gap-3">
-          <Skeleton className="h-10 w-full rounded-md" />
-          <SkeletonThread order={1} className="w-3/4" />
-          <Skeleton className="h-10 w-full rounded-md" />
+        <div className="mt-6 flex flex-col gap-4">
+          {[0, 1].map((field) => (
+            <div key={field} className="flex flex-col gap-2">
+              <Skeleton className="h-2.5 w-16" />
+              <Skeleton className="h-9 w-full rounded-md pointer-coarse:h-10" />
+            </div>
+          ))}
+          <Skeleton className="mt-1 h-9 w-full rounded-md pointer-coarse:h-10" />
         </div>
-        <Skeleton className="mt-2 h-11 w-full rounded-md" />
+        <Skeleton className="mx-auto mt-6 h-2.5 w-48" />
       </div>
     </AuthLens>
   );
@@ -60,7 +67,6 @@ export function LensUnavailable({
         <Button
           type="button"
           variant="default"
-          size="lg"
           className="mt-5 w-full"
           disabled={retrying}
           onClick={onRetry}

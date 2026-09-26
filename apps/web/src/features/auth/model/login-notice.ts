@@ -46,7 +46,7 @@ export function loginNoticeFrom(
   if (outcome.linkReauthenticate === true)
     return {
       tone: 'warning',
-      text: 'Sign in again, then check your sign-in methods. A link that already finished isn’t repeated.',
+      text: 'For your security, sign in again, then check your sign-in methods. If the new one is listed there, it’s already linked.',
     };
   if (outcome.migrationReauthenticate === true)
     return {

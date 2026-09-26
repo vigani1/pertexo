@@ -80,6 +80,7 @@ export function AccountEmailSection({
         ) : null}
         <ProgressButton
           type="submit"
+          variant="primary"
           className="w-fit"
           pending={mutation.isPending}
           pendingLabel="Sending…"

@@ -5,8 +5,8 @@ import { returnPathFrom } from '@/features/auth/return-path.public';
 import { publishSessionChange } from '@/features/auth/session-sync.public';
 
 export function LoginRoute() {
-  const { apiClient } = useRouteContext({ from: '/login' });
-  const search = useSearch({ from: '/login' });
+  const { apiClient } = useRouteContext({ from: '/_stage/login' });
+  const search = useSearch({ from: '/_stage/login' });
   // Router search keeps unvalidated raw keys, so check the value again.
   const returnTo = returnPathFrom(search.returnTo);
   useEffect(() => {

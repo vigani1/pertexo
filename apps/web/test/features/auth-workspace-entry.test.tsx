@@ -471,12 +471,18 @@ describe('authentication and workspace entry', () => {
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'Reset password' }));
+    // A refused link can't be fixed from the form: the page says so and
+    // offers the one way on.
     expect(
-      await screen.findByText(
-        'This reset link is invalid or expired. Request a new one.',
-      ),
+      await screen.findByRole('heading', {
+        name: 'This reset link has expired',
+      }),
     ).toBeVisible();
-    expect(passwordInput).not.toHaveAttribute('aria-invalid', 'true');
+    expect(
+      screen.getByRole('link', { name: 'Request a new link' }),
+    ).toHaveAttribute('href', '/forgot-password');
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeVisible();
+    expect(passwordInput).not.toBeInTheDocument();
     app.unmount();
 
     mockServer.use(
@@ -1026,9 +1032,10 @@ describe('authentication and workspace entry', () => {
         screen.queryByRole('dialog', { name: /\?$/u }),
       ).not.toBeInTheDocument();
     });
+    // The last way in has no Remove at all, just the reason.
     expect(
-      screen.getByRole('button', { name: 'Remove Password' }),
-    ).toBeDisabled();
+      screen.queryByRole('button', { name: 'Remove Password' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Your only way to sign in')).toBeVisible();
   });
 

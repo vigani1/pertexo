@@ -6,7 +6,7 @@ import {
   newPasswordProblem,
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
-import { resetFailure } from '../../model/auth-failure';
+import { isResetLinkInvalid, resetFailure } from '../../model/auth-failure';
 import { resetPassword } from '../../native-auth.api';
 import { useAuthRequest } from '../../use-auth-request';
 import {
@@ -23,11 +23,14 @@ export function ResetPasswordLens({
   token,
   minimumPasswordLength,
   onReset,
+  onLinkInvalid,
 }: Readonly<{
   apiClient: ApiClient;
   token: string;
   minimumPasswordLength: number;
   onReset: () => void;
+  /** The service refused the link itself, so the form can't help. */
+  onLinkInvalid: () => void;
 }>) {
   const fields = useFieldValues(
     {
@@ -37,7 +40,10 @@ export function ResetPasswordLens({
     },
     { password: '', confirmation: '' },
   );
-  const request = useAuthRequest(resetFailure);
+  const request = useAuthRequest((error) => {
+    if (isResetLinkInvalid(error)) onLinkInvalid();
+    return resetFailure(error);
+  });
   const { pending, failure } = request;
 
   return (

@@ -68,9 +68,10 @@ export function BarredThread({ className }: IllustrationProps) {
         strokeWidth="2.4"
         strokeLinecap="round"
       />
+      {/* The lock, shackle included, centred on the thread's line. */}
       <rect
         x="140"
-        y="36"
+        y="42"
         width="20"
         height="16"
         rx="3"
@@ -79,7 +80,7 @@ export function BarredThread({ className }: IllustrationProps) {
         strokeWidth="1.6"
       />
       <path
-        d="M144 36v-4a6 6 0 0 1 12 0v4"
+        d="M144 42v-4a6 6 0 0 1 12 0v4"
         fill="none"
         stroke="var(--muted-foreground)"
         strokeWidth="1.6"

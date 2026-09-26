@@ -13,7 +13,6 @@ import {
   AuthLensFooter,
   AuthLensTitle,
 } from './components/stage/auth-lens';
-import { AuthStage } from './components/stage/auth-stage';
 import { LensLoading } from './components/stage/lens-states';
 import {
   startLegacyMethodMigration,
@@ -77,12 +76,10 @@ export function LegacyMigrationPage({
 
   if (capabilities.isPending)
     return (
-      <AuthStage>
-        <LensLoading
-          title="Move your sign-in"
-          label="Checking account recovery…"
-        />
-      </AuthStage>
+      <LensLoading
+        title="Move your sign-in"
+        label="Checking account recovery…"
+      />
     );
   const providers = capabilities.data?.socialProviders ?? [];
   const available =
@@ -90,7 +87,7 @@ export function LegacyMigrationPage({
     providers.length > 0;
 
   return (
-    <AuthStage>
+    <>
       <AuthLens pending={pending || leaving} aria-labelledby="migrate-title">
         <AuthLensTitle id="migrate-title">Move your sign-in</AuthLensTitle>
         <AuthLensDescription>
@@ -116,7 +113,6 @@ export function LegacyMigrationPage({
             <Button
               type="button"
               variant="primary"
-              size="lg"
               className="w-full"
               disabled={leaving}
               onClick={() => {
@@ -164,6 +160,6 @@ export function LegacyMigrationPage({
           <Link to="/login">Back to sign in</Link>
         </AuthLensFooter>
       </AuthLens>
-    </AuthStage>
+    </>
   );
 }

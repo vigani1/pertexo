@@ -17,6 +17,7 @@ import {
   loadWorkspaces,
 } from './route-context';
 import { rootRoute } from './root-route';
+import { AuthLensPending } from './auth-lens-pending';
 import { BootPage, OpeningPage } from './system-pages';
 
 function flag(value: unknown): boolean {
@@ -41,10 +42,24 @@ export const indexRoute = createRoute({
   },
 });
 
-export const loginRoute = createRoute({
+/**
+ * The sign-in family shares one stage: moving between its pages swaps only
+ * the lens, so the Core and its threads never blank and restart.
+ */
+export const authStageRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/login',
-  pendingComponent: BootPage,
+  id: '_stage',
+  pendingComponent: OpeningPage,
+  component: lazyRouteComponent(
+    () => import('./auth-stage-route'),
+    'AuthStageRoute',
+  ),
+});
+
+export const loginRoute = createRoute({
+  getParentRoute: () => authStageRoute,
+  path: 'login',
+  pendingComponent: AuthLensPending,
   validateSearch: (search: Record<string, unknown>) => ({
     ...(flag(search.verified) ? { verified: true as const } : {}),
     ...(flag(search.emailChanged) ? { emailChanged: true as const } : {}),
@@ -79,9 +94,9 @@ export const loginRoute = createRoute({
 });
 
 export const signUpRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/sign-up',
-  pendingComponent: OpeningPage,
+  getParentRoute: () => authStageRoute,
+  path: 'sign-up',
+  pendingComponent: AuthLensPending,
   validateSearch: (search: Record<string, unknown>) =>
     returnToSearch(returnPathFrom(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Create account') }] }),
@@ -89,9 +104,9 @@ export const signUpRoute = createRoute({
 });
 
 export const legacyMigrationRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/account/migrate',
-  pendingComponent: OpeningPage,
+  getParentRoute: () => authStageRoute,
+  path: 'account/migrate',
+  pendingComponent: AuthLensPending,
   head: () => ({ meta: [{ title: pageTitle('Move your sign-in') }] }),
   component: lazyRouteComponent(
     () => import('./legacy-migration-route'),
@@ -100,9 +115,9 @@ export const legacyMigrationRoute = createRoute({
 });
 
 export const passwordRecoveryRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/forgot-password',
-  pendingComponent: OpeningPage,
+  getParentRoute: () => authStageRoute,
+  path: 'forgot-password',
+  pendingComponent: AuthLensPending,
   head: () => ({ meta: [{ title: pageTitle('Reset password') }] }),
   component: lazyRouteComponent(
     () => import('./password-recovery-route'),
@@ -111,9 +126,9 @@ export const passwordRecoveryRoute = createRoute({
 });
 
 export const passwordResetRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/reset-password',
-  pendingComponent: OpeningPage,
+  getParentRoute: () => authStageRoute,
+  path: 'reset-password',
+  pendingComponent: AuthLensPending,
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === 'string' ? search.token : undefined,
   }),

@@ -21,6 +21,11 @@ export function requiredPasswordProblem(value: string): string | undefined {
   return value.length === 0 ? 'Enter your password.' : undefined;
 }
 
+/** For a confirmation, where "your password" alone is ambiguous. */
+export function currentPasswordProblem(value: string): string | undefined {
+  return value.length === 0 ? 'Enter your current password.' : undefined;
+}
+
 export function newPasswordProblem(
   value: string,
   minimumLength: number,

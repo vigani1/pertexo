@@ -1,5 +1,6 @@
 import {
   accountSecurityRoute,
+  authStageRoute,
   indexRoute,
   invitationAcceptanceRoute,
   legacyMigrationRoute,
@@ -36,11 +37,13 @@ import {
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,
-  loginRoute,
-  signUpRoute,
-  legacyMigrationRoute,
-  passwordRecoveryRoute,
-  passwordResetRoute,
+  authStageRoute.addChildren([
+    loginRoute,
+    signUpRoute,
+    legacyMigrationRoute,
+    passwordRecoveryRoute,
+    passwordResetRoute,
+  ]),
   logoutRoute,
   accountSecurityRoute,
   invitationAcceptanceRoute,

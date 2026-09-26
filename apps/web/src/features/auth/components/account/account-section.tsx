@@ -14,6 +14,7 @@ import { Notice } from '@/components/ui/notice';
 export function AccountSection({
   id,
   title,
+  titleClassName,
   description,
   action,
   className,
@@ -21,6 +22,8 @@ export function AccountSection({
 }: Readonly<{
   id: string;
   title: string;
+  /** e.g. `sr-only` when a tab of the same name already says it. */
+  titleClassName?: string;
   description?: ReactNode;
   action?: ReactNode;
   className?: string;
@@ -36,7 +39,7 @@ export function AccountSection({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 id={id} className="text-xl font-semibold">
+          <h2 id={id} className={cn('text-xl font-semibold', titleClassName)}>
             {title}
           </h2>
           {description === undefined ? null : (

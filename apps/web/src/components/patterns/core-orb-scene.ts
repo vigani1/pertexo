@@ -10,7 +10,7 @@ type Motion = Readonly<{ speed: number; amplitude: number; loosen: boolean }>;
 
 const MOTION: Record<CoreOrbState, Motion> = {
   live: { speed: 1, amplitude: 1, loosen: false },
-  idle: { speed: 0.6, amplitude: 0.8, loosen: false },
+  idle: { speed: 0.6, amplitude: 0.4, loosen: false },
   waiting: { speed: 0.45, amplitude: 0.55, loosen: false },
   failed: { speed: 0.35, amplitude: 0.7, loosen: true },
   succeeded: { speed: 0.5, amplitude: 0.45, loosen: false },
