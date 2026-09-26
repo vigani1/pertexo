@@ -21,6 +21,10 @@ function accountHandlers(profile: () => typeof user) {
         methods: [],
       }),
     ),
+    // The account page lists the person's workspaces.
+    http.get('http://pertexo.test/v1/workspaces', () =>
+      HttpResponse.json({ items: [], nextCursor: null }),
+    ),
   ];
 }
 
@@ -78,7 +82,7 @@ describe('account: display name', () => {
       await screen.findByText('Your name is now Ada Lovelace'),
     ).toBeVisible();
     const profileSection = within(
-      screen.getByRole('region', { name: 'Profile' }),
+      screen.getByRole('region', { name: 'Name and email' }),
     );
     expect(await profileSection.findByText('Ada Lovelace')).toBeVisible();
     expect(renames).toEqual([
@@ -131,5 +135,62 @@ describe('account: display name', () => {
       expectedRevision: 2,
     });
     expect(renames[2]?.key).not.toBe(renames[0]?.key);
+  });
+
+  it('lists every workspace with the person’s role, and the account’s own facts', async () => {
+    const workspaceOf = (id: string, name: string, role: string) => ({
+      id,
+      name,
+      slug: name.toLowerCase().replaceAll(' ', '-'),
+      status: 'active',
+      revision: 1,
+      role,
+      capabilities: ['workspace:read'],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    // Before the account handlers, whose own list is empty: the first
+    // matching handler answers.
+    mockServer.use(
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({
+          items: [
+            workspaceOf(
+              'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+              'Control Operations',
+              'owner',
+            ),
+            workspaceOf(
+              'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+              'Field Team',
+              'viewer',
+            ),
+          ],
+          nextCursor: null,
+        }),
+      ),
+      ...accountHandlers(() => user),
+    );
+    renderApp('/account/security');
+
+    const workspaces = within(
+      await screen.findByRole('region', { name: 'Your workspaces' }),
+    );
+    const field = await workspaces.findByRole('link', { name: /Field Team/u });
+    expect(field).toHaveTextContent('Viewer');
+    expect(field).toHaveAttribute(
+      'href',
+      '/w/cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    );
+    expect(
+      workspaces.getByRole('link', { name: /Control Operations/u }),
+    ).toHaveTextContent('Owner');
+    const account = within(
+      screen.getByRole('region', { name: 'This account' }),
+    );
+    expect(
+      account.getByRole('button', { name: /^Copy account ID/u }),
+    ).toBeVisible();
+    expect(account.getByText('Time zone')).toBeVisible();
   });
 });

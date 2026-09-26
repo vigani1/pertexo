@@ -29,7 +29,8 @@ import { describeDestination } from '../../model/destination-label';
 import { useFailureNotificationCommands } from '../../mutations/use-notification-commands';
 import { visibleSettingsData } from '../../model/settings-query';
 import { failureNotificationPolicyQueryOptions } from '../../workflow-settings.queries';
-import { SettingsQueryState, SettingsSection } from '../settings-section';
+import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsQueryState } from '../settings-section';
 import { CurrentAlertDestination } from './current-alert-destination';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 

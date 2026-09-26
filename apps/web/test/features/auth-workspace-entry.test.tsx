@@ -1058,7 +1058,7 @@ describe('authentication and workspace entry', () => {
     expect(entry).toHaveTextContent('Restore');
     await userEvent.setup().click(entry);
     expect(
-      await screen.findByRole('heading', { name: 'General' }),
+      await screen.findByRole('heading', { name: 'Workspace' }),
     ).toBeVisible();
     expect(app.router.state.location.pathname).toBe(
       `/w/${workspaceId}/settings`,

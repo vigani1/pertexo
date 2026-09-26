@@ -1,10 +1,12 @@
 import type { UserProfileResponse } from '@pertexo/contracts/schemas/identity-workspace';
 import { useQuery } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
 import { accountSecurityQueryOptions } from './account-security.queries';
 import { AccountEmailSection } from './components/account/account-email-section';
+import { AccountFactsSection } from './components/account/account-facts-section';
 import { AccountMethodsSection } from './components/account/account-methods-section';
 import { AccountPasswordSection } from './components/account/account-password-section';
 import { AccountProfileSection } from './components/account/account-profile-section';
@@ -38,11 +40,14 @@ export function AccountSecurityPage({
   apiClient,
   user,
   linkOutcome,
+  workspaces,
   onProfileChanged,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   linkOutcome?: LinkOutcome;
+  /** The person's workspaces, composed in by the route. */
+  workspaces?: ReactNode;
   /** The profile changed: reload whatever shows the person. */
   onProfileChanged: () => void;
 }>) {
@@ -56,7 +61,7 @@ export function AccountSecurityPage({
   ) : null;
 
   return (
-    <div className="flex w-full max-w-3xl flex-col gap-8">
+    <div className="flex w-full max-w-5xl flex-col gap-6">
       <PageHeader>
         <PageHeaderTitle>Account &amp; security</PageHeaderTitle>
       </PageHeader>
@@ -66,7 +71,7 @@ export function AccountSecurityPage({
           <TabsTrigger value="security">Sign-in &amp; security</TabsTrigger>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
         </TabsList>
-        <TabsContent value="profile" className="flex flex-col gap-8 pt-8">
+        <TabsContent value="profile" className="flex flex-col pt-6">
           <AccountProfileSection
             apiClient={apiClient}
             user={user}
@@ -80,8 +85,10 @@ export function AccountSecurityPage({
               security={security.data}
             />
           )}
+          {workspaces}
+          <AccountFactsSection user={user} />
         </TabsContent>
-        <TabsContent value="security" className="flex flex-col gap-8 pt-8">
+        <TabsContent value="security" className="flex flex-col gap-4 pt-6">
           {linkOutcome === undefined ? null : (
             <LinkOutcomeLine outcome={linkOutcome} />
           )}
@@ -104,7 +111,7 @@ export function AccountSecurityPage({
             </>
           )}
         </TabsContent>
-        <TabsContent value="sessions" className="pt-8">
+        <TabsContent value="sessions" className="pt-6">
           <AccountSessionsSection apiClient={apiClient} userId={user.id} />
         </TabsContent>
       </Tabs>

@@ -28,9 +28,8 @@ export function AccountProfileSection({
   const email = security?.email ?? user.email;
   return (
     <AccountSection
-      id="account-profile-title"
-      title="Profile"
-      titleClassName="sr-only"
+      title="Name and email"
+      description="How teammates see you, in every workspace."
     >
       {/* The name edits in its own row, beside the initials, so nothing
           below moves further than the form's own height. */}
@@ -71,9 +70,6 @@ export function AccountProfileSection({
               >
                 <PencilIcon aria-hidden="true" />
               </Button>
-            </p>
-            <p className="mt-0.5 text-[0.8rem] text-subtle-foreground">
-              Your name as teammates see it.
             </p>
           </div>
         )}

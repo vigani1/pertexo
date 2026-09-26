@@ -3,6 +3,7 @@ import { workspaceRenameRequestSchema } from '@pertexo/contracts/schemas/identit
 import { InlineRename } from '@/components/patterns/inline-rename';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 import { useWorkspaceRename } from '../../mutations/use-workspace-rename';
 
 function nameError(name: string): string | undefined {
@@ -22,12 +23,15 @@ export function WorkspaceNameField({
   workspace,
   onWorkspaceChanged,
   onAccessLost,
+  nameClassName,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   onWorkspaceChanged: () => void;
   onAccessLost: () => void;
+  /** How the name reads when it isn't being edited. */
+  nameClassName?: string;
 }>) {
   const notifications = useNotifications();
   const command = useWorkspaceRename({
@@ -42,7 +46,9 @@ export function WorkspaceNameField({
     onAccessLost,
   });
   const display = (
-    <span className="min-w-0 break-all text-sm font-semibold">
+    <span
+      className={cn('min-w-0 text-sm font-semibold break-all', nameClassName)}
+    >
       {workspace.name}
     </span>
   );

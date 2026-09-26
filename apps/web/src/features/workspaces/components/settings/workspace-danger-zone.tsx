@@ -3,6 +3,7 @@ import type {
   WorkspaceLifecycleOperationResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import type { ReactNode } from 'react';
+import { SettingsSection } from '@/components/patterns/settings-section';
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceLifecycleCommand } from '../../mutations/use-workspace-lifecycle-command';
 import { WorkspaceDeletionDialog } from './workspace-deletion-dialog';
@@ -12,15 +13,14 @@ import { WorkspaceRestoreDialog } from './workspace-restore-dialog';
 /** Irreversible or hard-to-undo actions, fenced off from the rest. */
 export function DangerZone({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <section
-      aria-labelledby="danger-zone-title"
-      className="flex flex-col gap-6 rounded-xl border border-destructive/25 p-5"
+    <SettingsSection
+      title="Danger zone"
+      description="Changes to the whole workspace that are hard to undo. Each one asks you to confirm first."
     >
-      <h2 id="danger-zone-title" className="text-lg font-semibold">
-        Danger zone
-      </h2>
-      {children}
-    </section>
+      <div className="flex flex-col gap-6 rounded-xl border border-destructive/25 p-5">
+        {children}
+      </div>
+    </SettingsSection>
   );
 }
 

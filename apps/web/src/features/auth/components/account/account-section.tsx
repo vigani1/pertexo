@@ -1,8 +1,8 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { SettingsSection } from '@/components/patterns/settings-section';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import {
   accountCommandFailure,
   needsFreshSignIn,
@@ -10,46 +10,32 @@ import {
 import { returnPathFrom, returnToSearch } from '../../model/return-path';
 import { Notice } from '@/components/ui/notice';
 
-/** A flat block on the account page: a title, one short line, the content. */
+/**
+ * A block on the account page, laid out like every settings page: the title
+ * and one short line on the left, the content on the right.
+ */
 export function AccountSection({
-  id,
   title,
-  titleClassName,
   description,
   action,
   className,
   children,
 }: Readonly<{
-  id: string;
   title: string;
-  /** e.g. `sr-only` when a tab of the same name already says it. */
-  titleClassName?: string;
   description?: ReactNode;
   action?: ReactNode;
   className?: string;
   children: ReactNode;
 }>) {
   return (
-    <section
-      aria-labelledby={id}
-      className={cn(
-        'flex flex-col gap-5 border-t border-border pt-6 first:border-t-0 first:pt-0',
-        className,
-      )}
+    <SettingsSection
+      title={title}
+      {...(description === undefined ? {} : { description })}
+      {...(action === undefined ? {} : { action })}
+      {...(className === undefined ? {} : { className })}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id={id} className={cn('text-xl font-semibold', titleClassName)}>
-            {title}
-          </h2>
-          {description === undefined ? null : (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          )}
-        </div>
-        {action}
-      </div>
       {children}
-    </section>
+    </SettingsSection>
   );
 }
 

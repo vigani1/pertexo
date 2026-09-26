@@ -18,10 +18,8 @@ import {
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { visibleSettingsData } from './model/settings-query';
-import {
-  SettingsQueryState,
-  SettingsSection,
-} from './components/settings-section';
+import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsQueryState } from './components/settings-section';
 import { RestoreVersionDialog } from './components/versions/restore-version-dialog';
 import { VersionCompareSheet } from './components/versions/version-compare-sheet';
 import { VersionPreviewSheet } from './components/versions/version-preview-sheet';
