@@ -20,14 +20,14 @@ const TICK_CLASS: Readonly<Record<StatusTone, string>> = {
 };
 
 /**
- * One tick per run, oldest to newest, padded on the left with empty ticks:
- * an empty tick means "not among the recent runs", never "didn't run".
+ * One tick per run, oldest to newest, padded on the left with empty ticks
+ * while a workflow has run fewer than 20 times.
  */
 export function RunStrip({ ticks }: Readonly<{ ticks: readonly RunTick[] }>) {
   if (ticks.length === 0)
     return (
       <span className="font-mono text-[0.7rem] text-subtle-foreground">
-        None recently
+        No runs yet
       </span>
     );
   const padding = Math.max(0, RUN_STRIP_LENGTH - ticks.length);

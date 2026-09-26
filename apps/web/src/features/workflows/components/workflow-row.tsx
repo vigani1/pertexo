@@ -25,7 +25,7 @@ import {
   workflowTriggerKinds,
   type TriggerKind,
 } from '../model/workflow-shape';
-import type { RecentRunTicks } from '../use-recent-run-ticks';
+import { useWorkflowRunTicks } from '../use-workflow-run-ticks';
 import { useSeenOnce } from '../use-seen-once';
 import { workflowShapeQueryOptions } from '../workflows.queries';
 import { PatternGlyph, PatternGlyphPlaceholder } from './pattern-glyph';
@@ -155,17 +155,23 @@ export function WorkflowRow({
   userId,
   workspace,
   workflow,
-  runs,
   actions,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
-  runs: RecentRunTicks;
   actions: WorkflowRowActions;
 }>) {
   const [observe, seen] = useSeenOnce<HTMLLIElement>();
+  const showRuns = workspace.capabilities.includes('run:read');
+  const runs = useWorkflowRunTicks(
+    apiClient,
+    userId,
+    workspace.id,
+    workflow.id,
+    showRuns && seen,
+  );
   const shape = useQuery({
     ...workflowShapeQueryOptions(apiClient, userId, workspace.id, workflow.id),
     enabled: seen,
@@ -233,10 +239,14 @@ export function WorkflowRow({
           <TriggerIcons graph={graph} />
         </div>
         <div className="hidden lg:block">
-          {!runs.enabled ? null : runs.pending ? (
+          {!showRuns ? null : runs.failed ? (
+            <span className="font-mono text-[0.7rem] text-subtle-foreground">
+              Couldn’t load
+            </span>
+          ) : runs.pending ? (
             <RunStripPlaceholder />
           ) : (
-            <RunStrip ticks={runs.ticksFor(workflow.id)} />
+            <RunStrip ticks={runs.ticks} />
           )}
         </div>
         <div>

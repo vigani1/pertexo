@@ -16,7 +16,6 @@ import {
   updateWorkflowListSearch,
   type WorkflowListSearch,
 } from '../model/workflow-list-view';
-import type { RecentRunTicks } from '../use-recent-run-ticks';
 import { WorkflowListNoMatches } from './workflow-list-states';
 import { WorkflowListToolbar } from './workflow-list-toolbar';
 import type { WorkflowRowActions } from './workflow-row-actions';
@@ -36,7 +35,6 @@ export function WorkflowListResults({
   search,
   query,
   filterRef,
-  runs,
   onQueryChange,
   onSearchChange,
   actions,
@@ -49,7 +47,6 @@ export function WorkflowListResults({
   search: WorkflowListSearch;
   query: string;
   filterRef: RefObject<HTMLInputElement | null>;
-  runs: RecentRunTicks;
   onQueryChange: (query: string) => void;
   onSearchChange: (search: WorkflowListSearch) => void;
   actions: WorkflowRowActions;
@@ -97,7 +94,6 @@ export function WorkflowListResults({
           userId={userId}
           workspace={workspace}
           workflows={visible}
-          runs={runs}
           actions={actions}
         />
       )}
@@ -107,12 +103,6 @@ export function WorkflowListResults({
         nextPageError={workflows.isFetchNextPageError}
         filtering={query.trim() !== '' || view !== 'all'}
         loadedCount={items.length}
-        // The note explains the Recent runs column, so only with rows.
-        runCount={
-          visible.length > 0 && runs.enabled && !runs.pending && !runs.failed
-            ? runs.runCount
-            : undefined
-        }
         onLoadMore={() => void workflows.fetchNextPage()}
       />
     </section>

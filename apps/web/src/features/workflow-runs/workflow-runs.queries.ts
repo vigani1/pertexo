@@ -44,6 +44,18 @@ export const workflowRunKeys = {
     [...workflowRunKeys.scope(userId, workspaceId), 'loom', windowMs] as const,
   anyRun: (userId: string, workspaceId: string) =>
     [...workflowRunKeys.scope(userId, workspaceId), 'any'] as const,
+  latestOf: (
+    userId: string,
+    workspaceId: string,
+    workflowId: string,
+    limit: number,
+  ) =>
+    [
+      ...workflowRunKeys.scope(userId, workspaceId),
+      'latest-of',
+      workflowId,
+      limit,
+    ] as const,
 };
 
 /** One bounded page per status for lists; counts come from statistics. */
@@ -257,6 +269,32 @@ export function runLoomQueryOptions(
     },
     staleTime: 15_000,
     refetchInterval: 30_000,
+  });
+}
+
+/**
+ * One workflow's latest runs, newest first: its strip in the Workflows list,
+ * whatever else the workspace has been running.
+ */
+export function workflowLatestRunsQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+  limit: number,
+) {
+  return queryOptions({
+    queryKey: workflowRunKeys.latestOf(userId, workspaceId, workflowId, limit),
+    queryFn: async ({ signal }) =>
+      (
+        await getWorkflowRunsPage(
+          apiClient,
+          workspaceId,
+          { workflowId },
+          { limit, signal },
+        )
+      ).items,
+    staleTime: 30_000,
   });
 }
 
