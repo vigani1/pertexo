@@ -16,18 +16,18 @@ describe('schedule sentences', () => {
     ['5 * * * *', 'Every hour at :05'],
     ['0 */2 * * *', 'Every 2 hours at :00'],
     ['0 */1 * * *', 'Every hour at :00'],
-    ['0 9 * * *', 'Every day at 09:00'],
-    ['0 9 * * 1-5', 'Every weekday at 09:00'],
-    ['30 7 * * MON-FRI', 'Every weekday at 07:30'],
-    ['0 9 * * 0,6', 'Every Saturday and Sunday at 09:00'],
-    ['0 9 * * 1,4', 'Every Monday and Thursday at 09:00'],
-    ['0 18 * * 7', 'Every Sunday at 18:00'],
-    ['0 9,17 * * *', 'Every day at 09:00 and 17:00'],
-    ['30 8 1 * *', 'On the 1st of every month at 08:30'],
-    ['0 9 1,15 * *', 'On the 1st and 15th of every month at 09:00'],
-    ['0 9 22 * *', 'On the 22nd of every month at 09:00'],
-    ['0 0 1 jan *', 'On the 1st of January at 00:00'],
-    ['0 9 * 6 1', 'Every Monday in June at 09:00'],
+    ['0 9 * * *', 'Every day at 9:00 AM'],
+    ['0 9 * * 1-5', 'Every weekday at 9:00 AM'],
+    ['30 7 * * MON-FRI', 'Every weekday at 7:30 AM'],
+    ['0 9 * * 0,6', 'Every Saturday and Sunday at 9:00 AM'],
+    ['0 9 * * 1,4', 'Every Monday and Thursday at 9:00 AM'],
+    ['0 18 * * 7', 'Every Sunday at 6:00 PM'],
+    ['0 9,17 * * *', 'Every day at 9:00 AM and 5:00 PM'],
+    ['30 8 1 * *', 'On the 1st of every month at 8:30 AM'],
+    ['0 9 1,15 * *', 'On the 1st and 15th of every month at 9:00 AM'],
+    ['0 9 22 * *', 'On the 22nd of every month at 9:00 AM'],
+    ['0 0 1 jan *', 'On the 1st of January at 12:00 AM'],
+    ['0 9 * 6 1', 'Every Monday in June at 9:00 AM'],
     ['*/10 * * * 1-5', 'Every 10 minutes, every weekday'],
   ])('reads %s as “%s”', (expression, sentence) => {
     expect(describeCron(expression)).toBe(sentence);
@@ -59,7 +59,7 @@ describe('schedule sentences', () => {
         expression: '0 9 * * 1-5',
         timezone: 'Europe/Berlin',
       }),
-    ).toBe('Every weekday at 09:00');
+    ).toBe('Every weekday at 9:00 AM');
   });
 
   it('explains what happens to a missed run', () => {

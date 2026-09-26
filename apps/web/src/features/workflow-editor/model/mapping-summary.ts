@@ -68,7 +68,7 @@ function pathLabel(owner: string, path: string): string {
   return `${owner} › ${part}`;
 }
 
-/** A fixed value as it reads: “text”, 42, true, null, {3 fields}, [2 items]. */
+/** A fixed value as it reads: “text”, 42, true, no value, {3 fields}, [2 items]. */
 function describeLiteral(json: string): MappingSourceSummary {
   let value: unknown;
   try {
@@ -76,6 +76,9 @@ function describeLiteral(json: string): MappingSourceSummary {
   } catch {
     return { tone: 'missing', label: 'Unfinished value' };
   }
+  // null is what a new row holds: in words it's "no value", not a token
+  // that reads like something was typed.
+  if (value === null) return { tone: 'value', label: 'no value' };
   if (typeof value === 'string')
     return { tone: 'value', label: `“${clip(value)}”` };
   if (Array.isArray(value))
@@ -83,7 +86,7 @@ function describeLiteral(json: string): MappingSourceSummary {
       tone: 'value',
       label: `[${String(value.length)} ${value.length === 1 ? 'item' : 'items'}]`,
     };
-  if (value !== null && typeof value === 'object') {
+  if (typeof value === 'object') {
     const count = Object.keys(value).length;
     return {
       tone: 'value',

@@ -30,7 +30,9 @@ export function StartPicker({
       : placeable.filter((definition) => definition.family !== 'trigger');
   const copy = startCopy(editable, triggers.length > 0, steps.length > 0);
   return (
-    <div className="pointer-events-none absolute inset-0 grid place-items-center p-4">
+    // Centred on the canvas you can see: under the bar and between the
+    // side lenses, not on the whole window.
+    <div className="pointer-events-none absolute inset-0 grid place-items-center p-4 pt-20 lg:right-[var(--editor-right-inset,0.75rem)] lg:left-[var(--editor-left-inset,0.75rem)]">
       <section
         aria-labelledby="start-picker-title"
         className="lens pointer-events-auto flex max-h-[min(34rem,calc(100%-2rem))] w-full max-w-sm flex-col gap-4 rounded-xl p-5"

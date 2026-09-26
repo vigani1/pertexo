@@ -70,7 +70,8 @@ export function EditorLayout({
                 'lens pointer-events-auto fixed inset-x-2 bottom-16 z-40 max-h-[62svh] flex-col rounded-xl',
                 mobilePanel === 'add' ? 'flex' : 'hidden',
                 'lg:absolute lg:inset-x-auto lg:top-0 lg:bottom-0 lg:left-0 lg:z-10 lg:flex lg:max-h-none',
-                addStepCollapsed ? 'lg:w-11' : 'lg:w-63',
+                // Folded, it's just its button, not an empty rail.
+                addStepCollapsed ? 'lg:bottom-auto lg:w-11' : 'lg:w-63',
               )}
             >
               {addStep}
@@ -124,6 +125,8 @@ export function EditorLayout({
           current={mobilePanel}
           label="Step"
           icon={<SlidersHorizontalIcon data-icon="inline-start" />}
+          // A selected step has something to show here: a dot says so.
+          cue={inspectorOpen && mobilePanel !== 'inspector'}
           onChange={onMobilePanelChange}
         />
       </nav>
@@ -136,12 +139,14 @@ function PanelButton({
   current,
   label,
   icon,
+  cue = false,
   onChange,
 }: Readonly<{
   panel: MobilePanel;
   current: MobilePanel;
   label: string;
   icon: ReactNode;
+  cue?: boolean;
   onChange: (panel: MobilePanel) => void;
 }>) {
   const selected = current === panel;
@@ -163,6 +168,9 @@ function PanelButton({
     >
       {icon}
       {label}
+      {cue ? (
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-action" />
+      ) : null}
     </Button>
   );
 }

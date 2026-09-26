@@ -3,7 +3,7 @@ import { ArrowRightIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Status } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
-import { RingMonogram } from '../shell/workspace-mark';
+import { WorkspaceMark } from '../shell/workspace-mark';
 import {
   roleName,
   workspaceAvailability,
@@ -37,7 +37,12 @@ export function WorkspaceCard({
       }}
     >
       <span className="flex w-full items-start justify-between gap-3">
-        <RingMonogram name={workspace.name} className="size-11 text-sm" />
+        {/* A workspace wears the square mark it has in the switcher; the ring
+            is for people. */}
+        <WorkspaceMark
+          name={workspace.name}
+          className="size-11 rounded-[0.6rem] text-sm"
+        />
         {lastOpened ? <Badge variant="default">Last opened</Badge> : null}
       </span>
       <span className="flex min-w-0 flex-col gap-2">

@@ -54,7 +54,7 @@ export function WorkflowListToolbar({
 }>) {
   return (
     <div className="flex flex-wrap items-center gap-2.5">
-      <div className="relative w-full sm:w-72">
+      <div className="relative w-full sm:w-56 lg:w-72">
         <SearchIcon
           aria-hidden="true"
           className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-subtle-foreground"
@@ -105,7 +105,10 @@ export function WorkflowListToolbar({
           if (isSort(next)) onSortChange(next);
         }}
       >
-        <SelectTrigger aria-label="Sort workflows" className="w-auto min-w-44">
+        <SelectTrigger
+          aria-label="Sort workflows"
+          className="w-auto min-w-40 lg:min-w-44"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

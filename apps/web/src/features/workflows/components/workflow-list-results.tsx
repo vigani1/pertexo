@@ -107,8 +107,9 @@ export function WorkflowListResults({
         nextPageError={workflows.isFetchNextPageError}
         filtering={query.trim() !== '' || view !== 'all'}
         loadedCount={items.length}
+        // The note explains the Recent runs column, so only with rows.
         runCount={
-          runs.enabled && !runs.pending && !runs.failed
+          visible.length > 0 && runs.enabled && !runs.pending && !runs.failed
             ? runs.runCount
             : undefined
         }

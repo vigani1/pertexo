@@ -20,8 +20,9 @@ const KNOWN_LABELS: Readonly<Record<string, string>> = {
   durationSeconds: 'Wait for',
   maxRedirects: 'Redirects to follow',
   maxResponseBytes: 'Largest response',
-  inlineResponseBytes: 'Largest inline output',
+  inlineResponseBytes: 'Store as a file above',
   maxConcurrency: 'Branches at once',
+  parallelNodeId: 'Joins the branches of',
 };
 
 const ACRONYMS: Readonly<Record<string, string>> = {

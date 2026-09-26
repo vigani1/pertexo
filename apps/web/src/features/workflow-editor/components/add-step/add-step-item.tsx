@@ -45,6 +45,12 @@ export function AddStepItem({
     <button
       type="button"
       draggable
+      // The description is cut to one line here; hovering shows all of it.
+      title={
+        needsConnection
+          ? `${step.description}. Needs a connection.`
+          : step.description
+      }
       className={`${stepRowClass} [content-visibility:auto]`}
       onDragStart={(event) => {
         event.dataTransfer.setData(STEP_DRAG_TYPE, choice.identity);

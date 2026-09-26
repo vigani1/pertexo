@@ -18,6 +18,7 @@ import {
 } from './route-context';
 import { rootRoute } from './root-route';
 import { AuthLensPending } from './auth-lens-pending';
+import { AuthStageRoute } from './auth-stage-route';
 import { BootPage, OpeningPage } from './system-pages';
 
 function flag(value: unknown): boolean {
@@ -49,11 +50,9 @@ export const indexRoute = createRoute({
 export const authStageRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: '_stage',
-  pendingComponent: OpeningPage,
-  component: lazyRouteComponent(
-    () => import('./auth-stage-route'),
-    'AuthStageRoute',
-  ),
+  // Loaded with the app, so a cold visit paints the stage at once and only
+  // the lens waits, instead of a boot screen that then cuts to the stage.
+  component: AuthStageRoute,
 });
 
 export const loginRoute = createRoute({
