@@ -4,6 +4,7 @@ import {
   workflowRunListQuerySchema,
   workflowRunListResponseSchema,
   workflowRunReplayRequestSchema,
+  workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunInputResponseSchema,
   workflowStepHealthResponseSchema,
@@ -181,6 +182,25 @@ export async function getWorkflowNodeRunOutput(
     },
   });
   return response.output;
+}
+
+/** What one step run received, when it was recorded (ADR 052). */
+export async function getWorkflowNodeRunInput(
+  apiClient: ApiClient,
+  workspaceId: string,
+  runId: string,
+  nodeRunId: string,
+  signal?: AbortSignal,
+): Promise<WorkflowRunData> {
+  const response = await apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/node-runs/${encodeURIComponent(nodeRunId)}/input`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowNodeRunInputResponseSchema.parse(value),
+    },
+  });
+  return response.input;
 }
 
 /** Each step across the workflow's last 100 runs (ADR 051). */
