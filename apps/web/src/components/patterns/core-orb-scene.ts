@@ -29,6 +29,9 @@ const PALETTE_TOKENS: Record<CoreOrbState, readonly [string, string, string]> =
 const FALLBACK_RGB: Rgb = [0, 229, 255];
 const CAMERA_DISTANCE = 2.5;
 const ASSEMBLY_SECONDS = 1.5;
+// Past this share of the way from the centre to the canvas's nearest edge,
+// particles fade out, so the Core never shows the square it's drawn in.
+const EDGE_FADE_START = 0.85;
 
 interface Particle {
   x: number;
@@ -101,13 +104,16 @@ export class CoreOrbScene extends CanvasScene {
     this.#energy = Math.min(1.6, Math.max(0.2, energy));
   }
 
-  /** Scatter the particles off-centre so the next frames gather them in. */
+  /**
+   * Scatter the particles off-centre so the next frames gather them in. Some
+   * start past the edge fade: they arrive out of the dark.
+   */
   assemble(timeSeconds: number): void {
     this.#assemblyStart = timeSeconds;
-    const reach = Math.max(this.width, this.height);
+    const half = Math.min(this.width, this.height) / 2;
     this.#scatter = this.#particles.map(() => {
       const angle = Math.random() * Math.PI * 2;
-      const radius = reach * (0.35 + Math.random() * 0.6);
+      const radius = half * (0.35 + Math.random() * 0.9);
       return [Math.cos(angle) * radius, Math.sin(angle) * radius] as const;
     });
   }
@@ -122,7 +128,8 @@ export class CoreOrbScene extends CanvasScene {
   render(timeSeconds: number): void {
     const context = this.beginFrame();
     context.globalCompositeOperation = 'lighter';
-    const radius = Math.min(this.width, this.height) * 0.36;
+    const half = Math.min(this.width, this.height) / 2;
+    const radius = half * 0.72;
     const centreX = this.width / 2;
     const centreY = this.height / 2;
     const time = timeSeconds * this.#motion.speed;
@@ -159,6 +166,10 @@ export class CoreOrbScene extends CanvasScene {
         screenY += offset[1] * (1 - assembly);
         alpha *= 0.25 + 0.75 * assembly;
       }
+      const reach = Math.hypot(screenX - centreX, screenY - centreY) / half;
+      if (reach > EDGE_FADE_START)
+        alpha *= Math.max(0, (1 - reach) / (1 - EDGE_FADE_START));
+      if (alpha <= 0) return;
       const size = baseSize * (1 + seed * 1.2) * perspective;
       const sprite = this.#sprites[particle.swatch] ?? this.#sprites[0];
       if (sprite === undefined) return;
