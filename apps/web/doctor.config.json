@@ -1,0 +1,11 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "ignore": {
+    "overrides": [
+      {
+        "files": ["test/**", "e2e/**"],
+        "rules": ["react-doctor/no-secrets-in-client-code"]
+      }
+    ]
+  }
+}
