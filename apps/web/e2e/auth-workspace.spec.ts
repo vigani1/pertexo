@@ -950,7 +950,17 @@ test('keeps account security understandable and usable on a narrow screen', asyn
   await expect(
     page.getByRole('heading', { name: 'Account & security' }),
   ).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Name and email' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'This account' }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await page.getByRole('tab', { name: 'Sign-in & security' }).click();
   await expect(
     page.getByRole('heading', { name: 'Sign-in methods' }),
