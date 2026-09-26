@@ -26,6 +26,142 @@ import { VersionPreviewSheet } from './components/versions/version-preview-sheet
 import { VersionTimeline } from './components/versions/version-timeline';
 import { workflowVersionsQueryOptions } from './workflow-settings.queries';
 
+type Version = WorkflowVersionResponse;
+
+/** Which overlay is open over the versions: a preview, compare or restore. */
+function useVersionOverlays() {
+  const [previewing, setPreviewing] = useState<Version>();
+  const [restoring, setRestoring] = useState<Version>();
+  const [comparing, setComparing] = useState(false);
+  return {
+    previewing,
+    restoring,
+    comparing,
+    preview: setPreviewing,
+    restore: setRestoring,
+    compare: () => {
+      setComparing(true);
+    },
+    /** From a preview straight to restoring the same version. */
+    restoreFromPreview: (version: Version) => {
+      setPreviewing(undefined);
+      setRestoring(version);
+    },
+    closePreview: () => {
+      setPreviewing(undefined);
+    },
+    closeRestore: () => {
+      setRestoring(undefined);
+    },
+    closeCompare: () => {
+      setComparing(false);
+    },
+  } as const;
+}
+
+/** "3 published · v3 is live", under the section's sentence. */
+function VersionsTally({
+  count,
+  liveNumber,
+  archived,
+}: Readonly<{ count: number; liveNumber: number; archived: boolean }>) {
+  return (
+    <span className="mt-2 block font-mono text-xs text-subtle-foreground">
+      {String(count)} published · v{String(liveNumber)} is{' '}
+      {archived ? 'current (archived)' : 'live'}
+    </span>
+  );
+}
+
+function NothingPublished({
+  workspaceId,
+  workflowId,
+}: Readonly<{ workspaceId: string; workflowId: string }>) {
+  return (
+    <Empty className="border-t-0 py-2">
+      <EmptyTitle className="text-xl">Nothing published yet</EmptyTitle>
+      <EmptyDescription>
+        Publish from Build to create the first version. Each publish adds one
+        here.
+      </EmptyDescription>
+      <EmptyActions>
+        <Link
+          to="/w/$workspaceId/workflows/$workflowId"
+          params={{ workspaceId, workflowId }}
+          className={buttonVariants({ variant: 'primary' })}
+        >
+          Open Build
+        </Link>
+      </EmptyActions>
+    </Empty>
+  );
+}
+
+/** The section's sentence, and the tally once a version is live. */
+function VersionsIntro({
+  count,
+  live,
+  archived,
+}: Readonly<{ count: number; live: Version | undefined; archived: boolean }>) {
+  return (
+    <>
+      Each publish makes a version that never changes. Restoring one copies it
+      into the draft.
+      {live === undefined ? null : (
+        <VersionsTally
+          count={count}
+          liveNumber={live.versionNumber}
+          archived={archived}
+        />
+      )}
+    </>
+  );
+}
+
+/** The versions on their thread, with Compare once there are two. */
+function VersionList({
+  items,
+  liveVersionId,
+  archived,
+  canRestore,
+  onCompare,
+  onPreview,
+  onRestore,
+}: Readonly<{
+  items: readonly Version[];
+  liveVersionId: string | null;
+  archived: boolean;
+  canRestore: boolean;
+  onCompare: () => void;
+  onPreview: (version: Version) => void;
+  onRestore: (version: Version) => void;
+}>) {
+  return (
+    <>
+      {items.length < 2 ? null : (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={onCompare}
+        >
+          <GitCompareArrowsIcon aria-hidden="true" data-icon="inline-start" />
+          Compare versions
+        </Button>
+      )}
+      <VersionTimeline
+        versions={items}
+        liveVersionId={liveVersionId}
+        liveLabel={archived ? 'Current' : 'Live'}
+        canRestore={canRestore}
+        onPreview={onPreview}
+        onRestore={onRestore}
+      />
+    </>
+  );
+}
+
 /** Every published version on one thread, with preview, compare and restore. */
 export function WorkflowVersionsPage({
   apiClient,
@@ -44,15 +180,13 @@ export function WorkflowVersionsPage({
   const summary = useQuery(
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
-  const [previewing, setPreviewing] = useState<WorkflowVersionResponse>();
-  const [restoring, setRestoring] = useState<WorkflowVersionResponse>();
-  const [comparing, setComparing] = useState(false);
+  const overlays = useVersionOverlays();
   const canRestore = workspace.capabilities.includes('workflow:update');
   const items = visibleSettingsData(versions)?.items;
-  const live = items?.find(
-    (version) => version.id === summary.data?.publishedVersionId,
-  );
-  const previous = (version: WorkflowVersionResponse) =>
+  const liveVersionId = summary.data?.publishedVersionId ?? null;
+  const archived = summary.data?.lifecycleStatus === 'archived';
+  const live = items?.find((version) => version.id === liveVersionId);
+  const previous = (version: Version) =>
     items?.find((candidate) => candidate.versionNumber < version.versionNumber);
 
   return (
@@ -60,97 +194,57 @@ export function WorkflowVersionsPage({
       <SettingsSection
         title="Versions"
         description={
-          <>
-            Each publish makes a version that never changes. Restoring one
-            copies it into the draft.
-            {live === undefined ? null : (
-              <span className="mt-2 block font-mono text-xs text-subtle-foreground">
-                {String(items?.length ?? 0)} published · v
-                {String(live.versionNumber)} is{' '}
-                {summary.data?.lifecycleStatus === 'archived'
-                  ? 'current (archived)'
-                  : 'live'}
-              </span>
-            )}
-          </>
+          <VersionsIntro
+            count={items?.length ?? 0}
+            live={live}
+            archived={archived}
+          />
         }
       >
         <SettingsQueryState query={versions} resource="Versions" />
         {items?.length === 0 ? (
-          <Empty className="border-t-0 py-2">
-            <EmptyTitle className="text-xl">Nothing published yet</EmptyTitle>
-            <EmptyDescription>
-              Publish from Build to create the first version. Each publish adds
-              one here.
-            </EmptyDescription>
-            <EmptyActions>
-              <Link
-                to="/w/$workspaceId/workflows/$workflowId"
-                params={{ workspaceId: workspace.id, workflowId }}
-                className={buttonVariants({ variant: 'primary' })}
-              >
-                Open Build
-              </Link>
-            </EmptyActions>
-          </Empty>
+          <NothingPublished
+            workspaceId={workspace.id}
+            workflowId={workflowId}
+          />
         ) : null}
-        {items === undefined || items.length < 2 ? null : (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="self-start"
-            onClick={() => {
-              setComparing(true);
-            }}
-          >
-            <GitCompareArrowsIcon aria-hidden="true" data-icon="inline-start" />
-            Compare versions
-          </Button>
-        )}
         {items === undefined || items.length === 0 ? null : (
-          <VersionTimeline
-            versions={items}
-            liveVersionId={summary.data?.publishedVersionId ?? null}
-            liveLabel={
-              summary.data?.lifecycleStatus === 'archived' ? 'Current' : 'Live'
-            }
+          <VersionList
+            items={items}
+            liveVersionId={liveVersionId}
+            archived={archived}
             canRestore={canRestore}
-            onPreview={setPreviewing}
-            onRestore={setRestoring}
+            onCompare={overlays.compare}
+            onPreview={overlays.preview}
+            onRestore={overlays.restore}
           />
         )}
       </SettingsSection>
       <VersionCompareSheet
-        open={comparing && items !== undefined}
+        open={overlays.comparing && items !== undefined}
         versions={items ?? []}
-        onClose={() => {
-          setComparing(false);
-        }}
+        onClose={overlays.closeCompare}
       />
       <VersionPreviewSheet
-        version={items === undefined ? undefined : previewing}
-        previous={previewing === undefined ? undefined : previous(previewing)}
+        version={items === undefined ? undefined : overlays.previewing}
+        previous={
+          overlays.previewing === undefined
+            ? undefined
+            : previous(overlays.previewing)
+        }
         canRestore={canRestore}
-        onRestore={(version) => {
-          setPreviewing(undefined);
-          setRestoring(version);
-        }}
-        onClose={() => {
-          setPreviewing(undefined);
-        }}
+        onRestore={overlays.restoreFromPreview}
+        onClose={overlays.closePreview}
       />
-      {restoring === undefined || items === undefined ? null : (
+      {overlays.restoring === undefined || items === undefined ? null : (
         <RestoreVersionDialog
-          key={restoring.id}
+          key={overlays.restoring.id}
           apiClient={apiClient}
           userId={user.id}
           workspaceId={workspace.id}
           workflowId={workflowId}
-          version={restoring}
-          onClose={() => {
-            setRestoring(undefined);
-          }}
+          version={overlays.restoring}
+          onClose={overlays.closeRestore}
         />
       )}
     </>
