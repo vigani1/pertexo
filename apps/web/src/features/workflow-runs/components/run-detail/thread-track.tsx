@@ -22,7 +22,7 @@ function segmentClass(segment: ThreadSegment): string {
       return 'h-0 border-t-2 border-dotted border-current opacity-45';
     case 'attempt':
       return segment.tone === 'live' && segment.endMs === null
-        ? 'h-[3px] rounded-full bg-linear-to-r from-primary/30 via-primary to-accent-foreground shadow-[0_0_12px_var(--primary)]'
+        ? 'h-[3px] rounded-full bg-linear-to-r from-primary/30 via-primary to-accent-foreground shadow-[0_0_6px_color-mix(in_srgb,var(--primary)_45%,transparent)]'
         : 'h-[3px] rounded-full bg-current opacity-85';
   }
 }

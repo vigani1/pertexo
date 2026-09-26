@@ -31,6 +31,7 @@ import {
   SlackChannelField,
   type ChannelLookupScope,
 } from './slack-channel-field';
+import { shortcut } from '@/lib/shortcut-keys';
 
 export type NodeInspectorActions = StepMenuActions &
   Readonly<{
@@ -240,7 +241,7 @@ function InspectorFooter({
       ) : (
         <>
           <CheckIcon aria-hidden="true" className="size-3.5" />
-          Changes save automatically · <Kbd>⌘Z</Kbd> to undo
+          Changes save automatically · <Kbd>{shortcut('Z')}</Kbd> to undo
         </>
       )}
     </div>

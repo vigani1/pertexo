@@ -38,7 +38,7 @@ export function ThreadBar({
             style === 'dotted' &&
               'border-t-2 border-dotted border-current opacity-70',
             tone === 'live' &&
-              'bg-linear-to-r from-primary/25 to-accent-foreground opacity-100 shadow-[0_0_8px_var(--primary)]',
+              'bg-linear-to-r from-primary/25 to-accent-foreground opacity-100 shadow-[0_0_5px_color-mix(in_srgb,var(--primary)_45%,transparent)]',
           )}
         />
         <ThreadEnd tone={tone} />

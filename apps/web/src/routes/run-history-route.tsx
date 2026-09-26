@@ -5,7 +5,7 @@ import { useWorkspaceScope } from './use-workspace-scope';
 
 export function RunHistoryRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();
-  // The router keeps unrecognised URL keys next to validated ones.
+  // The router keeps unrecognized URL keys next to validated ones.
   const search = sanitizeRunSearch(
     useSearch({ from: '/w/$workspaceId/shell/runs' }),
   );

@@ -58,6 +58,8 @@ export function WorkspaceNameField({
       revision={workspace.revision}
       subject="workspace"
       label="Workspace name"
+      // The row already says Name; the field keeps it for readers.
+      className="[&_[data-slot=field-label]]:sr-only"
       validate={nameError}
       command={command}
       onSave={(name, expectedRevision) =>

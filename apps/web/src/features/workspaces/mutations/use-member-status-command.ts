@@ -45,7 +45,7 @@ export function useMemberStatusCommand(
       ),
     copy: {
       uncertain: (member) =>
-        `We couldn’t confirm whether ${member.displayName}’s access changed. Try again — Pertexo recognises the repeat, so it can’t happen twice.`,
+        `We couldn’t confirm whether ${member.displayName}’s access changed. Try again — Pertexo recognizes the repeat, so it can’t happen twice.`,
       conflict: (member) =>
         `${member.displayName} changed while you were deciding. Check their row, then try again if you still want to.`,
       action: 'changing this member’s access',

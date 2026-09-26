@@ -73,9 +73,7 @@ export function ReplayRunDialog({
       onOpenChange={changeOpen}
       title="Replay this run"
       description={`Pertexo starts a new run of ${version} with the input you enter here. It doesn’t copy the original input, and steps that call other services run again, so check the input before you continue.`}
-      confirmLabel={
-        replay.retryAvailable ? 'Retry same replay' : 'Replay this version'
-      }
+      confirmLabel={replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
       pendingLabel="Replaying…"
       pending={replay.pending}
       error={replay.error}

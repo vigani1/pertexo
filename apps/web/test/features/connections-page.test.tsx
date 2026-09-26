@@ -364,7 +364,12 @@ describe('connections page', () => {
     await lens().findByRole('button', { name: 'Try again' });
     expect(mutationVariables(queryClient)).toContain(token);
 
+    // The pasted token isn't saved, so leaving asks first.
     await event.keyboard('{Escape}');
+    const discard = await screen.findByRole('dialog', {
+      name: 'Discard this connection?',
+    });
+    await event.click(within(discard).getByRole('button', { name: 'Discard' }));
     await waitFor(() => {
       expect(
         document.querySelector('[data-slot="sheet-content"]'),

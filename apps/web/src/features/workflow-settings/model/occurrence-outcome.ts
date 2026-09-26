@@ -8,7 +8,8 @@ import { formatDurationMs } from '@/lib/format-time';
 type OccurrenceOutcome = Readonly<{
   tone: StatusTone;
   label: string;
-  detail: string;
+  /** Only when there is more to say than the label. */
+  detail: string | undefined;
 }>;
 
 /** A run time started this long after it was due counts as caught up. */
@@ -31,11 +32,12 @@ export function describeOccurrence(
     Date.parse(occurrence.recordedAt) - Date.parse(occurrence.scheduledAt);
   return {
     tone: 'success',
+    // On time is the norm, so only a late start gets a second line.
     label: 'Started a run',
     detail:
       lateMs >= LATE_AFTER_MS
         ? `Caught up ${formatDurationMs(lateMs)} after this run time was due.`
-        : 'On time.',
+        : undefined,
   };
 }
 

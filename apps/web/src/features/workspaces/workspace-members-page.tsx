@@ -66,15 +66,11 @@ function blockedCopy(
 
 /** The title, how many people and pending invitations, and Invite. */
 function TeamHeader({
-  memberCount,
-  oneMember,
   pendingInvitations,
   canManage,
   onInvite,
 }: Readonly<{
   /** "12" or "50+" once the members have loaded. */
-  memberCount: string | undefined;
-  oneMember: boolean;
   pendingInvitations: number;
   canManage: boolean;
   onInvite: () => void;
@@ -83,21 +79,16 @@ function TeamHeader({
     <PageHeader>
       <div>
         <PageHeaderTitle>Team</PageHeaderTitle>
-        {memberCount === undefined ? null : (
+        {/* The Members tab counts people; the header only flags what's
+            waiting on someone. */}
+        {pendingInvitations > 0 ? (
           <PageHeaderMeta>
-            <span>
-              <b className="text-foreground">{memberCount}</b>{' '}
-              {oneMember ? 'member' : 'members'}
-            </span>
-            {pendingInvitations > 0 ? (
-              <Status tone="queued">
-                {pendingInvitations}{' '}
-                {pendingInvitations === 1 ? 'invitation' : 'invitations'}{' '}
-                pending
-              </Status>
-            ) : null}
+            <Status tone="queued">
+              {pendingInvitations}{' '}
+              {pendingInvitations === 1 ? 'invitation' : 'invitations'} pending
+            </Status>
           </PageHeaderMeta>
-        )}
+        ) : null}
       </div>
       {canManage ? (
         <PageHeaderActions>
@@ -191,8 +182,6 @@ export function WorkspaceMembersPage({
   return (
     <div className="flex flex-col gap-8">
       <TeamHeader
-        memberCount={members.isSuccess ? memberCount : undefined}
-        oneMember={memberItems.length === 1}
         pendingInvitations={pendingInvitations}
         canManage={canManage}
         onInvite={openInvite}
@@ -242,7 +231,6 @@ export function WorkspaceMembersPage({
                 query={invitations}
                 invitations={invitationItems}
                 command={command}
-                onInvite={openInvite}
               />
             </TabsContent>
           ) : null}

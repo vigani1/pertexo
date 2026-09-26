@@ -46,7 +46,12 @@ export function RunsLoadError({
       <EmptyTitle>Runs couldn’t be loaded</EmptyTitle>
       <EmptyDescription>{description}</EmptyDescription>
       <EmptyActions>
-        <Button type="button" disabled={retrying} onClick={onRetry}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={retrying}
+          onClick={onRetry}
+        >
           {retrying ? 'Trying again…' : 'Try again'}
         </Button>
       </EmptyActions>
@@ -70,7 +75,7 @@ export function NoMatchingRuns({
           : 'Try a wider time range or another status, or clear the filters to see every run.'}
       </EmptyDescription>
       <EmptyActions>
-        <Button type="button" onClick={onClearFilters}>
+        <Button type="button" variant="outline" onClick={onClearFilters}>
           Clear filters
         </Button>
       </EmptyActions>
@@ -94,7 +99,7 @@ export function NoRunsYet({
           <Link
             to="/w/$workspaceId/workflows"
             params={{ workspaceId }}
-            className={buttonVariants({ variant: 'default' })}
+            className={buttonVariants({ variant: 'primary' })}
           >
             Go to workflows
           </Link>
@@ -120,7 +125,7 @@ export function NoWorkflowRunsYet({
         <Link
           to="/w/$workspaceId/workflows/$workflowId"
           params={{ workspaceId, workflowId }}
-          className={buttonVariants({ variant: 'default' })}
+          className={buttonVariants({ variant: 'primary' })}
         >
           Open Build
         </Link>

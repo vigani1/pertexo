@@ -14,6 +14,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { useOpenCommandPalette } from './command-palette-context';
 import { useWorkspaceScope } from './use-workspace-scope';
 import { WorkspaceShellFrame } from './workspace-shell-route';
+import { shortcut } from '@/lib/shortcut-keys';
 
 /**
  * The shell route's not-found page: an address inside a workspace that leads
@@ -53,7 +54,7 @@ function PageNotFound() {
         <Button type="button" variant="outline" onClick={openSearch}>
           <SearchIcon aria-hidden="true" data-icon="inline-start" />
           Search
-          <Kbd aria-hidden="true">⌘K</Kbd>
+          <Kbd aria-hidden="true">{shortcut('K')}</Kbd>
         </Button>
       </SystemStateActions>
     </SystemState>

@@ -209,15 +209,27 @@ export function MemberList({
   control: MemberRowControl;
 }>) {
   return (
-    <ul aria-label="Members" className="flex flex-col">
-      {members.map((member) => (
-        <MemberRow
-          key={member.userId}
-          member={member}
-          isYou={member.userId === actorUserId}
-          control={control}
-        />
-      ))}
-    </ul>
+    <div className="flex flex-col">
+      {/* Column names on wide screens, so the date reads as when someone
+          joined. Each cell names itself for screen readers already. */}
+      <div
+        aria-hidden="true"
+        className="hidden grid-cols-[auto_minmax(0,1fr)_8.5rem_6rem_6.5rem_2rem] gap-x-3.5 border-b border-border pb-2 font-mono text-[0.68rem] text-subtle-foreground sm:grid"
+      >
+        <span className="col-start-3 px-3">Role</span>
+        <span>Status</span>
+        <span>Joined</span>
+      </div>
+      <ul aria-label="Members" className="flex flex-col">
+        {members.map((member) => (
+          <MemberRow
+            key={member.userId}
+            member={member}
+            isYou={member.userId === actorUserId}
+            control={control}
+          />
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -46,7 +46,7 @@ export const DEAD_END_COPY: Record<
   },
   revoked: {
     title: 'This invitation was withdrawn',
-    sentence: 'Someone in the workspace cancelled it before it was accepted.',
+    sentence: 'Someone in the workspace canceled it before it was accepted.',
   },
   superseded: {
     title: 'A newer invitation replaced this one',

@@ -59,7 +59,7 @@ export function useRunWorkflow({
           ? {
               title: `We couldn’t confirm whether ${workflow.name} started`,
               description:
-                'Try again: Pertexo recognises the repeat, so it can’t start twice.',
+                'Try again: Pertexo recognizes the repeat, so it can’t start twice.',
               action: {
                 label: 'Try again',
                 onClick: () => void run(workflow),

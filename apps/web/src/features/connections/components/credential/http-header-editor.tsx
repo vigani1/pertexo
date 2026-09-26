@@ -44,6 +44,15 @@ export function HttpHeaderEditor({
   return (
     <fieldset className="flex min-w-0 flex-col gap-3">
       <legend className="mb-2 text-sm font-medium">Headers</legend>
+      {/* Column names once, over the rows; each field names itself too. */}
+      <div
+        aria-hidden="true"
+        className="-mb-1 grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] gap-2 text-xs text-muted-foreground"
+      >
+        <span>Name</span>
+        <span>Value</span>
+        <span className="w-9 pointer-coarse:w-10" />
+      </div>
       <ol className="flex flex-col gap-3">
         {draft.headers.map((row, index) => {
           const nameField: CredentialField = `header-name:${row.id}`;
@@ -119,6 +128,8 @@ export function HttpHeaderEditor({
                 variant="ghost"
                 size="icon"
                 aria-label={`Remove header ${String(index + 1)}`}
+                // A lone row can't go, so it has no Remove to press.
+                className={draft.headers.length === 1 ? 'invisible' : undefined}
                 disabled={disabled || draft.headers.length === 1}
                 onClick={() => {
                   update(
@@ -149,6 +160,8 @@ export function HttpHeaderEditor({
           type="button"
           variant="ghost"
           size="sm"
+          // Its icon lines up with the fields above, not its own padding.
+          className="-ml-2.5"
           disabled={disabled || draft.headers.length >= MAX_HEADER_ROWS}
           onClick={() => {
             update([...draft.headers, { id: createId(), name: '', value: '' }]);

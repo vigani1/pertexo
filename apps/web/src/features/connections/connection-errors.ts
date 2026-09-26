@@ -17,7 +17,7 @@ const ACTIONS: Readonly<Record<ConnectionCommand, string>> = {
 const UNCERTAIN: Readonly<Record<ConnectionCommand, (name: string) => string>> =
   {
     create: (name) =>
-      `We couldn’t confirm whether ${name} was saved. Try again — Pertexo recognises the repeat, so it can’t be saved twice.`,
+      `We couldn’t confirm whether ${name} was saved. Try again — Pertexo recognizes the repeat, so it can’t be saved twice.`,
     rotate: () =>
       'We couldn’t confirm whether the new credential was saved. Try again with the same values — it can’t be applied twice.',
     revoke: (name) =>

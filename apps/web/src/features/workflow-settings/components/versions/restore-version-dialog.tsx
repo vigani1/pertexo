@@ -8,7 +8,7 @@ import {
 } from '../../mutations/use-version-restore';
 
 const CONFIRM: Readonly<Record<RestoreRecovery | 'start', string>> = {
-  start: 'Restore draft',
+  start: 'Restore to draft',
   'check-outcome': 'Check again',
   'retry-original': 'Retry restore',
   'confirm-replacement': 'Replace newer draft',

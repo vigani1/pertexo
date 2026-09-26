@@ -2,6 +2,8 @@ import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs'
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
+import { statusToneText } from '@/components/ui/status-tone';
+import { cn } from '@/lib/utils';
 import { describeRunEvent } from '../../model/event-copy';
 
 /**
@@ -47,10 +49,14 @@ export function RunEventsView({
               key={line.sequence}
               className="group/event grid grid-cols-[4.75rem_1rem_minmax(0,1fr)_auto] items-start gap-x-3 border-t border-white/6 py-2.5 text-[0.82rem]"
             >
-              <span className="pt-px font-mono text-[0.7rem] text-subtle-foreground">
+              {/* Right-aligned, so offsets of any length line up at the end. */}
+              <span className="pt-px text-right font-mono text-[0.7rem] text-subtle-foreground">
                 {line.offset}
               </span>
-              <StatusGlyph tone={line.tone} className="mt-0.5" />
+              <StatusGlyph
+                tone={line.tone}
+                className={cn('mt-0.5', statusToneText[line.tone])}
+              />
               {/* The raw type trails the sentence on hover or focus without
                   taking a line of its own, so rows keep one line's height. */}
               <span className="min-w-0">

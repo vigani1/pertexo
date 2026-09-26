@@ -35,6 +35,31 @@ type TriggersPageProps = Readonly<{
 }>;
 
 /** Webhooks and schedules from the published version, and their controls. */
+/** A trigger kind the published version lacks, and where to add one. */
+function NoTriggerStep({
+  kind,
+  workspaceId,
+  workflowId,
+}: Readonly<{
+  kind: 'Webhook' | 'Schedule';
+  workspaceId: string;
+  workflowId: string;
+}>) {
+  return (
+    <p className="text-sm text-muted-foreground">
+      The published version has no {kind} step.{' '}
+      <Link
+        to="/w/$workspaceId/workflows/$workflowId"
+        params={{ workspaceId, workflowId }}
+        className="inline-link"
+      >
+        Add one in Build
+      </Link>
+      , then publish.
+    </p>
+  );
+}
+
 export function WorkflowTriggersPage(props: TriggersPageProps) {
   // A new identity is a new session: late credentials never cross workflows.
   return (
@@ -66,7 +91,7 @@ function NoTriggers({
         <Link
           to="/w/$workspaceId/workflows/$workflowId"
           params={{ workspaceId, workflowId }}
-          className={buttonVariants({ variant: 'default' })}
+          className={buttonVariants({ variant: 'primary' })}
         >
           Open Build
         </Link>
@@ -124,9 +149,11 @@ function TriggersSession({
       >
         <SettingsQueryState query={webhooks} resource="Webhooks" />
         {webhookItems?.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            The published version has no Webhook step.
-          </p>
+          <NoTriggerStep
+            kind="Webhook"
+            workspaceId={workspace.id}
+            workflowId={workflowId}
+          />
         ) : null}
         <WebhooksSection
           {...common}
@@ -140,9 +167,11 @@ function TriggersSession({
       >
         <SettingsQueryState query={schedules} resource="Schedules" />
         {scheduleItems?.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            The published version has no Schedule step.
-          </p>
+          <NoTriggerStep
+            kind="Schedule"
+            workspaceId={workspace.id}
+            workflowId={workflowId}
+          />
         ) : null}
         <SchedulesSection
           {...common}

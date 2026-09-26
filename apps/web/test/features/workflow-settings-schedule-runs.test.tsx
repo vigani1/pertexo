@@ -48,7 +48,7 @@ describe('schedule run history in words', () => {
       describeOccurrence(
         occurrence('a', '2026-09-14T10:00:00.000Z', 'accepted'),
       ),
-    ).toEqual({ tone: 'success', label: 'Started a run', detail: 'On time.' });
+    ).toEqual({ tone: 'success', label: 'Started a run', detail: undefined });
     expect(
       describeOccurrence(
         occurrence(
@@ -256,7 +256,8 @@ describe('schedule card on the Triggers tab', () => {
     if (onTime === undefined || late === undefined)
       throw new Error('Expected two run times');
     expect(within(onTime).getByText('Started a run')).toBeVisible();
-    expect(within(onTime).getByText('On time.')).toBeVisible();
+    // On time is the norm, so it adds no second line.
+    expect(within(onTime).queryByText('On time.')).toBeNull();
     expect(
       within(onTime).getByRole('link', { name: 'Open run' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/runs/${runId}`);

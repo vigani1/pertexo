@@ -45,7 +45,7 @@ async function openRestore() {
     'Your draft will be replaced by v1. Published versions don’t change.',
   );
   await event.click(
-    within(dialog).getByRole('button', { name: 'Restore draft' }),
+    within(dialog).getByRole('button', { name: 'Restore to draft' }),
   );
   return event;
 }
@@ -98,7 +98,9 @@ describe('workflow versions tab', () => {
     expect(within(preview).queryByText('Changed')).not.toBeInTheDocument();
     expect(within(preview).getByText('Removed')).toBeVisible();
     expect(within(preview).getByText('Tidy fields')).toBeVisible();
-    expect(within(preview).getByText('Trigger · Webhook')).toBeVisible();
+    // A step named after its type says the type once.
+    expect(within(preview).getByText('Trigger')).toBeVisible();
+    expect(within(preview).queryByText('Trigger · Webhook')).toBeNull();
   });
 
   it('compares any two versions by the steps added, removed or changed', async () => {

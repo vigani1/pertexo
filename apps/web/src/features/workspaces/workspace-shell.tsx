@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -121,10 +122,14 @@ export function WorkspaceShell({
               <LayoutGridIcon aria-hidden="true" />
               All workspaces
             </Link>
+            {/* Red like Sign out in every other menu. */}
             <button
               type="button"
               disabled={logoutPending}
-              className={moreLinkClass}
+              className={cn(
+                moreLinkClass,
+                'text-destructive hover:bg-destructive/10 hover:text-destructive',
+              )}
               onClick={onLogout}
             >
               <LogOutIcon aria-hidden="true" />

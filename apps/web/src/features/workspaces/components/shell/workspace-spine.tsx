@@ -11,13 +11,14 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { spineDestinations, type SpineDestination } from './spine-destinations';
+import { shortcut } from '@/lib/shortcut-keys';
 
 function formatBadge(count: number): string {
   return count > 99 ? '99+' : String(count);
 }
 
 const spineLinkClass =
-  "relative grid size-10 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-white/5 hover:text-foreground focus-ring aria-[current=page]:bg-primary/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_22%,transparent)] [&_svg:not([class*='size-'])]:size-[1.15rem]";
+  "relative grid size-10 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-white/5 hover:text-foreground focus-ring aria-[current=page]:bg-action/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)] [&_svg:not([class*='size-'])]:size-[1.15rem]";
 
 function SpineLink({
   workspaceId,
@@ -42,12 +43,13 @@ function SpineLink({
       >
         {destination.icon}
         {destination.badge === undefined ? null : (
-          <span className="absolute -top-0.5 -right-1 rounded-sm bg-action px-1 font-mono text-[0.6rem] leading-[0.85rem] font-bold text-action-foreground">
+          // A tinted count inside the tile, not a loud pill hanging off it.
+          <span className="absolute top-0.5 right-0.5 rounded-sm bg-action/15 px-0.5 font-mono text-[0.58rem] leading-[0.8rem] font-semibold text-accent-foreground ring-1 ring-action/30">
             {formatBadge(destination.badge)}
           </span>
         )}
       </TooltipTrigger>
-      <TooltipContent side="right">{destination.label}</TooltipContent>
+      <TooltipContent side="right">{label}</TooltipContent>
     </Tooltip>
   );
 }
@@ -131,7 +133,7 @@ export function WorkspaceSpine({
           <SearchIcon />
         </TooltipTrigger>
         <TooltipContent side="right" className="flex items-center gap-2">
-          Search <Kbd>⌘K</Kbd>
+          Search <Kbd>{shortcut('K')}</Kbd>
         </TooltipContent>
       </Tooltip>
       {account}

@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { Status, type StatusTone } from '@/components/ui/status';
 import type { RunStatistics } from '../workflow-runs.queries';
 
@@ -7,10 +8,25 @@ export function RunCount({
   count,
   label,
 }: Readonly<{ tone: StatusTone; count: number; label: string }>) {
+  // A zero is worth knowing but not worth looking at: it steps back.
   return (
-    <Status tone={tone} className="font-mono text-xs font-normal">
+    <Status
+      tone={tone}
+      className={cn(
+        'font-mono text-xs font-normal',
+        count === 0 && 'opacity-55',
+      )}
+    >
       <span className="text-subtle-foreground">
-        <b className="font-medium text-foreground">{String(count)}</b> {label}
+        <b
+          className={cn(
+            'font-medium',
+            count === 0 ? 'text-subtle-foreground' : 'text-foreground',
+          )}
+        >
+          {String(count)}
+        </b>{' '}
+        {label}
       </span>
     </Status>
   );

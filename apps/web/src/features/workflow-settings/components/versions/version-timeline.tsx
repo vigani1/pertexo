@@ -26,7 +26,11 @@ export function VersionTimeline({
   onRestore: (version: WorkflowVersionResponse) => void;
 }>) {
   return (
-    <ol aria-label="Published versions" className="relative flex flex-col">
+    <ol
+      aria-label="Published versions"
+      // Narrow enough that each row's actions sit beside its version.
+      className="relative flex max-w-3xl flex-col"
+    >
       <span
         aria-hidden="true"
         className="absolute top-4 bottom-4 left-[0.4375rem] w-px bg-linear-to-b from-accent-foreground/45 via-border-strong to-transparent"

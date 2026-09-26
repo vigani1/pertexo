@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
-import { KeyRoundIcon, RefreshCwIcon, WebhookIcon } from 'lucide-react';
+import { KeyRoundIcon, RefreshCwIcon } from 'lucide-react';
+import { StepTile, describeStep } from '@/features/catalog/presentation.public';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -48,9 +49,7 @@ export function WebhookCard({
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-md border border-primary/20 bg-primary/8 text-primary">
-            <WebhookIcon aria-hidden="true" className="size-4" />
-          </span>
+          <StepTile step={describeStep('core.webhook')} size="lg" />
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold">{stepName}</h3>
             <p className="text-xs text-muted-foreground">
@@ -62,7 +61,8 @@ export function WebhookCard({
         </div>
         <Status tone={state.tone}>{state.label}</Status>
       </header>
-      {trigger.reconciledAt === null ? null : (
+      {/* Checking only means something once there's an endpoint. */}
+      {trigger.reconciledAt === null || !trigger.endpointReady ? null : (
         <p className="font-mono text-[0.72rem] text-subtle-foreground">
           Last checked{' '}
           <time

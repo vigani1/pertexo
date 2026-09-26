@@ -33,7 +33,7 @@ export function useMemberRoleCommand(
       ),
     copy: {
       uncertain: (member) =>
-        `We couldn’t confirm whether ${member.displayName}’s role changed. Try again — Pertexo recognises the repeat, so it can’t change twice.`,
+        `We couldn’t confirm whether ${member.displayName}’s role changed. Try again — Pertexo recognizes the repeat, so it can’t change twice.`,
       conflict: (member) =>
         `${member.displayName}’s role changed while you were deciding. Choose again if you still want to change it.`,
       action: 'changing this role',

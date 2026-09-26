@@ -1,5 +1,5 @@
 import type { WorkflowRunSummary } from '@pertexo/contracts/schemas/workflow-runs';
-import { formatClock, formatDurationMs } from '@/lib/format-time';
+import { formatDurationMs, formatShortTime } from '@/lib/format-time';
 import { runDurationMs } from './run-list';
 import { isActiveRunStatus } from './run-status';
 import type { ThreadRow, ThreadStepStatus } from './thread-view';
@@ -46,7 +46,8 @@ function activeSentence(
   if (running.length > 1) return `Running ${String(running.length)} steps`;
   const waiting = rows.find((row) => row.status === 'waiting');
   if (waiting?.resumeAt !== undefined)
-    return `Waiting until ${formatClock(waiting.resumeAt)}`;
+    // A headline, not a log line: to the minute, like the rest of the page.
+    return `Waiting until ${formatShortTime(waiting.resumeAt)}`;
   if (waiting !== undefined) return `${waiting.label} is waiting`;
   return run.status === 'waiting' ? 'Waiting' : 'Running';
 }

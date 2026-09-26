@@ -41,9 +41,7 @@ export function WorkspacePickerHeader({
               <span className="truncate text-sm font-semibold text-foreground">
                 {user.displayName}
               </span>
-              <span className="truncate text-xs">
-                Signed in as {user.email}
-              </span>
+              <span className="truncate text-xs">{user.email}</span>
             </DropdownMenuLabel>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />

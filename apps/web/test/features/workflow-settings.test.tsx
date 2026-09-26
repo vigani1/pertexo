@@ -50,9 +50,11 @@ describe('workflow settings tab', () => {
     const event = userEvent.setup();
     const identity = await screen.findByRole('region', { name: 'Identity' });
     expect(await within(identity).findByText('Daily control')).toBeVisible();
-    expect(within(identity).getByText(workflowId)).toBeVisible();
     expect(
-      within(identity).getByRole('button', { name: 'Copy workflow ID' }),
+      within(identity).getByText(`${workflowId.slice(0, 8)}…`),
+    ).toBeVisible();
+    expect(
+      within(identity).getByRole('button', { name: /^Copy workflow ID/u }),
     ).toBeVisible();
     expect(
       screen.queryByRole('link', { name: 'Back to editor' }),

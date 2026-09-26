@@ -6,7 +6,7 @@ import { useWorkflowHubScope } from './workflow-hub-scope';
 
 export function WorkflowRunsRoute() {
   const { apiClient, user, workspace, workflowId } = useWorkflowHubScope();
-  // The router keeps unrecognised URL keys next to validated ones.
+  // The router keeps unrecognized URL keys next to validated ones.
   const search = sanitizeWorkflowRunSearch(
     useSearch({ from: '/w/$workspaceId/workflows/$workflowId/runs' }),
   );

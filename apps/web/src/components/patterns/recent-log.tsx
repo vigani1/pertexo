@@ -119,7 +119,8 @@ export function RecentLogEntry({
 }: Readonly<{
   tone: StatusTone;
   label: string;
-  detail: string;
+  /** More about what happened, when there is more to say. */
+  detail?: string | undefined;
   action?: ReactNode;
   /** When it happened, as an ISO instant. */
   at: string;
@@ -131,9 +132,11 @@ export function RecentLogEntry({
       <StatusGlyph tone={tone} className={cn('mt-0.5', statusToneText[tone])} />
       <div className="min-w-0">
         <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {detail}
-        </p>
+        {detail === undefined ? null : (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {detail}
+          </p>
+        )}
         {action}
       </div>
       <p className="flex flex-col items-end gap-0.5 text-right font-mono text-[0.72rem] text-subtle-foreground">
