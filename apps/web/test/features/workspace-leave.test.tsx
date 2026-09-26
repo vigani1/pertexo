@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
-import { renderApp } from '../support/render-app';
+import { expectSignInPage, renderApp } from '../support/render-app';
 import {
   api,
   ownerWorkspace,
@@ -88,9 +88,7 @@ describe('settings: leaving a workspace', () => {
     await actor.click(dialog.getByRole('button', { name: 'Leave workspace' }));
 
     expect(await screen.findByText(`You left ${workspace.name}`)).toBeVisible();
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(sent).toEqual([{ key: expect.any(String) as unknown, body: {} }]);
   });
 
@@ -116,9 +114,7 @@ describe('settings: leaving a workspace', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await actor.click(dialog.getByRole('button', { name: 'Try again' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(sent).toHaveLength(2);
     expect(sent[1]).toEqual(sent[0]);
   });

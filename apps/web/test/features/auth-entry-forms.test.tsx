@@ -6,7 +6,7 @@ import { createApiClient } from '@/lib/api/client';
 import { LegacyMigrationPage } from '@/features/auth/legacy-migration-page';
 import { LoginPage } from '@/features/auth/login-page';
 import { mockServer } from '../support/mock-server';
-import { renderApp, testFetch } from '../support/render-app';
+import { expectSignInPage, renderApp, testFetch } from '../support/render-app';
 import { renderInRouter } from '../support/render-in-router';
 
 function capabilities(
@@ -125,9 +125,7 @@ describe('sign-in family forms', () => {
     await actor.click(
       screen.getByRole('button', { name: 'Use another email' }),
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(screen.getByLabelText('Email')).toHaveValue('');
   });
 
