@@ -65,7 +65,6 @@ export function AccountMethodsSection({
 
   return (
     <AccountSection
-      id="account-methods-title"
       title="Sign-in methods"
       description="Every way you can sign in to Pertexo."
       action={

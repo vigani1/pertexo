@@ -24,7 +24,8 @@ import {
 import { visibleSettingsData } from '../../model/settings-query';
 import { useRunDurationChange } from '../../mutations/use-run-duration-change';
 import { workflowVersionsQueryOptions } from '../../workflow-settings.queries';
-import { SettingsQueryState, SettingsSection } from '../settings-section';
+import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsQueryState } from '../settings-section';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 function choicesWith(current: number): readonly number[] {

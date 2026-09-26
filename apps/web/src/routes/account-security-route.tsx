@@ -8,6 +8,7 @@ import {
 import { ArrowLeftIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { AccountSecurityPage } from '@/features/auth/account-security.public';
+import { AccountWorkspacesSection } from '@/features/workspaces/account-workspaces.public';
 import { Wordmark } from '@/features/auth/auth-stage.public';
 
 // Standalone account page: the target of sign-in method callbacks and the
@@ -39,6 +40,9 @@ export function AccountSecurityRoute() {
           key={user.id}
           apiClient={apiClient}
           user={user}
+          workspaces={
+            <AccountWorkspacesSection apiClient={apiClient} userId={user.id} />
+          }
           onProfileChanged={() => void router.invalidate()}
           {...(search.linked ? { linkOutcome: 'returned' as const } : {})}
           {...(search.linkError ? { linkOutcome: 'failed' as const } : {})}

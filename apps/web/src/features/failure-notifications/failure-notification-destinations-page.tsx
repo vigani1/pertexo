@@ -11,6 +11,7 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
+import { HowItWorks } from '@/components/patterns/how-it-works';
 import { UnavailablePage } from '@/components/patterns/unavailable-page';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -166,6 +167,24 @@ export function FailureNotificationDestinationsPage({
           open();
         }}
         onEdit={open}
+      />
+      <HowItWorks
+        title="How alerts work"
+        className="border-t border-border pt-8"
+        steps={[
+          {
+            title: 'A run goes wrong',
+            body: 'It fails, times out or ends with an unknown outcome. Runs that succeed stay quiet.',
+          },
+          {
+            title: 'Pertexo posts it',
+            body: 'To the Slack channel or email address chosen in that workflow’s Settings, through one of this workspace’s connections.',
+          },
+          {
+            title: 'Someone finds the run',
+            body: 'The alert names the run, its workflow and version, what started it and the error code.',
+          },
+        ]}
       />
       {canManage && connections.isError ? (
         <Notice role="alert" tone="warning">

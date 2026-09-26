@@ -91,7 +91,6 @@ export function AccountPasswordSection({
 
   return (
     <AccountSection
-      id="account-password-title"
       title={hasPassword ? 'Password' : 'Add a password'}
       description={
         hasPassword

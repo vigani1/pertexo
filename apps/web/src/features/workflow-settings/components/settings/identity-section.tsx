@@ -8,7 +8,8 @@ import {
   visibleSettingsData,
   type SettingsQuery,
 } from '../../model/settings-query';
-import { SettingsQueryState, SettingsSection } from '../settings-section';
+import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsQueryState } from '../settings-section';
 
 function Moment({ label, value }: Readonly<{ label: string; value: string }>) {
   return (

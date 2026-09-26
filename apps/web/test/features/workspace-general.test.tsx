@@ -556,6 +556,102 @@ describe('workspace settings', () => {
     expect(deletes).toBe(1);
   });
 
+  it('counts what lives in the workspace, each tile opening its page', async () => {
+    const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
+    const workflow = (id: string, overrides: Record<string, unknown>) => ({
+      id,
+      workspaceId,
+      name: `Workflow ${id.slice(0, 2)}`,
+      nameRevision: 1,
+      lifecycleStatus: 'active',
+      lifecycleRevision: 1,
+      activationStatus: 'active',
+      publishedVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...overrides,
+    });
+    const person = (id: string, role: string) => ({
+      userId: id,
+      email: `${id.slice(0, 8)}@example.test`,
+      displayName: `Person ${id.slice(0, 2)}`,
+      role,
+      roleRevision: 1,
+      membershipStatus: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    mockServer.use(
+      ...identityHandlers({
+        ...workspace,
+        capabilities: [
+          'workspace:read',
+          'workspace:manage',
+          'member:read',
+          'workflow:read',
+          'workflow:update',
+          'connection:read',
+        ],
+      }),
+      http.get(`${api}/workflows`, () =>
+        HttpResponse.json({
+          items: [
+            workflow('11111111-1111-4111-8111-111111111111', {}),
+            workflow('22222222-2222-4222-8222-222222222222', {
+              publishedVersionId: null,
+              activationStatus: 'inactive',
+            }),
+            workflow('33333333-3333-4333-8333-333333333333', {
+              lifecycleStatus: 'archived',
+            }),
+          ],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`${api}/members`, () =>
+        HttpResponse.json({
+          items: [
+            person(userId, 'owner'),
+            person('44444444-4444-4444-8444-444444444444', 'builder'),
+            person('55555555-5555-4555-8555-555555555555', 'builder'),
+          ],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`${api}/connections`, () =>
+        HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+      http.get(`${api}/failure-notification-destinations`, () =>
+        HttpResponse.json({ items: [] }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/settings`);
+    const glance = within(
+      await screen.findByRole('region', { name: 'At a glance' }),
+    );
+    const tile = (name: RegExp) => glance.getByRole('link', { name });
+    await waitFor(() => {
+      expect(tile(/workflows/u)).toHaveTextContent('2workflows');
+    });
+    expect(tile(/workflows/u)).toHaveTextContent('1 live1 draft');
+    expect(tile(/workflows/u)).toHaveTextContent('1 archived');
+    expect(tile(/workflows/u)).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/workflows`,
+    );
+    await waitFor(() => {
+      expect(tile(/members/u)).toHaveTextContent('1 Owner · 2 Builders');
+    });
+    expect(tile(/members/u)).toHaveAttribute('href', `/w/${workspaceId}/team`);
+    await waitFor(() => {
+      expect(tile(/connections/u)).toHaveTextContent('Nothing connected yet');
+    });
+    expect(tile(/alert destinations/u)).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/alerts`,
+    );
+  });
+
   it('shows read-only identity without management commands when capability is absent', async () => {
     let requests = 0;
     mockServer.use(
@@ -570,11 +666,17 @@ describe('workspace settings', () => {
     );
     renderApp(`/w/${workspaceId}/settings`);
     expect(
-      await screen.findByRole('heading', { name: 'General' }),
+      await screen.findByRole('heading', { name: 'Workspace' }),
     ).toBeVisible();
     expect(screen.getAllByText('Control Operations').length).toBeGreaterThan(0);
     expect(screen.getByText('control-operations')).toBeVisible();
-    expect(screen.getByText('Owner')).toBeVisible();
+    expect(screen.getByText('You’re an Owner here.')).toBeVisible();
+    // Access follows what the workspace grants, not the role's name alone.
+    const access = within(screen.getByRole('region', { name: 'Your access' }));
+    expect(
+      access.getByText('See workflows, runs and connections'),
+    ).toHaveTextContent('See workflows, runs and connections');
+    expect(access.getAllByText(': not with your role')).toHaveLength(7);
     expect(
       screen.getByRole('button', { name: /^Copy workspace ID / }),
     ).toBeVisible();

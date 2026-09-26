@@ -18,7 +18,8 @@ import {
   visibleSettingsData,
   type SettingsQuery,
 } from '../../model/settings-query';
-import { SettingsQueryState, SettingsSection } from '../settings-section';
+import { SettingsSection } from '@/components/patterns/settings-section';
+import { SettingsQueryState } from '../settings-section';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 /** Where the workflow is now, what archiving or restoring does, and the button. */

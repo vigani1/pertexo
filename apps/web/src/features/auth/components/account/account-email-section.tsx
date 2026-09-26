@@ -38,7 +38,6 @@ export function AccountEmailSection({
 
   return (
     <AccountSection
-      id="account-email-title"
       title="Change email"
       description="We confirm it at your current address, then at the new one. Finishing signs you out everywhere."
     >

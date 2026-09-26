@@ -12,6 +12,7 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
+import { HowItWorks } from '@/components/patterns/how-it-works';
 import { UnavailablePage } from '@/components/patterns/unavailable-page';
 import { Button } from '@/components/ui/button';
 import {
@@ -212,6 +213,25 @@ export function ConnectionsPage({
         onOpen={(connection) => {
           onSearchChange({ ...withoutLens, connection });
         }}
+      />
+
+      <HowItWorks
+        title="How connections work"
+        className="border-t border-border pt-8"
+        steps={[
+          {
+            title: 'Connect a service',
+            body: 'Add a Slack bot token, an HTTPS API’s headers or a Resend API key. It’s stored encrypted, and nobody, including you, can see it again.',
+          },
+          {
+            title: 'Keep it working',
+            body: 'Test it from its page to see the service still answers, and rotate the secret there when it changes.',
+          },
+          {
+            title: 'Use it in steps and alerts',
+            body: 'Send Slack message, HTTP request and Send email steps pick a connection, and so do Slack and email alerts.',
+          },
+        ]}
       />
 
       <ConnectionDetailSheet

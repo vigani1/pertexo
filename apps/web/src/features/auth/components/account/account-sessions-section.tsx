@@ -134,7 +134,6 @@ export function AccountSessionsSection({
 
   return (
     <AccountSection
-      id="account-sessions-title"
       title="Sessions"
       description="Signing out a device takes effect the next time it talks to Pertexo."
       action={
