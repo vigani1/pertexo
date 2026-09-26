@@ -90,6 +90,12 @@
   --destructive: #ffb4ab;
   --success: #8fe3c0;
   --warning: #f3c677;
+  /* The Core's own inks. The status colours above are pale so text reads on
+     the dark; drawn as points of light they wash out, so the orb takes
+     deeper ones. */
+  --core-failed: #ff5c52;
+  --core-waiting: #a98bff;
+  --core-succeeded: #36e0a2;
   --border: rgb(255 255 255 / 8%);
   --border-strong: rgb(255 255 255 / 14%);
   --input: rgb(255 255 255 / 10%);
