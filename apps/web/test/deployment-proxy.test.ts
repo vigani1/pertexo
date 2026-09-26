@@ -53,6 +53,11 @@ describe('same-origin web proxy configuration', () => {
         'add_header Referrer-Policy "strict-origin-when-cross-origin" always;',
       );
     }
+    // Pages can't be framed by another site.
+    expect(spa.body).toContain(
+      'add_header Content-Security-Policy "frame-ancestors \'none\'" always;',
+    );
+    expect(spa.body).toContain('add_header X-Frame-Options "DENY" always;');
     expect(api.body).not.toContain('add_header');
     expect(configuration.slice(api.end)).toContain(
       'add_header X-Content-Type-Options "nosniff" always;',
