@@ -11,9 +11,14 @@ import {
   ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
+  WorkflowRunNotFoundError,
   type ReplayWorkflowRunInput,
   type StartWorkflowRunInput,
 } from '../../src/workflow-runs/use-cases.js';
+import {
+  GetWorkflowNodeRunOutputUseCase,
+  GetWorkflowRunInputUseCase,
+} from '../../src/workflow-runs/run-data-use-cases.js';
 import type {
   WorkflowRunEventStreamer,
   WorkflowRunPersistence,
@@ -81,6 +86,12 @@ function persistence() {
   const cancel = vi
     .fn<WorkflowRunPersistence['cancel']>()
     .mockResolvedValue({ run: run(), alreadyRequested: false });
+  const readInput = vi
+    .fn<WorkflowRunPersistence['readInput']>()
+    .mockResolvedValue({ kind: 'expired' });
+  const readNodeRunOutput = vi
+    .fn<WorkflowRunPersistence['readNodeRunOutput']>()
+    .mockResolvedValue(undefined);
   return {
     store: {
       start,
@@ -89,12 +100,16 @@ function persistence() {
       list,
       statistics,
       cancel,
+      readInput,
+      readNodeRunOutput,
     } satisfies WorkflowRunPersistence,
     start,
     replay,
     get,
     list,
     cancel,
+    readInput,
+    readNodeRunOutput,
   };
 }
 
@@ -508,6 +523,40 @@ describe('workflow run application seams', () => {
 
     expect(fixture.start).toHaveBeenCalledTimes(1);
     expect(fixture.replay).not.toHaveBeenCalled();
+  });
+
+  it('reads run data with run access and hides another workspace or run', async () => {
+    const fixture = persistence();
+    const nodeRunId = '99999999-9999-4999-8999-999999999999';
+    await expect(
+      new GetWorkflowRunInputUseCase(
+        fixture.store,
+        authorization('viewer'),
+      ).execute({ actor, routeWorkspaceId: workspaceId, runId }),
+    ).resolves.toEqual({ input: { kind: 'expired' } });
+    expect(fixture.readInput).toHaveBeenCalledWith({ workspaceId, runId });
+
+    const output = new GetWorkflowNodeRunOutputUseCase(
+      fixture.store,
+      authorization('viewer'),
+    );
+    await expect(
+      output.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        runId,
+        nodeRunId,
+      }),
+    ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
+    await expect(
+      output.execute({
+        actor,
+        routeWorkspaceId: '11111111-1111-4111-8111-111111111111',
+        runId,
+        nodeRunId,
+      }),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    expect(fixture.readNodeRunOutput).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a route workspace mismatch before touching persistence', async () => {

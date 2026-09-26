@@ -121,7 +121,26 @@ export const workflowRunSummarySchema = z
   .strict();
 
 export const workflowRunReadSummarySchema = workflowRunSummarySchema
-  .extend({ workflowName: workflowNameSchema.nullable().optional() })
+  .extend({
+    workflowName: workflowNameSchema.nullable().optional(),
+    /** The run a replay was started from (ADR 050). */
+    replaySourceRunId: workflowRunIdentifierSchema.nullable().optional(),
+  })
+  .strict();
+
+/** The step that explains an unsuccessful run, for run lists (ADR 050). */
+export const workflowRunFailedStepSchema = z
+  .object({
+    nodeId: z.string().min(1).max(256),
+    /** The step's own name in the run's version, when it has one. */
+    label: z.string().min(1).max(200).nullable(),
+    definitionKey: z.string().min(1).max(256).nullable(),
+    safeErrorCode: z.string().min(1).max(128).nullable(),
+  })
+  .strict();
+
+export const workflowRunListItemSchema = workflowRunReadSummarySchema
+  .extend({ failedStep: workflowRunFailedStepSchema.nullable().optional() })
   .strict();
 
 export const workflowRunListQuerySchema = z
@@ -151,7 +170,7 @@ export const workflowRunListQuerySchema = z
 
 export const workflowRunListResponseSchema = z
   .object({
-    items: z.array(workflowRunReadSummarySchema).max(100),
+    items: z.array(workflowRunListItemSchema).max(100),
     nextCursor: workflowRunCursorSchema.nullable(),
   })
   .strict();
@@ -244,6 +263,31 @@ export const workflowNodeRunSummarySchema = z
   })
   .strict();
 
+export const workflowNodeRunParamsSchema = z
+  .object({
+    workspaceId: z.uuid(),
+    runId: workflowRunIdentifierSchema,
+    nodeRunId: z.uuid(),
+  })
+  .strict();
+
+/**
+ * A run's input or a step's output as stored (ADR 050): inline JSON, a file,
+ * nothing, or an input no longer kept after its 30-day window.
+ */
+export const workflowRunDataSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('inline'), value: z.json() }).strict(),
+  z.object({ kind: z.literal('artifact'), artifactId: z.uuid() }).strict(),
+  z.object({ kind: z.literal('none') }).strict(),
+  z.object({ kind: z.literal('expired') }).strict(),
+]);
+export const workflowRunInputResponseSchema = z
+  .object({ input: workflowRunDataSchema })
+  .strict();
+export const workflowNodeRunOutputResponseSchema = z
+  .object({ output: workflowRunDataSchema })
+  .strict();
+
 export const workflowRunStartResponseSchema = z
   .object({ run: workflowRunSummarySchema, replayed: z.boolean() })
   .strict();
@@ -315,6 +359,17 @@ export type WorkflowRunReadSummary = z.output<
   typeof workflowRunReadSummarySchema
 >;
 export type WorkflowRunListQuery = z.output<typeof workflowRunListQuerySchema>;
+export type WorkflowRunListItem = z.output<typeof workflowRunListItemSchema>;
+export type WorkflowRunFailedStep = z.output<
+  typeof workflowRunFailedStepSchema
+>;
+export type WorkflowRunData = z.output<typeof workflowRunDataSchema>;
+export type WorkflowRunInputResponse = z.output<
+  typeof workflowRunInputResponseSchema
+>;
+export type WorkflowNodeRunOutputResponse = z.output<
+  typeof workflowNodeRunOutputResponseSchema
+>;
 export type WorkflowRunListResponse = z.output<
   typeof workflowRunListResponseSchema
 >;

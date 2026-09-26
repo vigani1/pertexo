@@ -195,6 +195,11 @@ export {
   createWorkflowRunDatabase,
 } from './execution/workflow-run-api.js';
 export type { WorkflowRunDatabase } from './execution/workflow-run-api.js';
+export type {
+  WorkflowRunData,
+  WorkflowRunFailedStep,
+} from './execution/workflow-run-data.js';
+export type { WorkflowRunListRecord } from './execution/workflow-run-list.js';
 export type { WorkflowTriggerHealth } from './triggers/workflow-triggers.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';

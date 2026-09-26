@@ -7,6 +7,10 @@ import {
   type WorkspaceTransaction,
 } from '../tenant-access/workspace.js';
 import {
+  readWorkflowRunFailedSteps,
+  type WorkflowRunFailedStep,
+} from './workflow-run-data.js';
+import {
   toWorkflowRunReadRecord,
   type WorkflowRunReadRecord,
 } from './workflow-run-persistence-support.js';
@@ -18,6 +22,12 @@ const runStatusSchema = z.enum([
   'succeeded',
   'failed',
   'canceled',
+  'timed_out',
+  'outcome_unknown',
+]);
+/** Outcomes a step can explain; a canceled run explains itself. */
+const UNSUCCESSFUL_STATUSES: ReadonlySet<string> = new Set([
+  'failed',
   'timed_out',
   'outcome_unknown',
 ]);
@@ -43,8 +53,12 @@ export type ListWorkflowRunsDatabaseInput = Readonly<{
   signal?: AbortSignal;
 }>;
 
+/** A listed run, with the step that explains it when it didn't succeed. */
+export type WorkflowRunListRecord = WorkflowRunReadRecord &
+  Readonly<{ failedStep: WorkflowRunFailedStep | null }>;
+
 export type WorkflowRunListPage = Readonly<{
-  items: readonly WorkflowRunReadRecord[];
+  items: readonly WorkflowRunListRecord[];
   nextCursor?: WorkflowRunListPosition;
 }>;
 
@@ -117,6 +131,7 @@ async function listWorkflowRunsInTransaction(
       run.status, run.trigger_type, run.created_at, run.updated_at,
       run.started_at, run.completed_at, run.deadline_at,
       run.cancel_requested_at, workflow.name as workflow_name,
+      run.replay_source_run_id,
       to_char(
         run.created_at at time zone 'UTC',
         'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
@@ -150,6 +165,7 @@ async function listWorkflowRunsInTransaction(
         id, workspace_id, workflow_id, workflow_version_id, status,
         trigger_type, created_at, updated_at, started_at, completed_at,
         deadline_at, cancel_requested_at, null::text as workflow_name,
+        replay_source_run_id,
         to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
       from app.workflow_runs
       where workspace_id = ${transaction.workspaceId}
@@ -171,8 +187,19 @@ async function listWorkflowRunsInTransaction(
   const hasMore = rows.length > input.limit;
   const visible = rows.slice(0, input.limit);
   const last = visible.at(-1);
+  const failedSteps = await readWorkflowRunFailedSteps(
+    transaction,
+    visible
+      .map(({ run }) => run)
+      .filter((run) => UNSUCCESSFUL_STATUSES.has(run.status))
+      .map((run) => run.id),
+  );
   return Object.freeze({
-    items: Object.freeze(visible.map(({ run }) => run)),
+    items: Object.freeze(
+      visible.map(({ run }) =>
+        Object.freeze({ ...run, failedStep: failedSteps.get(run.id) ?? null }),
+      ),
+    ),
     ...(hasMore && last !== undefined
       ? {
           nextCursor: Object.freeze({

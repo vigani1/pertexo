@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   StartWorkflowRunUseCase,
   ReplayWorkflowRunUseCase,
+  WorkflowRunDataController,
   WorkflowRunsController,
   WorkflowRunsModule,
   type WorkflowRunsDependencies,
@@ -14,6 +15,8 @@ const dependencies = {
     replay: () => Promise.reject(new Error('not exercised')),
     get: () => Promise.resolve(undefined),
     list: () => Promise.resolve({ items: [] }),
+    readInput: () => Promise.resolve(undefined),
+    readNodeRunOutput: () => Promise.resolve(undefined),
     statistics: () => Promise.reject(new Error('not exercised')),
     cancel: () => Promise.reject(new Error('not exercised')),
   },
@@ -42,6 +45,9 @@ describe('workflow runs Nest module', () => {
         expect.objectContaining({ provide: ReplayWorkflowRunUseCase }),
       ]),
     );
-    expect(dynamic.controllers).toEqual([WorkflowRunsController]);
+    expect(dynamic.controllers).toEqual([
+      WorkflowRunsController,
+      WorkflowRunDataController,
+    ]);
   });
 });

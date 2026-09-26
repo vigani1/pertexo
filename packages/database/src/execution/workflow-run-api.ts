@@ -47,6 +47,13 @@ import {
   type WorkflowRunListPage,
 } from './workflow-run-list.js';
 import {
+  readWorkflowNodeRunOutput,
+  readWorkflowRunInput,
+  type ReadWorkflowNodeRunOutputInput,
+  type ReadWorkflowRunInputInput,
+  type WorkflowRunData,
+} from './workflow-run-data.js';
+import {
   readWorkflowRunStatistics,
   type WorkflowRunStatisticsDatabaseInput,
   type WorkflowRunStatisticsRecord,
@@ -205,6 +212,12 @@ export interface WorkflowRunDatabase {
   >;
   get(input: GetWorkflowRunInput): Promise<WorkflowRunReadModel | undefined>;
   list(input: ListWorkflowRunsDatabaseInput): Promise<WorkflowRunListPage>;
+  readInput(
+    input: ReadWorkflowRunInputInput,
+  ): Promise<WorkflowRunData | undefined>;
+  readNodeRunOutput(
+    input: ReadWorkflowNodeRunOutputInput,
+  ): Promise<WorkflowRunData | undefined>;
   statistics(
     input: WorkflowRunStatisticsDatabaseInput,
   ): Promise<WorkflowRunStatisticsRecord>;
@@ -268,6 +281,10 @@ export function createWorkflowRunDatabase(
     },
     list: (input: ListWorkflowRunsDatabaseInput) =>
       readWorkflowRunListPage(pool, input),
+    readInput: (input: ReadWorkflowRunInputInput) =>
+      readWorkflowRunInput(pool, input),
+    readNodeRunOutput: (input: ReadWorkflowNodeRunOutputInput) =>
+      readWorkflowNodeRunOutput(pool, input),
     statistics: (input: WorkflowRunStatisticsDatabaseInput) =>
       readWorkflowRunStatistics(pool, input),
     cancel: async (input: CancelWorkflowRunInput) => {
