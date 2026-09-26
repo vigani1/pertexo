@@ -122,7 +122,10 @@ const stepRunRowSchema = z
   .strict();
 
 /** The workflow's newest runs, the one window both reads share. */
-function recentRuns(transaction: WorkspaceTransaction, workflowId: string): SQL {
+function recentRuns(
+  transaction: WorkspaceTransaction,
+  workflowId: string,
+): SQL {
   return sql`
     select id, status, created_at, workflow_version_id
     from app.workflow_runs

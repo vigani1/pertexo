@@ -237,7 +237,9 @@ function notStartedRow(
  * ran for. The engine keys a step run `…|i:<loop>:<ordinal>/…` with ordinals
  * from 0; anything else reads as no item.
  */
-export function loopItemOf(invocationKey: string | undefined): string | undefined {
+export function loopItemOf(
+  invocationKey: string | undefined,
+): string | undefined {
   const encoded = invocationKey?.split('|i:')[1];
   if (encoded === undefined || encoded === '') return undefined;
   let path: string;
