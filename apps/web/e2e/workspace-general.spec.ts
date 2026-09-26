@@ -111,7 +111,9 @@ test('requests deletion through the accessible workspace settings flow', async (
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}/settings`);
 
-  await expect(page.getByRole('heading', { name: 'General' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Workspace', exact: true }),
+  ).toBeVisible();
   await expect(
     page
       .getByRole('navigation', { name: 'Workspace' })
@@ -189,7 +191,7 @@ test('keeps a valid unbroken workspace name inside its card at 320 pixels', asyn
   ).toBeVisible();
 
   const section = page
-    .getByRole('heading', { name: 'General' })
+    .getByRole('heading', { name: 'Workspace', exact: true })
     .locator('xpath=ancestor::section[1]');
   const name = section.getByText(longName, { exact: true });
   const [nameBox, sectionBox] = await Promise.all([
