@@ -4,6 +4,7 @@ import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-author
 import { Link, type LinkProps } from '@tanstack/react-router';
 import { ArrowLeftIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -108,7 +109,12 @@ export function WorkflowHubBar({
         {glyph}
         <div className="min-w-0">
           {workflow === undefined ? (
-            <h1 className={TITLE_CLASS}>Workflow</h1>
+            // The name is still loading: hold its place instead of showing
+            // a stand-in word that then changes.
+            <>
+              <h1 className="sr-only">Workflow</h1>
+              <Skeleton className="my-1 h-3.5 w-40" />
+            </>
           ) : (
             <WorkflowNameWithDialog
               apiClient={apiClient}

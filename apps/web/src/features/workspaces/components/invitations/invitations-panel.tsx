@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
 import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import {
   Empty,
   EmptyActions,
@@ -39,12 +40,10 @@ export function InvitationsPanel({
   query,
   invitations,
   command,
-  onInvite,
 }: Readonly<{
   query: InvitationsQuery;
   invitations: readonly WorkspaceInvitation[];
   command: InvitationCommand;
-  onInvite: () => void;
 }>) {
   const notifications = useNotifications();
   const [selected, setSelected] = useState<InvitationSelection>();
@@ -66,11 +65,7 @@ export function InvitationsPanel({
   }
 
   if (query.isPending)
-    return (
-      <p role="status" className="py-8 text-sm text-muted-foreground">
-        Loading invitations…
-      </p>
-    );
+    return <SkeletonRows label="Loading invitations" mark="avatar" />;
   if (query.isError && invitations.length === 0)
     return (
       <Empty>
@@ -100,14 +95,10 @@ export function InvitationsPanel({
       {invitations.length === 0 ? (
         <Empty>
           <EmptyTitle>No invitations yet</EmptyTitle>
+          {/* Invite people sits in the page header already. */}
           <EmptyDescription>
             Invite people by email and pick the role they start with.
           </EmptyDescription>
-          <EmptyActions>
-            <Button type="button" variant="outline" onClick={onInvite}>
-              Invite people
-            </Button>
-          </EmptyActions>
         </Empty>
       ) : (
         <InvitationList

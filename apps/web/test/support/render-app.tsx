@@ -5,6 +5,7 @@ import { render } from '@testing-library/react';
 import { createQueryClient } from '@/app/query-client';
 import { createAppRouter } from '@/app/router';
 import { createApiClient } from '@/lib/api/client';
+import { NotificationsProvider } from '@/components/ui/toast';
 
 export const testFetch: typeof fetch = (input, init) => {
   const request =
@@ -25,7 +26,9 @@ export function renderApp(
   const router = createAppRouter(queryClient, apiClient, history);
   const app = (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <NotificationsProvider>
+        <RouterProvider router={router} />
+      </NotificationsProvider>
     </QueryClientProvider>
   );
   const result = render(

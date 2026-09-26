@@ -38,7 +38,9 @@ describe('CopyButton', () => {
     const user = userEvent.setup();
     mockClipboard(writeText);
     render(
-      <CopyButton value="eeee-full" label="Copy run ID" display="eeee…" />,
+      <NotificationsProvider>
+        <CopyButton value="eeee-full" label="Copy run ID" display="eeee…" />
+      </NotificationsProvider>,
     );
     const button = screen.getByRole('button', { name: 'Copy run ID eeee…' });
     expect(button).toHaveTextContent('eeee…');
@@ -50,7 +52,11 @@ describe('CopyButton', () => {
   it('says when the browser blocked the copy', async () => {
     const user = userEvent.setup();
     mockClipboard(() => Promise.reject(new Error('blocked')));
-    render(<CopyButton value="secret" label="Copy signing secret" />);
+    render(
+      <NotificationsProvider>
+        <CopyButton value="secret" label="Copy signing secret" />
+      </NotificationsProvider>,
+    );
     await user.click(
       screen.getByRole('button', { name: 'Copy signing secret' }),
     );
@@ -61,6 +67,8 @@ describe('CopyButton', () => {
         }),
       ).toBeVisible();
     });
+    // A red icon alone doesn't say what to do, so a toast does.
+    expect((await screen.findAllByText('Couldn’t copy'))[0]).toBeVisible();
   });
 });
 

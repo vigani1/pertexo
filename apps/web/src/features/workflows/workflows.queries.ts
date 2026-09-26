@@ -1,4 +1,13 @@
-import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import {
+  infiniteQueryOptions,
+  queryOptions,
+  type InfiniteData,
+  type QueryClient,
+} from '@tanstack/react-query';
+import type {
+  WorkflowListResponse,
+  WorkflowSummary,
+} from '@pertexo/contracts/schemas/workflow-authoring';
 import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowListOrder } from './model/workflow-list-view';
 import {
@@ -56,6 +65,36 @@ export function workflowSummaryQueryOptions(
       getWorkflowSummary(apiClient, workspaceId, workflowId, signal),
     staleTime: 30_000,
   });
+}
+
+/**
+ * A workflow summary the app already holds: its own read, else its row in a
+ * loaded list, so a page opened from a list can name the workflow before its
+ * own read lands.
+ */
+export function cachedWorkflowSummary(
+  queryClient: QueryClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+): WorkflowSummary | undefined {
+  const own = queryClient.getQueryData<WorkflowSummary>(
+    workflowKeys.detail(userId, workspaceId, workflowId),
+  );
+  if (own !== undefined) return own;
+  const pages = [
+    ...queryClient
+      .getQueriesData<InfiniteData<WorkflowListResponse>>({
+        queryKey: workflowKeys.lists(userId, workspaceId),
+      })
+      .flatMap(([, data]) => data?.pages ?? []),
+    queryClient.getQueryData<WorkflowListResponse>(
+      workflowKeys.recent(userId, workspaceId),
+    ),
+  ];
+  return pages
+    .flatMap((page) => page?.items ?? [])
+    .find((workflow) => workflow.id === workflowId);
 }
 
 /**
