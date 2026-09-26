@@ -78,16 +78,17 @@ function ColumnHeadings({ variant }: Readonly<{ variant: RunListVariant }>) {
     <div
       aria-hidden="true"
       className={cn(
-        'hidden gap-x-4 border-b border-white/[0.055] px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground lg:grid',
+        'hidden gap-x-4 border-b border-white/[0.055] px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground md:grid',
         RUN_ROW_LAYOUT[variant].grid,
       )}
     >
       <span>Status</span>
       <span>{variant === 'workspace' ? 'Workflow' : 'Started'}</span>
-      <span>Trigger</span>
+      {/* A tablet's table drops Trigger and the bar; so do their names. */}
+      <span className="max-lg:hidden">Trigger</span>
       {variant === 'workspace' ? <span>Started</span> : null}
       <span>Took</span>
-      <span />
+      <span className="max-lg:hidden" />
       <span>Run</span>
       <span />
     </div>

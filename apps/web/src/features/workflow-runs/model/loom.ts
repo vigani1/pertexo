@@ -240,6 +240,24 @@ export function loomRunSpan(
   return { x0, x1: Math.max(x1, x0 + 3) };
 }
 
+/** Every run under a pointer, oldest first; overlapping runs all count. */
+export function runsAtPointer(
+  model: LoomModel,
+  layout: LoomLayout,
+  nowMs: number,
+  x: number,
+  y: number,
+): readonly LoomRun[] {
+  const laneIndex = Math.floor((y - layout.top) / layout.laneHeight);
+  const lane = model.lanes[laneIndex];
+  if (lane === undefined) return [];
+  const tolerance = 5;
+  return lane.runs.filter((run) => {
+    const span = loomRunSpan(layout, model, nowMs, run);
+    return x >= span.x0 - tolerance && x <= span.x1 + tolerance;
+  });
+}
+
 /** The run under a pointer, preferring the most recent where they overlap. */
 export function hitTestLoom(
   model: LoomModel,
@@ -248,14 +266,5 @@ export function hitTestLoom(
   x: number,
   y: number,
 ): LoomRun | undefined {
-  const laneIndex = Math.floor((y - layout.top) / layout.laneHeight);
-  const lane = model.lanes[laneIndex];
-  if (lane === undefined) return undefined;
-  const tolerance = 5;
-  let hit: LoomRun | undefined;
-  for (const run of lane.runs) {
-    const span = loomRunSpan(layout, model, nowMs, run);
-    if (x >= span.x0 - tolerance && x <= span.x1 + tolerance) hit = run;
-  }
-  return hit;
+  return runsAtPointer(model, layout, nowMs, x, y).at(-1);
 }

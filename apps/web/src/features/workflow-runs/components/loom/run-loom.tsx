@@ -7,7 +7,7 @@ import { formatDateTime, formatDurationMs } from '@/lib/format-time';
 import { useCanvasRenderer } from '@/lib/use-canvas-renderer';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import {
-  hitTestLoom,
+  runsAtPointer,
   loomLayout,
   shapeLoom,
   type LoomModel,
@@ -18,7 +18,13 @@ import { useNow } from '@/lib/use-now';
 import { LoomRunList } from './loom-run-list';
 import { LoomRenderer } from './loom-renderer';
 
-type Hover = Readonly<{ run: LoomRun; x: number; y: number }>;
+type Hover = Readonly<{
+  run: LoomRun;
+  /** Other runs drawn at the same spot, which the pointer can't separate. */
+  alsoHere: number;
+  x: number;
+  y: number;
+}>;
 
 function coreEnergy(liveCount: number): number {
   return 0.6 + Math.min(liveCount, 6) * 0.15;
@@ -62,8 +68,11 @@ export function RunLoom({
     const x = event.clientX - bounds.left;
     const y = event.clientY - bounds.top;
     const layout = loomLayout(model, bounds.width, bounds.height);
-    const run = hitTestLoom(model, layout, Date.now(), x, y);
-    return run === undefined ? undefined : { run, x, y };
+    const hits = runsAtPointer(model, layout, Date.now(), x, y);
+    const run = hits.at(-1);
+    return run === undefined
+      ? undefined
+      : { run, alsoHere: hits.length - 1, x, y };
   }
 
   const summary = `Timeline of ${String(model.runCount)} ${
@@ -177,9 +186,11 @@ function LoomLens({ hover, nowMs }: Readonly<{ hover: Hover; nowMs: number }>) {
     <div
       aria-hidden="true"
       className="lens pointer-events-none absolute z-10 w-60 rounded-lg px-3 py-2.5 text-xs"
+      // Above the pointer when there's room, else below it: never on top of
+      // the thread being pointed at.
       style={{
         left: Math.max(8, hover.x - 120),
-        top: Math.max(8, hover.y - 96),
+        top: hover.y - 96 >= 8 ? hover.y - 96 : hover.y + 16,
       }}
     >
       <p className="truncate text-sm font-semibold">{run.workflowName}</p>
@@ -192,6 +203,13 @@ function LoomLens({ hover, nowMs }: Readonly<{ hover: Hover; nowMs: number }>) {
       <p className="mt-1 font-mono text-subtle-foreground">
         {formatDateTime(run.createdAt)}
       </p>
+      {hover.alsoHere === 0 ? null : (
+        <p className="mt-1.5 text-subtle-foreground">
+          {hover.alsoHere === 1
+            ? '1 more run here: list them below the Loom.'
+            : `${String(hover.alsoHere)} more runs here: list them below the Loom.`}
+        </p>
+      )}
     </div>
   );
 }
