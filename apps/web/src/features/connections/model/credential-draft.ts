@@ -27,7 +27,6 @@ export type CredentialField =
 
 export const MAX_HEADER_ROWS = 32;
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
-const PLACEHOLDER_RESEND_KEY = 're_placeholder';
 const SLACK_TOKEN_FORMAT =
   'Slack bot tokens start with xoxb- and use only letters, numbers and dashes.';
 
@@ -84,12 +83,8 @@ function fromEmailError(fromEmail: string): string | undefined {
   const email = fromEmail.trim();
   if (email === '')
     return 'Enter the address emails come from, like alerts@yourdomain.com.';
-  return resendApiKeyCredentialSchema.safeParse({
-    schemaVersion: 1,
-    type: 'resend_api_key',
-    apiKey: PLACEHOLDER_RESEND_KEY,
-    fromEmail: email,
-  }).success
+  return resendApiKeyCredentialSchema.unwrap().shape.fromEmail.safeParse(email)
+    .success
     ? undefined
     : 'That isn’t a complete email address, like alerts@yourdomain.com.';
 }
