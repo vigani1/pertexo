@@ -2,7 +2,6 @@ import '@xyflow/react/dist/style.css';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
   BaseEdge,
-  Controls,
   Handle,
   Position,
   ReactFlow,
@@ -16,6 +15,7 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import { useEffect, useEffectEvent, useMemo, useState } from 'react';
+import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
 import { Status, type StatusTone } from '@/components/ui/status';
 import { useMediaQuery } from '@/lib/use-media-query';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,22 @@ interface RunEdgeData extends Record<string, unknown> {
 }
 
 type RunNode = Node<RunNodeData, 'runNode'>;
+type NodeSize = Readonly<{ width: number; height: number }>;
 type RunEdge = Edge<RunEdgeData, 'runEdge'>;
+
+// Each step on the overview map in its status colour, as on the tiles.
+const toneFill: Readonly<Record<StatusTone, string>> = {
+  live: 'var(--primary)',
+  queued: 'color-mix(in srgb, var(--secondary) 70%, transparent)',
+  waiting: 'var(--secondary)',
+  success: 'var(--success)',
+  failure: 'var(--destructive)',
+  timeout: 'var(--destructive)',
+  attention: 'var(--warning)',
+  canceled: 'color-mix(in srgb, var(--subtle-foreground) 60%, transparent)',
+  skipped: 'color-mix(in srgb, var(--subtle-foreground) 45%, transparent)',
+  neutral: 'color-mix(in srgb, var(--muted-foreground) 60%, transparent)',
+};
 
 const nodeTypes = Object.freeze({ runNode: WorkflowRunNode });
 const edgeTypes = Object.freeze({ runEdge: WorkflowRunEdge });
@@ -153,15 +168,24 @@ export function RunGraphView({
   // Hidden until the first fit, so the map never jumps into place.
   const [fitted, setFitted] = useState(false);
   const phone = useMediaQuery(PHONE_MEDIA_QUERY);
+  // React Flow measures each step; the overview map only draws steps whose
+  // own objects carry that size, so the measurements come back in here.
+  const [sizes, setSizes] = useState<ReadonlyMap<string, NodeSize>>(
+    () => new Map(),
+  );
   const nodes = useMemo<RunNode[]>(
     () =>
-      projection.nodes.map((node) => ({
-        id: node.id,
-        type: 'runNode',
-        position: node.position,
-        data: { ...node, selected: node.id === selectedNodeId },
-      })),
-    [projection, selectedNodeId],
+      projection.nodes.map((node) => {
+        const measured = sizes.get(node.id);
+        return {
+          id: node.id,
+          type: 'runNode',
+          position: node.position,
+          data: { ...node, selected: node.id === selectedNodeId },
+          ...(measured === undefined ? {} : { measured }),
+        };
+      }),
+    [projection, selectedNodeId, sizes],
   );
   const edges = useMemo<RunEdge[]>(
     () =>
@@ -198,11 +222,20 @@ export function RunGraphView({
         onNodeClick={(_event, node) => {
           onSelectNode(node.id);
         }}
+        onNodesChange={(changes) => {
+          const measured = changes.flatMap((change) =>
+            change.type === 'dimensions' && change.dimensions !== undefined
+              ? [[change.id, change.dimensions] as const]
+              : [],
+          );
+          if (measured.length > 0)
+            setSizes((current) => new Map([...current, ...measured]));
+        }}
         colorMode="dark"
         fitView
         fitViewOptions={phone ? PHONE_FIT_OPTIONS : FIT_OPTIONS}
-        minZoom={phone ? 0.2 : 0.35}
-        maxZoom={1.6}
+        minZoom={0.2}
+        maxZoom={1.8}
         deleteKeyCode={null}
         proOptions={{ hideAttribution: true }}
         style={{ background: 'transparent' }}
@@ -218,11 +251,14 @@ export function RunGraphView({
             setFitted(true);
           }}
         />
-        {/* Top right, clear of the phone's floating run actions. */}
-        <Controls
-          position="top-right"
-          showInteractive={false}
-          className="workflow-canvas-controls"
+        <FlowZoomLens<RunNode>
+          mapLabel="Run overview"
+          fitLabel="Fit run to screen"
+          showMap
+          nodeColor={(node) => toneFill[node.data.tone]}
+          nodeStrokeColor={(node) =>
+            node.data.selected ? 'var(--primary)' : 'transparent'
+          }
         />
       </ReactFlow>
     </div>
