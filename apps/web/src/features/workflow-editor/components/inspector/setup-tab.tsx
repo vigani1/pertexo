@@ -2,11 +2,16 @@ import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catal
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { BracesIcon, ListIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
-import { schemaFields, type NodeConfig } from '../../model/inspector-draft';
+import { schemaFields } from '../../model/inspector-draft';
 import { stepTitle } from '../../model/graph-adapter';
+import {
+  readParallelBranches,
+  readSwitchCases,
+  readValidateRules,
+} from '../../model/setup-builders';
 import type { GraphLevel } from '../../model/graph-scopes';
 import {
   readScheduleSchema,
@@ -17,6 +22,9 @@ import { ConnectionSlot } from './connection-slot';
 import { ScheduleBuilder } from './schedule/schedule-builder';
 import type { NodeFormApi } from '../../model/node-form';
 import { SchemaField } from './schema-field';
+import { ParallelBranches } from './builders/parallel-branches';
+import { SwitchCases } from './builders/switch-cases';
+import { ValidateRules } from './builders/validate-rules';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
@@ -39,8 +47,8 @@ export function SetupTab({
   definition: NodeDefinitionCatalogItem | undefined;
   connections: readonly ConnectionResponse[];
   form: NodeFormApi;
-  /** The steps around this one, for settings that point at another step. */
-  graph: Pick<GraphLevel, 'nodes'>;
+  /** The steps around this one and their connections. */
+  graph: GraphLevel;
   /** Shows the Inputs tab, where a step with no setup is decided. */
   onOpenInputs: () => void;
 }>) {
@@ -100,7 +108,8 @@ export function SetupTab({
         />
       ) : (
         <SetupControls
-          config={node.config}
+          node={node}
+          graph={graph}
           configSchema={definition.configSchema}
           fields={fields}
           scheduleSchema={scheduleSchema}
@@ -131,31 +140,95 @@ export function SetupTab({
 
 /** The controls for a catalog step's setup, when it isn't shown as JSON. */
 function SetupControls({
-  config,
+  node,
+  graph,
   configSchema,
   fields,
   scheduleSchema,
   form,
 }: Readonly<{
-  config: NodeConfig;
+  node: WorkflowNode;
+  graph: GraphLevel;
   configSchema: unknown;
   fields: ReturnType<typeof schemaFields>;
   scheduleSchema: ScheduleSchema | undefined;
   form: NodeFormApi;
 }>) {
+  const { config } = node;
   if (scheduleSchema !== undefined)
     return (
       <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />
     );
+  const list = listBuilder(node, graph, form);
   const propertyCount = schemaPropertyCount(configSchema);
   return (
-    <SchemaFieldList
-      fields={fields}
-      config={config}
-      form={form}
-      jsonOnlySettings={propertyCount > fields.length}
-    />
+    <>
+      {list?.control}
+      <SchemaFieldList
+        fields={fields}
+        config={config}
+        form={form}
+        jsonOnlySettings={propertyCount > fields.length + (list?.covers ?? 0)}
+      />
+    </>
   );
+}
+
+/**
+ * The list a Switch, Parallel or Validate is set up with (cases, branches,
+ * rules) as its own builder, when the stored list is one the builder can
+ * show without losing anything; otherwise the list stays on JSON.
+ */
+function listBuilder(
+  node: WorkflowNode,
+  graph: GraphLevel,
+  form: NodeFormApi,
+): Readonly<{ control: ReactNode; covers: number }> | undefined {
+  const connectedPorts = new Set(
+    graph.edges
+      .filter((edge) => edge.source.nodeId === node.id)
+      .map((edge) => edge.source.port),
+  );
+  switch (node.definition.key) {
+    case 'core.switch': {
+      const cases = readSwitchCases(node.config);
+      return cases === undefined
+        ? undefined
+        : {
+            control: (
+              <SwitchCases
+                cases={cases}
+                connectedPorts={connectedPorts}
+                form={form}
+              />
+            ),
+            covers: 1,
+          };
+    }
+    case 'core.parallel': {
+      const branches = readParallelBranches(node.config);
+      return branches === undefined
+        ? undefined
+        : {
+            control: (
+              <ParallelBranches
+                branches={branches}
+                connectedPorts={connectedPorts}
+                form={form}
+              />
+            ),
+            covers: 1,
+          };
+    }
+    case 'core.validate': {
+      const rules = readValidateRules(node.config);
+      return rules === undefined
+        ? undefined
+        : { control: <ValidateRules rules={rules} form={form} />, covers: 1 };
+    }
+    default:
+      return undefined;
+  }
 }
 
 function SchemaFieldList({
@@ -219,14 +292,30 @@ function schemaPropertyCount(schema: unknown): number {
 }
 
 /**
- * A Merge names the Parallel it joins by that step's ID: offer the Parallel
- * steps by name instead of asking for an ID.
+ * Fields that depend on the steps around this one: a Merge names the
+ * Parallel it joins by that step's ID, so the Parallel steps are offered by
+ * name; a Parallel runs at most as many branches at once as it has.
  */
 function withStepChoices(
   fields: ReturnType<typeof schemaFields>,
   node: WorkflowNode,
   graph: Pick<GraphLevel, 'nodes'>,
 ): ReturnType<typeof schemaFields> {
+  if (node.definition.key === 'core.parallel') {
+    const branches = readParallelBranches(node.config)?.length;
+    return fields.map((field) =>
+      field.key === 'maxConcurrency'
+        ? {
+            ...field,
+            ...(branches === undefined || branches === 0
+              ? {}
+              : { maximum: branches }),
+            description:
+              'How many branches run at the same time; the rest wait their turn.',
+          }
+        : field,
+    );
+  }
   if (node.definition.key !== 'core.merge') return fields;
   const parallels = graph.nodes.filter(
     (candidate) => candidate.definition.key === 'core.parallel',
