@@ -9,6 +9,8 @@ import {
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import {
   CANVAS_COVER_ATTRIBUTE,
+  cleanEdgeZoom,
+  EDGE_STEP_MIN_ZOOM,
   framedViewport,
   inset,
   READABLE_ZOOM,
@@ -63,16 +65,30 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
         .getNodes()
         .filter((node) => node.parentId === undefined);
       if (area === undefined || nodes.length === 0) return;
-      void flow.setViewport(
-        framedViewport(flow.getNodesBounds(nodes), inset(area, FIT_PADDING), {
-          minZoom: readable ? READABLE_ZOOM : FIT_MIN_ZOOM,
-          maxZoom: 1,
-        }),
-        {
-          duration: animate && !reducedMotion ? 200 : 0,
-          interpolate: 'linear',
-        },
-      );
+      const bounds = flow.getNodesBounds(nodes);
+      const frame = inset(area, FIT_PADDING);
+      let viewport = framedViewport(bounds, frame, {
+        minZoom: readable ? READABLE_ZOOM : FIT_MIN_ZOOM,
+        maxZoom: 1,
+      });
+      // Too wide to open whole: end the view between steps, not through one.
+      if (readable && bounds.width * viewport.zoom > frame.width) {
+        const zoom = cleanEdgeZoom(
+          nodes.map((node) => flow.getNodesBounds([node])),
+          bounds.x,
+          frame.width,
+          viewport.zoom,
+          { minZoom: EDGE_STEP_MIN_ZOOM, maxZoom: 1 },
+        );
+        viewport = framedViewport(bounds, frame, {
+          minZoom: zoom,
+          maxZoom: zoom,
+        });
+      }
+      void flow.setViewport(viewport, {
+        duration: animate && !reducedMotion ? 200 : 0,
+        interpolate: 'linear',
+      });
     },
     [flow, reducedMotion, visibleArea],
   );
