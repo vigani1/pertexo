@@ -52,32 +52,32 @@ wiring remains deployment-owned.
 
 ## Small structure, clear ownership
 
-| Location                              | Responsibility                                                                                    |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `src/main.tsx`                        | Create one router, query cache and browser API client for the application lifetime.               |
-| `src/app/`                            | Router factory and server-cache defaults.                                                         |
-| `src/routes/`                         | Session-aware routes, workspace shell composition and route recovery.                             |
-| `src/features/auth/`                  | Email/password and configured social entry, current session, account security and logout cleanup. |
-| `src/features/workspaces/`            | Workspace discovery, member reads, lifecycle controls, selection and the shared shell.            |
-| `src/features/overview/`              | Capability-scoped bounded workflow/run recency cards and independent recovery.                    |
-| `src/features/workflows/`             | Workflow list/create/rename transport, cache ownership, recovery and presentation.                |
-| `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                                    |
-| `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.               |
-| `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references.       |
-| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, history, saving and conflict recovery.           |
-| `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                                  |
-| `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                                |
-| `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                                |
-| `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.            |
-| `src/features/workflow-settings/`     | Versions and compare, lifecycle, published triggers and the current failure-alert choice.         |
-| `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                      |
-| `src/components/ui/`                  | Weft primitives on Base UI: field and validation timing, notice, status, copy, progress button.   |
-| `src/components/patterns/`            | Shared compositions: confirm dialog, inline rename, stale line, load more, Core orb, page header. |
-| `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors, CSRF cookie adapter and cursor paging.    |
-| `src/lib/`                            | Clock and countdown, time formatting, clipboard, Canvas scene and browser subscriptions.          |
-| `src/lib/utils.ts`                    | Domain-independent Tailwind class merging only.                                                   |
-| `src/styles/`                         | Semantic Tailwind tokens and original visual identity.                                            |
-| `test/`, `e2e/`                       | Component/unit checks and real-browser smoke tests.                                               |
+| Location                              | Responsibility                                                                                                                    |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.tsx`                        | Create one router, query cache and browser API client for the application lifetime.                                               |
+| `src/app/`                            | Router factory and server-cache defaults.                                                                                         |
+| `src/routes/`                         | Session-aware routes, workspace shell composition and route recovery.                                                             |
+| `src/features/auth/`                  | Email/password and configured social entry, current session, account security and logout cleanup.                                 |
+| `src/features/workspaces/`            | Workspace discovery, member reads, lifecycle controls, selection and the shared shell.                                            |
+| `src/features/overview/`              | Capability-scoped bounded workflow/run recency cards and independent recovery.                                                    |
+| `src/features/workflows/`             | Workflow list/create/rename transport, cache ownership, recovery and presentation.                                                |
+| `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                                                                    |
+| `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.                                               |
+| `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references.                                       |
+| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, history, saving and conflict recovery.                                           |
+| `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                                                                  |
+| `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                                                                |
+| `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                                                                |
+| `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.                                            |
+| `src/features/workflow-settings/`     | Versions and compare, lifecycle, published triggers and the current failure-alert choice.                                         |
+| `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                                                      |
+| `src/components/ui/`                  | Weft primitives on Base UI: field and validation timing, notice, status, copy, progress button.                                   |
+| `src/components/patterns/`            | Shared compositions: confirm dialog, inline rename, stale line, load more, Core orb, page header, settings section, how it works. |
+| `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors, CSRF cookie adapter and cursor paging.                                    |
+| `src/lib/`                            | Clock and countdown, time formatting, clipboard, Canvas scene and browser subscriptions.                                          |
+| `src/lib/utils.ts`                    | Domain-independent Tailwind class merging only.                                                                                   |
+| `src/styles/`                         | Semantic Tailwind tokens and original visual identity.                                                                            |
+| `test/`, `e2e/`                       | Component/unit checks and real-browser smoke tests.                                                                               |
 
 Routes compose features; features keep their API calls, queries and UI together
 and depend only on shared UI and reviewed contracts. Do not create every future
