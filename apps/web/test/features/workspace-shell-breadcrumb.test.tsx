@@ -11,7 +11,7 @@ const crumbs = [
 
 describe('the shell breadcrumb', () => {
   it('folds the steps between the workspace and the page into “…” on narrow screens', async () => {
-    render(
+    const { rerender } = render(
       <ShellBreadcrumb
         root={<button type="button">Northwind Ops</button>}
         crumbs={crumbs}
@@ -44,6 +44,17 @@ describe('the shell breadcrumb', () => {
         .getAllByRole('link')
         .map((link) => link.textContent),
     ).toEqual(['Runs', 'Invoice intake']);
+
+    // Following one lands on a page with another trail: the lens is closed.
+    rerender(
+      <ShellBreadcrumb
+        root={<button type="button">Northwind Ops</button>}
+        crumbs={crumbs.slice(0, 2)}
+      />,
+    );
+    expect(
+      screen.queryByRole('dialog', { name: 'The path to this page' }),
+    ).not.toBeInTheDocument();
   });
 
   it('has nothing to fold with one step after the workspace', () => {
