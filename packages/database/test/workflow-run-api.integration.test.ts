@@ -1254,10 +1254,11 @@ describe('workflow run API persistence', () => {
     await ownerQuery(
       `insert into app.node_runs
          (id,workspace_id,workflow_run_id,node_id,invocation_key,
-          branch_context,status,side_effect_class,output_ref)
+          branch_context,status,side_effect_class,output_ref,input_ref)
        values
-         ($1,$3,$4,'set-fields','set-fields','{}','succeeded','safe',$5::jsonb),
-         ($2,$3,$4,'stop','stop','{}','pending','safe',null)`,
+         ($1,$3,$4,'set-fields','set-fields','{}','succeeded','safe',$5::jsonb,
+          $6::jsonb),
+         ($2,$3,$4,'stop','stop','{}','pending','safe',null,null)`,
       [
         withOutput,
         withoutOutput,
@@ -1268,8 +1269,30 @@ describe('workflow run API persistence', () => {
           kind: 'inline',
           value: { report: 'daily-summary', rows: 42 },
         }),
+        JSON.stringify({
+          schemaVersion: 1,
+          kind: 'inline',
+          value: { customerId: 'customer-42' },
+        }),
       ],
     );
+    await expect(
+      database.readNodeRunInput({
+        workspaceId,
+        runId: started.run.id,
+        nodeRunId: withOutput,
+      }),
+    ).resolves.toEqual({
+      kind: 'inline',
+      value: { customerId: 'customer-42' },
+    });
+    await expect(
+      database.readNodeRunInput({
+        workspaceId,
+        runId: started.run.id,
+        nodeRunId: withoutOutput,
+      }),
+    ).resolves.toEqual({ kind: 'none' });
 
     await expect(
       database.readNodeRunOutput({

@@ -52,6 +52,7 @@ import {
   type WorkflowRunReadModel,
 } from './workflow-run-read.js';
 import {
+  readWorkflowNodeRunInput,
   readWorkflowNodeRunOutput,
   readWorkflowRunInput,
   type ReadWorkflowNodeRunOutputInput,
@@ -176,6 +177,9 @@ export interface WorkflowRunDatabase {
   readNodeRunOutput(
     input: ReadWorkflowNodeRunOutputInput,
   ): Promise<WorkflowRunData | undefined>;
+  readNodeRunInput(
+    input: ReadWorkflowNodeRunOutputInput,
+  ): Promise<WorkflowRunData | undefined>;
   stepHealth(
     input: ReadWorkflowStepHealthInput,
   ): Promise<WorkflowStepHealthPage | undefined>;
@@ -240,6 +244,8 @@ export function createWorkflowRunDatabase(
       readWorkflowRunInput(pool, input),
     readNodeRunOutput: (input: ReadWorkflowNodeRunOutputInput) =>
       readWorkflowNodeRunOutput(pool, input),
+    readNodeRunInput: (input: ReadWorkflowNodeRunOutputInput) =>
+      readWorkflowNodeRunInput(pool, input),
     stepHealth: (input: ReadWorkflowStepHealthInput) =>
       readWorkflowStepHealth(pool, input),
     stepRuns: (input: ReadWorkflowStepRunsInput) =>

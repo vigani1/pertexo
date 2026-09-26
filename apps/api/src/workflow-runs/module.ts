@@ -21,6 +21,7 @@ import type {
 } from './ports.js';
 import { WorkflowRunDataController } from './run-data-controller.js';
 import {
+  GetWorkflowNodeRunInputUseCase,
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
   GetWorkflowStepHealthUseCase,
@@ -109,6 +110,13 @@ export class WorkflowRunsModule {
         ),
       },
       {
+        provide: GetWorkflowNodeRunInputUseCase,
+        useValue: new GetWorkflowNodeRunInputUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
         provide: GetWorkflowStepHealthUseCase,
         useValue: new GetWorkflowStepHealthUseCase(
           dependencies.persistence,
@@ -158,6 +166,7 @@ export class WorkflowRunsModule {
         GetWorkflowRunStatisticsUseCase,
         GetWorkflowRunInputUseCase,
         GetWorkflowNodeRunOutputUseCase,
+        GetWorkflowNodeRunInputUseCase,
         GetWorkflowStepHealthUseCase,
         ListWorkflowStepRunsUseCase,
         StreamRunEventsUseCase,

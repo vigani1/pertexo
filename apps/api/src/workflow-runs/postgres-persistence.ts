@@ -107,6 +107,15 @@ export function createPostgresWorkflowRunPersistence(
         return mapPersistenceError(error);
       }
     },
+    readNodeRunInput: async (
+      input: Parameters<WorkflowRunPersistence['readNodeRunInput']>[0],
+    ) => {
+      try {
+        return await database.readNodeRunInput(input);
+      } catch (error: unknown) {
+        return mapPersistenceError(error);
+      }
+    },
     stepHealth: async (
       input: Parameters<WorkflowRunPersistence['stepHealth']>[0],
     ) => {

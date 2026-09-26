@@ -92,6 +92,7 @@ function persistence() {
   const readNodeRunOutput = vi
     .fn<WorkflowRunPersistence['readNodeRunOutput']>()
     .mockResolvedValue(undefined);
+  const readNodeRunInput = vi.fn<WorkflowRunPersistence['readNodeRunInput']>();
   const stepHealth = vi.fn<WorkflowRunPersistence['stepHealth']>();
   const stepRuns = vi.fn<WorkflowRunPersistence['stepRuns']>();
   return {
@@ -104,6 +105,7 @@ function persistence() {
       cancel,
       readInput,
       readNodeRunOutput,
+      readNodeRunInput,
       stepHealth,
       stepRuns,
     } satisfies WorkflowRunPersistence,
@@ -114,6 +116,7 @@ function persistence() {
     cancel,
     readInput,
     readNodeRunOutput,
+    readNodeRunInput,
     stepHealth,
     stepRuns,
   };

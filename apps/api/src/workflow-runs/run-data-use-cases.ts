@@ -1,8 +1,10 @@
 import {
+  workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunInputResponseSchema,
   workflowStepHealthResponseSchema,
   workflowStepRunsResponseSchema,
+  type WorkflowNodeRunInputResponse,
   type WorkflowNodeRunOutputResponse,
   type WorkflowRunInputResponse,
   type WorkflowStepHealthResponse,
@@ -84,6 +86,30 @@ export class GetWorkflowNodeRunOutputUseCase {
     });
     if (data === undefined) throw new WorkflowRunNotFoundError();
     return workflowNodeRunOutputResponseSchema.parse({ output: data });
+  }
+}
+
+/** What one node run received, when it was recorded (ADR 052). */
+export class GetWorkflowNodeRunInputUseCase {
+  public constructor(
+    private readonly persistence: Pick<
+      WorkflowRunPersistence,
+      'readNodeRunInput'
+    >,
+    private readonly authorization: WorkspaceAuthorizationSource,
+  ) {}
+
+  public async execute(
+    input: GetWorkflowNodeRunOutputInput,
+  ): Promise<WorkflowNodeRunInputResponse> {
+    await authorizeRunData(input, this.authorization);
+    const data = await this.persistence.readNodeRunInput({
+      workspaceId: input.routeWorkspaceId,
+      runId: input.runId,
+      nodeRunId: input.nodeRunId,
+    });
+    if (data === undefined) throw new WorkflowRunNotFoundError();
+    return workflowNodeRunInputResponseSchema.parse({ input: data });
   }
 }
 

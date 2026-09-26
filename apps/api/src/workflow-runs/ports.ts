@@ -228,6 +228,9 @@ export interface WorkflowRunPersistence {
   readNodeRunOutput(
     input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
   ): Promise<WorkflowRunDataRecord | undefined>;
+  readNodeRunInput(
+    input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
+  ): Promise<WorkflowRunDataRecord | undefined>;
   stepHealth(
     input: Readonly<{ workspaceId: string; workflowId: string }>,
   ): Promise<

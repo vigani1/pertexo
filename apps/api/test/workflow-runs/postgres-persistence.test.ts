@@ -400,6 +400,9 @@ function databaseWith(
     readNodeRunOutput: vi
       .fn<WorkflowRunDatabase['readNodeRunOutput']>()
       .mockResolvedValue({ kind: 'none' }),
+    readNodeRunInput: vi
+      .fn<WorkflowRunDatabase['readNodeRunInput']>()
+      .mockResolvedValue({ kind: 'none' }),
     stepHealth: vi
       .fn<WorkflowRunDatabase['stepHealth']>()
       .mockResolvedValue({ runsConsidered: 0, oldestRunAt: null, items: [] }),
@@ -681,6 +684,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
       readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
+      readNodeRunInput: vi.fn<WorkflowRunDatabase['readNodeRunInput']>(),
       stepHealth: vi.fn<WorkflowRunDatabase['stepHealth']>(),
       stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
@@ -724,6 +728,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
       readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
+      readNodeRunInput: vi.fn<WorkflowRunDatabase['readNodeRunInput']>(),
       stepHealth: vi.fn<WorkflowRunDatabase['stepHealth']>(),
       stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
@@ -1077,6 +1082,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       }),
       readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
       readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
+      readNodeRunInput: vi.fn<WorkflowRunDatabase['readNodeRunInput']>(),
       stepHealth: vi.fn<WorkflowRunDatabase['stepHealth']>(),
       stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>(),
       close,
