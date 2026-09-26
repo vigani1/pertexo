@@ -3,10 +3,7 @@ import type { StatusTone } from '@/components/ui/status';
 
 export const RUN_STRIP_LENGTH = 20;
 
-type RecentRun = Pick<
-  WorkflowRunReadSummary,
-  'workflowId' | 'status' | 'createdAt'
->;
+type RecentRun = Pick<WorkflowRunReadSummary, 'status' | 'createdAt'>;
 
 export type RunTick = Readonly<{ tone: StatusTone; word: string }>;
 
@@ -22,24 +19,16 @@ const TICKS: Readonly<Record<RecentRun['status'], RunTick>> = {
 };
 
 /**
- * Each workflow's runs within the loaded workspace runs, oldest to newest,
- * at most the last 20. Runs outside that window are simply absent.
+ * A workflow's latest runs as ticks, oldest to newest, at most the last 20.
+ * Runs arrive newest first; the order is settled by their start here.
  */
-export function groupRecentRuns(
-  runs: readonly RecentRun[],
-): ReadonlyMap<string, readonly RunTick[]> {
-  const newestFirst = runs
+export function runTicks(runs: readonly RecentRun[]): readonly RunTick[] {
+  return runs
     .slice()
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const grouped = new Map<string, RunTick[]>();
-  for (const run of newestFirst) {
-    const ticks = grouped.get(run.workflowId) ?? [];
-    if (ticks.length >= RUN_STRIP_LENGTH) continue;
-    ticks.push(TICKS[run.status]);
-    grouped.set(run.workflowId, ticks);
-  }
-  for (const ticks of grouped.values()) ticks.reverse();
-  return grouped;
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, RUN_STRIP_LENGTH)
+    .reverse()
+    .map((run) => TICKS[run.status]);
 }
 
 /** "3 succeeded, 1 failed" — the accessible reading of a strip. */

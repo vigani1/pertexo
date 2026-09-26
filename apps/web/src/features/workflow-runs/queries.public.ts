@@ -5,6 +5,7 @@ export {
   loomStatisticsQueryOptions,
   runLoomQueryOptions,
   runStatisticsQueryOptions,
+  workflowLatestRunsQueryOptions,
   workflowRunKeys,
   workflowRunQueryOptions,
   workflowRunVersionQueryOptions,

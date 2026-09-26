@@ -35,7 +35,6 @@ import {
 } from './model/workflow-list-view';
 import { availableStarters } from './model/workflow-starters';
 import { useListShortcuts } from './use-list-shortcuts';
-import { useRecentRunTicks } from './use-recent-run-ticks';
 import { useRunWorkflow } from './use-run-workflow';
 import type { StarterDraftWriter } from './workflows.mutations';
 import { workflowsInfiniteQueryOptions } from './workflows.queries';
@@ -112,12 +111,6 @@ export function WorkflowListPage({
     ...authoringCatalogQueryOptions(apiClient, user.id),
     enabled: canCreate && starterDraftWriter !== undefined,
   });
-  const runs = useRecentRunTicks(
-    apiClient,
-    user.id,
-    workspace.id,
-    workspace.capabilities.includes('run:read'),
-  );
   const filterRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [startChoice, setStartChoice] = useState<StartChoice>('blank');
@@ -204,7 +197,6 @@ export function WorkflowListPage({
           search={search}
           query={query}
           filterRef={filterRef}
-          runs={runs}
           onQueryChange={setQuery}
           onSearchChange={onSearchChange}
           actions={{

@@ -231,7 +231,7 @@ describe('workflow list', () => {
     });
   });
 
-  it('draws run strips from the latest workspace runs, grouped by workflow', async () => {
+  it('draws each workflow’s strip from its own latest runs', async () => {
     const run = (
       id: string,
       workflow: string,
@@ -251,6 +251,23 @@ describe('workflow list', () => {
       deadlineAt: null,
       cancelRequestedAt: null,
     });
+    const reads: { workflowId: string | null; limit: string | null }[] = [];
+    const runsOf: Record<string, unknown[]> = {
+      [workflowId]: [
+        run('11111111-1111-4111-8111-111111111111', workflowId, 'failed', 3),
+        run('22222222-2222-4222-8222-222222222222', workflowId, 'succeeded', 2),
+        run('33333333-3333-4333-8333-333333333333', workflowId, 'succeeded', 1),
+      ],
+      // A quiet workflow still shows its one run, however busy the other.
+      [secondWorkflowId]: [
+        run(
+          '44444444-4444-4444-8444-444444444444',
+          secondWorkflowId,
+          'succeeded',
+          0,
+        ),
+      ],
+    };
     mockServer.use(
       ...discoveryHandlers(['workflow:create', 'run:read']),
       draftHandler(),
@@ -262,31 +279,18 @@ describe('workflow list', () => {
         nextCursor: null,
       })),
       statisticsHandler(),
-      http.get(`${api}/runs`, () =>
-        HttpResponse.json({
-          items: [
-            run(
-              '11111111-1111-4111-8111-111111111111',
-              workflowId,
-              'failed',
-              3,
-            ),
-            run(
-              '22222222-2222-4222-8222-222222222222',
-              workflowId,
-              'succeeded',
-              2,
-            ),
-            run(
-              '33333333-3333-4333-8333-333333333333',
-              workflowId,
-              'succeeded',
-              1,
-            ),
-          ],
+      http.get(`${api}/runs`, ({ request }) => {
+        const url = new URL(request.url);
+        const workflow = url.searchParams.get('workflowId');
+        reads.push({
+          workflowId: workflow,
+          limit: url.searchParams.get('limit'),
+        });
+        return HttpResponse.json({
+          items: workflow === null ? [] : (runsOf[workflow] ?? []),
           nextCursor: null,
-        }),
-      ),
+        });
+      }),
     );
     renderApp(`/w/${workspaceId}/workflows`);
     expect(
@@ -294,13 +298,19 @@ describe('workflow list', () => {
         name: 'Recent runs: 2 succeeded, 1 failed',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText('None recently')).toBeInTheDocument();
     expect(
-      screen.getByText(/covers the latest 3 runs in this workspace/u),
-    ).toBeVisible();
+      await screen.findByRole('img', { name: 'Recent runs: 1 succeeded' }),
+    ).toBeInTheDocument();
+    expect(reads).toEqual(
+      expect.arrayContaining([
+        { workflowId, limit: '20' },
+        { workflowId: secondWorkflowId, limit: '20' },
+      ]),
+    );
+    expect(screen.queryByText(/Recent runs covers/u)).not.toBeInTheDocument();
   });
 
-  it('leaves out the run-strip note while the workspace has no runs', async () => {
+  it('says a workflow that hasn’t run has no recent runs', async () => {
     mockServer.use(
       ...discoveryHandlers(['workflow:create', 'run:read']),
       draftHandler(),
@@ -313,8 +323,7 @@ describe('workflow list', () => {
       ),
     );
     renderApp(`/w/${workspaceId}/workflows`);
-    expect(await screen.findByText('None recently')).toBeInTheDocument();
-    expect(screen.queryByText(/Recent runs covers/u)).not.toBeInTheDocument();
+    expect(await screen.findByText('No runs yet')).toBeInTheDocument();
   });
 
   it('archives from the row menu after spelling out the consequences', async () => {

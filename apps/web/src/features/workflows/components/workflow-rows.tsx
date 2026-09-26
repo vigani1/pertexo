@@ -3,7 +3,6 @@ import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-author
 import { LoadMore } from '@/components/patterns/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
-import type { RecentRunTicks } from '../use-recent-run-ticks';
 import { WORKFLOW_ROW_COLUMNS, WorkflowRow } from './workflow-row';
 import type { WorkflowRowActions } from './workflow-row-actions';
 
@@ -49,14 +48,12 @@ export function WorkflowRows({
   userId,
   workspace,
   workflows,
-  runs,
   actions,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflows: readonly WorkflowSummary[];
-  runs: RecentRunTicks;
   actions: WorkflowRowActions;
 }>) {
   return (
@@ -69,7 +66,9 @@ export function WorkflowRows({
         <span>Workflow</span>
         <span>State</span>
         <span>Triggers</span>
-        <span>{runs.enabled ? 'Recent runs' : ''}</span>
+        <span>
+          {workspace.capabilities.includes('run:read') ? 'Recent runs' : ''}
+        </span>
         <span>Updated</span>
         <span />
       </div>
@@ -81,7 +80,6 @@ export function WorkflowRows({
             userId={userId}
             workspace={workspace}
             workflow={workflow}
-            runs={runs}
             actions={actions}
           />
         ))}
@@ -91,9 +89,8 @@ export function WorkflowRows({
 }
 
 /**
- * Loading more pages, plus honest notes on what the filter and the run strips
- * can see: only loaded workflows, and only the workspace's latest runs (once
- * there are any).
+ * Loading more pages, plus an honest note on what the filter can see: only
+ * the workflows loaded so far.
  */
 export function WorkflowListFooter({
   hasNextPage,
@@ -101,7 +98,6 @@ export function WorkflowListFooter({
   nextPageError,
   filtering,
   loadedCount,
-  runCount,
   onLoadMore,
 }: Readonly<{
   hasNextPage: boolean;
@@ -109,7 +105,6 @@ export function WorkflowListFooter({
   nextPageError: boolean;
   filtering: boolean;
   loadedCount: number;
-  runCount: number | undefined;
   onLoadMore: () => void;
 }>) {
   return (
@@ -127,13 +122,6 @@ export function WorkflowListFooter({
           Load more to include the rest.
         </p>
       ) : null}
-      {runCount === undefined || runCount === 0 ? null : (
-        <p className="text-xs text-subtle-foreground">
-          {runCount === 1
-            ? 'Recent runs shows the latest run in this workspace.'
-            : `Recent runs covers the latest ${String(runCount)} runs in this workspace.`}
-        </p>
-      )}
     </div>
   );
 }

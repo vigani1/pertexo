@@ -4,7 +4,7 @@ import type {
   WorkflowSummary,
 } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
-  groupRecentRuns,
+  runTicks,
   summarizeRunTicks,
 } from '@/features/workflows/model/run-strip';
 import {
@@ -292,26 +292,27 @@ describe('run strips', () => {
       workflowId,
       status,
       createdAt: `2026-09-14T10:00:${String(second).padStart(2, '0')}.000Z`,
-    }) as Parameters<typeof groupRecentRuns>[0][number];
+    }) as Parameters<typeof runTicks>[0][number];
 
-  it('groups the latest runs per workflow, oldest to newest, capped at 20', () => {
-    const runs = [
+  it('reads a workflow’s latest runs oldest to newest, capped at 20', () => {
+    const ticks = runTicks([
       run('a', 'failed', 3),
       run('a', 'succeeded', 1),
-      run('b', 'running', 2),
-      ...Array.from({ length: 25 }, (_, index) =>
-        run('c', 'succeeded', 30 + index),
-      ),
-    ];
-    const grouped = groupRecentRuns(runs);
-    expect(grouped.get('a')?.map((tick) => tick.word)).toEqual([
+      run('a', 'running', 2),
+    ]);
+    expect(ticks.map((tick) => tick.word)).toEqual([
       'succeeded',
+      'running',
       'failed',
     ]);
-    expect(grouped.get('b')?.[0]?.tone).toBe('live');
-    expect(grouped.get('c')).toHaveLength(20);
-    expect(summarizeRunTicks(grouped.get('a') ?? [])).toBe(
-      '1 succeeded, 1 failed',
-    );
+    expect(ticks[1]?.tone).toBe('live');
+    expect(
+      runTicks(
+        Array.from({ length: 25 }, (_, index) =>
+          run('c', 'succeeded', 30 + index),
+        ),
+      ),
+    ).toHaveLength(20);
+    expect(summarizeRunTicks(ticks)).toBe('1 succeeded, 1 running, 1 failed');
   });
 });
