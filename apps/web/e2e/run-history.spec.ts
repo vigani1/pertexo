@@ -240,7 +240,7 @@ test('filters and paginates workspace history, then opens the exact run', async 
   await expect(
     page
       .getByRole('navigation', { name: 'Workspace' })
-      .getByRole('link', { name: 'Runs, 2 live' }),
+      .getByRole('link', { name: 'Runs, 2 running' }),
   ).toBeVisible();
   await expect(page.getByText(firstRunId)).toHaveCount(0);
   await page.getByRole('button', { name: 'Load more' }).click();

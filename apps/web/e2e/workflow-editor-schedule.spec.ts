@@ -104,6 +104,8 @@ test('builds a schedule with a sentence preview and saves the step’s own confi
   const rule = page.getByLabel('Cron rule', { exact: true });
   await expect(rule).toHaveValue('30 18 * * 1,4');
   await rule.fill('30 18 * *');
+  // The error waits until the field is left, so typing never shifts it.
+  await rule.blur();
   await expect(page.getByText(/A cron rule has five parts/u)).toBeVisible();
   await expect(
     page.getByText('An edit isn’t valid yet, so it isn’t saved.'),

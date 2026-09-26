@@ -128,9 +128,9 @@ test('requests deletion through the accessible workspace settings flow', async (
 
   await page.getByRole('button', { name: 'Delete workspace' }).click();
   await dialog
-    .getByLabel('Type Control Operations to confirm')
+    .getByLabel('Type “Control Operations” to confirm')
     .fill('Control Operations');
-  await dialog.getByLabel('Reason').fill('Retiring this space');
+  await dialog.getByLabel('Reason (required)').fill('Retiring this space');
   await dialog.getByRole('button', { name: 'Delete workspace' }).click();
 
   await expect(page).toHaveURL(

@@ -50,6 +50,8 @@ test('applies schema controls live and keeps invalid numbers as guarded scratch'
 
   const savedRevision = remote.revision;
   await count.fill('-');
+  // The error waits until the field is left, so typing never shifts it.
+  await count.blur();
   await expect(page.getByText('Count must be a number.')).toBeVisible();
   await expect(
     page.getByText('An edit isn’t valid yet, so it isn’t saved.'),
