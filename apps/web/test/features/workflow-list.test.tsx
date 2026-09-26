@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
-import { renderApp } from '../support/render-app';
+import { expectSignInPage, renderApp } from '../support/render-app';
 import { statisticsHandler } from '../support/run-fixtures';
 import {
   api,
@@ -47,9 +47,7 @@ describe('workflow list', () => {
       ...discoveryHandlers(),
     );
     renderApp(`/w/${workspaceId}/workflows`);
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
   });
 
   it('loads real pages newest first and appends the next cursor page', async () => {

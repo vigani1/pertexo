@@ -8,7 +8,7 @@ import { LoginPage } from '@/features/auth/login-page';
 import { AccountMethodsSection } from '@/features/auth/components/account/account-methods-section';
 import { endBrowserSession } from '@/features/auth/session-actions';
 import { mockServer } from '../support/mock-server';
-import { renderApp, testFetch } from '../support/render-app';
+import { expectSignInPage, renderApp, testFetch } from '../support/render-app';
 import { renderInRouter } from '../support/render-in-router';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -141,9 +141,7 @@ describe('authentication and workspace entry', () => {
       ),
     );
     renderApp('/');
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(await screen.findByLabelText('Password')).toBeVisible();
   });
 
@@ -685,9 +683,7 @@ describe('authentication and workspace entry', () => {
       ),
     );
     await app.router.invalidate();
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(app.queryClient.getQueryData(['protected', userId])).toBeUndefined();
   });
 
@@ -1195,9 +1191,7 @@ describe('authentication and workspace entry', () => {
       ),
     );
     renderApp('/w/not-a-workspace/workflows');
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(
       screen.queryByRole('heading', {
         name: 'This workspace isn’t available',
@@ -1290,9 +1284,7 @@ describe('authentication and workspace entry', () => {
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'Try again' }));
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(logoutRequests).toBe(2);
     expect(workspaceReads).toBe(0);
     expect(

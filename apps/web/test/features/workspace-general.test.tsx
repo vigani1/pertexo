@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
-import { renderApp } from '../support/render-app';
+import { expectSignInPage, renderApp } from '../support/render-app';
 
 // Each page loads its lazy route on first render; under a busy machine that
 // can outlast the default one-second wait without anything being wrong.
@@ -333,9 +333,7 @@ describe('workspace settings', () => {
     await actor.type(input, 'Must not dispatch');
     await actor.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in to continue' }),
-    ).toBeVisible();
+    await expectSignInPage();
     expect(patchCount).toBe(0);
   });
 
