@@ -140,6 +140,18 @@ async function settleReads(
 }
 
 /**
+ * Holds navigation until a page's reads settle, so it renders whole instead
+ * of section by section, shifting as each arrives. Each section still shows
+ * its own failure; an expired session signs out.
+ */
+export async function settlePrefetches(
+  context: RouterContext,
+  reads: readonly Promise<unknown>[],
+): Promise<void> {
+  await settleReads(context, reads);
+}
+
+/**
  * Holds navigation until one resource's page has its data. A 404 (missing,
  * or hidden by the API's non-disclosing policy) renders the in-shell
  * not-found page; any other failure goes to the route error boundary.

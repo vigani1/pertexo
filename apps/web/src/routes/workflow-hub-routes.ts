@@ -2,6 +2,7 @@ import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
 import { workflowIdentifierSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import {
+  failureNotificationPolicyQueryOptions,
   scheduleTriggersQueryOptions,
   webhookTriggersQueryOptions,
   workflowVersionsQueryOptions,
@@ -10,6 +11,7 @@ import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.publ
 import {
   filtersFromSearch,
   sanitizeWorkflowRunSearch,
+  stepHealthQueryOptions,
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
@@ -19,6 +21,7 @@ import {
   authoringPrefetches,
   prefetchResource,
   probeResource,
+  settlePrefetches,
   warmPrefetches,
 } from './route-context';
 import { workspaceScopeRoute } from './workspace-routes';
@@ -184,10 +187,14 @@ export const workflowSettingsRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   pendingComponent: WorkflowHubPending,
   path: 'settings',
-  loader: ({ context }) => {
+  // Every section's read settles first, so the page renders whole rather
+  // than growing and shrinking as each one arrives.
+  loader: async ({ context }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
-    warmPrefetches(context, [
+    const can = (capability: (typeof workspace.capabilities)[number]) =>
+      workspace.capabilities.includes(capability);
+    await settlePrefetches(context, [
       queryClient.query(
         workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
       ),
@@ -199,13 +206,33 @@ export const workflowSettingsRoute = createRoute({
           workflowId,
         ),
       ),
-      ...(workspace.capabilities.includes('workflow:update')
+      ...(can('workflow:update')
         ? [
             queryClient.query(
               failureNotificationDestinationsQueryOptions(
                 apiClient,
                 user.id,
                 workspace.id,
+              ),
+            ),
+            queryClient.query(
+              failureNotificationPolicyQueryOptions(
+                apiClient,
+                user.id,
+                workspace.id,
+                workflowId,
+              ),
+            ),
+          ]
+        : []),
+      ...(can('run:read')
+        ? [
+            queryClient.query(
+              stepHealthQueryOptions(
+                apiClient,
+                user.id,
+                workspace.id,
+                workflowId,
               ),
             ),
           ]
