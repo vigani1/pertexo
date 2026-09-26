@@ -1,4 +1,5 @@
 export {
+  failureNotificationPolicyQueryOptions,
   scheduleTriggersQueryOptions,
   webhookTriggersQueryOptions,
   workflowVersionsQueryOptions,

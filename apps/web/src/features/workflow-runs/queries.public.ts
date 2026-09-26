@@ -5,6 +5,7 @@ export {
   loomStatisticsQueryOptions,
   runLoomQueryOptions,
   runStatisticsQueryOptions,
+  stepHealthQueryOptions,
   workflowLatestRunsQueryOptions,
   workflowRunKeys,
   workflowRunQueryOptions,
