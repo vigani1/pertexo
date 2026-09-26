@@ -7,7 +7,7 @@ import {
 } from '../../model/auth-failure';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { Countdown } from '@/lib/use-countdown';
-import { useLatestRequest } from '../../use-latest-request';
+import { useLatestRequest } from '@/lib/use-latest-request';
 import {
   AuthLens,
   AuthLensDescription,
@@ -42,13 +42,12 @@ export function InboxLens({
   footer?: ReactNode;
 }>) {
   const requests = useLatestRequest();
-  const [pending, setPending] = useState(false);
+  const { pending } = requests;
   const [feedback, setFeedback] = useState<Feedback>();
 
   async function send() {
     if (pending || cooldown.remainingSeconds > 0) return;
     const request = requests.begin();
-    setPending(true);
     setFeedback(undefined);
     try {
       await resend(request.signal);
@@ -63,7 +62,7 @@ export function InboxLens({
         );
       setFeedback({ tone: 'destructive', text: resendFailure(error) });
     } finally {
-      if (request.finish()) setPending(false);
+      request.finish();
     }
   }
 

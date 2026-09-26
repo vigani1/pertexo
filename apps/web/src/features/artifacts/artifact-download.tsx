@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { DownloadIcon, FileTextIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { describeReadError } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { formatByteLength } from '@/lib/format-bytes';
 import { formatClock } from '@/lib/format-time';
+import { useLatestRequest } from '@/lib/use-latest-request';
 import { getArtifactMetadata, prepareArtifactDownload } from './artifacts.api';
 import { artifactMetadataQueryOptions } from './artifacts.queries';
 import { describeFileKind, shortArtifactId } from './model/artifact-labels';
@@ -50,24 +51,14 @@ function ArtifactDownloadScope({
     ),
     enabled: userId !== undefined,
   });
-  const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [download, setDownload] = useState<PreparedDownload>();
-  const request = useRef<AbortController | undefined>(undefined);
-
-  useEffect(
-    () => () => {
-      request.current?.abort();
-    },
-    [],
-  );
+  const requests = useLatestRequest();
+  const { pending } = requests;
 
   async function prepare() {
     if (pending) return;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
-    setPending(true);
+    const request = requests.begin();
     setError(undefined);
     setDownload(undefined);
     try {
@@ -78,7 +69,7 @@ function ArtifactDownloadScope({
               apiClient,
               workspaceId,
               artifactId,
-              controller.signal,
+              request.signal,
             );
       if (known.status !== 'available') {
         setError('This file is still being written. Try again in a moment.');
@@ -88,19 +79,18 @@ function ArtifactDownloadScope({
         apiClient,
         workspaceId,
         artifactId,
-        controller.signal,
+        request.signal,
       );
-      if (controller.signal.aborted) return;
+      if (!request.isCurrent()) return;
       setDownload(prepared);
       // Opening straight away keeps it to one click; if the browser blocks
       // the tab, the link below still works.
       const opened = window.open(prepared.url, '_blank');
       if (opened) opened.opener = null;
     } catch (cause) {
-      if (!controller.signal.aborted)
-        setError(describeReadError(cause, 'The file'));
+      if (request.isCurrent()) setError(describeReadError(cause, 'The file'));
     } finally {
-      if (!controller.signal.aborted) setPending(false);
+      request.finish();
     }
   }
 
