@@ -10,7 +10,7 @@ import {
 } from './model/auth-failure';
 import { signInWithEmail, startSocialAuthentication } from './native-auth.api';
 import { useCountdown } from '@/lib/use-countdown';
-import { useLatestRequest } from './use-latest-request';
+import { useLatestRequest } from '@/lib/use-latest-request';
 
 /**
  * Password and provider sign-in for the sign-in lens: one request at a time,
@@ -33,7 +33,6 @@ export function useSignIn({
 }>) {
   const requests = useLatestRequest();
   const rateLimit = useCountdown();
-  const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string>();
   const [mismatch, setMismatch] = useState(false);
 
@@ -50,9 +49,8 @@ export function useSignIn({
   }
 
   async function withPassword(email: string, password: string) {
-    if (pending) return false;
+    if (requests.pending) return false;
     const request = requests.begin();
-    setPending(true);
     clearFailure();
     try {
       await signInWithEmail(apiClient, { email, password }, request.signal);
@@ -65,14 +63,13 @@ export function useSignIn({
       else fail(error, signInFailure(error));
       return false;
     } finally {
-      if (request.finish()) setPending(false);
+      request.finish();
     }
   }
 
   async function withProvider(provider: SocialProvider) {
-    if (pending) return;
+    if (requests.pending) return;
     const request = requests.begin();
-    setPending(true);
     clearFailure();
     try {
       const url = await startSocialAuthentication(
@@ -81,17 +78,18 @@ export function useSignIn({
         request.signal,
         returnTo,
       );
-      // The page stays busy while the browser leaves for the provider.
+      // The page stays busy while the browser leaves for the provider, so
+      // the request isn't finished here.
       if (request.isCurrent()) navigateToProvider(url);
     } catch (error) {
       if (!request.isCurrent()) return;
       fail(error, providerStartFailure(error, providerName(provider)));
-      if (request.finish()) setPending(false);
+      request.finish();
     }
   }
 
   return {
-    pending,
+    pending: requests.pending,
     failure,
     /** The failure is a refused email and password, so a reset may help. */
     mismatch,

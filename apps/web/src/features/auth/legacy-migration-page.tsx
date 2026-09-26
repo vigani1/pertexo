@@ -20,7 +20,7 @@ import {
 } from './legacy-migration.api';
 import { formatCountdown } from '@/lib/format-time';
 import { useCountdown } from '@/lib/use-countdown';
-import { useLatestRequest } from './use-latest-request';
+import { useLatestRequest } from '@/lib/use-latest-request';
 import { Notice } from '@/components/ui/notice';
 
 const WINDOW_MS = 5 * 60_000;
@@ -41,7 +41,7 @@ export function LegacyMigrationPage({
   );
   const requests = useLatestRequest();
   const timeWindow = useCountdown();
-  const [pending, setPending] = useState(false);
+  const { pending } = requests;
   const [leaving, setLeaving] = useState(false);
   const [failure, setFailure] = useState<string>();
   const [started, setStarted] = useState<Started>();
@@ -50,7 +50,6 @@ export function LegacyMigrationPage({
 
   async function start(provider: SocialProvider) {
     const request = requests.begin();
-    setPending(true);
     setFailure(undefined);
     setStarted(undefined);
     try {
@@ -70,7 +69,7 @@ export function LegacyMigrationPage({
           'Recovery couldn’t start. Your existing account was not changed. If your old sign-in no longer works, ask your Pertexo operator for help.',
         );
     } finally {
-      if (request.finish()) setPending(false);
+      request.finish();
     }
   }
 

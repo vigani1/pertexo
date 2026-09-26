@@ -19,7 +19,7 @@ import { startAccountLink } from '../../account-security.api';
 import { currentPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useLatestRequest } from '../../use-latest-request';
+import { useLatestRequest } from '@/lib/use-latest-request';
 import { SocialProviderGrid } from '../social/social-provider-grid';
 import { providerName, type SocialProvider } from '../../model/social-provider';
 import { Notice } from '@/components/ui/notice';
@@ -122,7 +122,7 @@ export function LinkProviderDialog({
     { password: '' },
   );
   const requests = useLatestRequest();
-  const [pending, setPending] = useState(false);
+  const { pending } = requests;
   const [failure, setFailure] = useState<string>();
 
   function close() {
@@ -144,7 +144,6 @@ export function LinkProviderDialog({
             provider: authenticationProviderSchema.parse(source.provider),
           };
     const request = requests.begin();
-    setPending(true);
     setFailure(undefined);
     try {
       const url = await startAccountLink(
@@ -159,7 +158,7 @@ export function LinkProviderDialog({
       if (request.isCurrent())
         setFailure(linkFailure(error, providerName(target)));
     } finally {
-      if (request.finish()) setPending(false);
+      request.finish();
     }
   }
 

@@ -18,7 +18,7 @@ import {
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useLatestRequest } from '../../use-latest-request';
+import { useLatestRequest } from '@/lib/use-latest-request';
 import { AccountCommandFailure, AccountSection } from './account-section';
 
 // The account endpoints accept new passwords of at least 12 characters.
@@ -53,7 +53,7 @@ export function AccountPasswordSection({
   const requests = useLatestRequest();
   const queryClient = useQueryClient();
   const notifications = useNotifications();
-  const [pending, setPending] = useState(false);
+  const { pending } = requests;
   const [failure, setFailure] = useState<unknown>();
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
@@ -63,7 +63,6 @@ export function AccountPasswordSection({
     if (values === undefined) return;
     const request = requests.begin();
     const { current, password } = values;
-    setPending(true);
     setFailure(undefined);
     try {
       if (hasPassword)
@@ -85,7 +84,7 @@ export function AccountPasswordSection({
     } catch (error) {
       if (request.isCurrent()) setFailure(error);
     } finally {
-      if (request.finish()) setPending(false);
+      request.finish();
     }
   }
 
