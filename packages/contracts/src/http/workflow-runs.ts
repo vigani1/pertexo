@@ -289,6 +289,10 @@ export const workflowRunInputResponseSchema = z
 export const workflowNodeRunOutputResponseSchema = z
   .object({ output: workflowRunDataSchema })
   .strict();
+/** What one step run received, when it was recorded (ADR 052). */
+export const workflowNodeRunInputResponseSchema = z
+  .object({ input: workflowRunDataSchema })
+  .strict();
 
 export const workflowRunStartResponseSchema = z
   .object({ run: workflowRunSummarySchema, replayed: z.boolean() })
@@ -371,6 +375,9 @@ export type WorkflowRunInputResponse = z.output<
 >;
 export type WorkflowNodeRunOutputResponse = z.output<
   typeof workflowNodeRunOutputResponseSchema
+>;
+export type WorkflowNodeRunInputResponse = z.output<
+  typeof workflowNodeRunInputResponseSchema
 >;
 export type WorkflowRunListResponse = z.output<
   typeof workflowRunListResponseSchema

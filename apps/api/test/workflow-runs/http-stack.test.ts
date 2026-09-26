@@ -98,6 +98,7 @@ function persistenceFixture() {
   const readInput = vi.fn<WorkflowRunPersistence['readInput']>();
   const readNodeRunOutput =
     vi.fn<WorkflowRunPersistence['readNodeRunOutput']>();
+  const readNodeRunInput = vi.fn<WorkflowRunPersistence['readNodeRunInput']>();
   const stepHealth = vi.fn<WorkflowRunPersistence['stepHealth']>();
   const stepRuns = vi.fn<WorkflowRunPersistence['stepRuns']>();
   return {
@@ -110,6 +111,7 @@ function persistenceFixture() {
       cancel,
       readInput,
       readNodeRunOutput,
+      readNodeRunInput,
       stepHealth,
       stepRuns,
     } satisfies WorkflowRunPersistence,
@@ -121,6 +123,7 @@ function persistenceFixture() {
     cancel,
     readInput,
     readNodeRunOutput,
+    readNodeRunInput,
     stepHealth,
     stepRuns,
   };
@@ -404,6 +407,20 @@ describe('workflow runs real Nest HTTP stack', () => {
       workspaceId,
       runId,
       nodeRunId,
+    });
+
+    fixture.readNodeRunInput.mockResolvedValue({
+      kind: 'inline',
+      value: { orderId: 'A-17' },
+    });
+    const stepInput = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/node-runs/${nodeRunId}/input`,
+      headers: authHeaders,
+    });
+    expect(stepInput.statusCode).toBe(200);
+    expect(stepInput.json()).toEqual({
+      input: { kind: 'inline', value: { orderId: 'A-17' } },
     });
 
     fixture.readNodeRunOutput.mockResolvedValue(undefined);

@@ -13,6 +13,7 @@ import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { actorFrom, type WorkflowRunsRequest } from './controllers.js';
 import { WorkflowRunReadGuard } from './guards.js';
 import {
+  GetWorkflowNodeRunInputUseCase,
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
   GetWorkflowStepHealthUseCase,
@@ -29,6 +30,7 @@ export class WorkflowRunDataController {
   public constructor(
     private readonly getRunInput: GetWorkflowRunInputUseCase,
     private readonly getNodeRunOutput: GetWorkflowNodeRunOutputUseCase,
+    private readonly getNodeRunInput: GetWorkflowNodeRunInputUseCase,
     private readonly getStepHealth: GetWorkflowStepHealthUseCase,
     private readonly listStepRuns: ListWorkflowStepRunsUseCase,
   ) {}
@@ -56,6 +58,22 @@ export class WorkflowRunDataController {
   ) {
     const route = workflowNodeRunParamsSchema.parse(params);
     return this.getNodeRunOutput.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...optionalAuthorizedWorkspace(request),
+      runId: route.runId,
+      nodeRunId: route.nodeRunId,
+    });
+  }
+
+  @Get('runs/:runId/node-runs/:nodeRunId/input')
+  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  public async getNodeInput(
+    @Req() request: WorkflowRunsRequest,
+    @Param() params: unknown,
+  ) {
+    const route = workflowNodeRunParamsSchema.parse(params);
+    return this.getNodeRunInput.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
       ...optionalAuthorizedWorkspace(request),

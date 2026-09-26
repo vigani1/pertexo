@@ -37,6 +37,7 @@ import {
   workflowRunListItemSchema,
   workflowRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
+  workflowNodeRunInputResponseSchema,
   workflowStepHealthResponseSchema,
   workflowStepRunsResponseSchema,
   workflowStepRunsQuerySchema,
@@ -90,6 +91,12 @@ function runDataSchemas(target: 'client' | 'openapi') {
     WorkflowNodeRunOutputResponse: projectContractSchema(
       'WorkflowNodeRunOutputResponse',
       workflowNodeRunOutputResponseSchema,
+      'output',
+      target,
+    ),
+    WorkflowNodeRunInputResponse: projectContractSchema(
+      'WorkflowNodeRunInputResponse',
+      workflowNodeRunInputResponseSchema,
       'output',
       target,
     ),
@@ -267,6 +274,24 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           '200': jsonResponse(
             'The output one step run produced',
             'WorkflowNodeRunOutputResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/input': {
+      get: {
+        operationId: 'getWorkflowNodeRunInput',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter, runParameter, nodeRunParameter],
+        responses: {
+          '200': jsonResponse(
+            'The input one step run received, when it was recorded',
+            'WorkflowNodeRunInputResponse',
           ),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),

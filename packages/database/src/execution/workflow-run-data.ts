@@ -50,7 +50,7 @@ export type ReadWorkflowNodeRunOutputInput = Readonly<
 const inputRowSchema = z
   .object({ input_ref: z.unknown(), past_input_window: z.boolean() })
   .strict();
-const outputRowSchema = z.object({ output_ref: z.unknown() }).strict();
+const storedRowSchema = z.object({ stored: z.unknown() }).strict();
 const failedStepRowSchema = z
   .object({
     workflow_run_id: z.uuid(),
@@ -82,6 +82,29 @@ export async function readWorkflowRunInput(
   );
 }
 
+/**
+ * The input a node run's latest attempt received, as recorded (ADR 052);
+ * `undefined` unless it belongs to the run.
+ */
+export async function readWorkflowNodeRunInput(
+  pool: Pool,
+  input: ReadWorkflowNodeRunOutputInput,
+): Promise<WorkflowRunData | undefined> {
+  const parsed = nodeRunDataInputSchema.parse(input);
+  return withWorkspaceReadTransaction(
+    pool,
+    parsed.workspaceId,
+    (transaction) =>
+      nodeRunValueInTransaction(
+        transaction,
+        parsed.runId,
+        parsed.nodeRunId,
+        'input',
+      ),
+    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  );
+}
+
 /** A node run's current output; `undefined` unless it belongs to the run. */
 export async function readWorkflowNodeRunOutput(
   pool: Pool,
@@ -92,7 +115,12 @@ export async function readWorkflowNodeRunOutput(
     pool,
     parsed.workspaceId,
     (transaction) =>
-      nodeRunOutputInTransaction(transaction, parsed.runId, parsed.nodeRunId),
+      nodeRunValueInTransaction(
+        transaction,
+        parsed.runId,
+        parsed.nodeRunId,
+        'output',
+      ),
     parsed.signal === undefined ? {} : { signal: parsed.signal },
   );
 }
@@ -117,13 +145,16 @@ async function runInputInTransaction(
   return Object.freeze({ kind: row.past_input_window ? 'expired' : 'none' });
 }
 
-async function nodeRunOutputInTransaction(
+/** A node run's stored input or output; `undefined` unless it's in the run. */
+async function nodeRunValueInTransaction(
   transaction: WorkspaceTransaction,
   runId: string,
   nodeRunId: string,
+  value: 'input' | 'output',
 ): Promise<WorkflowRunData | undefined> {
+  const column = sql.raw(value === 'input' ? 'input_ref' : 'output_ref');
   const result = await transaction.db.execute(sql`
-    select output_ref
+    select ${column} as stored
     from app.node_runs
     where workspace_id = ${transaction.workspaceId}
       and workflow_run_id = ${runId}
@@ -131,10 +162,10 @@ async function nodeRunOutputInTransaction(
     limit 1
   `);
   if (result.rows[0] === undefined) return undefined;
-  const row = outputRowSchema.parse(result.rows[0]);
-  return row.output_ref === null
+  const row = storedRowSchema.parse(result.rows[0]);
+  return row.stored === null
     ? Object.freeze({ kind: 'none' })
-    : toRunData(row.output_ref);
+    : toRunData(row.stored);
 }
 
 /**

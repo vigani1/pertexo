@@ -17,6 +17,7 @@ const dependencies = {
     list: () => Promise.resolve({ items: [] }),
     readInput: () => Promise.resolve(undefined),
     readNodeRunOutput: () => Promise.resolve(undefined),
+    readNodeRunInput: () => Promise.resolve(undefined),
     stepHealth: () => Promise.resolve(undefined),
     stepRuns: () => Promise.resolve(undefined),
     statistics: () => Promise.reject(new Error('not exercised')),
