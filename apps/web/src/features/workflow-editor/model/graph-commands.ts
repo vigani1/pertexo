@@ -1,6 +1,7 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { Connection } from '@xyflow/react';
+import { startingConfig } from './starting-config';
 import {
   cardSize,
   makeRoomAround,
@@ -59,13 +60,14 @@ function newStep(
   definition: NodeDefinitionCatalogItem,
   position: Position,
   id: string,
+  levelNodes: readonly WorkflowNode[],
 ): WorkflowNode {
   const node = {
     id,
     definition: definition.definition,
     position,
     configVersion: definition.configVersion,
-    config: {},
+    config: startingConfig(definition.definition.key, levelNodes),
     inputMappings: {},
     connectionRefs: {},
   } satisfies WorkflowNode;
@@ -80,7 +82,7 @@ export function addDefinitionNode(
 ): WorkflowGraphContract {
   return {
     ...graph,
-    nodes: [...graph.nodes, newStep(definition, position, id)],
+    nodes: [...graph.nodes, newStep(definition, position, id, graph.nodes)],
   };
 }
 
@@ -102,7 +104,6 @@ export function addStepAfter(
   const targetPort = inputs.includes(from.port) ? from.port : inputs[0];
   const scope = scopeOf(graph, from.nodeId);
   if (targetPort === undefined || scope === undefined) return null;
-  const node = newStep(definition, position, ids.nodeId);
   const edge = {
     id: ids.edgeId,
     source: { nodeId: from.nodeId, port: from.port },
@@ -110,7 +111,10 @@ export function addStepAfter(
   } satisfies WorkflowEdge;
   return changeLevel(graph, scope, (level) => ({
     ...level,
-    nodes: [...level.nodes, node],
+    nodes: [
+      ...level.nodes,
+      newStep(definition, position, ids.nodeId, level.nodes),
+    ],
     edges: [...level.edges, edge],
   }));
 }
@@ -151,10 +155,12 @@ export function addBodyStep(
         ? addStepAfter(withBody, definition, position, from, ids)
         : null;
   } else {
-    const node = newStep(definition, position, ids.nodeId);
     added = changeLevel(withBody, bodyScope, (level) => ({
       ...level,
-      nodes: [...level.nodes, node],
+      nodes: [
+        ...level.nodes,
+        newStep(definition, position, ids.nodeId, level.nodes),
+      ],
     }));
   }
   // The container grew around its new step: move what it would now cover.
