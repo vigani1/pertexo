@@ -228,7 +228,6 @@ export function EditorWorkspace({
           onAddStepAfter={addAfter}
           onAddToBody={addToBody}
           onDuplicateSelection={duplicateSelection}
-          onDeleteSelection={deleteSelection}
           onRemoveEdge={removeEdge}
         />
       }

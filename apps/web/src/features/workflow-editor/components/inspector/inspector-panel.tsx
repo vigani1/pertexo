@@ -1,8 +1,6 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type { ReactNode } from 'react';
-import { CopyPlusIcon, Trash2Icon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/editor-store-context';
 import { findDefinition } from '../../model/graph-adapter';
@@ -27,8 +25,6 @@ export function InspectorPanel({
   focusTarget,
   renderTest,
   actions,
-  onDuplicateSelection,
-  onDeleteSelection,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
@@ -41,8 +37,6 @@ export function InspectorPanel({
     (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
   renderTest: (nodeId: string, stepSideEffect: string | undefined) => ReactNode;
   actions: NodeInspectorActions;
-  onDuplicateSelection: () => void;
-  onDeleteSelection: () => void;
 }>) {
   const graph = useEditorStore((state) => state.graph);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
@@ -80,31 +74,12 @@ export function InspectorPanel({
         <h2 className="font-heading text-lg font-semibold">
           {selectedCount} steps selected
         </h2>
+        {/* Duplicate and Delete live on the canvas bar beside the
+            selection; saying so here beats a second copy of them. */}
         <p className="text-sm text-muted-foreground">
-          Select one step to see its setup.
+          Duplicate or delete them from the bar on the canvas, or select one
+          step to see its setup.
         </p>
-        {editable ? (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={onDuplicateSelection}
-            >
-              <CopyPlusIcon data-icon="inline-start" />
-              Duplicate
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              onClick={onDeleteSelection}
-            >
-              <Trash2Icon data-icon="inline-start" />
-              Delete
-            </Button>
-          </div>
-        ) : null}
       </div>
     );
   return (

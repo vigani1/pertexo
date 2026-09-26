@@ -1,4 +1,5 @@
 import { MiniMap, Panel, useReactFlow } from '@xyflow/react';
+import { useEditorStore } from '../../model/editor-store-context';
 import { MaximizeIcon, MinusIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
@@ -30,6 +31,8 @@ function minimapNodeFill(node: WorkflowFlowNode): string {
  */
 export function CanvasZoomLens({ onFit }: Readonly<{ onFit: () => void }>) {
   const { zoomIn, zoomOut } = useReactFlow();
+  // An empty draft has nothing to map, so no empty frame either.
+  const empty = useEditorStore((state) => state.graph.nodes.length === 0);
   const reducedMotion = usePrefersReducedMotion();
   const duration = reducedMotion ? 0 : 200;
   return (
@@ -37,22 +40,24 @@ export function CanvasZoomLens({ onFit }: Readonly<{ onFit: () => void }>) {
       position="bottom-left"
       className="lens !bottom-3 !left-3 !m-0 flex items-center gap-2 rounded-md p-1.5 lg:!left-[var(--editor-left-inset,0.75rem)]"
     >
-      <MiniMap<WorkflowFlowNode>
-        pannable
-        zoomable
-        ariaLabel="Workflow overview"
-        // The map sizes its drawing from these numbers, not from classes.
-        style={MINIMAP_SIZE}
-        nodeBorderRadius={3}
-        nodeColor={minimapNodeFill}
-        nodeStrokeColor={(node) =>
-          node.selected === true ? 'var(--primary)' : 'transparent'
-        }
-        nodeStrokeWidth={14}
-        // Pixels; React Flow scales it to the map (the CSS variable isn't).
-        maskStrokeWidth={1}
-        className="!static !m-0 !hidden overflow-hidden rounded-sm [--xy-minimap-background-color:color-mix(in_srgb,var(--background)_45%,transparent)] [--xy-minimap-mask-background-color:color-mix(in_srgb,var(--background)_55%,transparent)] [--xy-minimap-mask-stroke-color:color-mix(in_srgb,var(--primary)_55%,transparent)] [--xy-minimap-node-background-color:color-mix(in_srgb,var(--accent-foreground)_35%,transparent)] sm:!block"
-      />
+      {empty ? null : (
+        <MiniMap<WorkflowFlowNode>
+          pannable
+          zoomable
+          ariaLabel="Workflow overview"
+          // The map sizes its drawing from these numbers, not from classes.
+          style={MINIMAP_SIZE}
+          nodeBorderRadius={3}
+          nodeColor={minimapNodeFill}
+          nodeStrokeColor={(node) =>
+            node.selected === true ? 'var(--primary)' : 'transparent'
+          }
+          nodeStrokeWidth={14}
+          // Pixels; React Flow scales it to the map (the CSS variable isn't).
+          maskStrokeWidth={1}
+          className="!static !m-0 !hidden overflow-hidden rounded-sm [--xy-minimap-background-color:color-mix(in_srgb,var(--background)_45%,transparent)] [--xy-minimap-mask-background-color:color-mix(in_srgb,var(--background)_55%,transparent)] [--xy-minimap-mask-stroke-color:color-mix(in_srgb,var(--primary)_55%,transparent)] [--xy-minimap-node-background-color:color-mix(in_srgb,var(--accent-foreground)_35%,transparent)] sm:!block"
+        />
+      )}
       <div className="flex flex-col gap-1">
         <Button
           type="button"

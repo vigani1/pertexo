@@ -111,6 +111,7 @@ export function RunDetailTabs({
           <RunStepList
             rows={view.rows}
             active={active}
+            nowMs={nowMs}
             selectedKey={selectedKey}
             onSelectStep={onSelectStep}
           />

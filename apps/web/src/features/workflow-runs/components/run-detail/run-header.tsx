@@ -173,11 +173,11 @@ function RunActions({
           type="button"
           variant="destructive"
           className={grow}
-          {...(compact ? { 'aria-label': 'Cancel run' } : {})}
           onClick={onCancel}
         >
           <OctagonXIcon aria-hidden="true" />
-          {compact ? 'Cancel' : 'Cancel run'}
+          {/* The same words at every size. */}
+          Cancel run
         </Button>
       ) : null}
     </>

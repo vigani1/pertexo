@@ -96,7 +96,8 @@ describe('input mapping summaries', () => {
       describeMappingSource({ ...row, kind: 'literal', literalJson }, level);
     expect(literal('"Paid"')).toEqual({ tone: 'value', label: '“Paid”' });
     expect(literal('1240')).toEqual({ tone: 'value', label: '1240' });
-    expect(literal('null').label).toBe('null');
+    // null, what a new row holds, reads as words rather than a token.
+    expect(literal('null').label).toBe('no value');
     expect(literal('{"a":1,"b":2}').label).toBe('{2 fields}');
     expect(literal('[1]').label).toBe('[1 item]');
     expect(literal(JSON.stringify('x'.repeat(60))).label).toHaveLength(42);

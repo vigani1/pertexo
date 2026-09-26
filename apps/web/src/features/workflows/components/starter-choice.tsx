@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import {
   starterPreviewGraph,
@@ -76,7 +76,18 @@ function StarterOption({
       </span>
       <span className="min-w-0">
         <span className="block text-sm font-semibold text-foreground">
-          {title}
+          {/* An arrow stays with the step after it, so a line never ends
+              on "→". */}
+          {title.split(' → ').map((part, index) =>
+            index === 0 ? (
+              part
+            ) : (
+              <Fragment key={part}>
+                {' '}
+                <span className="whitespace-nowrap">→ {part}</span>
+              </Fragment>
+            ),
+          )}
         </span>
         <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
           {description}

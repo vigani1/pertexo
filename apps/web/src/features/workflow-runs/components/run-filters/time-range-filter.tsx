@@ -163,7 +163,13 @@ function CustomRangeForm({
       {error === undefined ? null : (
         <FieldError className="mt-2">{error}</FieldError>
       )}
-      <Button type="submit" size="sm" className="mt-3 w-full">
+      {/* Nothing to apply until both days are chosen. */}
+      <Button
+        type="submit"
+        size="sm"
+        className="mt-3 w-full"
+        disabled={from === '' || to === ''}
+      >
         Apply range
       </Button>
     </form>

@@ -2,20 +2,24 @@ import { StatusGlyph } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
 import { cn } from '@/lib/utils';
 import type { ThreadRow } from '../../model/thread-view';
+import { stepTag } from '../../model/step-copy';
 import { RunLoadingWave } from './run-loading-wave';
 
 /**
  * On phones the Thread tab is the run's steps as a list: each step's name,
- * its status glyph and how many attempts it took. Tapping one opens it.
+ * a second line with its status and timing ("Waiting · resumes in 12m"),
+ * and its glyph. Tapping one opens it.
  */
 export function RunStepList({
   rows,
   active,
+  nowMs,
   selectedKey,
   onSelectStep,
 }: Readonly<{
   rows: readonly ThreadRow[];
   active: boolean;
+  nowMs: number;
   selectedKey: string | undefined;
   onSelectStep: (key: string) => void;
 }>) {
@@ -44,13 +48,18 @@ export function RunStepList({
               type="button"
               aria-pressed={row.key === selectedKey}
               aria-label={`${row.label}: ${row.statusLabel}${row.attempts > 1 ? `, ${String(row.attempts)} attempts` : ''}`}
-              className="flex min-h-12 w-full items-center justify-between gap-3 border-t border-white/6 px-1 text-left outline-none focus-ring aria-pressed:bg-primary/[0.05]"
+              className="flex min-h-12 w-full items-center justify-between gap-3 border-t border-white/6 px-1 py-2 text-left outline-none focus-ring aria-pressed:bg-action/[0.06]"
               onClick={() => {
                 onSelectStep(row.key);
               }}
             >
-              <span className="min-w-0 truncate text-[0.95rem]">
-                {row.label}
+              <span className="min-w-0">
+                <span className="block truncate text-[0.95rem]">
+                  {row.label}
+                </span>
+                <span className="block truncate font-mono text-[0.72rem] text-subtle-foreground">
+                  {stepLine(row, nowMs)}
+                </span>
               </span>
               <span
                 className={cn(
@@ -67,4 +76,15 @@ export function RunStepList({
       </ol>
     </section>
   );
+}
+
+/** "Succeeded · 0.04s", "Waiting · resumes in 12m": the thread's tag in words. */
+function stepLine(row: ThreadRow, nowMs: number): string {
+  const tag = stepTag(row, nowMs);
+  if (tag === '') return row.statusLabel;
+  // A tag that already starts with the status ("skipped · not taken")
+  // stands alone, so the line never says it twice.
+  if (tag.toLocaleLowerCase().startsWith(row.statusLabel.toLocaleLowerCase()))
+    return `${tag.charAt(0).toLocaleUpperCase()}${tag.slice(1)}`;
+  return `${row.statusLabel} · ${tag}`;
 }

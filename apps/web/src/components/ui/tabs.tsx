@@ -38,7 +38,8 @@ export function TabsContent({
   return (
     <TabsPrimitive.Panel
       data-slot="tabs-content"
-      className={cn('min-w-0 outline-none', className)}
+      // A panel takes focus on Tab, so it shows the ring like everything else.
+      className={cn('min-w-0 rounded-sm outline-none focus-ring', className)}
       {...props}
     />
   );

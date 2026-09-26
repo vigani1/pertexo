@@ -187,11 +187,11 @@ describe('workflow editor input mapping rows', () => {
     expect(invalid.inputMappings).toBeUndefined();
     expect(invalid.errors).toEqual({
       one: {
-        destinationKey: 'Destination keys must be unique.',
+        destinationKey: 'Another input already uses this field.',
         source: 'Use $, dot properties, array indexes, or quoted properties.',
       },
       two: {
-        destinationKey: 'Destination keys must be unique.',
+        destinationKey: 'Another input already uses this field.',
         source: 'The source must be a directly connected predecessor.',
       },
       three: {

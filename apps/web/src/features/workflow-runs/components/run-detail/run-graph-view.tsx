@@ -17,6 +17,7 @@ import {
 } from '@xyflow/react';
 import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { Status, type StatusTone } from '@/components/ui/status';
+import { useMediaQuery } from '@/lib/use-media-query';
 import { cn } from '@/lib/utils';
 import { projectRunGraph, type GraphStepStatus } from '../../model/run-graph';
 import type { ThreadRow } from '../../model/thread-view';
@@ -55,6 +56,10 @@ const FIT_OPTIONS = {
   maxZoom: 1,
   minZoom: READABLE_ZOOM,
 } as const;
+// A phone shows the whole run first: its shape matters more than reading
+// every name, and a tap on a step opens it.
+const PHONE_FIT_OPTIONS = { ...FIT_OPTIONS, minZoom: 0.2 } as const;
+const PHONE_MEDIA_QUERY = '(max-width: 47.999rem)';
 
 /** Centre on `focus`, but keep the view filled with the map where it can. */
 function clampCentre(
@@ -77,15 +82,21 @@ function clampCentre(
  */
 function ReadableFit({
   focusId,
+  wholeRun,
   onFitted,
-}: Readonly<{ focusId: string | undefined; onFitted: () => void }>) {
+}: Readonly<{
+  focusId: string | undefined;
+  /** Keep the whole run in view instead of zooming to readable. */
+  wholeRun: boolean;
+  onFitted: () => void;
+}>) {
   const flow = useReactFlow();
   const store = useStoreApi();
   const initialFitDone = useStore((state) => !state.fitViewQueued);
   const refine = useEffectEvent(async () => {
     const focus =
       focusId === undefined ? undefined : flow.getInternalNode(focusId);
-    if (flow.getZoom() < READABLE_ZOOM && focus !== undefined) {
+    if (!wholeRun && flow.getZoom() < READABLE_ZOOM && focus !== undefined) {
       const { width, height } = store.getState();
       const bounds = flow.getNodesBounds(flow.getNodes());
       const { x, y } = focus.internals.positionAbsolute;
@@ -141,6 +152,7 @@ export function RunGraphView({
   const projection = useMemo(() => projectRunGraph(graph, rows), [graph, rows]);
   // Hidden until the first fit, so the map never jumps into place.
   const [fitted, setFitted] = useState(false);
+  const phone = useMediaQuery(PHONE_MEDIA_QUERY);
   const nodes = useMemo<RunNode[]>(
     () =>
       projection.nodes.map((node) => ({
@@ -188,8 +200,8 @@ export function RunGraphView({
         }}
         colorMode="dark"
         fitView
-        fitViewOptions={FIT_OPTIONS}
-        minZoom={0.35}
+        fitViewOptions={phone ? PHONE_FIT_OPTIONS : FIT_OPTIONS}
+        minZoom={phone ? 0.2 : 0.35}
         maxZoom={1.6}
         deleteKeyCode={null}
         proOptions={{ hideAttribution: true }}
@@ -201,12 +213,14 @@ export function RunGraphView({
       >
         <ReadableFit
           focusId={selectedNodeId ?? graph.nodes[0]?.id}
+          wholeRun={phone}
           onFitted={() => {
             setFitted(true);
           }}
         />
+        {/* Top right, clear of the phone's floating run actions. */}
         <Controls
-          position="bottom-right"
+          position="top-right"
           showInteractive={false}
           className="workflow-canvas-controls"
         />

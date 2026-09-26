@@ -194,7 +194,9 @@ function MappingEditor({
         aria-label="Source"
         value={[row.kind]}
         disabled={disabled}
-        className="w-full flex-wrap"
+        // The options share the width, tighter than a page toggle, so all
+        // four fit the inspector on one line.
+        className="w-full flex-wrap [&>*]:flex-1 [&>*]:px-1.5 [&>*]:text-[0.78rem]"
         onValueChange={(values) => {
           const kind: unknown = values[0];
           if (!isEditableInputMappingKind(kind)) return;

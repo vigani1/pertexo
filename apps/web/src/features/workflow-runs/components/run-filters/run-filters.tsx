@@ -71,7 +71,7 @@ export function RunFilters({
             onSearchChange(value === null ? rest : { ...rest, status: value });
           }}
         >
-          <SelectTrigger aria-label="Status" className="w-full sm:w-44">
+          <SelectTrigger aria-label="Status" className="w-full sm:w-36 lg:w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -94,7 +94,10 @@ export function RunFilters({
             onSearchChange(value === null ? rest : { ...rest, trigger: value });
           }}
         >
-          <SelectTrigger aria-label="Trigger" className="w-full sm:w-40">
+          <SelectTrigger
+            aria-label="Trigger"
+            className="w-full sm:w-32 lg:w-40"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

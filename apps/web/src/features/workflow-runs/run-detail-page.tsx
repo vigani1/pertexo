@@ -28,7 +28,9 @@ import {
   workflowRunVersionQueryOptions,
 } from './workflow-runs.queries';
 
-const LENS_MEDIA_QUERY = '(min-width: 80rem)';
+// From a tablet up the step lens is on the page: beside the run on a wide
+// screen, under the tabs below that. Only phones open it as a sheet.
+const LENS_MEDIA_QUERY = '(min-width: 48rem)';
 const PHONE_MEDIA_QUERY = '(max-width: 47.999rem)';
 
 /** The step worth opening first: what's running, waiting or went wrong. */
@@ -219,7 +221,7 @@ export function RunDetailPage({
       </div>
       <aside
         aria-label="Step details"
-        className="lens sticky top-6 hidden max-h-[calc(100svh-3rem)] self-start overflow-y-auto rounded-xl p-5 xl:block"
+        className="lens hidden self-start rounded-xl p-5 md:block xl:sticky xl:top-6 xl:max-h-[calc(100svh-3rem)] xl:overflow-y-auto"
       >
         {selected === undefined ? null : (
           <h2 className="mb-1 font-display text-xl leading-tight [--display-optical-size:24] [--display-width:84%]">
@@ -229,7 +231,9 @@ export function RunDetailPage({
         {lens}
       </aside>
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="right">
+        {/* On a phone the step rises from the bottom, only as tall as it
+            needs; wider screens keep the side sheet. */}
+        <SheetContent side={compact ? 'bottom' : 'right'}>
           <SheetHeader>
             <SheetTitle>{selected?.label ?? 'Step'}</SheetTitle>
           </SheetHeader>

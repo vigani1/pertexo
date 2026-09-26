@@ -87,7 +87,7 @@ export function ConnectionSlot({
       />
       {matching.length === 0 ? (
         <FieldDescription>
-          There’s no active {label.toLowerCase()} in this workspace yet.
+          There’s no active {label} in this workspace yet.
           {addScope === null ? ' Admins and owners can add one.' : ''}
         </FieldDescription>
       ) : null}

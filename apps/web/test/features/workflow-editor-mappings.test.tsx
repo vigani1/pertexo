@@ -187,7 +187,7 @@ describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
     const restored = screen.getByRole('region', { name: 'Inputs' });
     // A saved input reads as one compact row until it's opened.
     const summary = within(restored).getByRole('button', {
-      name: 'draft from null',
+      name: 'draft from no value',
     });
     expect(summary).toHaveAttribute('aria-expanded', 'false');
     expect(within(restored).queryByLabelText('Field')).toBeNull();

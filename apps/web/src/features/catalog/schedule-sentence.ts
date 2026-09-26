@@ -106,6 +106,16 @@ function listWords(words: readonly string[]): string {
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
+// A time of day in the person's clock, as the next-run list shows times:
+// "9:00 AM" in English, "09:00" where a 24-hour clock is the norm.
+const clockFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZone: 'UTC',
+});
+const clock = (hour: number, minute: number) =>
+  clockFormatter.format(Date.UTC(2000, 0, 1, hour, minute));
+
 function ordinal(day: number): string {
   const teen = day % 100 >= 11 && day % 100 <= 13;
   const suffix = teen ? 'th' : (['th', 'st', 'nd', 'rd'][day % 10] ?? 'th');
@@ -157,11 +167,11 @@ function describeTimes(minute: Field, hour: Field): string | undefined {
       ? `Every hour at :${pad(onlyMinute)}`
       : `Every ${String(hour.step)} hours at :${pad(onlyMinute)}`;
   if (hour.values.length > 4) return undefined;
-  return `at ${listWords(hour.values.map((value) => `${pad(value)}:${pad(onlyMinute)}`))}`;
+  return `at ${listWords(hour.values.map((value) => clock(value, onlyMinute)))}`;
 }
 
 /**
- * A five-field cron expression as a sentence, e.g. "Every weekday at 09:00".
+ * A five-field cron expression as a sentence, e.g. "Every weekday at 9:00 AM".
  * Shapes it can't say plainly fall back to naming the expression itself.
  */
 export function describeCron(expression: string): string {

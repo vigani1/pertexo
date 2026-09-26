@@ -171,6 +171,7 @@ export function NodeInspector({
                 definition={definition}
                 connections={connections}
                 form={form}
+                graph={graph}
                 onOpenInputs={() => {
                   onTabChange('inputs');
                 }}

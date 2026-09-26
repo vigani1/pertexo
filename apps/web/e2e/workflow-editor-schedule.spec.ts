@@ -86,7 +86,7 @@ test('builds a schedule with a sentence preview and saves the step’s own confi
   await page.getByLabel('At', { exact: true }).fill('18:30');
   await choose(page, 'Timezone', 'America/New York');
   const preview = page.getByRole('region', { name: 'When it runs' });
-  await expect(preview).toContainText('Every Monday and Thursday at 18:30');
+  await expect(preview).toContainText('Every Monday and Thursday at 6:30 PM');
   await expect(preview).toContainText('America/New York time');
   await expect(preview).toContainText('When the clocks change');
   await expect
