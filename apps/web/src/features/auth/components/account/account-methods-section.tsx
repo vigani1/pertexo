@@ -104,24 +104,19 @@ export function AccountMethodsSection({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              {onlyMethod ? (
-                <span
-                  id={`method-${method.id}-reason`}
-                  className="text-xs text-subtle-foreground"
-                >
-                  Your only way to sign in
-                </span>
-              ) : null}
+            {/* The only way in can't be removed, so it gets a reason
+                instead of a button that never works. */}
+            {onlyMethod ? (
+              <span className="text-xs text-subtle-foreground">
+                Your only way to sign in
+              </span>
+            ) : (
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 aria-label={`Remove ${methodName(method)}`}
-                aria-describedby={
-                  onlyMethod ? `method-${method.id}-reason` : undefined
-                }
-                disabled={onlyMethod || unlink.isPending}
+                disabled={unlink.isPending}
                 onClick={() => {
                   unlink.reset();
                   setMethodToRemove(method);
@@ -129,7 +124,7 @@ export function AccountMethodsSection({
               >
                 Remove
               </Button>
-            </div>
+            )}
           </li>
         ))}
       </ul>

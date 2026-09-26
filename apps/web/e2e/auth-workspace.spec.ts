@@ -881,10 +881,23 @@ test('distinguishes an invalid reset link from a lost completion response', asyn
     .getByLabel('Confirm new password', { exact: true })
     .fill('a new secure password value');
   await page.getByRole('button', { name: 'Reset password' }).click();
+  // A refused link can't be fixed from the form, so the page says so and
+  // offers the way on instead.
   await expect(
-    page.getByText('This reset link is invalid or expired. Request a new one.'),
+    page.getByRole('heading', { name: 'This reset link has expired' }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Request a new link' }),
+  ).toBeVisible();
+
   loseResponse = true;
+  await page.goto('/reset-password?token=one-time-token');
+  await page
+    .getByLabel('New password', { exact: true })
+    .fill('a new secure password value');
+  await page
+    .getByLabel('Confirm new password', { exact: true })
+    .fill('a new secure password value');
   await page.getByRole('button', { name: 'Reset password' }).click();
   await expect(
     page.getByText(/Your password may have changed; try signing in/u),

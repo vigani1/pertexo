@@ -51,7 +51,7 @@ export function PasswordMeter({
         />
         <span
           className={cn(
-            'absolute -top-1 right-0 size-2.5 rounded-full bg-success transition-transform duration-300 ease-unspool motion-reduce:transition-none',
+            'absolute -top-1 right-1 size-2.5 rounded-full bg-success transition-transform duration-300 ease-unspool motion-reduce:transition-none',
             met
               ? 'scale-100 shadow-[0_0_0_4px_color-mix(in_srgb,var(--success)_15%,transparent)]'
               : 'scale-0',

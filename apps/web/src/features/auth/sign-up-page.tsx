@@ -7,7 +7,6 @@ import {
 } from './components/inbox/inbox-lens';
 import { SignUpLens } from './components/sign-up/sign-up-lens';
 import { AuthLensFooter } from './components/stage/auth-lens';
-import { AuthStage } from './components/stage/auth-stage';
 import { PasswordCapabilityGate } from './components/stage/lens-states';
 import { resendVerificationEmail } from './native-auth.api';
 import { useCountdown } from '@/lib/use-countdown';
@@ -24,7 +23,7 @@ export function SignUpPage({
   const cooldown = useCountdown();
 
   return (
-    <AuthStage>
+    <>
       <PasswordCapabilityGate
         apiClient={apiClient}
         id="sign-up-unavailable"
@@ -81,6 +80,6 @@ export function SignUpPage({
           )
         }
       </PasswordCapabilityGate>
-    </AuthStage>
+    </>
   );
 }

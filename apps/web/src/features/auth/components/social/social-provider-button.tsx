@@ -23,7 +23,7 @@ export function SocialProviderButton({
       aria-label={`${action} ${providerName(provider)}`}
       variant="outline"
       className={cn(
-        'h-9.5 w-full gap-2.5 border-white/10 bg-white/[0.035] text-[0.82rem] text-foreground hover:border-primary/35 hover:bg-primary/[0.07]',
+        'w-full gap-2.5 border-white/10 bg-white/[0.035] text-[0.82rem] text-foreground hover:border-action/35 hover:bg-action/[0.07]',
         className,
       )}
       {...props}

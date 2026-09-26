@@ -1,10 +1,6 @@
 import type { UserProfileResponse } from '@pertexo/contracts/schemas/identity-workspace';
 import { useQuery } from '@tanstack/react-query';
-import {
-  PageHeader,
-  PageHeaderMeta,
-  PageHeaderTitle,
-} from '@/components/patterns/page-header';
+import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClient } from '@/lib/api/client';
 import { accountSecurityQueryOptions } from './account-security.queries';
@@ -62,12 +58,7 @@ export function AccountSecurityPage({
   return (
     <div className="flex w-full max-w-3xl flex-col gap-8">
       <PageHeader>
-        <div className="min-w-0">
-          <PageHeaderTitle>Account &amp; security</PageHeaderTitle>
-          <PageHeaderMeta>
-            <span className="[overflow-wrap:anywhere]">{user.email}</span>
-          </PageHeaderMeta>
-        </div>
+        <PageHeaderTitle>Account &amp; security</PageHeaderTitle>
       </PageHeader>
       <Tabs defaultValue={linkOutcome === undefined ? 'profile' : 'security'}>
         <TabsList aria-label="Account sections">

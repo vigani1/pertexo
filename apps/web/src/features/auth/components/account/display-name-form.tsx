@@ -71,7 +71,7 @@ export function DisplayNameForm({
   return (
     <form
       noValidate
-      className="flex max-w-md flex-col gap-3"
+      className="flex max-w-md min-w-0 flex-1 flex-col gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -104,7 +104,8 @@ export function DisplayNameForm({
         )}
       </LabelledField>
       <NameOutcome command={command} latest={user.displayName} />
-      <div className="flex flex-wrap gap-2">
+      {/* Like every rename: Cancel then the filled Save, on the right. */}
+      <div className="flex flex-wrap justify-end gap-2">
         <Button
           type="button"
           variant="ghost"
@@ -118,7 +119,7 @@ export function DisplayNameForm({
         </Button>
         <ProgressButton
           type="submit"
-          variant="default"
+          variant="primary"
           pending={command.pending}
           pendingLabel="Saving…"
         >
@@ -140,7 +141,7 @@ function NameOutcome({
     return (
       <Notice role="alert" tone="warning">
         We couldn’t confirm whether your name changed. Try again — Pertexo
-        recognises the repeat, so it can’t apply twice.
+        recognizes the repeat, so it can’t apply twice.
       </Notice>
     );
   if (command.conflict)

@@ -14,7 +14,7 @@ import {
   confirmationProblem,
   DEFAULT_MINIMUM_PASSWORD_LENGTH,
   newPasswordProblem,
-  requiredPasswordProblem,
+  currentPasswordProblem,
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -43,7 +43,7 @@ export function AccountPasswordSection({
   const fields = useFieldValues(
     {
       current: (value) =>
-        hasPassword ? requiredPasswordProblem(value) : undefined,
+        hasPassword ? currentPasswordProblem(value) : undefined,
       password: (value) => newPasswordProblem(value, MINIMUM_LENGTH),
       confirmation: (value, values) =>
         confirmationProblem(value, values.password),
@@ -146,6 +146,7 @@ export function AccountPasswordSection({
         )}
         <ProgressButton
           type="submit"
+          variant="primary"
           className="w-fit"
           pending={pending}
           pendingLabel="Saving…"

@@ -85,9 +85,15 @@ export function recoveryFailure(error: unknown): string {
   return 'We couldn’t request a reset link. Try again.';
 }
 
+/** The reset link itself was refused: used, expired or never valid. */
+export function isResetLinkInvalid(error: unknown): boolean {
+  const failure = nativeError(error);
+  return failure?.code === 'auth.reset_link_invalid' || failure?.status === 400;
+}
+
 export function resetFailure(error: unknown): string {
   const failure = nativeError(error);
-  if (failure?.code === 'auth.reset_link_invalid' || failure?.status === 400)
+  if (isResetLinkInvalid(error))
     return 'This reset link is invalid or expired. Request a new one.';
   if (failure?.status === 429) return TOO_MANY;
   if (isLostResponse(error))

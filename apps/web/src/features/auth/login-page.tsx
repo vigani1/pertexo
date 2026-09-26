@@ -10,7 +10,6 @@ import {
 } from './components/inbox/inbox-lens';
 import { SignInLens } from './components/sign-in/sign-in-lens';
 import { AuthLensFooter } from './components/stage/auth-lens';
-import { AuthStage } from './components/stage/auth-stage';
 import { LensLoading, LensUnavailable } from './components/stage/lens-states';
 import { resendFailure } from './model/auth-failure';
 import type { LoginNotice } from './model/login-notice';
@@ -64,7 +63,7 @@ export function LoginPage({
   );
 
   return (
-    <AuthStage>
+    <>
       {capabilities.isPending ? (
         <LensLoading
           title="Sign in to continue"
@@ -133,6 +132,6 @@ export function LoginPage({
           returnTo={returnTo}
         />
       )}
-    </AuthStage>
+    </>
   );
 }

@@ -7,9 +7,9 @@ import { ResetPasswordLens } from './components/reset/reset-password-lens';
 import {
   AuthLens,
   AuthLensDescription,
+  AuthLensFooter,
   AuthLensTitle,
 } from './components/stage/auth-lens';
-import { AuthStage } from './components/stage/auth-stage';
 import { PasswordCapabilityGate } from './components/stage/lens-states';
 
 function OutcomeLens({
@@ -18,12 +18,14 @@ function OutcomeLens({
   title,
   children,
   action,
+  footer,
 }: Readonly<{
   id: string;
   glyph?: ReactNode;
   title: string;
   children: ReactNode;
   action: ReactNode;
+  footer?: ReactNode;
 }>) {
   return (
     <AuthLens aria-labelledby={id}>
@@ -31,13 +33,19 @@ function OutcomeLens({
       <AuthLensTitle id={id}>{title}</AuthLensTitle>
       <AuthLensDescription>{children}</AuthLensDescription>
       <div className="mt-6">{action}</div>
+      {footer}
     </AuthLens>
   );
 }
 
+const backToSignIn = (
+  <AuthLensFooter>
+    <Link to="/login">Back to sign in</Link>
+  </AuthLensFooter>
+);
+
 const primaryLink = buttonVariants({
   variant: 'primary',
-  size: 'lg',
   className: 'w-full',
 });
 
@@ -46,9 +54,10 @@ export function PasswordResetPage({
   token,
 }: Readonly<{ apiClient: ApiClient; token?: string }>) {
   const [changed, setChanged] = useState(false);
+  const [linkInvalid, setLinkInvalid] = useState(false);
 
   return (
-    <AuthStage>
+    <>
       {token === undefined ? (
         <OutcomeLens
           id="reset-incomplete"
@@ -58,6 +67,7 @@ export function PasswordResetPage({
               Request a new one
             </Link>
           }
+          footer={backToSignIn}
         >
           Part of the reset link is missing. Open the latest reset email again,
           or request a new link.
@@ -71,7 +81,21 @@ export function PasswordResetPage({
           unavailable="Password reset is not available right now."
         >
           {(capabilities) =>
-            changed ? (
+            linkInvalid ? (
+              <OutcomeLens
+                id="reset-expired"
+                title="This reset link has expired"
+                action={
+                  <Link to="/forgot-password" className={primaryLink}>
+                    Request a new link
+                  </Link>
+                }
+                footer={backToSignIn}
+              >
+                A reset link works once and only for a while. Request a new one
+                and open the latest email.
+              </OutcomeLens>
+            ) : changed ? (
               <OutcomeLens
                 id="reset-done"
                 glyph={
@@ -98,11 +122,14 @@ export function PasswordResetPage({
                 onReset={() => {
                   setChanged(true);
                 }}
+                onLinkInvalid={() => {
+                  setLinkInvalid(true);
+                }}
               />
             )
           }
         </PasswordCapabilityGate>
       )}
-    </AuthStage>
+    </>
   );
 }

@@ -8,7 +8,6 @@ import {
   RESEND_COOLDOWN_SECONDS,
 } from './components/inbox/inbox-lens';
 import { AuthLensFooter } from './components/stage/auth-lens';
-import { AuthStage } from './components/stage/auth-stage';
 import { PasswordCapabilityGate } from './components/stage/lens-states';
 import { recoveryFailure } from './model/auth-failure';
 import { requestPasswordReset } from './native-auth.api';
@@ -27,7 +26,7 @@ export function PasswordRecoveryPage({
   const cooldown = useCountdown();
 
   return (
-    <AuthStage>
+    <>
       <PasswordCapabilityGate
         apiClient={apiClient}
         id="recovery-unavailable"
@@ -88,6 +87,6 @@ export function PasswordRecoveryPage({
           )
         }
       </PasswordCapabilityGate>
-    </AuthStage>
+    </>
   );
 }

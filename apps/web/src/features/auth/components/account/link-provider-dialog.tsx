@@ -16,7 +16,7 @@ import { useFieldValues } from '@/components/ui/use-field-validation';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import { startAccountLink } from '../../account-security.api';
-import { requiredPasswordProblem } from '../../forms/field-rules';
+import { currentPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useLatestRequest } from '../../use-latest-request';
@@ -117,7 +117,7 @@ export function LinkProviderDialog({
   const fields = useFieldValues(
     {
       password: (value) =>
-        confirmsWithPassword ? requiredPasswordProblem(value) : undefined,
+        confirmsWithPassword ? currentPasswordProblem(value) : undefined,
     },
     { password: '' },
   );

@@ -1,4 +1,4 @@
-// Turns a stored user-agent string into words people recognise, like
+// Turns a stored user-agent string into words people recognize, like
 // "Chrome on macOS". Order matters: many browsers also claim to be Chrome or
 // Safari, so the more specific names are checked first.
 

@@ -43,7 +43,7 @@ export function AuthLensDescription({
   return (
     <p
       className={cn(
-        'mt-2 text-[0.85rem] leading-relaxed text-muted-foreground',
+        'mt-2 text-[0.85rem] leading-relaxed text-pretty text-muted-foreground',
         className,
       )}
       {...props}

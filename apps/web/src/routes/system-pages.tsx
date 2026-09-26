@@ -21,6 +21,7 @@ import {
   BarredThread,
   LooseThread,
 } from '@/components/patterns/thread-illustrations';
+import { Wordmark } from '@/features/auth/auth-stage.public';
 import { knownWorkspaceName } from '@/features/workspaces/last-workspace.public';
 import { isNotFound, supportReference } from '@/lib/api/api-error-copy';
 
@@ -113,6 +114,11 @@ function FullScreenState({
 }>) {
   return (
     <FullScreen>
+      {/* The wordmark where the sign-in stage keeps it, so a dead end
+          still says where you are. */}
+      <div className="fixed top-6 left-6 z-10 min-[900px]:top-9 min-[900px]:left-11">
+        <Wordmark />
+      </div>
       <SystemState className={CENTRED}>
         <SystemStateArt>{art}</SystemStateArt>
         <SystemStateTitle>{title}</SystemStateTitle>
