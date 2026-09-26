@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import {
   formatCalendarDay,
+  formatMonthName,
   formatMonthYear,
   weekdayNames,
 } from '@/lib/format-time';
@@ -88,45 +89,84 @@ export function Calendar({
     go(step(focused));
   }
 
+  /** Where a day sits on the range's band, if it's on it at all. */
+  function band(day: LocalDate): 'start' | 'middle' | 'end' | undefined {
+    const from = range?.from;
+    const to = range?.to;
+    if (from === undefined || to === undefined || from === to) return undefined;
+    if (day === from) return 'start';
+    if (day === to) return 'end';
+    return between(day) ? 'middle' : undefined;
+  }
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Previous month"
-          disabled={min !== undefined && sameMonth(focused, min)}
-          onClick={() => {
-            go(shiftMonths(focused, -1));
-          }}
-        >
-          <ChevronLeftIcon aria-hidden="true" />
-        </Button>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2 px-1">
         <p
           id={headingId}
           aria-live="polite"
-          className="font-heading text-sm font-semibold"
+          className="flex items-baseline gap-1.5"
         >
-          {formatMonthYear(visible)}
+          <span
+            aria-hidden="true"
+            className="font-display text-lg leading-none [--display-optical-size:24] [--display-width:86%]"
+          >
+            {formatMonthName(visible)}
+          </span>
+          <span
+            aria-hidden="true"
+            className="font-mono text-xs text-subtle-foreground"
+          >
+            {visible.getFullYear()}
+          </span>
+          <span className="sr-only">{formatMonthYear(visible)}</span>
         </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Next month"
-          disabled={max !== undefined && sameMonth(focused, max)}
-          onClick={() => {
-            go(shiftMonths(focused, 1));
-          }}
-        >
-          <ChevronRightIcon aria-hidden="true" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {sameMonth(focused, today) || outOfBounds(today) ? null : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-xs text-accent-foreground"
+              onClick={() => {
+                go(today);
+              }}
+            >
+              Today
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            className="rounded-full"
+            aria-label="Previous month"
+            disabled={min !== undefined && sameMonth(focused, min)}
+            onClick={() => {
+              go(shiftMonths(focused, -1));
+            }}
+          >
+            <ChevronLeftIcon aria-hidden="true" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            className="rounded-full"
+            aria-label="Next month"
+            disabled={max !== undefined && sameMonth(focused, max)}
+            onClick={() => {
+              go(shiftMonths(focused, 1));
+            }}
+          >
+            <ChevronRightIcon aria-hidden="true" />
+          </Button>
+        </div>
       </div>
       <table
         role="grid"
         aria-labelledby={headingId}
-        className="w-full border-collapse"
+        className="w-full border-separate border-spacing-y-1"
         onKeyDown={onKeyDown}
       >
         <thead>
@@ -135,7 +175,7 @@ export function Calendar({
               <th
                 key={name}
                 scope="col"
-                className="pb-1 font-mono text-[0.66rem] font-normal text-subtle-foreground"
+                className="pb-1 text-[0.68rem] font-semibold tracking-wide text-subtle-foreground uppercase"
               >
                 {name}
               </th>
@@ -145,11 +185,31 @@ export function Calendar({
         <tbody>
           {monthWeeks(focused).map((week) => (
             <tr key={week[0]}>
-              {week.map((day) => {
+              {week.map((day, column) => {
                 const date = dateOf(day) ?? new Date();
                 const outside = !sameMonth(day, focused);
+                const onBand = band(day);
+                const isToday = day === today;
                 return (
-                  <td key={day} className="p-0.5 text-center">
+                  <td
+                    key={day}
+                    className={cn(
+                      'relative p-0 text-center',
+                      // The range is one band across the week, rounded where
+                      // it starts, ends or wraps to the next row.
+                      onBand !== undefined &&
+                        "before:absolute before:inset-y-0.5 before:bg-action/14 before:content-['']",
+                      onBand === 'middle' && 'before:inset-x-0',
+                      onBand === 'start' && 'before:right-0 before:left-1/2',
+                      onBand === 'end' && 'before:right-1/2 before:left-0',
+                      onBand === 'middle' &&
+                        column === 0 &&
+                        'before:left-1 before:rounded-l-full',
+                      onBand === 'middle' &&
+                        column === week.length - 1 &&
+                        'before:right-1 before:rounded-r-full',
+                    )}
+                  >
                     <button
                       ref={(element) => {
                         if (element === null) days.current.delete(day);
@@ -160,15 +220,15 @@ export function Calendar({
                       disabled={outOfBounds(day)}
                       aria-label={formatCalendarDay(date)}
                       aria-pressed={chosen(day)}
-                      aria-current={day === today ? 'date' : undefined}
+                      aria-current={isToday ? 'date' : undefined}
                       className={cn(
-                        'grid size-8 place-items-center rounded-md font-mono text-[0.78rem] outline-none transition-colors hover:bg-white/8 focus-ring disabled:pointer-events-none disabled:opacity-30',
-                        outside && 'text-subtle-foreground',
-                        day === today &&
-                          'text-accent-foreground underline decoration-primary/60 underline-offset-4',
-                        between(day) && 'bg-action/15 text-foreground',
-                        chosen(day) &&
-                          'bg-action text-action-foreground no-underline hover:bg-action-hover',
+                        'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-[0.8rem] tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring hover:border-white/12 hover:bg-white/[0.06] disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
+                        outside && 'text-subtle-foreground/70',
+                        isToday && !chosen(day) && 'text-accent-foreground',
+                        onBand === 'middle' && 'text-foreground',
+                        // A chosen day is solid inside its ring, so the band
+                        // stops at its edge rather than showing through.
+                        chosen(day) && 'neon-outline bg-popover font-semibold',
                       )}
                       onClick={() => {
                         setFocused(day);
@@ -176,6 +236,13 @@ export function Calendar({
                       }}
                     >
                       {date.getDate()}
+                      {isToday ? (
+                        // Today: a bead of light under the number.
+                        <span
+                          aria-hidden="true"
+                          className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]"
+                        />
+                      ) : null}
                     </button>
                   </td>
                 );
