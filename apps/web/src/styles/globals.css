@@ -188,13 +188,38 @@
   }
 }
 
+/* Neon outline: the one primary action per screen, and a chosen day. No
+   fill, just the brand's live cyan as a lit line with a glow on either side
+   of it, so it reads as light on the dark rather than a slab of colour. */
+@utility neon-outline {
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow:
+    0 0 14px -4px color-mix(in oklab, var(--primary) 80%, transparent),
+    inset 0 0 10px -4px color-mix(in oklab, var(--primary) 60%, transparent);
+  text-shadow: 0 0 8px color-mix(in oklab, var(--primary) 70%, transparent);
+
+  &:hover:where(:not(:disabled, [aria-disabled='true'])) {
+    background-color: color-mix(in oklab, var(--primary) 8%, transparent);
+    box-shadow:
+      0 0 22px -4px color-mix(in oklab, var(--primary) 95%, transparent),
+      inset 0 0 12px -4px color-mix(in oklab, var(--primary) 75%, transparent);
+  }
+}
+
 /* Menus, selects, popovers and toasts: small, read at a glance and often
-   over busy rows, so they're almost solid. Same edges as a lens. */
+   over busy rows, so they're almost solid, and frosted: what little shows
+   through is blurred into colour, never text. Same edges as a lens. */
 @utility popup-lens {
   background: color-mix(in srgb, var(--popover) 97%, transparent);
   border: 1px solid var(--glass-border-subtle);
   border-top-color: var(--glass-border-strong);
   box-shadow: var(--shadow-lens);
+
+  @supports (backdrop-filter: blur(1px)) {
+    background: color-mix(in srgb, var(--popover) 92%, transparent);
+    backdrop-filter: blur(18px) saturate(1.4);
+  }
 }
 
 /* Display type: Bricolage Grotesque at a condensed width, Weft's one real

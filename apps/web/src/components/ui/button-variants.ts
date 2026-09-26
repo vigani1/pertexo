@@ -7,10 +7,10 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Unavailable, it turns solid grey rather than a see-through cyan;
-        // while its request runs (data-pending) it keeps its fill.
+        // Neon outline. Unavailable, it turns plain grey rather than a dim
+        // glow; while its request runs (data-pending) it keeps its light.
         primary:
-          'bg-action text-action-foreground shadow-action not-aria-disabled:hover:bg-action-hover disabled:bg-white/9 disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 aria-disabled:bg-white/9 aria-disabled:text-muted-foreground aria-disabled:shadow-none aria-disabled:opacity-100 data-pending:disabled:bg-action data-pending:disabled:text-action-foreground',
+          'neon-outline disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:[text-shadow:none] aria-disabled:border-white/10 aria-disabled:bg-white/[0.04] aria-disabled:text-muted-foreground aria-disabled:shadow-none aria-disabled:opacity-100 aria-disabled:[text-shadow:none] data-pending:disabled:neon-outline',
         default:
           'border-action/25 bg-action/8 text-accent-foreground not-aria-disabled:hover:border-action/45 not-aria-disabled:hover:bg-action/13 aria-expanded:bg-action/13',
         outline:
