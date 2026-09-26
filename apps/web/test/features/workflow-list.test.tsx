@@ -296,7 +296,7 @@ describe('workflow list', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('None recently')).toBeInTheDocument();
     expect(
-      screen.getByText(/among the latest 3 runs in this workspace/u),
+      screen.getByText(/covers the latest 3 runs in this workspace/u),
     ).toBeVisible();
   });
 
@@ -314,7 +314,7 @@ describe('workflow list', () => {
     );
     renderApp(`/w/${workspaceId}/workflows`);
     expect(await screen.findByText('None recently')).toBeInTheDocument();
-    expect(screen.queryByText(/Run strips show/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recent runs covers/u)).not.toBeInTheDocument();
   });
 
   it('archives from the row menu after spelling out the consequences', async () => {

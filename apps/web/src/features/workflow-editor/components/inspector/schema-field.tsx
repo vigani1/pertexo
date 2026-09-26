@@ -77,7 +77,7 @@ export function SchemaField({
             ...(field.required ? [] : [{ value: null, label: 'Not set' }]),
             ...field.options.map((option) => ({
               value: option,
-              label: option,
+              label: field.optionLabels?.[option] ?? option,
             })),
           ]}
           onChange={(next) => {
@@ -246,7 +246,8 @@ function ConfigNumberField(props: LiveFieldProps) {
         </FieldControl>
         <Button
           type="button"
-          size="icon-sm"
+          // The field's own height, so the row reads as one control.
+          size="icon"
           variant="outline"
           aria-label={`Decrease ${field.label}`}
           disabled={!form.editable}
@@ -258,7 +259,8 @@ function ConfigNumberField(props: LiveFieldProps) {
         </Button>
         <Button
           type="button"
-          size="icon-sm"
+          // The field's own height, so the row reads as one control.
+          size="icon"
           variant="outline"
           aria-label={`Increase ${field.label}`}
           disabled={!form.editable}

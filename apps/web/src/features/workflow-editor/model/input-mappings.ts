@@ -171,7 +171,7 @@ export function validateInputMappingRows(
       row.destinationKey.trim() === ''
         ? 'Destination key is required.'
         : (keyCounts.get(row.destinationKey) ?? 0) > 1
-          ? 'Destination keys must be unique.'
+          ? 'Another input already uses this field.'
           : undefined;
     const source = rowSource(row, check);
     if (destinationKey !== undefined || source.error !== undefined) {

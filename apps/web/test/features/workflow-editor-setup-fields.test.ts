@@ -46,7 +46,7 @@ describe('step setup fields', () => {
     });
     expect(parseNumberField(response, '20000000')).toEqual({
       ok: false,
-      error: 'Largest response can be at most 10.0 MB.',
+      error: 'Largest response can be at most 10 MB.',
     });
     expect(parseNumberField(wait, '2592001')).toEqual({
       ok: false,

@@ -83,16 +83,19 @@ export function CommandPalette({
             />
             <Autocomplete.Input
               aria-label="Search pages, workflows and actions"
-              placeholder="Search pages, workflows and actions"
+              // Short enough to fit a phone without being cut mid-word.
+              placeholder="Search pages and actions"
               className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-subtle-foreground"
             />
-            <Kbd>Esc</Kbd>
+            {/* A key to press only where there's a keyboard. */}
+            <Kbd className="pointer-coarse:hidden">Esc</Kbd>
           </label>
           {/* Always mounted; it only has children while nothing matches. */}
           <Autocomplete.Empty className="px-4 py-8 text-sm text-muted-foreground empty:hidden">
             Nothing matches “{query}”.
           </Autocomplete.Empty>
-          <Autocomplete.List className="max-h-[min(26rem,60svh)] overflow-y-auto overscroll-contain p-2 data-empty:p-0">
+          {/* The list fades at its bottom edge, so a cut row reads as more. */}
+          <Autocomplete.List className="max-h-[min(26rem,60svh)] overflow-y-auto overscroll-contain p-2 [mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)] data-empty:p-0">
             {(group: CommandGroup) => (
               <Autocomplete.Group
                 key={group.label}

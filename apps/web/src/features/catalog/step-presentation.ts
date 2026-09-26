@@ -191,10 +191,11 @@ export function familyWord(family: StepFamily | 'unknown'): string {
   return familyWords[family];
 }
 
+// Named as the Connections page names them, so a slot and its page agree.
 const connectionWords: Readonly<Record<string, string>> = {
   slack_bot_token: 'Slack',
-  resend_api_key: 'Email (Resend)',
-  http_headers: 'HTTP headers',
+  resend_api_key: 'Email · Resend',
+  http_headers: 'HTTP',
 };
 
 /** A connection requirement such as `slack_bot_token` → "Slack connection". */

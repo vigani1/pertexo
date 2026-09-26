@@ -128,10 +128,10 @@ export function WorkflowListFooter({
         </p>
       ) : null}
       {runCount === undefined || runCount === 0 ? null : (
-        <p className="font-mono text-[0.7rem] text-subtle-foreground">
+        <p className="text-xs text-subtle-foreground">
           {runCount === 1
-            ? 'Run strips show the latest run in this workspace.'
-            : `Run strips show each workflow among the latest ${String(runCount)} runs in this workspace.`}
+            ? 'Recent runs shows the latest run in this workspace.'
+            : `Recent runs covers the latest ${String(runCount)} runs in this workspace.`}
         </p>
       )}
     </div>

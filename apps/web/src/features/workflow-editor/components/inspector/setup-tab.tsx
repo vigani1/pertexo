@@ -6,6 +6,8 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import { schemaFields, type NodeConfig } from '../../model/inspector-draft';
+import { stepTitle } from '../../model/graph-adapter';
+import type { GraphLevel } from '../../model/graph-scopes';
 import {
   readScheduleSchema,
   type ScheduleSchema,
@@ -30,18 +32,21 @@ export function SetupTab({
   definition,
   connections,
   form,
+  graph,
   onOpenInputs,
 }: Readonly<{
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
   connections: readonly ConnectionResponse[];
   form: NodeFormApi;
+  /** The steps around this one, for settings that point at another step. */
+  graph: Pick<GraphLevel, 'nodes'>;
   /** Shows the Inputs tab, where a step with no setup is decided. */
   onOpenInputs: () => void;
 }>) {
   const fields = useMemo(
-    () => schemaFields(definition?.configSchema),
-    [definition?.configSchema],
+    () => withStepChoices(schemaFields(definition?.configSchema), node, graph),
+    [definition?.configSchema, node, graph],
   );
   const scheduleSchema = useMemo(
     () =>
@@ -211,4 +216,34 @@ function schemaPropertyCount(schema: unknown): number {
   return typeof properties === 'object' && properties !== null
     ? Object.keys(properties).length
     : 0;
+}
+
+/**
+ * A Merge names the Parallel it joins by that step's ID: offer the Parallel
+ * steps by name instead of asking for an ID.
+ */
+function withStepChoices(
+  fields: ReturnType<typeof schemaFields>,
+  node: WorkflowNode,
+  graph: Pick<GraphLevel, 'nodes'>,
+): ReturnType<typeof schemaFields> {
+  if (node.definition.key !== 'core.merge') return fields;
+  const parallels = graph.nodes.filter(
+    (candidate) => candidate.definition.key === 'core.parallel',
+  );
+  return fields.map((field) =>
+    field.key === 'parallelNodeId'
+      ? {
+          ...field,
+          options: parallels.map((parallel) => parallel.id),
+          optionLabels: Object.fromEntries(
+            parallels.map((parallel) => [parallel.id, stepTitle(parallel)]),
+          ),
+          description:
+            parallels.length === 0
+              ? 'Add a Parallel step first; a Merge joins its branches.'
+              : 'The Parallel step whose branches this step waits for.',
+        }
+      : field,
+  );
 }

@@ -290,7 +290,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       target: { value: '08:30' },
     });
     const preview = screen.getByRole('region', { name: 'When it runs' });
-    expect(preview).toHaveTextContent('Every weekday at 08:30');
+    expect(preview).toHaveTextContent('Every weekday at 8:30 AM');
     expect(preview).toHaveTextContent('Europe/Berlin time');
     expect(preview).toHaveTextContent(/a time that happens twice runs once/u);
     pressSave();
@@ -356,7 +356,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       fireEvent.click((await findCanvas()).getByText('Nightly'));
       expect(
         screen.getByRole('region', { name: 'When it runs' }),
-      ).toHaveTextContent('Every day at 09:00');
+      ).toHaveTextContent('Every day at 9:00 AM');
       pressSave();
       expect(saves).toBe(0);
       await event.click(

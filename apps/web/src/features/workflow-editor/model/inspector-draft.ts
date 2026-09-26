@@ -17,6 +17,8 @@ export type SchemaFieldSpec = Readonly<{
   required: boolean;
   description?: string;
   options?: readonly string[];
+  /** How each option reads, when the stored value is an ID. */
+  optionLabels?: Readonly<Record<string, string>>;
   minimum?: number;
   maximum?: number;
   /** A number stored in this unit, which the field shows in people's terms. */

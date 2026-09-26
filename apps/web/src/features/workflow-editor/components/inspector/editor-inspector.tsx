@@ -58,7 +58,6 @@ export function EditorInspector({
   onAddStepAfter,
   onAddToBody,
   onDuplicateSelection,
-  onDeleteSelection,
   onRemoveEdge,
 }: Readonly<{
   apiClient: ApiClient;
@@ -86,7 +85,6 @@ export function EditorInspector({
   onAddStepAfter: (nodeId: string, returnFocus: HTMLElement | null) => void;
   onAddToBody: (loopId: string, returnFocus: HTMLElement) => void;
   onDuplicateSelection: () => void;
-  onDeleteSelection: () => void;
   onRemoveEdge: (edgeId: string) => void;
 }>) {
   const store = useEditorStoreApi();
@@ -127,8 +125,6 @@ export function EditorInspector({
       tab={tab}
       onTabChange={onTabChange}
       focusTarget={actions.focusTarget}
-      onDuplicateSelection={onDuplicateSelection}
-      onDeleteSelection={onDeleteSelection}
       actions={{
         onAddAfter: (returnFocus) => {
           if (selectedNodeId !== null)
