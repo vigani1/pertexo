@@ -388,12 +388,18 @@ function databaseWith(
       replayed: false,
     }),
     get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue({
-      run: run(),
+      run: { ...run(), replaySourceRunId: null },
       nodes: [],
     }),
     list: vi.fn<WorkflowRunDatabase['list']>().mockResolvedValue({
-      items: [run()],
+      items: [{ ...run(), replaySourceRunId: null, failedStep: null }],
     }),
+    readInput: vi
+      .fn<WorkflowRunDatabase['readInput']>()
+      .mockResolvedValue({ kind: 'inline', value: { rows: 42 } }),
+    readNodeRunOutput: vi
+      .fn<WorkflowRunDatabase['readNodeRunOutput']>()
+      .mockResolvedValue({ kind: 'none' }),
     statistics: vi
       .fn<WorkflowRunDatabase['statistics']>()
       .mockResolvedValue(statisticsRecord()),
@@ -630,6 +636,33 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     ]);
   });
 
+  it('passes run data reads through and maps a hidden run to not found', async () => {
+    const readInput = vi
+      .fn<WorkflowRunDatabase['readInput']>()
+      .mockResolvedValue({ kind: 'inline', value: { rows: 42 } });
+    const database = databaseWith({
+      readInput,
+      readNodeRunOutput: vi
+        .fn<WorkflowRunDatabase['readNodeRunOutput']>()
+        .mockRejectedValue(new DatabaseWorkflowRunNotFoundError()),
+    });
+    const adapter = createPostgresWorkflowRunPersistence(
+      adapterConfig,
+      database,
+    );
+    await expect(
+      adapter.persistence.readInput({ workspaceId, runId }),
+    ).resolves.toEqual({ kind: 'inline', value: { rows: 42 } });
+    expect(readInput).toHaveBeenCalledWith({ workspaceId, runId });
+    await expect(
+      adapter.persistence.readNodeRunOutput({
+        workspaceId,
+        runId,
+        nodeRunId: runId,
+      }),
+    ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
+  });
+
   it('maps a regional write fence to a retryable service response', async () => {
     const database = {
       start: vi
@@ -642,6 +675,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         .mockResolvedValue({ items: [] }),
       statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
+      readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
+      readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
     } satisfies WorkflowRunDatabase;
     const adapter = createPostgresWorkflowRunPersistence(
@@ -681,6 +716,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         .mockResolvedValue({ items: [] }),
       statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
+      readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
+      readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
     } satisfies WorkflowRunDatabase;
     const adapter = createPostgresWorkflowRunPersistence(
@@ -1030,6 +1067,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         alreadyRequested: false,
         eventSequence: 2,
       }),
+      readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
+      readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
       close,
     } satisfies WorkflowRunDatabase;
     const adapter = createPostgresWorkflowRunPersistence(

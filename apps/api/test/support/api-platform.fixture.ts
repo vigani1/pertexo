@@ -100,6 +100,8 @@ export function createStubApiWorkflowRuntime(
         replay: () => Promise.reject(new Error('not used')),
         get: () => Promise.resolve(undefined),
         list: () => Promise.resolve({ items: [] }),
+        readInput: () => Promise.resolve(undefined),
+        readNodeRunOutput: () => Promise.resolve(undefined),
         statistics: () => Promise.reject(new Error('not used')),
         cancel: () => Promise.reject(new Error('not used')),
       },

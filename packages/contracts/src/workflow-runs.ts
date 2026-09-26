@@ -11,6 +11,7 @@ import {
 } from './openapi-primitives.js';
 
 import { apiProblemSchema } from './errors/api-problem.js';
+import { projectContractSchema } from './schema-projection.js';
 import {
   lastRunEventIdHeaderSchema,
   workflowRunCreatedAtSchema,
@@ -33,6 +34,9 @@ import {
   workflowRunStatisticsWindowSchema,
   workflowRunSummarySchema,
   workflowRunReadSummarySchema,
+  workflowRunListItemSchema,
+  workflowRunInputResponseSchema,
+  workflowNodeRunOutputResponseSchema,
 } from './http/workflow-runs.js';
 
 export * from './http/workflow-runs.js';
@@ -47,6 +51,7 @@ const schemas = Object.freeze({
   ),
   WorkflowRunSummary: jsonSchema(workflowRunSummarySchema, 'output'),
   WorkflowRunReadSummary: jsonSchema(workflowRunReadSummarySchema, 'output'),
+  WorkflowRunListItem: jsonSchema(workflowRunListItemSchema, 'output'),
   WorkflowRunListResponse: jsonSchema(workflowRunListResponseSchema, 'output'),
   WorkflowRunStatisticsResponse: jsonSchema(
     workflowRunStatisticsResponseSchema,
@@ -62,9 +67,27 @@ const schemas = Object.freeze({
   WorkflowRunEvent: jsonSchema(workflowRunEventSchema, 'output'),
 });
 
+/** Stored run data is recursive JSON, which needs the shared projection. */
+function runDataSchemas(target: 'client' | 'openapi') {
+  return Object.freeze({
+    WorkflowRunInputResponse: projectContractSchema(
+      'WorkflowRunInputResponse',
+      workflowRunInputResponseSchema,
+      'output',
+      target,
+    ),
+    WorkflowNodeRunOutputResponse: projectContractSchema(
+      'WorkflowNodeRunOutputResponse',
+      workflowNodeRunOutputResponseSchema,
+      'output',
+      target,
+    ),
+  });
+}
+
 export const workflowRunsClientContract = Object.freeze({
   schemaVersion: '1.0.0',
-  schemas,
+  schemas: Object.freeze({ ...schemas, ...runDataSchemas('client') }),
 });
 
 const problemResponses = Object.freeze({
@@ -81,6 +104,7 @@ const problemResponses = Object.freeze({
 const workspaceParameter = pathParameter('workspaceId', 'Workspace identifier');
 const workflowParameter = pathParameter('workflowId', 'Workflow identifier');
 const runParameter = pathParameter('runId', 'Workflow run identifier');
+const nodeRunParameter = pathParameter('nodeRunId', 'Node run identifier');
 const csrfParameter = csrfHeaderParameter();
 const idempotencyParameter = idempotencyHeaderParameter();
 const lastEventIdParameter = {
@@ -198,6 +222,42 @@ export const workflowRunsOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/runs/{runId}/input': {
+      get: {
+        operationId: 'getWorkflowRunInput',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter, runParameter],
+        responses: {
+          '200': jsonResponse(
+            'The input the run started with',
+            'WorkflowRunInputResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/output': {
+      get: {
+        operationId: 'getWorkflowNodeRunOutput',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter, runParameter, nodeRunParameter],
+        responses: {
+          '200': jsonResponse(
+            'The output one step run produced',
+            'WorkflowNodeRunOutputResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
     '/v1/workspaces/{workspaceId}/runs/{runId}/events': {
       get: {
         operationId: 'streamRunEvents',
@@ -271,5 +331,8 @@ export const workflowRunsOpenApiDocument = Object.freeze({
       },
     },
   },
-  components: authenticatedComponents(schemas, problemResponses),
+  components: authenticatedComponents(
+    { ...schemas, ...runDataSchemas('openapi') },
+    problemResponses,
+  ),
 });

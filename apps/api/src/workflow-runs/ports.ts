@@ -27,7 +27,25 @@ export type WorkflowRunRecord = Readonly<{
 }>;
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
-  Readonly<{ workflowName?: string | null }>;
+  Readonly<{ workflowName?: string | null; replaySourceRunId?: string | null }>;
+
+/** The step that explains an unsuccessful listed run (ADR 050). */
+type WorkflowRunFailedStepRecord = Readonly<{
+  nodeId: string;
+  label: string | null;
+  definitionKey: string | null;
+  safeErrorCode: string | null;
+}>;
+
+export type WorkflowRunListRecord = WorkflowRunReadRecord &
+  Readonly<{ failedStep?: WorkflowRunFailedStepRecord | null }>;
+
+/** A run's input or a node run's output as stored (ADR 050). */
+export type WorkflowRunDataRecord =
+  | Readonly<{ kind: 'inline'; value: unknown }>
+  | Readonly<{ kind: 'artifact'; artifactId: string }>
+  | Readonly<{ kind: 'none' }>
+  | Readonly<{ kind: 'expired' }>;
 
 export type WorkflowNodeRunRecord = Readonly<{
   id: string;
@@ -169,13 +187,19 @@ export interface WorkflowRunPersistence {
   ): Promise<WorkflowRunReadModel | undefined>;
   list(input: ListWorkflowRunsQuery): Promise<
     Readonly<{
-      items: readonly WorkflowRunReadRecord[];
+      items: readonly WorkflowRunListRecord[];
       nextCursor?: WorkflowRunListPosition;
     }>
   >;
   statistics(
     input: WorkflowRunStatisticsQuery,
   ): Promise<WorkflowRunStatisticsRecord>;
+  readInput(
+    input: Readonly<{ workspaceId: string; runId: string }>,
+  ): Promise<WorkflowRunDataRecord | undefined>;
+  readNodeRunOutput(
+    input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
+  ): Promise<WorkflowRunDataRecord | undefined>;
   cancel(input: CancelWorkflowRunCommand): Promise<
     Readonly<{
       run: WorkflowRunRecord;

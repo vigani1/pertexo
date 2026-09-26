@@ -19,6 +19,11 @@ import type {
   WorkflowRunEventStreamer,
   WorkflowRunPersistence,
 } from './ports.js';
+import { WorkflowRunDataController } from './run-data-controller.js';
+import {
+  GetWorkflowNodeRunOutputUseCase,
+  GetWorkflowRunInputUseCase,
+} from './run-data-use-cases.js';
 import { GetWorkflowRunStatisticsUseCase } from './statistics-use-case.js';
 import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
 import {
@@ -88,6 +93,20 @@ export class WorkflowRunsModule {
         ),
       },
       {
+        provide: GetWorkflowRunInputUseCase,
+        useValue: new GetWorkflowRunInputUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
+        provide: GetWorkflowNodeRunOutputUseCase,
+        useValue: new GetWorkflowNodeRunOutputUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
         provide: GetWorkflowRunStatisticsUseCase,
         useValue: new GetWorkflowRunStatisticsUseCase(
           dependencies.persistence,
@@ -113,7 +132,7 @@ export class WorkflowRunsModule {
     return {
       module: WorkflowRunsModule,
       imports: [ApiLifecycleModule, identityModule],
-      controllers: [WorkflowRunsController],
+      controllers: [WorkflowRunsController, WorkflowRunDataController],
       providers,
       exports: [
         StartWorkflowRunUseCase,
@@ -121,6 +140,8 @@ export class WorkflowRunsModule {
         GetWorkflowRunUseCase,
         ListWorkflowRunsUseCase,
         GetWorkflowRunStatisticsUseCase,
+        GetWorkflowRunInputUseCase,
+        GetWorkflowNodeRunOutputUseCase,
         StreamRunEventsUseCase,
         CancelWorkflowRunUseCase,
       ],

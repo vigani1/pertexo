@@ -368,7 +368,7 @@ function lastEventId(request: WorkflowRunsRequest): number {
   return Number(lastRunEventIdHeaderSchema.parse(value));
 }
 
-function actorFrom(request: WorkflowRunsRequest, workspaceId: string) {
+export function actorFrom(request: WorkflowRunsRequest, workspaceId: string) {
   try {
     return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
   } catch (error: unknown) {

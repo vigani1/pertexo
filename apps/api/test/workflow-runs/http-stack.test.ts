@@ -95,6 +95,9 @@ function persistenceFixture() {
   const list = vi.fn<WorkflowRunPersistence['list']>();
   const statistics = vi.fn<WorkflowRunPersistence['statistics']>();
   const cancel = vi.fn<WorkflowRunPersistence['cancel']>();
+  const readInput = vi.fn<WorkflowRunPersistence['readInput']>();
+  const readNodeRunOutput =
+    vi.fn<WorkflowRunPersistence['readNodeRunOutput']>();
   return {
     persistence: {
       start,
@@ -103,6 +106,8 @@ function persistenceFixture() {
       list,
       statistics,
       cancel,
+      readInput,
+      readNodeRunOutput,
     } satisfies WorkflowRunPersistence,
     start,
     replay,
@@ -110,6 +115,8 @@ function persistenceFixture() {
     list,
     statistics,
     cancel,
+    readInput,
+    readNodeRunOutput,
   };
 }
 
@@ -358,5 +365,62 @@ describe('workflow runs real Nest HTTP stack', () => {
       status: 409,
       code: 'run.not_cancelable',
     });
+  });
+
+  it('reads a run input and one step output for a role that reads runs', async () => {
+    const { application, fixture } = await start('viewer');
+    const nodeRunId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    fixture.readInput.mockResolvedValue({
+      kind: 'inline',
+      value: { customerId: 'customer-42' },
+    });
+    fixture.readNodeRunOutput.mockResolvedValue({ kind: 'none' });
+
+    const input = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/input`,
+      headers: authHeaders,
+    });
+    expect(input.statusCode).toBe(200);
+    expect(input.json()).toEqual({
+      input: { kind: 'inline', value: { customerId: 'customer-42' } },
+    });
+    expect(fixture.readInput).toHaveBeenCalledWith({ workspaceId, runId });
+
+    const output = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/node-runs/${nodeRunId}/output`,
+      headers: authHeaders,
+    });
+    expect(output.statusCode).toBe(200);
+    expect(output.json()).toEqual({ output: { kind: 'none' } });
+    expect(fixture.readNodeRunOutput).toHaveBeenCalledWith({
+      workspaceId,
+      runId,
+      nodeRunId,
+    });
+
+    fixture.readNodeRunOutput.mockResolvedValue(undefined);
+    const missing = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/node-runs/${nodeRunId}/output`,
+      headers: authHeaders,
+    });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json()).toMatchObject({ code: 'resource.not_found' });
+
+    const invalid = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/node-runs/not-a-run/output`,
+      headers: authHeaders,
+    });
+    expect(invalid.statusCode).toBe(400);
+
+    const unauthenticated = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/input`,
+    });
+    expect(unauthenticated.statusCode).toBe(401);
+    expect(fixture.readInput).toHaveBeenCalledTimes(1);
   });
 });

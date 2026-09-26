@@ -44,6 +44,7 @@ const runRowSchema = z
   .strict();
 const runReadRowSchema = runRowSchema.extend({
   workflow_name: z.string().min(1).max(128).nullable(),
+  replay_source_run_id: z.uuid().nullable(),
 });
 
 export type WorkflowRunRecord = Readonly<{
@@ -62,7 +63,7 @@ export type WorkflowRunRecord = Readonly<{
 }>;
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
-  Readonly<{ workflowName?: string | null }>;
+  Readonly<{ workflowName?: string | null; replaySourceRunId: string | null }>;
 
 export async function readWorkflowRunRecord(
   transaction: WorkspaceTransaction,
@@ -101,7 +102,8 @@ export async function readWorkflowRunReadRecord(
           run.id, run.workspace_id, run.workflow_id, run.workflow_version_id,
           run.status, run.trigger_type, run.created_at, run.updated_at,
           run.started_at, run.completed_at, run.deadline_at,
-          run.cancel_requested_at, workflow.name as workflow_name
+          run.cancel_requested_at, workflow.name as workflow_name,
+          run.replay_source_run_id
         from app.workflow_runs run
         left join app.workflows workflow
           on workflow.workspace_id = run.workspace_id
@@ -113,7 +115,8 @@ export async function readWorkflowRunReadRecord(
         select
           id, workspace_id, workflow_id, workflow_version_id, status,
           trigger_type, created_at, updated_at, started_at, completed_at,
-          deadline_at, cancel_requested_at, null::text as workflow_name
+          deadline_at, cancel_requested_at, null::text as workflow_name,
+          replay_source_run_id
         from app.workflow_runs
         where workspace_id = ${transaction.workspaceId} and id = ${runId}
         limit 1
@@ -199,9 +202,14 @@ function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
 
 export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
   const row = runReadRowSchema.parse(value);
-  const { workflow_name: workflowName, ...runRow } = row;
+  const {
+    workflow_name: workflowName,
+    replay_source_run_id: replaySourceRunId,
+    ...runRow
+  } = row;
   return Object.freeze({
     ...toWorkflowRunRecord(runRow),
     workflowName,
+    replaySourceRunId,
   });
 }
