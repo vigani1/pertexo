@@ -92,11 +92,17 @@ export function useInvitationCommand(
   const stateRef = useRef(state);
   const owner = useRef<symbol | undefined>(undefined);
   const inFlight = useRef(false);
-  const mutation = useMutation({ mutationFn: executeRequest });
   const invitationsKey = workspaceInvitationKeys.list(
     input.userId,
     input.workspaceId,
   );
+  // A sent, resent or revoked invitation changes the list: it's reloaded
+  // before the command reports done.
+  const mutation = useMutation({
+    mutationFn: executeRequest,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: invitationsKey }),
+  });
 
   useEffect(() => {
     const scope = Symbol('invitation-command');
@@ -172,8 +178,6 @@ export function useInvitationCommand(
       const blocked = await verifySession(scope, attempt);
       if (blocked !== undefined) return blocked;
       await mutation.mutateAsync(attempt);
-      if (owner.current !== scope) return STOPPED;
-      await queryClient.invalidateQueries({ queryKey: invitationsKey });
       if (owner.current !== scope) return STOPPED;
       transition({ kind: 'idle' });
       return { kind: 'done' };

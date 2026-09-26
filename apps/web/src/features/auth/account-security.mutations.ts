@@ -43,13 +43,16 @@ export function useDisplayNameChange(
   const mutation = useMutation({
     mutationFn: (attempt: NameAttempt) =>
       updateCurrentUserProfile(input.apiClient, attempt),
+    // The receipt carries the saved profile: it replaces the cached one.
+    onSuccess: (receipt) => {
+      queryClient.setQueryData(currentUserQueryKey, receipt.profile);
+    },
   });
 
   async function send(attempt: NameAttempt) {
     setState({ kind: 'saving', attempt });
     try {
       const receipt = await mutation.mutateAsync(attempt);
-      queryClient.setQueryData(currentUserQueryKey, receipt.profile);
       setState({ kind: 'idle' });
       input.onChanged(receipt.profile);
     } catch (cause) {
