@@ -447,16 +447,6 @@
     animation-direction: alternate-reverse;
   }
 
-  /* React Flow owns these child controls, so its focus ring needs a narrow
-     component selector rather than Tailwind classes on the wrapper. */
-  .workflow-canvas-controls .react-flow__controls-button:focus {
-    position: relative;
-    z-index: 10;
-    outline: 2px solid var(--ring);
-    outline-offset: -2px;
-    box-shadow: 0 0 0 2px var(--ring);
-  }
-
   .loading-orb {
     position: relative;
     width: 1rem;
@@ -545,11 +535,6 @@
     .live-edge::before,
     .ambient {
       display: none;
-    }
-
-    .workflow-canvas-controls .react-flow__controls-button:focus {
-      outline-color: Highlight;
-      box-shadow: none;
     }
   }
 
