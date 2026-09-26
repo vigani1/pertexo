@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { workflowNameSchema } from './workflow-authoring.js';
 
+export * from './workflow-step-history.js';
+
 export const workflowRunIdentifierSchema = z.uuid();
 export const workflowRunParamsSchema = z
   .object({ workspaceId: z.uuid(), runId: workflowRunIdentifierSchema })
