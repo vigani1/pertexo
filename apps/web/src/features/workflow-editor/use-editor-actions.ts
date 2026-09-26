@@ -203,7 +203,8 @@ function replacesInspectedStep(
       const inspected = state.selectedNodeId;
       if (inspected === null) return false;
       const around = scopeOf(state.graph, inspected) ?? [];
-      return [inspected, ...around].some((id) => action.nodeIds.includes(id));
+      const deleted = new Set(action.nodeIds);
+      return [inspected, ...around].some((id) => deleted.has(id));
     }
     case 'duplicate':
       return false;

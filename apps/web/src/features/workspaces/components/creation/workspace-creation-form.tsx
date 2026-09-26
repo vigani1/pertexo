@@ -129,7 +129,8 @@ export function WorkspaceCreationForm({
 }>) {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
-  const [slugEdited, setSlugEdited] = useState(false);
+  // Read only when the name or the form changes; it draws nothing itself.
+  const slugEdited = useRef(false);
   const [editingSlug, setEditingSlug] = useState(false);
   const validation = useFieldValidation<Field>();
   const slugRef = useRef<HTMLInputElement | null>(null);
@@ -162,7 +163,7 @@ export function WorkspaceCreationForm({
     const errors = {
       name: nameProblem,
       slug:
-        slugEdited || nameProblem === undefined
+        slugEdited.current || nameProblem === undefined
           ? fieldProblem('slug', slug)
           : undefined,
     };
@@ -196,7 +197,7 @@ export function WorkspaceCreationForm({
                 const nextName = event.target.value;
                 setName(nextName);
                 command.clearError();
-                if (!slugEdited) {
+                if (!slugEdited.current) {
                   const nextSlug = suggestWorkspaceSlug(nextName);
                   setSlug(nextSlug);
                   validation.change('slug', fieldProblem('slug', nextSlug));
@@ -233,7 +234,7 @@ export function WorkspaceCreationForm({
                 value={slug}
                 onChange={(event) => {
                   setSlug(event.target.value);
-                  setSlugEdited(true);
+                  slugEdited.current = true;
                   command.clearError();
                   validation.change(
                     'slug',

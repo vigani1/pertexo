@@ -1,5 +1,5 @@
 import { PencilIcon } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -71,7 +71,8 @@ export function RenameForm({
   const [startedAs] = useState(name);
   // The revision people last saw: where the edit started, or the newer one
   // they chose to replace with "Keep mine". A background refresh never moves it.
-  const [baseRevision, setBaseRevision] = useState(revision);
+  // The revision the next save starts from; handlers read it, nothing draws it.
+  const baseRevision = useRef(revision);
   const [submittedRevision, setSubmittedRevision] = useState<number>();
   const [draft, setDraft] = useState(name);
   const validation = useFieldValidation<'name'>();
@@ -97,7 +98,7 @@ export function RenameForm({
       return;
     }
     setDraft(trimmed);
-    setBaseRevision(expectedRevision);
+    baseRevision.current = expectedRevision;
     setSubmittedRevision(expectedRevision);
     settle(onSave(trimmed, expectedRevision));
   }
@@ -118,7 +119,7 @@ export function RenameForm({
         event.preventDefault();
         if (command.retryAvailable) settle(command.retry());
         else if (accepted) settle(command.refresh?.());
-        else save(baseRevision);
+        else save(baseRevision.current);
       }}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !locked) close();
