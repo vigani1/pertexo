@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { flushSync } from 'react-dom';
 import type { EditorAction, EditorFocusTarget } from './use-editor-actions';
 
 export type InspectorTab = 'setup' | 'inputs' | 'test' | 'about';
@@ -16,12 +15,13 @@ export function useInspectorNavigation(
   const [tab, setTab] = useState<InspectorTab>('setup');
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
-  /** Shows a tab now, so a command can focus what's inside it. */
+  /**
+   * Shows a tab. Every tab stays mounted, and a command's focus lands in an
+   * effect after this render, once the tab is on screen.
+   */
   function openTab(next: InspectorTab) {
-    flushSync(() => {
-      setTab(next);
-      setMobilePanel('inspector');
-    });
+    setTab(next);
+    setMobilePanel('inspector');
   }
 
   function fix(target: EditorFocusTarget) {
