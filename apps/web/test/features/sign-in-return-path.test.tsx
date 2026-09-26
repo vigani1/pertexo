@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
 import { LoginPage } from '@/features/auth/login-page';
-import { returnPathFrom } from '@/features/auth/return-path.public';
+import { allowlistedReturnPath } from '@/features/auth/return-path.public';
 import { mockServer } from '../support/mock-server';
 import { renderApp, testFetch } from '../support/render-app';
 import { renderInRouter } from '../support/render-in-router';
@@ -33,7 +33,7 @@ describe('sign-in return paths', () => {
       '/account/security',
       `/w/${workspaceId}/account`,
     ])
-      expect(returnPathFrom(path)).toBe(path);
+      expect(allowlistedReturnPath(path)).toBe(path);
     for (const path of [
       'https://evil.example/account/security',
       '//evil.example/account/security',
@@ -44,7 +44,7 @@ describe('sign-in return paths', () => {
       undefined,
       42,
     ])
-      expect(returnPathFrom(path)).toBeUndefined();
+      expect(allowlistedReturnPath(path)).toBeUndefined();
   });
 
   it('drops an external or protocol-relative target from the sign-in URL', async () => {

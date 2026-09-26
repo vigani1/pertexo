@@ -1,1 +1,1 @@
-export { returnPathFrom, returnToSearch } from './model/return-path';
+export { allowlistedReturnPath, returnToSearch } from './model/return-path';

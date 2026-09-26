@@ -5,7 +5,7 @@ import { authenticationReturnPathSchema } from '@pertexo/contracts/schemas/ident
  * the contract allows. Anything else, including other origins and `//host`,
  * is dropped rather than followed.
  */
-export function returnPathFrom(value: unknown): string | undefined {
+export function allowlistedReturnPath(value: unknown): string | undefined {
   const parsed = authenticationReturnPathSchema.safeParse(value);
   return parsed.success ? parsed.data : undefined;
 }
