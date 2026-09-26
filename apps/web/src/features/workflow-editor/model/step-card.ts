@@ -45,13 +45,12 @@ export function shownPorts(
     (port) => configured.ids.has(port) || connected.has(port),
   );
   const branches = ports.filter((port) => port !== DEFAULT_PORT);
-  const starters = named.some((port) => port !== DEFAULT_PORT)
-    ? []
-    : branches.slice(0, configured.minimum);
-  return ports.filter(
-    (port) =>
-      named.includes(port) || starters.includes(port) || port === DEFAULT_PORT,
+  const shown = new Set(
+    named.some((port) => port !== DEFAULT_PORT)
+      ? named
+      : [...named, ...branches.slice(0, configured.minimum)],
   );
+  return ports.filter((port) => shown.has(port) || port === DEFAULT_PORT);
 }
 
 const noTitles: ReadonlyMap<string, string> = new Map();
@@ -132,6 +131,7 @@ function portListSetting(
   ports: readonly string[],
 ): Readonly<{ key: string; minimum: number }> | undefined {
   const properties = recordAt(schema, 'properties');
+  const portSet = new Set(ports);
   for (const [key, property] of Object.entries(properties ?? {})) {
     const ids = recordAt(
       recordAt(recordAt(property, 'items'), 'properties'),
@@ -142,7 +142,7 @@ function portListSetting(
       Array.isArray(choices) &&
       choices.length > 0 &&
       choices.every(
-        (choice) => typeof choice === 'string' && ports.includes(choice),
+        (choice) => typeof choice === 'string' && portSet.has(choice),
       )
     ) {
       const minimum = recordAt(properties, key)?.minItems;
@@ -158,9 +158,10 @@ function portListSetting(
 function namedIds(value: unknown, ports: readonly string[]): Set<string> {
   const ids = new Set<string>();
   if (!Array.isArray(value)) return ids;
+  const portSet = new Set(ports);
   for (const item of value) {
     const id: unknown = isRecord(item) ? item.id : undefined;
-    if (typeof id === 'string' && ports.includes(id)) ids.add(id);
+    if (typeof id === 'string' && portSet.has(id)) ids.add(id);
   }
   return ids;
 }

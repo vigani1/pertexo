@@ -10,7 +10,8 @@ import { ROLE_MATRIX } from '../../model/workspace-roles';
 export function WorkspaceAccess({
   workspace,
 }: Readonly<{ workspace: AccessibleWorkspace }>) {
-  const canSeeTeam = workspace.capabilities.includes('member:read');
+  const granted = new Set<string>(workspace.capabilities);
+  const canSeeTeam = granted.has('member:read');
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col">
@@ -18,7 +19,7 @@ export function WorkspaceAccess({
           // What this workspace grants now, which can be less than the
           // role's name promises (a workspace pending deletion, say).
           const allowed = row.capabilities.every((capability) =>
-            workspace.capabilities.includes(capability),
+            granted.has(capability),
           );
           return (
             <li

@@ -24,7 +24,8 @@ function nextFree(
   ids: readonly string[],
   used: readonly string[],
 ): string | undefined {
-  return ids.find((id) => !used.includes(id));
+  const taken = new Set(used);
+  return ids.find((id) => !taken.has(id));
 }
 
 /** `list` with the entry at `index` moved by one place. */
