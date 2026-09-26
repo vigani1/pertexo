@@ -43,7 +43,9 @@ export function TimeRangeFilter({
           <Button
             type="button"
             variant="outline"
-            className="w-full justify-start font-normal text-foreground sm:w-auto"
+            // On a phone the range takes its own full row after the two
+            // selects, so no filter sits alone at half width.
+            className="order-last col-span-2 w-full justify-start font-normal text-foreground sm:order-none sm:col-span-1 sm:w-auto"
             aria-label={`When: ${label ?? 'Any time'}`}
           />
         }
@@ -52,7 +54,7 @@ export function TimeRangeFilter({
         <span className="max-w-48 truncate">{label ?? 'Any time'}</span>
         <ChevronDownIcon aria-hidden="true" className="opacity-60" />
       </PopoverTrigger>
-      <PopoverContent className="w-80">
+      <PopoverContent className="w-80 sm:w-96">
         <PopoverTitle>When runs started</PopoverTitle>
         <div
           className="mt-3 grid grid-cols-2 gap-1.5"
@@ -125,7 +127,7 @@ function CustomRangeForm({
   return (
     <form className="mt-4 border-t border-border pt-4" onSubmit={apply}>
       <p className="text-xs font-medium text-muted-foreground">Custom days</p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <Field>
           <FieldLabel htmlFor="run-range-from" className="text-xs">
             From
@@ -155,7 +157,7 @@ function CustomRangeForm({
           />
         </Field>
       </div>
-      <p className="mt-2 font-mono text-[0.7rem] text-subtle-foreground">
+      <p className="mt-2 text-xs text-subtle-foreground">
         Whole days in your time zone, {localTimeZone()}.
       </p>
       {error === undefined ? null : (

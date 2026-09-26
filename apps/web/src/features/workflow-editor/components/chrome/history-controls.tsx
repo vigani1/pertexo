@@ -12,6 +12,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
 import type { EditorState } from '../../model/editor.store';
 import { useEditorStore } from '../../model/editor-store-context';
+import { shortcut } from '@/lib/shortcut-keys';
 
 const canUndo = (state: EditorState) =>
   state.history.past.length > 0 && state.saveStatus !== 'conflict';
@@ -33,7 +34,7 @@ export function HistoryControls({
         variant="ghost"
         size="icon-sm"
         aria-label="Undo"
-        title="Undo (⌘Z)"
+        title={`Undo (${shortcut('Z')})`}
         disabled={!undoable}
         onClick={onUndo}
       >
@@ -44,7 +45,7 @@ export function HistoryControls({
         variant="ghost"
         size="icon-sm"
         aria-label="Redo"
-        title="Redo (⇧⌘Z)"
+        title={`Redo (${shortcut('Z', { shift: true })})`}
         disabled={!redoable}
         onClick={onRedo}
       >
@@ -89,12 +90,12 @@ export function CompactHistoryMenu({
         <DropdownMenuItem disabled={!undoable} onClick={onUndo}>
           <Undo2Icon aria-hidden="true" />
           <span className="flex-1">Undo</span>
-          <Kbd>⌘Z</Kbd>
+          <Kbd>{shortcut('Z')}</Kbd>
         </DropdownMenuItem>
         <DropdownMenuItem disabled={!redoable} onClick={onRedo}>
           <Redo2Icon aria-hidden="true" />
           <span className="flex-1">Redo</span>
-          <Kbd>⇧⌘Z</Kbd>
+          <Kbd>{shortcut('Z', { shift: true })}</Kbd>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onShowShortcuts}>
           <KeyboardIcon aria-hidden="true" />

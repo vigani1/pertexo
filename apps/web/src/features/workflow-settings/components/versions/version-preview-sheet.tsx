@@ -1,3 +1,4 @@
+import { ChevronRightIcon } from 'lucide-react';
 import { useRef } from 'react';
 import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
 import { Button } from '@/components/ui/button';
@@ -86,9 +87,16 @@ export function VersionPreviewSheet({
                       <span className="min-w-0 truncate font-medium">
                         {step.label}
                       </span>
-                      <span className="shrink-0 text-xs text-subtle-foreground">
-                        {step.trigger ? `Trigger · ${step.kind}` : step.kind}
-                      </span>
+                      {/* The type only when the name doesn't already say it. */}
+                      {step.label === step.kind && !step.trigger ? null : (
+                        <span className="shrink-0 text-xs text-subtle-foreground">
+                          {step.trigger
+                            ? step.label === step.kind
+                              ? 'Trigger'
+                              : `Trigger · ${step.kind}`
+                            : step.kind}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ol>
@@ -97,8 +105,13 @@ export function VersionPreviewSheet({
                 <h3 className="text-sm font-semibold">Changes</h3>
                 <VersionChanges version={version} previous={previous} />
               </section>
-              <details className="rounded-lg border border-border px-3 py-2 text-sm">
-                <summary className="cursor-pointer text-muted-foreground">
+              <details className="group/details rounded-lg border border-border px-3 py-2 text-sm">
+                {/* The app's chevron instead of the browser's own marker. */}
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-muted-foreground [&::-webkit-details-marker]:hidden">
+                  <ChevronRightIcon
+                    aria-hidden="true"
+                    className="size-3.5 transition-transform group-open/details:rotate-90 motion-reduce:transition-none"
+                  />
                   Details
                 </summary>
                 <div className="mt-3 flex flex-col gap-3">

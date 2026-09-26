@@ -73,9 +73,7 @@ describe('run replay', () => {
     fireEvent.change(input, { target: { value: '{' } });
     await userEvent
       .setup()
-      .click(
-        within(dialog).getByRole('button', { name: 'Replay this version' }),
-      );
+      .click(within(dialog).getByRole('button', { name: 'Replay run' }));
     expect(input).toHaveFocus();
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAccessibleDescription(/isn’t valid JSON/u);
@@ -110,7 +108,7 @@ describe('run replay', () => {
     const input = within(dialog).getByLabelText('Replay input (JSON)');
     fireEvent.change(input, { target: { value: '{"b":2,"a":1}' } });
     await event.click(
-      within(dialog).getByRole('button', { name: 'Replay this version' }),
+      within(dialog).getByRole('button', { name: 'Replay run' }),
     );
     expect(
       await within(dialog).findByText(
@@ -168,9 +166,7 @@ describe('run replay', () => {
     const dialog = await openReplay();
     await userEvent
       .setup()
-      .click(
-        within(dialog).getByRole('button', { name: 'Replay this version' }),
-      );
+      .click(within(dialog).getByRole('button', { name: 'Replay run' }));
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(
         `/w/${workspaceId}/runs/${replayRunId}`,

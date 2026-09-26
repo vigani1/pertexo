@@ -15,7 +15,7 @@ type ProviderCopy = Readonly<{
   purpose: string;
   /** The stored credential in words, e.g. "bot token". */
   credential: string;
-  /** Title of the add lens. */
+  /** Title of the add lens: always "Connect" and the name above. */
   connectTitle: string;
   /** Where a new connection can be used. */
   usedBy: string;
@@ -33,14 +33,14 @@ export const PROVIDERS: Readonly<Record<ProviderKey, ProviderCopy>> = {
     name: 'HTTP',
     purpose: 'Call any HTTPS API with header auth',
     credential: 'headers',
-    connectTitle: 'Connect an HTTPS API',
+    connectTitle: 'Connect HTTP',
     usedBy: 'HTTP request steps',
   },
   email: {
     name: 'Email · Resend',
     purpose: 'Send notification email',
     credential: 'API key',
-    connectTitle: 'Connect Resend',
+    connectTitle: 'Connect Email · Resend',
     usedBy: 'Send email steps and email alerts',
   },
 };

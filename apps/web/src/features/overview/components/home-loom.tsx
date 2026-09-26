@@ -71,11 +71,14 @@ export function HomeLoom({
           ),
     [statistics.data],
   );
-  const caption = loomCaption({
-    phrase: selected.phrase,
-    capped: loom.data?.capped === true,
-    total: statistics.data?.window.total,
-  });
+  const capped = loom.data?.capped === true;
+  const total = statistics.data?.window.total;
+  // The list's disclosure already counts the drawn runs; the caption only
+  // speaks when the window holds more than the drawing shows.
+  const caption =
+    !capped && total !== undefined && total === loom.data?.runs.length
+      ? undefined
+      : loomCaption({ phrase: selected.phrase, capped, total });
   return (
     <section aria-labelledby="home-loom-title" className="flex flex-col gap-3">
       <h2 id="home-loom-title" className="sr-only">

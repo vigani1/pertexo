@@ -110,8 +110,8 @@ export function InviteLens({
           <SheetHeader>
             <SheetTitle>Invite people</SheetTitle>
             <SheetDescription>
-              They sign in with the address you enter here. Accepting signs them
-              out of older sessions so they start with the new role.
+              Each person gets an email with their own link, and signs in with
+              the address you enter here.
             </SheetDescription>
           </SheetHeader>
           <SheetBody className="flex flex-col gap-5">

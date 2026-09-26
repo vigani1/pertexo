@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts/schemas/schedules';
-import { CalendarClockIcon } from 'lucide-react';
+import { StepTile, describeStep } from '@/features/catalog/presentation.public';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
@@ -75,9 +75,7 @@ export function ScheduleCard({
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-md border border-secondary/25 bg-secondary/8 text-secondary">
-            <CalendarClockIcon aria-hidden="true" className="size-4" />
-          </span>
+          <StepTile step={describeStep('core.schedule')} size="lg" />
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold">{stepName}</h3>
             <Status tone={state.tone} className="mt-1 text-xs">
@@ -115,13 +113,11 @@ export function ScheduleCard({
       {nextRuns}
       <dl className="grid gap-4 sm:grid-cols-2">
         <When label="Last run" value={trigger.lastFireAt} empty="Not yet" />
-        <div className="flex flex-col gap-0.5">
-          <dt className="text-xs text-muted-foreground">Missed runs</dt>
-          <dd className="text-sm text-muted-foreground">
-            {describeMisfirePolicy(trigger.misfirePolicy)}
-          </dd>
-        </div>
       </dl>
+      {/* A rule, not a reading, so a note rather than a value. */}
+      <p className="text-xs text-muted-foreground">
+        {describeMisfirePolicy(trigger.misfirePolicy)}
+      </p>
       {history}
     </article>
   );

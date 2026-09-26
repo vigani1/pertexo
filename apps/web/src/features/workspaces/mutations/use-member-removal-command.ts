@@ -33,7 +33,7 @@ export function useMemberRemovalCommand(
       ),
     copy: {
       uncertain: (member) =>
-        `We couldn’t confirm whether ${member.displayName} was removed. Try again — Pertexo recognises the repeat, so it can’t happen twice.`,
+        `We couldn’t confirm whether ${member.displayName} was removed. Try again — Pertexo recognizes the repeat, so it can’t happen twice.`,
       conflict: (member) =>
         `${member.displayName}’s role changed while you were deciding. Check it, then remove them again if you still want to.`,
       action: 'removing this member',

@@ -3,7 +3,7 @@ import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-author
 import { WorkflowNameField } from '@/features/workflows/rename.public';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
-import { CopyField } from '../copy-field';
+import { CopyButton } from '@/components/ui/copy-button';
 import {
   visibleSettingsData,
   type SettingsQuery,
@@ -66,6 +66,8 @@ export function IdentitySection({
                 userId={userId}
                 workspace={workspace}
                 workflow={workflow}
+                // The row already says Name; the field keeps it for readers.
+                className="[&_[data-slot=field-label]]:sr-only"
               >
                 <span className="min-w-0 text-base font-semibold break-words">
                   {workflow.name}
@@ -73,13 +75,16 @@ export function IdentitySection({
               </WorkflowNameField>
             </dd>
           </div>
-          <div className="sm:col-span-2">
-            <CopyField
-              label="Workflow ID"
-              value={workflow.id}
-              display={workflow.id}
-              className="max-w-md"
-            />
+          {/* The same short, copyable ID as the workspace's settings. */}
+          <div className="flex flex-col gap-0.5 sm:col-span-2">
+            <dt className="text-xs text-muted-foreground">Workflow ID</dt>
+            <dd>
+              <CopyButton
+                value={workflow.id}
+                display={`${workflow.id.slice(0, 8)}…`}
+                label="Copy workflow ID"
+              />
+            </dd>
           </div>
           <Moment label="Created" value={workflow.createdAt} />
           <Moment label="Last updated" value={workflow.updatedAt} />

@@ -2,6 +2,7 @@ import { CopyPlusIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { useEditorStore } from '../../model/editor-store-context';
+import { shortcut } from '@/lib/shortcut-keys';
 
 /**
  * Commands for several selected steps or connections at once, floating over
@@ -41,7 +42,7 @@ export function SelectionToolbar({
           <Button type="button" size="sm" variant="ghost" onClick={onDuplicate}>
             <CopyPlusIcon data-icon="inline-start" />
             Duplicate
-            <Kbd>⌘D</Kbd>
+            <Kbd>{shortcut('D')}</Kbd>
           </Button>
         ) : null}
         <Button

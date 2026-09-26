@@ -24,7 +24,12 @@ export function WorkflowListError({
       <EmptyTitle>Workflows didn’t load</EmptyTitle>
       <EmptyDescription>{readFailureReason(error)}</EmptyDescription>
       <EmptyActions>
-        <Button type="button" disabled={retrying} onClick={onRetry}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={retrying}
+          onClick={onRetry}
+        >
           <RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
           {retrying ? 'Trying again…' : 'Try again'}
         </Button>

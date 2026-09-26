@@ -33,7 +33,7 @@ export function EmailChipsField({
     <LabelledField
       id={id}
       label="Email addresses"
-      description="Separate addresses with commas or spaces. Each person gets their own link, valid for seven days."
+      description="Separate addresses with commas or spaces. Links work for seven days."
       error={error}
     >
       {(control) => (

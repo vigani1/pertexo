@@ -14,6 +14,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { LiveRunCounts, RunCount } from '@/features/workflow-runs/loom.public';
 import type { RunStatistics } from '@/features/workflow-runs/queries.public';
 import { formatClock } from '@/lib/format-time';
+import { shortcut } from '@/lib/shortcut-keys';
 
 /**
  * The workspace's name and, in mono, exact figures from one statistics
@@ -62,16 +63,18 @@ export function HomeHeader({
         >
           Refresh
         </ProgressButton>
+        {/* On a phone the top bar's magnifier already opens search. */}
         <Button
           type="button"
           variant="ghost"
           aria-keyshortcuts="Meta+K Control+K"
+          className="max-md:hidden"
           onClick={onOpenSearch}
         >
           <SearchIcon data-icon="inline-start" aria-hidden="true" />
           Search
           <Kbd aria-hidden="true" className="hidden sm:inline-flex">
-            ⌘K
+            {shortcut('K')}
           </Kbd>
         </Button>
         {workspace.capabilities.includes('workflow:create') ? (

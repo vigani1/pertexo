@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ import {
   type ProviderKey,
 } from '../../model/connection-providers';
 import {
+  credentialDraftHasSecret,
   describeSavedCredential,
   toCreateRequest,
   type CredentialDraft,
@@ -58,8 +60,8 @@ export type AddConnectionRequest = ProviderKey | 'any';
 
 const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
   provider: 'Choose what Pertexo should plug into.',
-  credential: 'Pertexo encrypts it and never shows it again.',
-  name: 'Name it so people recognise it in steps and alerts.',
+  credential: 'Paste the key or token the service gave you.',
+  name: 'Name it so people recognize it in steps and alerts.',
   test: 'Check that the service accepts it.',
 };
 
@@ -89,6 +91,7 @@ export function AddConnectionSheet({
   const [nameInput, setNameInput] = useState<string>();
   const [created, setCreated] = useState<ConnectionResponse>();
   const [savedCredential, setSavedCredential] = useState<SavedCredential>();
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const provider = chosen ?? (request === 'any' ? undefined : request);
   const step: AddStep =
     stepState ?? (provider === undefined ? 'provider' : 'credential');
@@ -124,6 +127,17 @@ export function AddConnectionSheet({
     clearSensitiveState();
     test.reset();
     onClose();
+  }
+
+  /** Closing asks first when a pasted secret would be thrown away. */
+  function requestClose() {
+    if (
+      created === undefined &&
+      provider !== undefined &&
+      credentialDraftHasSecret(credential.draft)
+    )
+      setConfirmingDiscard(true);
+    else close();
   }
 
   function continueToName() {
@@ -178,7 +192,7 @@ export function AddConnectionSheet({
     <Sheet
       open={request !== undefined}
       onOpenChange={(open) => {
-        if (!open) close();
+        if (!open) requestClose();
       }}
     >
       <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
@@ -242,10 +256,23 @@ export function AddConnectionSheet({
               setStep(step === 'name' ? 'credential' : 'provider');
               if (step === 'credential') setChosen(undefined);
             }}
-            onCancel={close}
+            onCancel={requestClose}
           />
         </SheetFooter>
       </SheetContent>
+      <ConfirmDialog
+        open={confirmingDiscard}
+        onOpenChange={setConfirmingDiscard}
+        tone="destructive"
+        title="Discard this connection?"
+        description="The credential you pasted isn’t saved yet, so it’s lost if you leave now."
+        cancelLabel="Keep editing"
+        confirmLabel="Discard"
+        onConfirm={() => {
+          setConfirmingDiscard(false);
+          close();
+        }}
+      />
     </Sheet>
   );
 }

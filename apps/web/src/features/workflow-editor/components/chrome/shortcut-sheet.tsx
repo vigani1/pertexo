@@ -8,6 +8,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { shortcutKeys } from '@/lib/shortcut-keys';
 import { cn } from '@/lib/utils';
 
 const shortcuts: readonly Readonly<{
@@ -15,13 +16,13 @@ const shortcuts: readonly Readonly<{
   action: string;
 }>[] = [
   { keys: ['/'], action: 'Add a step' },
-  { keys: ['⌘', 'B'], action: 'Show or hide the step list' },
-  { keys: ['⌘', 'Z'], action: 'Undo' },
-  { keys: ['⇧', '⌘', 'Z'], action: 'Redo' },
-  { keys: ['⌘', 'D'], action: 'Duplicate selected steps' },
+  { keys: shortcutKeys('B'), action: 'Show or hide the step list' },
+  { keys: shortcutKeys('Z'), action: 'Undo' },
+  { keys: shortcutKeys('Z', { shift: true }), action: 'Redo' },
+  { keys: shortcutKeys('D'), action: 'Duplicate selected steps' },
   { keys: ['⌫'], action: 'Delete what’s selected on the canvas' },
-  { keys: ['⌘', '↵'], action: 'Test the selected step' },
-  { keys: ['⌘', 'S'], action: 'Save now' },
+  { keys: shortcutKeys('↵'), action: 'Test the selected step' },
+  { keys: shortcutKeys('S'), action: 'Save now' },
   { keys: ['?'], action: 'Show these shortcuts' },
 ];
 
@@ -80,9 +81,6 @@ export function ShortcutSheet({
             </div>
           ))}
         </dl>
-        <p className="mt-3 text-xs text-subtle-foreground">
-          On Windows and Linux, use Ctrl for ⌘.
-        </p>
       </PopoverContent>
     </Popover>
   );

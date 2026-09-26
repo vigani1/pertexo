@@ -295,7 +295,7 @@ test('replays the exact displayed version with explicit input', async ({
     dialog.getByText(/It doesn’t copy the original input/u),
   ).toBeVisible();
   await dialog.getByLabel('Replay input (JSON)').fill('{"incident":"INC-42"}');
-  await dialog.getByRole('button', { name: 'Replay this version' }).click();
+  await dialog.getByRole('button', { name: 'Replay run' }).click();
 
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);
   await expect(

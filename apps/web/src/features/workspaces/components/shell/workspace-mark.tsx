@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { formatInitials, stableIndex } from '@/lib/format-initials';
 
 // Each workspace gets a stable two-colour monogram derived from its name, so
-// people can recognise it in the switcher, picker and breadcrumb.
+// people can recognize it in the switcher, picker and breadcrumb.
 const MARK_GRADIENTS = [
   'from-primary to-secondary',
   'from-secondary to-success',

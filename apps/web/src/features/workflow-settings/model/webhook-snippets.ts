@@ -2,7 +2,7 @@
 // keyed with the base64url-decoded signing secret, sent as "v1=<hex>".
 // These are documentation strings shown to people, not code this app runs.
 
-export const WEBHOOK_MAX_BODY = '256 KiB';
+export const WEBHOOK_MAX_BODY = '256 KB';
 export const WEBHOOK_FRESHNESS = '5 minutes';
 
 export const CURL_SNIPPET = [

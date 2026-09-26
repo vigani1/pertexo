@@ -89,7 +89,7 @@ export function WorkflowVersionsPage({
               <Link
                 to="/w/$workspaceId/workflows/$workflowId"
                 params={{ workspaceId: workspace.id, workflowId }}
-                className={buttonVariants({ variant: 'default' })}
+                className={buttonVariants({ variant: 'primary' })}
               >
                 Open Build
               </Link>

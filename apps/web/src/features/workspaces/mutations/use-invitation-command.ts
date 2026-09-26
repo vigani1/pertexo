@@ -57,7 +57,7 @@ function subject(attempt: Attempt): string {
 }
 
 function uncertainMessage(attempt: Attempt): string {
-  return `We couldn’t confirm whether ${subject(attempt)} went through. Try again — Pertexo recognises the repeat, so it can’t happen twice.`;
+  return `We couldn’t confirm whether ${subject(attempt)} went through. Try again — Pertexo recognizes the repeat, so it can’t happen twice.`;
 }
 
 function commandError(error: unknown, attempt: Attempt): string {

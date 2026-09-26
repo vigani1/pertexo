@@ -31,6 +31,18 @@ const PLACEHOLDER_RESEND_KEY = 're_placeholder';
 const SLACK_TOKEN_FORMAT =
   'Slack bot tokens start with xoxb- and use only letters, numbers and dashes.';
 
+/** Whether anything secret has been typed or pasted into the draft. */
+export function credentialDraftHasSecret(draft: CredentialDraft): boolean {
+  switch (draft.provider) {
+    case 'slack':
+      return draft.botToken.trim() !== '';
+    case 'http':
+      return draft.headers.some((row) => row.value.trim() !== '');
+    case 'email':
+      return draft.apiKey.trim() !== '';
+  }
+}
+
 export function emptyCredentialDraft(
   provider: ProviderKey,
   createId: () => string,

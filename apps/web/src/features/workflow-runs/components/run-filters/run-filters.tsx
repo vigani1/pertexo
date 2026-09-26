@@ -12,7 +12,6 @@ import { StatusGlyph } from '@/components/ui/status';
 import { runFilterChips } from '../../model/run-filter-labels';
 import {
   clearedRunSearch,
-  hasRunFilters,
   withoutRunFilter,
   withoutTimeRange,
   type RunSearch,
@@ -106,18 +105,6 @@ export function RunFilters({
             ))}
           </SelectContent>
         </Select>
-        {hasRunFilters(search) ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="col-span-2 sm:col-span-1"
-            onClick={() => {
-              onSearchChange(clearedRunSearch(search));
-            }}
-          >
-            Clear filters
-          </Button>
-        ) : null}
       </div>
       {chips.length === 0 ? null : (
         <div
@@ -131,7 +118,7 @@ export function RunFilters({
               type="button"
               title={chip.label}
               aria-label={`Remove filter ${chip.label}`}
-              className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm border border-primary/25 bg-primary/8 px-2 py-1 text-xs text-accent-foreground outline-none hover:border-primary/50 focus-ring"
+              className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm border border-action/25 bg-action/8 px-2 py-1 text-xs text-accent-foreground outline-none hover:border-action/50 focus-ring"
               onClick={() => {
                 onSearchChange(
                   chip.key === 'time'
@@ -144,6 +131,20 @@ export function RunFilters({
               <XIcon aria-hidden="true" className="size-3 shrink-0" />
             </button>
           ))}
+          {/* One chip clears with its ×; several also clear at once, here
+              beside them rather than as another row in the toolbar. */}
+          {chips.length > 1 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onSearchChange(clearedRunSearch(search));
+              }}
+            >
+              Clear filters
+            </Button>
+          ) : null}
         </div>
       )}
     </div>

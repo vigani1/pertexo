@@ -23,7 +23,7 @@ const STEP_WORDS: Readonly<Record<Exclude<AddStep, 'provider'>, string>> = {
 };
 const NUMBERED_STEPS = ['credential', 'name', 'test'] as const;
 
-/** Three short bars: done steps are mint, the current one glows. */
+/** Three short bars: done steps dimmed, the current one lit, one colour. */
 export function StepIndicator({ step }: Readonly<{ step: AddStep }>) {
   if (step === 'provider') return null;
   const current = NUMBERED_STEPS.indexOf(step);
@@ -35,7 +35,7 @@ export function StepIndicator({ step }: Readonly<{ step: AddStep }>) {
             key={candidate}
             className={cn(
               'h-0.75 flex-1 rounded-full bg-white/10 transition-colors',
-              index < current && 'bg-success',
+              index < current && 'bg-action/40',
               index === current && 'bg-action',
             )}
           />

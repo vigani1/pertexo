@@ -210,7 +210,7 @@ export function WorkspaceCreationForm({
           <LabelledField
             id={`${idPrefix}-slug`}
             label="Handle"
-            description="Lowercase letters, numbers and single hyphens. It identifies the workspace in references."
+            description="It names the workspace in links and references."
             error={slugError}
           >
             {(control) => (
@@ -227,6 +227,8 @@ export function WorkspaceCreationForm({
                 autoComplete="off"
                 spellCheck={false}
                 maxLength={64}
+                // Set like its preview, so the handle reads the same.
+                className="font-mono"
                 disabled={locked}
                 value={slug}
                 onChange={(event) => {

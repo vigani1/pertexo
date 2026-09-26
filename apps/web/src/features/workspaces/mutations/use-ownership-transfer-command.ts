@@ -37,7 +37,7 @@ export function useOwnershipTransferCommand(
       ),
     copy: {
       uncertain: (member) =>
-        `We couldn’t confirm whether ${member.displayName} became the owner. Try again — Pertexo recognises the repeat, so it can’t happen twice.`,
+        `We couldn’t confirm whether ${member.displayName} became the owner. Try again — Pertexo recognizes the repeat, so it can’t happen twice.`,
       conflict: (member) =>
         `${member.displayName} or your own membership changed while you were deciding. Check the team, then try again.`,
       action: 'transferring ownership',
