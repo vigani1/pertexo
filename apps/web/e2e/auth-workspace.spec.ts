@@ -729,6 +729,9 @@ test('login remains keyboard-visible, motion-safe, and narrow-screen bounded', a
       ),
     ),
   ).toBe(false);
+  // The form is on screen before tabbing into it: on a busy machine the
+  // heading can paint a moment before the fields do.
+  await expect(page.getByLabel('Email')).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(
     page.getByRole('link', { name: 'Skip to content' }),
