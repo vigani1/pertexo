@@ -4,7 +4,7 @@ import {
   redirect,
 } from '@tanstack/react-router';
 import {
-  returnPathFrom,
+  allowlistedReturnPath,
   returnToSearch,
 } from '@/features/auth/return-path.public';
 import { authenticationCapabilitiesQueryOptions } from '@/features/auth/queries.public';
@@ -78,15 +78,15 @@ export const loginRoute = createRoute({
       ? { migrationFailed: true as const }
       : {}),
     ...(flag(search.socialError) ? { socialError: true as const } : {}),
-    ...returnToSearch(returnPathFrom(search.returnTo)),
+    ...returnToSearch(allowlistedReturnPath(search.returnTo)),
   }),
   beforeLoad: async ({ context, search }) => {
     const user = await findCurrentUser(context);
     if (user === undefined) return;
     // Router search keeps unvalidated raw keys, so check the value again.
-    const returnTo = returnPathFrom(search.returnTo);
-    if (returnTo === undefined) redirect({ to: '/', throw: true });
-    else redirect({ href: returnTo, throw: true });
+    const safeReturnPath = allowlistedReturnPath(search.returnTo);
+    if (safeReturnPath === undefined) redirect({ to: '/', throw: true });
+    else redirect({ href: safeReturnPath, throw: true });
   },
   head: () => ({ meta: [{ title: pageTitle('Sign in') }] }),
   component: lazyRouteComponent(() => import('./login-route'), 'LoginRoute'),
@@ -97,7 +97,7 @@ export const signUpRoute = createRoute({
   path: 'sign-up',
   pendingComponent: AuthLensPending,
   validateSearch: (search: Record<string, unknown>) =>
-    returnToSearch(returnPathFrom(search.returnTo)),
+    returnToSearch(allowlistedReturnPath(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Create account') }] }),
   component: lazyRouteComponent(() => import('./sign-up-route'), 'SignUpRoute'),
 });
@@ -145,7 +145,7 @@ export const logoutRoute = createRoute({
   path: '/logout',
   pendingComponent: OpeningPage,
   validateSearch: (search: Record<string, unknown>) =>
-    returnToSearch(returnPathFrom(search.returnTo)),
+    returnToSearch(allowlistedReturnPath(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Signing out') }] }),
   component: lazyRouteComponent(() => import('./logout-route'), 'LogoutRoute'),
 });

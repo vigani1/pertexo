@@ -1,7 +1,7 @@
 import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
 import { Link } from '@tanstack/react-router';
 import {
-  returnPathFrom,
+  allowlistedReturnPath,
   returnToSearch,
 } from '@/features/auth/return-path.public';
 import { firstNameOf } from '../../model/workspace-roles';
@@ -52,7 +52,7 @@ export function OwnershipTransferDialog(
           <Link
             to="/logout"
             search={returnToSearch(
-              returnPathFrom(`/w/${props.workspaceId}/team`),
+              allowlistedReturnPath(`/w/${props.workspaceId}/team`),
             )}
             className="text-[0.8rem] font-semibold text-accent-foreground underline-offset-4 hover:underline"
           >

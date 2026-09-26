@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useRouteContext, useSearch } from '@tanstack/react-router';
-import { returnPathFrom } from '@/features/auth/return-path.public';
+import { allowlistedReturnPath } from '@/features/auth/return-path.public';
 import { SignOutPage } from '@/features/auth/sign-out.public';
 import { useLogout } from './use-logout';
 
@@ -8,7 +8,7 @@ export function LogoutRoute() {
   const { apiClient } = useRouteContext({ from: '/logout' });
   const search = useSearch({ from: '/logout' });
   const logout = useLogout(apiClient, {
-    returnTo: returnPathFrom(search.returnTo),
+    returnTo: allowlistedReturnPath(search.returnTo),
   });
   const { completeLogout } = logout;
   useEffect(() => {

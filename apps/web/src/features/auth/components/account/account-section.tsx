@@ -7,7 +7,7 @@ import {
   accountCommandFailure,
   needsFreshSignIn,
 } from '../../model/account-failure';
-import { returnPathFrom, returnToSearch } from '../../model/return-path';
+import { allowlistedReturnPath, returnToSearch } from '../../model/return-path';
 import { Notice } from '@/components/ui/notice';
 
 /**
@@ -89,7 +89,7 @@ export function FreshSignInLink({ error }: Readonly<{ error: unknown }>) {
   return (
     <Link
       to="/logout"
-      search={returnToSearch(returnPathFrom(pathname))}
+      search={returnToSearch(allowlistedReturnPath(pathname))}
       className="text-[0.8rem] font-semibold text-accent-foreground underline-offset-4 hover:underline"
     >
       Sign in again
