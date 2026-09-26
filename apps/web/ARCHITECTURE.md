@@ -657,6 +657,18 @@ failed read) and nothing at all for an unfinished rule. The editor inspector
 provides the hook's `SchedulePreviewScope` (API client and workflow) once, so no
 inspector layer threads it through; without that scope nothing is shown.
 
+Switch cases, Parallel branches and Validate rules have list builders
+(`workflow-editor/components/inspector/builders`, model in
+`model/setup-builders.ts`). Each reads the stored list only when it can write it
+back exactly, and otherwise leaves the list on JSON; each applies live like any
+other field. A case or branch whose output still has a connection can't be
+removed from the builder, since publication rejects an edge leaving an
+unconfigured port (ADR 018, ADR 019). New steps start from
+`model/starting-config.ts`: a schema-valid setup the editor chooses (two
+branches, one case, bounded HTTP limits, a Merge joining the only Parallel on
+its level), because the catalog publishes no defaults and a definition's schema
+can't change in place (ADR 010).
+
 The initial renderer provides advisory required/type feedback and preserves
 data; the backend validates the saved graph. A full browser JSON Schema
 validator is **not required for the first slice**. If later necessary, select it
