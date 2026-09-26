@@ -62,10 +62,10 @@ test('tests a step, publishes v1, and follows the exact accepted run', async ({
   await page.getByRole('tab', { name: 'Test' }).click();
   await page.getByRole('button', { name: 'Check setup' }).click();
   await expect(page.getByText('Setup looks right')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Run test' })).toBeDisabled();
-  await page
-    .getByRole('switch', { name: 'I understand this test runs for real' })
-    .click();
+  // Set fields changes nothing outside Pertexo, so no acknowledgement.
+  await expect(
+    page.getByRole('switch', { name: 'I understand this test runs for real' }),
+  ).toHaveCount(0);
   await page.getByRole('button', { name: 'Run test' }).click();
   await expect(
     page.getByRole('region', { name: 'Test result' }).getByText('Test passed'),
