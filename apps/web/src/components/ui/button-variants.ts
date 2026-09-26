@@ -7,10 +7,10 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Neon outline. Unavailable, it turns plain grey rather than a dim
-        // glow; while its request runs (data-pending) it keeps its light.
+        // Neon. Unavailable, it turns plain grey rather than a dim cyan;
+        // while its request runs (data-pending) it keeps its light.
         primary:
-          'neon-outline disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:[text-shadow:none] aria-disabled:border-white/10 aria-disabled:bg-white/[0.04] aria-disabled:text-muted-foreground aria-disabled:shadow-none aria-disabled:opacity-100 aria-disabled:[text-shadow:none] data-pending:disabled:neon-outline',
+          'neon disabled:border-transparent disabled:bg-white/9 disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 aria-disabled:border-transparent aria-disabled:bg-white/9 aria-disabled:bg-none aria-disabled:text-muted-foreground aria-disabled:shadow-none aria-disabled:opacity-100 data-pending:disabled:neon',
         default:
           'border-action/25 bg-action/8 text-accent-foreground not-aria-disabled:hover:border-action/45 not-aria-disabled:hover:bg-action/13 aria-expanded:bg-action/13',
         outline:

@@ -222,13 +222,13 @@ export function Calendar({
                       aria-pressed={chosen(day)}
                       aria-current={isToday ? 'date' : undefined}
                       className={cn(
-                        'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-[0.8rem] tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring hover:border-white/12 hover:bg-white/[0.06] disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
+                        'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-[0.8rem] tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
                         outside && 'text-subtle-foreground/70',
                         isToday && !chosen(day) && 'text-accent-foreground',
                         onBand === 'middle' && 'text-foreground',
-                        // A chosen day is solid inside its ring, so the band
-                        // stops at its edge rather than showing through.
-                        chosen(day) && 'neon-outline bg-popover font-semibold',
+                        chosen(day)
+                          ? 'neon font-semibold'
+                          : 'hover:border-white/12 hover:bg-white/[0.06]',
                       )}
                       onClick={() => {
                         setFocused(day);
@@ -240,7 +240,12 @@ export function Calendar({
                         // Today: a bead of light under the number.
                         <span
                           aria-hidden="true"
-                          className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]"
+                          className={cn(
+                            'absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full',
+                            chosen(day)
+                              ? 'bg-primary-foreground'
+                              : 'bg-primary shadow-[0_0_6px_var(--primary)]',
+                          )}
                         />
                       ) : null}
                     </button>
