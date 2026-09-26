@@ -188,6 +188,13 @@ export function formatMonthYear(date: Date): string {
   return monthYearFormatter.format(date);
 }
 
+const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long' });
+
+/** The month alone, for a calendar's heading: "September". */
+export function formatMonthName(date: Date): string {
+  return monthFormatter.format(date);
+}
+
 /** Short weekday names from Monday: "Mon" … "Sun". */
 export function weekdayNames(): readonly string[] {
   // 2024-01-01 was a Monday.

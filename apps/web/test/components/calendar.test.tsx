@@ -27,7 +27,8 @@ describe('Calendar', () => {
     );
     const middle = screen.getByRole('button', { name: day(15) });
     expect(middle).toHaveAttribute('aria-pressed', 'false');
-    expect(middle.className).toMatch(/bg-action\/15/u);
+    // The days between sit on the range's band.
+    expect(middle.closest('td')?.className).toMatch(/before:bg-action/u);
     expect(screen.getByRole('button', { name: day(21) })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled();
 
