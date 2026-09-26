@@ -6,24 +6,31 @@ import { CanvasScene, readTokenColor, type Rgb } from '@/lib/canvas-scene';
 
 export type CoreOrbState = 'live' | 'idle' | 'waiting' | 'failed' | 'succeeded';
 
-type Motion = Readonly<{ speed: number; amplitude: number; loosen: boolean }>;
+type Motion = Readonly<{
+  speed: number;
+  amplitude: number;
+  loosen: boolean;
+  /** Brightness: a settled run's Core moves less, so it glows more. */
+  glow: number;
+}>;
 
 const MOTION: Record<CoreOrbState, Motion> = {
-  live: { speed: 1, amplitude: 1, loosen: false },
-  idle: { speed: 0.6, amplitude: 0.4, loosen: false },
-  waiting: { speed: 0.45, amplitude: 0.55, loosen: false },
-  failed: { speed: 0.35, amplitude: 0.7, loosen: true },
-  succeeded: { speed: 0.5, amplitude: 0.45, loosen: false },
+  live: { speed: 1, amplitude: 1, loosen: false, glow: 1 },
+  idle: { speed: 0.6, amplitude: 0.4, loosen: false, glow: 1 },
+  waiting: { speed: 0.45, amplitude: 0.55, loosen: false, glow: 1.3 },
+  failed: { speed: 0.35, amplitude: 0.7, loosen: true, glow: 1.35 },
+  succeeded: { speed: 0.5, amplitude: 0.45, loosen: false, glow: 1.25 },
 };
 
-// Palettes come from the design tokens so the orb never drifts from the theme.
+// Palettes come from the design tokens so the orb never drifts from the
+// theme: a state's own Core ink leads, its paler text colour highlights.
 const PALETTE_TOKENS: Record<CoreOrbState, readonly [string, string, string]> =
   {
     live: ['--primary', '--accent-foreground', '--secondary'],
     idle: ['--primary', '--accent-foreground', '--secondary'],
-    waiting: ['--secondary', '--accent-foreground', '--secondary'],
-    failed: ['--destructive', '--destructive', '--secondary'],
-    succeeded: ['--success', '--accent-foreground', '--primary'],
+    waiting: ['--core-waiting', '--secondary', '--core-waiting'],
+    failed: ['--core-failed', '--core-failed', '--destructive'],
+    succeeded: ['--core-succeeded', '--success', '--primary'],
   };
 
 const FALLBACK_RGB: Rgb = [0, 229, 255];
@@ -159,7 +166,7 @@ export class CoreOrbScene extends CanvasScene {
       let screenX = centreX + rotatedX * radius * perspective;
       let screenY = centreY + projectedY * radius * perspective;
       let alpha = Math.max(0.06, 0.35 + 0.55 * Math.sin(time * 2 + seed * 10));
-      alpha *= 0.35 + 0.65 * ((depth + 1) / 2);
+      alpha *= (0.35 + 0.65 * ((depth + 1) / 2)) * this.#motion.glow;
       const offset = this.#scatter[index];
       if (assembly < 1 && offset !== undefined) {
         screenX += offset[0] * (1 - assembly);
@@ -173,7 +180,7 @@ export class CoreOrbScene extends CanvasScene {
       const size = baseSize * (1 + seed * 1.2) * perspective;
       const sprite = this.#sprites[particle.swatch] ?? this.#sprites[0];
       if (sprite === undefined) return;
-      context.globalAlpha = alpha;
+      context.globalAlpha = Math.min(1, alpha);
       context.drawImage(
         sprite,
         screenX - size,
