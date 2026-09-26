@@ -232,11 +232,15 @@ export function ConnectionDetailSheet({
                   : 'Connection'}
               </SheetTitle>
               <SheetDescription>
-                {detail.isError
-                  ? isNotFound(detail.error)
-                    ? 'This connection doesn’t exist, or you don’t have access to it.'
-                    : describeReadError(detail.error, 'This connection')
-                  : 'Loading…'}
+                {detail.isError ? (
+                  isNotFound(detail.error) ? (
+                    'This connection doesn’t exist, or you don’t have access to it.'
+                  ) : (
+                    describeReadError(detail.error, 'This connection')
+                  )
+                ) : (
+                  <span className="skeleton-wait">Loading…</span>
+                )}
               </SheetDescription>
             </SheetHeader>
             {detail.isError ? null : (

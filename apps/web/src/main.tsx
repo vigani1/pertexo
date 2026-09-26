@@ -6,6 +6,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
+import { NotificationsProvider } from '@/components/ui/toast';
 import { createQueryClient } from './app/query-client';
 import { createAppRouter } from './app/router';
 import { createBrowserApiClient } from './lib/api/browser-client';
@@ -32,7 +33,10 @@ subscribeSessionChanges(() => {
 createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      {/* Above the router, so even a crashed root route can raise a toast. */}
+      <NotificationsProvider>
+        <RouterProvider router={router} />
+      </NotificationsProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

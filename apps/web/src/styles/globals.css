@@ -206,19 +206,21 @@
 }
 
 /* Skeletons stay invisible for their first 150 ms, so a fast load never
-   flashes one. The router's pending page has already waited and sets
-   `--skeleton-wait` to 0. */
+   shows one, then fade in over 250 ms: a load that lands just after the
+   wait leaves a faint shimmer instead of a flash. The router's pending page
+   has already waited and sets `--skeleton-wait` to 0. */
 @utility skeleton-wait {
-  animation: skeleton-wait var(--skeleton-wait, 150ms) step-end;
+  animation: skeleton-in 250ms ease-out var(--skeleton-wait, 150ms) backwards;
 }
 
 @utility skeleton-blink {
-  animation: skeleton-wait var(--skeleton-wait, 150ms) step-end;
+  animation: skeleton-in 250ms ease-out var(--skeleton-wait, 150ms) backwards;
 
   @media (prefers-reduced-motion: no-preference) {
+    /* The blink starts once the fade has finished; both move opacity. */
     animation:
-      skeleton-wait var(--skeleton-wait, 150ms) step-end,
-      blink 1.8s ease-in-out infinite;
+      skeleton-in 250ms ease-out var(--skeleton-wait, 150ms) backwards,
+      blink 1.8s ease-in-out calc(var(--skeleton-wait, 150ms) + 250ms) infinite;
   }
 }
 
@@ -297,13 +299,15 @@
 }
 
 /* Faint vertical warp threads behind page content. */
+/* Warp threads behind a page's head: faint and quickly gone, so they read
+   as cloth rather than scan-lines. */
 @utility warp {
   background-image: repeating-linear-gradient(
     90deg,
-    rgb(255 255 255 / 2%) 0 1px,
-    transparent 1px 9px
+    rgb(255 255 255 / 1.1%) 0 1px,
+    transparent 1px 12px
   );
-  mask-image: linear-gradient(180deg, black, transparent 55%);
+  mask-image: linear-gradient(180deg, black, transparent 32%);
 }
 
 /* The weave: the editor canvas and run maps share this texture. */
@@ -581,10 +585,9 @@
   }
 }
 
-@keyframes skeleton-wait {
-  from,
-  to {
-    visibility: hidden;
+@keyframes skeleton-in {
+  from {
+    opacity: 0;
   }
 }
 

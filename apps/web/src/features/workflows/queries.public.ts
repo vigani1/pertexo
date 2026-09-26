@@ -1,4 +1,5 @@
 export {
+  cachedWorkflowSummary,
   recentWorkflowsQueryOptions,
   workflowKeys,
   workflowSummaryQueryOptions,
