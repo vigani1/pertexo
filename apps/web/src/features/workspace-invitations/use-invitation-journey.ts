@@ -19,9 +19,10 @@ import {
 } from './model/acceptance-failure';
 
 /**
- * The acceptance journey for one mounted page. The link token is read once,
- * the fragment is cleared, and every late answer is ignored once StrictMode,
- * unmounting or a newer invitation link has taken over.
+ * The acceptance journey for one invitation link. The link token is read
+ * once, the fragment is cleared, and every late answer is ignored once
+ * StrictMode or unmounting has taken over. A newer link is a new journey:
+ * the page keys this one by its link, so it retires as it unmounts.
  */
 export function useInvitationJourney({
   apiClient,
@@ -54,7 +55,6 @@ export function useInvitationJourney({
     initialToken !== undefined,
   );
   const token = useRef<string | undefined>(initialToken);
-  const observedRouteToken = useRef(routeToken);
   const started = useRef(false);
   const lifecycle = useRef(0);
   const ownership = useRef(1);
@@ -102,25 +102,6 @@ export function useInvitationJourney({
       });
     };
   }, [bootstrap, clearFragment, initialToken, runtime]);
-
-  useEffect(() => {
-    const previous = observedRouteToken.current;
-    observedRouteToken.current = routeToken;
-    if (routeToken === undefined || routeToken === previous) return;
-    // A newer invitation link on the mounted route takes over the journey.
-    const owned = ++ownership.current;
-    bootstrapController.current?.abort();
-    oidcController.current?.abort();
-    cleanupController.current?.abort();
-    completion.current = undefined;
-    token.current = routeToken;
-    setTokenAvailable(true);
-    setJourney(undefined);
-    setError(undefined);
-    setPending(false);
-    clearFragment();
-    bootstrap(owned);
-  }, [bootstrap, clearFragment, routeToken]);
 
   return {
     journey,

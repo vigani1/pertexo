@@ -1,4 +1,5 @@
 import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
+import { useState } from 'react';
 import {
   AuthLens,
   AuthLensTitle,
@@ -36,7 +37,29 @@ type InvitationAcceptancePageProps = Readonly<{
   autoOpenAfterMs?: number;
 }>;
 
-export function InvitationAcceptancePage({
+/**
+ * Accepting a workspace invitation. A newer invitation link opened on this
+ * page starts a new journey: the journey is keyed by the latest link, so the
+ * old one retires as it unmounts. Clearing the link from the address passes
+ * no token, which keeps the current journey.
+ */
+export function InvitationAcceptancePage(props: InvitationAcceptancePageProps) {
+  const [link, setLink] = useState({
+    token: props.initialToken,
+    generation: 0,
+  });
+  if (props.initialToken !== undefined && props.initialToken !== link.token)
+    setLink({ token: props.initialToken, generation: link.generation + 1 });
+  return (
+    <InvitationJourneyPage
+      key={link.generation}
+      {...props}
+      {...(link.token === undefined ? {} : { initialToken: link.token })}
+    />
+  );
+}
+
+function InvitationJourneyPage({
   apiClient,
   initialToken,
   signInMethod,
