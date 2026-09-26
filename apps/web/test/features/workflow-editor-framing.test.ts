@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cleanEdgeZoom,
   framedViewport,
   inset,
   revealedViewport,
@@ -49,6 +50,30 @@ describe('editor canvas framing', () => {
     expect(wide.zoom).toBe(0.75);
     // Too wide: the workflow's start sits at the area's left edge.
     expect(wide.x).toBe(264 - 100 * 0.75);
+  });
+
+  it('ends a too-wide opening view between steps, not through one', () => {
+    const step = (x: number) => ({ x, y: 0, width: 224, height: 64 });
+    const steps = [step(0), step(300), step(600), step(900)];
+    const limits = { minZoom: 0.6, maxZoom: 1 };
+    // A phone: 310px at 0.75 ends at 413, through the second step. Taking
+    // it in whole needs 310 / 524 ≈ 0.59, too small to read, so the view
+    // ends just before it instead.
+    expect(cleanEdgeZoom(steps, 0, 310, 0.75, limits)).toBeCloseTo(1);
+    // A little wider: the second step fits whole above the floor.
+    expect(cleanEdgeZoom(steps, 0, 340, 0.75, limits)).toBeCloseTo(340 / 524);
+    // An edge that already falls in a gap is left alone.
+    expect(cleanEdgeZoom(steps, 0, 400, 0.75, limits)).toBe(0.75);
+    // A first step wider than the area can't be helped.
+    expect(
+      cleanEdgeZoom(
+        [{ x: 0, y: 0, width: 600, height: 64 }],
+        0,
+        310,
+        0.75,
+        limits,
+      ),
+    ).toBe(0.75);
   });
 
   it('pans a step hidden under a lens into view and leaves visible ones alone', () => {

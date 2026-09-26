@@ -104,6 +104,48 @@ export function framedViewport(
 }
 
 /**
+ * Below this, zooming out to take in a step the screen's edge would cut
+ * makes titles too small to read; the frame zooms in to stop before it.
+ */
+export const EDGE_STEP_MIN_ZOOM = 0.6;
+
+/**
+ * For a workflow that starts at the area's left and runs off its right: a
+ * zoom at which that right edge falls between steps, not through one. It
+ * zooms out a little to take in the step the edge would cut, while titles
+ * stay readable; otherwise in, to end just before it. On a phone that means
+ * the first steps whole, rather than one step and a sliver of the next.
+ */
+export function cleanEdgeZoom(
+  steps: readonly Box[],
+  startX: number,
+  areaWidth: number,
+  zoom: number,
+  limits: Readonly<{ minZoom: number; maxZoom: number }>,
+): number {
+  let current = zoom;
+  // Taking in one step can bring the edge into the next; a few rounds settle.
+  for (let round = 0; round < 4; round += 1) {
+    const edge = startX + areaWidth / current;
+    const cut = steps.filter(
+      (step) => step.x < edge && step.x + step.width > edge,
+    );
+    if (cut.length === 0) return current;
+    const right = Math.max(...cut.map((step) => step.x + step.width));
+    const out = areaWidth / (right - startX);
+    if (out >= limits.minZoom) {
+      current = Math.min(current, out);
+      continue;
+    }
+    const left = Math.min(...cut.map((step) => step.x));
+    // The first step is itself wider than the area: nothing to stop before.
+    if (left <= startX) return current;
+    return Math.min(limits.maxZoom, areaWidth / (left - startX));
+  }
+  return current;
+}
+
+/**
  * The smallest pan (same zoom) that brings `target` (flow coordinates)
  * inside `area`, or undefined when it's already there. A target larger
  * than the area keeps its top-left corner in view.
