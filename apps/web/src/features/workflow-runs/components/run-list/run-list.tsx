@@ -1,5 +1,5 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunListItem } from '@pertexo/contracts/schemas/workflow-runs';
 import type { ApiClient } from '@/lib/api/client';
 import {
   groupRunsByDay,
@@ -26,7 +26,7 @@ export function RunList({
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
-  runs: readonly WorkflowRunReadSummary[];
+  runs: readonly WorkflowRunListItem[];
   variant: RunListVariant;
 }>) {
   const ticking = runs.some((run) => isActiveRunStatus(run.status));

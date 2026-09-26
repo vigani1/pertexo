@@ -84,15 +84,25 @@ function installRun({
   nodes,
   events,
   stream,
+  input = { kind: 'none' },
+  output = { kind: 'none' },
 }: Readonly<{
   run: ReturnType<typeof fixtureRun>;
   nodes: readonly unknown[];
   events?: readonly Readonly<{ type: string }>[];
   stream?: () => Response;
+  input?: unknown;
+  output?: unknown;
 }>) {
   let streams = 0;
   mockServer.use(
     ...identityHandlers(capabilities),
+    http.get(`${apiBase}/runs/${runId}/input`, () =>
+      HttpResponse.json({ input }),
+    ),
+    http.get(`${apiBase}/runs/${runId}/node-runs/:nodeRunId/output`, () =>
+      HttpResponse.json({ output }),
+    ),
     http.get(`${apiBase}/runs/${runId}`, () =>
       HttpResponse.json({ run, nodes }),
     ),
@@ -365,7 +375,7 @@ describe('run page', () => {
     });
   });
 
-  it('offers file outputs and is honest about inline results and input', async () => {
+  it('shows the run input and a step’s file in its Data out', async () => {
     mockServer.use(
       http.get(`${apiBase}/artifacts/${artifactId}`, () =>
         HttpResponse.json({
@@ -391,6 +401,8 @@ describe('run page', () => {
         }),
         { type: 'run.succeeded' },
       ],
+      input: { kind: 'inline', value: { orderId: 'A-17' } },
+      output: { kind: 'artifact', artifactId },
     });
     renderApp(`/w/${workspaceId}/runs/${runId}`);
     expect(
@@ -400,16 +412,24 @@ describe('run page', () => {
         coldStart,
       ),
     ).toBeVisible();
+
+    // The only step received the run's input and returned a file.
+    const lens = screen.getByRole('complementary', { name: 'Step details' });
+    const dataIn = await within(lens).findByRole('group', {
+      name: 'Data in of Send receipt',
+    });
+    expect(await within(dataIn).findByText(/A-17/u)).toBeVisible();
+    expect(await within(lens).findByText('CSV file')).toBeVisible();
+
     await userEvent
       .setup()
       .click(screen.getByRole('tab', { name: 'Input & output' }));
     const panel = screen.getByRole('tabpanel');
-    expect(await within(panel).findByText('CSV file')).toBeVisible();
     expect(
-      within(panel).getByRole('button', { name: 'Download' }),
-    ).toBeVisible();
+      await within(panel).findByRole('group', { name: 'Run input' }),
+    ).toHaveTextContent(/orderId/u);
     expect(
-      within(panel).getByText(/kept with each attempt|so it can be replayed/u),
-    ).toBeVisible();
+      within(panel).getByRole('button', { name: /Send receipt/u }),
+    ).toHaveTextContent('file');
   });
 });

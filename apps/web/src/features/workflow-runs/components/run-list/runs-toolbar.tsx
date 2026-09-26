@@ -1,8 +1,13 @@
 import { ChartGanttIcon, ListIcon } from 'lucide-react';
+import { StatusGuide } from '@/components/patterns/status-guide';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { RUN_LIST_GUIDE } from '../../model/run-guide';
 
-/** The Live switch (10 s polling while visible) and the List | Loom view. */
+/**
+ * What the statuses mean, the Live switch (10 s polling while visible) and
+ * the List | Loom view.
+ */
 export function RunsToolbar({
   live,
   onLiveChange,
@@ -16,6 +21,7 @@ export function RunsToolbar({
 }>) {
   return (
     <>
+      <StatusGuide sections={RUN_LIST_GUIDE} />
       <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
         <Switch checked={live} onCheckedChange={onLiveChange} />
         Auto-refresh

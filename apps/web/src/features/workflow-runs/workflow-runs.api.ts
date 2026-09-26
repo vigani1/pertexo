@@ -4,12 +4,15 @@ import {
   workflowRunListQuerySchema,
   workflowRunListResponseSchema,
   workflowRunReplayRequestSchema,
+  workflowNodeRunOutputResponseSchema,
+  workflowRunInputResponseSchema,
   workflowRunResponseSchema,
   workflowRunStartRequestSchema,
   workflowRunStartResponseSchema,
   workflowRunStatisticsQuerySchema,
   workflowRunStatisticsResponseSchema,
   type WorkflowRunCancelResponse,
+  type WorkflowRunData,
   type WorkflowRunListResponse,
   type WorkflowRunResponse,
   type WorkflowRunStartResponse,
@@ -137,6 +140,43 @@ export function getWorkflowRun(
       decode: (value) => workflowRunResponseSchema.parse(value),
     },
   });
+}
+
+/** The input a run started with, as stored (ADR 050). */
+export async function getWorkflowRunInput(
+  apiClient: ApiClient,
+  workspaceId: string,
+  runId: string,
+  signal?: AbortSignal,
+): Promise<WorkflowRunData> {
+  const response = await apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/input`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowRunInputResponseSchema.parse(value),
+    },
+  });
+  return response.input;
+}
+
+/** What one step run produced, as stored (ADR 050). */
+export async function getWorkflowNodeRunOutput(
+  apiClient: ApiClient,
+  workspaceId: string,
+  runId: string,
+  nodeRunId: string,
+  signal?: AbortSignal,
+): Promise<WorkflowRunData> {
+  const response = await apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/node-runs/${encodeURIComponent(nodeRunId)}/output`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowNodeRunOutputResponseSchema.parse(value),
+    },
+  });
+  return response.output;
 }
 
 export function openWorkflowRunEvents(

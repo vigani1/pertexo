@@ -86,6 +86,29 @@ describe('workflow list', () => {
     expect(orders.every((order) => order === 'updated_desc')).toBe(true);
   });
 
+  it('explains what each workflow state means from the header', async () => {
+    mockServer.use(
+      ...discoveryHandlers(),
+      draftHandler(),
+      listHandler(() => ({
+        items: [summary(workflowId, 'Daily intake')],
+        nextCursor: null,
+      })),
+    );
+    renderApp(`/w/${workspaceId}/workflows`);
+    expect(await screen.findByText('Daily intake')).toBeVisible();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'What these mean' }));
+    const guide = await screen.findByRole('dialog', {
+      name: 'What these mean',
+    });
+    expect(within(guide).getByText('Degraded')).toBeVisible();
+    expect(
+      within(guide).getByText(/Its last 20 runs, oldest on the left/u),
+    ).toBeVisible();
+  });
+
   it('keeps the first page and retries only the failed next page', async () => {
     let nextPageAttempts = 0;
     mockServer.use(

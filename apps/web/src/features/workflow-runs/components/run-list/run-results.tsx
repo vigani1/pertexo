@@ -1,5 +1,5 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunListItem } from '@pertexo/contracts/schemas/workflow-runs';
 import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
 import { StaleLine } from '@/components/patterns/stale-line';
@@ -48,7 +48,7 @@ export function RunResults({
   search: RunSearch;
   onSearchChange: (search: RunSearch) => void;
   query: RunHistoryQuery;
-  runs: readonly WorkflowRunReadSummary[];
+  runs: readonly WorkflowRunListItem[];
   variant: RunListVariant;
   /** What to say, and where to go, before anything has run here. */
   noRuns: ReactNode;
@@ -122,7 +122,7 @@ function RunsLoomView({
   search,
   workspaceId,
 }: Readonly<{
-  runs: readonly WorkflowRunReadSummary[];
+  runs: readonly WorkflowRunListItem[];
   search: RunSearch;
   workspaceId: string;
 }>) {

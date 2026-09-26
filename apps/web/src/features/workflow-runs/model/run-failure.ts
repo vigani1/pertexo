@@ -1,5 +1,8 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import type { WorkflowRunResponse } from '@pertexo/contracts/schemas/workflow-runs';
+import type {
+  WorkflowRunFailedStep,
+  WorkflowRunResponse,
+} from '@pertexo/contracts/schemas/workflow-runs';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { shortStepError } from './step-error-copy';
 
@@ -40,6 +43,28 @@ export function describeRunFailure(
         ? 'timed out'
         : undefined
       : shortStepError(failing.safeErrorCode);
+  return {
+    ...(step === undefined ? {} : { step }),
+    ...(reason === undefined ? {} : { reason }),
+  };
+}
+
+/** The same, from the step a run list names for an unsuccessful run. */
+export function describeListedFailure(
+  failedStep: WorkflowRunFailedStep | null | undefined,
+): RunFailure {
+  if (failedStep === null || failedStep === undefined) return {};
+  const label = failedStep.label?.trim();
+  const step =
+    label !== undefined && label !== ''
+      ? label
+      : failedStep.definitionKey === null
+        ? undefined
+        : describeStep(failedStep.definitionKey).name;
+  const reason =
+    failedStep.safeErrorCode === null
+      ? undefined
+      : shortStepError(failedStep.safeErrorCode);
   return {
     ...(step === undefined ? {} : { step }),
     ...(reason === undefined ? {} : { reason }),

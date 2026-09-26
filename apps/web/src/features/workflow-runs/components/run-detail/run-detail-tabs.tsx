@@ -1,12 +1,11 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
 import { lazy, Suspense, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { ApiClient } from '@/lib/api/client';
 import type { ThreadView } from '../../model/thread-view';
 import { RunEventsView } from './run-events-view';
 import { RunLoadingWave } from './run-loading-wave';
+import type { RunDataScope } from './run-data';
 import { RunOutputsView } from './run-outputs-view';
 import { RunStepList } from './run-step-list';
 import { RunThreadView } from './run-thread-view';
@@ -49,9 +48,9 @@ function GraphPlaceholder({
 
 /** Thread (default), Graph, Events and Input & output for one run. */
 export function RunDetailTabs({
-  apiClient,
-  userId,
-  workspace,
+  scope,
+  canReplay,
+  onReplay,
   view,
   nowMs,
   active,
@@ -66,9 +65,9 @@ export function RunDetailTabs({
   runStartMs,
   compact,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
+  scope: RunDataScope;
+  canReplay: boolean;
+  onReplay: () => void;
   view: ThreadView;
   nowMs: number;
   active: boolean;
@@ -164,9 +163,11 @@ export function RunDetailTabs({
       <TabsContent value="io" className="pt-5">
         <RunOutputsView
           rows={view.rows}
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
+          scope={scope}
+          selectedKey={selectedKey}
+          canReplay={canReplay}
+          onReplay={onReplay}
+          onSelectStep={onSelectStep}
         />
       </TabsContent>
     </Tabs>

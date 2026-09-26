@@ -19,6 +19,7 @@ import { RunHeader } from './components/run-detail/run-header';
 import { StepError, StepLens } from './components/run-detail/step-lens';
 import { describeRunSentence } from './model/run-sentence';
 import { isActiveRunStatus } from './model/run-status';
+import { upstreamSteps } from './model/step-inputs';
 import { buildThreadView, type ThreadRow } from './model/thread-view';
 import { useMediaQuery } from '@/lib/use-media-query';
 import { useNow } from '@/lib/use-now';
@@ -122,9 +123,21 @@ export function RunDetailPage({
       }),
     [run, snapshot.nodes, events.timeline, version.data, nowMs],
   );
+  const upstream = useMemo(
+    () =>
+      version.data === undefined
+        ? undefined
+        : upstreamSteps(version.data.graph),
+    [version.data],
+  );
+  const dataScope = useMemo(
+    () => ({ apiClient, userId: user.id, workspace, runId }),
+    [apiClient, user.id, workspace, runId],
+  );
   const compact = useMediaQuery(PHONE_MEDIA_QUERY);
   const [selectedKey, setSelectedKey] = useState<string>();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [replayOpen, setReplayOpen] = useState(false);
   const selected =
     view.rows.find((row) => row.key === selectedKey) ?? focusRow(view.rows);
   const rowLabels = useMemo(() => {
@@ -155,10 +168,10 @@ export function RunDetailPage({
   const lens = (
     <StepLens
       row={selected}
+      rows={view.rows}
+      upstream={upstream}
       nowMs={nowMs}
-      apiClient={apiClient}
-      userId={user.id}
-      workspace={workspace}
+      scope={dataScope}
     />
   );
 
@@ -175,6 +188,8 @@ export function RunDetailPage({
           versionNumber={version.data?.versionNumber}
           liveStatus={events.connectionStatus}
           compact={compact}
+          replayOpen={replayOpen}
+          onReplayOpenChange={setReplayOpen}
           onReconnect={events.reconnect}
           onRunAccepted={onRunAccepted}
         />
@@ -193,9 +208,11 @@ export function RunDetailPage({
           />
         ) : null}
         <RunDetailTabs
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
+          scope={dataScope}
+          canReplay={workspace.capabilities.includes('run:replay')}
+          onReplay={() => {
+            setReplayOpen(true);
+          }}
           view={view}
           nowMs={nowMs}
           active={active}

@@ -161,6 +161,11 @@ async function installRoutes(page: Page, workflowName?: string) {
         },
       }),
   );
+  await page.route(`**/v1/workspaces/${workspaceId}/runs/*/input`, (route) =>
+    route.fulfill({
+      json: { input: { kind: 'inline', value: { incident: 'INC-41' } } },
+    }),
+  );
   await page.route(
     `**/v1/workspaces/${workspaceId}/runs/${firstRunId}/events`,
     (route) =>
@@ -281,7 +286,7 @@ test('filters and paginates workspace history, then opens the exact run', async 
   );
 });
 
-test('replays the exact displayed version with explicit input', async ({
+test('replays the exact displayed version from its own input', async ({
   context,
   page,
 }) => {
@@ -293,10 +298,10 @@ test('replays the exact displayed version with explicit input', async ({
 
   await page.getByRole('button', { name: 'Replay' }).click();
   const dialog = page.getByRole('dialog', { name: 'Replay this run' });
-  await expect(
-    dialog.getByText(/It doesn’t copy the original input/u),
-  ).toBeVisible();
-  await dialog.getByLabel('Replay input (JSON)').fill('{"incident":"INC-42"}');
+  await expect(dialog.getByText(/with this run’s input/u)).toBeVisible();
+  const input = dialog.getByLabel('Replay input (JSON)');
+  await expect(input).toHaveValue(/"incident": "INC-41"/u);
+  await input.fill('{"incident":"INC-42"}');
   await dialog.getByRole('button', { name: 'Replay run' }).click();
 
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);

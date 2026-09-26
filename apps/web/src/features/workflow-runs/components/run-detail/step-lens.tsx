@@ -4,8 +4,6 @@ import { ChevronDownIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Status, StatusGlyph } from '@/components/ui/status';
-import { ArtifactDownload } from '@/features/artifacts/public';
-import type { ApiClient } from '@/lib/api/client';
 import { describeStepError } from '../../model/step-error-copy';
 import {
   stepTag,
@@ -16,16 +14,26 @@ import type { StepStoryEntry } from '../../model/step-replay';
 import type { ThreadRow } from '../../model/thread-view';
 import { shortRunId } from '../../model/run-list';
 import { CopyButton } from '@/components/ui/copy-button';
+import { InfoHint } from '@/components/patterns/info-hint';
+import { StepInputData, StepOutputData, type RunDataScope } from './run-data';
 
 function LensSection({
   title,
+  hint,
   children,
-}: Readonly<{ title: string; children: ReactNode }>) {
+}: Readonly<{ title: string; hint?: ReactNode; children: ReactNode }>) {
   return (
     <section className="mt-6">
-      <h3 className="mb-2 font-sans text-xs font-semibold text-subtle-foreground">
-        {title}
-      </h3>
+      <div className="mb-2 flex items-center gap-1">
+        <h3 className="font-sans text-xs font-semibold text-subtle-foreground">
+          {title}
+        </h3>
+        {hint === undefined ? null : (
+          <InfoHint title={title} className="-my-1">
+            {hint}
+          </InfoHint>
+        )}
+      </div>
       {children}
     </section>
   );
@@ -90,59 +98,6 @@ function StoryEntry({
   );
 }
 
-function StepOutputs({
-  row,
-  apiClient,
-  userId,
-  workspace,
-}: Readonly<{
-  row: ThreadRow;
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
-}>) {
-  const canReadArtifacts = workspace.capabilities.includes('artifact:read');
-  const files = row.outputs.filter((output) => output.kind === 'artifact');
-  const inline = row.outputs.filter((output) => output.kind === 'inline');
-  if (row.outputs.length === 0)
-    return (
-      <p className="text-[0.8rem] text-muted-foreground">
-        {row.status === 'running' ||
-        row.status === 'waiting' ||
-        row.status === 'pending' ||
-        row.status === 'ready'
-          ? 'Shows up when the step finishes: a result, or a file you can download.'
-          : 'This step didn’t report an output.'}
-      </p>
-    );
-  return (
-    <div className="flex flex-col gap-2">
-      {canReadArtifacts
-        ? files.map((output) => (
-            <ArtifactDownload
-              key={output.artifactId}
-              apiClient={apiClient}
-              userId={userId}
-              workspaceId={workspace.id}
-              artifactId={output.artifactId}
-            />
-          ))
-        : null}
-      {files.length > 0 && !canReadArtifacts ? (
-        <p className="text-[0.8rem] text-muted-foreground">
-          This step produced a file, but your role can’t download files.
-        </p>
-      ) : null}
-      {inline.length > 0 ? (
-        <p className="text-[0.8rem] text-muted-foreground">
-          This step returned a result. It’s kept with the attempt but isn’t
-          shown here.
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 /**
  * Everything about one step: its status, the story of its attempts with
  * errors explained, its outputs and, tucked away, its identifiers. The
@@ -150,17 +105,19 @@ function StepOutputs({
  */
 export function StepLens({
   row,
+  rows,
+  upstream,
   nowMs,
-  apiClient,
-  userId,
-  workspace,
+  scope,
 }: Readonly<{
   row: ThreadRow | undefined;
+  rows: readonly ThreadRow[];
+  /** Steps connected into each step; undefined while the version loads. */
+  upstream: ReadonlyMap<string, readonly string[]> | undefined;
   nowMs: number;
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
+  scope: RunDataScope;
 }>) {
+  const { workspace } = scope;
   if (row === undefined)
     return (
       <p className="text-sm text-muted-foreground">
@@ -211,12 +168,38 @@ export function StepLens({
           <StepError code={row.safeErrorCode} workspace={workspace} />
         ) : null}
       </LensSection>
-      <LensSection title="Output">
-        <StepOutputs
+      <LensSection
+        title="Data in"
+        hint={
+          <>
+            <p>
+              What this step received. The first step gets the run’s input;
+              every other step gets what the steps connected into it returned.
+            </p>
+            <p>Pertexo keeps run data for 30 days, then deletes it.</p>
+          </>
+        }
+      >
+        <StepInputData
           row={row}
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
+          rows={rows}
+          upstream={upstream}
+          scope={scope}
+        />
+      </LensSection>
+      <LensSection
+        title="Data out"
+        hint={
+          <p>
+            What this step returned, which the steps after it receive. A file
+            shows as a download.
+          </p>
+        }
+      >
+        <StepOutputData
+          row={row}
+          scope={scope}
+          title={`Data out of ${row.label}`}
         />
       </LensSection>
       <details className="group mt-6">
