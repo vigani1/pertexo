@@ -1,15 +1,20 @@
 import { CalendarRangeIcon, ChevronDownIcon } from 'lucide-react';
 import { useState, type SyntheticEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  dateOf,
+  localDateOf,
+  type LocalDate,
+} from '@/components/ui/date-time-parts';
+import { FieldError } from '@/components/ui/field';
 import {
   Popover,
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { localTimeZone } from '@/lib/format-time';
+import { formatDate, localTimeZone } from '@/lib/format-time';
 import {
   presetRangeLabel,
   timeRangeLabel,
@@ -54,10 +59,10 @@ export function TimeRangeFilter({
         <span className="max-w-48 truncate">{label ?? 'Any time'}</span>
         <ChevronDownIcon aria-hidden="true" className="opacity-60" />
       </PopoverTrigger>
-      <PopoverContent className="w-80 sm:w-96">
+      <PopoverContent className="w-[min(24rem,calc(100vw-2rem))]">
         <PopoverTitle>When runs started</PopoverTitle>
         <div
-          className="mt-3 grid grid-cols-2 gap-1.5"
+          className="mt-3 grid grid-cols-3 gap-1.5"
           role="group"
           aria-label="Quick ranges"
         >
@@ -103,6 +108,12 @@ export function TimeRangeFilter({
   );
 }
 
+/** A picked day in words, e.g. "Sep 14, 2026". */
+function dayWords(day: LocalDate): string {
+  const date = dateOf(day);
+  return date === undefined ? day : formatDate(date.toISOString());
+}
+
 function CustomRangeForm({
   search,
   onApply,
@@ -112,6 +123,18 @@ function CustomRangeForm({
   const [from, setFrom] = useState(initial?.from ?? '');
   const [to, setTo] = useState(initial?.to ?? '');
   const [error, setError] = useState<string>();
+  const today = localDateOf(new Date());
+
+  // The first tap starts a range and the next ends it; a tap before the
+  // start moves the start, and a tap once both are set starts over.
+  function pick(day: LocalDate) {
+    setError(undefined);
+    if (from === '' || to !== '') {
+      setFrom(day);
+      setTo('');
+    } else if (day < from) setFrom(day);
+    else setTo(day);
+  }
 
   function apply(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -127,43 +150,34 @@ function CustomRangeForm({
   return (
     <form className="mt-4 border-t border-border pt-4" onSubmit={apply}>
       <p className="text-xs font-medium text-muted-foreground">Custom days</p>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="run-range-from" className="text-xs">
-            From
-          </FieldLabel>
-          <Input
-            id="run-range-from"
-            type="date"
-            value={from}
-            aria-invalid={error !== undefined}
-            onChange={(event) => {
-              setFrom(event.currentTarget.value);
-            }}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="run-range-to" className="text-xs">
-            To
-          </FieldLabel>
-          <Input
-            id="run-range-to"
-            type="date"
-            value={to}
-            aria-invalid={error !== undefined}
-            onChange={(event) => {
-              setTo(event.currentTarget.value);
-            }}
-          />
-        </Field>
+      <p aria-live="polite" className="mt-1 text-sm">
+        {from === ''
+          ? 'Pick the first day.'
+          : to === ''
+            ? `From ${dayWords(from)}. Now pick the last day.`
+            : from === to
+              ? dayWords(from)
+              : `${dayWords(from)} to ${dayWords(to)}`}
+      </p>
+      <div className="mt-2">
+        <Calendar
+          value={undefined}
+          max={today}
+          range={{
+            ...(from === '' ? {} : { from }),
+            ...(to === '' ? {} : { to }),
+          }}
+          onSelect={pick}
+        />
       </div>
       <p className="mt-2 text-xs text-subtle-foreground">
-        Whole days in your time zone, {localTimeZone()}.
+        Whole days in your time zone, {localTimeZone()}. Pick a day twice for
+        just that day.
       </p>
       {error === undefined ? null : (
         <FieldError className="mt-2">{error}</FieldError>
       )}
-      {/* Nothing to apply until both days are chosen. */}
+      {/* Nothing to apply until the range has both ends. */}
       <Button
         type="submit"
         size="sm"

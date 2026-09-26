@@ -28,7 +28,13 @@ export function PopoverContent({
       >
         <PopoverPrimitive.Popup
           data-slot="popover-content"
-          className={cn(popupSurface, 'w-72 p-4 text-sm', className)}
+          // Never taller than the room the screen leaves: a long popover
+          // scrolls inside itself instead of running off a phone's edge.
+          className={cn(
+            popupSurface,
+            'max-h-(--available-height) w-72 overflow-y-auto overscroll-contain p-4 text-sm',
+            className,
+          )}
           {...props}
         />
       </PopoverPrimitive.Positioner>

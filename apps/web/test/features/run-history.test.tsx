@@ -165,13 +165,21 @@ describe('workspace runs', () => {
     });
 
     await event.click(screen.getByRole('button', { name: 'When: Any time' }));
-    await event.type(await screen.findByLabelText('From'), '2026-09-14');
-    await event.type(screen.getByLabelText('To'), '2026-09-15');
+    // Today, twice: a range of just that day.
+    const today = await screen.findByRole('button', { current: 'date' });
+    await event.click(today);
+    expect(screen.getByText(/Now pick the last day/u)).toBeVisible();
+    await event.click(today);
     await event.click(screen.getByRole('button', { name: 'Apply range' }));
-    const localFrom = new Date(2026, 8, 14)
+    const now = new Date();
+    const localFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       .toISOString()
       .replace('.000Z', '.000000Z');
-    const localBefore = new Date(2026, 8, 16)
+    const localBefore = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    )
       .toISOString()
       .replace('.000Z', '.000000Z');
     await waitFor(() => {
