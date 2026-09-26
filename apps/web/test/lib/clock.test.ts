@@ -1,6 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatCountdown, formatShortTime } from '../../src/lib/format-time';
+import {
+  formatCountdown,
+  formatRelativeTime,
+  formatShortTime,
+} from '../../src/lib/format-time';
 import { useCountdown } from '../../src/lib/use-countdown';
 import { useNow } from '../../src/lib/use-now';
 
@@ -126,5 +130,17 @@ describe('formatShortTime', () => {
   it('renders a dash for a missing or unreadable time', () => {
     expect(formatShortTime(null)).toBe('—');
     expect(formatShortTime('not a time')).toBe('—');
+  });
+});
+
+describe('formatRelativeTime', () => {
+  it('reads a moment ago as past and a moment ahead as still to come', () => {
+    const now = Date.now();
+    expect(formatRelativeTime(new Date(now - 20_000).toISOString(), now)).toBe(
+      'just now',
+    );
+    expect(formatRelativeTime(new Date(now + 20_000).toISOString(), now)).toBe(
+      'in a moment',
+    );
   });
 });
