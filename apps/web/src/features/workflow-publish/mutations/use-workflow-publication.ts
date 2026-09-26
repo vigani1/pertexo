@@ -59,7 +59,10 @@ export function useWorkflowPublication({
 }>) {
   const queryClient = useQueryClient();
   const [validation, setValidation] = useState<ValidationResult>();
-  const [validationPending, setValidationPending] = useState(false);
+  // The check in flight, if any: it clears only its own marker, so a check
+  // from an earlier scope can't end a newer one's wait.
+  const [checking, setChecking] = useState<symbol>();
+  const validationPending = checking !== undefined;
   const [validationError, setValidationError] = useState<string>();
   const [validationBlockedUntil, setValidationBlockedUntil] =
     useState<number>();
@@ -106,7 +109,7 @@ export function useWorkflowPublication({
     const checkOwner = owner.current;
     if (validationInFlight.current !== undefined || checkOwner === undefined)
       return;
-    setValidationPending(true);
+    setChecking(checkOwner);
     setValidationError(undefined);
     const request = ensureSaved().then((saved) =>
       owner.current === checkOwner
@@ -125,7 +128,7 @@ export function useWorkflowPublication({
     } finally {
       if (validationInFlight.current === request)
         validationInFlight.current = undefined;
-      if (owner.current === checkOwner) setValidationPending(false);
+      setChecking((current) => (current === checkOwner ? undefined : current));
     }
   }
 

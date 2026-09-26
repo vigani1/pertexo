@@ -316,6 +316,51 @@ describe('workflow run submission lifecycle', () => {
 
 const emptyGraph = { schemaVersion: 1, nodes: [], edges: [], settings: {} };
 
+describe('a run started just before the workflow changes', () => {
+  it('stops waiting once the earlier workflow’s answer lands', async () => {
+    let answer: ((response: unknown) => void) | undefined;
+    const apiClient = apiClientFor(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    );
+    const onRunAccepted = vi.fn();
+    const hook = renderHook(
+      ({ id }: { id: string }) =>
+        useWorkflowRunSubmission({
+          apiClient,
+          workspaceId,
+          workflowId: id,
+          verifyIdentity: () => Promise.resolve(),
+          isSessionPaused: () => false,
+          ensureSaved: () => Promise.resolve(savedState(etagA, 2, 4)),
+          onRunAccepted,
+        }),
+      { initialProps: { id: workflowId } },
+    );
+
+    let started: Promise<boolean> | undefined;
+    act(() => {
+      started = hook.result.current.startNew({ value: {} });
+    });
+    await waitFor(() => {
+      expect(answer).toBeDefined();
+    });
+    expect(hook.result.current.pending).toBe(true);
+
+    // Another workflow opens while the first one's run request is out.
+    hook.rerender({ id: '99999999-9999-4999-8999-999999999999' });
+    await act(async () => {
+      answer?.(acceptedRun());
+      await started;
+    });
+    // The late answer is ignored, and nothing is left waiting on it.
+    expect(onRunAccepted).not.toHaveBeenCalled();
+    expect(hook.result.current.pending).toBe(false);
+  });
+});
+
 function savedState(etag: string, revision: number, generation: number) {
   return {
     etag,

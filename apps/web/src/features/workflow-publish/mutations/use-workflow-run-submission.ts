@@ -32,7 +32,10 @@ export function useWorkflowRunSubmission({
   onRunAccepted: (runId: string) => void;
   onRunCommandAccepted?: () => void;
 }>) {
-  const [pending, setPending] = useState(false);
+  // The submission in flight, if any: each one clears only its own marker,
+  // so an answer from an earlier scope can't end a newer submission's wait.
+  const [inFlight, setInFlight] = useState<symbol>();
+  const pending = inFlight !== undefined;
   const [error, setError] = useState<string>();
   const [retryAvailable, setRetryAvailable] = useState(false);
   const [acceptedRunId, setAcceptedRunId] = useState<string>();
@@ -77,7 +80,7 @@ export function useWorkflowRunSubmission({
       return false;
     const submissionOwner = owner.current;
     if (submissionOwner === undefined) return false;
-    setPending(true);
+    setInFlight(submissionOwner);
     setError(undefined);
     try {
       await verifyIdentity();
@@ -90,7 +93,9 @@ export function useWorkflowRunSubmission({
       setError(commandErrorMessage(cause, 'opening the run'));
       return false;
     } finally {
-      if (owner.current === submissionOwner) setPending(false);
+      setInFlight((current) =>
+        current === submissionOwner ? undefined : current,
+      );
     }
   }
 
@@ -98,7 +103,7 @@ export function useWorkflowRunSubmission({
     const submissionOwner = owner.current;
     if (submissionOwner === undefined) return false;
     let submitted = false;
-    setPending(true);
+    setInFlight(submissionOwner);
     setError(undefined);
     try {
       await verifyIdentity();
@@ -137,7 +142,9 @@ export function useWorkflowRunSubmission({
       setError(commandErrorMessage(cause, 'starting this run'));
       return false;
     } finally {
-      if (owner.current === submissionOwner) setPending(false);
+      setInFlight((current) =>
+        current === submissionOwner ? undefined : current,
+      );
     }
   }
 
