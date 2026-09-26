@@ -74,6 +74,94 @@ function startersFrom(
   return catalog === undefined ? [] : availableStarters(catalog.definitions);
 }
 
+type ListScope = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+}>;
+
+/**
+ * The list's pages in the chosen order, the starters the catalog can build,
+ * and which of the list's states is on screen. Changing the sort keeps the
+ * current rows until the re-sorted pages land.
+ */
+function useWorkflowList(
+  { apiClient, userId, workspace }: ListScope,
+  sort: keyof typeof WORKFLOW_ORDER_BY_SORT,
+  starterDraftWriter: StarterDraftWriter | undefined,
+) {
+  const canCreate = workspace.capabilities.includes('workflow:create');
+  const workflows = useInfiniteQuery({
+    ...workflowsInfiniteQueryOptions(
+      apiClient,
+      userId,
+      workspace.id,
+      WORKFLOW_ORDER_BY_SORT[sort],
+    ),
+    placeholderData: keepPreviousData,
+  });
+  const catalog = useQuery({
+    ...authoringCatalogQueryOptions(apiClient, userId),
+    enabled: canCreate && starterDraftWriter !== undefined,
+  });
+  const items = workflows.data?.pages.flatMap((page) => page.items) ?? [];
+  const empty = workflows.data !== undefined && items.length === 0;
+  return {
+    workflows,
+    items,
+    empty,
+    starters:
+      starterDraftWriter === undefined ? [] : startersFrom(catalog.data),
+    shown: listState(workflows.isPending, workflows.data !== undefined, empty),
+  } as const;
+}
+
+/** Renaming or archiving/restoring one workflow, over the list. */
+function WorkflowDialogs({
+  apiClient,
+  userId,
+  workspaceId,
+  renaming,
+  lifecycle,
+  onRenameClose,
+  onLifecycleClose,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  renaming: WorkflowSummary | undefined;
+  lifecycle: LifecycleTarget | undefined;
+  onRenameClose: () => void;
+  onLifecycleClose: () => void;
+}>) {
+  return (
+    <>
+      {renaming === undefined ? null : (
+        <WorkflowRenameDialog
+          key={renaming.id}
+          apiClient={apiClient}
+          userId={userId}
+          workspaceId={workspaceId}
+          workflow={renaming}
+          onClose={onRenameClose}
+        />
+      )}
+      {lifecycle === undefined ? null : (
+        <WorkflowLifecycleDialog
+          key={lifecycle.workflow.id}
+          apiClient={apiClient}
+          userId={userId}
+          workspaceId={workspaceId}
+          workflowId={lifecycle.workflow.id}
+          workflowName={lifecycle.workflow.name}
+          intent={lifecycle.intent}
+          onClose={onLifecycleClose}
+        />
+      )}
+    </>
+  );
+}
+
 export function WorkflowListPage({
   apiClient,
   user,
@@ -95,22 +183,14 @@ export function WorkflowListPage({
   /** Opens a run started from a row. */
   onRunStarted: (runId: string) => void;
 }>) {
-  const sort = search.sort ?? 'updated';
   const canCreate = workspace.capabilities.includes('workflow:create');
-  // Changing the sort keeps the current rows until the re-sorted pages land.
-  const workflows = useInfiniteQuery({
-    ...workflowsInfiniteQueryOptions(
-      apiClient,
-      user.id,
-      workspace.id,
-      WORKFLOW_ORDER_BY_SORT[sort],
-    ),
-    placeholderData: keepPreviousData,
-  });
-  const catalog = useQuery({
-    ...authoringCatalogQueryOptions(apiClient, user.id),
-    enabled: canCreate && starterDraftWriter !== undefined,
-  });
+  const scope = { apiClient, userId: user.id, workspace };
+  const list = useWorkflowList(
+    scope,
+    search.sort ?? 'updated',
+    starterDraftWriter,
+  );
+  const { workflows } = list;
   const filterRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [startChoice, setStartChoice] = useState<StartChoice>('blank');
@@ -122,16 +202,6 @@ export function WorkflowListPage({
     workspaceId: workspace.id,
     onRunStarted,
   });
-
-  const items = workflows.data?.pages.flatMap((page) => page.items) ?? [];
-  const starters =
-    starterDraftWriter === undefined ? [] : startersFrom(catalog.data);
-  const empty = workflows.data !== undefined && items.length === 0;
-  const shown = listState(
-    workflows.isPending,
-    workflows.data !== undefined,
-    empty,
-  );
 
   function openCreate(choice: StartChoice) {
     setStartChoice(choice);
@@ -152,11 +222,11 @@ export function WorkflowListPage({
   return (
     <div className="flex flex-col gap-6">
       <WorkflowListHeader
-        workflows={items}
+        workflows={list.items}
         loading={workflows.isPending}
         hasMore={workflows.hasNextPage}
         actions={
-          canCreate && !empty ? (
+          canCreate && !list.empty ? (
             <NewWorkflowButton
               onClick={() => {
                 openCreate('blank');
@@ -172,28 +242,28 @@ export function WorkflowListPage({
           className="-mt-3 w-full"
         />
       ) : null}
-      {shown === 'loading' ? <WorkflowRowsSkeleton /> : null}
-      {shown === 'failed' ? (
+      {list.shown === 'loading' ? <WorkflowRowsSkeleton /> : null}
+      {list.shown === 'failed' ? (
         <WorkflowListError
           error={workflows.error}
           retrying={workflows.isFetching}
           onRetry={() => void workflows.refetch()}
         />
       ) : null}
-      {shown === 'empty' ? (
+      {list.shown === 'empty' ? (
         <WorkflowListEmpty
           canCreate={canCreate}
-          starters={starters}
+          starters={list.starters}
           onStart={openCreate}
         />
       ) : null}
-      {shown === 'results' ? (
+      {list.shown === 'results' ? (
         <WorkflowListResults
           apiClient={apiClient}
           userId={user.id}
           workspace={workspace}
           workflows={workflows}
-          items={items}
+          items={list.items}
           search={search}
           query={query}
           filterRef={filterRef}
@@ -215,7 +285,7 @@ export function WorkflowListPage({
           userId={user.id}
           workspaceId={workspace.id}
           open={search.create === true}
-          starters={starters}
+          starters={list.starters}
           choice={startChoice}
           writer={starterDraftWriter}
           onChoiceChange={setStartChoice}
@@ -225,32 +295,19 @@ export function WorkflowListPage({
           onCreated={onCreated}
         />
       ) : null}
-      {renaming === undefined ? null : (
-        <WorkflowRenameDialog
-          key={renaming.id}
-          apiClient={apiClient}
-          userId={user.id}
-          workspaceId={workspace.id}
-          workflow={renaming}
-          onClose={() => {
-            setRenaming(undefined);
-          }}
-        />
-      )}
-      {lifecycle === undefined ? null : (
-        <WorkflowLifecycleDialog
-          key={lifecycle.workflow.id}
-          apiClient={apiClient}
-          userId={user.id}
-          workspaceId={workspace.id}
-          workflowId={lifecycle.workflow.id}
-          workflowName={lifecycle.workflow.name}
-          intent={lifecycle.intent}
-          onClose={() => {
-            setLifecycle(undefined);
-          }}
-        />
-      )}
+      <WorkflowDialogs
+        apiClient={apiClient}
+        userId={user.id}
+        workspaceId={workspace.id}
+        renaming={renaming}
+        lifecycle={lifecycle}
+        onRenameClose={() => {
+          setRenaming(undefined);
+        }}
+        onLifecycleClose={() => {
+          setLifecycle(undefined);
+        }}
+      />
     </div>
   );
 }

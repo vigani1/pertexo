@@ -78,18 +78,73 @@ function TriggerIcons({
 
 function RowGlyph({
   graph,
-  state,
+  failed,
   muted,
 }: Readonly<{
   graph: WorkflowGraphContract | undefined;
-  state: 'loading' | 'unavailable' | 'ready';
+  /** The shape couldn't be read: a quiet placeholder, not a loading one. */
+  failed: boolean;
   muted: boolean;
 }>) {
   if (graph !== undefined) return <PatternGlyph graph={graph} muted={muted} />;
+  return <PatternGlyphPlaceholder state={failed ? 'unavailable' : 'loading'} />;
+}
+
+/** The name, opening the workflow, and its path in words once it's read. */
+function RowTitle({
+  workspaceId,
+  workflow,
+  graph,
+  shapeFailed,
+}: Readonly<{
+  workspaceId: string;
+  workflow: WorkflowSummary;
+  graph: WorkflowGraphContract | undefined;
+  shapeFailed: boolean;
+}>) {
   return (
-    <PatternGlyphPlaceholder
-      state={state === 'unavailable' ? 'unavailable' : 'loading'}
-    />
+    <div className="min-w-0">
+      <Link
+        to="/w/$workspaceId/workflows/$workflowId"
+        params={{ workspaceId, workflowId: workflow.id }}
+        className="block truncate text-[0.95rem] font-semibold text-foreground outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring/60"
+      >
+        {workflow.name}
+      </Link>
+      {graph !== undefined ? (
+        <p className="mt-0.5 truncate text-xs text-subtle-foreground">
+          {describeWorkflowPath(graph)}
+        </p>
+      ) : shapeFailed ? null : (
+        <Skeleton className="mt-1.5 h-2.5 w-40 max-w-full" />
+      )}
+    </div>
+  );
+}
+
+/** The workflow's own latest runs as a strip, or why there isn't one. */
+function RowRuns({
+  runs,
+}: Readonly<{ runs: ReturnType<typeof useWorkflowRunTicks> }>) {
+  if (runs.failed)
+    return (
+      <span className="font-mono text-[0.7rem] text-subtle-foreground">
+        Couldn’t load
+      </span>
+    );
+  if (runs.pending) return <RunStripPlaceholder />;
+  return <RunStrip ticks={runs.ticks} />;
+}
+
+function UpdatedAt({ at }: Readonly<{ at: string }>) {
+  return (
+    <time
+      dateTime={at}
+      title={`Updated ${formatDateTime(at)}`}
+      className="font-mono text-[0.72rem] text-subtle-foreground"
+    >
+      {formatRelativeTime(at)}
+    </time>
   );
 }
 
@@ -201,34 +256,16 @@ export function WorkflowRow({
       <div className="row-span-2 lg:row-span-1">
         <RowGlyph
           graph={graph}
-          state={
-            shape.isError
-              ? 'unavailable'
-              : graph === undefined
-                ? 'loading'
-                : 'ready'
-          }
+          failed={shape.isError}
           muted={workflow.publishedVersionId === null}
         />
       </div>
-      <div className="min-w-0">
-        <Link
-          to="/w/$workspaceId/workflows/$workflowId"
-          params={{ workspaceId: workspace.id, workflowId: workflow.id }}
-          className="block truncate text-[0.95rem] font-semibold text-foreground outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring/60"
-        >
-          {workflow.name}
-        </Link>
-        {graph === undefined ? (
-          shape.isError ? null : (
-            <Skeleton className="mt-1.5 h-2.5 w-40 max-w-full" />
-          )
-        ) : (
-          <p className="mt-0.5 truncate text-xs text-subtle-foreground">
-            {describeWorkflowPath(graph)}
-          </p>
-        )}
-      </div>
+      <RowTitle
+        workspaceId={workspace.id}
+        workflow={workflow}
+        graph={graph}
+        shapeFailed={shape.isError}
+      />
       <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 lg:contents">
         <div className="min-w-0">
           <Status tone={state.tone} className="text-[0.78rem]">
@@ -239,24 +276,10 @@ export function WorkflowRow({
           <TriggerIcons graph={graph} />
         </div>
         <div className="hidden lg:block">
-          {!showRuns ? null : runs.failed ? (
-            <span className="font-mono text-[0.7rem] text-subtle-foreground">
-              Couldn’t load
-            </span>
-          ) : runs.pending ? (
-            <RunStripPlaceholder />
-          ) : (
-            <RunStrip ticks={runs.ticks} />
-          )}
+          {showRuns ? <RowRuns runs={runs} /> : null}
         </div>
         <div>
-          <time
-            dateTime={workflow.updatedAt}
-            title={`Updated ${formatDateTime(workflow.updatedAt)}`}
-            className="font-mono text-[0.72rem] text-subtle-foreground"
-          >
-            {formatRelativeTime(workflow.updatedAt)}
-          </time>
+          <UpdatedAt at={workflow.updatedAt} />
         </div>
       </div>
       <div className="relative z-10 col-start-3 row-start-1 flex items-center justify-end gap-1 lg:col-start-7">
