@@ -58,6 +58,136 @@ function destinationOptions(
     }));
 }
 
+type DestinationOption = ReturnType<typeof destinationOptions>[number];
+
+/**
+ * What the section reads: the workflow's current destination, the enabled
+ * destinations it could switch to, and the names that say each in words.
+ */
+function useAlertChoices({
+  apiClient,
+  userId,
+  workspace,
+  workflowId,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  workflowId: string;
+}>) {
+  const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
+    workspace.capabilities.includes(capability);
+  const enabled = can('workflow:update');
+  const destinations = useQuery({
+    ...failureNotificationDestinationsQueryOptions(
+      apiClient,
+      userId,
+      workspace.id,
+    ),
+    enabled,
+  });
+  const connections = useQuery({
+    ...connectionDiscoveryQueryOptions(apiClient, userId, workspace.id),
+    enabled: enabled && can('connection:read'),
+    select: connectionNames,
+  });
+  const policy = useQuery({
+    ...failureNotificationPolicyQueryOptions(
+      apiClient,
+      userId,
+      workspace.id,
+      workflowId,
+    ),
+    enabled,
+  });
+  const current = visibleSettingsData(policy);
+  const currentDestination = current?.destination ?? null;
+  const listed = visibleSettingsData(destinations);
+  const channelNames = useSlackChannelNames({
+    apiClient,
+    userId,
+    workspaceId: workspace.id,
+    channels: destinationChannels([
+      ...(currentDestination === null ? [] : [currentDestination]),
+      ...(listed?.items ?? []),
+    ]),
+    enabled: enabled && can('connection:use'),
+  });
+  const names = connections.data ?? NO_NAMES;
+  return {
+    policy,
+    destinations,
+    current,
+    connectionNames: names,
+    channelNames,
+    options: destinationOptions(listed, names, channelNames),
+  } as const;
+}
+
+/** Choose where failures go instead, or turn them off. */
+function DestinationPicker({
+  options,
+  pending,
+  alertsOff,
+  onSave,
+  onTurnOff,
+}: Readonly<{
+  options: readonly DestinationOption[];
+  pending: boolean;
+  alertsOff: boolean;
+  onSave: (option: DestinationOption) => void;
+  onTurnOff: () => void;
+}>) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = options.find((option) => option.value === selectedId);
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <Field className="min-w-64 flex-1">
+        <FieldLabel id="failure-destination-label">
+          Send failure alerts to
+        </FieldLabel>
+        <Select
+          items={options}
+          value={selectedId}
+          onValueChange={(value) => {
+            setSelectedId(typeof value === 'string' ? value : null);
+          }}
+        >
+          <SelectTrigger aria-labelledby="failure-destination-label">
+            <SelectValue placeholder="Choose a destination" />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <ProgressButton
+        type="button"
+        pending={pending}
+        pendingLabel="Saving…"
+        disabled={selected === undefined}
+        onClick={() => {
+          if (selected !== undefined) onSave(selected);
+        }}
+      >
+        Save destination
+      </ProgressButton>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={pending || alertsOff}
+        onClick={onTurnOff}
+      >
+        Turn alerts off
+      </Button>
+    </div>
+  );
+}
+
 /**
  * Where this workflow's failures are announced: the current choice, then a
  * destination to send them to instead, or turning them off.
@@ -73,67 +203,24 @@ export function FailureAlertsSection({
   workspace: AccessibleWorkspace;
   workflowId: string;
 }>) {
-  const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
-    workspace.capabilities.includes(capability);
-  const canSet = can('workflow:update');
-  const notifications = useNotifications();
-  const destinations = useQuery({
-    ...failureNotificationDestinationsQueryOptions(
-      apiClient,
-      userId,
-      workspace.id,
-    ),
-    enabled: canSet,
-  });
-  const connections = useQuery({
-    ...connectionDiscoveryQueryOptions(apiClient, userId, workspace.id),
-    enabled: canSet && can('connection:read'),
-    select: connectionNames,
-  });
-  const policy = useQuery({
-    ...failureNotificationPolicyQueryOptions(
-      apiClient,
-      userId,
-      workspace.id,
-      workflowId,
-    ),
-    enabled: canSet,
-  });
-  const current = visibleSettingsData(policy);
-  const currentDestination = current?.destination ?? null;
-  const listed = visibleSettingsData(destinations);
-  const channelNames = useSlackChannelNames({
-    apiClient,
-    userId,
-    workspaceId: workspace.id,
-    channels: destinationChannels([
-      ...(currentDestination === null ? [] : [currentDestination]),
-      ...(listed?.items ?? []),
-    ]),
-    enabled: canSet && can('connection:use'),
-  });
+  const choices = useAlertChoices({ apiClient, userId, workspace, workflowId });
   const commands = useFailureNotificationCommands({
     apiClient,
     userId,
     workspaceId: workspace.id,
     workflowId,
   });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const options = destinationOptions(
-    listed,
-    connections.data ?? NO_NAMES,
-    channelNames,
-  );
-  const selected = options.find((option) => option.value === selectedId);
+  const notifications = useNotifications();
+  const canSet = workspace.capabilities.includes('workflow:update');
 
-  async function update(destinationId?: string) {
-    if (!(await commands.updatePolicy(destinationId))) return;
+  async function update(option?: DestinationOption) {
+    if (!(await commands.updatePolicy(option?.value))) return;
     notifications.success(
-      destinationId === undefined
+      option === undefined
         ? { title: 'Failure alerts turned off' }
         : {
             title: 'Failure alerts updated',
-            description: `Failures now go to: ${selected?.label ?? 'the chosen destination'}`,
+            description: `Failures now go to: ${option.label}`,
           },
     );
   }
@@ -154,21 +241,22 @@ export function FailureAlertsSection({
       ) : (
         <>
           <SettingsQueryState
-            query={policy}
+            query={choices.policy}
             resource="The current alert destination"
           />
-          {current === undefined ? null : (
+          {choices.current === undefined ? null : (
             <CurrentAlertDestination
-              destination={current.destination}
-              connectionNames={connections.data ?? NO_NAMES}
-              channelNames={channelNames}
+              destination={choices.current.destination}
+              connectionNames={choices.connectionNames}
+              channelNames={choices.channelNames}
             />
           )}
           <SettingsQueryState
-            query={destinations}
+            query={choices.destinations}
             resource="Alert destinations"
           />
-          {destinations.data !== undefined && options.length === 0 ? (
+          {choices.destinations.data !== undefined &&
+          choices.options.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               There’s no enabled alert destination in this workspace yet.
             </p>
@@ -176,53 +264,16 @@ export function FailureAlertsSection({
           {commands.error === undefined ? null : (
             <Notice tone="destructive">{commands.error}</Notice>
           )}
-          {options.length === 0 ? null : (
-            <div className="flex flex-wrap items-end gap-3">
-              <Field className="min-w-64 flex-1">
-                <FieldLabel id="failure-destination-label">
-                  Send failure alerts to
-                </FieldLabel>
-                <Select
-                  items={options}
-                  value={selectedId}
-                  onValueChange={(value) => {
-                    setSelectedId(typeof value === 'string' ? value : null);
-                  }}
-                >
-                  <SelectTrigger aria-labelledby="failure-destination-label">
-                    <SelectValue placeholder="Choose a destination" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {options.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <ProgressButton
-                type="button"
-                pending={commands.pending}
-                pendingLabel="Saving…"
-                disabled={selected === undefined}
-                onClick={() => {
-                  if (selected !== undefined) void update(selected.value);
-                }}
-              >
-                Save destination
-              </ProgressButton>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={commands.pending || current?.destination === null}
-                onClick={() => void update()}
-              >
-                Turn alerts off
-              </Button>
-            </div>
+          {choices.options.length === 0 ? null : (
+            <DestinationPicker
+              options={choices.options}
+              pending={commands.pending}
+              alertsOff={choices.current?.destination === null}
+              onSave={(option) => void update(option)}
+              onTurnOff={() => void update()}
+            />
           )}
-          {can('connection:manage') ? (
+          {workspace.capabilities.includes('connection:manage') ? (
             <Link
               to="/w/$workspaceId/alerts"
               params={{ workspaceId: workspace.id }}
