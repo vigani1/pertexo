@@ -180,6 +180,7 @@ function CustomRangeForm({
       {/* Nothing to apply until the range has both ends. */}
       <Button
         type="submit"
+        variant="primary"
         size="sm"
         className="mt-3 w-full"
         disabled={from === '' || to === ''}
