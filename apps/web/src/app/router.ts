@@ -22,9 +22,11 @@ export function createAppRouter(
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     // A page's skeleton appears only if loading takes longer than 150 ms,
-    // and once shown it stays at least 300 ms, so it never flashes.
+    // and it fades in (skeleton-wait), so it needs no minimum time on
+    // screen: a page that lands just after the session check replaces a
+    // barely-visible skeleton instead of waiting out 300 ms of one.
     defaultPendingMs: 150,
-    defaultPendingMinMs: 300,
+    defaultPendingMinMs: 0,
     defaultPendingComponent: PagePending,
     scrollRestoration: true,
     ...(history ? { history } : {}),
