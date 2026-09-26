@@ -33,6 +33,9 @@ export function ShellBreadcrumb({
 }>) {
   const middle = crumbs.slice(0, -1);
   const page = crumbs.at(-1);
+  // Following a folded crumb leads to a page with another trail; keyed by
+  // the trail, the lens starts closed there.
+  const trail = crumbs.map((crumb) => crumb.key).join('/');
   return (
     <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
       <ol className="flex min-w-0 items-center gap-2 text-[0.8rem] text-subtle-foreground">
@@ -40,7 +43,7 @@ export function ShellBreadcrumb({
         {middle.length === 0 ? null : (
           <li className="flex shrink-0 items-center gap-2 sm:hidden">
             <Separator />
-            <FoldedCrumbs crumbs={middle} />
+            <FoldedCrumbs key={trail} crumbs={middle} />
           </li>
         )}
         {middle.map((crumb) => (
@@ -80,17 +83,7 @@ function FoldedCrumbs({ crumbs }: Readonly<{ crumbs: readonly Crumb[] }>) {
       </PopoverTrigger>
       <PopoverContent className="w-auto max-w-[min(18rem,calc(100vw-2rem))] p-2">
         <PopoverTitle className="sr-only">The path to this page</PopoverTitle>
-        {/* A crumb that leads somewhere closes the lens as it goes. */}
-        <ol
-          className="flex flex-col text-sm text-muted-foreground [&_a]:-mx-2 [&_a]:-my-1.5 [&_a]:block [&_a]:px-2 [&_a]:py-1.5 [&_a]:text-foreground"
-          onClick={(event) => {
-            if (
-              event.target instanceof Element &&
-              event.target.closest('a') !== null
-            )
-              setOpen(false);
-          }}
-        >
+        <ol className="flex flex-col text-sm text-muted-foreground [&_a]:-mx-2 [&_a]:-my-1.5 [&_a]:block [&_a]:px-2 [&_a]:py-1.5 [&_a]:text-foreground">
           {crumbs.map((crumb) => (
             <li
               key={crumb.key}
