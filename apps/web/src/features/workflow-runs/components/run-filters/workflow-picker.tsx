@@ -43,7 +43,7 @@ export function WorkflowPicker({
   return (
     <form
       role="search"
-      className="relative col-span-2 w-full sm:w-64"
+      className="relative col-span-2 w-full sm:w-56 lg:w-64"
       onSubmit={submit}
     >
       <label htmlFor="run-workflow-filter" className="sr-only">

@@ -116,9 +116,16 @@ export function ThreadTrack({
     segment,
     placement: segmentPlacement(view, segment, nowMs),
   }));
-  // The note sits above the thread where its latest segment starts, clear of
-  // the knots and frays that end each segment.
-  const tagLeft = placed.at(-1)?.placement.left ?? 0;
+  // The note belongs to the latest segment: over its end when that's past
+  // the middle (right-aligned, so it never drifts from its end mark), else
+  // from its start.
+  const last = placed.at(-1)?.placement;
+  const lastStart = last?.left ?? 0;
+  const lastEnd = lastStart + (last?.width ?? 0);
+  const tagStyle =
+    lastEnd > 50
+      ? { right: percent(100 - lastEnd) }
+      : { left: percent(lastStart) };
   return (
     <div aria-hidden="true" className="relative h-full min-w-0">
       {placed.map(({ segment, placement }, index) => {
@@ -129,10 +136,19 @@ export function ThreadTrack({
               'absolute top-1/2 -translate-y-1/2',
               statusToneText[segment.tone],
             )}
-            style={{
-              left: percent(placement.left),
-              width: `max(${percent(placement.width)}, 4px)`,
-            }}
+            style={
+              // Not started: a short stub waiting at now, not a line whose
+              // length is just how long the run has taken so far.
+              segment.kind === 'pending' && segment.endMs === null
+                ? {
+                    left: `max(0%, calc(${percent(placement.left + placement.width)} - 1.5rem))`,
+                    width: '1.5rem',
+                  }
+                : {
+                    left: percent(placement.left),
+                    width: `max(${percent(placement.width)}, 4px)`,
+                  }
+            }
           >
             <span className={cn('block w-full', segmentClass(segment))} />
             {/* While it waits, the coil sits at its live end: now. */}
@@ -153,7 +169,7 @@ export function ThreadTrack({
             ? 'text-destructive/85'
             : 'text-subtle-foreground',
         )}
-        style={{ left: `min(${percent(tagLeft)}, calc(100% - 10rem))` }}
+        style={tagStyle}
       >
         {tag}
       </span>

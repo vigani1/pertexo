@@ -69,7 +69,7 @@ export function RunRow({
     <li
       data-slot="run-row"
       className={cn(
-        'group/row relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-md px-3 py-3 transition-colors hover:bg-white/[0.035] lg:gap-x-4 lg:py-2.5',
+        'group/row relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-md px-3 py-3 transition-colors hover:bg-white/[0.035] md:gap-x-4 md:py-2.5',
         layout.grid,
       )}
     >
@@ -90,32 +90,27 @@ export function RunRow({
           workflowLabel(run)
         )}
       </Link>
-      <div className={cn('relative z-10 col-start-2 row-start-1', layout.menu)}>
-        <RunRowMenu
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          run={run}
-        />
-      </div>
-      <div className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] lg:contents">
-        <Status tone={look.tone} className="lg:col-start-1 lg:row-start-1">
+      <div className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] md:contents">
+        <Status tone={look.tone} className="md:col-start-1 md:row-start-1">
           {look.label}
         </Status>
         <TriggerLabel
           type={run.triggerType}
-          className={cn('lg:row-start-1', layout.trigger)}
+          className={cn('md:row-start-1', layout.trigger)}
         />
         {inWorkflow ? null : (
           <StartedAt
             run={run}
             nowMs={nowMs}
-            className="text-subtle-foreground lg:col-start-4 lg:row-start-1"
+            className={cn(
+              'text-subtle-foreground md:row-start-1',
+              layout.started,
+            )}
           />
         )}
         <span
           className={cn(
-            'font-mono text-xs text-muted-foreground lg:row-start-1',
+            'font-mono text-xs text-muted-foreground md:row-start-1',
             layout.took,
           )}
         >
@@ -125,17 +120,27 @@ export function RunRow({
           value={run.id}
           display={shortRunId(run.id)}
           label="Copy run ID"
-          className={cn('relative z-10 lg:row-start-1', layout.id)}
+          className={cn('relative z-10 md:row-start-1', layout.id)}
         />
       </div>
       <ThreadBar
         share={share}
         tone={look.tone}
         className={cn(
-          'col-span-2 row-start-3 lg:col-span-1 lg:row-start-1',
+          'col-span-2 row-start-3 md:col-span-1 md:row-start-1',
           layout.bar,
         )}
       />
+      {/* Last in reading order, so Tab reaches Copy run ID first; the grid
+          still places it at the row's end. */}
+      <div className={cn('relative z-10 col-start-2 row-start-1', layout.menu)}>
+        <RunRowMenu
+          apiClient={apiClient}
+          userId={userId}
+          workspace={workspace}
+          run={run}
+        />
+      </div>
     </li>
   );
 }
