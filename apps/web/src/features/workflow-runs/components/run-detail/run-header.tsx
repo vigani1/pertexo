@@ -131,7 +131,7 @@ function RunFacts({
 
 /**
  * Replay and Cancel run. On phones they sit in a bar at thumb height above
- * the bottom navigation, with Open workflow beside them.
+ * the bottom navigation, with Open workflow beside them when there's room.
  */
 function RunActions({
   compact,
@@ -152,9 +152,13 @@ function RunActions({
   onReplay: () => void;
   onCancel: () => void;
 }>) {
-  // Three actions share a phone's width: each takes its own width and the
-  // rest is shared, so none is cut off.
+  // The actions share a phone's width: each takes its own width and the
+  // rest is shared.
   const grow = compact ? 'flex-auto px-3' : undefined;
+  // Replay, Cancel run and Open workflow don't all fit a phone's width. The
+  // workflow's name at the top of the page links there too, so Open
+  // workflow is the one that makes way.
+  const roomToOpenWorkflow = !(canReplay && canCancel);
   const buttons = (
     <>
       {canReplay ? (
@@ -193,7 +197,7 @@ function RunActions({
       className="lens fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-30 flex gap-2 rounded-2xl p-2"
     >
       {buttons}
-      {canOpenWorkflow ? (
+      {canOpenWorkflow && roomToOpenWorkflow ? (
         <Link
           to="/w/$workspaceId/workflows/$workflowId"
           params={{ workspaceId, workflowId }}

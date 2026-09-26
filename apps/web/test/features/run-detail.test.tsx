@@ -182,6 +182,34 @@ describe('run page', () => {
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
   });
 
+  it('keeps a running run’s phone actions to what fits, with the workflow a tap away above', async () => {
+    emulatePhoneScreen();
+    installRun({ run: retryingRun(), nodes: [node('running')] });
+    // Someone who can both replay and cancel: the crowded case.
+    mockServer.use(...identityHandlers([...capabilities, 'run:replay']));
+    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    const actions = await screen.findByRole(
+      'group',
+      { name: 'Run actions' },
+      coldStart,
+    );
+    expect(
+      within(actions)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Replay', 'Cancel run']);
+    expect(
+      within(actions).queryByRole('link', { name: 'Open workflow' }),
+    ).not.toBeInTheDocument();
+    for (const link of screen.getAllByRole('link', {
+      name: 'Customer onboarding',
+    }))
+      expect(link).toHaveAttribute(
+        'href',
+        `/w/${workspaceId}/workflows/${workflowId}`,
+      );
+  });
+
   it('tells a retrying run’s story in a sentence, a thread and the step lens', async () => {
     installRun({
       run: retryingRun(),

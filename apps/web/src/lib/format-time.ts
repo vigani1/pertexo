@@ -81,7 +81,8 @@ export function formatRelativeTime(
   if (date === undefined) return MISSING;
   const seconds = Math.round((date.getTime() - now) / 1000);
   const magnitude = Math.abs(seconds);
-  if (magnitude < 45) return 'just now';
+  // Under a minute away: a next run at 7:32 is coming up, not "just now".
+  if (magnitude < 45) return seconds > 0 ? 'in a moment' : 'just now';
   if (magnitude < 3_600)
     return relativeFormatter.format(Math.round(seconds / 60), 'minute');
   if (magnitude < 86_400)
