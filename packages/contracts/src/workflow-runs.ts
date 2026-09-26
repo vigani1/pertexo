@@ -37,6 +37,9 @@ import {
   workflowRunListItemSchema,
   workflowRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
+  workflowStepHealthResponseSchema,
+  workflowStepRunsResponseSchema,
+  workflowStepRunsQuerySchema,
 } from './http/workflow-runs.js';
 
 export * from './http/workflow-runs.js';
@@ -65,6 +68,14 @@ const schemas = Object.freeze({
     'output',
   ),
   WorkflowRunEvent: jsonSchema(workflowRunEventSchema, 'output'),
+  WorkflowStepHealthResponse: jsonSchema(
+    workflowStepHealthResponseSchema,
+    'output',
+  ),
+  WorkflowStepRunsResponse: jsonSchema(
+    workflowStepRunsResponseSchema,
+    'output',
+  ),
 });
 
 /** Stored run data is recursive JSON, which needs the shared projection. */
@@ -105,6 +116,13 @@ const workspaceParameter = pathParameter('workspaceId', 'Workspace identifier');
 const workflowParameter = pathParameter('workflowId', 'Workflow identifier');
 const runParameter = pathParameter('runId', 'Workflow run identifier');
 const nodeRunParameter = pathParameter('nodeRunId', 'Node run identifier');
+const stepParameter = {
+  name: 'nodeId',
+  in: 'path',
+  required: true,
+  description: 'Step (node) identifier in the workflow graph',
+  schema: { type: 'string', minLength: 1, maxLength: 256 },
+} as const;
 const csrfParameter = csrfHeaderParameter();
 const idempotencyParameter = idempotencyHeaderParameter();
 const lastEventIdParameter = {
@@ -249,6 +267,47 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           '200': jsonResponse(
             'The output one step run produced',
             'WorkflowNodeRunOutputResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/step-health': {
+      get: {
+        operationId: 'getWorkflowStepHealth',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter, workflowParameter],
+        responses: {
+          '200': jsonResponse(
+            'Each step across the workflow’s last 100 runs',
+            'WorkflowStepHealthResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/steps/{nodeId}/runs': {
+      get: {
+        operationId: 'listWorkflowStepRuns',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          workflowParameter,
+          stepParameter,
+          queryParameter('limit', workflowStepRunsQuerySchema.shape.limit),
+        ],
+        responses: {
+          '200': jsonResponse(
+            'One step’s runs in the workflow’s last 100 runs',
+            'WorkflowStepRunsResponse',
           ),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),

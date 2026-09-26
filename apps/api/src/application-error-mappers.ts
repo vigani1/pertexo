@@ -36,7 +36,7 @@ const ROUTE_ERROR_MAPPERS: readonly RouteErrorMapper[] = Object.freeze([
   },
   {
     route:
-      /^\/v1\/workspaces\/[^/]+\/(?:runs(?:\/|$)|run-statistics$|workflows\/[^/]+\/runs(?:\/|$))/u,
+      /^\/v1\/workspaces\/[^/]+\/(?:runs(?:\/|$)|run-statistics$|workflows\/[^/]+\/(?:runs(?:\/|$)|step-health$|steps\/[^/]+\/runs$))/u,
     map: mapWorkflowRunError,
   },
   {

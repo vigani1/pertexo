@@ -98,6 +98,8 @@ function persistenceFixture() {
   const readInput = vi.fn<WorkflowRunPersistence['readInput']>();
   const readNodeRunOutput =
     vi.fn<WorkflowRunPersistence['readNodeRunOutput']>();
+  const stepHealth = vi.fn<WorkflowRunPersistence['stepHealth']>();
+  const stepRuns = vi.fn<WorkflowRunPersistence['stepRuns']>();
   return {
     persistence: {
       start,
@@ -108,6 +110,8 @@ function persistenceFixture() {
       cancel,
       readInput,
       readNodeRunOutput,
+      stepHealth,
+      stepRuns,
     } satisfies WorkflowRunPersistence,
     start,
     replay,
@@ -117,6 +121,8 @@ function persistenceFixture() {
     cancel,
     readInput,
     readNodeRunOutput,
+    stepHealth,
+    stepRuns,
   };
 }
 
@@ -422,5 +428,86 @@ describe('workflow runs real Nest HTTP stack', () => {
     });
     expect(unauthenticated.statusCode).toBe(401);
     expect(fixture.readInput).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads step health and one step’s runs for a role that reads runs', async () => {
+    const { application, fixture } = await start('viewer');
+    const at = new Date('2026-09-26T10:00:00.000Z');
+    fixture.stepHealth.mockResolvedValue({
+      runsConsidered: 2,
+      oldestRunAt: at,
+      items: [
+        {
+          nodeId: 'charge',
+          runs: 2,
+          succeeded: 1,
+          failed: 1,
+          skipped: 0,
+          lastStatus: 'failed',
+          lastRanAt: at,
+          medianDurationMs: 1_200,
+          p95DurationMs: 1_200,
+        },
+      ],
+    });
+    fixture.stepRuns.mockResolvedValue([
+      {
+        runId,
+        runStatus: 'failed',
+        runCreatedAt: at,
+        workflowVersionId,
+        nodeRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+        invocationKey: 'charge',
+        status: 'failed',
+        attempts: 3,
+        startedAt: at,
+        completedAt: at,
+        safeErrorCode: 'provider.timeout',
+      },
+    ]);
+
+    const health = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/step-health`,
+      headers: authHeaders,
+    });
+    expect(health.statusCode).toBe(200);
+    expect(health.json()).toMatchObject({
+      runsConsidered: 2,
+      oldestRunAt: at.toISOString(),
+      items: [{ nodeId: 'charge', failed: 1, lastRanAt: at.toISOString() }],
+    });
+
+    const runs = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/steps/charge/runs?limit=5`,
+      headers: authHeaders,
+    });
+    expect(runs.statusCode).toBe(200);
+    expect(runs.json()).toMatchObject({
+      items: [{ runId, status: 'failed', safeErrorCode: 'provider.timeout' }],
+    });
+    expect(fixture.stepRuns).toHaveBeenCalledWith({
+      workspaceId,
+      workflowId,
+      nodeId: 'charge',
+      limit: 5,
+    });
+
+    const tooMany = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/steps/charge/runs?limit=500`,
+      headers: authHeaders,
+    });
+    expect(tooMany.statusCode).toBe(400);
+
+    fixture.stepHealth.mockResolvedValue(undefined);
+    const hidden = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/step-health`,
+      headers: authHeaders,
+    });
+    expect(hidden.json()).toMatchObject({ code: 'resource.not_found' });
+    expect(hidden.statusCode).toBe(404);
   });
 });

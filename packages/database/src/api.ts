@@ -200,6 +200,11 @@ export type {
   WorkflowRunFailedStep,
 } from './execution/workflow-run-data.js';
 export type { WorkflowRunListRecord } from './execution/workflow-run-list.js';
+export type {
+  WorkflowStepHealthPage,
+  WorkflowStepHealthRecord,
+  WorkflowStepRunRecord,
+} from './execution/workflow-step-history.js';
 export type { WorkflowTriggerHealth } from './triggers/workflow-triggers.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';

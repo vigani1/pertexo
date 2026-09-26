@@ -1,7 +1,10 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import {
   workflowNodeRunParamsSchema,
   workflowRunParamsSchema,
+  workflowStepHealthParamsSchema,
+  workflowStepRunsParamsSchema,
+  workflowStepRunsQuerySchema,
 } from '@pertexo/contracts/workflow-runs';
 
 import { SessionAuthenticationGuard } from '../identity-workspace/index.js';
@@ -12,15 +15,22 @@ import { WorkflowRunReadGuard } from './guards.js';
 import {
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
+  GetWorkflowStepHealthUseCase,
+  ListWorkflowStepRunsUseCase,
 } from './run-data-use-cases.js';
 
-/** A run's input and each step's output (ADR 050). */
+/**
+ * A run's input and each step's output (ADR 050), and each step across its
+ * workflow's recent runs (ADR 051).
+ */
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class WorkflowRunDataController {
   public constructor(
     private readonly getRunInput: GetWorkflowRunInputUseCase,
     private readonly getNodeRunOutput: GetWorkflowNodeRunOutputUseCase,
+    private readonly getStepHealth: GetWorkflowStepHealthUseCase,
+    private readonly listStepRuns: ListWorkflowStepRunsUseCase,
   ) {}
 
   @Get('runs/:runId/input')
@@ -51,6 +61,40 @@ export class WorkflowRunDataController {
       ...optionalAuthorizedWorkspace(request),
       runId: route.runId,
       nodeRunId: route.nodeRunId,
+    });
+  }
+
+  @Get('workflows/:workflowId/step-health')
+  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  public async getWorkflowStepHealth(
+    @Req() request: WorkflowRunsRequest,
+    @Param() params: unknown,
+  ) {
+    const route = workflowStepHealthParamsSchema.parse(params);
+    return this.getStepHealth.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...optionalAuthorizedWorkspace(request),
+      workflowId: route.workflowId,
+    });
+  }
+
+  @Get('workflows/:workflowId/steps/:nodeId/runs')
+  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  public async listWorkflowStepRuns(
+    @Req() request: WorkflowRunsRequest,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const route = workflowStepRunsParamsSchema.parse(params);
+    const { limit } = workflowStepRunsQuerySchema.parse(query);
+    return this.listStepRuns.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...optionalAuthorizedWorkspace(request),
+      workflowId: route.workflowId,
+      nodeId: route.nodeId,
+      ...(limit === undefined ? {} : { limit }),
     });
   }
 }

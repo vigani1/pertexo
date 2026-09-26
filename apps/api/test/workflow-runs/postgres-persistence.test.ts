@@ -400,6 +400,10 @@ function databaseWith(
     readNodeRunOutput: vi
       .fn<WorkflowRunDatabase['readNodeRunOutput']>()
       .mockResolvedValue({ kind: 'none' }),
+    stepHealth: vi
+      .fn<WorkflowRunDatabase['stepHealth']>()
+      .mockResolvedValue({ runsConsidered: 0, oldestRunAt: null, items: [] }),
+    stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>().mockResolvedValue([]),
     statistics: vi
       .fn<WorkflowRunDatabase['statistics']>()
       .mockResolvedValue(statisticsRecord()),
@@ -677,6 +681,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
       readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
+      stepHealth: vi.fn<WorkflowRunDatabase['stepHealth']>(),
+      stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
     } satisfies WorkflowRunDatabase;
     const adapter = createPostgresWorkflowRunPersistence(
@@ -718,6 +724,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
       readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
+      stepHealth: vi.fn<WorkflowRunDatabase['stepHealth']>(),
+      stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
     } satisfies WorkflowRunDatabase;
     const adapter = createPostgresWorkflowRunPersistence(
@@ -1069,6 +1077,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       }),
       readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
       readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
+      stepHealth: vi.fn<WorkflowRunDatabase['stepHealth']>(),
+      stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>(),
       close,
     } satisfies WorkflowRunDatabase;
     const adapter = createPostgresWorkflowRunPersistence(

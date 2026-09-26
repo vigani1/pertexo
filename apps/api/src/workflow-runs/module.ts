@@ -23,6 +23,8 @@ import { WorkflowRunDataController } from './run-data-controller.js';
 import {
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
+  GetWorkflowStepHealthUseCase,
+  ListWorkflowStepRunsUseCase,
 } from './run-data-use-cases.js';
 import { GetWorkflowRunStatisticsUseCase } from './statistics-use-case.js';
 import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
@@ -107,6 +109,20 @@ export class WorkflowRunsModule {
         ),
       },
       {
+        provide: GetWorkflowStepHealthUseCase,
+        useValue: new GetWorkflowStepHealthUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
+        provide: ListWorkflowStepRunsUseCase,
+        useValue: new ListWorkflowStepRunsUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
         provide: GetWorkflowRunStatisticsUseCase,
         useValue: new GetWorkflowRunStatisticsUseCase(
           dependencies.persistence,
@@ -142,6 +158,8 @@ export class WorkflowRunsModule {
         GetWorkflowRunStatisticsUseCase,
         GetWorkflowRunInputUseCase,
         GetWorkflowNodeRunOutputUseCase,
+        GetWorkflowStepHealthUseCase,
+        ListWorkflowStepRunsUseCase,
         StreamRunEventsUseCase,
         CancelWorkflowRunUseCase,
       ],

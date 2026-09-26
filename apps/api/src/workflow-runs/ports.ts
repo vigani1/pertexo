@@ -40,6 +40,34 @@ type WorkflowRunFailedStepRecord = Readonly<{
 export type WorkflowRunListRecord = WorkflowRunReadRecord &
   Readonly<{ failedStep?: WorkflowRunFailedStepRecord | null }>;
 
+/** One step across the workflow's last 100 runs (ADR 051). */
+export type WorkflowStepHealthRecord = Readonly<{
+  nodeId: string;
+  runs: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  lastStatus: WorkflowNodeRunRecord['status'];
+  lastRanAt: Date;
+  medianDurationMs: number | null;
+  p95DurationMs: number | null;
+}>;
+
+/** One run of one step, with the run it belongs to (ADR 051). */
+export type WorkflowStepRunRecord = Readonly<{
+  runId: string;
+  runStatus: WorkflowRunRecord['status'];
+  runCreatedAt: Date;
+  workflowVersionId: string;
+  nodeRunId: string;
+  invocationKey: string;
+  status: WorkflowNodeRunRecord['status'];
+  attempts: number;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  safeErrorCode: string | null;
+}>;
+
 /** A run's input or a node run's output as stored (ADR 050). */
 export type WorkflowRunDataRecord =
   | Readonly<{ kind: 'inline'; value: unknown }>
@@ -200,6 +228,24 @@ export interface WorkflowRunPersistence {
   readNodeRunOutput(
     input: Readonly<{ workspaceId: string; runId: string; nodeRunId: string }>,
   ): Promise<WorkflowRunDataRecord | undefined>;
+  stepHealth(
+    input: Readonly<{ workspaceId: string; workflowId: string }>,
+  ): Promise<
+    | Readonly<{
+        runsConsidered: number;
+        oldestRunAt: Date | null;
+        items: readonly WorkflowStepHealthRecord[];
+      }>
+    | undefined
+  >;
+  stepRuns(
+    input: Readonly<{
+      workspaceId: string;
+      workflowId: string;
+      nodeId: string;
+      limit: number;
+    }>,
+  ): Promise<readonly WorkflowStepRunRecord[] | undefined>;
   cancel(input: CancelWorkflowRunCommand): Promise<
     Readonly<{
       run: WorkflowRunRecord;

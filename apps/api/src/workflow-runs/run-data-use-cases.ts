@@ -1,8 +1,12 @@
 import {
   workflowNodeRunOutputResponseSchema,
   workflowRunInputResponseSchema,
+  workflowStepHealthResponseSchema,
+  workflowStepRunsResponseSchema,
   type WorkflowNodeRunOutputResponse,
   type WorkflowRunInputResponse,
+  type WorkflowStepHealthResponse,
+  type WorkflowStepRunsResponse,
 } from '@pertexo/contracts/workflow-runs';
 
 import {
@@ -80,5 +84,71 @@ export class GetWorkflowNodeRunOutputUseCase {
     });
     if (data === undefined) throw new WorkflowRunNotFoundError();
     return workflowNodeRunOutputResponseSchema.parse({ output: data });
+  }
+}
+
+export type GetWorkflowStepHealthInput = WorkflowRunApplicationInput &
+  Readonly<{ workflowId: string }>;
+
+export type ListWorkflowStepRunsInput = GetWorkflowStepHealthInput &
+  Readonly<{ nodeId: string; limit?: number }>;
+
+function iso(value: Date | null): string | null {
+  return value === null ? null : value.toISOString();
+}
+
+/** Each step across the workflow's last 100 runs (ADR 051). */
+export class GetWorkflowStepHealthUseCase {
+  public constructor(
+    private readonly persistence: Pick<WorkflowRunPersistence, 'stepHealth'>,
+    private readonly authorization: WorkspaceAuthorizationSource,
+  ) {}
+
+  public async execute(
+    input: GetWorkflowStepHealthInput,
+  ): Promise<WorkflowStepHealthResponse> {
+    await authorizeRunData(input, this.authorization);
+    const page = await this.persistence.stepHealth({
+      workspaceId: input.routeWorkspaceId,
+      workflowId: input.workflowId,
+    });
+    if (page === undefined) throw new WorkflowRunNotFoundError();
+    return workflowStepHealthResponseSchema.parse({
+      runsConsidered: page.runsConsidered,
+      oldestRunAt: iso(page.oldestRunAt),
+      items: page.items.map((item) => ({
+        ...item,
+        lastRanAt: item.lastRanAt.toISOString(),
+      })),
+    });
+  }
+}
+
+/** One step's runs in the workflow's last 100 runs, newest first. */
+export class ListWorkflowStepRunsUseCase {
+  public constructor(
+    private readonly persistence: Pick<WorkflowRunPersistence, 'stepRuns'>,
+    private readonly authorization: WorkspaceAuthorizationSource,
+  ) {}
+
+  public async execute(
+    input: ListWorkflowStepRunsInput,
+  ): Promise<WorkflowStepRunsResponse> {
+    await authorizeRunData(input, this.authorization);
+    const items = await this.persistence.stepRuns({
+      workspaceId: input.routeWorkspaceId,
+      workflowId: input.workflowId,
+      nodeId: input.nodeId,
+      limit: input.limit ?? 20,
+    });
+    if (items === undefined) throw new WorkflowRunNotFoundError();
+    return workflowStepRunsResponseSchema.parse({
+      items: items.map((item) => ({
+        ...item,
+        runCreatedAt: item.runCreatedAt.toISOString(),
+        startedAt: iso(item.startedAt),
+        completedAt: iso(item.completedAt),
+      })),
+    });
   }
 }
