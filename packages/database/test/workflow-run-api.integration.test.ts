@@ -574,12 +574,30 @@ describe('workflow run API persistence', () => {
          and workflow.name similar to '(Common|Selective|Other)%'`,
       [workspaceId, actorId],
     );
-    await apiQuery(
-      `insert into app.workflow_runs
+    // This test measures read plans, not run admission. Seed terminal history
+    // with the disposable database admin so the per-row admission recount does
+    // not consume the test's fixed 15-second budget before EXPLAIN runs.
+    const fixtureAdmin = new Pool({
+      connectionString: disposableDatabase.databaseUrl(adminUrl),
+      max: 1,
+    });
+    try {
+      const seedClient = await fixtureAdmin.connect();
+      try {
+        await seedClient.query('begin');
+        await seedClient.query(
+          'alter table app.workflow_runs disable trigger workflow_runs_execution_admission',
+        );
+        await seedClient.query(
+          'alter table app.workflow_runs disable trigger workflow_runs_refresh_execution_admission',
+        );
+        await seedClient.query(
+          `insert into app.workflow_runs
          (id, workspace_id, workflow_id, workflow_version_id,
-          trigger_type, status, created_at, updated_at)
+          trigger_type, status, execution_entitlement_version, created_at, updated_at)
        select gen_random_uuid(), $1, workflow.id, version.id, 'manual',
               case when run_number % 2 = 0 then 'failed' else 'succeeded' end,
+              1,
               '2026-09-01T00:00:00Z'::timestamptz
                 + ((row_number() over ())::text || ' milliseconds')::interval,
               '2026-09-01T00:00:00Z'::timestamptz
@@ -591,8 +609,49 @@ describe('workflow run API persistence', () => {
        cross join generate_series(1, 250) run_number
        where workflow.workspace_id = $1
          and workflow.name similar to '(Common|Selective|Other)%'`,
+          [workspaceId],
+        );
+        await seedClient.query(
+          'alter table app.workflow_runs enable trigger workflow_runs_refresh_execution_admission',
+        );
+        await seedClient.query(
+          'alter table app.workflow_runs enable trigger workflow_runs_execution_admission',
+        );
+        await seedClient.query('commit');
+        const triggers = await seedClient.query<{
+          tgname: string;
+          tgenabled: string;
+        }>(
+          `select tgname,tgenabled from pg_trigger
+            where tgrelid='app.workflow_runs'::regclass
+              and tgname in ('workflow_runs_execution_admission',
+                             'workflow_runs_refresh_execution_admission')
+            order by tgname`,
+        );
+        expect(triggers.rows).toEqual([
+          { tgname: 'workflow_runs_execution_admission', tgenabled: 'O' },
+          {
+            tgname: 'workflow_runs_refresh_execution_admission',
+            tgenabled: 'O',
+          },
+        ]);
+      } catch (error) {
+        await seedClient.query('rollback');
+        throw error;
+      } finally {
+        seedClient.release();
+      }
+    } finally {
+      await fixtureAdmin.end();
+    }
+    const cardinality = await apiQuery<{ workflows: number; runs: number }>(
+      `select count(distinct workflow_id)::integer workflows,
+              count(*)::integer runs
+         from app.workflow_runs where workspace_id=$1
+           and created_at >= '2026-09-01T00:00:00Z'::timestamptz`,
       [workspaceId],
     );
+    expect(cardinality.rows[0]).toEqual({ workflows: 40, runs: 10_000 });
     await ownerQuery('analyze app.workflows');
     await ownerQuery('analyze app.workflow_runs');
 
