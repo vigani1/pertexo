@@ -117,6 +117,8 @@ export function useRunEvents(
       while (!controller.signal.aborted) {
         let stream:
           Awaited<ReturnType<typeof openWorkflowRunEvents>> | undefined;
+        let openedAt: number | undefined;
+        let delivered = false;
         try {
           setConnectionStatus(
             failures === 0
@@ -133,6 +135,7 @@ export function useRunEvents(
             controller.signal,
           );
           activeStream = stream;
+          openedAt = Date.now();
           if (!isCurrent()) return;
           setConnectionStatus('live');
           for await (const message of decodeSseMessages(stream.body)) {
@@ -140,6 +143,7 @@ export function useRunEvents(
             const event = decodeRunEvent(message);
             if (classifyRunEvent(cursor, event) === 'duplicate') continue;
             cursor = event.sequence;
+            delivered = true;
             updateCurrent((current) => {
               const appended = appendRunEvent(current.timeline, event);
               return {
@@ -160,6 +164,7 @@ export function useRunEvents(
           );
         } catch (error) {
           if (!isCurrent()) return;
+          if (streamWasHealthy(delivered, openedAt)) failures = 0;
           const recovery = classifyStreamFailure(error, failures + 1);
           if (recovery.kind === 'stop') {
             setRecovery(recovery.status, recovery.message);
@@ -222,6 +227,23 @@ export function useRunEvents(
       setGeneration((current) => current + 1);
     },
   } as const;
+}
+
+/** How long a quiet stream stays open before a drop counts as a fresh one. */
+const HEALTHY_STREAM_MS = 30_000;
+
+/**
+ * A stream that delivered events, or stayed open a while, was healthy: its
+ * drop starts a fresh count rather than adding to the drops before it.
+ */
+function streamWasHealthy(
+  delivered: boolean,
+  openedAt: number | undefined,
+): boolean {
+  return (
+    delivered ||
+    (openedAt !== undefined && Date.now() - openedAt >= HEALTHY_STREAM_MS)
+  );
 }
 
 type StreamRecovery =
