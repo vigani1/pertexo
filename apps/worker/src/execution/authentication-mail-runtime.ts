@@ -28,19 +28,25 @@ export function createAuthenticationMailRuntime(
     timer.unref();
   };
   const tick = () => {
-    active = handler
-      .runOnce(controller.signal)
+    active = Promise.resolve()
+      .then(() => handler.runOnce(controller.signal))
       .then(() => {
         failed = false;
       })
       .catch(() => {
         failed = true;
-        onFailure();
+        try {
+          onFailure();
+        } catch {
+          // Diagnostics cannot change delivery recovery or shutdown ownership.
+        }
       })
       .finally(() => {
         active = undefined;
         schedule();
       });
+    // The timer owns this task even when no shutdown caller is awaiting it.
+    void active.catch(() => undefined);
   };
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
@@ -55,8 +61,23 @@ export function createAuthenticationMailRuntime(
       closePromise ??= (async () => {
         controller.abort();
         if (timer !== undefined) clearTimeout(timer);
-        await active;
-        await store.close();
+        const failures: unknown[] = [];
+        try {
+          await active;
+        } catch (error: unknown) {
+          failures.push(error);
+        }
+        try {
+          await store.close();
+        } catch (error: unknown) {
+          failures.push(error);
+        }
+        if (failures.length === 1) throw failures[0];
+        if (failures.length > 1)
+          throw new AggregateError(
+            failures,
+            'Authentication mail shutdown failed',
+          );
       })();
       return closePromise;
     },
