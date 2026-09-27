@@ -67,7 +67,7 @@ async function waitForAdvisoryLock(
   throw new Error('OIDC admission did not wait on the advisory lock');
 }
 
-async function waitUntilExpired(observer: PoolClient, expiresAt: Date) {
+async function waitUntilExpired(observer: PoolClient, expiresAt: string) {
   const deadline = Date.now() + 3_000;
   while (Date.now() < deadline) {
     const result = await observer.query<{ expired: boolean }>(
@@ -87,14 +87,18 @@ async function addBoundaryRow(owner: PoolClient, marker: string) {
     await owner.query(
       'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
     );
-    const result = await owner.query<{ expires_at: Date }>(
+    // Keep PostgreSQL's microsecond boundary intact: a JS Date would truncate
+    // it and could release the admission lock before the row actually expires.
+    const result = await owner.query<{ expires_at: string }>(
       `insert into app.oidc_login_transactions
         (state_digest,code_verifier_ciphertext,code_verifier_nonce,
          code_verifier_tag,code_verifier_key_version,nonce_ciphertext,
          nonce_nonce,nonce_tag,nonce_key_version,expires_at)
        values($1,'sealed-verifier','nonce','tag','v1','sealed-nonce',
-              'nonce','tag','v1',clock_timestamp()+interval '1 second')
-       returning expires_at`,
+              'nonce','tag','v1',
+              date_trunc('milliseconds',clock_timestamp()+interval '1 second')
+                +interval '500 microseconds')
+       returning expires_at::text`,
       [marker.repeat(64)],
     );
     await owner.query(
@@ -119,6 +123,12 @@ async function contendAtExpiry(input: {
   owner: PoolClient;
 }) {
   const expiresAt = await addBoundaryRow(input.owner, input.marker);
+  const boundary = await input.observer.query<{ exact: boolean }>(
+    `select expires_at=$1::timestamptz exact
+       from app.oidc_login_transactions where state_digest=$2`,
+    [expiresAt, input.marker.repeat(64)],
+  );
+  expect(boundary.rows).toEqual([{ exact: true }]);
   await input.holder.query('begin');
   await input.holder.query('select pg_advisory_xact_lock(7166118815)');
   const pid = await input.api.query<{ pid: number }>(
