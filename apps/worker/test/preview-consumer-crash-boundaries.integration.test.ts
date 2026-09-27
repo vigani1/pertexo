@@ -12,7 +12,7 @@ import { Redis } from 'ioredis';
 import { describe, expect, it } from 'vitest';
 
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
+import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
 import { spawnPreviewCrashChild } from './support/preview-consumer-crash-process.support.js';
 import {
   acceptDelivery,
@@ -226,11 +226,11 @@ describeIntegration('preview dispatch crash boundaries', () => {
           }),
         );
         let reconciliationRuntime:
-          | Awaited<ReturnType<typeof createPreviewMaintenanceRuntime>>
+          | Awaited<ReturnType<typeof createMaintenanceRuntime>>
           | undefined;
         await runWithCleanup(
           async () => {
-            reconciliationRuntime = await createPreviewMaintenanceRuntime({
+            reconciliationRuntime = await createMaintenanceRuntime({
               database: parseDatabaseConfig({
                 connectionString: databaseUrl(workerUrl),
               }),

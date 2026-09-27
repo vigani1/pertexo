@@ -10,7 +10,7 @@ import {
 import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
 import { describe, expect, it } from 'vitest';
 
-import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
+import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
 import {
   acceptanceInput,
   databaseUrl,
@@ -68,13 +68,13 @@ describeIntegration('preview reconciliation transport', () => {
     });
 
     let reconciliationRuntime:
-      Awaited<ReturnType<typeof createPreviewMaintenanceRuntime>> | undefined;
+      Awaited<ReturnType<typeof createMaintenanceRuntime>> | undefined;
     let dispatcher:
       ReturnType<typeof createOutboxDispatcherDatabase> | undefined;
     let producer: ReturnType<typeof createQueueProducer> | undefined;
     await runWithCleanup(
       async () => {
-        reconciliationRuntime = await createPreviewMaintenanceRuntime({
+        reconciliationRuntime = await createMaintenanceRuntime({
           database: parseDatabaseConfig({
             connectionString: databaseUrl(workerUrl),
           }),

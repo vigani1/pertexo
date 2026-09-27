@@ -9,7 +9,7 @@ import { WORKSPACE_DATABASE } from '../platform/database/database.module.js';
 import {
   COORDINATOR_RUNTIME,
   OUTBOX_DISPATCHER,
-  PREVIEW_MAINTENANCE_RUNTIME,
+  MAINTENANCE_RUNTIME,
 } from '../transport/transport.module.js';
 import { NODE_ATTEMPT_RUNTIME } from '../transport/transport.module.js';
 import { TRIGGER_RUNTIME } from '../transport/transport.module.js';
@@ -17,7 +17,7 @@ import type { TriggerRuntime } from '../triggers/trigger-runtime.js';
 import type { OutboxDispatcher } from '../transport/outbox-dispatcher.js';
 import type { NodeAttemptRuntime } from '../execution/node-attempt-runtime.js';
 import type { CoordinatorRuntime } from '../execution/coordinator-runtime.js';
-import type { PreviewMaintenanceRuntime } from '../execution/preview-maintenance-runtime.js';
+import type { MaintenanceRuntime } from '../maintenance/runtime.js';
 import { WorkerDrainState } from './worker-drain-state.js';
 
 class WorkerDrainingError extends Error {
@@ -45,9 +45,9 @@ export class WorkerReadiness {
     @Inject(COORDINATOR_RUNTIME)
     private readonly coordinatorRuntime: CoordinatorRuntime | undefined,
     @Optional()
-    @Inject(PREVIEW_MAINTENANCE_RUNTIME)
-    private readonly previewMaintenanceRuntime:
-      PreviewMaintenanceRuntime | undefined,
+    @Inject(MAINTENANCE_RUNTIME)
+    private readonly maintenanceRuntime:
+      MaintenanceRuntime | undefined,
     @Optional()
     @Inject(AUTHENTICATION_MAIL_RUNTIME)
     private readonly authenticationMailRuntime?: AuthenticationMailRuntime,
@@ -67,7 +67,7 @@ export class WorkerReadiness {
       this.triggerRuntime?.checkReadiness(),
       this.nodeAttemptRuntime?.checkReadiness?.(),
       this.coordinatorRuntime?.checkReadiness(),
-      this.previewMaintenanceRuntime?.checkReadiness(),
+      this.maintenanceRuntime?.checkReadiness(),
     ]);
     this.authenticationMailRuntime?.checkReadiness();
     this.assertCanAcceptWork();

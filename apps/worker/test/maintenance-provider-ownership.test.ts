@@ -4,11 +4,11 @@ import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../src/config/worker-config.js';
-import type { PreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
+import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';
 import {
-  createOwnedPreviewMaintenanceRuntime,
-  type PreviewMaintenanceCompositionFactories,
-} from '../src/transport/preview-maintenance-runtime-provider.js';
+  createOwnedMaintenanceRuntime,
+  type MaintenanceProviderFactories,
+} from '../src/transport/maintenance-runtime-provider.js';
 
 const observer = {} as QueueConsumerObserver;
 
@@ -39,13 +39,13 @@ function runtime(
       isReady: () => true,
       waitUntilReady: () => Promise.resolve(),
     },
-  } as unknown as PreviewMaintenanceRuntime;
+  } as unknown as MaintenanceRuntime;
 }
 
 function ownedFactories(options: {
   storeClose?: () => Promise<void> | void;
   encryptionClose?: () => Promise<void> | void;
-  runtime?: PreviewMaintenanceRuntime;
+  runtime?: MaintenanceRuntime;
 }) {
   const storeClose = vi.fn(options.storeClose ?? (() => undefined));
   const encryptionClose = vi.fn(options.encryptionClose ?? (() => undefined));
@@ -76,7 +76,7 @@ function ownedFactories(options: {
       create: factoryStages.delivery,
     },
     ...factoryStages,
-  } as unknown as PreviewMaintenanceCompositionFactories & typeof factoryStages;
+  } as unknown as MaintenanceProviderFactories & typeof factoryStages;
   return {
     encryption,
     encryptionClose,
@@ -88,8 +88,8 @@ function ownedFactories(options: {
 }
 
 function requireRuntime(
-  selected: PreviewMaintenanceRuntime | undefined,
-): PreviewMaintenanceRuntime {
+  selected: MaintenanceRuntime | undefined,
+): MaintenanceRuntime {
   if (selected === undefined) throw new Error('Expected maintenance runtime');
   return selected;
 }
@@ -120,7 +120,7 @@ describe('preview maintenance provider ownership', () => {
     async ({ jobName, options }) => {
       const selected = ownedFactories({});
 
-      const result = await createOwnedPreviewMaintenanceRuntime(
+      const result = await createOwnedMaintenanceRuntime(
         config(jobName),
         {},
         observer,
@@ -137,7 +137,7 @@ describe('preview maintenance provider ownership', () => {
   it('returns early without acquiring hidden dependencies when disabled or externally composed', async () => {
     const disabled = ownedFactories({});
     await expect(
-      createOwnedPreviewMaintenanceRuntime(
+      createOwnedMaintenanceRuntime(
         config(''),
         {},
         observer,
@@ -149,7 +149,7 @@ describe('preview maintenance provider ownership', () => {
 
     const customRegistry = ownedFactories({});
     await expect(
-      createOwnedPreviewMaintenanceRuntime(
+      createOwnedMaintenanceRuntime(
         config(),
         { dispatchConsumerCapabilities: {} as never },
         observer,
@@ -162,9 +162,9 @@ describe('preview maintenance provider ownership', () => {
     const selectedRuntime = runtime();
     const customRuntime = ownedFactories({});
     await expect(
-      createOwnedPreviewMaintenanceRuntime(
+      createOwnedMaintenanceRuntime(
         config(),
-        { previewMaintenanceRuntime: selectedRuntime },
+        { maintenanceRuntime: selectedRuntime },
         observer,
         customRuntime.factories,
       ),
@@ -185,7 +185,7 @@ describe('preview maintenance provider ownership', () => {
     });
 
     await expect(
-      createOwnedPreviewMaintenanceRuntime(
+      createOwnedMaintenanceRuntime(
         withoutEncryption,
         {},
         observer,
@@ -199,7 +199,7 @@ describe('preview maintenance provider ownership', () => {
     const selected = ownedFactories({});
     const delivery = { deliver: vi.fn() };
 
-    const result = await createOwnedPreviewMaintenanceRuntime(
+    const result = await createOwnedMaintenanceRuntime(
       config(),
       { failureNotificationDelivery: delivery },
       observer,
@@ -242,7 +242,7 @@ describe('preview maintenance provider ownership', () => {
       });
 
       await expect(
-        createOwnedPreviewMaintenanceRuntime(
+        createOwnedMaintenanceRuntime(
           config(),
           {},
           observer,
@@ -267,7 +267,7 @@ describe('preview maintenance provider ownership', () => {
       constructionFailure,
     );
 
-    const failure = await createOwnedPreviewMaintenanceRuntime(
+    const failure = await createOwnedMaintenanceRuntime(
       config(),
       {},
       observer,
@@ -296,7 +296,7 @@ describe('preview maintenance provider ownership', () => {
         order.push('store');
       },
     });
-    const owned = await createOwnedPreviewMaintenanceRuntime(
+    const owned = await createOwnedMaintenanceRuntime(
       config(),
       {},
       observer,
@@ -333,7 +333,7 @@ describe('preview maintenance provider ownership', () => {
         throw storeFailure;
       },
     });
-    const owned = await createOwnedPreviewMaintenanceRuntime(
+    const owned = await createOwnedMaintenanceRuntime(
       config(),
       {},
       observer,
@@ -365,7 +365,7 @@ describe('preview maintenance provider ownership', () => {
         () => idle.promise,
       ),
     });
-    const owned = await createOwnedPreviewMaintenanceRuntime(
+    const owned = await createOwnedMaintenanceRuntime(
       config(),
       {},
       observer,

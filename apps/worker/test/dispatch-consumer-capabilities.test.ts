@@ -12,7 +12,7 @@ import {
 import { parseWorkerConfig } from '../src/config/worker-config.js';
 import type { CoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import type { PreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
+import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';
 import type { TriggerRuntime } from '../src/triggers/trigger-runtime.js';
 import { dispatchCapabilitiesProvider } from '../src/transport/dispatch-providers.js';
 
@@ -175,7 +175,7 @@ describe('dispatch capability provider activation', () => {
       useFactory(
         coordinator: CoordinatorRuntime,
         attempt: NodeAttemptRuntime,
-        maintenance: PreviewMaintenanceRuntime,
+        maintenance: MaintenanceRuntime,
         trigger: TriggerRuntime,
       ): ReturnType<typeof createDispatchConsumerCapabilityRegistry>;
     };
@@ -183,7 +183,7 @@ describe('dispatch capability provider activation', () => {
     const registry = provider.useFactory(
       { consumer: coordinatorConsumer } as CoordinatorRuntime,
       { consumer: attemptConsumer } as NodeAttemptRuntime,
-      { consumer: maintenanceConsumer } as PreviewMaintenanceRuntime,
+      { consumer: maintenanceConsumer } as MaintenanceRuntime,
       { consumer: triggerConsumer } as TriggerRuntime,
     );
 

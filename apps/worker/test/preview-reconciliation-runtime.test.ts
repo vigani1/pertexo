@@ -20,9 +20,9 @@ import {
   type PreviewReconciliationStore,
 } from '../src/execution/preview-reconciliation-runtime.js';
 import {
-  createPreviewMaintenanceRuntime,
-  type PreviewMaintenanceCompositionFactories,
-} from '../src/execution/preview-maintenance-runtime.js';
+  createMaintenanceRuntime,
+  type MaintenanceRuntimeFactories,
+} from '../src/maintenance/runtime.js';
 
 function delivery() {
   const data = {
@@ -47,7 +47,7 @@ function maintenanceRuntime(
   failureNotificationStore: FailureNotificationStore,
   backgroundTaskShutdownTimeoutMillis: number,
 ) {
-  return createPreviewMaintenanceRuntime(
+  return createMaintenanceRuntime(
     {
       backgroundTaskShutdownTimeoutMillis,
       database: parseDatabaseConfig({
@@ -184,10 +184,10 @@ describe('preview reconciliation handler', () => {
             acquire('unknownOutcomeStore', unknownOutcomeStore),
           ),
         },
-      } as unknown as PreviewMaintenanceCompositionFactories;
+      } as unknown as MaintenanceRuntimeFactories;
 
       await expect(
-        createPreviewMaintenanceRuntime(
+        createMaintenanceRuntime(
           {
             database: parseDatabaseConfig({
               connectionString:
@@ -245,8 +245,8 @@ describe('preview reconciliation handler', () => {
         handler: vi.fn(() => ({ handle: handles.unknown })),
         store: vi.fn(),
       },
-    } as unknown as PreviewMaintenanceCompositionFactories;
-    const runtime = await createPreviewMaintenanceRuntime(
+    } as unknown as MaintenanceRuntimeFactories;
+    const runtime = await createMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString:
@@ -320,8 +320,8 @@ describe('preview reconciliation handler', () => {
       replay: { handler: vi.fn(), store: vi.fn() },
       traceRunner: vi.fn(() => ({})),
       unknownOutcome: { handler: vi.fn(), store: vi.fn() },
-    } as unknown as PreviewMaintenanceCompositionFactories;
-    const runtime = await createPreviewMaintenanceRuntime(
+    } as unknown as MaintenanceRuntimeFactories;
+    const runtime = await createMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString:
@@ -492,7 +492,7 @@ describe('preview reconciliation handler', () => {
     const store = { close, reconcile: vi.fn() };
 
     await expect(
-      createPreviewMaintenanceRuntime(
+      createMaintenanceRuntime(
         {
           database: parseDatabaseConfig({
             connectionString:
@@ -516,7 +516,7 @@ describe('preview reconciliation handler', () => {
       .fn()
       .mockResolvedValue({ abortedJobs: 0, forced: false });
     const storeClose = vi.fn().mockResolvedValue(undefined);
-    const runtime = await createPreviewMaintenanceRuntime(
+    const runtime = await createMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString:
@@ -618,7 +618,7 @@ describe('preview reconciliation handler', () => {
   it('does not start a recovery timer when notification delivery is disabled', async () => {
     vi.useFakeTimers();
     try {
-      const runtime = await createPreviewMaintenanceRuntime(
+      const runtime = await createMaintenanceRuntime(
         {
           database: parseDatabaseConfig({
             connectionString:
@@ -660,7 +660,7 @@ describe('preview reconciliation handler', () => {
   ])('rejects invalid notification composition bounds %#', async (override) => {
     const consumerFactory = vi.fn();
     await expect(
-      createPreviewMaintenanceRuntime(
+      createMaintenanceRuntime(
         {
           database: parseDatabaseConfig({
             connectionString:
@@ -750,8 +750,8 @@ describe('preview reconciliation handler', () => {
       replay: { handler: vi.fn(), store: vi.fn() },
       traceRunner: vi.fn(() => ({})),
       unknownOutcome: { handler: vi.fn(), store: vi.fn() },
-    } as unknown as PreviewMaintenanceCompositionFactories;
-    const runtime = await createPreviewMaintenanceRuntime(
+    } as unknown as MaintenanceRuntimeFactories;
+    const runtime = await createMaintenanceRuntime(
       {
         backgroundTaskShutdownTimeoutMillis: 5,
         database: parseDatabaseConfig({

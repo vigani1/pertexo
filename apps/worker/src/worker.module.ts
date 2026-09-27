@@ -23,7 +23,7 @@ import type { TransportMetrics } from '@pertexo/observability/transport-metrics'
 import type { WorkerConfig } from './config/worker-config.js';
 import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
-import type { PreviewMaintenanceRuntime } from './execution/preview-maintenance-runtime.js';
+import type { MaintenanceRuntime } from './maintenance/runtime.js';
 import type { TriggerRuntime } from './triggers/trigger-runtime.js';
 import { createAuthenticationMailDeliveryHandler } from './execution/authentication-mail-delivery.js';
 import {
@@ -52,7 +52,7 @@ import { OutboxDispatcherLifecycle } from './transport/transport-lifecycle.js';
 export type WorkerModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
-  previewMaintenanceRuntime?: PreviewMaintenanceRuntime;
+  maintenanceRuntime?: MaintenanceRuntime;
   triggerRuntime?: TriggerRuntime;
   database?: WorkspaceDatabase;
   databaseRuntime?: DatabaseRuntime;
@@ -99,11 +99,11 @@ export class WorkerModule {
           ...(dependencies.nodeAttemptRuntime === undefined
             ? {}
             : { nodeAttemptRuntime: dependencies.nodeAttemptRuntime }),
-          ...(dependencies.previewMaintenanceRuntime === undefined
+          ...(dependencies.maintenanceRuntime === undefined
             ? {}
             : {
-                previewMaintenanceRuntime:
-                  dependencies.previewMaintenanceRuntime,
+                maintenanceRuntime:
+                  dependencies.maintenanceRuntime,
               }),
           ...(dependencies.triggerRuntime === undefined
             ? {}

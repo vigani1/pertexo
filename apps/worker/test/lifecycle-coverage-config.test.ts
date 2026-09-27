@@ -5,7 +5,8 @@ import config from '../vitest.lifecycle-coverage.config.js';
 describe('worker lifecycle coverage inventory', () => {
   it('measures the background shutdown and terminal-persistence owners', () => {
     expect(config.test?.coverage?.include).toEqual([
-      'src/execution/{coordinator-runtime,failure-notification-handler,preview-attempt-handler,preview-maintenance-runtime}.ts',
+      'src/execution/{coordinator-runtime,failure-notification-handler,preview-attempt-handler}.ts',
+      'src/maintenance/{runtime,delivery-handler}.ts',
       'src/runtime/background-task-deadline.ts',
     ]);
     expect(config.test?.coverage?.reportsDirectory).toBe(

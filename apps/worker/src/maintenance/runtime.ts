@@ -1,101 +1,80 @@
-import {
-  createDatabaseOperatorRunReplayStore,
-  createOperatorRunReplayHandler,
-} from './operator-run-replay-runtime.js';
-import {
-  createDatabasePreviewReconciliationStore,
-  createFailureNotificationStore,
-  type DatabaseConfig,
-  type DatabaseRuntime,
-  type FailureNotificationStore,
-  type OperatorRunReplayStore,
-  type PreviewReconciliationStore,
+import { operatorRunReplayFactories } from '../execution/operator-run-replay-runtime.js';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+  FailureNotificationStore,
+  OperatorRunReplayStore,
+  PreviewReconciliationStore,
 } from '@pertexo/database/execution';
 import type { PlatformReleaseCohort } from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
-  InvalidQueueDeliveryError,
-  JOB_NAME,
   QUEUE_NAME,
   type QueueConsumer,
   type QueueConsumerObserver,
-  type QueueConsumerOptions,
 } from '@pertexo/queue';
 
+import { previewReconciliationFactories } from '../execution/preview-reconciliation-runtime.js';
+import type { PreviewTelemetry } from '../execution/preview-telemetry.js';
 import {
-  createPreviewReconciliationHandler,
-  mapPreviewReconciliationError,
-} from './preview-reconciliation-runtime.js';
-import type { PreviewTelemetry } from './preview-telemetry.js';
-import {
-  createDatabaseUnknownOutcomeReconciliationStore,
-  createUnknownOutcomeReconciliationHandler,
-  mapUnknownOutcomeReconciliationError,
+  unknownOutcomeReconciliationFactories,
   type UnknownOutcomeReconciliationStore,
-} from './unknown-outcome-reconciliation-runtime.js';
+} from '../execution/unknown-outcome-reconciliation-runtime.js';
+import type {
+  FailureNotificationDeliveryCapability,
+  FailureNotificationHandler,
+} from '../execution/failure-notification-handler.js';
+import { failureNotificationFactories } from '../execution/failure-notification-composition.js';
 import {
-  createFailureNotificationHandler,
-  type FailureNotificationDeliveryCapability,
-  type FailureNotificationHandler,
-} from './failure-notification-handler.js';
+  closeMaintenanceDependencies,
+  createMaintenanceLifecycle,
+  type MaintenanceComposition,
+} from './lifecycle.js';
+import type { WorkspaceInvitationDeliveryHandler } from '../execution/workspace-invitation-delivery.js';
 import {
-  closePreviewMaintenanceDependencies,
-  createPreviewMaintenanceLifecycle,
-  type PreviewMaintenanceComposition,
-} from './preview-maintenance-lifecycle.js';
-import type { WorkspaceInvitationDeliveryHandler } from './workspace-invitation-delivery.js';
+  maintenanceDeliveryHandler,
+  type MaintenanceHandlers,
+} from './delivery-handler.js';
 
-export interface PreviewMaintenanceRuntime {
+export interface MaintenanceRuntime {
   readonly consumer: QueueConsumer;
   checkReadiness(): Promise<void>;
   whenIdle(): Promise<void>;
   close(): Promise<void>;
 }
 
-export type PreviewMaintenanceCompositionFactories = Readonly<{
+export type MaintenanceRuntimeFactories = Readonly<{
   consumer: typeof createQueueConsumer;
   notifications: Readonly<{
-    handler: typeof createFailureNotificationHandler;
-    store: typeof createFailureNotificationStore;
+    handler: typeof failureNotificationFactories.handler;
+    store: typeof failureNotificationFactories.store;
   }>;
   preview: Readonly<{
-    handler: typeof createPreviewReconciliationHandler;
-    store: typeof createDatabasePreviewReconciliationStore;
+    handler: typeof previewReconciliationFactories.handler;
+    store: typeof previewReconciliationFactories.store;
   }>;
   replay: Readonly<{
-    handler: typeof createOperatorRunReplayHandler;
-    store: typeof createDatabaseOperatorRunReplayStore;
+    handler: typeof operatorRunReplayFactories.handler;
+    store: typeof operatorRunReplayFactories.store;
   }>;
   traceRunner: typeof createQueueTraceRunner;
   unknownOutcome: Readonly<{
-    handler: typeof createUnknownOutcomeReconciliationHandler;
-    store: typeof createDatabaseUnknownOutcomeReconciliationStore;
+    handler: typeof unknownOutcomeReconciliationFactories.handler;
+    store: typeof unknownOutcomeReconciliationFactories.store;
   }>;
 }>;
 
-const productionFactories: PreviewMaintenanceCompositionFactories = {
+const productionFactories: MaintenanceRuntimeFactories = {
   consumer: createQueueConsumer,
-  notifications: {
-    handler: createFailureNotificationHandler,
-    store: createFailureNotificationStore,
-  },
-  preview: {
-    handler: createPreviewReconciliationHandler,
-    store: createDatabasePreviewReconciliationStore,
-  },
-  replay: {
-    handler: createOperatorRunReplayHandler,
-    store: createDatabaseOperatorRunReplayStore,
-  },
+  notifications: failureNotificationFactories,
+  preview: previewReconciliationFactories,
+  replay: operatorRunReplayFactories,
   traceRunner: createQueueTraceRunner,
-  unknownOutcome: {
-    handler: createUnknownOutcomeReconciliationHandler,
-    store: createDatabaseUnknownOutcomeReconciliationStore,
-  },
+  unknownOutcome: unknownOutcomeReconciliationFactories,
 };
 
-type PreviewMaintenanceOptions = Readonly<{
+type MaintenanceOptions = Readonly<{
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
   backgroundTaskShutdownTimeoutMillis?: number;
@@ -112,7 +91,7 @@ type PreviewMaintenanceOptions = Readonly<{
   releaseCohort?: PlatformReleaseCohort;
 }>;
 
-type PreviewMaintenanceDependencies = Readonly<{
+type MaintenanceDependencies = Readonly<{
   consumerFactory?: typeof createQueueConsumer;
   reconciliationStore?: PreviewReconciliationStore & {
     close?: () => Promise<void>;
@@ -132,19 +111,11 @@ type MaintenanceBounds = Readonly<{
   failureNotificationRetryDelaySeconds: number;
 }>;
 
-type MaintenanceHandlers = Readonly<{
-  failureNotification?: FailureNotificationHandler;
-  reconciliation?: ReturnType<typeof createPreviewReconciliationHandler>;
-  replay?: ReturnType<typeof createOperatorRunReplayHandler>;
-  unknownOutcome?: ReturnType<typeof createUnknownOutcomeReconciliationHandler>;
-  workspaceInvitation?: WorkspaceInvitationDeliveryHandler;
-}>;
-
-export async function createPreviewMaintenanceRuntime(
-  options: PreviewMaintenanceOptions,
-  dependencies: PreviewMaintenanceDependencies = {},
-  factories: PreviewMaintenanceCompositionFactories = productionFactories,
-): Promise<PreviewMaintenanceRuntime> {
+export async function createMaintenanceRuntime(
+  options: MaintenanceOptions,
+  dependencies: MaintenanceDependencies = {},
+  factories: MaintenanceRuntimeFactories = productionFactories,
+): Promise<MaintenanceRuntime> {
   const bounds = maintenanceBounds(options);
   const composition = await composeMaintenanceRuntime(
     options,
@@ -152,15 +123,13 @@ export async function createPreviewMaintenanceRuntime(
     factories,
     bounds,
   );
-  return createPreviewMaintenanceLifecycle(
+  return createMaintenanceLifecycle(
     composition,
     bounds.backgroundTaskShutdownTimeoutMillis,
   );
 }
 
-function maintenanceBounds(
-  options: PreviewMaintenanceOptions,
-): MaintenanceBounds {
+function maintenanceBounds(options: MaintenanceOptions): MaintenanceBounds {
   const backgroundTaskShutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
   const failureNotificationDeliveryTimeoutMillis =
@@ -199,11 +168,11 @@ function maintenanceBounds(
 }
 
 async function composeMaintenanceRuntime(
-  options: PreviewMaintenanceOptions,
-  dependencies: PreviewMaintenanceDependencies,
-  factories: PreviewMaintenanceCompositionFactories,
+  options: MaintenanceOptions,
+  dependencies: MaintenanceDependencies,
+  factories: MaintenanceRuntimeFactories,
   bounds: MaintenanceBounds,
-): Promise<PreviewMaintenanceComposition> {
+): Promise<MaintenanceComposition> {
   const traceRunner = factories.traceRunner();
   let reconciliationStore:
     (PreviewReconciliationStore & { close?: () => Promise<void> }) | undefined;
@@ -284,7 +253,7 @@ async function composeMaintenanceRuntime(
       traceRunner,
     });
   } catch (error: unknown) {
-    const cleanup = await closePreviewMaintenanceDependencies(
+    const cleanup = await closeMaintenanceDependencies(
       {
         reconciliationStore,
         unknownOutcomeStore,
@@ -296,7 +265,7 @@ async function composeMaintenanceRuntime(
     if (cleanup.length > 0)
       throw new AggregateError(
         [error, ...cleanup],
-        'Preview maintenance construction and cleanup failed',
+        'Maintenance construction and cleanup failed',
       );
     throw error;
   }
@@ -312,59 +281,5 @@ async function composeMaintenanceRuntime(
       ...(unknownOutcomeStore === undefined ? {} : { unknownOutcomeStore }),
       ...(runReplayStore === undefined ? {} : { runReplayStore }),
     },
-  };
-}
-
-function maintenanceDeliveryHandler(
-  handlers: MaintenanceHandlers,
-): QueueConsumerOptions['handler'] {
-  return async (delivery, context): Promise<void> => {
-    switch (delivery.name) {
-      case JOB_NAME.reconcilePreviewAttempt:
-        if (handlers.reconciliation === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Preview reconciliation is not enabled',
-          );
-        try {
-          await handlers.reconciliation.handle(delivery, context);
-        } catch (error: unknown) {
-          throw mapPreviewReconciliationError(error);
-        }
-        return;
-      case JOB_NAME.reconcileUnknownOutcome:
-        if (handlers.unknownOutcome === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Unknown-outcome reconciliation is not enabled',
-          );
-        try {
-          await handlers.unknownOutcome.handle(delivery, context);
-        } catch (error: unknown) {
-          throw mapUnknownOutcomeReconciliationError(error);
-        }
-        return;
-      case JOB_NAME.replayWorkflowRun:
-        if (handlers.replay === undefined)
-          throw new InvalidQueueDeliveryError('Run replay is not enabled');
-        await handlers.replay.handle(delivery, context);
-        return;
-      case JOB_NAME.deliverRunFailureNotification:
-        if (handlers.failureNotification === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Failure notification delivery is not enabled',
-          );
-        await handlers.failureNotification.handle(delivery, context);
-        return;
-      case JOB_NAME.deliverWorkspaceInvitation:
-        if (handlers.workspaceInvitation === undefined)
-          throw new InvalidQueueDeliveryError(
-            'Workspace invitation delivery is not enabled',
-          );
-        await handlers.workspaceInvitation.handle(delivery, context);
-        return;
-      default:
-        throw new InvalidQueueDeliveryError(
-          `Preview maintenance cannot handle ${delivery.name}`,
-        );
-    }
   };
 }

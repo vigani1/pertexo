@@ -29,6 +29,10 @@ import {
 } from '@pertexo/workflow-engine';
 
 import { createWorkerInitialCheckpoint } from './core-definition-identities.js';
+export const operatorRunReplayFactories = Object.freeze({
+  handler: createOperatorRunReplayHandler,
+  store: createDatabaseOperatorRunReplayStore,
+});
 
 type ReplayDelivery = Extract<
   QueueDelivery,

@@ -11,12 +11,12 @@ import {
   transportMetricsProvider,
 } from './dispatch-providers.js';
 import { nodeAttemptRuntimeProvider } from './node-attempt-runtime-provider.js';
-import { previewMaintenanceRuntimeProvider } from './preview-maintenance-runtime-provider.js';
+import { maintenanceRuntimeProvider } from './maintenance-runtime-provider.js';
 import { OutboxDispatcherLifecycle } from './transport-lifecycle.js';
 import {
   COORDINATOR_RUNTIME,
   NODE_ATTEMPT_RUNTIME,
-  PREVIEW_MAINTENANCE_RUNTIME,
+  MAINTENANCE_RUNTIME,
   TRIGGER_RUNTIME,
   type TransportModuleDependencies,
 } from './transport-tokens.js';
@@ -26,7 +26,7 @@ export {
   COORDINATOR_RUNTIME,
   NODE_ATTEMPT_RUNTIME,
   OUTBOX_DISPATCHER,
-  PREVIEW_MAINTENANCE_RUNTIME,
+  MAINTENANCE_RUNTIME,
   TRANSPORT_METRICS,
   TRIGGER_RUNTIME,
 } from './transport-tokens.js';
@@ -48,7 +48,7 @@ export class TransportModule {
       observerProvider,
       coordinatorRuntimeProvider(config, dependencies),
       nodeAttemptRuntimeProvider(config, dependencies),
-      previewMaintenanceRuntimeProvider(config, dependencies),
+      maintenanceRuntimeProvider(config, dependencies),
       triggerRuntimeProvider(config, dependencies),
       dispatchCapabilitiesProvider(config, dependencies),
       provider,
@@ -65,7 +65,7 @@ export class TransportModule {
         OutboxDispatcherLifecycle,
         COORDINATOR_RUNTIME,
         NODE_ATTEMPT_RUNTIME,
-        PREVIEW_MAINTENANCE_RUNTIME,
+        MAINTENANCE_RUNTIME,
         TRIGGER_RUNTIME,
       ],
     };

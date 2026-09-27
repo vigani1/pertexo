@@ -11,7 +11,8 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/worker-lifecycle',
       include: [
-        'src/execution/{coordinator-runtime,failure-notification-handler,preview-attempt-handler,preview-maintenance-runtime}.ts',
+        'src/execution/{coordinator-runtime,failure-notification-handler,preview-attempt-handler}.ts',
+        'src/maintenance/{runtime,delivery-handler}.ts',
         'src/runtime/background-task-deadline.ts',
       ],
       thresholds: {
@@ -37,7 +38,7 @@ export default defineConfig({
           lines: 88,
           statements: 89,
         },
-        'src/execution/preview-maintenance-runtime.ts': {
+        'src/maintenance/{runtime,delivery-handler}.ts': {
           branches: 46,
           functions: 83,
           lines: 55,

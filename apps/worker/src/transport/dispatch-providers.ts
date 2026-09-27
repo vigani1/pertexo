@@ -18,7 +18,7 @@ import {
 import type { WorkerConfig } from '../config/worker-config.js';
 import type { CoordinatorRuntime } from '../execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from '../execution/node-attempt-runtime.js';
-import type { PreviewMaintenanceRuntime } from '../execution/preview-maintenance-runtime.js';
+import type { MaintenanceRuntime } from '../maintenance/runtime.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import type { TriggerRuntime } from '../triggers/trigger-runtime.js';
 import {
@@ -34,7 +34,7 @@ import {
   DISPATCH_CONSUMER_CAPABILITIES,
   NODE_ATTEMPT_RUNTIME,
   OUTBOX_DISPATCHER,
-  PREVIEW_MAINTENANCE_RUNTIME,
+  MAINTENANCE_RUNTIME,
   QUEUE_CONSUMER_OBSERVER,
   TRANSPORT_METRICS,
   TRIGGER_RUNTIME,
@@ -174,13 +174,13 @@ export function dispatchCapabilitiesProvider(
     inject: [
       COORDINATOR_RUNTIME,
       NODE_ATTEMPT_RUNTIME,
-      PREVIEW_MAINTENANCE_RUNTIME,
+      MAINTENANCE_RUNTIME,
       TRIGGER_RUNTIME,
     ],
     useFactory: (
       runtime: CoordinatorRuntime | undefined,
       nodeAttemptRuntime: NodeAttemptRuntime | undefined,
-      previewMaintenanceRuntime: PreviewMaintenanceRuntime | undefined,
+      maintenanceRuntime: MaintenanceRuntime | undefined,
       triggerRuntime: TriggerRuntime | undefined,
     ): DispatchConsumerCapabilityRegistry =>
       dependencies.dispatchConsumerCapabilities ??
@@ -189,7 +189,7 @@ export function dispatchCapabilitiesProvider(
           config,
           runtime,
           nodeAttemptRuntime,
-          previewMaintenanceRuntime,
+          maintenanceRuntime,
           triggerRuntime,
         ),
       ),
@@ -200,7 +200,7 @@ function dispatchCapabilityCandidates(
   config: WorkerConfig,
   coordinator: CoordinatorRuntime | undefined,
   nodeAttempt: NodeAttemptRuntime | undefined,
-  maintenance: PreviewMaintenanceRuntime | undefined,
+  maintenance: MaintenanceRuntime | undefined,
   trigger: TriggerRuntime | undefined,
 ): readonly DispatchConsumerCapability[] {
   return config.outboxDispatcher.enabledJobNames.flatMap((jobName) => {
@@ -218,7 +218,7 @@ function dispatchConsumerForJob(
   jobName: string,
   runtimes: Readonly<{
     coordinator: CoordinatorRuntime | undefined;
-    maintenance: PreviewMaintenanceRuntime | undefined;
+    maintenance: MaintenanceRuntime | undefined;
     nodeAttempt: NodeAttemptRuntime | undefined;
     trigger: TriggerRuntime | undefined;
   }>,
