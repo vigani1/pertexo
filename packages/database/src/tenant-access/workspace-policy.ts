@@ -115,7 +115,9 @@ export function rolesForCapability(
 }
 
 /** ADR 048: schedule state is readable by every active workspace member. */
-export const SCHEDULE_TRIGGER_READ_ROLES: readonly Role[] = ROLES;
+export const SCHEDULE_TRIGGER_READ_ROLES: readonly Role[] = Object.freeze([
+  ...ROLES,
+]);
 
 /** ADR 045: webhook delivery state is narrower than schedule state. */
 export const WEBHOOK_TRIGGER_READ_ROLES: readonly Role[] = Object.freeze([

@@ -12,10 +12,7 @@ import {
   traceparentSchema,
   type PreviewStatus,
 } from './preview-execution-contract.js';
-export {
-  PREVIEW_STATUS,
-  traceparentSchema,
-} from './preview-execution-contract.js';
+export { PREVIEW_STATUS } from './preview-execution-contract.js';
 export type { PreviewStatus } from './preview-execution-contract.js';
 import {
   auditEvents,
