@@ -37,7 +37,7 @@ is recorded. Recommendation strength is not permission to omit an item.
 | ID | Finding | Before | Intended canonical owner / after | Status |
 | --- | --- | --- | --- | --- |
 | W1 | Mail diagnostic exceptions can reject unobserved background work and skip owned cleanup | authentication-mail-runtime directly calls diagnostics and awaits activity before closing store | Authentication-mail runtime isolates diagnostics, observes activity and always attempts owned close | Implemented; focused verification passed |
-| EX1 | Test-only durable-wait/cancellation policies shadow production | engine runtime.ts and testing exports | Production engine transition interface; migrate unique assertions, remove shadow models/exports | Pending |
+| EX1 | Test-only durable-wait/cancellation policies shadow production | engine runtime.ts and testing exports | Production engine transition interface; migrate unique assertions, remove shadow models/exports | Implemented; package tests/typecheck/coverage passed |
 | AS1 | Injected primary may lack advertised download signing | dual-region accepts partial primary, fails late | Dual-region construction requires its advertised primary download capability; recovery remains unsigned | Pending |
 | W2 | Preview-named composition owns unrelated maintenance features | preview-maintenance runtime/provider mixes preview, reconciliation, replay, failure alerts and invitations | Explicit maintenance transport composition with feature-owned dependency factories and explicit routing | Pending |
 | API1 | Decorated controllers act as sibling helper modules | identity-workspace/controllers and workflow-runs/controllers export request helpers | Feature-owned request-context modules; no sibling controller imports | Pending |
@@ -100,8 +100,24 @@ runtime tests passed 57/57; worker typecheck passed. Additional synchronous
 handler and close-failure regressions are part of the focused suite. Whole-scope
 verification is still pending.
 
+### EX1 production-policy evidence
+
+Removed the unused `runtime.ts` wait/cancellation models and their testing-only
+exports. Unique assertions now use the production `advanceWorkflow` interface:
+invalid wait observations are rejected, durable waits admit no worker attempt,
+running cancellation awaits reconciliation, and unsafe dispatched cancellation
+preserves `outcome_unknown` across subsequent advancement. Existing production
+tests cover due-time boundaries, waiting cancellation, empty graphs and deadlines.
+The surviving retry-policy tests have a responsibility-based name; public-export
+tests explicitly reject the retired shadow helpers.
+
+Engine tests passed 402/402 across 36 files; typecheck and coverage passed.
+Coverage was 94.47% statements, 90.71% branches, 97.42% functions and 95.22%
+lines. Coverage inventory removed only the deleted source, with thresholds
+unchanged. Production transition/checkpoint behavior was not changed.
+
 ## Remaining work
 
-W1 is implemented; EX1–EX4, AS1–AS2, API1–API2, W2–W4 and the complete
+W1 and EX1 are implemented; EX2–EX4, AS1–AS2, API1–API2, W2–W4 and the complete
 17-module counterpart review remain open.
 No structural stage is declared complete yet.

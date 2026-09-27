@@ -75,8 +75,6 @@ export type {
   RetryDecision,
   RetryPolicy,
 } from './retries.js';
-export { decideCancellation, planDurableWait } from './runtime.js';
-export type { CancellationDecision, DurableWaitPlan } from './runtime.js';
 export {
   assertAttemptTransition,
   assertNodeTransition,

@@ -1,45 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  type CancellationDecision,
   assertAttemptTransition,
   assertNodeTransition,
   assertRunTransition,
-  decideCancellation,
   decideRetry,
-  planDurableWait,
   providerIdempotencyKey,
   WorkflowEngineError,
 } from '../src/testing.js';
 
-const occurredAt = '2026-08-20T10:00:00.000Z';
-
-function assertCancellationDecisionIsExhaustive(
-  decision: CancellationDecision,
-): void {
-  switch (decision.kind) {
-    case 'await_reconciliation':
-    case 'canceled':
-    case 'outcome_unknown':
-      return;
-    default: {
-      const unreachable: never = decision;
-      return unreachable;
-    }
-  }
-}
-
-describe('retry, wait, cancellation, and transition policy', () => {
+describe('retry and transition policy', () => {
   const policy = {
     maximumAttempts: 3,
     baseDelayMs: 100,
     maximumDelayMs: 500,
     retryableErrorCodes: ['rate_limited', 'rate_limit', 'network'],
   } as const;
-
-  it('exposes only cancellation decisions the runtime can produce', () => {
-    assertCancellationDecisionIsExhaustive(decideCancellation([]));
-  });
 
   it('uses bounded deterministic backoff and stable provider identity', () => {
     expect(
@@ -153,46 +129,6 @@ describe('retry, wait, cancellation, and transition policy', () => {
       ).toMatchObject({ kind: 'retry', attemptNumber: 2 });
     },
   );
-
-  it('models a durable wait as a released slot', () => {
-    expect(
-      planDurableWait({
-        invocationKey: 'wait',
-        resumeAt: '2026-08-21T00:00:00Z',
-        now: occurredAt,
-      }),
-    ).toEqual({
-      invocationKey: 'wait',
-      transition: 'waiting',
-      resumeAt: '2026-08-21T00:00:00Z',
-      releasesWorkerSlot: true,
-    });
-  });
-
-  it('requires cancellation reconciliation and preserves unsafe uncertainty', () => {
-    expect(
-      decideCancellation([
-        {
-          invocationKey: 'a',
-          nodeId: 'a',
-          status: 'running',
-          attemptNumber: 1,
-        },
-      ]),
-    ).toEqual({ kind: 'await_reconciliation', invocationKeys: ['a'] });
-    expect(
-      decideCancellation([
-        {
-          invocationKey: 'unsafe',
-          nodeId: 'unsafe',
-          status: 'running',
-          attemptNumber: 1,
-          possiblyDispatched: true,
-          sideEffectClass: 'unsafe',
-        },
-      ]),
-    ).toEqual({ kind: 'outcome_unknown', invocationKeys: ['unsafe'] });
-  });
 
   it('rejects terminal resurrection in all state machines', () => {
     expect(() => {

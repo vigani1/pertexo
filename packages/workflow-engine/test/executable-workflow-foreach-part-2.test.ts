@@ -723,15 +723,17 @@ describe('For Each production operations', () => {
       'assertNodeTransition',
       'assertRunTransition',
       'createLoopState',
-      'decideCancellation',
       'decideRetry',
       'deriveReadyNodes',
       'parseSchedulerGraph',
-      'planDurableWait',
       'settleJoin',
     ]) {
       expect(productionEngine).not.toHaveProperty(internalName);
       expect(testingEngine).toHaveProperty(internalName);
+    }
+    for (const retiredPolicy of ['decideCancellation', 'planDurableWait']) {
+      expect(productionEngine).not.toHaveProperty(retiredPolicy);
+      expect(testingEngine).not.toHaveProperty(retiredPolicy);
     }
     expect(testingEngine.advanceWorkflow).not.toBe(
       productionEngine.advanceWorkflow,
