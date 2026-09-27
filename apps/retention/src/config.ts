@@ -3,6 +3,7 @@ import {
   type DatabaseConfig,
 } from '@pertexo/database/maintenance';
 import {
+  assertTenantStorageIsolation,
   parseDualRegionArtifactStoreConfig,
   parseDualRegionControlLedgerConfig,
   type DualRegionArtifactStoreConfig,
@@ -130,18 +131,7 @@ export function parseRetentionWorkerConfig(
   const parsed = environmentSchema.parse(environment);
   const artifactStore = parseDualRegionArtifactStoreConfig(environment);
   const ledger = parseDualRegionControlLedgerConfig(environment);
-  if (
-    [ledger.primary, ledger.recovery].some((control) =>
-      [artifactStore.primary, artifactStore.recovery].some(
-        (artifacts) =>
-          control.accessKeyId === artifacts.accessKeyId ||
-          control.bucket === artifacts.bucket,
-      ),
-    )
-  )
-    throw new Error(
-      'Tenant artifacts and control ledgers require distinct principals and buckets',
-    );
+  assertTenantStorageIsolation(artifactStore, ledger);
   return Object.freeze({
     artifactStore,
     database: parseMaintenanceDatabaseConfig(environment),

@@ -1,6 +1,7 @@
 import './server-only.js';
 
 export {
+  assertTenantStorageIsolation,
   parseArtifactStoreConfig,
   parseDualRegionArtifactStoreConfig,
 } from './config.js';

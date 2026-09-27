@@ -29,6 +29,7 @@ import type {
 } from './artifact-download.js';
 
 type ArtifactStoreWithPurge = ArtifactStore & WorkspaceObjectPurgeStore;
+type PrimaryArtifactStore = ArtifactStoreWithPurge & ArtifactDownloadCapability;
 
 function failedRegionRole(
   primary: PromiseSettledResult<unknown>,
@@ -83,23 +84,22 @@ function isArtifactStore(value: unknown): value is ArtifactStoreWithPurge {
   );
 }
 
-function downloadCapability(
+function assertPrimaryDownloadCapability(
   store: ArtifactStoreWithPurge,
-): ArtifactDownloadCapability {
+): asserts store is PrimaryArtifactStore {
   if (
-    typeof (store as Partial<ArtifactDownloadCapability>)
-      .beginDirectDownload !== 'function'
+    !('beginDirectDownload' in store) ||
+    typeof store.beginDirectDownload !== 'function'
   ) {
     throw new TypeError('Artifact primary store must support direct downloads');
   }
-  return store as ArtifactStoreWithPurge & ArtifactDownloadCapability;
 }
 
 class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
   private closed = false;
 
   public constructor(
-    private readonly primary: ArtifactStoreWithPurge,
+    private readonly primary: PrimaryArtifactStore,
     private readonly recovery: ArtifactStoreWithPurge,
     private readonly ownsStores: boolean,
     private readonly observer: ObjectStoreObserver,
@@ -137,7 +137,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
     request: BeginDirectDownloadRequest,
   ): Promise<DirectDownload> {
     this.assertOpen();
-    return downloadCapability(this.primary).beginDirectDownload(request);
+    return this.primary.beginDirectDownload(request);
   }
 
   public async checkReadiness(
@@ -361,7 +361,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
 }
 
 export function createDualRegionArtifactStore(
-  primary: ArtifactStoreConfig | ArtifactStoreWithPurge,
+  primary: ArtifactStoreConfig | PrimaryArtifactStore,
   recovery: ArtifactStoreConfig | ArtifactStoreWithPurge,
   options: Readonly<{
     artifactOwnership?: 'borrowed' | 'owned';
@@ -383,6 +383,7 @@ export function createDualRegionArtifactStore(
           : { observer: options.observer }),
         regionRole: 'primary',
       });
+  assertPrimaryDownloadCapability(primaryStore);
   const recoveryStore = isArtifactStore(recovery)
     ? recovery
     : createArtifactStore(recovery, {
