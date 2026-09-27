@@ -37,7 +37,7 @@ function waitForDelay(
 }
 
 /** Wait for elapsed time; cancellation rejects work that must stop. */
-export function waitForAbortableDelay(
+export function waitForCancelableDelay(
   milliseconds: number,
   signal: AbortSignal,
 ): Promise<void> {

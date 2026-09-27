@@ -38,6 +38,7 @@ import {
   NODE_EXECUTION_LIMITS_V1,
   canonicalizeBoundedJson,
   createNodeRegistry,
+  bindRegistryRelease,
   type NodeExecutorRegistration,
 } from '../src/server.js';
 
@@ -175,6 +176,62 @@ function dispatchAwareFixture(beforeDispatch = vi.fn(() => Promise.resolve())) {
 }
 
 describe('node-sdk registry release contracts', () => {
+  it('binds release metadata without replacing runtime schemas or execution', async () => {
+    const selected = release();
+    const registration = {
+      manifest: { ...manifest, lifecycle: 'deprecated' as const },
+      configSchema,
+      inputSchema: objectSchema,
+      outputSchema: objectSchema,
+    };
+    const execute = vi.fn(() => Promise.resolve({ echoed: true }));
+    const bound = bindRegistryRelease({
+      release: selected,
+      definitions: [registration],
+      executors: [{ ...executorRegistration(), execute }],
+    });
+    expect(bound.release).toBe(selected);
+    expect(bound.definitions[0]?.manifest).toBe(selected.definitions[0]);
+    expect(bound.definitions[0]?.configSchema).toBe(configSchema);
+    expect(bound.executors[0]?.execute).toBe(execute);
+    expect(Object.isFrozen(bound)).toBe(true);
+    const registry = createNodeRegistry(bound);
+    await expect(
+      registry.execute({
+        definition,
+        executor,
+        config: {},
+        input: {},
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ output: { echoed: true } });
+    expect(registration.manifest.lifecycle).toBe('deprecated');
+  });
+
+  it('rejects an unavailable exact release definition or executor before execution', () => {
+    const selected = release();
+    const registration = {
+      manifest,
+      configSchema,
+      inputSchema: objectSchema,
+      outputSchema: objectSchema,
+    };
+    expect(() =>
+      bindRegistryRelease({
+        release: selected,
+        definitions: [],
+        executors: [executorRegistration()],
+      }),
+    ).toThrow(/definition test.echo@1 is not implemented/u);
+    expect(() =>
+      bindRegistryRelease({
+        release: selected,
+        definitions: [registration],
+        executors: [],
+      }),
+    ).toThrow(/executor test.echo@1 is not implemented/u);
+  });
+
   it('requires an explicit ABI in current manifests without changing retained V1', () => {
     expect(nodeManifestSchema.safeParse(manifest).success).toBe(true);
     expect(

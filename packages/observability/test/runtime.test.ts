@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { waitForAbortableDelay } from '../src/runtime.js';
+import { waitForDelayOrStop } from '../src/runtime.js';
 
-describe('waitForAbortableDelay', () => {
+describe('waitForDelayOrStop', () => {
   it('resolves after the requested delay', async () => {
     vi.useFakeTimers();
     try {
-      const delayed = waitForAbortableDelay(250, new AbortController().signal);
+      const delayed = waitForDelayOrStop(250, new AbortController().signal);
       await vi.advanceTimersByTimeAsync(249);
       let resolved = false;
       void delayed.then(() => {
@@ -23,7 +23,7 @@ describe('waitForAbortableDelay', () => {
 
   it('resolves immediately when shutdown is requested', async () => {
     const controller = new AbortController();
-    const delayed = waitForAbortableDelay(60_000, controller.signal);
+    const delayed = waitForDelayOrStop(60_000, controller.signal);
     controller.abort(new Error('stop'));
     await expect(delayed).resolves.toBeUndefined();
   });
@@ -37,7 +37,7 @@ describe('waitForAbortableDelay', () => {
       2_147_483_648,
     ]) {
       expect(() =>
-        waitForAbortableDelay(invalid, new AbortController().signal),
+        waitForDelayOrStop(invalid, new AbortController().signal),
       ).toThrow(TypeError);
     }
   });

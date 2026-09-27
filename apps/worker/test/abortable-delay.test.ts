@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  waitForAbortableDelay,
+  waitForCancelableDelay,
   waitForSupervisorDelay,
 } from '../src/runtime/abortable-delay.js';
 
@@ -37,7 +37,7 @@ describe('worker abortable delays', () => {
 
   it('rejects an operational delay with AbortError and clears its timer', async () => {
     const controller = new AbortController();
-    const waiting = waitForAbortableDelay(25, controller.signal);
+    const waiting = waitForCancelableDelay(25, controller.signal);
 
     controller.abort();
 
@@ -54,7 +54,7 @@ describe('worker abortable delays', () => {
       waitForSupervisorDelay(25, controller.signal),
     ).resolves.toBeUndefined();
     await expect(
-      waitForAbortableDelay(25, controller.signal),
+      waitForCancelableDelay(25, controller.signal),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(add).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
@@ -63,7 +63,7 @@ describe('worker abortable delays', () => {
   it('resolves elapsed operational work and removes its abort listener', async () => {
     const controller = new AbortController();
     const remove = vi.spyOn(controller.signal, 'removeEventListener');
-    const waiting = waitForAbortableDelay(25, controller.signal);
+    const waiting = waitForCancelableDelay(25, controller.signal);
 
     await vi.advanceTimersByTimeAsync(25);
 
@@ -93,7 +93,7 @@ describe('worker abortable delays', () => {
       const waiting =
         policy === 'supervisor'
           ? waitForSupervisorDelay(25, signal)
-          : waitForAbortableDelay(25, signal);
+          : waitForCancelableDelay(25, signal);
 
       if (rejects)
         await expect(waiting).rejects.toMatchObject({ name: 'AbortError' });

@@ -2,7 +2,7 @@ import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { MaintenanceMetrics } from '@pertexo/observability';
-import { waitForAbortableDelay } from '@pertexo/observability/runtime';
+import { waitForDelayOrStop } from '@pertexo/observability/runtime';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 
 export interface LifecycleCommandResources {
@@ -72,7 +72,7 @@ export async function runLifecycleCommandWorker(
         outcome.status === 'released' ||
         outcome.status === 'stale'
       ) {
-        await waitForAbortableDelay(resources.pollIntervalMs, resources.signal);
+        await waitForDelayOrStop(resources.pollIntervalMs, resources.signal);
       }
     }
   } catch (error: unknown) {

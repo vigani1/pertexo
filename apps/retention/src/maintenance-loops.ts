@@ -7,7 +7,7 @@ import type {
 } from '@pertexo/database/maintenance';
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type { StructuredLogger } from '@pertexo/observability/logging';
-import { waitForAbortableDelay } from '@pertexo/observability/runtime';
+import { waitForDelayOrStop } from '@pertexo/observability/runtime';
 
 import type { RetentionMetrics, RetentionOperation } from './metrics.js';
 
@@ -88,7 +88,7 @@ async function recordFailure(
     },
     error,
   );
-  await waitForAbortableDelay(retryDelayMs, signal);
+  await waitForDelayOrStop(retryDelayMs, signal);
 }
 
 function recordRecovery(
@@ -121,7 +121,7 @@ async function runOperationLoop(
         recordRecovery(resources, operation, state);
       });
       if (shouldPoll)
-        await waitForAbortableDelay(resources.pollIntervalMs, signal);
+        await waitForDelayOrStop(resources.pollIntervalMs, signal);
     } catch (error: unknown) {
       if (isSignalReason(error, signal)) return;
       try {
