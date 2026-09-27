@@ -102,8 +102,7 @@ export class WorkerModule {
           ...(dependencies.maintenanceRuntime === undefined
             ? {}
             : {
-                maintenanceRuntime:
-                  dependencies.maintenanceRuntime,
+                maintenanceRuntime: dependencies.maintenanceRuntime,
               }),
           ...(dependencies.triggerRuntime === undefined
             ? {}

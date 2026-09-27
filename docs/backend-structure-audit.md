@@ -12,20 +12,20 @@ changes are excluded.
 | Module | Baseline TS files | Canonical responsibility | Audit disposition |
 | --- | ---: | --- | --- |
 | packages/workflow-engine | 53 | Persistence/framework-independent execution transitions | EX1, EX3, EX4 |
-| packages/workflow-model | 28 | Graph, expressions, executable identity | Inspect; preserve |
+| packages/workflow-model | 28 | Graph, expressions, executable identity | Reviewed; preserve existing graph/expression families |
 | packages/node-sdk | 12 | Execution and compatibility interfaces; release binding | EX2 canonical owner |
 | packages/node-catalog | 5 | Platform release policy and provider composition | EX2 consumer |
 | packages/nodes-core | 57 | Versioned core node implementations and cohorts | EX2 consumer |
-| packages/integrations | 36 | Provider adapters and credential contracts | Inspect; preserve |
+| packages/integrations | 36 | Provider adapters and credential contracts | Reviewed; preserve provider/security families |
 | packages/artifact-store | 21 | Byte storage, download signing and storage configuration | AS1, AS2, W3 |
-| packages/contracts | 33 | Shared wire schemas, projections and generated artifacts | Inspect; preserve |
-| packages/queue | 12 | Transport and consumer lifecycle | Inspect; preserve |
-| packages/rate-limit | 4 | Policy, atomic limiting and Redis lifecycle | Inspect; preserve |
+| packages/contracts | 33 | Shared wire schemas, projections and generated artifacts | Reviewed; preserve HTTP schemas/projection owners |
+| packages/queue | 12 | Transport and consumer lifecycle | Reviewed; preserve transport/admission contracts |
+| packages/rate-limit | 4 | Policy, atomic limiting and Redis lifecycle | Reviewed; preserve policy/script/runtime split |
 | packages/observability | 12 | Logs, metrics and traces; no implicit cancellation policy | W4 |
 | apps/api | 192 | Feature HTTP/application composition and authorization | API1, API2 |
 | apps/worker | 76 | Durable execution adapters, feature runtimes and transport | W1, W2, W4 |
-| apps/lifecycle-command | 4 | Privileged workspace lifecycle executable | Inspect; preserve |
-| apps/operator-command | 3 | Operator command union and lifecycle | Inspect; preserve |
+| apps/lifecycle-command | 4 | Privileged workspace lifecycle executable | Reviewed; preserve privileged lifecycle ownership |
+| apps/operator-command | 3 | Operator command union and lifecycle | Reviewed; preserve explicit command union |
 | apps/recovery | 3 | Restricted restore executable | W3 consumer |
 | apps/retention | 5 | Restricted maintenance executable | W3 consumer |
 
@@ -247,6 +247,26 @@ claimed. Whole-scope gates and independent review remain outstanding.
 
 ## Remaining work
 
-All 12 findings are implemented; the complete 17-module counterpart review,
-whole-scope gates and independent review remain open.
+All 12 findings are implemented and all 17 modules have owner dispositions.
+Whole-scope gates and independent review remain open.
 No structural stage is declared complete yet.
+
+### Counterpart review disposition
+
+The unchanged model already separates graph admission/validation/identity and
+expression policy/evaluation from immutable browser-safe contracts. Draft graph
+indexes have different lifetimes from EX3's engine transition projection.
+Integrations already have provider-owned definition/validation/executor/client
+families and distinct HTTP, credential and application-secret policy owners;
+customer credential envelopes are not interchangeable with application delivery
+secrets. Contracts already separate feature HTTP schemas from generation and
+projection. Queue delivery admission, producer, consumer and Redis notification
+lifecycles remain distinct from worker feature runtimes. Rate-limit's four files
+separate abuse policy, atomic script execution and Redis ownership; subdividing
+them would add navigation without improving ownership. Lifecycle and operator
+executables keep different privilege, readiness, durable-command and shutdown
+contracts; their process roots are not merged with recovery or retention.
+Existing public/browser export checks, dependency checks and import-direction
+checks cover these retained seams. No additional concrete counterpart defect
+was found during this scoped structural review; this is not a feature-completeness
+or live-provider certification.

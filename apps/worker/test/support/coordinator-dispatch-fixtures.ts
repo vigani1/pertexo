@@ -58,9 +58,7 @@ export async function createCoordinatorDispatcher(
 }
 
 export async function createFailureNotificationDispatcher(
-  consumer: Awaited<
-    ReturnType<typeof createMaintenanceRuntime>
-  >['consumer'],
+  consumer: Awaited<ReturnType<typeof createMaintenanceRuntime>>['consumer'],
   drainState: WorkerDrainState = new WorkerDrainState(),
 ): Promise<OutboxDispatcher> {
   const database = createOutboxDispatcherDatabase(
