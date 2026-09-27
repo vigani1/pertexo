@@ -226,8 +226,7 @@ describeIntegration('preview dispatch crash boundaries', () => {
           }),
         );
         let reconciliationRuntime:
-          | Awaited<ReturnType<typeof createMaintenanceRuntime>>
-          | undefined;
+          Awaited<ReturnType<typeof createMaintenanceRuntime>> | undefined;
         await runWithCleanup(
           async () => {
             reconciliationRuntime = await createMaintenanceRuntime({

@@ -26,8 +26,7 @@ export class OutboxDispatcherLifecycle {
     @Inject(NODE_ATTEMPT_RUNTIME)
     private readonly nodeAttemptRuntime: NodeAttemptRuntime | undefined,
     @Inject(MAINTENANCE_RUNTIME)
-    private readonly maintenanceRuntime:
-      MaintenanceRuntime | undefined,
+    private readonly maintenanceRuntime: MaintenanceRuntime | undefined,
     @Inject(TRIGGER_RUNTIME)
     private readonly triggerRuntime: TriggerRuntime | undefined,
     private readonly drainState: WorkerDrainState,
@@ -56,11 +55,7 @@ export class OutboxDispatcherLifecycle {
         : [Promise.resolve().then(() => this.nodeAttemptRuntime?.close())]),
       ...(this.maintenanceRuntime === undefined
         ? []
-        : [
-            Promise.resolve().then(() =>
-              this.maintenanceRuntime?.close(),
-            ),
-          ]),
+        : [Promise.resolve().then(() => this.maintenanceRuntime?.close())]),
       ...(this.triggerRuntime === undefined
         ? []
         : [Promise.resolve().then(() => this.triggerRuntime?.close())]),

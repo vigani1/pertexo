@@ -46,8 +46,7 @@ export class WorkerReadiness {
     private readonly coordinatorRuntime: CoordinatorRuntime | undefined,
     @Optional()
     @Inject(MAINTENANCE_RUNTIME)
-    private readonly maintenanceRuntime:
-      MaintenanceRuntime | undefined,
+    private readonly maintenanceRuntime: MaintenanceRuntime | undefined,
     @Optional()
     @Inject(AUTHENTICATION_MAIL_RUNTIME)
     private readonly authenticationMailRuntime?: AuthenticationMailRuntime,
