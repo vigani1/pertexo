@@ -293,6 +293,10 @@ function prepareNode(
     lease,
   );
   const { node } = located;
+  // A step that uses a connection sends its input to a provider, and what
+  // it sends never enters execution records (ADR 023, 024): only other
+  // steps record their input (ADR 052).
+  const recordsInput = Object.keys(node.connectionRefs).length === 0;
   return Object.freeze({
     ...(node.definition.key === 'core.wait' && node.definition.version === 1
       ? {
@@ -341,7 +345,7 @@ function prepareNode(
           ? {}
           : { expressionEvaluator: options.expressionEvaluator }),
         ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
-        ...(input.onInputResolved === undefined
+        ...(input.onInputResolved === undefined || !recordsInput
           ? {}
           : { onInputResolved: input.onInputResolved }),
         signal: input.signal,

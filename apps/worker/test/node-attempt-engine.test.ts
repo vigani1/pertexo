@@ -370,6 +370,43 @@ describe('node attempt execution engine', () => {
     });
   });
 
+  it('hands the resolved input to be recorded, except for a step that uses a connection', async () => {
+    const release = composeExecutableCompatibilityRelease(
+      CORE_REGISTRY_RELEASE,
+    );
+    const run = async (connectionRefs: Readonly<Record<string, string>>) => {
+      const base = graph();
+      const [manual, ...rest] = base.nodes;
+      if (manual === undefined) throw new Error('fixture graph is missing');
+      const projection = compiledProjection(
+        { ...base, nodes: [{ ...manual, connectionRefs }, ...rest] },
+        release,
+      );
+      const engine = createNodeAttemptExecutionEngine({
+        admissionRelease: release,
+        currentRelease: release,
+      });
+      const onInputResolved = vi.fn(() => Promise.resolve());
+      await engine
+        .prepare({ projection, lease: fixture('manual').lease })
+        .execute({
+          runInput: { hello: 'world' },
+          completedNodeOutputs: {},
+          abortRequested: false,
+          registry: createCoreNodeRegistry(),
+          signal: new AbortController().signal,
+          onInputResolved,
+        });
+      return onInputResolved;
+    };
+
+    expect(await run({})).toHaveBeenCalledWith({ hello: 'world' });
+    // What a connected step receives is what it sends to a provider.
+    expect(
+      await run({ provider: '88888888-8888-4888-8888-888888888888' }),
+    ).not.toHaveBeenCalled();
+  });
+
   it('rejects a branch scope without executable ancestry', () => {
     const { release, projection, lease } = fixture('manual');
     const scopedLease: NodeAttemptLease = {
