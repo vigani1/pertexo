@@ -87,21 +87,31 @@ describe('bounded webhook integration client', () => {
 
   it('destroys a stalled request at its deadline', async () => {
     let socketClosed = false;
+    let requestArrived: (() => void) | undefined;
+    const accepted = new Promise<void>((resolve) => {
+      requestArrived = resolve;
+    });
     const origin = await listen((request) => {
       request.socket.once('close', () => {
         socketClosed = true;
       });
+      requestArrived?.();
     });
 
-    await expect(send(origin, { timeoutMs: 10 })).rejects.toThrow(
-      'exceeded 10ms',
-    );
-    await vi.waitFor(
-      () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const pending = send(origin, { timeoutMs: 10 });
+      const rejectedAtDeadline =
+        expect(pending).rejects.toThrow('exceeded 10ms');
+      await accepted;
+      await vi.advanceTimersByTimeAsync(10);
+      await rejectedAtDeadline;
+      await vi.waitFor(() => {
         expect(socketClosed).toBe(true);
-      },
-      { timeout: 5_000 },
-    );
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
