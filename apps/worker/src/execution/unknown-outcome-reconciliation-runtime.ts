@@ -40,7 +40,7 @@ export interface UnknownOutcomeReconciliationStore {
   ): Promise<UnknownOutcomeReconciliationResult>;
 }
 
-export function createDatabaseUnknownOutcomeReconciliationStore(
+function createDatabaseUnknownOutcomeReconciliationStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): UnknownOutcomeReconciliationStore & { close(): Promise<void> } {

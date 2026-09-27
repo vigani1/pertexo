@@ -2,7 +2,6 @@ export type * from './ports.js';
 export * from './use-cases.js';
 export * from './statistics-use-case.js';
 export * from './controllers.js';
-export type { WorkflowRunsRequest } from './request-context.js';
 export * from './run-data-controller.js';
 export * from './run-data-use-cases.js';
 export * from './errors.js';
