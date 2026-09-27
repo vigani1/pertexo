@@ -22,7 +22,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createProviderFailureNotificationDelivery } from '../src/execution/failure-notification-delivery.js';
-import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
+import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
@@ -550,7 +550,7 @@ describeIntegration('Failure notification transport resilience', () => {
     let providerStore:
       ReturnType<typeof createFailureNotificationStore> | undefined;
     let runtime:
-      Awaited<ReturnType<typeof createPreviewMaintenanceRuntime>> | undefined;
+      Awaited<ReturnType<typeof createMaintenanceRuntime>> | undefined;
     let dispatcher:
       | Awaited<ReturnType<typeof createFailureNotificationDispatcher>>
       | undefined;
@@ -608,7 +608,7 @@ describeIntegration('Failure notification transport resilience', () => {
         },
         workerId: 'failure-notification-integration-worker',
       });
-      runtime = await createPreviewMaintenanceRuntime(
+      runtime = await createMaintenanceRuntime(
         {
           database: parseDatabaseConfig({
             connectionString: databaseUrl(workerUrl),
@@ -661,7 +661,7 @@ describeIntegration('Failure notification transport resilience', () => {
           reconstructionErrors,
           'Failure notification runtime reconstruction drain failed',
         );
-      runtime = await createPreviewMaintenanceRuntime(
+      runtime = await createMaintenanceRuntime(
         {
           database: parseDatabaseConfig({
             connectionString: databaseUrl(workerUrl),

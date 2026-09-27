@@ -1,10 +1,23 @@
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/execution';
+import { createWorkspaceInvitationDeliveryStore } from '@pertexo/database/execution';
+import {
+  createApplicationSecretEnvelope,
+  createNodeSecureHttpClient,
+  createResendClient,
+} from '@pertexo/integrations/server';
 import type {
   ApplicationSecretEnvelope,
   ResendApiResult,
   ResendClient,
 } from '@pertexo/integrations/server';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
+export const workspaceInvitationDeliveryFactories = Object.freeze({
+  store: createWorkspaceInvitationDeliveryStore,
+  envelope: createApplicationSecretEnvelope,
+  httpClient: createNodeSecureHttpClient,
+  email: createResendClient,
+  create: createWorkspaceInvitationDeliveryHandler,
+});
 
 type Delivery = Extract<
   QueueDelivery,

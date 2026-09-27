@@ -21,7 +21,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createWorkerApplication } from '../src/app.js';
 import type { CoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import type { PreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
+import type { MaintenanceRuntime } from '../src/maintenance/runtime.js';
 import type { TriggerRuntime } from '../src/triggers/trigger-runtime.js';
 import { NestWorkspaceDatabase } from '../src/platform/database/database.module.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
@@ -443,7 +443,7 @@ describe('worker application bootstrap', () => {
       isReady: vi.fn().mockReturnValue(true),
       waitUntilReady: vi.fn().mockResolvedValue(undefined),
     };
-    const previewMaintenanceRuntime: PreviewMaintenanceRuntime = {
+    const maintenanceRuntime: MaintenanceRuntime = {
       consumer,
       checkReadiness: vi.fn().mockResolvedValue(undefined),
       whenIdle: vi.fn().mockResolvedValue(undefined),
@@ -458,7 +458,7 @@ describe('worker application bootstrap', () => {
     };
     const app = await createWorkerApplication(enabledConfig, {
       ...selected,
-      previewMaintenanceRuntime,
+      maintenanceRuntime,
     });
 
     expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
@@ -467,7 +467,7 @@ describe('worker application bootstrap', () => {
     } finally {
       await app.close();
     }
-    expect(previewMaintenanceRuntime.close).toHaveBeenCalledOnce();
+    expect(maintenanceRuntime.close).toHaveBeenCalledOnce();
   });
 
   it('gates trigger reconciliation dispatch on the trigger runtime consumer', async () => {

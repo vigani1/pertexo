@@ -7,7 +7,7 @@ import {
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import type { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
-import type { createPreviewMaintenanceRuntime } from '../../src/execution/preview-maintenance-runtime.js';
+import type { createMaintenanceRuntime } from '../../src/maintenance/runtime.js';
 import { WorkerDrainState } from '../../src/runtime/worker-drain-state.js';
 import { createDispatchConsumerCapabilityRegistry } from '../../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../../src/transport/outbox-dispatcher.js';
@@ -59,7 +59,7 @@ export async function createCoordinatorDispatcher(
 
 export async function createFailureNotificationDispatcher(
   consumer: Awaited<
-    ReturnType<typeof createPreviewMaintenanceRuntime>
+    ReturnType<typeof createMaintenanceRuntime>
   >['consumer'],
   drainState: WorkerDrainState = new WorkerDrainState(),
 ): Promise<OutboxDispatcher> {

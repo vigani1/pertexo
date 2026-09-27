@@ -6,12 +6,12 @@ import type { QueueConsumer } from '@pertexo/queue';
 
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
-import type { FailureNotificationHandler } from './failure-notification-handler.js';
-import type { PreviewMaintenanceRuntime } from './preview-maintenance-runtime.js';
-import type { PreviewReconciliationStore } from './preview-reconciliation-runtime.js';
-import type { UnknownOutcomeReconciliationStore } from './unknown-outcome-reconciliation-runtime.js';
+import type { FailureNotificationHandler } from '../execution/failure-notification-handler.js';
+import type { MaintenanceRuntime } from './runtime.js';
+import type { PreviewReconciliationStore } from '../execution/preview-reconciliation-runtime.js';
+import type { UnknownOutcomeReconciliationStore } from '../execution/unknown-outcome-reconciliation-runtime.js';
 
-export type PreviewMaintenanceOwnedStores = Readonly<{
+export type MaintenanceOwnedStores = Readonly<{
   reconciliationStore?:
     | (PreviewReconciliationStore & {
         close?: () => Promise<void>;
@@ -26,16 +26,16 @@ export type PreviewMaintenanceOwnedStores = Readonly<{
   runReplayStore?: OperatorRunReplayStore | undefined;
 }>;
 
-export type PreviewMaintenanceComposition = Readonly<{
+export type MaintenanceComposition = Readonly<{
   consumer: QueueConsumer;
   failureNotification?: FailureNotificationHandler;
-  stores: PreviewMaintenanceOwnedStores;
+  stores: MaintenanceOwnedStores;
 }>;
 
-export function createPreviewMaintenanceLifecycle(
-  composition: PreviewMaintenanceComposition,
+export function createMaintenanceLifecycle(
+  composition: MaintenanceComposition,
   shutdownTimeoutMillis: number,
-): PreviewMaintenanceRuntime {
+): MaintenanceRuntime {
   let closePromise: Promise<void> | undefined;
   let rawActivity:
     Promise<readonly PromiseSettledResult<unknown>[]> | undefined;
@@ -65,11 +65,11 @@ export function createPreviewMaintenanceLifecycle(
   return Object.freeze({
     consumer: composition.consumer,
     checkReadiness: async (): Promise<void> => {
-      if (closed) throw new Error('Preview maintenance runtime is closed');
+      if (closed) throw new Error('Maintenance runtime is closed');
       await firstRecovery.promise;
       // Close can begin while first recovery is awaiting I/O.
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (closed) throw new Error('Preview maintenance runtime is closed');
+      if (closed) throw new Error('Maintenance runtime is closed');
       if (latestRecoveryFailed)
         throw new Error('Failure notification recovery latest scan failed');
     },
@@ -102,7 +102,7 @@ export function createPreviewMaintenanceLifecycle(
         }
         const failures = [
           ...rejectedReasons(activityResults),
-          ...(await closePreviewMaintenanceDependencies(
+          ...(await closeMaintenanceDependencies(
             composition.stores,
             shutdownTimeoutMillis,
           )),
@@ -110,7 +110,7 @@ export function createPreviewMaintenanceLifecycle(
         if (failures.length > 0)
           throw new AggregateError(
             failures,
-            'Preview maintenance runtime shutdown failed',
+            'Maintenance runtime shutdown failed',
           );
       })();
       return closePromise;
@@ -141,7 +141,7 @@ function startFailureNotificationRecovery(
 }
 
 async function drainMaintenanceConsumer(
-  composition: PreviewMaintenanceComposition,
+  composition: MaintenanceComposition,
 ): Promise<void> {
   const closeResults = await Promise.allSettled([
     Promise.resolve().then(() => composition.consumer.close()),
@@ -151,37 +151,31 @@ async function drainMaintenanceConsumer(
   );
   const failures = rejectedReasons([...closeResults, ...pendingResults]);
   if (failures.length > 0)
-    throw new AggregateError(
-      failures,
-      'Preview maintenance consumer drain failed',
-    );
+    throw new AggregateError(failures, 'Maintenance consumer drain failed');
 }
 
 function observeDeferredMaintenanceClose(
   activity: Promise<readonly PromiseSettledResult<unknown>[]>,
-  stores: PreviewMaintenanceOwnedStores,
+  stores: MaintenanceOwnedStores,
   shutdownTimeoutMillis: number,
 ): void {
   observeTask(
     activity.then(async (results) => {
       const failures = [
         ...rejectedReasons(results),
-        ...(await closePreviewMaintenanceDependencies(
-          stores,
-          shutdownTimeoutMillis,
-        )),
+        ...(await closeMaintenanceDependencies(stores, shutdownTimeoutMillis)),
       ];
       if (failures.length > 0)
         throw new AggregateError(
           failures,
-          'Preview maintenance deferred shutdown failed',
+          'Maintenance deferred shutdown failed',
         );
     }),
   );
 }
 
-export async function closePreviewMaintenanceDependencies(
-  dependencies: PreviewMaintenanceOwnedStores,
+export async function closeMaintenanceDependencies(
+  dependencies: MaintenanceOwnedStores,
   timeoutMillis?: number,
 ): Promise<readonly unknown[]> {
   const operations = [

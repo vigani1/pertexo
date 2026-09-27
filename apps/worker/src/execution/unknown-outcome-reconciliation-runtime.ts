@@ -20,6 +20,10 @@ type UnknownOutcomeDelivery = Extract<
   QueueDelivery,
   { readonly name: 'reconcile-unknown-outcome' }
 >;
+export const unknownOutcomeReconciliationFactories = Object.freeze({
+  handler: createUnknownOutcomeReconciliationHandler,
+  store: createDatabaseUnknownOutcomeReconciliationStore,
+});
 
 export interface UnknownOutcomeReconciliationStore {
   reconcile(

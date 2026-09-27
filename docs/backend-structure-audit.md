@@ -39,7 +39,7 @@ is recorded. Recommendation strength is not permission to omit an item.
 | W1 | Mail diagnostic exceptions can reject unobserved background work and skip owned cleanup | authentication-mail-runtime directly calls diagnostics and awaits activity before closing store | Authentication-mail runtime isolates diagnostics, observes activity and always attempts owned close | Implemented; focused verification passed |
 | EX1 | Test-only durable-wait/cancellation policies shadow production | engine runtime.ts and testing exports | Production engine transition interface; migrate unique assertions, remove shadow models/exports | Implemented; package tests/typecheck/coverage passed |
 | AS1 | Injected primary may lack advertised download signing | dual-region accepts partial primary, fails late | Dual-region construction requires its advertised primary download capability; recovery remains unsigned | Implemented; storage suite passed |
-| W2 | Preview-named composition owns unrelated maintenance features | preview-maintenance runtime/provider mixes preview, reconciliation, replay, failure alerts and invitations | Explicit maintenance transport composition with feature-owned dependency factories and explicit routing | Pending |
+| W2 | Preview-named composition owns unrelated maintenance features | preview-maintenance runtime/provider mixes preview, reconciliation, replay, failure alerts and invitations | Explicit maintenance transport composition with feature-owned dependency factories and explicit routing | Implemented; complete worker suite/lifecycle coverage passed |
 | API1 | Decorated controllers act as sibling helper modules | identity-workspace/controllers and workflow-runs/controllers export request helpers | Feature-owned request-context modules; no sibling controller imports | Implemented; focused API tests passed |
 | API2 | Legacy OIDC browser-binding cookie policy duplicated | auth and invitation controllers each serialize same cookie | One legacy OIDC binding-cookie owner; invitation/session/Better Auth cookies remain distinct | Implemented; focused API tests passed |
 | W3 | Storage principal/bucket isolation duplicated | recovery and retention reconstruct region-pair invariant | Artifact-store configuration invariant, consumed by distinct executable parsers | Implemented; both executable suites passed |
@@ -201,8 +201,33 @@ existing undercovered prefix-scope branch; the additional admission regression
 exercises that behavior instead of reducing the per-file ratchet. No throughput
 or memory improvement is claimed without comparative measurement.
 
+### Maintenance ownership evidence: W2
+
+The former preview-named composition now has a truthful `maintenance` owner:
+`maintenance/runtime.ts` composes the single consumer, `delivery-handler.ts`
+explicitly routes its five supported jobs, and `lifecycle.ts` owns readiness,
+recovery/drain and deferred close. `transport/maintenance-runtime-provider.ts`
+selects enabled capabilities and constructs provider delivery; the substantial
+`maintenance-owned-delivery.ts` owns acquired dependency cleanup. Transport tokens,
+injection names, readiness and tests use maintenance naming throughout.
+
+Preview, unknown-outcome and replay factories stay with their feature runtime.
+Failure-notification composition owns its handler/provider dependency defaults;
+invitation delivery owns its defaults. Customer notification credentials and
+application invitation email remain separate. There is still one explicit
+maintenance consumer, no plugin registry, generic command framework or new job.
+Owned/borrowed injection behavior, construction-failure cleanup, deferred close,
+retry/error mapping and receipt/checksum routing are unchanged.
+
+Worker tests passed 803/803 in 64 files; lifecycle coverage passed unchanged
+thresholds at 93.92% statements, 90.65% branches, 100% functions and 93.75%
+lines. Coverage paths include both the moved composition and extracted routing
+instead of silently dropping the old owner's code. Worker build/typecheck,
+ESLint and architecture checks passed. Real queue/PostgreSQL integration remains
+part of the whole-scope gate, not inferred from these unit tests.
+
 ## Remaining work
 
-W1, EX1–EX3, AS1, AS2, API1, API2, W3 and W4 are implemented; EX4, W2 and the complete
+W1–W4, EX1–EX3, AS1, AS2, API1 and API2 are implemented; EX4 and the complete
 17-module counterpart review remain open.
 No structural stage is declared complete yet.
