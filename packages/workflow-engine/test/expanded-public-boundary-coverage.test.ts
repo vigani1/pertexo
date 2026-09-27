@@ -8,10 +8,8 @@ import {
 } from '../src/index.js';
 import {
   advanceWorkflow,
-  decideCancellation,
   deriveReadyNodes,
   parseSchedulerGraph,
-  planDurableWait,
 } from '../src/testing.js';
 import { branchPathHasPrefix } from '../src/scope.js';
 import {
@@ -194,42 +192,6 @@ describe('expanded public workflow-engine boundaries', () => {
         release: missingRuntimePolicy,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
-  });
-
-  it('covers durable-wait and cancellation terminal decisions', () => {
-    expect(() =>
-      planDurableWait({
-        invocationKey: 'wait',
-        resumeAt: 'not-a-timestamp',
-        now: occurredAt,
-      }),
-    ).toThrow(TypeError);
-    expect(
-      planDurableWait({
-        invocationKey: 'wait',
-        resumeAt: occurredAt,
-        now: occurredAt,
-      }),
-    ).toEqual({
-      invocationKey: 'wait',
-      transition: 'ready',
-      resumeAt: null,
-      releasesWorkerSlot: true,
-    });
-    expect(decideCancellation([])).toEqual({ kind: 'canceled' });
-    expect(
-      decideCancellation([
-        {
-          invocationKey: 'waiting',
-          nodeId: 'wait',
-          status: 'waiting',
-          attemptNumber: 1,
-        },
-      ]),
-    ).toEqual({
-      kind: 'await_reconciliation',
-      invocationKeys: ['waiting'],
-    });
   });
 
   it('treats an absent branch prefix as the root scope', () => {

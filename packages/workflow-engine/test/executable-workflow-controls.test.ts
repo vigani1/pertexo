@@ -9,6 +9,79 @@ import {
 import { graph, nodeRelease } from './executable-workflow.fixtures.js';
 
 describe('wait and control production operations', () => {
+  it('reconciles running cancellation and preserves reported unsafe uncertainty', async () => {
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: composeExecutableCompatibilityRelease(
+        nodeRelease({ manualRetryClass: 'unsafe' }),
+      ),
+    });
+    const input = {
+      runId: 'cancel-unsafe-run',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      signal: new AbortController().signal,
+    } as const;
+    const started = await advanceWorkflow({
+      ...input,
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: input.workflowVersionId,
+        iterationBudget: 0,
+      }),
+      observations: [],
+    });
+    const attempt = started.attempts[0];
+    if (attempt === undefined) throw new Error('attempt was not admitted');
+    const canceled = await advanceWorkflow({
+      ...input,
+      checkpoint: started.checkpoint,
+      observations: [
+        {
+          kind: 'cancel_requested',
+          sequence: started.checkpoint.nextEventSequence,
+          occurredAt: input.occurredAt,
+        },
+      ],
+    });
+    expect(canceled.attempts).toEqual([]);
+    expect(canceled.checkpoint.runStatus).toBe('running');
+    expect(canceled.checkpoint.invocations[0]).toMatchObject({
+      invocationKey: attempt.invocationKey,
+      status: 'running',
+    });
+    const reconciled = await advanceWorkflow({
+      ...input,
+      checkpoint: canceled.checkpoint,
+      observations: [
+        {
+          kind: 'attempt_failure',
+          occurredAt: input.occurredAt,
+          invocationKey: attempt.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000096',
+          attemptNumber: attempt.attemptNumber,
+          failureKind: 'canceled',
+          errorKind: 'canceled',
+          possiblyDispatched: true,
+          safeErrorCode: 'execution.canceled',
+        },
+      ],
+    });
+    expect(reconciled.checkpoint.runStatus).toBe('outcome_unknown');
+    expect(reconciled.checkpoint.invocations[0]).toMatchObject({
+      status: 'outcome_unknown',
+    });
+    const retained = await advanceWorkflow({
+      ...input,
+      checkpoint: reconciled.checkpoint,
+      observations: [],
+    });
+    expect(retained.checkpoint.runStatus).toBe('outcome_unknown');
+    expect(retained.attempts).toEqual([]);
+  });
+
   it('consumes persisted waits with attempt fencing and resumes due work as engine-owned readiness', async () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
@@ -57,7 +130,15 @@ describe('wait and control production operations', () => {
       }),
     ).rejects.toMatchObject({ code: 'observation_invalid' });
 
+    await expect(
+      advanceWorkflow({
+        ...input,
+        observations: [{ ...wait, resumeAt: 'not-a-timestamp' }],
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+
     const waiting = await advanceWorkflow({ ...input, observations: [wait] });
+    expect(waiting.attempts).toEqual([]);
     expect(waiting.checkpoint.invocations[0]).toMatchObject({
       status: 'waiting',
       resumeAt: wait.resumeAt,
