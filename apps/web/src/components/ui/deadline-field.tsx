@@ -188,7 +188,7 @@ export function DeadlineField({
   );
 }
 
-/** When the run would stop, or that it runs until it finishes. */
+/** An optional earlier stop time; a configured workflow duration limit also applies. */
 function DeadlineHint({ value }: Readonly<{ value: string }>) {
   const parsed = value === '' ? undefined : new Date(value);
   const at =
@@ -198,7 +198,10 @@ function DeadlineHint({ value }: Readonly<{ value: string }>) {
   if (at === undefined)
     return (
       <>
-        {offset} {value === '' ? 'Without one, the run has no deadline.' : ''}
+        {offset}{' '}
+        {value === ''
+          ? 'A configured workflow duration limit may still stop the run.'
+          : ''}
       </>
     );
   return (
@@ -207,7 +210,8 @@ function DeadlineHint({ value }: Readonly<{ value: string }>) {
       <time dateTime={at.toISOString()} className="font-mono">
         {formatDateTime(at.toISOString())}
       </time>{' '}
-      ({formatRelativeTime(at.toISOString(), now)}) if it isn’t finished.
+      ({formatRelativeTime(at.toISOString(), now)}) if it isn’t finished. A
+      configured workflow duration limit may stop it earlier.
     </span>
   );
 }

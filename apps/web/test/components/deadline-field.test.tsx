@@ -51,7 +51,9 @@ describe('DeadlineField', () => {
     const event = userEvent.setup();
     render(<Harness />);
     const deadline = screen.getByRole('group', { name: 'Deadline (optional)' });
-    expect(deadline).toHaveTextContent('Without one, the run has no deadline.');
+    expect(deadline).toHaveTextContent(
+      'A configured workflow duration limit may still stop the run.',
+    );
     await event.click(
       within(deadline).getByRole('button', { name: 'In 1 hour' }),
     );
@@ -61,8 +63,14 @@ describe('DeadlineField', () => {
     expect(deadline).toHaveTextContent(
       /The run stops at .+ if it isn’t finished/u,
     );
+    expect(deadline).toHaveTextContent(
+      'A configured workflow duration limit may stop it earlier.',
+    );
     await event.click(within(deadline).getByRole('button', { name: 'None' }));
     expect(screen.getByTestId('value')).toBeEmptyDOMElement();
+    expect(deadline).toHaveTextContent(
+      'A configured workflow duration limit may still stop the run.',
+    );
   });
 
   it('takes a typed date and tidies the time when it’s left', async () => {

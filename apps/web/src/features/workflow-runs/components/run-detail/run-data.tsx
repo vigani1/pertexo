@@ -305,8 +305,14 @@ export function StepInputData({
         status: row.status,
       },
     ),
-    enabled: nodeRunId !== undefined && row.usesConnection !== true,
+    enabled:
+      nodeRunId !== undefined &&
+      row.usesConnection !== true &&
+      row.status !== 'skipped',
   });
+  // Skipped steps never received input; upstream values aren't their input.
+  if (row.status === 'skipped')
+    return <Muted>This step was skipped, so it received no input.</Muted>;
   const sources = (
     <InputSources row={row} rows={rows} upstream={upstream} scope={scope} />
   );
@@ -347,7 +353,7 @@ export function StepInputData({
     );
   return (
     <div className="flex flex-col gap-4">
-      {data === undefined ? (
+      {recorded.isError || data === undefined ? (
         <div
           role="alert"
           className="flex flex-wrap items-center gap-2 text-[0.8rem] text-muted-foreground"

@@ -96,6 +96,9 @@ export function nodeRunInputQueryOptions(
       ),
     staleTime: Number.POSITIVE_INFINITY,
     refetchInterval: (query) => {
+      // A failed refetch retains the last empty response. Stop here so the
+      // visible retry action, not a successful-read counter, owns recovery.
+      if (query.state.status === 'error') return false;
       const reads = query.state.dataUpdateCount;
       return step.status === 'running' &&
         query.state.data?.kind === 'none' &&
