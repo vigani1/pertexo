@@ -1,7 +1,7 @@
 export {
   parseWorkflowExecutableV2,
   verifyWorkflowExecutableV2,
-} from './executable-boundary.js';
+} from './compilation/executable-boundary.js';
 export {
   type ExecutableCompatibilityReleaseDescription,
   type ExecutableCompatibilityReleaseSupport,
@@ -9,11 +9,11 @@ export {
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
   describeExecutableCompatibilityRelease,
-} from './executable-compatibility.js';
+} from './compilation/executable-compatibility.js';
 export {
   buildWorkflowExecutableV2,
   computeWorkflowExecutableChecksumV2,
-} from './executable-compilation.js';
+} from './compilation/executable-compilation.js';
 export {
   type CompiledWorkflowExecutableV2,
   type ExecutableRuntimePoliciesV1,
@@ -26,5 +26,5 @@ export {
   type WorkflowExecutableNodeV2,
   type WorkflowExecutableV2,
   assertAuthenticExecutableIdentity,
-} from './executable-foundation.js';
-export { normalizeBoundedEngineJson } from './executable-validation.js';
+} from './compilation/executable-foundation.js';
+export { normalizeBoundedEngineJson } from './compilation/executable-validation.js';

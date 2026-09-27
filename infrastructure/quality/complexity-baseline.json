@@ -26,8 +26,8 @@
     "packages/node-sdk/src/release.ts": 552,
     "packages/node-sdk/src/server.ts": 549,
     "packages/queue/src/consumer.ts": 653,
-    "packages/workflow-engine/src/coordinator-observations.ts": 504,
-    "packages/workflow-engine/src/workflow-transition-observations.ts": 528
+    "packages/workflow-engine/src/observation/coordinator-observations.ts": 504,
+    "packages/workflow-engine/src/transition/workflow-transition-observations.ts": 528
   },
   "functionHotspots": {
     "apps/web/src/features/workspaces/mutations/use-workspace-creation.ts#useWorkspaceCreation": {
@@ -122,7 +122,7 @@
       "branches": 1,
       "lines": 216
     },
-    "packages/workflow-engine/src/checkpoint-v1.ts#parseCheckpointV1Boundary": {
+    "packages/workflow-engine/src/checkpoint/checkpoint-v1.ts#parseCheckpointV1Boundary": {
       "branches": 25,
       "lines": 248
     }

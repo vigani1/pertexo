@@ -21,7 +21,7 @@ export {
   parseCheckpoint,
   reconstructReadySet,
   WORKFLOW_CHECKPOINT_LIMITS_V1,
-} from './checkpoint.js';
+} from './checkpoint/checkpoint.js';
 export { WorkflowEngineError } from './errors.js';
 export type { EngineErrorCode } from './errors.js';
 export {
@@ -47,5 +47,5 @@ export type {
   WorkflowExecutableNodeV2,
   WorkflowExecutableV2,
 } from './executable-workflow.js';
-export { invocationKey } from './scheduling.js';
+export { invocationKey } from './transition/scheduling.js';
 export type * from './types.js';

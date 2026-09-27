@@ -5,15 +5,15 @@ import config from '../vitest.coverage.config.js';
 describe('@pertexo/workflow-engine coverage inventory', () => {
   it('measures every runtime module while preserving the original-cohort ratchet', () => {
     expect(config.test?.coverage?.include).toEqual([
-      'src/{advance-workflow,checkpoint,checkpoint-executable-validation,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,coordinator-failures,coordinator-loop-observations,coordinator-observations,coordinator-output,executable-compatibility,executable-graph,executable-graph-boundary,executable-graph-rules,executable-validation,graph-scheduler,node-attempt-input,operations,output-reference,persisted-observation-parser,persisted-observations,retries,scheduling,transition-decisions,transitions,workflow-transition-derived,workflow-transition-loops,workflow-transition-observations,workflow-transition-plan,workflow-transition-state,workflow-transition-stops}.ts',
-      'src/{checkpoint-identity,core-definition-identities,errors,executable-boundary,executable-compilation,executable-foundation,executable-graph-validation-index,executable-identity,graph-scheduler-indexes,operation-values,ordering,scope,server-only,testing-graph,testing,types}.ts',
+      'src/{transition/advance-workflow,checkpoint/checkpoint,checkpoint/checkpoint-executable-validation,checkpoint/checkpoint-shared,checkpoint/checkpoint-v1,checkpoint/checkpoint-v1-join,checkpoint/checkpoint-v1-loop,checkpoint/checkpoint-v2,observation/coordinator-failures,observation/coordinator-loop-observations,observation/coordinator-observations,observation/coordinator-output,compilation/executable-compatibility,compilation/executable-graph,compilation/executable-graph-boundary,compilation/executable-graph-rules,compilation/executable-validation,transition/graph-scheduler,attempt/node-attempt-input,operations,output-reference,observation/persisted-observation-parser,observation/persisted-observations,attempt/retries,transition/scheduling,transition/transition-decisions,transition/transitions,transition/workflow-transition-derived,transition/workflow-transition-loops,transition/workflow-transition-observations,transition/workflow-transition-plan,transition/workflow-transition-state,transition/workflow-transition-stops}.ts',
+      'src/{checkpoint/checkpoint-identity,core-definition-identities,errors,compilation/executable-boundary,compilation/executable-compilation,compilation/executable-foundation,compilation/executable-graph-validation-index,compilation/executable-identity,transition/graph-scheduler-indexes,operation-values,ordering,scope,server-only,testing-graph,testing,types}.ts',
     ]);
     expect(config.test?.coverage?.thresholds).toMatchObject({
       branches: 85,
       functions: 93,
       lines: 91,
       statements: 90,
-      'src/{advance-workflow,checkpoint,checkpoint-executable-validation,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,executable-graph,node-attempt-input,operations,output-reference,retries,transitions,workflow-transition-loops,workflow-transition-observations,workflow-transition-state}.ts':
+      'src/{transition/advance-workflow,checkpoint/checkpoint,checkpoint/checkpoint-executable-validation,checkpoint/checkpoint-shared,checkpoint/checkpoint-v1,checkpoint/checkpoint-v1-join,checkpoint/checkpoint-v1-loop,checkpoint/checkpoint-v2,compilation/executable-graph,attempt/node-attempt-input,operations,output-reference,attempt/retries,transition/transitions,transition/workflow-transition-loops,transition/workflow-transition-observations,transition/workflow-transition-state}.ts':
         {
           branches: 91,
           functions: 93.5,

@@ -47,7 +47,7 @@ is recorded. Recommendation strength is not permission to omit an item.
 | EX2 | Release-to-registration binding algorithm duplicated | core and catalog indexing, selection and facade assembly | Existing node SDK binds releases; callers retain cohort/provider policy | Implemented; SDK/core/catalog suites passed |
 | W4 | Same wait name hides resolve-on-stop versus reject-on-cancel | observability/runtime and worker/runtime/abortable-delay | Explicit semantic contracts and proportionate feature/runtime placement | Implemented; runtime/consumer suites passed |
 | EX3 | Structured-node flatten/find repeated in transition admission | transition state/plan/decisions each search | One immutable transition-local node lookup; no global cache or draft-validation conflation | Implemented; engine suite/coverage passed |
-| EX4 | Engine families flat despite established prefixes | 53 flat source files | compilation, checkpoint, observation, transition and attempt families; stable public entries | Pending |
+| EX4 | Engine families flat despite established prefixes | 53 flat source files | compilation, checkpoint, observation, transition and attempt families; stable public entries | Implemented; mechanical moves and focused checks passed |
 
 ## Delivery sequence
 
@@ -226,8 +226,27 @@ instead of silently dropping the old owner's code. Worker build/typecheck,
 ESLint and architecture checks passed. Real queue/PostgreSQL integration remains
 part of the whole-scope gate, not inferred from these unit tests.
 
+### Engine family organization evidence: EX4
+
+Moved 39 private engine files into `attempt`, `checkpoint`, `compilation`,
+`observation` and `transition`. Leaf names and public package entries remain
+stable; relative imports and test source references follow their owners.
+Coverage inventories, complexity budgets, duplication review paths and Knip
+paths follow the moves without relaxing thresholds. The retired EX1 runtime
+was removed from the risk inventory. The existing reviewed crash/reconciliation
+fixture fingerprint changed only because W2 renamed its runtime; its 31-line
+ceiling and scenario-local justification are unchanged.
+
+Engine tests passed 405/405 and coverage remained exactly 94.66% statements,
+90.94% branches, 97.60% functions and 95.34% lines. Engine/SDK/worker builds,
+worker tests (803/803), scoped lint, architecture (19/19), complexity and
+built exports (9 tests, 35 consumer cases) passed. Risk-report infrastructure
+tests passed 30/30. Contracts generation checks passed with the existing
+identity/workspace redirect-operation warning. No performance improvement is
+claimed. Whole-scope gates and independent review remain outstanding.
+
 ## Remaining work
 
-W1–W4, EX1–EX3, AS1, AS2, API1 and API2 are implemented; EX4 and the complete
-17-module counterpart review remain open.
+All 12 findings are implemented; the complete 17-module counterpart review,
+whole-scope gates and independent review remain open.
 No structural stage is declared complete yet.

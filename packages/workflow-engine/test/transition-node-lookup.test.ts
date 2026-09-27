@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { boundedReadyAdmissions } from '../src/transition-decisions.js';
+import { boundedReadyAdmissions } from '../src/transition/transition-decisions.js';
 import {
   indexTransitionNodes,
   schedulerNodeDisabled,
   schedulerNodeSideEffectClass,
-} from '../src/workflow-transition-state.js';
+} from '../src/transition/workflow-transition-state.js';
 
 describe('transition-local scheduler node lookup', () => {
   it('keeps branch and enclosing-iteration limits separate and rejects missing loop scope', () => {

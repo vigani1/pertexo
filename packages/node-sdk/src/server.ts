@@ -29,10 +29,8 @@ export { bindRegistryRelease } from './registry-binding.js';
 import {
   type DefinitionIdentity,
   definitionIdentitySchema,
-  type DefinitionLifecycle,
   type ExecutorIdentity,
   executorIdentitySchema,
-  type ExecutorLifecycle,
   type ExecutorManifest,
   type NodeManifest,
   nodeManifestSchema,
@@ -546,4 +544,4 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
   });
 }
 
-export type { DefinitionLifecycle, ExecutorLifecycle };
+export type { DefinitionLifecycle, ExecutorLifecycle } from './release.js';

@@ -93,7 +93,7 @@
         {
           "files": [
             "packages/database/src/execution/stored-execution-value.ts",
-            "packages/workflow-engine/src/executable-validation.ts"
+            "packages/workflow-engine/src/compilation/executable-validation.ts"
           ],
           "classification": "false-positive",
           "reason": "Both count JSON string bytes, but stored values reject unpaired surrogates while executable validation accounts for their escaped representation; the policies are intentionally different.",
@@ -319,7 +319,7 @@
           "reason": "Ordinary reconciliation and SIGKILL recovery scenarios each show the complete real Redis/PostgreSQL runtime acquisition before asserting distinct crash-boundary outcomes.",
           "clones": [
             {
-              "hash": "0824de7e9a0c67c9f9ff43754193714549b4cb2b29ff6bacfbedf84bd5274d5a",
+              "hash": "d098bf857b52feb348670836340e5675867d9f6e4aecd6ffaea1bd2f0fa31165",
               "maxLines": 31
             }
           ]
