@@ -247,6 +247,34 @@ describe('thread view', () => {
     ).toBe('Failed at send-receipt after 3 attempts');
   });
 
+  it('marks steps that use a connection and carries each node run’s attempt', () => {
+    const [post, receipt] = graph.nodes;
+    if (post === undefined || receipt === undefined)
+      throw new Error('fixture graph is missing');
+    const view = buildThreadView({
+      run: runSummary('running'),
+      nodes: [node('send-receipt', 'running', { currentAttemptNumber: 2 })],
+      events: [],
+      graph: {
+        ...graph,
+        nodes: [
+          post,
+          {
+            ...receipt,
+            connectionRefs: { email: '88888888-8888-4888-8888-888888888888' },
+          },
+        ],
+      },
+      nowMs: start + 60_000,
+    });
+    const byLabel = new Map(view.rows.map((row) => [row.label, row]));
+    expect(byLabel.get('Send receipt')).toMatchObject({
+      usesConnection: true,
+      currentAttemptNumber: 2,
+    });
+    expect(byLabel.get('Post to ERP')?.usesConnection).toBeUndefined();
+  });
+
   it('places open segments at now and clamps them to the axis', () => {
     const view = { startMs: 0, endMs: 10_000 };
     expect(

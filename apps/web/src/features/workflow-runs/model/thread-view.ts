@@ -33,6 +33,8 @@ export type ThreadRow = Readonly<{
   label: string;
   /** What kind of step it is, when the graph names it separately. */
   kindLabel?: string;
+  /** The step sends its input through a connection, so it isn't kept. */
+  usesConnection?: boolean;
   status: ThreadStepStatus;
   tone: StatusTone;
   statusLabel: string;
@@ -60,7 +62,11 @@ export type ThreadView = Readonly<{
   ticks: readonly ThreadTick[];
 }>;
 
-type StepLabel = Readonly<{ label: string; kindLabel?: string }>;
+type StepLabel = Readonly<{
+  label: string;
+  kindLabel?: string;
+  usesConnection?: boolean;
+}>;
 
 const TICK_STEPS_MS = [
   100, 250, 500, 1_000, 2_000, 5_000, 10_000, 15_000, 30_000, 60_000, 120_000,
@@ -78,11 +84,15 @@ function graphLabels(
     // The catalog's name for the step type, the same words Build uses.
     const kind = describeStep(node.definition.key).name;
     const label = node.label?.trim();
+    const connected =
+      Object.keys(node.connectionRefs).length > 0
+        ? { usesConnection: true }
+        : {};
     labels.set(node.id, {
       step:
         label === undefined || label === ''
-          ? { label: kind }
-          : { label, kindLabel: kind },
+          ? { label: kind, ...connected }
+          : { label, kindLabel: kind, ...connected },
       order,
     });
   });
