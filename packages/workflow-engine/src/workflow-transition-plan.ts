@@ -105,7 +105,7 @@ export function buildWorkflowTransitionPlan(
           invocations: [...invocations.values()],
           maximumAdmissions: input.maximumAdmissions,
           readySet,
-          schedulerState: graph,
+          schedulerNodes: state.schedulerNodes,
         });
   const attempts: AttemptAdmissionPlan[] = [];
   for (const key of admittedKeys) {
@@ -135,7 +135,10 @@ export function buildWorkflowTransitionPlan(
       nodeId: running.nodeId,
       attemptNumber: running.attemptNumber,
       admissionKind,
-      sideEffectClass: schedulerNodeSideEffectClass(graph, running.nodeId),
+      sideEffectClass: schedulerNodeSideEffectClass(
+        state.schedulerNodes,
+        running.nodeId,
+      ),
       ...(running.branchPath === undefined
         ? {}
         : { branchPath: running.branchPath }),
@@ -223,7 +226,10 @@ export function buildWorkflowTransitionPlan(
       return {
         invocationKey,
         nodeId: invocation.nodeId,
-        sideEffectClass: schedulerNodeSideEffectClass(graph, invocation.nodeId),
+        sideEffectClass: schedulerNodeSideEffectClass(
+          state.schedulerNodes,
+          invocation.nodeId,
+        ),
         ...(invocation.branchPath === undefined
           ? {}
           : { branchPath: invocation.branchPath }),

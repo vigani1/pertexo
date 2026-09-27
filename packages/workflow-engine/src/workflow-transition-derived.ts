@@ -264,7 +264,7 @@ function advanceLoopIterations(
         const ready: InvocationState = {
           invocationKey: iterationKey,
           nodeId,
-          status: schedulerNodeDisabled(state.graph, nodeId)
+          status: schedulerNodeDisabled(state.schedulerNodes, nodeId)
             ? 'skipped'
             : 'ready',
           attemptNumber: 0,
