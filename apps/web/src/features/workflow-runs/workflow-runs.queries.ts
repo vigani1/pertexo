@@ -10,10 +10,7 @@ import type { RunHistoryFilters } from './model/run-search';
 import type { RunStatus } from './model/run-status';
 import {
   getRunsSince,
-  getWorkflowNodeRunInput,
-  getWorkflowNodeRunOutput,
   getWorkflowRun,
-  getWorkflowRunInput,
   getWorkflowStepHealth,
   getWorkflowStepRuns,
   getWorkflowRunStatistics,
@@ -385,78 +382,6 @@ export function stepRunsQueryOptions(
         signal,
       ),
     staleTime: 30_000,
-  });
-}
-
-/** A run's stored input; it never changes, so it's read once. */
-export function workflowRunInputQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  runId: string,
-) {
-  return queryOptions({
-    queryKey: [...workflowRunKeys.data(userId, workspaceId, runId), 'input'],
-    queryFn: ({ signal }) =>
-      getWorkflowRunInput(apiClient, workspaceId, runId, signal),
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-}
-
-/**
- * A step run's output. It only changes when the step does, so the step's
- * status is part of the key: a step that finishes is read again.
- */
-export function nodeRunOutputQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  runId: string,
-  step: Readonly<{ nodeRunId: string; status: string }>,
-) {
-  return queryOptions({
-    queryKey: [
-      ...workflowRunKeys.data(userId, workspaceId, runId),
-      'output',
-      step.nodeRunId,
-      step.status,
-    ],
-    queryFn: ({ signal }) =>
-      getWorkflowNodeRunOutput(
-        apiClient,
-        workspaceId,
-        runId,
-        step.nodeRunId,
-        signal,
-      ),
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-}
-
-/** What a step run received, recorded when its attempt starts (ADR 052). */
-export function nodeRunInputQueryOptions(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  runId: string,
-  step: Readonly<{ nodeRunId: string; status: string }>,
-) {
-  return queryOptions({
-    queryKey: [
-      ...workflowRunKeys.data(userId, workspaceId, runId),
-      'input-of',
-      step.nodeRunId,
-      step.status,
-    ],
-    queryFn: ({ signal }) =>
-      getWorkflowNodeRunInput(
-        apiClient,
-        workspaceId,
-        runId,
-        step.nodeRunId,
-        signal,
-      ),
-    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 

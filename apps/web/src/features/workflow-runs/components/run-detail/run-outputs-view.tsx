@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { useQuery } from '@tanstack/react-query';
 import type { ThreadRow } from '../../model/thread-view';
-import { nodeRunOutputQueryOptions } from '../../workflow-runs.queries';
+import { nodeRunOutputQueryOptions } from '../../workflow-run-data.queries';
 import { describeValue, isEmptyValue } from '../../model/run-data-summary';
 import { RunInputData, type RunDataScope } from './run-data';
 

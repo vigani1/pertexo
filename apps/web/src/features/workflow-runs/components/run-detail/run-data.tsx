@@ -2,7 +2,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import type { WorkflowRunData } from '@pertexo/contracts/schemas/workflow-runs';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ChevronDownIcon, Maximize2Icon, RefreshCwIcon } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { JsonTree } from '@/components/patterns/json-tree';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
@@ -20,7 +20,7 @@ import {
   nodeRunInputQueryOptions,
   nodeRunOutputQueryOptions,
   workflowRunInputQueryOptions,
-} from '../../workflow-runs.queries';
+} from '../../workflow-run-data.queries';
 import { describeValue, isEmptyValue } from '../../model/run-data-summary';
 import { feedingRows } from '../../model/step-inputs';
 import type { ThreadRow } from '../../model/thread-view';
@@ -269,10 +269,17 @@ export function StepOutputData({
   );
 }
 
+/** Statuses in which a step's current attempt may still record its input. */
+const RECORDING: ReadonlySet<ThreadRow['status']> = new Set([
+  'pending',
+  'ready',
+  'running',
+]);
+
 /**
- * What a step received: exactly, when its attempt recorded it (ADR 052), with
- * where it came from folded underneath; otherwise, for runs from before, where
- * it came from.
+ * What a step received: exactly, as its current attempt recorded it (ADR 052),
+ * with where it came from folded underneath. Without a recording, it says
+ * why, and shows where the input came from as source data.
  */
 export function StepInputData({
   row,
@@ -292,32 +299,95 @@ export function StepInputData({
       scope.userId,
       scope.workspace.id,
       scope.runId,
-      { nodeRunId: nodeRunId ?? '', status: row.status },
+      {
+        nodeRunId: nodeRunId ?? '',
+        attemptNumber: row.currentAttemptNumber,
+        status: row.status,
+      },
     ),
     enabled: nodeRunId !== undefined,
   });
   const sources = (
     <InputSources row={row} rows={rows} upstream={upstream} scope={scope} />
   );
-  if (nodeRunId === undefined || recorded.isError) return sources;
-  if (recorded.data === undefined)
+  // A step that hasn't run yet only has where its input will come from.
+  if (nodeRunId === undefined) return sources;
+  const data = recorded.data;
+  if (data === undefined && !recorded.isError)
     return (
       <div role="status" aria-label={`Loading Data in of ${row.label}`}>
         <Skeleton className="h-16 w-full" />
       </div>
     );
-  if (recorded.data.kind === 'none' || recorded.data.kind === 'expired')
-    return sources;
+  if (data?.kind === 'inline' || data?.kind === 'artifact')
+    return (
+      <div className="flex flex-col gap-3">
+        {row.attempts > 1 ? (
+          <Muted>What the latest attempt received.</Muted>
+        ) : null}
+        <RunDataValue
+          data={data}
+          title={`Data in of ${row.label}`}
+          emptyText="This step received nothing."
+          scope={scope}
+        />
+        <SourcesDisclosure>{sources}</SourcesDisclosure>
+      </div>
+    );
   return (
-    <div className="flex flex-col gap-3">
-      <RunDataValue
-        data={recorded.data}
-        title={`Data in of ${row.label}`}
-        emptyText="This step received nothing."
-        scope={scope}
-      />
-      <SourcesDisclosure>{sources}</SourcesDisclosure>
+    <div className="flex flex-col gap-4">
+      {data === undefined ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-2 text-[0.8rem] text-muted-foreground"
+        >
+          <span>Couldn’t load exactly what this step received.</span>
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            disabled={recorded.isFetching}
+            onClick={() => void recorded.refetch()}
+          >
+            <RefreshCwIcon aria-hidden="true" />
+            Try again
+          </Button>
+        </div>
+      ) : (
+        <Muted>
+          {data.kind === 'expired'
+            ? 'No longer kept. Pertexo keeps run data for 30 days.'
+            : RECORDING.has(row.status)
+              ? 'Not recorded yet.'
+              : 'Pertexo didn’t keep exactly what this step received, for example because it was over 256 KB.'}
+        </Muted>
+      )}
+      <SourceData>{sources}</SourceData>
     </div>
+  );
+}
+
+/** Names where the input came from for what it is: not the exact input. */
+function SourceNote() {
+  return (
+    <p className="text-[0.8rem] text-muted-foreground">
+      Source data, not the exact input: this step’s own mappings may have
+      changed it.
+    </p>
+  );
+}
+
+/** Where the input came from, shown when there's no exact input to show. */
+function SourceData({ children }: Readonly<{ children: ReactNode }>) {
+  const headingId = useId();
+  return (
+    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+      <p id={headingId} className="text-xs text-subtle-foreground">
+        Where it came from
+      </p>
+      <SourceNote />
+      {children}
+    </section>
   );
 }
 
@@ -338,7 +408,12 @@ function SourcesDisclosure({ children }: Readonly<{ children: ReactNode }>) {
           className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
         />
       </summary>
-      {open ? <div className="mt-2">{children}</div> : null}
+      {open ? (
+        <div className="mt-2 flex flex-col gap-2">
+          <SourceNote />
+          {children}
+        </div>
+      ) : null}
     </details>
   );
 }
@@ -365,7 +440,7 @@ function InputSources({
     return (
       <div className="flex flex-col gap-1.5">
         <p className="text-xs text-subtle-foreground">The run’s input</p>
-        <RunInputData scope={scope} title={`Data in of ${row.label}`} />
+        <RunInputData scope={scope} />
       </div>
     );
   const sources = feedingRows(row, rows, upstream);

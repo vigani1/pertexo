@@ -93,7 +93,7 @@ export const RUN_PAGE_GUIDE: readonly GuideSection[] = [
       {
         label: 'Data in',
         meaning:
-          'What a step received: the run’s input for the first step, then what the steps before it returned.',
+          'Exactly what a step received as it started, and where that came from: the run’s input, or what the steps before it returned.',
       },
       {
         label: 'Data out',

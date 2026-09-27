@@ -37,6 +37,11 @@ export type ThreadRow = Readonly<{
   tone: StatusTone;
   statusLabel: string;
   attempts: number;
+  /**
+   * The node run's current attempt as the run snapshot has it, counting wait
+   * resumes: data recorded per attempt is read again when it changes.
+   */
+  currentAttemptNumber?: number;
   segments: readonly ThreadSegment[];
   story: readonly StepStoryEntry[];
   outputs: readonly StepOutput[];
@@ -190,6 +195,9 @@ function rowFor(
     tone: look.tone,
     statusLabel: look.label,
     attempts: replay.attempts,
+    ...(invocation.summary === undefined
+      ? {}
+      : { currentAttemptNumber: invocation.summary.currentAttemptNumber }),
     segments: replay.segments,
     story: replay.story,
     outputs: replay.outputs,
