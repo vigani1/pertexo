@@ -48,6 +48,16 @@
       "types": "./dist/observation-window.d.ts",
       "default": "./dist/observation-window.js"
     },
+    "./attempt-failure": {
+      "types": "./dist/attempt-failure.d.ts",
+      "node": "./dist/attempt-failure.js",
+      "default": "./dist/attempt-failure.js"
+    },
+    "./invocation-key-v2": {
+      "types": "./dist/invocation-key-v2.d.ts",
+      "node": "./dist/invocation-key-v2.js",
+      "default": "./dist/invocation-key-v2.js"
+    },
     "./expressions": {
       "types": "./dist/expressions.d.ts",
       "node": "./dist/expressions.js",
@@ -59,7 +69,9 @@
     "./dist/canonical-json.js": false,
     "./dist/graph.js": false,
     "./dist/mapping.js": false,
-    "./dist/expressions.js": false
+    "./dist/expressions.js": false,
+    "./dist/attempt-failure.js": false,
+    "./dist/invocation-key-v2.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

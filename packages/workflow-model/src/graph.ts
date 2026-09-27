@@ -41,6 +41,15 @@ export {
 } from './graph/preflight.js';
 export { validateWorkflowGraph } from './graph/validation.js';
 export {
+  workflowDefinitionPlacementIssues,
+  type WorkflowDefinitionPlacementIssue,
+} from './graph/definition-placement.js';
+export {
+  workflowControlOutputKind,
+  workflowControlOutputNodeIdsV2,
+  type WorkflowControlOutputKind,
+} from './graph/control-output-selection.js';
+export {
   EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1,
   EMPTY_DEFINITION_CATALOG_V1,
   parseRetainedWorkflowVersionV1,
