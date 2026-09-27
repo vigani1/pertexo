@@ -39,6 +39,11 @@ wait receives no new input, so the input its step received stays.
 The engine exposes this as an optional `onInputResolved` callback on
 `executeNodeAttempt`; engine behaviour without the callback is unchanged.
 
+A step that uses a connection doesn't record its input. What it receives is
+what it sends to a provider, a Slack message or an email's recipient,
+subject and body, and ADR 023 and ADR 024 keep that out of execution records.
+The run page says so and shows where the input came from instead.
+
 ### Fencing and best effort
 
 `recordInput` writes only while the caller still holds the attempt: same
@@ -68,9 +73,9 @@ this change read `none`.
 ## Consequences
 
 The run page shows what a step received, and still shows where it came from.
-Every attempt adds one bounded write before its executor runs. Inputs, like
-outputs, may hold whatever data flows through a workflow, and are visible to
-the same roles for the same 30 days.
+Every attempt of a step without a connection adds one bounded write before
+its executor runs. Inputs, like outputs, may hold whatever data flows through
+a workflow, and are visible to the same roles for the same 30 days.
 
 Step logs and provider request details remain out of scope: executors would
 have to produce them, and each would need its own bounds and redaction.
