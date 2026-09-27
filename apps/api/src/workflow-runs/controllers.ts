@@ -39,9 +39,8 @@ import {
 import {
   authenticatedRequestIdentifiers,
   optionalAuthorizedWorkspace,
-  projectAuthenticatedWorkspaceContext,
 } from '../identity-workspace/authenticated-command-context.js';
-import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import { actorFrom, type WorkflowRunsRequest } from './request-context.js';
 import { applicationError } from '../platform/http/index.js';
 import { ApiDrainState } from '../platform/health/drain-state.js';
 import {
@@ -69,25 +68,6 @@ import {
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
 } from './use-cases.js';
-
-export type WorkflowRunsRequest = Readonly<
-  Pick<
-    IdentityWorkspaceRequest,
-    | 'authorizedWorkspace'
-    | 'cookies'
-    | 'headers'
-    | 'identitySession'
-    | 'method'
-    | 'reauthorizeIdentitySession'
-    | 'requestId'
-    | 'traceId'
-  > & {
-    raw?: Readonly<{
-      once(event: 'close', listener: () => void): unknown;
-      off(event: 'close', listener: () => void): unknown;
-    }>;
-  }
->;
 
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
@@ -366,19 +346,6 @@ function lastEventId(request: WorkflowRunsRequest): number {
   const value = singleRequestHeader(request.headers, 'last-event-id');
   if (value === undefined) return 0;
   return Number(lastRunEventIdHeaderSchema.parse(value));
-}
-
-export function actorFrom(request: WorkflowRunsRequest, workspaceId: string) {
-  try {
-    return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
-  } catch (error: unknown) {
-    return throwWorkflowRunError(
-      applicationError('request.invalid', {
-        safeDetail:
-          error instanceof Error ? error.message : 'Invalid actor context',
-      }),
-    );
-  }
 }
 
 function requestIdentifiers(request: WorkflowRunsRequest): Readonly<{

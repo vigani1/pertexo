@@ -10,7 +10,7 @@ import {
 import { SessionAuthenticationGuard } from '../identity-workspace/index.js';
 import { optionalAuthorizedWorkspace } from '../identity-workspace/authenticated-command-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { actorFrom, type WorkflowRunsRequest } from './controllers.js';
+import { actorFrom, type WorkflowRunsRequest } from './request-context.js';
 import { WorkflowRunReadGuard } from './guards.js';
 import {
   GetWorkflowNodeRunInputUseCase,

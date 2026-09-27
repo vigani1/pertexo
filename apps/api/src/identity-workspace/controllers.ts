@@ -32,16 +32,17 @@ import {
 } from './use-cases.js';
 import { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';
 import { RemoveWorkspaceMemberUseCase } from './member-removal-use-case.js';
-import type { WorkspaceMemberCommandInput } from './member-role-use-case.js';
+import {
+  memberCommand,
+  requestIdempotencyKey,
+} from './request-command-context.js';
 import { UpdateUserProfileUseCase } from './user-profile-use-case.js';
 import {
   accessibleWorkspacesQuerySchema,
-  idempotencyKeySchema,
   workspaceDeletionRequestSchema,
   workspaceIdParamSchema,
   workspaceLifecycleOperationParamsSchema,
   workspaceMembersQuerySchema,
-  workspaceMemberRoleParamsSchema,
   type CookieResponse,
   type IdentityWorkspaceRequest,
 } from './types.js';
@@ -171,44 +172,6 @@ export class WorkspaceMembersController {
   ) {
     return this.removal.execute(memberCommand(request, params, body));
   }
-}
-
-/** The authorized actor, target and exact delivery of a member command. */
-export function memberCommand(
-  request: IdentityWorkspaceRequest,
-  params: unknown,
-  body: unknown,
-): WorkspaceMemberCommandInput {
-  const { workspaceId, userId } = workspaceMemberRoleParamsSchema.parse(params);
-  return memberCommandFor(request, workspaceId, userId, body);
-}
-
-/** A member command the actor issues about themselves, e.g. leaving. */
-export function selfCommand(
-  request: IdentityWorkspaceRequest,
-  params: unknown,
-  body: unknown,
-): WorkspaceMemberCommandInput {
-  const { workspaceId } = workspaceIdParamSchema.parse(params);
-  return memberCommandFor(request, workspaceId, undefined, body);
-}
-
-function memberCommandFor(
-  request: IdentityWorkspaceRequest,
-  workspaceId: string,
-  targetUserId: string | undefined,
-  body: unknown,
-): WorkspaceMemberCommandInput {
-  const actor = lifecycleActorFrom(request, workspaceId);
-  return {
-    actor,
-    routeWorkspaceId: workspaceId,
-    targetUserId: targetUserId ?? actor.actorId,
-    request: body,
-    idempotencyKey: requestIdempotencyKey(request),
-    requestId: actor.requestId,
-    ...traceFields(actor.traceId),
-  };
 }
 
 @Controller('v1/workspaces')
@@ -346,15 +309,6 @@ function lifecycleActorFrom(
   workspaceId: string,
 ) {
   return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
-}
-
-export function requestIdempotencyKey(
-  request: IdentityWorkspaceRequest,
-): string {
-  const entry = Object.entries(request.headers ?? {}).find(
-    ([name]) => name.toLowerCase() === 'idempotency-key',
-  );
-  return idempotencyKeySchema.parse(entry?.[1]);
 }
 
 function traceFields(trace: string | undefined): Readonly<{

@@ -11,7 +11,7 @@ import {
 
 import { OpaqueSessionService } from '../identity/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { memberCommand, selfCommand } from './controllers.js';
+import { memberCommand, selfCommand } from './request-command-context.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,

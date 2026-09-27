@@ -22,7 +22,6 @@ import { RateLimit } from '../platform/rate-limit/metadata.js';
 import {
   CSRF_COOKIE_NAME,
   CsrfProtectionGuard,
-  OIDC_BROWSER_BINDING_COOKIE_NAME,
   SESSION_COOKIE_NAME,
   SessionAuthenticationGuard,
   authenticatedSession,
@@ -35,6 +34,7 @@ import type { IdentitySessionAuthority, SessionCookiePolicy } from './ports.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
 import { INVITATION_ALLOWED_ORIGIN, SESSION_COOKIE_POLICY } from './tokens.js';
 import type { CookieResponse, IdentityWorkspaceRequest } from './types.js';
+import { serializeOidcBindingCookie } from './legacy-oidc-binding-cookie.js';
 import { Inject } from '@nestjs/common';
 
 const INVITATION_BINDING_COOKIE_NAME = 'pertexo_invitation_intent';
@@ -293,25 +293,6 @@ function clearBindingCookie(policy: SessionCookiePolicy): string {
     policy.secure ? 'Secure' : undefined,
     `SameSite=${capitalize(policy.sameSite)}`,
     'Max-Age=0',
-  ]
-    .filter((part): part is string => part !== undefined)
-    .join('; ');
-}
-
-function serializeOidcBindingCookie(
-  value: string,
-  expiresAt: Date,
-  maxAgeSeconds: number,
-  policy: SessionCookiePolicy,
-): string {
-  return [
-    `${OIDC_BROWSER_BINDING_COOKIE_NAME}=${encodeURIComponent(value)}`,
-    'Path=/v1/auth/oidc/callback',
-    'HttpOnly',
-    policy.secure ? 'Secure' : undefined,
-    'SameSite=Lax',
-    `Expires=${expiresAt.toUTCString()}`,
-    `Max-Age=${String(maxAgeSeconds)}`,
   ]
     .filter((part): part is string => part !== undefined)
     .join('; ');

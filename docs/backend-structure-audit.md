@@ -40,8 +40,8 @@ is recorded. Recommendation strength is not permission to omit an item.
 | EX1 | Test-only durable-wait/cancellation policies shadow production | engine runtime.ts and testing exports | Production engine transition interface; migrate unique assertions, remove shadow models/exports | Implemented; package tests/typecheck/coverage passed |
 | AS1 | Injected primary may lack advertised download signing | dual-region accepts partial primary, fails late | Dual-region construction requires its advertised primary download capability; recovery remains unsigned | Implemented; storage suite passed |
 | W2 | Preview-named composition owns unrelated maintenance features | preview-maintenance runtime/provider mixes preview, reconciliation, replay, failure alerts and invitations | Explicit maintenance transport composition with feature-owned dependency factories and explicit routing | Pending |
-| API1 | Decorated controllers act as sibling helper modules | identity-workspace/controllers and workflow-runs/controllers export request helpers | Feature-owned request-context modules; no sibling controller imports | Pending |
-| API2 | Legacy OIDC browser-binding cookie policy duplicated | auth and invitation controllers each serialize same cookie | One legacy OIDC binding-cookie owner; invitation/session/Better Auth cookies remain distinct | Pending |
+| API1 | Decorated controllers act as sibling helper modules | identity-workspace/controllers and workflow-runs/controllers export request helpers | Feature-owned request-context modules; no sibling controller imports | Implemented; focused API tests passed |
+| API2 | Legacy OIDC browser-binding cookie policy duplicated | auth and invitation controllers each serialize same cookie | One legacy OIDC binding-cookie owner; invitation/session/Better Auth cookies remain distinct | Implemented; focused API tests passed |
 | W3 | Storage principal/bucket isolation duplicated | recovery and retention reconstruct region-pair invariant | Artifact-store configuration invariant, consumed by distinct executable parsers | Implemented; both executable suites passed |
 | AS2 | Artifact identity and durable key formatting duplicated | store.ts and artifact-download.ts | Private artifact identity/key module; byte format unchanged; ledger keys remain separate | Implemented; storage suite passed |
 | EX2 | Release-to-registration binding algorithm duplicated | core and catalog indexing, selection and facade assembly | Existing node SDK binds releases; callers retain cohort/provider policy | Pending |
@@ -138,8 +138,26 @@ Recovery tests passed 43/43 and retention tests 100/100. All three typechecks,
 artifact-store build and scoped ESLint passed. These are adapter/unit tests,
 not live S3, IAM or disaster-recovery evidence.
 
+### API request/cookie ownership evidence: API1, API2
+
+`identity-workspace/request-command-context.ts` owns member/self command
+projection and feature idempotency-header parsing. Run request shape and actor
+projection live in `workflow-runs/request-context.ts`. Sibling controllers no
+longer import decorated controllers for these helpers. Existing authenticated
+context/error mappings and raw SSE lifecycle contracts are unchanged.
+
+`legacy-oidc-binding-cookie.ts` owns both issuance and clearing of the legacy
+callback-only, HttpOnly, SameSite=Lax cookie. Authentication and invitation
+controllers share issuance; ordinary session, invitation binding/CSRF and Better
+Auth policies stay distinct.
+
+Focused controller, membership, invitation, authentication, module-composition,
+run HTTP-stack and response-contract tests passed 94/94 in 10 files. API typecheck,
+scoped ESLint and architecture checks (19/19; no static import cycles) passed.
+This stage has not yet rerun full-stack PostgreSQL/OIDC integration.
+
 ## Remaining work
 
-W1, EX1, AS1, AS2 and W3 are implemented; EX2–EX4, API1–API2, W2, W4 and the complete
+W1, EX1, AS1, AS2, API1, API2 and W3 are implemented; EX2–EX4, W2, W4 and the complete
 17-module counterpart review remain open.
 No structural stage is declared complete yet.

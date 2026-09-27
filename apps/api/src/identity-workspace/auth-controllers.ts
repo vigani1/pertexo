@@ -50,6 +50,10 @@ import {
 } from './telemetry.js';
 import { OidcApplicationService } from './use-cases.js';
 import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
+import {
+  serializeOidcBindingCookie,
+  clearOidcBindingCookie,
+} from './legacy-oidc-binding-cookie.js';
 
 @Controller('v1/auth/oidc')
 export class OidcController {
@@ -210,40 +214,6 @@ class ResponseCookieBoundary {
       serializeCookie(CSRF_COOKIE_NAME, this.csrfToken, options, false),
     ]);
   }
-}
-
-const OIDC_CALLBACK_COOKIE_PATH = '/v1/auth/oidc/callback';
-
-function serializeOidcBindingCookie(
-  value: string,
-  expiresAt: Date,
-  maxAgeSeconds: number,
-  policy: SessionCookiePolicy,
-): string {
-  return [
-    `${OIDC_BROWSER_BINDING_COOKIE_NAME}=${encodeURIComponent(value)}`,
-    `Path=${OIDC_CALLBACK_COOKIE_PATH}`,
-    'HttpOnly',
-    policy.secure ? 'Secure' : undefined,
-    'SameSite=Lax',
-    `Expires=${expiresAt.toUTCString()}`,
-    `Max-Age=${String(maxAgeSeconds)}`,
-  ]
-    .filter((part): part is string => part !== undefined)
-    .join('; ');
-}
-
-function clearOidcBindingCookie(policy: SessionCookiePolicy): string {
-  return [
-    `${OIDC_BROWSER_BINDING_COOKIE_NAME}=`,
-    `Path=${OIDC_CALLBACK_COOKIE_PATH}`,
-    'Max-Age=0',
-    'HttpOnly',
-    policy.secure ? 'Secure' : undefined,
-    'SameSite=Lax',
-  ]
-    .filter((part): part is string => part !== undefined)
-    .join('; ');
 }
 
 function serializeCookie(

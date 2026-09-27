@@ -13,7 +13,7 @@ import {
 
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { projectAuthenticatedWorkspaceContext } from './authenticated-command-context.js';
-import { requestIdempotencyKey } from './controllers.js';
+import { requestIdempotencyKey } from './request-command-context.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
