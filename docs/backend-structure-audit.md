@@ -46,7 +46,7 @@ is recorded. Recommendation strength is not permission to omit an item.
 | AS2 | Artifact identity and durable key formatting duplicated | store.ts and artifact-download.ts | Private artifact identity/key module; byte format unchanged; ledger keys remain separate | Implemented; storage suite passed |
 | EX2 | Release-to-registration binding algorithm duplicated | core and catalog indexing, selection and facade assembly | Existing node SDK binds releases; callers retain cohort/provider policy | Implemented; SDK/core/catalog suites passed |
 | W4 | Same wait name hides resolve-on-stop versus reject-on-cancel | observability/runtime and worker/runtime/abortable-delay | Explicit semantic contracts and proportionate feature/runtime placement | Implemented; runtime/consumer suites passed |
-| EX3 | Structured-node flatten/find repeated in transition admission | transition state/plan/decisions each search | One immutable transition-local node lookup; no global cache or draft-validation conflation | Pending |
+| EX3 | Structured-node flatten/find repeated in transition admission | transition state/plan/decisions each search | One immutable transition-local node lookup; no global cache or draft-validation conflation | Implemented; engine suite/coverage passed |
 | EX4 | Engine families flat despite established prefixes | 53 flat source files | compilation, checkpoint, observation, transition and attempt families; stable public entries | Pending |
 
 ## Delivery sequence
@@ -183,8 +183,26 @@ all four typechecks passed; ESLint and formatting passed. The first compiled
 lifecycle test run used stale dist imports; rebuilding its consumer resolved
 that artifact mismatch, and the full process-lifecycle suite then passed.
 
+### Transition-local lookup evidence: EX3
+
+Each advancement builds one read-only node lookup with containing-loop ownership;
+side-effect admission, disabled-node materialization and Parallel concurrency
+constraints consume the same projection. It is not persisted, global, cached
+across transitions or shared with draft validation. The graph remains the owner
+of edge/readiness semantics. New focused tests verify nested-loop ownership,
+safe/unsafe/disabled fields, separate branch/iteration caps, missing-loop rejection
+and isolation between transitions. Existing production nested-Parallel, For Each,
+disabled-body and retained checkpoint suites remain intact.
+
+Engine tests/coverage passed 405/405 in 37 files, and typecheck passed. Coverage
+is 94.66% statements, 90.94% branches, 97.60% functions and 95.34% lines, with
+unchanged thresholds. Removing covered lookup callbacks initially exposed an
+existing undercovered prefix-scope branch; the additional admission regression
+exercises that behavior instead of reducing the per-file ratchet. No throughput
+or memory improvement is claimed without comparative measurement.
+
 ## Remaining work
 
-W1, EX1, EX2, AS1, AS2, API1, API2, W3 and W4 are implemented; EX3–EX4, W2 and the complete
+W1, EX1–EX3, AS1, AS2, API1, API2, W3 and W4 are implemented; EX4, W2 and the complete
 17-module counterpart review remain open.
 No structural stage is declared complete yet.

@@ -1,7 +1,5 @@
-import {
-  configuredParallelMaxConcurrency,
-  type SchedulerState,
-} from './graph-scheduler.js';
+import { configuredParallelMaxConcurrency } from './graph-scheduler.js';
+import type { SchedulerNodeLookup } from './workflow-transition-state.js';
 import type { InvocationState, WorkflowCheckpoint } from './types.js';
 import { WorkflowEngineError } from './errors.js';
 
@@ -9,21 +7,11 @@ export function boundedReadyAdmissions(input: {
   readonly invocations: readonly InvocationState[];
   readonly maximumAdmissions: number;
   readonly readySet: readonly string[];
-  readonly schedulerState: SchedulerState | undefined;
+  readonly schedulerNodes: SchedulerNodeLookup | undefined;
 }): readonly string[] {
-  if (input.schedulerState === undefined)
+  if (input.schedulerNodes === undefined)
     return input.readySet.slice(0, input.maximumAdmissions);
-  const nodeById = new Map<
-    string,
-    {
-      readonly node: SchedulerState['nodes'][number];
-      readonly containingLoopId?: string;
-    }
-  >(input.schedulerState.nodes.map((node) => [node.id, { node }]));
-  for (const body of input.schedulerState.structuredBodies ?? []) {
-    for (const node of body.nodes)
-      nodeById.set(node.id, { node, containingLoopId: body.loopNodeId });
-  }
+  const nodeById = input.schedulerNodes;
   const invocationByKey = new Map(
     input.invocations.map((invocation) => [
       invocation.invocationKey,

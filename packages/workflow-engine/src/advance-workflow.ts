@@ -10,6 +10,7 @@ import { applyWorkflowObservations } from './workflow-transition-observations.js
 import { buildWorkflowTransitionPlan } from './workflow-transition-plan.js';
 import {
   observationOrder,
+  indexTransitionNodes,
   rootInvocationKey,
   type MutableWorkflowTransition,
 } from './workflow-transition-state.js';
@@ -79,6 +80,7 @@ export function advanceWorkflowFromSchedulerState(
   const state: MutableWorkflowTransition = {
     current,
     graph: input.schedulerState,
+    schedulerNodes: indexTransitionNodes(input.schedulerState),
     invocations: new Map(
       current.invocations.map((invocation) => [
         invocation.invocationKey,

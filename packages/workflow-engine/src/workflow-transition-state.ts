@@ -25,6 +25,7 @@ import type {
 export interface MutableWorkflowTransition {
   readonly current: WorkflowCheckpoint;
   readonly graph: SchedulerState | undefined;
+  readonly schedulerNodes: SchedulerNodeLookup | undefined;
   readonly invocations: Map<string, InvocationState>;
   readonly joins: Map<string, JoinState>;
   readonly loops: Map<string, LoopState>;
@@ -37,6 +38,35 @@ export interface MutableWorkflowTransition {
   deadlineExpired: boolean;
   deadlineOccurredAt: string | undefined;
   runStatus: RunStatus;
+}
+
+export type SchedulerNodeLookup = ReadonlyMap<
+  string,
+  Readonly<{
+    node: SchedulerState['nodes'][number];
+    containingLoopId?: string;
+  }>
+>;
+
+/** One transition-local projection, distinct from draft-validation indexes. */
+export function indexTransitionNodes(
+  graph: SchedulerState | undefined,
+): SchedulerNodeLookup | undefined {
+  if (graph === undefined) return undefined;
+  const nodes = new Map<
+    string,
+    Readonly<{
+      node: SchedulerState['nodes'][number];
+      containingLoopId?: string;
+    }>
+  >(graph.nodes.map((node) => [node.id, Object.freeze({ node })]));
+  for (const body of graph.structuredBodies ?? [])
+    for (const node of body.nodes)
+      nodes.set(
+        node.id,
+        Object.freeze({ node, containingLoopId: body.loopNodeId }),
+      );
+  return nodes;
 }
 
 export const nodeEventName: Readonly<
@@ -191,18 +221,15 @@ export function rootInvocationKey(
 }
 
 export function schedulerNodeSideEffectClass(
-  schedulerState: SchedulerState | undefined,
+  schedulerNodes: SchedulerNodeLookup | undefined,
   nodeId: string,
 ): AttemptAdmissionPlan['sideEffectClass'] {
-  if (schedulerState === undefined)
+  if (schedulerNodes === undefined)
     throw new WorkflowEngineError(
       'checkpoint_invalid',
       'scheduler state is required for attempt admission',
     );
-  const node = [
-    ...schedulerState.nodes,
-    ...(schedulerState.structuredBodies?.flatMap(({ nodes }) => nodes) ?? []),
-  ].find(({ id }) => id === nodeId);
+  const node = schedulerNodes.get(nodeId)?.node;
   if (node === undefined)
     throw new WorkflowEngineError(
       'checkpoint_invalid',
@@ -212,16 +239,10 @@ export function schedulerNodeSideEffectClass(
 }
 
 export function schedulerNodeDisabled(
-  schedulerState: SchedulerState | undefined,
+  schedulerNodes: SchedulerNodeLookup | undefined,
   nodeId: string,
 ): boolean {
-  if (schedulerState === undefined) return false;
-  return (
-    [
-      ...schedulerState.nodes,
-      ...(schedulerState.structuredBodies?.flatMap(({ nodes }) => nodes) ?? []),
-    ].find(({ id }) => id === nodeId)?.disabled === true
-  );
+  return schedulerNodes?.get(nodeId)?.node.disabled === true;
 }
 
 export function isSyntheticLegacyLoop(loop: LoopState): boolean {
