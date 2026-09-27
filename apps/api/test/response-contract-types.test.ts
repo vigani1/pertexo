@@ -23,7 +23,7 @@ import type {
   IdentityWorkspaceRequest,
 } from '../src/identity-workspace/types.js';
 import type { WorkflowAuthoringRequest } from '../src/workflow-authoring/types.js';
-import type { WorkflowRunsRequest } from '../src/workflow-runs/controllers.js';
+import type { WorkflowRunsRequest } from '../src/workflow-runs/request-context.js';
 
 describe('validated response contract types', () => {
   it('keeps authenticated request fields owned by the identity request contract', () => {
