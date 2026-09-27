@@ -502,9 +502,52 @@ describe('Better Auth PostgreSQL cutover', () => {
         first.headers.get('location'),
         second.headers.get('location'),
       ];
-      expect(
-        outcomes.filter((location) => location?.includes('linked=true')),
-      ).toHaveLength(1);
+      const linked = outcomes.filter((location) =>
+        location?.includes('linked=true'),
+      );
+      let mismatchEvidence: unknown;
+      if (linked.length !== 1) {
+        const admin = new Pool({
+          connectionString: databaseUrl(adminUrl),
+          max: 1,
+        });
+        try {
+          const state = await admin.query<{
+            phase: string;
+            accounts: number;
+            audits: number;
+            sessions: number;
+          }>(
+            `select attempt.phase,
+                    (select count(*)::integer from app.auth_accounts account
+                      where account.user_id=users.id and account.provider_id='google') accounts,
+                    (select count(*)::integer from app.identity_security_audit_facts audit
+                      where audit.user_id=users.id and audit.event_type='method.linked') audits,
+                    (select count(*)::integer from app.auth_sessions session
+                      where session.user_id=users.id) sessions
+               from app.users users
+               join app.auth_method_link_attempts attempt on attempt.user_id=users.id
+              where users.email=$1`,
+            [email],
+          );
+          mismatchEvidence = {
+            outcomes: outcomes.map((location, index) => ({
+              status: index === 0 ? first.status : second.status,
+              kind: location?.includes('linked=true')
+                ? 'linked'
+                : location?.includes('linkError=true')
+                  ? 'link-error'
+                  : location?.includes('link_reauthenticate')
+                    ? 'reauthenticate'
+                    : 'other',
+            })),
+            durable: state.rows,
+          };
+        } finally {
+          await admin.end();
+        }
+      }
+      expect(linked, JSON.stringify(mismatchEvidence)).toHaveLength(1);
       expect(
         outcomes.filter((location) => location?.includes('linkError=true')),
       ).toHaveLength(1);
