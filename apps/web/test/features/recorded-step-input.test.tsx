@@ -193,6 +193,25 @@ describe('recorded step input', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('says a step that uses a connection doesn’t keep its input, without asking', async () => {
+    const server = serve(() => recorded({ never: 'read' }));
+    renderStep({
+      ...row(sendRunId, 'send-receipt', 'Send receipt', 'succeeded'),
+      usesConnection: true,
+    });
+    expect(
+      await screen.findByText(
+        'Not kept: this step sends it through a connection, and Pertexo doesn’t store what steps send.',
+      ),
+    ).toBeVisible();
+    expect(
+      await within(
+        screen.getByRole('region', { name: 'Where it came from' }),
+      ).findByRole('group', { name: 'Data out of Fetch order' }),
+    ).toHaveTextContent(/total: 42/u);
+    expect(server.reads()).toBe(0);
+  });
+
   it.each([
     [
       'none',

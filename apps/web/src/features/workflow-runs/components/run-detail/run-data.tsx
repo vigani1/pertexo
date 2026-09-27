@@ -305,13 +305,24 @@ export function StepInputData({
         status: row.status,
       },
     ),
-    enabled: nodeRunId !== undefined,
+    enabled: nodeRunId !== undefined && row.usesConnection !== true,
   });
   const sources = (
     <InputSources row={row} rows={rows} upstream={upstream} scope={scope} />
   );
   // A step that hasn't run yet only has where its input will come from.
   if (nodeRunId === undefined) return sources;
+  // What a connected step receives is what it sends, which isn't kept.
+  if (row.usesConnection === true)
+    return (
+      <div className="flex flex-col gap-4">
+        <Muted>
+          Not kept: this step sends it through a connection, and Pertexo doesn’t
+          store what steps send.
+        </Muted>
+        <SourceData>{sources}</SourceData>
+      </div>
+    );
   const data = recorded.data;
   if (data === undefined && !recorded.isError)
     return (
