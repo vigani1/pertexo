@@ -547,7 +547,10 @@ describe('Better Auth PostgreSQL cutover', () => {
           await admin.end();
         }
       }
-      expect(linked, JSON.stringify(mismatchEvidence)).toHaveLength(1);
+      if (linked.length !== 1)
+        throw new Error(
+          `Expected one accepted account-link callback: ${JSON.stringify(mismatchEvidence)}`,
+        );
       expect(
         outcomes.filter((location) => location?.includes('linkError=true')),
       ).toHaveLength(1);
