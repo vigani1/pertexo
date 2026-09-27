@@ -103,6 +103,9 @@ function installRun({
     http.get(`${apiBase}/runs/${runId}/node-runs/:nodeRunId/output`, () =>
       HttpResponse.json({ output }),
     ),
+    http.get(`${apiBase}/runs/${runId}/node-runs/:nodeRunId/input`, () =>
+      HttpResponse.json({ input: { kind: 'none' } }),
+    ),
     http.get(`${apiBase}/runs/${runId}`, () =>
       HttpResponse.json({ run, nodes }),
     ),
@@ -413,12 +416,16 @@ describe('run page', () => {
       ),
     ).toBeVisible();
 
-    // The only step received the run's input and returned a file.
+    // The only step's input came from the run's; with nothing recorded, it
+    // shows as source data. It returned a file.
     const lens = screen.getByRole('complementary', { name: 'Step details' });
-    const dataIn = await within(lens).findByRole('group', {
-      name: 'Data in of Send receipt',
+    const sources = await within(lens).findByRole('region', {
+      name: 'Where it came from',
     });
-    expect(await within(dataIn).findByText(/A-17/u)).toBeVisible();
+    const runInput = await within(sources).findByRole('group', {
+      name: 'Run input',
+    });
+    expect(await within(runInput).findByText(/A-17/u)).toBeVisible();
     expect(await within(lens).findByText('CSV file')).toBeVisible();
 
     await userEvent

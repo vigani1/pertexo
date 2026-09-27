@@ -161,7 +161,9 @@ describe('run data', () => {
       within(lens).getByRole('button', { name: 'About Data in' }),
     );
     expect(
-      await screen.findByText(/The first step gets the run’s input/u),
+      await screen.findByText(
+        /Exactly what this step received, as it started/u,
+      ),
     ).toBeVisible();
   });
 

@@ -178,8 +178,9 @@ export function StepLens({
         hint={
           <>
             <p>
-              What this step received. The first step gets the run’s input;
-              every other step gets what the steps connected into it returned.
+              Exactly what this step received, as it started. Where it came from
+              is underneath: the run’s input for the first step, and what the
+              steps connected into it returned for the others.
             </p>
             <p>Pertexo keeps run data for 30 days, then deletes it.</p>
           </>
