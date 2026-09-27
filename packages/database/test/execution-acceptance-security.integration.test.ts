@@ -6,7 +6,7 @@ import {
   acceptWorkflowRun,
   IDEMPOTENCY_STATUS_VALUES,
   RUN_STATUS_VALUES,
-} from '../src/execution/execution-acceptance.js';
+} from '../src/execution/runs/execution-acceptance.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import {
   idempotencyRecords,

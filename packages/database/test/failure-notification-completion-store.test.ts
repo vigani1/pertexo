@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as FailureNotificationStoreSupport from '../src/execution/failure-notification-store-support.js';
+import type * as FailureNotificationStoreSupport from '../src/execution/notifications/failure-notification-store-support.js';
 
 const tenantState = vi.hoisted<{ client: unknown }>(() => ({
   client: undefined,
@@ -14,7 +14,7 @@ vi.mock('../src/tenant-access/workspace.js', () => ({
 }));
 
 vi.mock(
-  '../src/execution/failure-notification-store-support.js',
+  '../src/execution/notifications/failure-notification-store-support.js',
   async (importOriginal) => ({
     ...(await importOriginal<typeof FailureNotificationStoreSupport>()),
     auditFailureNotification,
@@ -22,7 +22,7 @@ vi.mock(
   }),
 );
 
-import { createFailureNotificationCompletionStore } from '../src/execution/failure-notification-completion-store.js';
+import { createFailureNotificationCompletionStore } from '../src/execution/notifications/failure-notification-completion-store.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const intentId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

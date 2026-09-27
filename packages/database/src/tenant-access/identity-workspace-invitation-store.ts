@@ -13,6 +13,7 @@ import type {
 } from './identity-workspace-contracts.js';
 import { WorkspaceInvitationCommandConflictError } from './identity-workspace-errors.js';
 import { cancelOpenInvitationDeliveries } from './identity-workspace-invitation-deliveries.js';
+import { expireWorkspaceInvitations } from './identity-workspace-invitation-expiration.js';
 import {
   parseIdentityUuid,
   readIdentityDatabaseErrorCode,
@@ -353,7 +354,7 @@ export function createIdentityWorkspaceInvitationStore(
         { workspaceId, actorId: actorUserId },
         async (client) => {
           await lockAuthorizedActor(client, workspaceId, actorUserId, 'share');
-          await expireInvitations(client, workspaceId);
+          await expireWorkspaceInvitations(client, { workspaceId });
           const values: unknown[] = [workspaceId, limit + 1];
           let after = '';
           if (input.after !== undefined) {
@@ -421,24 +422,10 @@ export function createIdentityWorkspaceInvitationStore(
               'role_forbidden',
               'The actor cannot assign this invitation role',
             );
-          await client.query(
-            `update app.workspace_invitations
-                set status='expired',delivery_status='canceled',updated_at=clock_timestamp()
-              where workspace_id=$1 and normalized_email=$2 and status='pending' and expires_at<=clock_timestamp()`,
-            [workspaceId, email],
-          );
-          await client.query(
-            `update app.workspace_invitation_delivery_attempts attempt
-                set status='canceled',token_ciphertext=null,token_nonce=null,token_tag=null,
-                    token_key_version=null,updated_at=clock_timestamp()
-              where workspace_id=$1 and status in ('queued','failed','unknown')
-                and exists (
-                  select 1 from app.workspace_invitations invitation
-                   where invitation.workspace_id=$1 and invitation.id=attempt.invitation_id
-                     and invitation.normalized_email=$2 and invitation.status='expired'
-                )`,
-            [workspaceId, email],
-          );
+          await expireWorkspaceInvitations(client, {
+            workspaceId,
+            normalizedEmail: email,
+          });
           const claim = await claimCommand(client, {
             workspaceId,
             actorUserId,
@@ -539,7 +526,7 @@ async function changeInvitation(
           expiresAt: z.date().parse(raw.expiresAt),
         }
       : undefined;
-  return withTenantScopedClient(
+  const result = await withTenantScopedClient(
     pool,
     { workspaceId, actorId: actorUserId },
     async (client) => {
@@ -568,11 +555,8 @@ async function changeInvitation(
         current.status === 'pending' &&
         current.expires_at.getTime() <= Date.now()
       ) {
-        await expireInvitations(client, workspaceId, invitationId);
-        throw new WorkspaceInvitationCommandConflictError(
-          'invitation_inactive',
-          'The invitation has expired',
-        );
+        await expireWorkspaceInvitations(client, { workspaceId, invitationId });
+        return { expired: true } as const;
       }
       const claim = await claimCommand(client, {
         workspaceId,
@@ -662,46 +646,10 @@ async function changeInvitation(
       return completeCommand(client, claim.id, invitation);
     },
   );
-}
-
-async function expireInvitations(
-  client: PoolClient,
-  workspaceId: string,
-  invitationId?: string,
-): Promise<void> {
-  const values =
-    invitationId === undefined ? [workspaceId] : [workspaceId, invitationId];
-  const idClause = invitationId === undefined ? '' : 'and id=$2';
-  await client.query(
-    `update app.workspace_invitations
-        set status='expired',delivery_status='canceled',updated_at=clock_timestamp()
-      where workspace_id=$1 ${idClause} and status='pending' and expires_at<=clock_timestamp()`,
-    values,
-  );
-  const attemptIdClause =
-    invitationId === undefined ? '' : 'and invitation_id=$2';
-  await client.query(
-    `update app.workspace_invitation_delivery_attempts
-        set status=case when status in ('queued','failed') then 'canceled' else status end,
-            token_ciphertext=null,token_nonce=null,token_tag=null,
-            token_key_version=null,updated_at=clock_timestamp()
-      where workspace_id=$1 ${attemptIdClause} and status in ('queued','failed','unknown')
-        and exists (
-          select 1 from app.workspace_invitations invitation
-           where invitation.workspace_id=$1 and invitation.id=workspace_invitation_delivery_attempts.invitation_id
-             and invitation.status='expired'
-        )`,
-    values,
-  );
-  await client.query(
-    `update app.workspace_invitation_acceptance_intents
-        set status='superseded',updated_at=clock_timestamp()
-      where workspace_id=$1 ${attemptIdClause} and status in ('pending','verified','wrong_account')
-        and exists (
-          select 1 from app.workspace_invitations invitation
-           where invitation.workspace_id=$1 and invitation.id=workspace_invitation_acceptance_intents.invitation_id
-             and invitation.status='expired'
-        )`,
-    values,
-  );
+  if ('expired' in result)
+    throw new WorkspaceInvitationCommandConflictError(
+      'invitation_inactive',
+      'The invitation has expired',
+    );
+  return result;
 }

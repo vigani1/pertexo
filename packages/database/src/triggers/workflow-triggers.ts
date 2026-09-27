@@ -1,11 +1,12 @@
 import { acquireDatabasePool } from '../platform/database-runtime.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
-import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
 import { reconcileActiveWorkflowTriggers } from './workflow-trigger-materialization.js';
 import {
   WorkflowTriggerReconciliationMismatchError,
@@ -63,11 +64,50 @@ export {
 } from './workflow-trigger-errors.js';
 
 const reconciliationConsumerName = 'trigger-runtime.reconciliation.v1';
+const transportChecksumMismatch = Symbol('transport-checksum-mismatch');
 
 type ReconciliationEvent = Readonly<{
   payload: z.output<typeof reconciliationPayloadSchema>;
   payloadChecksum: string;
 }>;
+
+async function readReconciliationEvent(
+  client: PoolClient,
+  input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
+  identity: Readonly<{
+    outboxEventId: string;
+    versionId: string;
+    workflowId: string;
+  }>,
+): Promise<ReconciliationEvent> {
+  const event = await client.query<{
+    aggregate_id: string;
+    aggregate_type: string;
+    job_name: string;
+    payload: unknown;
+    payload_checksum: string;
+    schema_version: number;
+  }>(
+    `select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
+       from app.outbox_events where workspace_id=$1 and id=$2`,
+    [input.workspaceId, identity.outboxEventId],
+  );
+  const eventRow = event.rows[0];
+  if (eventRow === undefined)
+    throw new WorkflowTriggerReconciliationMismatchError(
+      'Reconciliation outbox event is unavailable',
+    );
+  let payload: z.output<typeof reconciliationPayloadSchema>;
+  try {
+    payload = reconciliationPayloadSchema.parse(eventRow.payload);
+  } catch {
+    throw new WorkflowTriggerReconciliationMismatchError(
+      'Reconciliation outbox payload is invalid',
+    );
+  }
+  assertStoredReconciliationIdentity(input, eventRow, payload, identity);
+  return { payload, payloadChecksum: eventRow.payload_checksum };
+}
 
 function assertStoredReconciliationIdentity(
   input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
@@ -109,14 +149,12 @@ function assertDeliveryIdentity(
   >,
   event: ReconciliationEvent,
   outboxEventId: string,
-): void {
-  if (
-    uuidSchema.parse(delivery.outboxEventId) !== outboxEventId ||
-    digestSchema.parse(delivery.payloadChecksum) !== event.payloadChecksum
-  )
-    throw new WorkflowTriggerReconciliationMismatchError(
-      'Reconciliation delivery failed durable transport verification',
-    );
+): boolean {
+  return (
+    uuidSchema.safeParse(delivery.outboxEventId).data === outboxEventId &&
+    digestSchema.safeParse(delivery.payloadChecksum).data ===
+      event.payloadChecksum
+  );
 }
 
 async function completeReceipt(
@@ -154,46 +192,20 @@ export function createWorkflowTriggerReconciliationDatabase(
           const workflowId = uuidSchema.parse(input.workflowId);
           const versionId = uuidSchema.parse(input.publishedVersionId);
           const outboxEventId = uuidSchema.parse(input.outboxEventId);
-          const event = await client.query<{
-            aggregate_id: string;
-            aggregate_type: string;
-            job_name: string;
-            payload: unknown;
-            payload_checksum: string;
-            schema_version: number;
-          }>(
-            `select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
-               from app.outbox_events where workspace_id=$1 and id=$2`,
-            [input.workspaceId, outboxEventId],
-          );
-          const eventRow = event.rows[0];
-          if (eventRow === undefined)
-            throw new WorkflowTriggerReconciliationMismatchError(
-              'Reconciliation outbox event is unavailable',
-            );
-          let payload: z.output<typeof reconciliationPayloadSchema>;
-          try {
-            payload = reconciliationPayloadSchema.parse(eventRow.payload);
-          } catch {
-            throw new WorkflowTriggerReconciliationMismatchError(
-              'Reconciliation outbox payload is invalid',
-            );
-          }
-          assertStoredReconciliationIdentity(input, eventRow, payload, {
+          const verifiedEvent = await readReconciliationEvent(client, input, {
             outboxEventId,
             versionId,
             workflowId,
           });
-          const verifiedEvent: ReconciliationEvent = {
-            payload,
-            payloadChecksum: eventRow.payload_checksum,
-          };
-          if (input.delivery !== undefined)
-            assertDeliveryIdentity(
+          if (
+            input.delivery !== undefined &&
+            !assertDeliveryIdentity(
               input.delivery,
               verifiedEvent,
               outboxEventId,
-            );
+            )
+          )
+            return transportChecksumMismatch;
 
           if (input.delivery !== undefined) {
             const inserted = await client.query(
@@ -205,7 +217,7 @@ export function createWorkflowTriggerReconciliationDatabase(
                 reconciliationConsumerName,
                 outboxEventId,
                 input.workspaceId,
-                eventRow.payload_checksum,
+                verifiedEvent.payloadChecksum,
               ],
             );
             if (inserted.rowCount !== 1) {
@@ -221,12 +233,13 @@ export function createWorkflowTriggerReconciliationDatabase(
               const receipt = existing.rows[0];
               if (
                 receipt?.workspace_id !== input.workspaceId ||
-                receipt.payload_checksum !== eventRow.payload_checksum ||
                 receipt.completed_at === null
               )
                 throw new WorkflowTriggerReconciliationMismatchError(
                   'Reconciliation inbox receipt is inconsistent',
                 );
+              if (receipt.payload_checksum !== verifiedEvent.payloadChecksum)
+                return transportChecksumMismatch;
               return { kind: 'duplicate' as const };
             }
           }
@@ -244,7 +257,7 @@ export function createWorkflowTriggerReconciliationDatabase(
                 client,
                 input.workspaceId,
                 outboxEventId,
-                eventRow.payload_checksum,
+                verifiedEvent.payloadChecksum,
               );
             return { kind: 'stale' as const };
           }
@@ -277,11 +290,33 @@ export function createWorkflowTriggerReconciliationDatabase(
               client,
               input.workspaceId,
               outboxEventId,
-              eventRow.payload_checksum,
+              verifiedEvent.payloadChecksum,
             );
           return { kind: 'reconciled' as const, health };
         },
       );
+      if (outcome === transportChecksumMismatch) {
+        await withTenantScopedClient(
+          pool,
+          { workspaceId: uuidSchema.parse(input.workspaceId) },
+          async (client) => {
+            await client.query(
+              `insert into app.transport_security_audit_facts (
+                 id,workspace_id,fact_type,consumer_name,message_id
+               ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
+              [
+                generatePersistedId(),
+                input.workspaceId,
+                reconciliationConsumerName,
+                input.outboxEventId,
+              ],
+            );
+          },
+        );
+        throw new WorkflowTriggerReconciliationMismatchError(
+          'Reconciliation delivery failed durable transport verification',
+        );
+      }
       if (outcome.kind === 'stale')
         throw new WorkflowTriggerStalePublicationError(
           'Reconciliation no longer names the current published workflow version',

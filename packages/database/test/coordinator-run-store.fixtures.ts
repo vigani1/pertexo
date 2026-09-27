@@ -491,7 +491,27 @@ async function seedIdentityAndExecutables(): Promise<void> {
           workspaceId,
           workflowId,
           `wf:v2:sha256:${suffix.repeat(64)}`,
-          JSON.stringify({ schemaVersion: 2, nodes: [], edges: [] }),
+          JSON.stringify({
+            schemaVersion: 2,
+            graph: {
+              nodes: [
+                {
+                  id: 'parallel',
+                  definition: { key: 'core.parallel', version: 1 },
+                },
+                { id: 'loop', definition: { key: 'core.foreach', version: 1 } },
+                {
+                  id: 'condition',
+                  definition: { key: 'core.condition', version: 1 },
+                },
+                {
+                  id: 'switch',
+                  definition: { key: 'core.switch', version: 1 },
+                },
+              ],
+              edges: [],
+            },
+          }),
           actorId,
         ],
       );

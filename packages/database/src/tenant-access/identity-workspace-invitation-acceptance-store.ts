@@ -19,7 +19,7 @@ import {
   replayAcceptanceReceipt,
   replayedAcceptance,
 } from './identity-workspace-invitation-acceptance-receipts.js';
-import { cancelOpenInvitationDeliveries } from './identity-workspace-invitation-deliveries.js';
+import { expireWorkspaceInvitations } from './identity-workspace-invitation-expiration.js';
 import { replaceUserSessions } from './identity-workspace-session-store.js';
 import { parseIdentityUuid } from './identity-workspace-support.js';
 import { withTenantScopedClient } from './workspace.js';
@@ -255,17 +255,10 @@ export function createIdentityWorkspaceInvitationAcceptanceStore(
         if (current?.status !== 'pending') return null;
         const now = new Date();
         if (current.expires_at.getTime() <= now.getTime()) {
-          await client.query(
-            `update app.workspace_invitations
-                set status='expired',delivery_status='canceled',updated_at=clock_timestamp()
-              where workspace_id=$1 and id=$2`,
-            [workspaceId, invitationId],
-          );
-          await cancelOpenInvitationDeliveries(
-            client,
+          await expireWorkspaceInvitations(client, {
             workspaceId,
             invitationId,
-          );
+          });
           return null;
         }
         const expiresAt = new Date(

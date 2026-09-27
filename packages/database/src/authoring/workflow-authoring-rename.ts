@@ -1,6 +1,6 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
 
-import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -17,9 +17,12 @@ import type {
   RenameWorkflowResult,
   WorkflowAuthoringDatabase,
 } from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringLifecycleContext } from './workflow-authoring-lifecycle.js';
+import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import type { WorkflowRecord } from './workflow-authoring-records.js';
-import { workflowRowSelection } from './workflow-authoring-rows.js';
+import {
+  mapWorkflow,
+  workflowRowSelection,
+} from './workflow-authoring-rows.js';
 
 const uuidSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(128);
@@ -31,6 +34,10 @@ const nameRevisionSchema = z
 const requestIdSchema = z.string().max(128);
 
 type WorkflowRenameStore = Pick<WorkflowAuthoringDatabase, 'renameWorkflow'>;
+type WorkflowRenameContext = Pick<
+  WorkflowAuthoringWriteContext,
+  'keyDigest' | 'requireAuthor' | 'testHooks' | 'transact'
+>;
 
 type RenameCommand = Readonly<{
   workspaceId: string;
@@ -61,7 +68,6 @@ function parseRenameCommand(input: RenameWorkflowInput): RenameCommand {
 /** Locks the active workflow; an archived workflow is read-only, like its draft. */
 async function lockActiveWorkflow(
   client: PoolClient,
-  context: WorkflowAuthoringLifecycleContext,
   command: RenameCommand,
 ): Promise<WorkflowRecord> {
   const locked = await client.query<Record<string, unknown>>(
@@ -73,7 +79,7 @@ async function lockActiveWorkflow(
   const row = locked.rows[0];
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
-  const current = context.mapWorkflow(row);
+  const current = mapWorkflow(row);
   if (current.nameRevision !== command.expectedNameRevision)
     throw new WorkflowNameRevisionConflictError(current.nameRevision);
   return current;
@@ -81,7 +87,7 @@ async function lockActiveWorkflow(
 
 async function applyRename(
   client: PoolClient,
-  context: WorkflowAuthoringLifecycleContext,
+  context: WorkflowRenameContext,
   command: RenameCommand,
   current: WorkflowRecord,
 ): Promise<WorkflowRecord> {
@@ -101,7 +107,7 @@ async function applyRename(
   const row = updated.rows[0];
   if (row === undefined)
     throw new WorkflowNameRevisionConflictError(current.nameRevision);
-  const renamed = context.mapWorkflow(row);
+  const renamed = mapWorkflow(row);
   await context.testHooks?.afterRenameStep?.('workflow');
   await client.query(
     `insert into app.audit_events
@@ -132,7 +138,7 @@ async function applyRename(
  * original summary; the same name at the current revision changes nothing.
  */
 async function renameWorkflow(
-  context: WorkflowAuthoringLifecycleContext,
+  context: WorkflowRenameContext,
   input: RenameWorkflowInput,
 ): Promise<RenameWorkflowResult> {
   const command = parseRenameCommand(input);
@@ -161,7 +167,7 @@ async function renameWorkflow(
       if (claim.replay !== null)
         return Object.freeze({ replayed: true, workflow: claim.replay });
 
-      const current = await lockActiveWorkflow(client, context, command);
+      const current = await lockActiveWorkflow(client, command);
       const workflow =
         current.name === command.name
           ? current
@@ -174,7 +180,7 @@ async function renameWorkflow(
 }
 
 export function createWorkflowAuthoringRenameStore(
-  context: WorkflowAuthoringLifecycleContext,
+  context: WorkflowRenameContext,
 ): WorkflowRenameStore {
   return Object.freeze({
     renameWorkflow: (input) => renameWorkflow(context, input),

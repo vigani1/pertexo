@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   CoordinatorPlanInvalidError,
   createCoordinatorRunStore,
-} from '../src/execution/coordinator-run-store.js';
+} from '../src/execution/coordinator/coordinator-run-store.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 import { runCheckpoints, workflowRuns } from '../src/schema.js';
 

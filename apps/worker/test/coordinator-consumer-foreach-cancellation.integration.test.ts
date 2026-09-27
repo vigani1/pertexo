@@ -14,6 +14,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
   acceptForEachRun,
+  acceptSerialForEachRun,
+  acceptStructuredForEachRun,
   cancelFixtureRun,
   waitForCoordinatorOutbox,
 } from './support/coordinator-run-fixtures.js';
@@ -257,11 +259,27 @@ describeIntegration('For Each cancellation recovery', () => {
       const runFixture = async (
         mode:
           | 'complete'
+          | 'serial_complete'
+          | 'condition_complete'
+          | 'switch_complete'
+          | 'nested_complete'
           | 'cancel_between_batches'
           | 'cancel_running'
           | 'deadline_running',
       ) => {
-        const accepted = await acceptForEachRun();
+        const structuredKind =
+          mode === 'condition_complete'
+            ? 'condition'
+            : mode === 'switch_complete'
+              ? 'switch'
+              : mode === 'nested_complete'
+                ? 'nested'
+                : undefined;
+        const accepted = await (structuredKind !== undefined
+          ? acceptStructuredForEachRun(structuredKind)
+          : mode === 'serial_complete'
+            ? acceptSerialForEachRun()
+            : acceptForEachRun());
         const coordinatorOutboxes = [accepted.outboxEventId];
         const attemptOutboxes: string[] = [];
         const publishCoordinator = async (
@@ -442,6 +460,135 @@ describeIntegration('For Each cancellation recovery', () => {
         await declarationCoordinatorJob?.remove();
         await publishCoordinator(declarationContinuation, 3);
         await eraseRedisAndRestart();
+
+        if (mode === 'serial_complete' || structuredKind !== undefined) {
+          let revision = 3;
+          for (const ordinal of [0, 1, 2]) {
+            await execute('body-map', ordinal);
+            await continueAfter(++revision);
+            await execute(
+              structuredKind === 'nested' ? 'nested-body' : 'body-sink',
+              ordinal,
+            );
+            await continueAfter(++revision);
+            if (structuredKind === 'nested') {
+              const pendingContinuations = await workerQuery<{ id: string }>(
+                `select id from app.outbox_events
+                  where workspace_id=$1 and aggregate_id=$2
+                    and job_name='advance-workflow-run'
+                    and not (id=any($3::uuid[]))`,
+                [workspaceId, accepted.runId, coordinatorOutboxes],
+              );
+              if (pendingContinuations.length > 0)
+                await continueAfter(++revision);
+            }
+          }
+          if (structuredKind !== undefined) {
+            const scopedChildren = await workerQuery<{
+              branch_context: {
+                branchPath: { nodeId: string; outputPort: string }[];
+                iterationPath: { loopNodeId: string; ordinal: number }[];
+              };
+              node_id: string;
+            }>(
+              `select node_id,branch_context from app.node_runs
+                where workspace_id=$1 and workflow_run_id=$2 and node_id=$3
+                order by (branch_context->'iterationPath'->0->>'ordinal')::int`,
+              [
+                workspaceId,
+                accepted.runId,
+                structuredKind === 'nested' ? 'nested-body' : 'body-sink',
+              ],
+            );
+            expect(scopedChildren).toHaveLength(3);
+            for (const [ordinal, child] of scopedChildren.entries()) {
+              expect(child.branch_context.iterationPath).toEqual(
+                structuredKind === 'nested'
+                  ? [
+                      { loopNodeId: 'for-each', ordinal },
+                      { loopNodeId: 'body-map', ordinal: 0 },
+                    ]
+                  : [{ loopNodeId: 'for-each', ordinal }],
+              );
+              expect(child.branch_context.branchPath).toEqual(
+                structuredKind === 'nested'
+                  ? []
+                  : [
+                      {
+                        nodeId: 'body-map',
+                        outputPort:
+                          structuredKind === 'condition' ? 'true' : 'case-01',
+                      },
+                    ],
+              );
+            }
+            await expect(
+              workerQuery<{ node_id: string; attempts: string }>(
+                `select node.node_id,count(attempt.id)::text attempts
+                   from app.node_runs node
+                   join app.node_attempts attempt on attempt.node_run_id=node.id
+                  where node.workspace_id=$1 and node.workflow_run_id=$2
+                    and node.node_id=$3
+                  group by node.node_id`,
+                [workspaceId, accepted.runId, scopedChildren[0]?.node_id],
+              ),
+            ).resolves.toEqual([
+              { node_id: scopedChildren[0]?.node_id, attempts: '3' },
+            ]);
+          }
+          const beforeSuccessor = await workerQuery<{
+            node_id: string;
+            status: string;
+          }>(
+            `select node_id,status from app.node_runs
+              where workspace_id=$1 and workflow_run_id=$2
+                and node_id in ('for-each','outer-successor') order by node_id`,
+            [workspaceId, accepted.runId],
+          );
+          expect(beforeSuccessor).toEqual([
+            { node_id: 'for-each', status: 'succeeded' },
+          ]);
+          // Serial outcomes leave no spare completion wakeup. The coordinator
+          // must persist its own continuation when it completes the loop.
+          const readContinuations = () =>
+            workerQuery<{ id: string }>(
+              `select id from app.outbox_events
+              where workspace_id=$1 and aggregate_id=$2
+                and job_name='advance-workflow-run'
+                and not (id=any($3::uuid[]))`,
+              [workspaceId, accepted.runId, coordinatorOutboxes],
+            );
+          const continuations = await readContinuations();
+          expect(continuations).toHaveLength(1);
+          const loopCompletion = coordinatorOutboxes.at(-1);
+          if (loopCompletion === undefined)
+            throw new Error('Serial loop completion delivery missing');
+          await eraseRedisAndRestart();
+          // Redelivery after Redis loss must replay the receipt, not enqueue
+          // another continuation or move the checkpoint a second time.
+          await publishCoordinator(loopCompletion, revision);
+          await expect(readContinuations()).resolves.toEqual(continuations);
+          await expect(
+            workerQuery<{ completed: boolean; receipts: string }>(
+              `select count(*)::text receipts,
+                      bool_and(completed_at is not null) completed
+                 from app.inbox_receipts
+                where workspace_id=$1 and message_id=$2`,
+              [workspaceId, loopCompletion],
+            ),
+          ).resolves.toEqual([{ completed: true, receipts: '1' }]);
+          await continueAfter(++revision);
+          await execute('outer-successor');
+          await continueAfter(++revision);
+          await expect(
+            workerQuery<{ status: string }>(
+              `select status from app.workflow_runs where workspace_id=$1 and id=$2`,
+              [workspaceId, accepted.runId],
+            ),
+          ).resolves.toEqual([{ status: 'succeeded' }]);
+          await expect(readContinuations()).resolves.toEqual([]);
+          return;
+        }
 
         const reserved = await workerQuery<{
           scheduler_state: unknown;
@@ -824,6 +971,10 @@ describeIntegration('For Each cancellation recovery', () => {
       };
 
       await ownedProducer.waitUntilReady(5_000);
+      await runFixture('serial_complete');
+      await runFixture('condition_complete');
+      await runFixture('switch_complete');
+      await runFixture('nested_complete');
       await runFixture('complete');
       await runFixture('cancel_between_batches');
       await runFixture('cancel_running');

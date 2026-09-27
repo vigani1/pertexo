@@ -46,18 +46,18 @@ export type {
   DatabaseRuntimeOptions,
 } from './platform/database-runtime.js';
 export { generatePersistedId } from './platform/persisted-id.js';
-export { ExecutionStateConflictError } from './execution/execution-state.js';
-export { readRunEventsAfter } from './execution/run-events.js';
+export { ExecutionStateConflictError } from './execution/runs/execution-state.js';
+export { readRunEventsAfter } from './execution/runs/run-events.js';
 export {
   IdempotencyRequestConflictError,
   RegionalWriteAdmissionPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './execution/execution-acceptance.js';
+} from './execution/runs/execution-acceptance.js';
 export {
   FailureNotificationDestinationError,
   createFailureNotificationDestinationDatabase,
-} from './execution/failure-notification-destinations.js';
+} from './execution/notifications/failure-notification-destinations.js';
 export {
   ARTIFACT_UPLOAD_PENDING_MS,
   ARTIFACT_UPLOAD_PURPOSE,
@@ -66,7 +66,7 @@ export {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
   createArtifactUploadDatabase,
-} from './execution/artifact-upload.js';
+} from './execution/artifacts/artifact-upload.js';
 export type {
   ArtifactUploadDatabase,
   ArtifactUploadActor,
@@ -75,8 +75,8 @@ export type {
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
-} from './execution/artifact-upload.js';
-export type { FailureNotificationDestinationDatabase } from './execution/failure-notification-destinations.js';
+} from './execution/artifacts/artifact-upload.js';
+export type { FailureNotificationDestinationDatabase } from './execution/notifications/failure-notification-destinations.js';
 export {
   IdentityConflictError,
   WorkspaceAccessDeniedError,
@@ -135,7 +135,7 @@ export type {
 export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from './execution/preview-execution.js';
+} from './execution/previews/preview-execution.js';
 export type { PublishedWorkflowV2Projection } from './execution/published-workflow-reader.js';
 export {
   ScheduleTriggerError,
@@ -193,18 +193,18 @@ export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
   createWorkflowRunDatabase,
-} from './execution/workflow-run-api.js';
-export type { WorkflowRunDatabase } from './execution/workflow-run-api.js';
+} from './execution/runs/workflow-run-api.js';
+export type { WorkflowRunDatabase } from './execution/runs/workflow-run-api.js';
 export type {
   WorkflowRunData,
   WorkflowRunFailedStep,
-} from './execution/workflow-run-data.js';
-export type { WorkflowRunListRecord } from './execution/workflow-run-list.js';
+} from './execution/runs/workflow-run-data.js';
+export type { WorkflowRunListRecord } from './execution/runs/workflow-run-list.js';
 export type {
   WorkflowStepHealthPage,
   WorkflowStepHealthRecord,
   WorkflowStepRunRecord,
-} from './execution/workflow-step-history.js';
+} from './execution/runs/workflow-step-history.js';
 export type { WorkflowTriggerHealth } from './triggers/workflow-triggers.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';

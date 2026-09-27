@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   acceptWorkflowRun,
   RegionalWriteAdmissionPausedError,
-} from '../src/execution/execution-acceptance.js';
+} from '../src/execution/runs/execution-acceptance.js';
 import {
   acceptanceInput,
   apiDatabase,

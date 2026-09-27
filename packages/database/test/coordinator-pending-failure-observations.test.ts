@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { CoordinatorRunStateCorruptError } from '../src/execution/coordinator-run-store-contract.js';
+import { CoordinatorRunStateCorruptError } from '../src/execution/coordinator/coordinator-run-store-contract.js';
 import {
   appendPendingFailureObservations,
   type PendingFailureRow,
-} from '../src/execution/coordinator-pending-failure-observations.js';
+} from '../src/execution/coordinator/coordinator-pending-failure-observations.js';
+import { safeErrorCodeSchema } from '../src/execution/node-attempts/node-attempt-run-store-contract.js';
 
 const valid = (): PendingFailureRow => ({
   attempt_id: randomUUID(),
@@ -20,6 +21,61 @@ const valid = (): PendingFailureRow => ({
 });
 
 describe('pending coordinator failure observations', () => {
+  it.each(['provider.unavailable', 'Provider.Failure', '9Provider:Failure'])(
+    'round-trips every writer-accepted code shape: %s',
+    (safeErrorCode) => {
+      expect(safeErrorCodeSchema.parse(safeErrorCode)).toBe(safeErrorCode);
+      const observations: unknown[] = [];
+      appendPendingFailureObservations(observations, [
+        { ...valid(), safe_error_code: safeErrorCode },
+      ]);
+      expect(observations).toEqual([
+        expect.objectContaining({ safeErrorCode }),
+      ]);
+    },
+  );
+
+  it.each(['failed', 'canceled', 'retry', 'outcome_unknown'])(
+    'preserves each executor failure kind: %s',
+    (failureKind) => {
+      const observations: unknown[] = [];
+      appendPendingFailureObservations(observations, [
+        { ...valid(), executor_failure_kind: failureKind },
+      ]);
+      expect(observations).toEqual([expect.objectContaining({ failureKind })]);
+    },
+  );
+
+  it.each([
+    'authentication',
+    'canceled',
+    'configuration',
+    'internal',
+    'network',
+    'provider',
+    'rate_limit',
+    'timeout',
+  ])('preserves each executor error kind: %s', (errorKind) => {
+    const observations: unknown[] = [];
+    appendPendingFailureObservations(observations, [
+      { ...valid(), executor_error_kind: errorKind },
+    ]);
+    expect(observations).toEqual([expect.objectContaining({ errorKind })]);
+  });
+
+  it.each(['', 'Private Message', 'provider/invalid', `x${'a'.repeat(128)}`])(
+    'rejects invalid codes at both seams: %s',
+    (safeErrorCode) => {
+      expect(safeErrorCodeSchema.safeParse(safeErrorCode).success).toBe(false);
+      expect(() => {
+        appendPendingFailureObservations(
+          [],
+          [{ ...valid(), safe_error_code: safeErrorCode }],
+        );
+      }).toThrow(CoordinatorRunStateCorruptError);
+    },
+  );
+
   it('projects the exact finite persisted tuple', () => {
     const observations: unknown[] = [];
     const row = valid();

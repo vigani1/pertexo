@@ -1,3 +1,5 @@
+import { workflowControlOutputKind } from '@pertexo/workflow-model/graph';
+
 type DefinitionIdentity = Readonly<{ key: string; version: number }>;
 
 function isVersionedCoreDefinition(
@@ -21,7 +23,7 @@ export function isCoreMergeDefinition(
 export function isCoreParallelDefinition(
   definition: DefinitionIdentity | undefined,
 ): boolean {
-  return isVersionedCoreDefinition(definition, 'core.parallel');
+  return workflowControlOutputKind(definition) === 'parallel';
 }
 
 function isCoreScheduleDefinition(

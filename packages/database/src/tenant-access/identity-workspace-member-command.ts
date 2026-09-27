@@ -1,8 +1,12 @@
-import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
+import {
+  commandKeySchema,
+  hashFlatIdentityCommand,
+  hashIdentityCommandKey,
+} from './identity-command-primitives.js';
 import type { MembershipRole } from './identity-workspace-contracts.js';
 import { parseIdentityUuid } from './identity-workspace-support.js';
 import { withTenantScopedClient } from './workspace.js';
@@ -20,23 +24,6 @@ type MemberCommandReceiptTable =
   | 'workspace_member_departure_command_receipts'
   | 'workspace_member_suspension_command_receipts'
   | 'workspace_ownership_transfer_command_receipts';
-
-export const commandRevisionSchema = z.number().int().positive();
-export const commandKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u);
-
-export function commandKeyHash(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-export function commandRequestHash(
-  input: Readonly<Record<string, unknown>>,
-): string {
-  return commandKeyHash(JSON.stringify(input, Object.keys(input).sort()));
-}
 
 export type LockedMember = Readonly<{
   user_id: string;
@@ -257,10 +244,10 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
     actorUserId: parseIdentityUuid(command.actorUserId),
     targetUserId: parseIdentityUuid(command.targetUserId),
   });
-  const keyHash = commandKeyHash(
+  const keyHash = hashIdentityCommandKey(
     commandKeySchema.parse(command.idempotencyKey),
   );
-  const requestHash = commandRequestHash({ ...command.request, ...scope });
+  const requestHash = hashFlatIdentityCommand({ ...command.request, ...scope });
   return withTenantScopedClient(
     pool,
     { workspaceId: scope.workspaceId, actorId: scope.actorUserId },

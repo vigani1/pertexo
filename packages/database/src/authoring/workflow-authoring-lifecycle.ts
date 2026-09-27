@@ -1,6 +1,6 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
 
-import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { planWorkflowLifecycleCommand } from '@pertexo/workflow-model/lifecycle';
@@ -19,9 +19,11 @@ import type {
   TransitionWorkflowLifecycleResult,
   WorkflowAuthoringDatabase,
 } from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringTestHooks } from './workflow-authoring-types.js';
-import type { WorkflowRecord } from './workflow-authoring-records.js';
-import { workflowRowSelection } from './workflow-authoring-rows.js';
+import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
+import {
+  mapWorkflow,
+  workflowRowSelection,
+} from './workflow-authoring-rows.js';
 import { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
 
 const uuidSchema = z.uuid();
@@ -38,26 +40,15 @@ type WorkflowLifecycleStore = Pick<
   'transitionWorkflowLifecycle'
 >;
 
-export type WorkflowAuthoringLifecycleContext = Readonly<{
-  keyDigest(key: string): string;
-  mapWorkflow(row: Record<string, unknown>): WorkflowRecord;
-  requireAuthor(
-    client: PoolClient,
-    workspaceId: string,
-    actorId: string,
-  ): Promise<void>;
-  testHooks?: WorkflowAuthoringTestHooks;
-  transact<T>(
-    workspaceId: string,
-    actorId: string,
-    operation: (client: PoolClient) => Promise<T>,
-  ): Promise<T>;
-}>;
+type WorkflowLifecycleContext = Pick<
+  WorkflowAuthoringWriteContext,
+  'keyDigest' | 'requireAuthor' | 'testHooks' | 'transact'
+>;
 
 async function claimLifecycle(
   client: PoolClient,
   input: TransitionWorkflowLifecycleInput,
-  context: WorkflowAuthoringLifecycleContext,
+  context: WorkflowLifecycleContext,
 ): Promise<WorkflowCommandClaim> {
   const command = commandSchema.parse(input.command);
   const workspaceId = uuidSchema.parse(input.workspaceId);
@@ -83,7 +74,7 @@ async function claimLifecycle(
 }
 
 async function transitionWorkflowLifecycle(
-  context: WorkflowAuthoringLifecycleContext,
+  context: WorkflowLifecycleContext,
   input: TransitionWorkflowLifecycleInput,
 ): Promise<TransitionWorkflowLifecycleResult> {
   const command = commandSchema.parse(input.command);
@@ -117,7 +108,7 @@ async function transitionWorkflowLifecycle(
     const currentRow = currentResult.rows[0];
     if (currentRow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const current = context.mapWorkflow(currentRow);
+    const current = mapWorkflow(currentRow);
     if (current.lifecycleRevision !== expectedLifecycleRevision)
       throw new WorkflowLifecycleRevisionConflictError(
         current.lifecycleRevision,
@@ -149,7 +140,7 @@ async function transitionWorkflowLifecycle(
         throw new WorkflowLifecycleRevisionConflictError(
           current.lifecycleRevision,
         );
-      workflow = context.mapWorkflow(updatedRow);
+      workflow = mapWorkflow(updatedRow);
       await context.testHooks?.afterLifecycleStep?.('workflow');
 
       if (decision.reconcileTriggers) {
@@ -217,7 +208,7 @@ async function transitionWorkflowLifecycle(
 }
 
 export function createWorkflowAuthoringLifecycleStore(
-  context: WorkflowAuthoringLifecycleContext,
+  context: WorkflowLifecycleContext,
 ): WorkflowLifecycleStore {
   return Object.freeze({
     transitionWorkflowLifecycle: (input) =>

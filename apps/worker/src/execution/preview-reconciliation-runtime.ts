@@ -1,13 +1,11 @@
 import {
   canonicalOutboxPayloadChecksum,
-  acquireDatabasePool,
-  reconcilePreviewDelivery,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type PreviewDeliveryReconciliationResult,
+  type PreviewReconciliationStore,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
 } from '@pertexo/database/execution';
+export type { PreviewReconciliationStore } from '@pertexo/database/execution';
 import {
   unrecoverableQueueError,
   type QueueDelivery,
@@ -23,41 +21,11 @@ type PreviewReconciliationDelivery = Extract<
   { readonly name: 'reconcile-preview-attempt' }
 >;
 
-export interface PreviewReconciliationStore {
-  reconcile(
-    input: Readonly<{
-      attemptFenceToken: number;
-      delivery: Readonly<{
-        outboxEventId: string;
-        payloadChecksum: string;
-      }>;
-      previewAttemptId: string;
-      previewRunId: string;
-      signal?: AbortSignal;
-      workspaceId: string;
-    }>,
-  ): Promise<PreviewDeliveryReconciliationResult>;
-}
-
 export interface PreviewReconciliationHandler {
   handle(
     delivery: PreviewReconciliationDelivery,
     context: QueueHandlerContext,
   ): Promise<PreviewDeliveryReconciliationResult>;
-}
-
-export function createDatabasePreviewReconciliationStore(
-  config: DatabaseConfig,
-  runtime?: DatabaseRuntime,
-): PreviewReconciliationStore & { close(): Promise<void> } {
-  const lease = acquireDatabasePool(config, runtime);
-  const { pool } = lease;
-  return Object.freeze({
-    reconcile: (
-      input: Parameters<PreviewReconciliationStore['reconcile']>[0],
-    ) => reconcilePreviewDelivery(pool, input),
-    close: () => lease.close(),
-  });
 }
 
 export function createPreviewReconciliationHandler(

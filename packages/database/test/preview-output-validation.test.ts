@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { isValidStoredExecutionOutput } from '../src/execution/preview-execution.js';
+import { isValidStoredExecutionOutput } from '../src/execution/previews/preview-execution.js';
 
 describe('preview stored output validation', () => {
   it('accepts every executor envelope supported by the canonical stored-value contract', () => {

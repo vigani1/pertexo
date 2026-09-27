@@ -20,6 +20,7 @@ import {
   versionA,
   versionB,
   workerBaseUrl,
+  workflowA,
   workflowB,
   workspaceA,
   workspaceB,
@@ -237,6 +238,45 @@ function observedKinds(
 }
 
 describe('Coordinator observation integrity invariants', () => {
+  it.each([
+    { schemaVersion: 2 },
+    { schemaVersion: 2, graph: {} },
+    { schemaVersion: 1, graph: { nodes: [] } },
+  ])(
+    'rejects persisted invalid executable control metadata %j',
+    async (executableJson) => {
+      const workflowVersionId = generatePersistedId();
+      const checksum = `wf:v2:sha256:${randomUUID().replaceAll('-', '').repeat(2)}`;
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `insert into app.workflow_versions (
+         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         checksum,executable_schema_version,executable_json,
+         compatibility_release_epoch,published_by
+       ) select $1,$2,workflow.id,
+           (select coalesce(max(version_number),0)+1 from app.workflow_versions
+             where workspace_id=$2 and workflow_id=workflow.id),
+           1,'{}'::jsonb,$3,2,$4::jsonb,1,workflow.created_by
+         from app.workflows workflow where workflow.workspace_id=$2 and workflow.id=$5`,
+          [
+            workflowVersionId,
+            workspaceA,
+            checksum,
+            JSON.stringify(executableJson),
+            workflowA,
+          ],
+        ),
+      );
+      const runId = await insertRun({ workflowVersionId });
+      await expect(
+        ownedDeliveryStore.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId,
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
+    },
+  );
   async function seedAvailableArtifact(): Promise<string> {
     const artifactId = generatePersistedId();
     await asRuntime(workerBaseUrl, workspaceA, (client) =>
@@ -967,14 +1007,7 @@ describe('Coordinator observation integrity invariants', () => {
         output: { kind: 'inline', attemptId },
       }),
     ]);
-    expect(loaded.state.completedOutputs).toEqual([
-      {
-        sequence: 3,
-        invocationKey,
-        attemptId,
-        value: { selectedPort: 'true' },
-      },
-    ]);
+    expect(loaded.state.completedOutputs).toEqual([]);
   });
 
   it('rejects a lone started fact whose physical attempt is terminal', async () => {

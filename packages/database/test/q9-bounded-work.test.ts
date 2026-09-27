@@ -9,9 +9,9 @@ import {
   parsePersistedWorkflowCheckpoint,
   PERSISTED_WORKFLOW_CHECKPOINT_LIMITS,
 } from '../src/compatibility/persisted-workflow-checkpoint.js';
-import { NODE_ATTEMPT_INPUT_LIMITS } from '../src/execution/node-attempt-run-store-contract.js';
-import { loadNodeAttemptInputs } from '../src/execution/node-attempt-run-store-inputs.js';
-import { scopedInvocationKey } from '../src/execution/node-attempt-run-store-transactions.js';
+import { NODE_ATTEMPT_INPUT_LIMITS } from '../src/execution/node-attempts/node-attempt-run-store-contract.js';
+import { loadNodeAttemptInputs } from '../src/execution/node-attempts/node-attempt-run-store-inputs.js';
+import { scopedInvocationKey } from '../src/execution/node-attempts/node-attempt-run-store-transactions.js';
 import { serializeStoredExecutionJsonValue } from '../src/execution/stored-execution-value.js';
 
 const INVOCATION_EFFECTIVE_UPPER = 1_996;

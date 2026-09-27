@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import {
   canonicalJson,
   type JsonValue,
@@ -17,13 +15,7 @@ import {
   configuredParallelOutputPorts,
 } from './graph-scheduler.js';
 import { isCoreMergeDefinition } from './core-definition-identities.js';
-import {
-  exactKeys,
-  isJsonRecord,
-  operationError,
-  record,
-} from './operation-values.js';
-import { compareOrdinal } from './ordering.js';
+import { exactKeys, operationError, record } from './operation-values.js';
 import { branchPathHasPrefix, sameIterationPath } from './scope.js';
 import { uuidPattern } from './persisted-observations.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
@@ -32,17 +24,6 @@ import type { JoinPolicy, WorkflowObservation } from './types.js';
 type CheckpointInvocation = ReturnType<
   typeof parseCheckpoint
 >['invocations'][number];
-
-function loopObservationKey(observation: WorkflowObservation): string {
-  if (
-    observation.kind !== 'loop_started' &&
-    observation.kind !== 'loop_iteration_completed'
-  )
-    return '';
-  const controlKey = observation.controlInvocationKey ?? observation.loopId;
-  if (observation.kind === 'loop_started') return `${controlKey}:0:`;
-  return `${controlKey}:1:${String(observation.ordinal).padStart(16, '0')}`;
-}
 
 export function branchSelectionObservations(
   completedItems: readonly JsonValue[],
@@ -163,194 +144,6 @@ export function branchSelectionObservations(
   return observations;
 }
 
-export function forEachCoordinatorObservations(
-  completedItems: readonly JsonValue[],
-  persistedItems: readonly JsonValue[],
-  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
-  checkpoint: ReturnType<typeof parseCheckpoint>,
-  invocations: ReadonlyMap<string, CheckpointInvocation>,
-  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
-  derivedObservations: readonly WorkflowObservation[] = [],
-): Readonly<{
-  observations: readonly WorkflowObservation[];
-  declarationInvocationKeys: ReadonlySet<string>;
-}> {
-  const declarations = new Set<string>();
-  const declarationMaterials = new Map<string, string>();
-  const observations: WorkflowObservation[] = [];
-  const terminalOutcomes = new Map<
-    string,
-    | 'succeeded'
-    | 'skipped'
-    | 'failed'
-    | 'canceled'
-    | 'timed_out'
-    | 'outcome_unknown'
-  >();
-  for (const candidate of persistedItems) {
-    if (
-      isJsonRecord(candidate) &&
-      candidate.kind === 'outcome' &&
-      typeof candidate.invocationKey === 'string' &&
-      typeof candidate.status === 'string' &&
-      [
-        'succeeded',
-        'failed',
-        'canceled',
-        'timed_out',
-        'outcome_unknown',
-      ].includes(candidate.status)
-    )
-      terminalOutcomes.set(
-        candidate.invocationKey,
-        candidate.status as
-          'succeeded' | 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown',
-      );
-  }
-  for (const candidate of derivedObservations) {
-    if (candidate.kind === 'outcome' && candidate.status !== 'skipped')
-      terminalOutcomes.set(candidate.invocationKey, candidate.status);
-  }
-  for (const item of completedItems) {
-    const material = record(item, 'observation_invalid', 'completed output');
-    exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
-    if (
-      typeof material.sequence !== 'number' ||
-      !Number.isSafeInteger(material.sequence) ||
-      typeof material.attemptId !== 'string' ||
-      !uuidPattern.test(material.attemptId) ||
-      typeof material.invocationKey !== 'string'
-    )
-      operationError(
-        'observation_invalid',
-        'completed output identity is invalid',
-      );
-    const outcome = successfulOutcomes.get(
-      `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`,
-    );
-    if (outcome === undefined)
-      operationError(
-        'observation_invalid',
-        'completed output has no matching persisted outcome',
-      );
-    const invocation = invocations.get(material.invocationKey);
-    const node = nodes.get(invocation?.nodeId ?? '');
-    if (
-      invocation === undefined ||
-      node?.definition.key !== 'core.foreach' ||
-      node.definition.version !== 1 ||
-      node.structured?.kind !== 'for_each'
-    )
-      continue;
-    const canonicalMaterial = canonicalJson(material);
-    const previousMaterial = declarationMaterials.get(invocation.invocationKey);
-    if (previousMaterial !== undefined) {
-      if (previousMaterial !== canonicalMaterial)
-        operationError(
-          'observation_invalid',
-          'For Each declaration output conflicts',
-        );
-      continue;
-    }
-    declarationMaterials.set(invocation.invocationKey, canonicalMaterial);
-    if (material.value === undefined)
-      operationError('observation_invalid', 'For Each output is missing');
-    const output = record(
-      material.value,
-      'observation_invalid',
-      'For Each output',
-    );
-    exactKeys(output, ['items', 'iterationCount']);
-    if (
-      !Array.isArray(output.items) ||
-      typeof output.iterationCount !== 'number' ||
-      !Number.isSafeInteger(output.iterationCount) ||
-      output.iterationCount !== output.items.length
-    )
-      operationError('observation_invalid', 'For Each output is invalid');
-    const body = node.structured.body;
-    const targets = new Set(body.edges.map(({ target }) => target.nodeId));
-    const sources = new Set(body.edges.map(({ source }) => source.nodeId));
-    const roots = body.nodes
-      .map(({ id }) => id)
-      .filter((id) => !targets.has(id))
-      .sort(compareOrdinal);
-    const sinks = body.nodes
-      .map(({ id }) => id)
-      .filter((id) => !sources.has(id));
-    const outputReference = completedOutputReference(
-      outcome,
-      material.attemptId,
-    );
-    if (outputReference === undefined)
-      operationError(
-        'observation_invalid',
-        'For Each output reference is invalid',
-      );
-    declarations.add(invocation.invocationKey);
-    observations.push({
-      kind: 'loop_started',
-      loopId: node.id,
-      controlInvocationKey: invocation.invocationKey,
-      branchPath: invocation.branchPath ?? [],
-      iterationPath: invocation.iterationPath ?? [],
-      bodyRootNodeIds: roots,
-      bodySinkNodeId: sinks[0] ?? '',
-      collection: outputReference,
-      collectionChecksum: createHash('sha256')
-        .update(canonicalJson(output.items))
-        .digest('hex'),
-      collectionSize: output.items.length,
-      maxIterations: node.structured.maxIterations,
-      maxConcurrency: node.structured.maxConcurrency,
-      coordinatorDerived: true,
-    });
-  }
-  for (const loop of checkpoint.loops) {
-    for (const ordinal of loop.activeOrdinals) {
-      const iterationPath = [
-        ...loop.iterationPath,
-        { loopNodeId: loop.loopId, ordinal },
-      ];
-      const sinkKey = createInvocationKey({
-        workflowVersionId: checkpoint.workflowVersionId,
-        nodeId: loop.bodySinkNodeId,
-        branchPath: loop.branchPath.map(
-          ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-        ),
-        iterationPath,
-      });
-      const failedInvocation = checkpoint.invocations.find(
-        (invocation) =>
-          sameIterationPath(invocation.iterationPath, iterationPath) &&
-          ['failed', 'canceled', 'timed_out', 'outcome_unknown'].includes(
-            terminalOutcomes.get(invocation.invocationKey) ?? '',
-          ),
-      );
-      const terminalInvocationKey = failedInvocation?.invocationKey ?? sinkKey;
-      const checkpointSink = invocations.get(sinkKey);
-      const terminalStatus =
-        terminalOutcomes.get(terminalInvocationKey) ??
-        (checkpointSink?.status === 'skipped' ? 'skipped' : undefined);
-      if (terminalStatus === undefined) continue;
-      observations.push({
-        kind: 'loop_iteration_completed',
-        loopId: loop.loopId,
-        controlInvocationKey: loop.controlInvocationKey,
-        ...(failedInvocation === undefined
-          ? {}
-          : { invocationKey: failedInvocation.invocationKey }),
-        ordinal,
-        status: terminalStatus,
-        coordinatorDerived: true,
-      });
-    }
-  }
-  observations.sort((left, right) =>
-    compareOrdinal(loopObservationKey(left), loopObservationKey(right)),
-  );
-  return { observations, declarationInvocationKeys: declarations };
-}
 export function mergeCoordinatorObservations(
   executable: CompiledWorkflowExecutableV2,
   checkpoint: ReturnType<typeof parseCheckpoint>,

@@ -9,7 +9,7 @@ import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   throwWorkflowRunAdmissionError,
-} from '../src/execution/execution-acceptance.js';
+} from '../src/execution/runs/execution-acceptance.js';
 
 function databaseError(code: string, cause?: unknown): Error {
   return Object.assign(new Error(`database ${code}`, { cause }), { code });

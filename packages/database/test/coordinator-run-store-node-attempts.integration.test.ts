@@ -805,6 +805,103 @@ describe('Coordinator node-attempt persistence invariants', () => {
     ]);
   });
 
+  it('advances a persisted mixed-case executor failure without corrupting its code', async () => {
+    const lease = await claimDispatchAttempt(`mixed-failure-${randomUUID()}`);
+    const outcome = {
+      errorKind: 'provider',
+      failureKind: 'failed',
+      possiblyDispatched: false,
+      safeErrorCode: 'Provider.Failure',
+      status: 'executor_failure',
+    } as const;
+    await expect(
+      nodeAttemptStore.complete({
+        lease,
+        outcome,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ kind: 'committed' });
+    const loaded = await ownedDeliveryStore.loadAdvanceState({
+      workspaceId: workspaceA,
+      runId: lease.runId,
+      signal: new AbortController().signal,
+    });
+    expect(loaded.kind).toBe('ready');
+    if (loaded.kind !== 'ready') throw new Error('coordinator state missing');
+    expect(
+      loaded.state.observations.some(
+        (observation) =>
+          typeof observation === 'object' &&
+          observation !== null &&
+          'kind' in observation &&
+          observation.kind === 'attempt_failure' &&
+          'safeErrorCode' in observation &&
+          observation.safeErrorCode === 'Provider.Failure',
+      ),
+    ).toBe(true);
+    await expect(
+      ownedDeliveryStore.commitAdvancePlan({
+        workspaceId: workspaceA,
+        runId: lease.runId,
+        workflowVersionId: versionA,
+        signal: new AbortController().signal,
+        plan: {
+          expectedRevision: 1,
+          expectedNextEventSequence: 4,
+          consumedThroughEventSequence: 4,
+          checkpoint: checkpoint({
+            revision: 2,
+            runStatus: 'failed',
+            nextEventSequence: 7,
+            admittedInvocationKeys: [lease.invocationKey],
+            invocations: [
+              {
+                invocationKey: lease.invocationKey,
+                nodeId: lease.nodeId,
+                status: 'failed',
+                attemptNumber: 1,
+              },
+            ],
+          }),
+          events: [
+            {
+              schemaVersion: 1,
+              sequence: 5,
+              name: 'node.failed',
+              occurredAt: '2026-09-27T12:00:00.000Z',
+              invocationKey: lease.invocationKey,
+              nodeId: lease.nodeId,
+              attemptNumber: 1,
+              reasonCode: 'Provider.Failure',
+            },
+            {
+              schemaVersion: 1,
+              sequence: 6,
+              name: 'run.failed',
+              occurredAt: '2026-09-27T12:00:00.000Z',
+            },
+          ],
+          nodeRunAdmissions: [],
+          attempts: [],
+        },
+      }),
+    ).resolves.toMatchObject({ kind: 'committed', revision: 2 });
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ code: string; run_status: string }>(
+          `select attempt.safe_error_code code,run.status run_status
+             from app.node_attempts attempt
+             join app.node_runs node on node.id=attempt.node_run_id
+             join app.workflow_runs run on run.id=node.workflow_run_id
+            where attempt.workspace_id=$1 and attempt.id=$2`,
+          [workspaceA, lease.attemptId],
+        ),
+      ),
+    ).resolves.toMatchObject({
+      rows: [{ code: 'Provider.Failure', run_status: 'failed' }],
+    });
+  });
+
   it('claims one transport-bound ready attempt with a durable fence', async () => {
     const lease = await claimDispatchAttempt('manual', {
       runInput: { hello: 'world' },

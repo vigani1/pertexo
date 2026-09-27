@@ -2,7 +2,11 @@ import { WorkflowEngineError } from './errors.js';
 import type { SchedulerState } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
 import { sameOutputReference } from './output-reference.js';
-import { sameBranchPath, sameIterationPath } from './scope.js';
+import {
+  branchPathHasPrefix,
+  sameBranchPath,
+  sameIterationPath,
+} from './scope.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import type {
   AttemptAdmissionPlan,
@@ -48,15 +52,25 @@ export const nodeEventName: Readonly<
   outcome_unknown: 'node.outcome_unknown',
 };
 
-export function isTerminalNodeStatus(status: NodeStatus): boolean {
-  return [
-    'succeeded',
-    'failed',
-    'skipped',
-    'canceled',
-    'timed_out',
-    'outcome_unknown',
-  ].includes(status);
+export function isTerminalNodeStatus(
+  status: NodeStatus | undefined,
+): status is Extract<
+  NodeStatus,
+  | 'succeeded'
+  | 'failed'
+  | 'skipped'
+  | 'canceled'
+  | 'timed_out'
+  | 'outcome_unknown'
+> {
+  return (
+    status === 'succeeded' ||
+    status === 'failed' ||
+    status === 'skipped' ||
+    status === 'canceled' ||
+    status === 'timed_out' ||
+    status === 'outcome_unknown'
+  );
 }
 
 export function observationOrder(
@@ -218,6 +232,29 @@ export function isSyntheticLegacyLoop(loop: LoopState): boolean {
   );
 }
 
+export function scopedLoopSinkInvocation(
+  loop: LoopState,
+  ordinal: number,
+  invocations: Iterable<InvocationState>,
+): InvocationState | undefined {
+  const iterationPath = [
+    ...loop.iterationPath,
+    { loopNodeId: loop.loopId, ordinal },
+  ];
+  const matches = [...invocations].filter(
+    (candidate) =>
+      candidate.nodeId === loop.bodySinkNodeId &&
+      sameIterationPath(candidate.iterationPath, iterationPath) &&
+      branchPathHasPrefix(candidate.branchPath, loop.branchPath),
+  );
+  if (matches.length > 1)
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      'loop sink has multiple scoped invocations',
+    );
+  return matches[0];
+}
+
 export function assertLoopInvocations(
   workflowVersionId: string,
   loop: LoopState,
@@ -239,8 +276,10 @@ export function assertLoopInvocations(
             iterationPath,
           }),
         )
-      : [...invocations.values()].find((candidate) =>
-          sameIterationPath(candidate.iterationPath, iterationPath),
+      : [...invocations.values()].find(
+          (candidate) =>
+            sameIterationPath(candidate.iterationPath, iterationPath) &&
+            branchPathHasPrefix(candidate.branchPath, loop.branchPath),
         );
     if (invocation === undefined)
       throw new WorkflowEngineError(
@@ -255,20 +294,23 @@ export function assertLoopInvocations(
     ];
     const invocation =
       loop.terminalStatus === undefined
-        ? invocations.get(
-            createInvocationKey({
-              workflowVersionId,
-              nodeId: loop.bodySinkNodeId,
-              branchPath: loop.branchPath.map(
-                ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-              ),
-              iterationPath,
-            }),
-          )
+        ? isSyntheticLegacyLoop(loop)
+          ? invocations.get(
+              createInvocationKey({
+                workflowVersionId,
+                nodeId: loop.bodySinkNodeId,
+                branchPath: loop.branchPath.map(
+                  ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+                ),
+                iterationPath,
+              }),
+            )
+          : scopedLoopSinkInvocation(loop, ordinal, invocations.values())
         : [...invocations.values()].find(
             (candidate) =>
               sameIterationPath(candidate.iterationPath, iterationPath) &&
-              isTerminalNodeStatus(candidate.status),
+              branchPathHasPrefix(candidate.branchPath, loop.branchPath) &&
+              candidate.status === loop.terminalStatus,
           );
     if (invocation === undefined || !isTerminalNodeStatus(invocation.status))
       throw new WorkflowEngineError(

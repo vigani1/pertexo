@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { withPlatformTransaction } from '../tenant-access/workspace.js';
+import { acquireAbortablePoolClient } from '../platform/abortable-pool-checkout.js';
 import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
@@ -63,49 +64,16 @@ function acquireDestructiveLockClient(
   pool: DestructiveLockPool,
   signal?: AbortSignal,
 ): Promise<PoolClient> {
-  signal?.throwIfAborted();
-  const pendingClient = pool.connect();
-  if (signal === undefined) return pendingClient;
-
-  return new Promise<PoolClient>((resolve, reject) => {
-    let settled = false;
-    const settle = (completion: () => void): boolean => {
-      if (settled) return false;
-      settled = true;
-      signal.removeEventListener('abort', onAbort);
-      completion();
-      return true;
-    };
-    const onAbort = (): void => {
-      settle(() => {
-        reject(
-          throwableError(signal.reason, 'Workspace lifecycle lock aborted'),
-        );
-      });
-    };
-
-    pendingClient.then(
-      (client) => {
-        if (
-          !settle(() => {
-            resolve(client);
-          })
-        )
-          client.release();
-      },
-      (error: unknown) => {
-        settle(() => {
-          reject(
-            throwableError(
-              error,
-              'Workspace lifecycle pool acquisition failed',
-            ),
-          );
-        });
-      },
-    );
-    signal.addEventListener('abort', onAbort, { once: true });
-    if (signal.aborted) onAbort();
+  return acquireAbortablePoolClient(
+    pool,
+    signal,
+    () => throwableError(signal?.reason, 'Workspace lifecycle lock aborted'),
+    (client) => {
+      client.release();
+    },
+  ).catch((error: unknown) => {
+    if (signal?.aborted === true) throw error;
+    throw throwableError(error, 'Workspace lifecycle pool acquisition failed');
   });
 }
 

@@ -14,7 +14,7 @@ import {
   createPendingArtifact,
   finalizeArtifactUpload,
   readArtifactCapacity,
-} from '../src/execution/artifacts.js';
+} from '../src/execution/artifacts/artifacts.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import { migrateDatabase } from '../src/migrations.js';

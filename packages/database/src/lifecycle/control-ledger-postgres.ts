@@ -2,6 +2,7 @@ import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 
 import type { DatabaseConfig } from '../config.js';
+import { acquireAbortablePoolClient } from '../platform/abortable-pool-checkout.js';
 import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
 
 const BACKEND_CANCELLATION_TIMEOUT_MS = 1_000;
@@ -44,31 +45,14 @@ export async function acquirePoolClient(
   pool: MaintenancePool,
   signal?: AbortSignal,
 ): Promise<PoolClient> {
-  const connection = pool.connect();
-  if (signal === undefined) return connection;
-  let rejectAbort: ((reason?: unknown) => void) | undefined;
-  const aborted = new Promise<never>((_resolve, reject) => {
-    rejectAbort = reject;
-  });
-  const onAbort = (): void => rejectAbort?.(signal.reason);
-  signal.addEventListener('abort', onAbort, { once: true });
-  try {
-    signal.throwIfAborted();
-    return await Promise.race([connection, aborted]);
-  } catch (error: unknown) {
-    if (signal.aborted) {
-      void connection.then(
-        (client) => {
-          client.release();
-        },
-        () => undefined,
-      );
-      throw signal.reason;
-    }
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', onAbort);
-  }
+  return acquireAbortablePoolClient(
+    pool,
+    signal,
+    () => signal?.reason,
+    (client) => {
+      client.release();
+    },
+  );
 }
 
 function abortedClientError(signal: AbortSignal): Error {

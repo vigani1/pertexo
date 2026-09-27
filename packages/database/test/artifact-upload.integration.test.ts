@@ -18,7 +18,7 @@ import {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
   createArtifactUploadDatabase,
-} from '../src/execution/artifact-upload.js';
+} from '../src/execution/artifacts/artifact-upload.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 

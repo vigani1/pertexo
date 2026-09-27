@@ -1,3 +1,4 @@
+import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
 import { WorkflowEngineError } from './errors.js';
 import { compareOrdinal } from './ordering.js';
 import { sameOutputReference } from './output-reference.js';
@@ -244,9 +245,5 @@ export function invocationKey(input: {
     readonly ordinal: number;
   }[];
 }): string {
-  const branches = [...(input.branchPath ?? [])].join('/');
-  const iterations = (input.iterationPath ?? [])
-    .map(({ loopNodeId, ordinal }) => `${loopNodeId}:${String(ordinal)}`)
-    .join('/');
-  return `${encodeURIComponent(input.workflowVersionId)}|${encodeURIComponent(input.nodeId)}|b:${encodeURIComponent(branches)}|i:${encodeURIComponent(iterations)}`;
+  return encodeWorkflowInvocationKeyV2(input);
 }

@@ -1,3 +1,4 @@
+import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
 import type { z } from 'zod';
 
 type BranchScopePart = Readonly<{ nodeId: string; outputPort: string }>;
@@ -201,15 +202,14 @@ function scopedInvocationKey(
   branchPath: readonly BranchScopePart[],
   iterationPath: readonly IterationScopePart[],
 ): string {
-  const branches = branchPath
-    .map(
+  return encodeWorkflowInvocationKeyV2({
+    workflowVersionId: checkpoint.workflowVersionId,
+    nodeId,
+    branchPath: branchPath.map(
       ({ nodeId: branchNodeId, outputPort }) => `${branchNodeId}:${outputPort}`,
-    )
-    .join('/');
-  const iterations = iterationPath
-    .map(({ loopNodeId, ordinal }) => `${loopNodeId}:${String(ordinal)}`)
-    .join('/');
-  return `${encodeURIComponent(checkpoint.workflowVersionId)}|${encodeURIComponent(nodeId)}|b:${encodeURIComponent(branches)}|i:${encodeURIComponent(iterations)}`;
+    ),
+    iterationPath,
+  });
 }
 
 export function refineBranchSelections(

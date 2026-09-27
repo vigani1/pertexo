@@ -1,3 +1,5 @@
+import { workflowControlOutputKind } from '@pertexo/workflow-model/graph';
+
 import { invocationKey } from './scheduling.js';
 import { WorkflowEngineError } from './errors.js';
 import {
@@ -42,6 +44,7 @@ export function configuredBranchOutputPorts(
     config?: unknown;
   }>,
 ): readonly string[] | undefined {
+  if (workflowControlOutputKind(node.definition) !== 'branch') return undefined;
   if (
     node.definition?.key === 'core.condition' &&
     node.definition.version === 1

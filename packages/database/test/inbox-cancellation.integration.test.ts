@@ -6,11 +6,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
-import { consumeInboxMessage } from '../src/execution/inbox.js';
+import { consumeInboxMessage } from '../src/execution/transport/inbox.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../src/execution/outbox.js';
+} from '../src/execution/transport/outbox.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 

@@ -4,6 +4,7 @@ import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
+import { acquireAbortablePoolClient } from '../platform/abortable-pool-checkout.js';
 import { databaseSchema } from '../schema.js';
 
 const workspaceIdSchema = z.uuid();
@@ -146,7 +147,14 @@ async function runTransaction<T>(
   abortError.name = 'AbortError';
   if (options.signal?.aborted) throw abortError;
 
-  const client = await acquirePoolClient(pool, options.signal, abortError);
+  const client = await acquireAbortablePoolClient(
+    pool,
+    options.signal,
+    () => abortError,
+    (lateClient) => {
+      lateClient.release(abortError);
+    },
+  );
   let transactionOpen = false;
   let clientReleased = false;
 
@@ -252,38 +260,6 @@ async function runTransaction<T>(
     throw error;
   } finally {
     options.signal?.removeEventListener('abort', releaseForAbort);
-  }
-}
-
-async function acquirePoolClient(
-  pool: Pool,
-  signal: AbortSignal | undefined,
-  abortError: Error,
-): Promise<PoolClient> {
-  const connection = pool.connect();
-  if (signal === undefined) return connection;
-
-  let rejectAbort: ((reason: Error) => void) | undefined;
-  const aborted = new Promise<never>((_resolve, reject) => {
-    rejectAbort = reject;
-  });
-  const onAbort = (): void => rejectAbort?.(abortError);
-  signal.addEventListener('abort', onAbort, { once: true });
-  try {
-    if (signal.aborted) throw abortError;
-    return await Promise.race([connection, aborted]);
-  } catch (error: unknown) {
-    if (signal.aborted) {
-      void connection.then(
-        (client) => {
-          client.release(abortError);
-        },
-        () => undefined,
-      );
-    }
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', onAbort);
   }
 }
 

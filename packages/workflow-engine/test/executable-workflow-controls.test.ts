@@ -65,6 +65,14 @@ describe('wait and control production operations', () => {
     expect(waiting.events).not.toContainEqual(
       expect.objectContaining({ name: 'node.waiting' }),
     );
+    expect(waiting.immediateContinuation).toBeUndefined();
+    const beforeDue = await advanceWorkflow({
+      ...input,
+      checkpoint: waiting.checkpoint,
+      observations: [],
+    });
+    expect(beforeDue.attempts).toEqual([]);
+    expect(beforeDue.immediateContinuation).toBeUndefined();
 
     const due = {
       kind: 'due_at',

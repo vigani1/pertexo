@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createWorkflowRunDatabase } from '../src/execution/workflow-run-api.js';
+import { createWorkflowRunDatabase } from '../src/execution/runs/workflow-run-api.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';

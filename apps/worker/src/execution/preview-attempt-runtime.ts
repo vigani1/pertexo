@@ -1,15 +1,6 @@
 import {
-  claimPreviewDelivery,
-  completePreviewAttempt,
-  acquireDatabasePool,
-  heartbeatPreviewLease,
-  markPreviewDispatched,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '@pertexo/database/execution';
-import type {
-  DatabaseConfig,
-  DatabaseRuntime,
 } from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
@@ -29,29 +20,11 @@ import { z } from 'zod';
 
 import type {
   PreviewInvocationOutcome,
-  PreviewAttemptRunStore,
   PreviewNodeInvoker,
 } from './preview-attempt-handler.js';
 import { PreviewAttemptHandlerStateError } from './preview-attempt-handler.js';
 
 export type { PreviewAttemptHandler } from './preview-attempt-handler.js';
-
-const leasePickSchema = z.object({
-  attemptFenceToken: z.number().int().nonnegative(),
-  previewAttemptId: z.uuid(),
-  previewRunId: z.uuid(),
-  workspaceId: z.uuid(),
-});
-
-function previewLeaseAuthority(lease: unknown) {
-  const scope = leasePickSchema.parse(lease);
-  return Object.freeze({
-    attemptFenceToken: scope.attemptFenceToken,
-    previewAttemptId: scope.previewAttemptId,
-    previewRunId: scope.previewRunId,
-    workspaceId: scope.workspaceId,
-  });
-}
 
 const previewExecutableNodeSchema = z
   .object({
@@ -65,60 +38,6 @@ const previewExecutableNodeSchema = z
     inputMappings: z.record(z.string(), z.json()),
   })
   .strict();
-
-/**
- * Durable store adapter over the preview execution seam. Every call opens
- * its own tenant-scoped transaction through the shared fail-closed
- * primitive, so the handler stays transport-only.
- */
-export function createDatabasePreviewAttemptRunStore(
-  config: DatabaseConfig,
-  runtime?: DatabaseRuntime,
-): PreviewAttemptRunStore & { close(): Promise<void> } {
-  const lease = acquireDatabasePool(config, runtime);
-  const { pool } = lease;
-  const store: PreviewAttemptRunStore = {
-    claim: (input) => claimPreviewDelivery(pool, input),
-    markDispatched: async ({
-      connectionFence,
-      lease,
-      providerDispatchBinding,
-      signal,
-      workerId,
-    }) => {
-      return markPreviewDispatched(pool, {
-        lease: previewLeaseAuthority(lease),
-        ...(connectionFence === undefined ? {} : { connectionFence }),
-        ...(providerDispatchBinding === undefined
-          ? {}
-          : { providerDispatchBinding }),
-        ...(signal === undefined ? {} : { signal }),
-        workerId,
-      });
-    },
-    heartbeat: async ({ lease, leaseDurationSeconds, signal, workerId }) => {
-      return heartbeatPreviewLease(pool, {
-        lease: previewLeaseAuthority(lease),
-        leaseDurationSeconds,
-        ...(signal === undefined ? {} : { signal }),
-        workerId,
-      });
-    },
-    complete: async ({ delivery, lease, outcome, signal, workerId }) => {
-      return completePreviewAttempt(pool, {
-        delivery,
-        lease: previewLeaseAuthority(lease),
-        outcome,
-        ...(signal === undefined ? {} : { signal }),
-        workerId,
-      });
-    },
-  };
-  return Object.freeze({
-    ...store,
-    close: () => lease.close(),
-  });
-}
 
 function releaseDescriptionKey(epoch: number, fingerprint: string): string {
   return `${String(epoch)}:${fingerprint}`;

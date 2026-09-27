@@ -60,6 +60,12 @@ class MemoryPurgeLedger implements WorkspacePurgeLedger {
   public repeatPreviousHashOnNextAppend = false;
   private readonly records = new Map<string, WorkspacePurgeLedgerRecord[]>();
 
+  public recordsFor(
+    workspaceId: string,
+  ): readonly WorkspacePurgeLedgerRecord[] {
+    return this.records.get(workspaceId) ?? [];
+  }
+
   public async append(input: Parameters<WorkspacePurgeLedger['append']>[0]) {
     await Promise.resolve();
     this.appendCalls += 1;
@@ -293,10 +299,9 @@ describe('workspace purge foundation', () => {
       { ...coordinatorOptions, leaseOwner: 'purge-integration-b' },
     );
     try {
-      await expect(first.processNext()).resolves.toMatchObject({
-        status: 'released',
-        workspaceId,
-      });
+      await expect(first.processNext()).rejects.toThrow(
+        'ambiguous append result',
+      );
       const outcomes = await Promise.all([
         first.processNext(),
         second.processNext(),
@@ -576,10 +581,9 @@ describe('workspace purge foundation', () => {
       }
       expect(completionDue).toBe(true);
       ledger.failCommandType = 'deletion_completed';
-      await expect(coordinator.processNext()).resolves.toMatchObject({
-        status: 'released',
-        workspaceId,
-      });
+      await expect(coordinator.processNext()).rejects.toThrow(
+        'ambiguous deletion_completed append result',
+      );
       await expect(coordinator.processNext()).resolves.toMatchObject({
         status: 'completed',
         workspaceId,
@@ -1690,13 +1694,148 @@ describe('workspace purge foundation', () => {
       const appendCallsBeforeRepeatedHash = ledger.appendCalls;
       const objectCallsBeforeRepeatedHash = objectStore.calls;
       ledger.repeatPreviousHashOnNextAppend = true;
-      await expect(coordinator.processNext()).resolves.toMatchObject({
-        status: 'released',
-        workspaceId,
-      });
+      await expect(coordinator.processNext()).rejects.toThrow(
+        'Purge ledger record conflicts with durable job',
+      );
       expect(ledger.appendCalls).toBe(appendCallsBeforeRepeatedHash + 1);
       expect(objectStore.calls).toBe(objectCallsBeforeRepeatedHash);
     } finally {
+      await coordinator.close();
+    }
+  });
+
+  it('surfaces projection failure, releases the claim, and retries the durable record', async () => {
+    if (owner === undefined) throw new Error('Database pools unavailable');
+    const workspaceId = await createDueWorkspace();
+    const ledger = new MemoryPurgeLedger();
+    const coordinator = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      new MemoryObjectPurgeStore(),
+      {
+        externalOperationTimeoutMs: 1_000,
+        leaseOwner: 'purge-projection-failure',
+        leaseSeconds: 5,
+        lockTimeoutMs: 1_000,
+        statementTimeoutMs: 1_000,
+      },
+    );
+    try {
+      await advanceToPurgeStartCandidate(coordinator, workspaceId);
+      await owner.query('set role pertexo_owner');
+      await owner.query(`
+        create function app.test_purge_projection_failure() returns trigger
+        language plpgsql as $$ begin
+          if new.workspace_id='${workspaceId}'::uuid and new.status='purging' then
+            raise exception 'injected purge projection failure';
+          end if;
+          return new;
+        end $$
+      `);
+      await owner.query(`
+        create trigger test_purge_projection_failure before update
+        on app.workspace_purge_jobs for each row
+        execute function app.test_purge_projection_failure()
+      `);
+      await expect(coordinator.processNext()).rejects.toThrow(
+        'injected purge projection failure',
+      );
+      const released = await owner.query<{ status: string }>(
+        'select status from app.workspace_purge_jobs where workspace_id=$1',
+        [workspaceId],
+      );
+      expect(released.rows).toEqual([{ status: 'ready' }]);
+      await owner.query(
+        'drop trigger test_purge_projection_failure on app.workspace_purge_jobs',
+      );
+      await owner.query('drop function app.test_purge_projection_failure()');
+      expect(ledger.recordsFor(workspaceId)).toHaveLength(1);
+      const originalRecord = ledger.recordsFor(workspaceId)[0];
+      await advanceToPurgeStartCandidate(coordinator, workspaceId);
+      await expect(coordinator.processNext()).resolves.toMatchObject({
+        status: 'started',
+        workspaceId,
+      });
+      expect(ledger.recordsFor(workspaceId)).toEqual([originalRecord]);
+    } finally {
+      await owner.query(
+        'drop trigger if exists test_purge_projection_failure on app.workspace_purge_jobs',
+      );
+      await owner.query(
+        'drop function if exists app.test_purge_projection_failure()',
+      );
+      await owner.query('reset role');
+      await coordinator.close();
+    }
+  });
+
+  it('retains both operational and claim-release failures', async () => {
+    if (owner === undefined) throw new Error('Owner pool unavailable');
+    const workspaceId = await createDueWorkspace();
+    const ledger = new MemoryPurgeLedger();
+    const coordinator = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      new MemoryObjectPurgeStore(),
+      {
+        externalOperationTimeoutMs: 1_000,
+        leaseOwner: 'purge-release-failure',
+        leaseSeconds: 5,
+        lockTimeoutMs: 1_000,
+        statementTimeoutMs: 1_000,
+      },
+    );
+    try {
+      await advanceToPurgeStartCandidate(coordinator, workspaceId);
+      ledger.repeatPreviousHashOnNextAppend = true;
+      await owner.query('set role pertexo_owner');
+      await owner.query(`
+        create function app.test_purge_release_failure() returns trigger
+        language plpgsql as $$ begin
+          if new.workspace_id='${workspaceId}'::uuid and new.status='ready' then
+            raise exception 'injected purge release failure';
+          end if;
+          return new;
+        end $$
+      `);
+      await owner.query(`
+        create trigger test_purge_release_failure before update
+        on app.workspace_purge_jobs for each row
+        execute function app.test_purge_release_failure()
+      `);
+      const result = await coordinator.processNext().then(
+        () => null,
+        (error: unknown) => error,
+      );
+      expect(result).toBeInstanceOf(AggregateError);
+      expect((result as AggregateError).errors).toEqual([
+        expect.objectContaining({
+          message: 'Purge ledger record conflicts with durable job',
+        }),
+        expect.objectContaining({ message: 'injected purge release failure' }),
+      ]);
+    } finally {
+      await owner.query(
+        'drop trigger if exists test_purge_release_failure on app.workspace_purge_jobs',
+      );
+      await owner.query(
+        'drop function if exists app.test_purge_release_failure()',
+      );
+      await owner.query('reset role');
       await coordinator.close();
     }
   });

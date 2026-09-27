@@ -16,9 +16,9 @@ import { WorkflowEngineError } from './errors.js';
 import { resolveAttemptFailures } from './coordinator-failures.js';
 import {
   branchSelectionObservations,
-  forEachCoordinatorObservations,
   mergeCoordinatorObservations,
 } from './coordinator-observations.js';
+import { forEachCoordinatorObservations } from './coordinator-loop-observations.js';
 import {
   indexPersistedSuccessfulOutcomes,
   parseCompletedOutputItems,

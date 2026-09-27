@@ -6,6 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
+import { createDatabasePreviewAttemptRunStore } from '../src/execution/previews/preview-attempt-store.js';
+import { createDatabasePreviewReconciliationStore } from '../src/execution/previews/preview-reconciliation-store.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
   acquireDatabasePool,
@@ -93,6 +95,43 @@ afterAll(async () => {
 });
 
 describe('database process runtime integration', () => {
+  it('keeps a shared runtime alive while both preview stores close', async () => {
+    const config = parseDatabaseConfig({
+      connectionString: databaseUrl(apiBaseUrl, true),
+      max: 2,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    });
+    const runtime = createDatabaseRuntime(config, { role: 'api' });
+    const lease = acquireDatabasePool(config, runtime);
+    const attemptStore = createDatabasePreviewAttemptRunStore(config, runtime);
+    const reconciliationStore = createDatabasePreviewReconciliationStore(
+      config,
+      runtime,
+    );
+    try {
+      const client = await lease.pool.connect();
+      try {
+        await client.query('select 1');
+      } finally {
+        client.release();
+      }
+      await waitForSessionCount(2);
+      await Promise.all([attemptStore.close(), reconciliationStore.close()]);
+      expect(await sessionCount()).toBe(2);
+      const stillUsable = await lease.pool.query('select 1 as value');
+      expect(stillUsable.rows).toEqual([{ value: 1 }]);
+    } finally {
+      await Promise.allSettled([
+        attemptStore.close(),
+        reconciliationStore.close(),
+        lease.close(),
+      ]);
+      await runtime.close();
+    }
+    await waitForSessionCount(0);
+  });
+
   it('uses one role pool and monitor across repositories and closes both', async () => {
     const config = parseDatabaseConfig({
       connectionString: databaseUrl(apiBaseUrl, true),

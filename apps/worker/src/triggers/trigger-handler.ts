@@ -49,6 +49,10 @@ export function createTriggerReconciliationHandler(
           'Trigger reconciliation publication identity is invalid',
         );
 
+      // No durable command has started yet; a canceled delivery must not
+      // open a new transaction after publication loading finishes.
+      context.signal.throwIfAborted();
+
       try {
         await dependencies.reconciliation.reconcile({
           workspaceId: delivery.data.workspaceId,

@@ -10,10 +10,10 @@ import type {
   PreviewAttemptLease,
   PreviewClaimResult,
   PreviewCompletionResult,
-  PreviewHeartbeatResult,
   PreviewTerminalOutcome,
-  PreviewDelivery,
+  PreviewAttemptRunStore,
 } from '@pertexo/database/execution';
+export type { PreviewAttemptRunStore } from '@pertexo/database/execution';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import { nodeExecutionOptionalFields } from './node-execution-runtime-fields.js';
 import type {
@@ -26,69 +26,6 @@ type PreviewQueueDelivery = Extract<
   QueueDelivery,
   { readonly name: 'execute-preview-attempt' }
 >;
-
-export interface PreviewAttemptRunStore {
-  claim(
-    input: Readonly<{
-      delivery: PreviewDelivery;
-      leaseDurationSeconds: number;
-      previewAttemptId: string;
-      previewRunId: string;
-      signal?: AbortSignal;
-      workerId: string;
-      workspaceId: string;
-    }>,
-  ): Promise<PreviewClaimResult>;
-  markDispatched(
-    input: Readonly<{
-      lease: Pick<
-        PreviewAttemptLease,
-        | 'attemptFenceToken'
-        | 'previewAttemptId'
-        | 'previewRunId'
-        | 'workspaceId'
-      >;
-      connectionFence?: Readonly<{
-        connectionId: string;
-        expectedProviderKey: string;
-        expectedAuthType: string;
-        secretVersionId: string;
-      }>;
-      providerDispatchBinding?: string;
-      signal?: AbortSignal;
-      workerId: string;
-    }>,
-  ): Promise<'committed'>;
-  heartbeat(
-    input: Readonly<{
-      lease: Pick<
-        PreviewAttemptLease,
-        | 'attemptFenceToken'
-        | 'previewAttemptId'
-        | 'previewRunId'
-        | 'workspaceId'
-      >;
-      leaseDurationSeconds: number;
-      signal?: AbortSignal;
-      workerId: string;
-    }>,
-  ): Promise<PreviewHeartbeatResult>;
-  complete(
-    input: Readonly<{
-      delivery: { outboxEventId: string; payloadChecksum: string };
-      lease: Pick<
-        PreviewAttemptLease,
-        | 'attemptFenceToken'
-        | 'previewAttemptId'
-        | 'previewRunId'
-        | 'workspaceId'
-      >;
-      outcome: PreviewTerminalOutcome;
-      signal?: AbortSignal;
-      workerId: string;
-    }>,
-  ): Promise<PreviewCompletionResult>;
-}
 
 /**
  * The single execution boundary for one pinned preview node. Implementations

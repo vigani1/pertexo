@@ -1,5 +1,6 @@
 import { parseCheckpoint, reconstructReadySet } from './checkpoint.js';
 import { WorkflowEngineError } from './errors.js';
+import { deriveReadyNodes } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
 import { assertNodeTransition, assertRunTransition } from './transitions.js';
 import {
@@ -12,10 +13,63 @@ import type {
   WorkflowTransitionPlan,
 } from './types.js';
 import {
+  isTerminalNodeStatus,
   schedulerNodeSideEffectClass,
+  scopedLoopSinkInvocation,
   transitionEvent as event,
   type MutableWorkflowTransition,
 } from './workflow-transition-state.js';
+
+function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
+  const { current, graph, invocations, branchSelections, loops } = state;
+  if (
+    graph?.deriveReadiness !== true ||
+    state.cancelRequested ||
+    state.deadlineExpired
+  )
+    return false;
+  const allInvocations = [...invocations.values()];
+  const selections = current.schemaVersion === 2 ? { branchSelections } : {};
+  if (
+    deriveReadyNodes({
+      graph,
+      workflowVersionId: current.workflowVersionId,
+      invocations: allInvocations,
+      ...selections,
+    }).length > 0
+  )
+    return true;
+  for (const loop of loops.values()) {
+    if (loop.terminalStatus !== undefined) continue;
+    const body = graph.structuredBodies?.find(
+      ({ loopNodeId }) => loopNodeId === loop.loopId,
+    );
+    for (const ordinal of loop.activeOrdinals) {
+      const sink = scopedLoopSinkInvocation(loop, ordinal, allInvocations);
+      if (sink !== undefined && isTerminalNodeStatus(sink.status)) return true;
+      if (
+        body !== undefined &&
+        deriveReadyNodes({
+          graph: {
+            deriveReadiness: true,
+            nodes: body.nodes,
+            edges: body.edges,
+          },
+          workflowVersionId: current.workflowVersionId,
+          invocations: allInvocations,
+          ...selections,
+          branchPath: loop.branchPath,
+          iterationPath: [
+            ...loop.iterationPath,
+            { loopNodeId: loop.loopId, ordinal },
+          ],
+        }).length > 0
+      )
+        return true;
+    }
+  }
+  return false;
+}
 
 export function buildWorkflowTransitionPlan(
   state: MutableWorkflowTransition,
@@ -89,6 +143,10 @@ export function buildWorkflowTransitionPlan(
         ? {}
         : { iterationPath: running.iterationPath }),
     });
+  }
+  if (state.runStatus === 'waiting' && attempts.length > 0) {
+    assertRunTransition(state.runStatus, 'running');
+    state.runStatus = 'running';
   }
 
   const finalInvocations = [...invocations.values()].sort((left, right) =>
@@ -182,5 +240,10 @@ export function buildWorkflowTransitionPlan(
     events,
     nodeRunAdmissions,
     attempts,
+    ...(attempts.length === 0 &&
+    ['running', 'waiting'].includes(state.runStatus) &&
+    hasUnsettledSchedulerWork(state)
+      ? { immediateContinuation: true as const }
+      : {}),
   };
 }
