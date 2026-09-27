@@ -553,23 +553,40 @@ describe('dual-region artifact store', () => {
     ).toThrow('both be configs or both be stores');
   });
 
-  it('rejects direct download when the primary omits that capability', () => {
+  it('rejects construction when the primary omits direct downloads', () => {
     const primary = new FakeArtifactStore('artifacts-primary', 'eu-central-1');
     const recovery = new FakeArtifactStore('artifacts-recovery', 'eu-west-1');
     Object.defineProperty(primary, 'beginDirectDownload', {
       value: undefined,
     });
+    expect(() =>
+      createDualRegionArtifactStore(primary, recovery, {
+        artifactOwnership: 'borrowed',
+      }),
+    ).toThrow('must support direct downloads');
+    expect(primary.closeCalls).toBe(0);
+    expect(recovery.closeCalls).toBe(0);
+  });
+
+  it('does not require download signing from recovery storage', async () => {
+    const primary = new FakeArtifactStore('artifacts-primary', 'eu-central-1');
+    const recovery = new FakeArtifactStore('artifacts-recovery', 'eu-west-1');
+    Object.defineProperty(recovery, 'beginDirectDownload', {
+      value: undefined,
+    });
     const store = createDualRegionArtifactStore(primary, recovery, {
       artifactOwnership: 'borrowed',
     });
-
-    expect(() =>
+    await expect(
       store.beginDirectDownload({
         artifactId: metadata.artifactId,
-        expiresInSeconds: 300,
         workspaceId: metadata.workspaceId,
+        expiresInSeconds: 300,
       }),
-    ).toThrow('must support direct downloads');
+    ).resolves.toMatchObject({ method: 'GET' });
+    store.close();
+    expect(primary.closeCalls).toBe(0);
+    expect(recovery.closeCalls).toBe(0);
   });
 
   it('attempts both owned closes and aggregates their failures once', () => {

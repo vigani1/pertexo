@@ -38,12 +38,12 @@ is recorded. Recommendation strength is not permission to omit an item.
 | --- | --- | --- | --- | --- |
 | W1 | Mail diagnostic exceptions can reject unobserved background work and skip owned cleanup | authentication-mail-runtime directly calls diagnostics and awaits activity before closing store | Authentication-mail runtime isolates diagnostics, observes activity and always attempts owned close | Implemented; focused verification passed |
 | EX1 | Test-only durable-wait/cancellation policies shadow production | engine runtime.ts and testing exports | Production engine transition interface; migrate unique assertions, remove shadow models/exports | Implemented; package tests/typecheck/coverage passed |
-| AS1 | Injected primary may lack advertised download signing | dual-region accepts partial primary, fails late | Dual-region construction requires its advertised primary download capability; recovery remains unsigned | Pending |
+| AS1 | Injected primary may lack advertised download signing | dual-region accepts partial primary, fails late | Dual-region construction requires its advertised primary download capability; recovery remains unsigned | Implemented; storage suite passed |
 | W2 | Preview-named composition owns unrelated maintenance features | preview-maintenance runtime/provider mixes preview, reconciliation, replay, failure alerts and invitations | Explicit maintenance transport composition with feature-owned dependency factories and explicit routing | Pending |
 | API1 | Decorated controllers act as sibling helper modules | identity-workspace/controllers and workflow-runs/controllers export request helpers | Feature-owned request-context modules; no sibling controller imports | Pending |
 | API2 | Legacy OIDC browser-binding cookie policy duplicated | auth and invitation controllers each serialize same cookie | One legacy OIDC binding-cookie owner; invitation/session/Better Auth cookies remain distinct | Pending |
-| W3 | Storage principal/bucket isolation duplicated | recovery and retention reconstruct region-pair invariant | Artifact-store configuration invariant, consumed by distinct executable parsers | Pending |
-| AS2 | Artifact identity and durable key formatting duplicated | store.ts and artifact-download.ts | Private artifact identity/key module; byte format unchanged; ledger keys remain separate | Pending |
+| W3 | Storage principal/bucket isolation duplicated | recovery and retention reconstruct region-pair invariant | Artifact-store configuration invariant, consumed by distinct executable parsers | Implemented; both executable suites passed |
+| AS2 | Artifact identity and durable key formatting duplicated | store.ts and artifact-download.ts | Private artifact identity/key module; byte format unchanged; ledger keys remain separate | Implemented; storage suite passed |
 | EX2 | Release-to-registration binding algorithm duplicated | core and catalog indexing, selection and facade assembly | Existing node SDK binds releases; callers retain cohort/provider policy | Pending |
 | W4 | Same wait name hides resolve-on-stop versus reject-on-cancel | observability/runtime and worker/runtime/abortable-delay | Explicit semantic contracts and proportionate feature/runtime placement | Pending |
 | EX3 | Structured-node flatten/find repeated in transition admission | transition state/plan/decisions each search | One immutable transition-local node lookup; no global cache or draft-validation conflation | Pending |
@@ -116,8 +116,30 @@ Coverage was 94.47% statements, 90.71% branches, 97.42% functions and 95.22%
 lines. Coverage inventory removed only the deleted source, with thresholds
 unchanged. Production transition/checkpoint behavior was not changed.
 
+### Storage ownership evidence: AS1, AS2, W3
+
+Dual-region construction now requires the primary's download capability in its
+TypeScript interface and checks it before exposing the facade. Recovery storage
+does not need signing. Tests cover construction rejection without closing borrowed
+stores, unsigned recovery, primary-only signing and owned/borrowed close behavior.
+The private `artifact-identity.ts` owns identity validation and unchanged
+`workspaces/{workspaceId}/artifacts/{artifactId}` formatting for uploads, reads,
+deletes and download signing; the existing public identity type remains exported.
+Ledger formats remain separate.
+
+`assertTenantStorageIsolation` in artifact-store configuration now owns the
+Cartesian artifact/ledger principal and bucket invariant. Recovery and retention
+keep distinct parsers, credentials, timeout policies and startup roles. Existing
+exhaustive executable configuration tests still exercise every regional pairing.
+
+Artifact-store unit tests and coverage passed 334/334, with 97.10% statements,
+95.45% branches, 95.79% functions and 97.21% lines; thresholds unchanged.
+Recovery tests passed 43/43 and retention tests 100/100. All three typechecks,
+artifact-store build and scoped ESLint passed. These are adapter/unit tests,
+not live S3, IAM or disaster-recovery evidence.
+
 ## Remaining work
 
-W1 and EX1 are implemented; EX2–EX4, AS1–AS2, API1–API2, W2–W4 and the complete
+W1, EX1, AS1, AS2 and W3 are implemented; EX2–EX4, API1–API2, W2, W4 and the complete
 17-module counterpart review remain open.
 No structural stage is declared complete yet.

@@ -1,4 +1,5 @@
 import {
+  assertTenantStorageIsolation,
   parseDualRegionArtifactStoreConfig,
   parseDualRegionControlLedgerConfig,
   type DualRegionArtifactStoreConfig,
@@ -165,18 +166,7 @@ export function parseRecoveryConfig(
   const parsed = environmentSchema.parse(environment);
   const artifacts = parseDualRegionArtifactStoreConfig(environment);
   const ledger = parseDualRegionControlLedgerConfig(environment);
-  if (
-    [ledger.primary, ledger.recovery].some((control) =>
-      [artifacts.primary, artifacts.recovery].some(
-        (artifact) =>
-          control.accessKeyId === artifact.accessKeyId ||
-          control.bucket === artifact.bucket,
-      ),
-    )
-  )
-    throw new Error(
-      'Tenant artifacts and control ledgers require distinct principals and buckets',
-    );
+  assertTenantStorageIsolation(artifacts, ledger);
   return Object.freeze({
     artifacts,
     coordinator: Object.freeze({

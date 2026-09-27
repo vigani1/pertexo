@@ -21,6 +21,11 @@ import { z } from 'zod';
 
 import { artifactMetadataMatches } from './artifact-metadata.js';
 import {
+  artifactIdentitySchema,
+  artifactStorageKey,
+  type ArtifactIdentity,
+} from './artifact-identity.js';
+import {
   ArtifactInputIntegrityError,
   ArtifactIntegrityError,
   ArtifactNotFoundError,
@@ -62,10 +67,7 @@ export {
   ArtifactStoreClosedError,
 } from './artifact-errors.js';
 export type S3ClientLike = ObjectStoreS3Client;
-export interface ArtifactIdentity {
-  readonly artifactId: string;
-  readonly workspaceId: string;
-}
+export type { ArtifactIdentity } from './artifact-identity.js';
 
 export interface ArtifactMetadata extends ArtifactIdentity {
   readonly byteLength: number;
@@ -152,17 +154,12 @@ export interface WorkspaceObjectPurgeStore {
   ): Promise<WorkspaceObjectPurgePage>;
 }
 
-const identitySchema = z.object({
-  artifactId: z.uuid(),
-  workspaceId: z.uuid(),
-});
-
 const purgeWorkspaceSchema = z.object({
   maxObjects: z.number().int().min(1).max(500),
   workspaceId: z.uuid(),
 });
 
-const metadataSchema = identitySchema.extend({
+const metadataSchema = artifactIdentitySchema.extend({
   byteLength: z.number().int().nonnegative(),
   mediaType: z
     .string()
@@ -196,10 +193,6 @@ const DIRECT_UPLOAD_UNHOISTABLE_HEADERS = new Set([
   'x-amz-checksum-sha256',
   ...USER_METADATA_KEYS.map((key) => `x-amz-meta-${key}`),
 ]);
-
-function storageKey(identity: ArtifactIdentity): string {
-  return `workspaces/${identity.workspaceId}/artifacts/${identity.artifactId}`;
-}
 
 function workspacePrefix(workspaceId: string): string {
   return `workspaces/${workspaceId}/`;
@@ -434,7 +427,7 @@ class AwsArtifactStore
       ContentLength: metadata.byteLength,
       ContentType: metadata.mediaType,
       IfNoneMatch: '*',
-      Key: storageKey(metadata),
+      Key: artifactStorageKey(metadata),
       Metadata: storedMetadata,
     });
     const url = await awaitWithSignal(
@@ -522,13 +515,13 @@ class AwsArtifactStore
 
   public async delete(request: ArtifactRequest): Promise<void> {
     this.assertOpen();
-    const identity = identitySchema.parse(request);
+    const identity = artifactIdentitySchema.parse(request);
     await this.deleteIdentity(identity, request.signal);
   }
 
   public async getStream(request: ArtifactRequest): Promise<ArtifactDownload> {
     this.assertOpen();
-    const identity = identitySchema.parse(request);
+    const identity = artifactIdentitySchema.parse(request);
     const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
     return this.getVerifiedStream(identity, undefined, signal);
   }
@@ -544,7 +537,7 @@ class AwsArtifactStore
         this.client,
         new GetObjectCommand({
           Bucket: this.config.bucket,
-          Key: storageKey(identity),
+          Key: artifactStorageKey(identity),
         }),
         {
           abortSignal: signal,
@@ -594,7 +587,7 @@ class AwsArtifactStore
     request: ArtifactRequest,
   ): Promise<ArtifactMetadata | null> {
     this.assertOpen();
-    const identity = identitySchema.parse(request);
+    const identity = artifactIdentitySchema.parse(request);
     return this.headWithSignal(
       identity,
       requestSignal(this.config.requestTimeoutMs, request.signal),
@@ -610,7 +603,7 @@ class AwsArtifactStore
         this.client,
         new HeadObjectCommand({
           Bucket: this.config.bucket,
-          Key: storageKey(identity),
+          Key: artifactStorageKey(identity),
         }),
         { abortSignal: signal },
       );
@@ -628,7 +621,7 @@ class AwsArtifactStore
     const metadata = metadataSchema.parse(request);
     this.assertWithinLimit(metadata);
 
-    const key = storageKey(metadata);
+    const key = artifactStorageKey(metadata);
     const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
     const body = verifiedBody(
       request.body,
@@ -730,7 +723,7 @@ class AwsArtifactStore
         new HeadObjectCommand({
           Bucket: this.config.bucket,
           ChecksumMode: 'ENABLED',
-          Key: storageKey(expected),
+          Key: artifactStorageKey(expected),
         }),
         { abortSignal: signal },
       );
@@ -791,7 +784,7 @@ class AwsArtifactStore
       this.client,
       new DeleteObjectCommand({
         Bucket: this.config.bucket,
-        Key: storageKey(identity),
+        Key: artifactStorageKey(identity),
       }),
       { abortSignal: requestSignal(this.config.requestTimeoutMs, signal) },
     );
