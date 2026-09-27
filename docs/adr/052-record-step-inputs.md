@@ -27,8 +27,14 @@ Once the engine has resolved a step attempt's input, and before the executor
 runs, the worker records that input on the node run through
 `NodeAttemptRunStore.recordInput`. The value is exactly what the executor
 receives: the mapped input, the run input for a trigger, or a Merge's settled
-input. A retry records again, so the node run keeps its latest attempt's
 input.
+
+A recorded input belongs to the attempt that recorded it, and only the
+current attempt's lease can record. Admitting a retry clears its
+predecessor's input in the same transaction that makes the retry current, so
+a retry that records nothing leaves none, never an earlier attempt's input
+passing as its own; the page then shows where the input came from. A resumed
+wait receives no new input, so the input its step received stays.
 
 The engine exposes this as an optional `onInputResolved` callback on
 `executeNodeAttempt`; engine behaviour without the callback is unchanged.
