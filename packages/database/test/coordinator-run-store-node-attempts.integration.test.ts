@@ -34,6 +34,18 @@ import {
   workspaceA,
 } from './coordinator-run-store.fixtures.js';
 
+/** The input recorded on a node run, as stored. */
+async function storedNodeRunInput(nodeRunId: string): Promise<unknown> {
+  const result = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    client.query<{ input_ref: unknown }>(
+      `select input_ref from app.node_runs
+        where workspace_id=$1 and id=$2`,
+      [workspaceA, nodeRunId],
+    ),
+  );
+  return result.rows[0]?.input_ref;
+}
+
 async function claimDispatchAttempt(
   nodeId: string,
   options: Readonly<{
@@ -406,16 +418,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
   it('records an attempt input under its live lease, and nothing once it is lost', async () => {
     const lease = await claimDispatchAttempt(`record-input-${randomUUID()}`);
     const signal = new AbortController().signal;
-    const storedInput = async () =>
-      (
-        await asRuntime(workerBaseUrl, workspaceA, (client) =>
-          client.query<{ input_ref: unknown }>(
-            `select input_ref from app.node_runs
-              where workspace_id=$1 and id=$2`,
-            [workspaceA, lease.nodeRunId],
-          ),
-        )
-      ).rows[0]?.input_ref;
+    const storedInput = () => storedNodeRunInput(lease.nodeRunId);
 
     await expect(
       nodeAttemptStore.recordInput?.({
@@ -431,12 +434,19 @@ describe('Coordinator node-attempt persistence invariants', () => {
     };
     await expect(storedInput()).resolves.toEqual(recorded);
 
-    // Over the inline bound, nothing changes.
+    // Over the inline bound, or once the attempt is aborted, nothing changes.
     await expect(
       nodeAttemptStore.recordInput?.({
         lease,
         input: 'x'.repeat(300_000),
         signal,
+      }),
+    ).resolves.toEqual({ recorded: false });
+    await expect(
+      nodeAttemptStore.recordInput?.({
+        lease,
+        input: { orderId: 'A-18' },
+        signal: AbortSignal.abort(),
       }),
     ).resolves.toEqual({ recorded: false });
     await expect(storedInput()).resolves.toEqual(recorded);
@@ -1555,6 +1565,14 @@ describe('Coordinator node-attempt persistence invariants', () => {
       signal: new AbortController().signal,
     });
     if (claimed.kind !== 'claimed') throw new Error('attempt was not claimed');
+    const storedInput = () => storedNodeRunInput(admission.nodeRunId);
+    await expect(
+      nodeAttemptStore.recordInput?.({
+        lease: claimed.lease,
+        input: { attempt: 1 },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ recorded: true });
 
     const suspended = await nodeAttemptStore.complete({
       lease: claimed.lease,
@@ -1816,6 +1834,22 @@ describe('Coordinator node-attempt persistence invariants', () => {
     if (resumeClaim.kind !== 'claimed')
       throw new Error('resume was not claimed');
     expect(resumeClaim.lease.admissionKind).toBe('wait_resume');
+    // Resuming receives no new input, so the input the wait received stays,
+    // and the attempt that recorded it can no longer write once superseded.
+    const waitInput = {
+      schemaVersion: 1,
+      kind: 'inline',
+      value: { attempt: 1 },
+    };
+    await expect(storedInput()).resolves.toEqual(waitInput);
+    await expect(
+      nodeAttemptStore.recordInput?.({
+        lease: claimed.lease,
+        input: { attempt: 1, late: true },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ recorded: false });
+    await expect(storedInput()).resolves.toEqual(waitInput);
     await expect(
       nodeAttemptStore.complete({
         lease: claimed.lease,

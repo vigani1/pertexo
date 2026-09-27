@@ -580,13 +580,28 @@ describe('Coordinator output commit invariants', () => {
       });
       const nodeRunId = randomUUID();
       const attemptId = randomUUID();
+      const firstAttemptInput = {
+        schemaVersion: 1,
+        kind: 'inline',
+        value: { attempt: 1 },
+      };
       await asRuntime(workerBaseUrl, workspaceA, async (client) => {
         await client.query(
           `insert into app.node_runs (
                id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-               status,side_effect_class,current_attempt_id,current_attempt_number,retry_due_at,wait_kind
-             ) values ($1,$2,$3,$4,$5,'{}','waiting','safe',$6,1,$7,'retry_backoff')`,
-          [nodeRunId, workspaceA, runId, due, invocationKey, attemptId, dueAt],
+               status,side_effect_class,current_attempt_id,current_attempt_number,retry_due_at,wait_kind,
+               input_ref
+             ) values ($1,$2,$3,$4,$5,'{}','waiting','safe',$6,1,$7,'retry_backoff',$8::jsonb)`,
+          [
+            nodeRunId,
+            workspaceA,
+            runId,
+            due,
+            invocationKey,
+            attemptId,
+            dueAt,
+            JSON.stringify(firstAttemptInput),
+          ],
         );
         await client.query(
           `insert into app.node_attempts (
@@ -713,6 +728,7 @@ describe('Coordinator output commit invariants', () => {
         nodeRunAdmissions: [],
         attempts: [
           {
+            admissionKind: 'retry',
             invocationKey,
             nodeId: due,
             attemptNumber: 2,
@@ -734,6 +750,17 @@ describe('Coordinator output commit invariants', () => {
         });
       else
         await expect(retry).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
+      // An admitted retry starts without its predecessor's recorded input; a
+      // retry that isn't admitted leaves the current attempt's in place.
+      const recorded = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ input_ref: unknown }>(
+          `select input_ref from app.node_runs where workspace_id=$1 and id=$2`,
+          [workspaceA, nodeRunId],
+        ),
+      );
+      expect(recorded.rows[0]?.input_ref).toEqual(
+        due === 'past' ? null : firstAttemptInput,
+      );
     }
   });
 

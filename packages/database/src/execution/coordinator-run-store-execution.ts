@@ -232,14 +232,24 @@ async function persistAttemptAdmissions(
         attemptNumber: attempt.attemptNumber,
       };
       physical.set(attempt.invocationKey, ids);
+      // A retry resolves and records its own input (ADR 052), so it starts
+      // without its predecessor's. A resumed wait receives none: the input
+      // its step received stays.
       await client.query(
         `update app.node_runs
            set status='ready', current_attempt_id=$1,
                current_attempt_number=$2, resume_at=null,
                retry_due_at=null, due_wakeup_at=null, wait_kind=null,
+               input_ref=case when $5::boolean then input_ref end,
                updated_at=clock_timestamp()
            where workspace_id=$3 and id=$4`,
-        [ids.attemptId, attempt.attemptNumber, workspaceId, ids.nodeRunId],
+        [
+          ids.attemptId,
+          attempt.attemptNumber,
+          workspaceId,
+          ids.nodeRunId,
+          attempt.admissionKind === 'wait_resume',
+        ],
       );
     }
     if (ids.attemptId === undefined) throw new CoordinatorPlanInvalidError();
