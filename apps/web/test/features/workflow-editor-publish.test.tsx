@@ -19,6 +19,7 @@ import {
   mappingDefinition,
   numericDefinition,
   openRunLens,
+  publishedWorkflowHandlers,
   runDetailHandlers,
   runId,
   runSummary,
@@ -50,6 +51,13 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
       validHandler(() => {
         validations += 1;
       }),
+      http.get(`${workflowApi}/versions`, () =>
+        HttpResponse.json({
+          items:
+            publishes.length > 0 ? [versionBody(versionId, savedGraph)] : [],
+          nextCursor: null,
+        }),
+      ),
       http.post(`${workflowApi}/publish`, ({ request }) => {
         publishes.push({
           etag: request.headers.get('if-match'),
@@ -73,12 +81,10 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
-    await event.click(screen.getByRole('button', { name: 'Publish' }));
+    await event.click(screen.getByRole('button', { name: 'Publish v1' }));
     const lens = await screen.findByRole('dialog', { name: /Publish/u });
     expect(within(lens).getByText(/Runs already in progress/u)).toBeVisible();
-    await event.click(
-      within(lens).getByRole('button', { name: 'Publish this draft' }),
-    );
+    await event.click(within(lens).getByRole('button', { name: 'Publish v1' }));
     expect(
       await screen.findByText('v1 is live', {}, { timeout: 4_000 }),
     ).toBeVisible();
@@ -179,17 +185,15 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
-    await event.click(screen.getByRole('button', { name: 'Publish' }));
+    await event.click(screen.getByRole('button', { name: 'Publish v1' }));
     const lens = await screen.findByRole('dialog', { name: /Publish/u });
-    await event.click(
-      within(lens).getByRole('button', { name: 'Publish this draft' }),
-    );
+    await event.click(within(lens).getByRole('button', { name: 'Publish v1' }));
     expect(await within(lens).findByText('Fix these first')).toBeVisible();
     expect(
       within(lens).getByText(/These steps loop back on themselves/u),
     ).toBeVisible();
     expect(
-      within(lens).getByRole('button', { name: 'Publish this draft' }),
+      within(lens).getByRole('button', { name: 'Publish v1' }),
     ).toBeDisabled();
     expect(publishes).toBe(0);
     await event.click(within(lens).getByRole('button', { name: 'Cancel' }));
@@ -467,6 +471,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
 describe('workflow editor run lens', { timeout: 30_000 }, () => {
   it('associates run-start validation with the input and focuses it', async () => {
     mockServer.use(...editorHandlers(() => undefined));
+    mockServer.use(...publishedWorkflowHandlers());
     renderApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();

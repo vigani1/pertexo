@@ -19,6 +19,7 @@ import {
   openRunLens,
   otherUser,
   pressSave,
+  publishedWorkflowHandlers,
   runDetailHandlers,
   runId,
   runSummary,
@@ -38,6 +39,7 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     const requests: Readonly<{ body: unknown; key: string | null }>[] = [];
     mockServer.use(...editorHandlers(() => undefined));
     mockServer.use(
+      ...publishedWorkflowHandlers(),
       identityHandler(() => identity),
       http.post(`${workflowApi}/runs`, async ({ request }) => {
         requests.push({
@@ -142,9 +144,9 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     renderApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
-    await event.click(screen.getByRole('button', { name: 'Publish' }));
+    await event.click(screen.getByRole('button', { name: 'Publish v1' }));
     await event.click(
-      await screen.findByRole('button', { name: 'Publish this draft' }),
+      await screen.findByRole('button', { name: 'Publish v1' }),
     );
     expect(
       await screen.findByRole('button', { name: 'Retry original publish' }),
@@ -169,7 +171,9 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     await event.click(
       screen.getByRole('button', { name: 'Verify original account' }),
     );
-    await event.click(await screen.findByRole('button', { name: 'Publish' }));
+    await event.click(
+      await screen.findByRole('button', { name: 'Publish v1' }),
+    );
     await event.click(
       await screen.findByRole('button', { name: 'Retry original publish' }),
     );
@@ -195,6 +199,7 @@ describe(
       let runRequests = 0;
       mockServer.use(...editorHandlers(() => undefined));
       mockServer.use(
+        ...publishedWorkflowHandlers(),
         http.get(`${api}/users/me`, () => HttpResponse.json(identity)),
         http.post(`${workflowApi}/runs`, () => {
           runRequests += 1;
@@ -280,9 +285,9 @@ describe(
       const app = renderApp(editorPath, { strict: true });
       const event = userEvent.setup();
       await findCanvas();
-      await event.click(screen.getByRole('button', { name: 'Publish' }));
+      await event.click(screen.getByRole('button', { name: 'Publish v1' }));
       await event.click(
-        await screen.findByRole('button', { name: 'Publish this draft' }),
+        await screen.findByRole('button', { name: 'Publish v1' }),
       );
       await waitFor(() => {
         expect(publishRequests).toBe(1);
