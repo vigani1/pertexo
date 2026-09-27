@@ -100,6 +100,59 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     });
   });
 
+  it('shows a new version on the Versions tab right after publishing it', async () => {
+    let savedGraph = emptyGraph;
+    let published = false;
+    mockServer.use(
+      ...editorHandlers((_request, body) => {
+        savedGraph = body.graph;
+      }),
+    );
+    mockServer.use(
+      validHandler(),
+      workflowSummaryHandler('Order intake', null),
+      http.get(`${workflowApi}/versions`, () =>
+        HttpResponse.json({
+          items: published ? [versionBody(versionId, savedGraph)] : [],
+          nextCursor: null,
+        }),
+      ),
+      http.post(`${workflowApi}/publish`, () => {
+        published = true;
+        return HttpResponse.json({
+          version: versionBody(versionId, savedGraph),
+          reused: false,
+        });
+      }),
+    );
+    // Versions is read first, so its list is cached and fresh when the
+    // publish lands a moment later.
+    const app = renderApp(`${editorPath}/versions`);
+    expect(await screen.findByText(/Nothing published yet/u)).toBeVisible();
+    await app.router.navigate({
+      to: '/w/$workspaceId/workflows/$workflowId',
+      params: { workspaceId, workflowId },
+    });
+    const event = userEvent.setup();
+    await findCanvas();
+    await event.click(addStepButton(/Set fields/u));
+    await event.click(screen.getByRole('button', { name: 'Publish v1' }));
+    const lens = await screen.findByRole('dialog', { name: /Publish/u });
+    await event.click(within(lens).getByRole('button', { name: 'Publish v1' }));
+    expect(
+      await screen.findByText('v1 is live', {}, { timeout: 4_000 }),
+    ).toBeVisible();
+
+    await app.router.navigate({
+      to: '/w/$workspaceId/workflows/$workflowId/versions',
+      params: { workspaceId, workflowId },
+    });
+    const thread = await screen.findByRole('list', {
+      name: 'Published versions',
+    });
+    expect(within(thread).getByRole('listitem')).toHaveTextContent('v1');
+  });
+
   it('stops publishing when the saved draft has issues and lists them', async () => {
     let publishes = 0;
     mockServer.use(...editorHandlers(() => undefined));

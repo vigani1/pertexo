@@ -1,6 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLoaderData, useNavigate } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { WorkflowEditorPage } from '@/features/workflow-editor/public';
+import { workflowSettingsKeys } from '@/features/workflow-settings/queries.public';
 import { ResourceNotFound } from './system-pages';
 import { useWorkflowHubScope } from './workflow-hub-scope';
 
@@ -11,6 +13,7 @@ export function WorkflowBuildRoute() {
     from: '/w/$workspaceId/workflows/$workflowId/',
   });
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   if (!found)
     return (
       <div className="px-4">
@@ -35,6 +38,16 @@ export function WorkflowBuildRoute() {
         void navigate({
           to: '/w/$workspaceId/runs/$runId',
           params: { workspaceId: workspace.id, runId },
+        });
+      }}
+      // Versions, Triggers and Settings read what a publish changes.
+      onPublished={() => {
+        void queryClient.invalidateQueries({
+          queryKey: workflowSettingsKeys.root(
+            user.id,
+            workspace.id,
+            workflowId,
+          ),
         });
       }}
     />

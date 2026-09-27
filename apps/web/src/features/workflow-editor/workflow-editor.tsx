@@ -55,12 +55,15 @@ export function WorkflowEditorPage({
   workspace,
   workflowId,
   onRunAccepted,
+  onPublished,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   workflowId: string;
   onRunAccepted: (runId: string) => void;
+  /** After a publish lands, for reads of the workflow outside the editor. */
+  onPublished?: () => void;
 }>) {
   const draft = useSuspenseQuery(
     workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
@@ -90,6 +93,7 @@ export function WorkflowEditorPage({
           definitions={catalog.data.definitions.items}
           connections={connections.data.items}
           onRunAccepted={onRunAccepted}
+          {...(onPublished === undefined ? {} : { onPublished })}
         />
       </ReactFlowProvider>
     </EditorProvider>
@@ -109,6 +113,7 @@ function WorkflowEditorSession({
   definitions,
   connections,
   onRunAccepted,
+  onPublished,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -117,6 +122,7 @@ function WorkflowEditorSession({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   onRunAccepted: (runId: string) => void;
+  onPublished?: () => void;
 }>) {
   const store = useEditorStoreApi();
   const queryClient = useQueryClient();
@@ -165,6 +171,7 @@ function WorkflowEditorSession({
       void queryClient.invalidateQueries({
         queryKey: workflowKeys.scope(userId, workspace.id),
       });
+      onPublished?.();
     },
   });
   const { publication } = commandSession;
