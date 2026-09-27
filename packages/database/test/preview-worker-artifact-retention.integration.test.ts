@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   artifactStorageKey,
   createPendingPreviewArtifact,
-} from '../src/execution/artifacts.js';
+} from '../src/execution/artifacts/artifacts.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import {
   createControlLedgerCoordinator,
@@ -17,7 +17,7 @@ import {
 import {
   completePreviewAttempt,
   PREVIEW_STATUS,
-} from '../src/execution/preview-execution.js';
+} from '../src/execution/previews/preview-execution.js';
 import { createPreviewRetentionCoordinator } from '../src/lifecycle/preview-retention.js';
 import { databaseSchema } from '../src/schema.js';
 import {

@@ -10,9 +10,8 @@ import {
   PREVIEW_STATUS,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-  reconcileExpiredPreviewAttempt,
   reconcilePreviewDelivery,
-} from '../src/execution/preview-execution.js';
+} from '../src/execution/previews/preview-execution.js';
 import {
   acceptFixture,
   claimFixture,
@@ -44,20 +43,23 @@ describe('preview worker lease reconciliation', () => {
       'worker-preview-g',
       5,
     );
+    const beforeDispatchDelivery = await reconciliationFixture(beforeDispatch);
     await expireLease(beforeDispatch.fixture.previewAttemptId);
     await expect(
-      reconcileExpiredPreviewAttempt(workerPool, {
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: beforeDispatchDelivery.attemptFenceToken,
+        delivery: beforeDispatchDelivery.delivery,
         previewAttemptId: beforeDispatch.fixture.previewAttemptId,
         previewRunId: beforeDispatch.fixture.previewRunId,
         workspaceId,
       }),
-    ).rejects.toMatchObject({ code: 'reconciliation_reclaim_required' });
+    ).resolves.toMatchObject({ kind: 'redelivered' });
     const reclaimedBeforeDispatch = await claimFixture(
       beforeDispatch.fixture,
       'worker-preview-g2',
     );
     expect(reclaimedBeforeDispatch.lease.attemptFenceToken).toBe(
-      beforeDispatch.lease.attemptFenceToken + 1,
+      beforeDispatch.lease.attemptFenceToken + 2,
     );
 
     const afterDispatch = await claimFixture(
@@ -65,18 +67,24 @@ describe('preview worker lease reconciliation', () => {
       'worker-preview-h',
       5,
     );
+    const afterDispatchDelivery = await reconciliationFixture(afterDispatch);
     await markPreviewDispatched(workerPool, {
       lease: afterDispatch.lease,
       workerId: afterDispatch.workerId,
     });
     await expireLease(afterDispatch.fixture.previewAttemptId);
     await expect(
-      reconcileExpiredPreviewAttempt(workerPool, {
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: afterDispatchDelivery.attemptFenceToken,
+        delivery: afterDispatchDelivery.delivery,
         previewAttemptId: afterDispatch.fixture.previewAttemptId,
         previewRunId: afterDispatch.fixture.previewRunId,
         workspaceId,
       }),
-    ).resolves.toEqual({ status: PREVIEW_STATUS.outcomeUnknown });
+    ).resolves.toMatchObject({
+      kind: 'completed',
+      status: PREVIEW_STATUS.outcomeUnknown,
+    });
 
     const safeAfterDispatch = await claimFixture(
       await acceptFixture({
@@ -86,24 +94,27 @@ describe('preview worker lease reconciliation', () => {
       'worker-preview-safe',
       5,
     );
+    const safeDelivery = await reconciliationFixture(safeAfterDispatch);
     await markPreviewDispatched(workerPool, {
       lease: safeAfterDispatch.lease,
       workerId: safeAfterDispatch.workerId,
     });
     await expireLease(safeAfterDispatch.fixture.previewAttemptId);
     await expect(
-      reconcileExpiredPreviewAttempt(workerPool, {
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: safeDelivery.attemptFenceToken,
+        delivery: safeDelivery.delivery,
         previewAttemptId: safeAfterDispatch.fixture.previewAttemptId,
         previewRunId: safeAfterDispatch.fixture.previewRunId,
         workspaceId,
       }),
-    ).rejects.toMatchObject({ code: 'reconciliation_reclaim_required' });
+    ).resolves.toMatchObject({ kind: 'redelivered' });
     const reclaimedSafe = await claimFixture(
       safeAfterDispatch.fixture,
       'worker-preview-safe2',
     );
     expect(reclaimedSafe.lease.attemptFenceToken).toBe(
-      safeAfterDispatch.lease.attemptFenceToken + 1,
+      safeAfterDispatch.lease.attemptFenceToken + 2,
     );
 
     const idempotentAfterDispatch = await claimFixture(
@@ -114,6 +125,7 @@ describe('preview worker lease reconciliation', () => {
       'worker-preview-keyed',
       5,
     );
+    const keyedDelivery = await reconciliationFixture(idempotentAfterDispatch);
     const providerDispatchBinding = 'email:v1:sha256:' + 'e'.repeat(64);
     expect(
       idempotentAfterDispatch.lease.providerDispatchUnresolved,
@@ -125,12 +137,14 @@ describe('preview worker lease reconciliation', () => {
     });
     await expireLease(idempotentAfterDispatch.fixture.previewAttemptId);
     await expect(
-      reconcileExpiredPreviewAttempt(workerPool, {
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: keyedDelivery.attemptFenceToken,
+        delivery: keyedDelivery.delivery,
         previewAttemptId: idempotentAfterDispatch.fixture.previewAttemptId,
         previewRunId: idempotentAfterDispatch.fixture.previewRunId,
         workspaceId,
       }),
-    ).rejects.toMatchObject({ code: 'reconciliation_reclaim_required' });
+    ).resolves.toMatchObject({ kind: 'redelivered' });
     const reclaimedIdempotent = await claimFixture(
       idempotentAfterDispatch.fixture,
       'worker-preview-keyed2',
@@ -161,21 +175,26 @@ describe('preview worker lease reconciliation', () => {
 
     // A live lease blocks reconciliation, and once terminal it is idempotent.
     const live = await claimFixture(await acceptFixture(), 'worker-preview-i');
+    const liveDelivery = await reconciliationFixture(live);
     await expect(
-      reconcileExpiredPreviewAttempt(workerPool, {
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: liveDelivery.attemptFenceToken,
+        delivery: liveDelivery.delivery,
         previewAttemptId: live.fixture.previewAttemptId,
         previewRunId: live.fixture.previewRunId,
         workspaceId,
       }),
-    ).rejects.toBeInstanceOf(PreviewAttemptStateError);
+    ).resolves.toMatchObject({ kind: 'rescheduled' });
     await expireLease(live.fixture.previewAttemptId);
     await expect(
-      reconcileExpiredPreviewAttempt(workerPool, {
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: afterDispatchDelivery.attemptFenceToken,
+        delivery: afterDispatchDelivery.delivery,
         previewAttemptId: afterDispatch.fixture.previewAttemptId,
         previewRunId: afterDispatch.fixture.previewRunId,
         workspaceId,
       }),
-    ).resolves.toEqual({ status: PREVIEW_STATUS.outcomeUnknown });
+    ).resolves.toEqual({ kind: 'duplicate' });
   });
 
   it('durably schedules, reschedules, and deduplicates lease reconciliation', async () => {

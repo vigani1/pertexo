@@ -108,6 +108,15 @@ export function applyWorkflowStops(
         compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
     )) {
       if (isSyntheticLegacyLoop(initialLoop)) continue;
+      const initialControl = invocations.get(initialLoop.controlInvocationKey);
+      // Stopping the run cannot rewrite a loop that already settled. Its
+      // successor may not have been admitted by the next coordinator pass yet.
+      if (
+        initialLoop.activeOrdinals.length === 0 &&
+        initialControl !== undefined &&
+        isTerminalNodeStatus(initialControl.status)
+      )
+        continue;
       let loop = initialLoop;
       for (const ordinal of initialLoop.activeOrdinals) {
         const iterationPath = [

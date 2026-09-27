@@ -1,16 +1,13 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
 
-import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
   workflowDraftRepresentationTag,
-  type WorkflowDefinitionCatalogV1,
-  type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 
-import { canonicalApplicationPayloadChecksum } from '../execution/outbox.js';
+import { canonicalApplicationPayloadChecksum } from '../execution/transport/outbox.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
@@ -27,38 +24,13 @@ import type {
   SaveWorkflowDraftInput,
   WorkflowAuthoringDatabase,
 } from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringTestHooks } from './workflow-authoring-types.js';
 import type { WorkflowDraftRecord } from './workflow-authoring-records.js';
+import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 
 type DraftStore = Pick<
   WorkflowAuthoringDatabase,
   'createWorkflow' | 'saveDraft'
 >;
-type SelectedCatalogs = Readonly<{
-  definitionCatalog: WorkflowDefinitionCatalogV1;
-  placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;
-}>;
-
-export type WorkflowAuthoringDraftContext = Readonly<{
-  keyDigest(key: string): string;
-  requireAuthor(
-    client: PoolClient,
-    workspaceId: string,
-    actorId: string,
-  ): Promise<void>;
-  requirePlaceable(
-    previous: WorkflowGraph,
-    next: WorkflowGraph,
-    placementCatalog: WorkflowDefinitionCatalogV1 | undefined,
-  ): void;
-  selectCatalogs(client: Pick<PoolClient, 'query'>): Promise<SelectedCatalogs>;
-  testHooks?: WorkflowAuthoringTestHooks;
-  transact<T>(
-    workspaceId: string,
-    actorId: string,
-    operation: (client: PoolClient) => Promise<T>,
-  ): Promise<T>;
-}>;
 
 const uuidSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(128);
@@ -67,7 +39,7 @@ const workflowDraftTagSchema = z
   .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
 
 async function createWorkflow(
-  context: WorkflowAuthoringDraftContext,
+  context: WorkflowAuthoringWriteContext,
   input: CreateWorkflowInput,
 ): Promise<CreateWorkflowResult> {
   return context.transact(input.workspaceId, input.actorId, async (client) => {
@@ -143,7 +115,7 @@ async function createWorkflow(
 }
 
 async function saveDraft(
-  context: WorkflowAuthoringDraftContext,
+  context: WorkflowAuthoringWriteContext,
   input: SaveWorkflowDraftInput,
 ): Promise<WorkflowDraftRecord> {
   const representationTag = workflowDraftTagSchema.parse(
@@ -256,7 +228,7 @@ function draftRepresentationTag(
 }
 
 export function createWorkflowAuthoringDraftStore(
-  context: WorkflowAuthoringDraftContext,
+  context: WorkflowAuthoringWriteContext,
 ): DraftStore {
   return Object.freeze({
     createWorkflow: (input) => createWorkflow(context, input),

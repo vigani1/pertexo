@@ -113,7 +113,7 @@ export const MUTATIONS = Object.freeze([
   }),
   Object.freeze({
     id: 'remove-stale-attempt-fence',
-    file: 'packages/database/src/execution/node-attempt-run-store-outcomes.ts',
+    file: 'packages/database/src/execution/node-attempts/node-attempt-run-store-outcomes.ts',
     search: '    Number(row.fence_token) !== input.lease.fenceToken ||\n',
     replacement: '',
     prepare: ['pnpm', '--filter', '@pertexo/database', 'build'],
@@ -136,7 +136,7 @@ export const MUTATIONS = Object.freeze([
   }),
   Object.freeze({
     id: 'remove-inbox-duplicate-branch',
-    file: 'packages/database/src/execution/inbox.ts',
+    file: 'packages/database/src/execution/transport/inbox.ts',
     search: '      if (inserted.length === 0) {',
     replacement: '      if (inserted.length < 0) {',
     command: [

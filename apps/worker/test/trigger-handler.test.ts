@@ -134,6 +134,27 @@ describe('trigger reconciliation handler', () => {
     expect(selected.reconciliation.recordFailure).not.toHaveBeenCalled();
   });
 
+  it('does not start a reconciliation transaction after delivery cancellation', async () => {
+    const selected = dependencies();
+    const controller = new AbortController();
+    const current = await selected.reader.readForExecution({
+      workspaceId: WORKSPACE_ID,
+      workflowVersionId: VERSION_ID,
+    });
+    vi.mocked(selected.reader.readForExecution).mockImplementation(() => {
+      controller.abort(new Error('delivery canceled'));
+      return Promise.resolve(current);
+    });
+
+    await expect(
+      createTriggerReconciliationHandler(selected).handle(delivery(), {
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow('delivery canceled');
+    expect(selected.reconciliation.reconcile).not.toHaveBeenCalled();
+    expect(selected.reconciliation.recordFailure).not.toHaveBeenCalled();
+  });
+
   it('safely acknowledges a stale publication job', async () => {
     const selected = dependencies();
     vi.mocked(selected.reconciliation.reconcile).mockRejectedValue(

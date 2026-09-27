@@ -11,7 +11,7 @@ import {
   type NodeAttemptLease,
 } from '../src/testing.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
-import { scopedInvocationKey } from '../src/execution/node-attempt-run-store-transactions.js';
+import { scopedInvocationKey } from '../src/execution/node-attempts/node-attempt-run-store-transactions.js';
 
 const invocationKeyCases = JSON.parse(
   readFileSync(

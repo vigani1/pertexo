@@ -20,6 +20,11 @@ import { expect } from 'vitest';
 
 import { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
 import { coordinatorFixture } from '../coordinator-consumer.fixtures.js';
+import {
+  seedSerialForEachWorkflow,
+  seedStructuredForEachWorkflow,
+  type StructuredForEachKind,
+} from './coordinator-workflow-fixtures.js';
 
 const {
   actorId,
@@ -341,6 +346,35 @@ export function acceptParallelRun(): Promise<AcceptedRun> {
     workflowId: parallelWorkflowId,
     workflowVersionId: parallelWorkflowVersionId,
   });
+}
+
+export async function acceptSerialForEachRun(): Promise<AcceptedRun> {
+  const identity = {
+    workflowId: randomUUID(),
+    workflowVersionId: randomUUID(),
+  };
+  await seedSerialForEachWorkflow(coordinatorFixture.ownerQuery, {
+    actorId,
+    workspaceId,
+    identity,
+  });
+  return acceptFixtureRun({ ...identity, iterationBudget: 1_000 });
+}
+
+export async function acceptStructuredForEachRun(
+  kind: StructuredForEachKind,
+): Promise<AcceptedRun> {
+  const identity = {
+    workflowId: randomUUID(),
+    workflowVersionId: randomUUID(),
+  };
+  await seedStructuredForEachWorkflow(coordinatorFixture.ownerQuery, {
+    actorId,
+    workspaceId,
+    identity,
+    kind,
+  });
+  return acceptFixtureRun({ ...identity, iterationBudget: 1_000 });
 }
 
 export function acceptForEachRun(): Promise<AcceptedRun> {

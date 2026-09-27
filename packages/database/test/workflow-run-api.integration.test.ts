@@ -8,15 +8,15 @@ import { CompatibilityReleaseMismatchError } from '../src/compatibility/compatib
 import {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
-} from '../src/execution/execution-acceptance.js';
+} from '../src/execution/runs/execution-acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
   createWorkflowRunDatabase,
   WorkflowRunNotFoundError,
   WorkflowRunNotExecutableError,
   WorkflowRunReadCapacityError,
-} from '../src/execution/workflow-run-api.js';
-import type { ExecutionStateConflictError } from '../src/execution/execution-state.js';
+} from '../src/execution/runs/workflow-run-api.js';
+import type { ExecutionStateConflictError } from '../src/execution/runs/execution-state.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { explainDocument, explainWork } from './support/query-plan.js';
@@ -273,7 +273,9 @@ async function resetFixture(): Promise<void> {
         compatibility_release_epoch, published_by)
      values
        ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, 1, $7),
-       ($8, $2, $3, 2, 1, $4::jsonb, $9, 2, $10::jsonb, 1, $7)`,
+       ($8, $2, $3, 2, 1,
+        jsonb_set($4::jsonb, '{settings}', '{"maxRunDurationMs":5000}'::jsonb),
+        $9, 2, $10::jsonb, 1, $7)`,
     [
       workflowVersionId,
       workspaceId,
@@ -284,7 +286,11 @@ async function resetFixture(): Promise<void> {
       actorId,
       retainedWorkflowVersionId,
       `wf:v2:sha256:${'b'.repeat(64)}`,
-      JSON.stringify({ schemaVersion: 2, marker: 'run-api-retained' }),
+      JSON.stringify({
+        schemaVersion: 2,
+        marker: 'run-api-retained',
+        graph: { settings: { maxRunDurationMs: 5_000 } },
+      }),
     ],
   );
   await ownerQuery(
@@ -955,7 +961,18 @@ describe('workflow run API persistence', () => {
     expect(replay.run).toMatchObject({
       workflowVersionId: retainedWorkflowVersionId,
       triggerType: 'replay',
+      deadlineAt: new Date(replay.run.createdAt.getTime() + 5_000),
     });
+    expect(source.run.deadlineAt).toBeNull();
+    const duplicate = await database.replay(
+      replayInput(
+        source.run.id,
+        digest('retained-replay-request'),
+        digest('retained-replay-key'),
+        retainedWorkflowVersionId,
+      ),
+    );
+    expect(duplicate.run.deadlineAt).toEqual(replay.run.deadlineAt);
     const state = await apiQuery(
       `select run.workflow_version_id,
               checkpoint.scheduler_state->>'workflowVersionId' checkpoint_version_id,

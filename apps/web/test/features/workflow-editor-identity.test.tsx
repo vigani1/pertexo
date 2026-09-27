@@ -17,6 +17,7 @@ import {
   openRunLens,
   otherUser,
   pressSave,
+  publishedWorkflowHandlers,
   user,
   validHandler,
   workflowApi,
@@ -110,6 +111,7 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
     let runRequests = 0;
     mockServer.use(...editorHandlers(() => undefined));
     mockServer.use(
+      ...publishedWorkflowHandlers(),
       http.get(`${api}/users/me`, () => {
         if (identity === 'original') return HttpResponse.json(user);
         if (identity === 'network') return HttpResponse.error();
@@ -178,6 +180,7 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
     let publishRequests = 0;
     mockServer.use(...editorHandlers(() => undefined, { graph: oneStepGraph }));
     mockServer.use(
+      ...publishedWorkflowHandlers(),
       validHandler(),
       http.post(`${workflowApi}/publish`, () => {
         publishRequests += 1;
@@ -199,9 +202,9 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
       await screen.findByRole('button', { name: 'Retry same run' }),
     ).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Cancel' }));
-    await event.click(screen.getByRole('button', { name: 'Publish' }));
+    await event.click(screen.getByRole('button', { name: 'Publish v2' }));
     await event.click(
-      await screen.findByRole('button', { name: 'Publish this draft' }),
+      await screen.findByRole('button', { name: 'Publish v2' }),
     );
     expect(
       await screen.findByRole('button', { name: 'Retry original publish' }),
@@ -220,9 +223,9 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
       screen.queryByRole('button', { name: 'Retry same run' }),
     ).not.toBeInTheDocument();
     await event.click(screen.getByRole('button', { name: 'Cancel' }));
-    await event.click(screen.getByRole('button', { name: 'Publish' }));
+    await event.click(screen.getByRole('button', { name: 'Publish v2' }));
     expect(
-      await screen.findByRole('button', { name: 'Publish this draft' }),
+      await screen.findByRole('button', { name: 'Publish v2' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Retry original publish' }),

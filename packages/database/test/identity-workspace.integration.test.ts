@@ -215,6 +215,7 @@ beforeAll(async () => {
   );
   identityResources.push(oidcStore);
   const user = await identityDatabase.createUser({
+    id: '00000000-0000-4000-8000-000000000001',
     email: `${randomUUID()}@example.test`,
     displayName: 'Phase One Owner',
   });
@@ -1668,7 +1669,7 @@ describe('identity/workspace persistence', () => {
   });
 
   it('returns one durable workspace creation for concurrent exact idempotency retries and conflicts on changed input', async () => {
-    const slug = `idempotent-${randomUUID().slice(0, 12)}`;
+    const slug = 'idempotent-hash-golden';
     const idempotencyKey = `create-${randomUUID()}`;
     const command = {
       name: 'Idempotent workspace',
@@ -1698,6 +1699,26 @@ describe('identity/workspace persistence', () => {
     );
     expect(aggregate.memberships).toHaveLength(1);
     expect(aggregate.events).toHaveLength(1);
+    const inspection = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      const receipt = await inspection.query<{ request_hash: string }>(
+        `select request_hash from app.workspace_creation_idempotency_records
+          where actor_user_id=$1 and key_hash=$2`,
+        [
+          ownerUserId,
+          createHash('sha256').update(idempotencyKey).digest('hex'),
+        ],
+      );
+      const historicalBytes = `{"actorId":"${ownerUserId}","metadata":{},"name":"Idempotent workspace","requestedWorkspaceId":null,"slug":"${slug}"}`;
+      const golden =
+        'e26263bff6894ce437a96dc2757c41515f9fc389c480b65757a8b164079d4482';
+      expect(createHash('sha256').update(historicalBytes).digest('hex')).toBe(
+        golden,
+      );
+      expect(receipt.rows).toEqual([{ request_hash: golden }]);
+    } finally {
+      await inspection.end();
+    }
   });
 
   it('resolves one exact issuer/subject identity under concurrent first login', async () => {
@@ -2100,6 +2121,7 @@ describe('identity/workspace persistence', () => {
   it('creates one pending invitation, replays exactly, and arbitrates concurrent duplicates', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
+        id: '00000000-0000-4000-8000-000000000002',
         name: 'Invitation creation',
         slug: `invite-create-${randomUUID().slice(0, 8)}`,
         ownerUserId,
@@ -2108,9 +2130,56 @@ describe('identity/workspace persistence', () => {
     const command = invitationCreateCommand(
       invitationWorkspace.id,
       ownerUserId,
-      `${randomUUID()}@example.test`,
+      'hash-golden@example.test',
     );
-    const first = await identityDatabase.createWorkspaceInvitation(command);
+    const first = await identityDatabase.createWorkspaceInvitation({
+      ...command,
+      invitationId: '00000000-0000-4000-8000-000000000006',
+      deliveryAttemptId: '00000000-0000-4000-8000-000000000007',
+    });
+    const inspection = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      const stored = await inspection.query<{
+        request_hash: string;
+        outbox_id: string;
+        payload_checksum: string;
+        delivery_attempt_id: string;
+      }>(
+        `select receipt.request_hash,outbox.id outbox_id,
+                outbox.payload_checksum,
+                outbox.payload->>'deliveryAttemptId' delivery_attempt_id
+           from app.workspace_invitation_command_receipts receipt
+           join app.outbox_events outbox
+             on outbox.aggregate_id=$3 and outbox.workspace_id=$1
+          where receipt.workspace_id=$1 and receipt.actor_user_id=$2
+            and receipt.operation='create' and receipt.key_hash=$4`,
+        [
+          invitationWorkspace.id,
+          ownerUserId,
+          first.invitation.id,
+          createHash('sha256').update(command.idempotencyKey).digest('hex'),
+        ],
+      );
+      expect(stored.rows).toHaveLength(1);
+      const row = stored.rows[0];
+      if (row === undefined) throw new Error('Expected invitation evidence');
+      expect(row.delivery_attempt_id).toBe(
+        '00000000-0000-4000-8000-000000000007',
+      );
+      const requestBytes = `{"email":"${command.email}","role":"viewer"}`;
+      const outboxBytes = `{"deliveryAttemptId":"${row.delivery_attempt_id}","invitationId":"${first.invitation.id}","outboxEventId":"${row.outbox_id}","schemaVersion":1,"workspaceId":"${invitationWorkspace.id}"}`;
+      const requestGolden =
+        'a9bd47c94a330cf5d0f952f3109862e3175d9743a1a0acf39d9023041297fccf';
+      expect(createHash('sha256').update(requestBytes).digest('hex')).toBe(
+        requestGolden,
+      );
+      expect(row.request_hash).toBe(requestGolden);
+      expect(row.payload_checksum).toBe(
+        createHash('sha256').update(outboxBytes).digest('hex'),
+      );
+    } finally {
+      await inspection.end();
+    }
     await expect(
       identityDatabase.createWorkspaceInvitation(command),
     ).resolves.toMatchObject({
@@ -3646,9 +3715,23 @@ describe('identity/workspace persistence', () => {
       },
     );
     const email = `${randomUUID()}@example.test`;
-    const first = await identityDatabase.createWorkspaceInvitation(
-      invitationCreateCommand(invitationWorkspace.id, ownerUserId, email),
+    const firstCommand = invitationCreateCommand(
+      invitationWorkspace.id,
+      ownerUserId,
+      email,
     );
+    const first =
+      await identityDatabase.createWorkspaceInvitation(firstCommand);
+    const oldIntentId = randomUUID();
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: first.invitation.id,
+      tokenDigest: firstCommand.tokenDigest,
+      intentId: oldIntentId,
+      bindingDigest: invitationTokenDigest(randomUUID()),
+      csrfDigest: invitationTokenDigest(randomUUID()),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
     await tenantDatabase.withWorkspace(
       invitationWorkspace.id,
       async ({ db }) => {
@@ -3657,6 +3740,11 @@ describe('identity/workspace persistence', () => {
             set expires_at=clock_timestamp()-interval '1 second'
           where id=${first.invitation.id}::uuid
       `);
+        await db.execute(sql`
+          update app.workspace_invitation_delivery_attempts
+             set status='unknown'
+           where invitation_id=${first.invitation.id}::uuid
+        `);
       },
     );
 
@@ -3678,17 +3766,375 @@ describe('identity/workspace persistence', () => {
     expect(
       page.items.find((item) => item.id === replacement.invitation.id),
     ).toMatchObject({ status: 'pending' });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        const attempt = await db.execute(sql<{
+          status: string;
+          token_ciphertext: string | null;
+        }>`
+          select status,token_ciphertext
+            from app.workspace_invitation_delivery_attempts
+           where invitation_id=${first.invitation.id}::uuid
+        `);
+        expect(attempt.rows).toEqual([
+          { status: 'unknown', token_ciphertext: null },
+        ]);
+        const intent = await db.execute(sql<{ status: string }>`
+          select status from app.workspace_invitation_acceptance_intents
+           where id=${oldIntentId}::uuid
+        `);
+        expect(intent.rows).toEqual([{ status: 'superseded' }]);
+      },
+    );
+  });
+
+  it('expires queued, failed, unknown and submitted deliveries through listing without erasing uncertainty', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation list expiry',
+        slug: `invite-list-expiry-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const cases = ['queued', 'failed', 'unknown', 'submitted'] as const;
+    const invitations = [];
+    for (const status of cases) {
+      const command = invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      );
+      const created = await identityDatabase.createWorkspaceInvitation(command);
+      const intentId = randomUUID();
+      await identityDatabase.resolveInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        invitationId: created.invitation.id,
+        tokenDigest: command.tokenDigest,
+        intentId,
+        bindingDigest: invitationTokenDigest(randomUUID()),
+        csrfDigest: invitationTokenDigest(randomUUID()),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+      });
+      await tenantDatabase.withWorkspace(
+        invitationWorkspace.id,
+        async ({ db }) => {
+          await db.execute(sql`
+          update app.workspace_invitation_delivery_attempts
+             set status=${status},
+                 token_ciphertext=case when ${status}='submitted' then null else token_ciphertext end,
+                 token_nonce=case when ${status}='submitted' then null else token_nonce end,
+                 token_tag=case when ${status}='submitted' then null else token_tag end,
+                 token_key_version=case when ${status}='submitted' then null else token_key_version end
+           where invitation_id=${created.invitation.id}::uuid
+        `);
+          await db.execute(sql`
+          update app.workspace_invitations
+             set expires_at=clock_timestamp()-interval '1 second'
+           where id=${created.invitation.id}::uuid
+        `);
+        },
+      );
+      invitations.push({
+        invitationId: created.invitation.id,
+        intentId,
+        status,
+      });
+    }
+    const page = await identityDatabase.listWorkspaceInvitations(
+      invitationWorkspace.id,
+      ownerUserId,
+    );
+    expect(page.items).toHaveLength(cases.length);
+    for (const { invitationId, intentId, status } of invitations) {
+      expect(page.items.find((item) => item.id === invitationId)).toMatchObject(
+        {
+          status: 'expired',
+          deliveryStatus: 'canceled',
+        },
+      );
+      await tenantDatabase.withWorkspace(
+        invitationWorkspace.id,
+        async ({ db }) => {
+          const evidence = await db.execute(sql<{
+            attempt_status: string;
+            intent_status: string;
+            token_ciphertext: string | null;
+          }>`
+          select attempt.status attempt_status,
+                 attempt.token_ciphertext,
+                 intent.status intent_status
+            from app.workspace_invitation_delivery_attempts attempt
+            join app.workspace_invitation_acceptance_intents intent
+              on intent.invitation_id=attempt.invitation_id
+           where attempt.invitation_id=${invitationId}::uuid
+             and intent.id=${intentId}::uuid
+        `);
+          expect(evidence.rows).toEqual([
+            {
+              attempt_status:
+                status === 'submitted' || status === 'unknown'
+                  ? status
+                  : 'canceled',
+              intent_status: 'superseded',
+              token_ciphertext: null,
+            },
+          ]);
+        },
+      );
+    }
+  });
+
+  it('retires evidence left behind by an already-expired invitation, including verified and wrong-account journeys', async () => {
+    const workspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Prior invitation expiry',
+      slug: `invite-prior-expiry-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    for (const intentStatus of ['verified', 'wrong_account'] as const) {
+      const command = invitationCreateCommand(
+        workspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      );
+      const invitation =
+        await identityDatabase.createWorkspaceInvitation(command);
+      const intentId = randomUUID();
+      await identityDatabase.resolveInvitationAcceptance({
+        workspaceId: workspace.id,
+        invitationId: invitation.invitation.id,
+        tokenDigest: command.tokenDigest,
+        intentId,
+        bindingDigest: invitationTokenDigest(randomUUID()),
+        csrfDigest: invitationTokenDigest(randomUUID()),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+      });
+      await tenantDatabase.withWorkspace(workspace.id, async ({ db }) => {
+        await db.execute(sql`
+          update app.workspace_invitations
+             set status='expired',delivery_status='canceled',
+                 expires_at=clock_timestamp()-interval '1 second'
+           where id=${invitation.invitation.id}::uuid
+        `);
+        await db.execute(sql`
+          update app.workspace_invitation_delivery_attempts
+             set status='unknown'
+           where invitation_id=${invitation.invitation.id}::uuid
+        `);
+        await db.execute(sql`
+          update app.workspace_invitation_acceptance_intents
+             set status=${intentStatus}
+           where id=${intentId}::uuid
+        `);
+      });
+      await identityDatabase.listWorkspaceInvitations(
+        workspace.id,
+        ownerUserId,
+      );
+      await tenantDatabase.withWorkspace(workspace.id, async ({ db }) => {
+        const result = await db.execute(sql<{
+          attempt_status: string;
+          token_ciphertext: string | null;
+          intent_status: string;
+        }>`
+          select attempt.status attempt_status,attempt.token_ciphertext,
+                 intent.status intent_status
+            from app.workspace_invitation_delivery_attempts attempt
+            join app.workspace_invitation_acceptance_intents intent
+              on intent.invitation_id=attempt.invitation_id
+           where attempt.invitation_id=${invitation.invitation.id}::uuid
+             and intent.id=${intentId}::uuid
+        `);
+        expect(result.rows).toEqual([
+          {
+            attempt_status: 'unknown',
+            token_ciphertext: null,
+            intent_status: 'superseded',
+          },
+        ]);
+      });
+    }
+  });
+
+  it('serializes expired-list cleanup with a verified acceptance without granting membership', async () => {
+    const workspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Invitation expiry acceptance race',
+      slug: `invite-expiry-race-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Expiry race recipient',
+    });
+    const command = invitationCreateCommand(
+      workspace.id,
+      ownerUserId,
+      recipient.email,
+    );
+    const invitation =
+      await identityDatabase.createWorkspaceInvitation(command);
+    const intentId = randomUUID();
+    const bindingDigest = invitationTokenDigest(randomUUID());
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: workspace.id,
+      invitationId: invitation.invitation.id,
+      tokenDigest: command.tokenDigest,
+      intentId,
+      bindingDigest,
+      csrfDigest: invitationTokenDigest(randomUUID()),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await identityDatabase.recordInvitationAcceptanceProof({
+      workspaceId: workspace.id,
+      intentId,
+      bindingDigest,
+      userId: recipient.id,
+      verifiedEmail: recipient.email,
+      verifiedAt: new Date(),
+    });
+    await tenantDatabase.withWorkspace(workspace.id, async ({ db }) => {
+      await db.execute(sql`
+        update app.workspace_invitations
+           set expires_at=clock_timestamp()-interval '1 second'
+         where id=${invitation.invitation.id}::uuid
+      `);
+    });
+    const [list, acceptance] = await Promise.allSettled([
+      identityDatabase.listWorkspaceInvitations(workspace.id, ownerUserId),
+      identityDatabase.completeInvitationAcceptance({
+        workspaceId: workspace.id,
+        intentId,
+        invitationRevision: invitation.invitation.revision,
+        actorUserId: recipient.id,
+        idempotencyKey: randomUUID(),
+        replacementSession: {
+          authority: 'opaque',
+          id: randomUUID(),
+          tokenDigest: invitationTokenDigest(randomUUID()),
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+      }),
+    ]);
+    expect(list.status).toBe('fulfilled');
+    expect(acceptance).toMatchObject({
+      status: 'rejected',
+      reason: { reason: 'superseded' },
+    });
+    await tenantDatabase.withWorkspace(workspace.id, async ({ db }) => {
+      const state = await db.execute(sql<{
+        invitation_status: string;
+        intent_status: string;
+        memberships: number;
+      }>`
+        select invitation.status invitation_status,intent.status intent_status,
+               (select count(*)::int from app.workspace_memberships membership
+                 where membership.workspace_id=invitation.workspace_id
+                   and membership.user_id=${recipient.id}::uuid) memberships
+          from app.workspace_invitations invitation
+          join app.workspace_invitation_acceptance_intents intent
+            on intent.invitation_id=invitation.id
+         where invitation.id=${invitation.invitation.id}::uuid
+           and intent.id=${intentId}::uuid
+      `);
+      expect(state.rows).toEqual([
+        {
+          invitation_status: 'expired',
+          intent_status: 'superseded',
+          memberships: 0,
+        },
+      ]);
+    });
+  });
+
+  it('expires a resolver-selected invitation and supersedes its open journey', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation resolver expiry',
+        slug: `invite-resolve-expiry-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const command = invitationCreateCommand(
+      invitationWorkspace.id,
+      ownerUserId,
+      `${randomUUID()}@example.test`,
+    );
+    const created = await identityDatabase.createWorkspaceInvitation(command);
+    const intentId = randomUUID();
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest: command.tokenDigest,
+      intentId,
+      bindingDigest: invitationTokenDigest(randomUUID()),
+      csrfDigest: invitationTokenDigest(randomUUID()),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        await db.execute(sql`
+        update app.workspace_invitations
+           set expires_at=clock_timestamp()-interval '1 second'
+         where id=${created.invitation.id}::uuid
+      `);
+      },
+    );
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        invitationId: created.invitation.id,
+        tokenDigest: command.tokenDigest,
+        intentId: randomUUID(),
+        bindingDigest: invitationTokenDigest(randomUUID()),
+        csrfDigest: invitationTokenDigest(randomUUID()),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+      }),
+    ).resolves.toBeNull();
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        const states = await db.execute(sql<{
+          invitation_status: string;
+          intent_status: string;
+          attempt_status: string;
+          token_ciphertext: string | null;
+        }>`
+        select invitation.status invitation_status,
+               intent.status intent_status,
+               attempt.status attempt_status,
+               attempt.token_ciphertext
+          from app.workspace_invitations invitation
+          join app.workspace_invitation_acceptance_intents intent
+            on intent.invitation_id=invitation.id
+          join app.workspace_invitation_delivery_attempts attempt
+            on attempt.invitation_id=invitation.id
+         where invitation.id=${created.invitation.id}::uuid
+           and intent.id=${intentId}::uuid
+      `);
+        expect(states.rows).toEqual([
+          {
+            invitation_status: 'expired',
+            intent_status: 'superseded',
+            attempt_status: 'canceled',
+            token_ciphertext: null,
+          },
+        ]);
+      },
+    );
   });
 
   it('accepts once, rotates sessions atomically, and replays the historical receipt', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
+        id: '00000000-0000-4000-8000-000000000003',
         name: 'Invitation acceptance',
         slug: `invite-accept-${randomUUID().slice(0, 8)}`,
         ownerUserId,
       },
     );
     const recipient = await identityDatabase.createUser({
+      id: '00000000-0000-4000-8000-000000000004',
       email: `${randomUUID()}@example.test`,
       displayName: 'Invited recipient',
     });
@@ -3703,7 +4149,7 @@ describe('identity/workspace persistence', () => {
       ),
       tokenDigest,
     });
-    const intentId = randomUUID();
+    const intentId = '00000000-0000-4000-8000-000000000005';
     const bindingDigest = createHash('sha256')
       .update(randomUUID())
       .digest('hex');
@@ -3750,6 +4196,28 @@ describe('identity/workspace persistence', () => {
     await expect(
       identityDatabase.completeInvitationAcceptance(command),
     ).resolves.toMatchObject({ membershipCreated: true, replayed: false });
+    const inspection = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      const receipt = await inspection.query<{ request_hash: string }>(
+        `select request_hash from app.workspace_invitation_command_receipts
+          where workspace_id=$1 and actor_user_id=$2 and operation='accept'
+            and key_hash=$3`,
+        [
+          invitationWorkspace.id,
+          recipient.id,
+          createHash('sha256').update(key).digest('hex'),
+        ],
+      );
+      const historicalBytes = `{"actorUserId":"${recipient.id}","intentId":"${intentId}","invitationRevision":1,"workspaceId":"${invitationWorkspace.id}"}`;
+      const golden =
+        '151996340d046abeaf2c9b140cd0334647a73c4dc7dcccb02d0c239d157035b3';
+      expect(createHash('sha256').update(historicalBytes).digest('hex')).toBe(
+        golden,
+      );
+      expect(receipt.rows).toEqual([{ request_hash: golden }]);
+    } finally {
+      await inspection.end();
+    }
     await expect(
       identityDatabase.findActiveSessionByDigest(oldDigest),
     ).resolves.toBeNull();

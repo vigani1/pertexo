@@ -120,21 +120,21 @@
         },
         {
           "files": [
-            "packages/database/src/execution/execution-acceptance.ts",
-            "packages/database/src/execution/preview-execution-acceptance.ts"
+            "packages/database/src/execution/runs/execution-acceptance.ts",
+            "packages/database/src/execution/previews/preview-execution-acceptance.ts"
           ],
           "classification": "false-positive",
           "reason": "Durable and preview acceptance deliberately query separate idempotency operations while preserving independently reviewable transaction semantics.",
           "clones": [
             {
-              "hash": "567203a7e983e25de3e1ed6bc95f192a3b0ec77c1683ee501cf10f8ab418d734",
+              "hash": "debc2268ce2893287de5de65af9e07ed0d5049ab8d3898fbcbe133f047c0c3a2",
               "maxLines": 15
             }
           ]
         },
         {
           "files": [
-            "packages/database/src/execution/coordinator-run-store-plan.ts",
+            "packages/database/src/execution/coordinator/coordinator-run-store-plan.ts",
             "packages/database/src/compatibility/persisted-workflow-checkpoint.ts"
           ],
           "classification": "false-positive",

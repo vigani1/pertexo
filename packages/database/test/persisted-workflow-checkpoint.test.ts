@@ -80,6 +80,22 @@ function expectInvalidCheckpoint(value: unknown): void {
 }
 
 describe('persisted coordinator checkpoint codec', () => {
+  it('retains pre-scoped invocation keys without rewriting stored V1 checkpoints', () => {
+    const legacy = {
+      ...checkpointV1(),
+      admittedInvocationKeys: ['legacy/node#1'],
+      invocations: [
+        {
+          invocationKey: 'legacy/node#1',
+          nodeId: 'node',
+          status: 'running',
+          attemptNumber: 1,
+        },
+      ],
+    };
+    expect(parsePersistedWorkflowCheckpoint(legacy)).toEqual(legacy);
+  });
+
   it('canonicalizes Condition checkpoint V2 without reinterpreting V1', () => {
     const retained = checkpointV1();
     expect(parsePersistedWorkflowCheckpoint(retained)).toEqual(retained);

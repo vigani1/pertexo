@@ -1,6 +1,9 @@
 import { HttpResponse, http } from 'msw';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  workflowSummaryResponseSchema,
+  type WorkflowGraphContract,
+} from '@pertexo/contracts/schemas/workflow-authoring';
 import { fireEvent, screen, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 
@@ -154,6 +157,7 @@ export function editorHandlers(
     http.get(`${api}/workspaces`, () =>
       HttpResponse.json({ items: [scoped], nextCursor: null }),
     ),
+    workflowSummaryHandler('Test workflow', null),
     http.get(`${api}/node-definitions`, () =>
       HttpResponse.json({ schemaVersion: 1, release, items: definitions }),
     ),
@@ -397,21 +401,38 @@ export function workflowSummaryHandler(
   publishedVersionId: string | null,
 ) {
   return http.get(workflowApi, () =>
-    HttpResponse.json({
-      workflow: {
-        id: workflowId,
-        workspaceId,
-        name,
-        nameRevision: 1,
-        lifecycleStatus: 'active',
-        lifecycleRevision: 1,
-        activationStatus: publishedVersionId === null ? 'inactive' : 'active',
-        publishedVersionId,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
-    }),
+    HttpResponse.json(
+      workflowSummaryResponseSchema.parse({
+        workflow: {
+          id: workflowId,
+          workspaceId,
+          name,
+          nameRevision: 1,
+          lifecycleStatus: 'active',
+          lifecycleRevision: 1,
+          activationStatus: publishedVersionId === null ? 'inactive' : 'active',
+          publishedVersionId,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+      }),
+    ),
   );
+}
+
+/** A workflow with a real immutable version for tests that exercise Run. */
+export function publishedWorkflowHandlers(
+  graph: WorkflowGraphContract = oneStepGraph,
+) {
+  return [
+    workflowSummaryHandler('Test workflow', versionId),
+    http.get(`${workflowApi}/versions`, () =>
+      HttpResponse.json({
+        items: [versionBody(versionId, graph)],
+        nextCursor: null,
+      }),
+    ),
+  ];
 }
 
 function isSaveBody(value: unknown): value is SaveBody {

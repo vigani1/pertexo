@@ -1,24 +1,25 @@
 import { CronExpressionParser } from 'cron-parser';
+import { CORE_SCHEDULE_CONFIG_SCHEMA_V2 } from '@pertexo/nodes-core';
 import { z } from 'zod';
 
 export const SCHEDULE_CRON_PARSER_VERSION = '5.10.0' as const;
 
-const intervalSchema = z
+const intervalInputSchema = z
   .object({
     kind: z.literal('interval'),
-    intervalMinutes: z.number().int().min(1).max(43_200),
+    intervalMinutes: z.unknown(),
   })
   .strict();
 const cronInputSchema = z
   .object({
     kind: z.literal('cron'),
-    expression: z.string(),
-    timezone: z.string(),
+    expression: z.unknown(),
+    timezone: z.unknown(),
   })
   .strict();
 
 export type ScheduleRecurrence =
-  | Readonly<z.output<typeof intervalSchema>>
+  | Readonly<{ kind: 'interval'; intervalMinutes: number }>
   | Readonly<{
       kind: 'cron';
       expression: string;
@@ -42,36 +43,37 @@ export type PersistedScheduleRecurrenceRow = Readonly<{
 // cannot monopolize the worker's synchronous event loop.
 const MAX_CRON_CURSOR_STEPS = 256;
 
-const canonicalTimezones = new Set(Intl.supportedValuesOf('timeZone'));
-
 function invalidSchedule(error?: unknown): never {
   throw new TypeError('Invalid schedule recurrence', { cause: error });
 }
 
 export function parseScheduleRecurrence(input: unknown): ScheduleRecurrence {
-  const interval = intervalSchema.safeParse(input);
-  if (interval.success) return Object.freeze(interval.data);
+  const interval = intervalInputSchema.safeParse(input);
+  if (interval.success) {
+    const config = CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
+      ...interval.data,
+      misfirePolicy: 'catch_up_once',
+    });
+    if (!config.success || config.data.kind !== 'interval')
+      return invalidSchedule(config.success ? undefined : config.error);
+    return Object.freeze({
+      kind: 'interval',
+      intervalMinutes: config.data.intervalMinutes,
+    });
+  }
   const cron = cronInputSchema.safeParse(input);
   if (!cron.success) return invalidSchedule(cron.error);
-  const fields = cron.data.expression.trim().split(/\s+/u);
-  if (
-    fields.length !== 5 ||
-    cron.data.expression !== fields.join(' ') ||
-    !canonicalTimezones.has(cron.data.timezone) ||
-    cron.data.timezone.startsWith('Etc/GMT') ||
-    /[H?#L]/u.test(cron.data.expression)
-  )
-    return invalidSchedule();
-  try {
-    CronExpressionParser.parse(`0 ${cron.data.expression}`, {
-      currentDate: new Date(0),
-      strict: true,
-      tz: cron.data.timezone,
-    });
-  } catch (error: unknown) {
-    return invalidSchedule(error);
-  }
-  return Object.freeze(cron.data);
+  const config = CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
+    ...cron.data,
+    misfirePolicy: 'catch_up_once',
+  });
+  if (!config.success || config.data.kind !== 'cron')
+    return invalidSchedule(config.success ? undefined : config.error);
+  return Object.freeze({
+    kind: 'cron',
+    expression: config.data.expression,
+    timezone: config.data.timezone,
+  });
 }
 
 /** Translate the mutually exclusive persisted recurrence columns exactly once. */

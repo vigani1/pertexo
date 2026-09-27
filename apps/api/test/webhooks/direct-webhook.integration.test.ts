@@ -574,6 +574,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       actorId,
       triggerId: trigger.id,
     });
+
     expect(
       log.items.map(({ outcome, httpStatus, replayCheck, runId }) => [
         outcome,
@@ -594,6 +595,49 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     });
     expect(log.nextCursor).toBeNull();
   }, 60_000);
+
+  it('reads a resumed run as running through authenticated HTTP', async () => {
+    const { actorId, endpointKey, originalSecret } =
+      await seedWebhook('run-status-read');
+    const accepted = await sendWebhook(
+      endpointKey,
+      originalSecret,
+      Buffer.from('{"status":"read"}', 'utf8'),
+      'run-status-read',
+    );
+    expect(accepted.status).toBe(202);
+    const runId = String(accepted.json.runId);
+    const rawSession = `${randomUUID()}${randomUUID()}`;
+    await identity.createSession({
+      userId: actorId,
+      tokenDigest: sha256(rawSession),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const read = () =>
+      application.inject({
+        method: 'GET',
+        url: `/v1/workspaces/${workspaceId}/runs/${runId}`,
+        headers: { cookie: `pertexo_session=${rawSession}` },
+      });
+    await ownerQuery(
+      `update app.workflow_runs set status='waiting' where workspace_id=$1 and id=$2`,
+      [workspaceId, runId],
+    );
+    const waiting = await read();
+    expect(waiting.statusCode).toBe(200);
+    expect(waiting.json()).toMatchObject({
+      run: { id: runId, status: 'waiting' },
+    });
+    await ownerQuery(
+      `update app.workflow_runs set status='running' where workspace_id=$1 and id=$2`,
+      [workspaceId, runId],
+    );
+    const running = await read();
+    expect(running.statusCode).toBe(200);
+    expect(running.json()).toMatchObject({
+      run: { id: runId, status: 'running' },
+    });
+  });
 
   it('rejects an authenticated malformed body with only a delivery-log fact', async () => {
     const { endpointKey, originalSecret } = await seedWebhook('malformed');

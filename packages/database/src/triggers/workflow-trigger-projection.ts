@@ -1,32 +1,12 @@
 import { createHash } from 'node:crypto';
 
-import { CORE_SCHEDULE_CONFIG_SCHEMA_V2 } from '@pertexo/nodes-core';
+import {
+  CORE_SCHEDULE_CONFIG_SCHEMA,
+  CORE_SCHEDULE_CONFIG_SCHEMA_V2,
+} from '@pertexo/nodes-core';
 import { z } from 'zod';
 
 const webhookConfigSchema = z.object({}).strict();
-const scheduleConfigSchema = z.discriminatedUnion('kind', [
-  z
-    .object({
-      kind: z.literal('cron'),
-      expression: z
-        .string()
-        .min(9)
-        .max(255)
-        .regex(
-          /^[0-9*/?,-]+ [0-9*/?,-]+ [0-9*/?,-]+ [0-9*/?,-]+ [0-9*/?,-]+$/u,
-        ),
-      timezone: z.string().min(1).max(255),
-      misfirePolicy: z.enum(['catch_up_once', 'skip']),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('interval'),
-      intervalMinutes: z.number().int().min(1).max(43_200),
-      misfirePolicy: z.enum(['catch_up_once', 'skip']),
-    })
-    .strict(),
-]);
 
 function triggerKind(
   identity: string,
@@ -96,7 +76,7 @@ export function workflowTriggerProjection(
           identity === 'core.schedule@3'
         )
           config = CORE_SCHEDULE_CONFIG_SCHEMA_V2.parse(node.config);
-        else config = scheduleConfigSchema.parse(node.config);
+        else config = CORE_SCHEDULE_CONFIG_SCHEMA.parse(node.config);
         const digest = createHash('sha256')
           .update(canonicalJson({ config, kind }))
           .digest('hex');

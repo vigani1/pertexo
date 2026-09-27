@@ -8,6 +8,7 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '../tenant-access/workspace.js';
+import { WEBHOOK_TRIGGER_READ_ROLES } from '../tenant-access/workspace-policy.js';
 import { WebhookTriggerNotFoundError } from './webhook-trigger-errors.js';
 
 /**
@@ -132,9 +133,9 @@ export async function authorizeWebhookTriggerReader(
       join app.users actor on actor.id=membership.user_id
      where membership.workspace_id=$1 and membership.user_id=$2
        and membership.status='active'
-       and membership.role in ('owner','admin','builder')
+       and membership.role = any($3::text[])
        and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId],
+    [workspaceId, actorId, WEBHOOK_TRIGGER_READ_ROLES],
   );
   if (result.rowCount !== 1) throw new WebhookTriggerNotFoundError();
 }

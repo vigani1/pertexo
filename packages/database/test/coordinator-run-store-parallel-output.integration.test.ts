@@ -78,3 +78,80 @@ describe('persisted Parallel output material', () => {
     },
   );
 });
+
+describe('immutable control-output selection', () => {
+  it.each([
+    ['condition', { selectedPort: 'true' }],
+    ['switch', { selectedPort: 'case-a' }],
+  ] as const)(
+    'forwards %s output for engine validation',
+    async (nodeId, value) => {
+      const invocationKey = `version-a/${nodeId}`;
+      const runId = await insertRun({
+        status: 'running',
+        schedulerState: checkpoint({
+          runStatus: 'running',
+          invocations: [
+            { invocationKey, nodeId, status: 'running', attemptNumber: 1 },
+          ],
+          admittedInvocationKeys: [invocationKey],
+        }),
+      });
+      const { attemptId } = await seedSucceededFact(runId, invocationKey, {
+        kind: 'inline',
+        schemaVersion: 1,
+        value,
+      });
+      await expect(
+        ownedDeliveryStore.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({
+        kind: 'ready',
+        state: {
+          completedOutputs: [{ sequence: 2, attemptId, invocationKey, value }],
+        },
+      });
+    },
+  );
+
+  it.each([
+    { selectedPort: 'true' },
+    { branchIds: ['a', 'b'] },
+    { items: ['x'], iterationCount: 1 },
+  ])('does not treat ordinary output %j as a control value', async (value) => {
+    const invocationKey = 'version-a/ordinary';
+    const runId = await insertRun({
+      status: 'running',
+      schedulerState: checkpoint({
+        runStatus: 'running',
+        invocations: [
+          {
+            invocationKey,
+            nodeId: 'ordinary',
+            status: 'running',
+            attemptNumber: 1,
+          },
+        ],
+        admittedInvocationKeys: [invocationKey],
+      }),
+    });
+    await seedSucceededFact(runId, invocationKey, {
+      kind: 'inline',
+      schemaVersion: 1,
+      value,
+    });
+    await expect(
+      ownedDeliveryStore.loadAdvanceState({
+        workspaceId: workspaceA,
+        runId,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({
+      kind: 'ready',
+      state: { completedOutputs: [] },
+    });
+  });
+});

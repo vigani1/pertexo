@@ -5,7 +5,7 @@ import {
   normalizeBeginInput,
   normalizeFinalizeInput,
   normalizeIdentity,
-} from '../src/execution/artifact-upload-contract.js';
+} from '../src/execution/artifacts/artifact-upload-contract.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

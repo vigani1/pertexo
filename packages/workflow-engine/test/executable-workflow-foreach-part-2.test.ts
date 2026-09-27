@@ -311,6 +311,32 @@ describe('For Each production operations', () => {
         ({ invocationKey }) => invocationKey === outerControl.invocationKey,
       ),
     ).toMatchObject({ status: 'succeeded' });
+    // A stop can arrive between loop settlement and successor admission.
+    // Completed loop truth must survive that extra coordinator delivery.
+    for (const kind of ['cancel_requested', 'deadline_expired'] as const) {
+      const stopped = await advanceWorkflow({
+        ...base,
+        checkpoint: completed.checkpoint,
+        observations: [
+          {
+            kind,
+            ...(kind === 'cancel_requested'
+              ? { sequence: completed.checkpoint.nextEventSequence }
+              : {}),
+            occurredAt: base.occurredAt,
+          },
+        ],
+        completedOutputs: [],
+      });
+      expect(stopped.attempts).toEqual([]);
+      expect(stopped.checkpoint.runStatus).toBe(
+        kind === 'cancel_requested' ? 'canceled' : 'timed_out',
+      );
+      expect(stopped.checkpoint.loops).toEqual(completed.checkpoint.loops);
+      expect(stopped.checkpoint.invocations).toEqual(
+        completed.checkpoint.invocations,
+      );
+    }
   });
 
   it('resolves exact same-iteration upstream output', async () => {

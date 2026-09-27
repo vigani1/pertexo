@@ -11,8 +11,8 @@ import {
   type AcceptPreviewRunInput,
   type PreviewAttemptLease,
   type PreviewDelivery,
-} from '../../src/execution/preview-execution.js';
-import { canonicalOutboxPayloadChecksum } from '../../src/execution/outbox.js';
+} from '../../src/execution/previews/preview-execution.js';
+import { canonicalOutboxPayloadChecksum } from '../../src/execution/transport/outbox.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
 import { databaseSchema } from '../../src/schema.js';

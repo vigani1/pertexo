@@ -23,8 +23,8 @@ vi.mock('../src/lifecycle/retention-transaction.js', () => ({
     seams.withWorkspaceDestructiveOperationLock,
 }));
 
-import { createArtifactUploadDatabase } from '../src/execution/artifact-upload.js';
-import type { ArtifactRecord } from '../src/execution/artifacts.js';
+import { createArtifactUploadDatabase } from '../src/execution/artifacts/artifact-upload.js';
+import type { ArtifactRecord } from '../src/execution/artifacts/artifacts.js';
 
 const workspaceId = randomUUID();
 const actorId = randomUUID();

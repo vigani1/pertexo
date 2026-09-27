@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
-import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
 import {
   WorkflowNotFoundError,
   WorkflowIdempotencyConflictError,
@@ -28,11 +28,12 @@ import type {
   WorkflowAuthoringTestHooks,
   WorkflowExecutableCompiler,
 } from './workflow-authoring-types.js';
-import type {
-  WorkflowDraftRecord,
-  WorkflowVersionRecord,
-} from './workflow-authoring-records.js';
-import { workflowVersionRowSelection } from './workflow-authoring-rows.js';
+import type { WorkflowVersionRecord } from './workflow-authoring-records.js';
+import {
+  mapDraft,
+  mapVersion,
+  workflowVersionRowSelection,
+} from './workflow-authoring-rows.js';
 import { workflowTriggerProjection } from '../triggers/workflow-trigger-projection.js';
 import { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
 
@@ -79,11 +80,6 @@ export type WorkflowPublicationDependencies = Readonly<{
     expectedWorkflowId: string,
   ): Omit<PublishWorkflowResult, 'replayed'>;
   keyDigest(key: string): string;
-  mapDraft(
-    row: Record<string, unknown>,
-    definitionCatalog: WorkflowDefinitionCatalogV1,
-  ): WorkflowDraftRecord;
-  mapVersion(row: Record<string, unknown>): WorkflowVersionRecord;
   requireAuthor(
     client: PoolClient,
     workspaceId: string,
@@ -196,7 +192,7 @@ async function lockAndCompilePublication(
   const draftRow = draftResult.rows[0];
   if (draftRow === undefined)
     throw new Error('Workflow is missing its required draft');
-  const draft = dependencies.mapDraft(draftRow, variant.definitionCatalog);
+  const draft = mapDraft(draftRow, variant.definitionCatalog);
   await dependencies.testHooks?.afterPublishDraftLock?.();
   const currentEtag = workflowDraftRepresentationTag({
     workflowId,
@@ -260,7 +256,7 @@ async function persistVersion(
   );
   let versionRow: Record<string, unknown> | undefined;
   for (const row of retained.rows) {
-    const version = dependencies.mapVersion(row);
+    const version = mapVersion(row);
     if (version.checksum === publication.checksum) versionRow = row;
   }
   const reused = versionRow !== undefined;
@@ -293,7 +289,7 @@ async function persistVersion(
   }
   if (versionRow === undefined)
     throw new Error('Workflow publication returned no version');
-  const version = dependencies.mapVersion(versionRow);
+  const version = mapVersion(versionRow);
   await dependencies.testHooks?.afterPublishStep?.('version');
   return Object.freeze({ reused, version });
 }

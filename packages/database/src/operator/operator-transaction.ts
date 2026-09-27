@@ -1,6 +1,7 @@
 import type { Pool, PoolClient, QueryResult } from 'pg';
 
 import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
+import { acquireAbortablePoolClient } from '../platform/abortable-pool-checkout.js';
 
 type OperatorPool = Pick<Pool, 'connect'>;
 
@@ -25,38 +26,14 @@ async function acquireOperatorClient(
   pool: OperatorPool,
   signal?: AbortSignal,
 ): Promise<PoolClient> {
-  signal?.throwIfAborted();
-  const pending = pool.connect();
-  if (signal === undefined) return pending;
-
-  let rejectAbort: (() => void) | undefined;
-  const aborted = new Promise<never>((_resolve, reject) => {
-    rejectAbort = () => {
-      try {
-        signal.throwIfAborted();
-      } catch (error: unknown) {
-        reject(safeError(error, 'Operator client checkout aborted'));
-      }
-    };
-  });
-  const onAbort = (): void => rejectAbort?.();
-  signal.addEventListener('abort', onAbort, { once: true });
-  try {
-    signal.throwIfAborted();
-    return await Promise.race([pending, aborted]);
-  } catch (error: unknown) {
-    if (signal.aborted) {
-      void pending.then(
-        (client) => {
-          client.release();
-        },
-        () => undefined,
-      );
-    }
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', onAbort);
-  }
+  return acquireAbortablePoolClient(
+    pool,
+    signal,
+    () => safeError(signal?.reason, 'Operator client checkout aborted'),
+    (client) => {
+      client.release();
+    },
+  );
 }
 
 async function query<Row extends Record<string, unknown>>(

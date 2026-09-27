@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
@@ -8,11 +8,13 @@ import {
   apiBase,
   fixtureIds,
   fixtureRun,
+  fixtureStatistics,
   fixtureVersion,
   identityHandlers,
   sseEvents,
   coldStart,
 } from '../support/run-fixtures';
+import { workflowRunKeys } from '@/features/workflow-runs/workflow-runs.queries';
 
 const {
   workspace: workspaceId,
@@ -161,6 +163,44 @@ afterEach(() => {
 });
 
 describe('run page', () => {
+  it('updates the visible run and step status when a waiting run resumes', async () => {
+    installRun({ run: fixtureRun(runId, 'waiting'), nodes: [node('waiting')] });
+    let status: 'waiting' | 'running' = 'waiting';
+    mockServer.use(
+      http.get(`${apiBase}/run-statistics`, () =>
+        HttpResponse.json(fixtureStatistics()),
+      ),
+      http.get(`${apiBase}/runs/${runId}`, () =>
+        HttpResponse.json({
+          run: fixtureRun(runId, status),
+          nodes: [node(status)],
+        }),
+      ),
+    );
+    const { queryClient } = renderApp(`/w/${workspaceId}/runs/${runId}`);
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Send receipt is waiting',
+      }),
+    ).toBeVisible();
+    status = 'running';
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workflowRunKeys.detail(fixtureIds.user, workspaceId, runId),
+      });
+    });
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Running Send receipt',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: /^Send receipt: Running/u }),
+    ).toBeVisible();
+  });
+
   it('puts a failure first and the actions at thumb height on phones', async () => {
     emulatePhoneScreen();
     installRun({

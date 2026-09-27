@@ -5,6 +5,7 @@ import {
   withTenantScopedClient,
   withTenantScopedReadClient,
 } from '../tenant-access/workspace.js';
+import { SCHEDULE_TRIGGER_READ_ROLES } from '../tenant-access/workspace-policy.js';
 import {
   MAX_SCHEDULE_PROJECTION,
   parsePersistedScheduleRecurrence,
@@ -98,9 +99,9 @@ export async function authorizeScheduleReader(
       join app.workflows workflow on workflow.workspace_id=membership.workspace_id
      where membership.workspace_id=$1 and membership.user_id=$2 and workflow.id=$3
        and membership.status='active'
-       and membership.role in ('owner','admin','builder','operator','viewer')
+       and membership.role = any($4::text[])
        and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId, workflowId],
+    [workspaceId, actorId, workflowId, SCHEDULE_TRIGGER_READ_ROLES],
   );
   if (result.rowCount !== 1) throw new ScheduleTriggerError('not_found');
 }

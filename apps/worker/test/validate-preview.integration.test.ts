@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/execution';
 
 import {
   parseDatabaseConfig,
@@ -20,10 +21,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import {
-  createDatabasePreviewAttemptRunStore,
-  createPlatformPreviewNodeInvoker,
-} from '../src/execution/preview-attempt-runtime.js';
+import { createPlatformPreviewNodeInvoker } from '../src/execution/preview-attempt-runtime.js';
 import {
   acceptDelivery,
   acceptWorkflowDelivery,

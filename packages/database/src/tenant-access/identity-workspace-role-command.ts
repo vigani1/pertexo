@@ -7,8 +7,8 @@ import type {
   WorkspaceMemberRoleChangeResult,
 } from './identity-workspace-contracts.js';
 import { WorkspaceMemberRoleCommandConflictError } from './identity-workspace-errors.js';
+import { commandRevisionSchema } from './identity-command-primitives.js';
 import {
-  commandRevisionSchema,
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,

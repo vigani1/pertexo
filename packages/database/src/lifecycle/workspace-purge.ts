@@ -10,6 +10,12 @@ import {
   inRetentionTransaction,
   withWorkspaceDestructiveOperationLock,
 } from './retention-transaction.js';
+import {
+  isRecoverablePurgeClaimError,
+  isRecoverablePurgeCompletionError,
+  releasePurgeCompletionClaimAfterFailure,
+  releasePurgeJobClaimAfterFailure,
+} from './workspace-purge-claim-release.js';
 
 const uuidSchema = z.uuid();
 
@@ -134,33 +140,6 @@ function sequence(value: number | string): number {
   if (!Number.isSafeInteger(parsed) || parsed < 0)
     throw new Error('Invalid workspace purge control sequence');
   return parsed;
-}
-
-function isClaimRace(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '55P03'
-  );
-}
-
-function isLegalHold(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error &&
-    typeof error.message === 'string' &&
-    error.message.includes('active workspace legal hold')
-  );
-}
-
-function isFenceChanged(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.message.includes('control fence changed') ||
-      error.message.includes('projection fence changed'))
-  );
 }
 
 function verifyRecord(
@@ -495,7 +474,7 @@ export function createWorkspacePurgeCoordinator(
             [stepJobId, stepClaim.leaseToken, stepClaim.leaseFence],
             signal,
           );
-        if (isLegalHold(error) || isClaimRace(error) || isFenceChanged(error))
+        if (isRecoverablePurgeCompletionError(error))
           return { status: 'idle' as const };
         throw error;
       }
@@ -685,25 +664,22 @@ export function createWorkspacePurgeCoordinator(
       } catch (error: unknown) {
         if (signal?.aborted === true) throw signal.reason;
         if (completion === undefined) {
-          if (isLegalHold(error) || isClaimRace(error) || isFenceChanged(error))
+          if (isRecoverablePurgeCompletionError(error))
             return { status: 'idle' as const };
           throw error;
         }
-        const released = await platformQuery<{ changed: boolean }>(
-          'select app.release_workspace_purge_completion($1,$2,$3) changed',
-          [
-            completionJobId,
-            completion.lease_token,
-            sequence(completion.lease_fence),
-          ],
+        const released = await releasePurgeCompletionClaimAfterFailure(
+          platformQuery,
+          completionJobId,
+          completion.lease_token,
+          sequence(completion.lease_fence),
+          error,
           signal,
         );
+        if (!isRecoverablePurgeCompletionError(error)) throw error;
         return {
           jobId: completionJobId,
-          status:
-            released.rows[0]?.changed === true
-              ? ('released' as const)
-              : ('stale' as const),
+          status: released ? ('released' as const) : ('stale' as const),
           workspaceId: completionWorkspaceId,
         };
       }
@@ -858,21 +834,22 @@ export function createWorkspacePurgeCoordinator(
     } catch (error: unknown) {
       if (signal?.aborted === true) throw signal.reason;
       if (job === undefined) {
-        if (isClaimRace(error) || isFenceChanged(error))
+        if (isRecoverablePurgeClaimError(error))
           return { status: 'idle' as const };
         throw error;
       }
-      const released = await platformQuery<{ changed: boolean }>(
-        'select app.release_workspace_purge_job($1,$2,$3) changed',
-        [job.job_id, job.lease_token, sequence(job.lease_fence)],
+      const released = await releasePurgeJobClaimAfterFailure(
+        platformQuery,
+        job.job_id,
+        job.lease_token,
+        sequence(job.lease_fence),
+        error,
         signal,
       );
+      if (!isRecoverablePurgeClaimError(error)) throw error;
       return {
         jobId: job.job_id,
-        status:
-          released.rows[0]?.changed === true
-            ? ('released' as const)
-            : ('stale' as const),
+        status: released ? ('released' as const) : ('stale' as const),
         workspaceId,
       };
     }

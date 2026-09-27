@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import {
+  CORE_SCHEDULE_CONFIG_SCHEMA,
+  CORE_SCHEDULE_CONFIG_SCHEMA_V2,
+} from '@pertexo/nodes-core';
 
 import {
   parsePersistedScheduleRecurrence,
@@ -69,6 +73,72 @@ describe('schedule recurrence', () => {
     ]) {
       expect(() => parseScheduleRecurrence(input)).toThrow(TypeError);
     }
+  });
+
+  it('keeps current node and recurrence acceptance aligned while retaining legacy validation', () => {
+    const longExpression = `${Array(150).fill('0').join(',')} * * * *`;
+    const corpus = [
+      { kind: 'cron', expression: '0 9 * * 1', timezone: 'Europe/Paris' },
+      { kind: 'cron', expression: longExpression, timezone: 'Europe/Paris' },
+      { kind: 'cron', expression: '0 9 * * 1', timezone: 'Etc/GMT+1' },
+      { kind: 'cron', expression: '0 9 * * 1', timezone: 'UTC' },
+      { kind: 'interval', intervalMinutes: 1 },
+      { kind: 'interval', intervalMinutes: 43_201 },
+    ] as const;
+    for (const recurrence of corpus) {
+      const node = CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
+        ...recurrence,
+        misfirePolicy: 'catch_up_once',
+      });
+      if (node.success)
+        expect(parseScheduleRecurrence(recurrence)).toMatchObject(recurrence);
+      else expect(() => parseScheduleRecurrence(recurrence)).toThrow(TypeError);
+    }
+    expect(
+      CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
+        kind: 'cron',
+        expression: '0 9 ? * 1',
+        timezone: 'Europe/Paris',
+        misfirePolicy: 'catch_up_once',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('continues materializing the retained V1-compatible recurrence subset', () => {
+    const accepted = CORE_SCHEDULE_CONFIG_SCHEMA.parse({
+      kind: 'cron',
+      expression: '0 9 * * 1',
+      timezone: 'Europe/Paris',
+      misfirePolicy: 'skip',
+    });
+    expect(
+      parsePersistedScheduleRecurrence({
+        recurrence_kind: 'cron',
+        cron_expression: accepted.kind === 'cron' ? accepted.expression : null,
+        timezone: accepted.kind === 'cron' ? accepted.timezone : null,
+        interval_minutes: null,
+      }),
+    ).toEqual({
+      kind: 'cron',
+      expression: '0 9 * * 1',
+      timezone: 'Europe/Paris',
+    });
+    // V1 node parsing accepted this token, but the previous runtime parser
+    // already refused it; the shared V2 admission does not broaden that subset.
+    const unsupportedV1 = CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
+      kind: 'cron',
+      expression: '0 9 ? * 1',
+      timezone: 'Europe/Paris',
+      misfirePolicy: 'skip',
+    });
+    expect(unsupportedV1.success).toBe(true);
+    expect(() =>
+      parseScheduleRecurrence({
+        kind: 'cron',
+        expression: '0 9 ? * 1',
+        timezone: 'Europe/Paris',
+      }),
+    ).toThrow(TypeError);
   });
 
   it('uses the earlier UTC instant once for a repeated local occurrence', () => {

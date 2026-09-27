@@ -11,8 +11,8 @@ import {
   WorkspaceMembershipCommandConflictError,
   type WorkspaceMembershipCommandConflictReason,
 } from './identity-workspace-errors.js';
+import { commandRevisionSchema } from './identity-command-primitives.js';
 import {
-  commandRevisionSchema,
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,

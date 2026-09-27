@@ -6,7 +6,9 @@ import { z } from 'zod';
 import type {
   WorkflowDefinitionCatalogV1,
   WorkflowGraph,
+  WorkflowDefinitionPlacementIssue,
 } from '@pertexo/workflow-model/graph';
+import { workflowDefinitionPlacementIssues } from '@pertexo/workflow-model/graph';
 
 import type { DatabaseConfig } from '../config.js';
 import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
@@ -14,10 +16,8 @@ import { normalizeWorkflowAuthoringCompatibility } from './workflow-authoring-co
 import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
-import {
-  createWorkflowVersionRestoreStore,
-  type WorkflowVersionRestoreContext,
-} from './workflow-authoring-version-restore.js';
+import { createWorkflowVersionRestoreStore } from './workflow-authoring-version-restore.js';
+import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import { createWorkflowAuthoringLifecycleStore } from './workflow-authoring-lifecycle.js';
 import { createWorkflowAuthoringRenameStore } from './workflow-authoring-rename.js';
 export type {
@@ -25,17 +25,12 @@ export type {
   WorkflowRecord,
   WorkflowVersionRecord,
 } from './workflow-authoring-records.js';
-import {
-  checksumSchema,
-  mapDraft,
-  mapVersion,
-  mapWorkflow,
-} from './workflow-authoring-rows.js';
+import { checksumSchema, mapVersion } from './workflow-authoring-rows.js';
 import {
   acceptPreviewRun,
   readPreviewRun,
   resolvePreviewReplay,
-} from '../execution/preview-execution.js';
+} from '../execution/previews/preview-execution.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
@@ -72,11 +67,7 @@ import type {
   WorkflowAuthoringDatabase,
 } from './workflow-authoring-contracts.js';
 
-export type WorkflowDefinitionPlacementIssue = Readonly<{
-  code: 'definition_not_placeable';
-  path: string;
-  message: string;
-}>;
+export type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model/graph';
 
 export class WorkflowDefinitionPlacementError extends Error {
   public override readonly name = 'WorkflowDefinitionPlacementError';
@@ -104,90 +95,17 @@ export type {
 
 export { reconcileWorkflowTriggersPayload } from './workflow-publication.js';
 
-function definitionIdentityToken(
-  definition: Readonly<{ key: string; version: number }>,
-): string {
-  return `${definition.key}\u0000${String(definition.version)}`;
-}
-
-type LocatedWorkflowNode = Readonly<{
-  id: string;
-  definition: Readonly<{ key: string; version: number }>;
-  path: string;
-}>;
-
-function graphNodeLocations(
-  graph: WorkflowGraph,
-): readonly LocatedWorkflowNode[] {
-  const result: LocatedWorkflowNode[] = [];
-  const pending: Readonly<{ graph: WorkflowGraph; path: string }>[] = [
-    { graph, path: '$' },
-  ];
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (current === undefined) continue;
-    for (const node of current.graph.nodes) {
-      const path = `${current.path}.nodes.${node.id}`;
-      result.push(
-        Object.freeze({ id: node.id, definition: node.definition, path }),
-      );
-      if (node.structured !== undefined) {
-        pending.push({
-          graph: node.structured.body,
-          path: `${path}.structured.body`,
-        });
-      }
-    }
-  }
-  return Object.freeze(result);
-}
-
-function nodeOccurrenceToken(node: LocatedWorkflowNode): string {
-  return `${node.id}\u0000${definitionIdentityToken(node.definition)}`;
-}
-
-function countNodeOccurrences(
-  nodes: readonly LocatedWorkflowNode[],
-): ReadonlyMap<string, number> {
-  const counts = new Map<string, number>();
-  for (const node of nodes) {
-    const token = nodeOccurrenceToken(node);
-    counts.set(token, (counts.get(token) ?? 0) + 1);
-  }
-  return counts;
-}
-
 function requirePlaceableDefinitionAdditions(
   previous: WorkflowGraph,
   next: WorkflowGraph,
   placementCatalog: WorkflowDefinitionCatalogV1 | undefined,
 ): void {
   if (placementCatalog === undefined) return;
-  const placeable = new Set(
-    placementCatalog.definitions.map(definitionIdentityToken),
+  const issues = workflowDefinitionPlacementIssues(
+    previous,
+    next,
+    placementCatalog,
   );
-  const previousNodes = graphNodeLocations(previous);
-  const nextNodes = graphNodeLocations(next);
-  const previousOccurrences = countNodeOccurrences(previousNodes);
-  const nextOccurrences = countNodeOccurrences(nextNodes);
-  const issues: WorkflowDefinitionPlacementIssue[] = [];
-  for (const node of nextNodes) {
-    const occurrence = nodeOccurrenceToken(node);
-    if (
-      previousOccurrences.get(occurrence) === 1 &&
-      nextOccurrences.get(occurrence) === 1
-    ) {
-      continue;
-    }
-    if (placeable.has(definitionIdentityToken(node.definition))) continue;
-    issues.push(
-      Object.freeze({
-        code: 'definition_not_placeable',
-        path: `${node.path}.definition`,
-        message: `Definition ${node.definition.key}@${String(node.definition.version)} cannot be newly placed in the current compatibility release.`,
-      }),
-    );
-  }
   if (issues.length > 0)
     throw new WorkflowDefinitionPlacementError(Object.freeze(issues));
 }
@@ -330,10 +248,8 @@ export function createWorkflowAuthoringDatabase(
   const selectCompatibilityVariant = compatibility.selectLocked;
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
-  const authoringContext: WorkflowVersionRestoreContext = {
-    mapDraft,
-    mapVersion,
-    mapWorkflow,
+  const authoringContext: WorkflowAuthoringWriteContext = {
+    keyDigest,
     requireAuthor: requireWorkspaceAuthor,
     requirePlaceable: requirePlaceableDefinitionAdditions,
     selectCatalogs: selectCompatibilityVariant,
@@ -346,8 +262,6 @@ export function createWorkflowAuthoringDatabase(
   const publishWorkflow = createWorkflowPublisher({
     durableResult: durablePublishResult,
     keyDigest,
-    mapDraft,
-    mapVersion,
     requireAuthor: requireWorkspaceAuthor,
     selectVariant: selectCompatibilityVariant,
     testHooks: options.testHooks,
@@ -356,10 +270,7 @@ export function createWorkflowAuthoringDatabase(
   });
   return Object.freeze({
     ...createPreviewStore(pool),
-    ...createWorkflowAuthoringDraftStore({
-      ...authoringContext,
-      keyDigest,
-    }),
+    ...createWorkflowAuthoringDraftStore(authoringContext),
     ...createWorkflowVersionRestoreStore(authoringContext),
     ...createWorkflowAuthoringReadStore({
       requireReader: requireWorkspaceReader,
@@ -369,14 +280,8 @@ export function createWorkflowAuthoringDatabase(
         withAuthorTransaction(pool, workspaceId, actorId, operation),
     }),
     publishWorkflow,
-    ...createWorkflowAuthoringLifecycleStore({
-      ...authoringContext,
-      keyDigest,
-    }),
-    ...createWorkflowAuthoringRenameStore({
-      ...authoringContext,
-      keyDigest,
-    }),
+    ...createWorkflowAuthoringLifecycleStore(authoringContext),
+    ...createWorkflowAuthoringRenameStore(authoringContext),
     close: () => lease.close(),
   });
 }

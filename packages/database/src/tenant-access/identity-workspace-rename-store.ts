@@ -1,8 +1,13 @@
-import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
+import {
+  commandKeySchema,
+  commandRevisionSchema,
+  hashFlatIdentityCommand,
+  hashIdentityCommandKey,
+} from './identity-command-primitives.js';
 import type {
   IdentityWorkspaceDatabase,
   RenameWorkspaceInput,
@@ -15,12 +20,6 @@ import { withTenantScopedClient } from './workspace.js';
 
 type RenameStore = Pick<IdentityWorkspaceDatabase, 'renameWorkspace'>;
 const nameSchema = z.string().trim().min(1).max(128);
-const revisionSchema = z.number().int().positive();
-const keySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u);
 const durableResultSchema = z
   .object({
     workspace: z
@@ -29,7 +28,7 @@ const durableResultSchema = z
         name: z.string().min(1).max(128),
         slug: z.string(),
         status: z.literal('active'),
-        revision: revisionSchema,
+        revision: commandRevisionSchema,
         createdBy: z.uuid(),
         deletionRequestedAt: z.null(),
         deletionRequestedBy: z.null(),
@@ -42,14 +41,6 @@ const durableResultSchema = z
     changed: z.boolean(),
   })
   .strict();
-
-function hash(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-function commandHash(input: Readonly<Record<string, unknown>>): string {
-  return hash(JSON.stringify(input, Object.keys(input).sort()));
-}
 
 function durableResult(result: WorkspaceRenameResult) {
   return durableResultSchema.parse({
@@ -128,9 +119,13 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
       const workspaceId = parseIdentityUuid(raw.workspaceId);
       const actorUserId = parseIdentityUuid(raw.actorUserId);
       const name = nameSchema.parse(raw.name);
-      const expectedRevision = revisionSchema.parse(raw.expectedRevision);
-      const keyHash = hash(keySchema.parse(raw.idempotencyKey));
-      const requestHash = commandHash({
+      const expectedRevision = commandRevisionSchema.parse(
+        raw.expectedRevision,
+      );
+      const keyHash = hashIdentityCommandKey(
+        commandKeySchema.parse(raw.idempotencyKey),
+      );
+      const requestHash = hashFlatIdentityCommand({
         actorUserId,
         expectedRevision,
         name,

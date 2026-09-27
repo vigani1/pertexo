@@ -2,11 +2,48 @@ import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  acquirePoolClient,
   type MaintenancePool,
   withOwnedPoolClient,
 } from '../src/lifecycle/control-ledger-postgres.js';
 
 describe('control-ledger PostgreSQL ownership', () => {
+  it('preserves a pre-aborted non-Error reason without checking out a client', async () => {
+    const controller = new AbortController();
+    const reason = { kind: 'review-stop' };
+    controller.abort(reason);
+    const connect = vi.fn();
+    const pool: MaintenancePool = {
+      options: { max: 1 },
+      connect,
+      end: () => Promise.resolve(),
+    };
+
+    await expect(acquirePoolClient(pool, controller.signal)).rejects.toBe(
+      reason,
+    );
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it('preserves a queued non-Error reason and releases the late client', async () => {
+    const controller = new AbortController();
+    const reason = { kind: 'review-stop' };
+    const checkout = Promise.withResolvers<PoolClient>();
+    const release = vi.fn();
+    const pool: MaintenancePool = {
+      options: { max: 1 },
+      connect: () => checkout.promise,
+      end: () => Promise.resolve(),
+    };
+    const acquiring = acquirePoolClient(pool, controller.signal);
+
+    controller.abort(reason);
+    await expect(acquiring).rejects.toBe(reason);
+    checkout.resolve({ release } as unknown as PoolClient);
+    await Promise.resolve();
+    expect(release).toHaveBeenCalledOnce();
+  });
+
   it('destroys a checked-out client when cancellation interrupts SQL', async () => {
     const controller = new AbortController();
     const reason = new Error('stop restore inventory');

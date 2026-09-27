@@ -109,6 +109,56 @@ describe('workflow trigger projection', () => {
     },
   );
 
+  it('preserves the retained Schedule V1 fingerprint for an explicit legacy cron configuration', () => {
+    const config = {
+      kind: 'cron',
+      expression: '0 9 * * 1',
+      timezone: 'Europe/Paris',
+      misfirePolicy: 'skip',
+    };
+    expect(
+      workflowTriggerProjection({
+        schemaVersion: 1,
+        settings: {},
+        nodes: [node('retained-schedule', 'core.schedule', config, 1)],
+        edges: [],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        config,
+        configFingerprint:
+          'trigger:v1:sha256:62855b2ad1080c80e85570079b8afc4d3791adc3a362cfedbbd650d38f9de7db',
+      }),
+    ]);
+  });
+
+  it.each([1, 2, 3] as const)(
+    'rejects an oversized Schedule V%s recurrence before materialization',
+    (version) => {
+      const expression = `${Array(150).fill('0').join(',')} * * * *`;
+      expect(() =>
+        workflowTriggerProjection({
+          schemaVersion: 1,
+          settings: {},
+          nodes: [
+            node(
+              'oversized',
+              'core.schedule',
+              {
+                kind: 'cron',
+                expression,
+                timezone: 'Europe/Paris',
+                misfirePolicy: 'skip',
+              },
+              version,
+            ),
+          ],
+          edges: [],
+        }),
+      ).toThrow();
+    },
+  );
+
   it.each([
     ['webhook', 'core.webhook', 1, {}],
     [

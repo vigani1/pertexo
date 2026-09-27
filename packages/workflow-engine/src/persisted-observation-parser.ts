@@ -1,3 +1,4 @@
+import { isSafeExecutorErrorCode } from '@pertexo/workflow-model/attempt-failure';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 
 import type { WorkflowObservation } from './types.js';
@@ -94,8 +95,7 @@ function parseAttemptFailure(
     typeof observation.errorKind !== 'string' ||
     !errorKinds.includes(observation.errorKind) ||
     typeof observation.possiblyDispatched !== 'boolean' ||
-    typeof observation.safeErrorCode !== 'string' ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(observation.safeErrorCode)
+    !isSafeExecutorErrorCode(observation.safeErrorCode)
   ) {
     operationError('observation_invalid', 'attempt failure is invalid');
   }

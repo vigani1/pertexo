@@ -3,27 +3,27 @@ export {
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
   type UnknownOutcomeReconciliationResult,
-} from './unknown-outcome-reconciliation.js';
+} from './transport/unknown-outcome-reconciliation.js';
 export {
   createFailureNotificationDestinationDatabase,
   FailureNotificationDestinationError,
   type FailureNotificationDestinationDatabase,
   type FailureNotificationDestinationRecord,
-} from './failure-notification-destinations.js';
-export { createDueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
-export type { DueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
+} from './notifications/failure-notification-destinations.js';
+export { createDueNodeWakeupScanner } from './coordinator/due-node-wakeup-scanner.js';
+export type { DueNodeWakeupScanner } from './coordinator/due-node-wakeup-scanner.js';
 export {
   createFailureNotificationStore,
   FailureNotificationStateError,
-} from './failure-notifications.js';
+} from './notifications/failure-notifications.js';
 export type {
   FailureNotificationClaimResult,
   FailureNotificationDelivery,
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
-} from './failure-notifications.js';
-export { createDeadlineWakeupScanner } from './deadline-wakeup-scanner.js';
-export type { DeadlineWakeupScanner } from './deadline-wakeup-scanner.js';
+} from './notifications/failure-notifications.js';
+export { createDeadlineWakeupScanner } from './coordinator/deadline-wakeup-scanner.js';
+export type { DeadlineWakeupScanner } from './coordinator/deadline-wakeup-scanner.js';
 export {
   ARTIFACT_STATUS,
   ArtifactFinalizeConflictError,
@@ -38,7 +38,7 @@ export {
   finalizeArtifactUpload,
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from './artifacts.js';
+} from './artifacts/artifacts.js';
 export {
   ARTIFACT_UPLOAD_PENDING_MS,
   ARTIFACT_UPLOAD_PURPOSE,
@@ -47,7 +47,7 @@ export {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
   createArtifactUploadDatabase,
-} from './artifact-upload.js';
+} from './artifacts/artifact-upload.js';
 export type {
   ArtifactUploadDatabase,
   ArtifactUploadActor,
@@ -56,7 +56,7 @@ export type {
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
-} from './artifact-upload.js';
+} from './artifacts/artifact-upload.js';
 export type {
   ArtifactCapacityObservation,
   ExecutionStorageObservation,
@@ -68,7 +68,7 @@ export type {
   CreatePendingArtifactInput,
   CreatePendingPreviewArtifactInput,
   FinalizeArtifactInput,
-} from './artifacts.js';
+} from './artifacts/artifacts.js';
 export {
   acceptWorkflowRun,
   IDEMPOTENCY_STATUS,
@@ -80,7 +80,7 @@ export {
   RUN_STATUS_VALUES,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './execution-acceptance.js';
+} from './runs/execution-acceptance.js';
 export {
   acceptPreviewRun,
   readPreviewRun,
@@ -89,7 +89,6 @@ export {
   markPreviewDispatched,
   heartbeatPreviewLease,
   completePreviewAttempt,
-  reconcileExpiredPreviewAttempt,
   reconcilePreviewDelivery,
   PreviewAcceptanceCorruptError,
   PreviewAdmissionDeniedError,
@@ -97,7 +96,7 @@ export {
   PreviewDeliveryMismatchError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from './preview-execution.js';
+} from './previews/preview-execution.js';
 export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
@@ -111,31 +110,30 @@ export type {
   PreviewTerminalOutcome,
   PreviewCompletionResult,
   PreviewHeartbeatResult,
-  PreviewReconciliationOutcome,
   PreviewDeliveryReconciliationResult,
-} from './preview-execution.js';
+} from './previews/preview-execution.js';
 export type {
   AcceptedWorkflowRun,
   AcceptWorkflowRunInput,
   IdempotencyStatus,
   RunStatus,
   WorkflowRunAcceptanceReplayInput,
-} from './execution-acceptance.js';
+} from './runs/execution-acceptance.js';
 export {
   appendRunEvent,
   readRunEventsAfter,
   RUN_EVENT_TYPE,
-} from './run-events.js';
+} from './runs/run-events.js';
 export type {
   PersistedRunEvent,
   RunEventPage,
   RunEventType,
-} from './run-events.js';
+} from './runs/run-events.js';
 export {
   ExecutionStateConflictError,
   RunEventGapError,
-} from './execution-state.js';
-export { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
+} from './runs/execution-state.js';
+export { requestWorkflowRunCancellation } from './runs/workflow-run-cancellation.js';
 export {
   createPublishedWorkflowReader,
   PublishedWorkflowVersionCorruptError,
@@ -147,7 +145,7 @@ export type {
   PublishedWorkflowVersionIdentity,
   ReadPublishedWorkflowForExecutionInput,
 } from './published-workflow-reader.js';
-export { createOutboxDispatcherDatabase } from './dispatcher.js';
+export { createOutboxDispatcherDatabase } from './transport/dispatcher.js';
 export type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,
@@ -155,22 +153,22 @@ export type {
   OutboxBacklogSnapshot,
   OutboxDispatcherDatabase,
   ReleaseOutboxResult,
-} from './dispatcher.js';
+} from './transport/dispatcher.js';
 export {
   consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from './inbox.js';
+} from './transport/inbox.js';
 export type {
   InboxConsumeOptions,
   InboxConsumeResult,
   InboxMessage,
-} from './inbox.js';
+} from './transport/inbox.js';
 export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
   outboxChecksumSchema,
-} from './outbox.js';
+} from './transport/outbox.js';
 export {
   parseStoredExecutionValueV1,
   serializeStoredExecutionValueV1,
@@ -179,8 +177,11 @@ export {
   isValidStoredExecutionOutput,
   PREVIEW_RETENTION_MAX_MS,
   PREVIEW_STATUS,
-} from './preview-execution.js';
-export type { InsertedOutboxEvent, OutboxEventInput } from './outbox.js';
+} from './previews/preview-execution.js';
+export type {
+  InsertedOutboxEvent,
+  OutboxEventInput,
+} from './transport/outbox.js';
 export {
   createNodeAttemptRunStore,
   NodeAttemptConnectionFenceError,
@@ -190,7 +191,7 @@ export {
   NodeAttemptOutputInvalidError,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-} from './node-attempt-run-store.js';
+} from './node-attempts/node-attempt-run-store.js';
 export type {
   CompleteNodeAttemptResult,
   NodeAttemptCompletion,
@@ -198,13 +199,13 @@ export type {
   NodeAttemptInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,
-} from './node-attempt-run-store.js';
+} from './node-attempts/node-attempt-run-store.js';
 export {
   createWorkflowRunDatabase,
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
-} from './workflow-run-api.js';
+} from './runs/workflow-run-api.js';
 export type {
   CancelWorkflowRunInput,
   GetWorkflowRunInput,
@@ -214,4 +215,4 @@ export type {
   WorkflowRunDatabase,
   WorkflowRunReadModel as ApiWorkflowRunReadModel,
   WorkflowRunRecord as ApiWorkflowRunRecord,
-} from './workflow-run-api.js';
+} from './runs/workflow-run-api.js';

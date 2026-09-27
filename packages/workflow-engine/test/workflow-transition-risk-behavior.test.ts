@@ -8,6 +8,8 @@ import {
   type WorkflowCheckpoint,
   type WorkflowObservation,
 } from '../src/testing.js';
+import { scopedLoopSinkInvocation } from '../src/workflow-transition-state.js';
+import type { InvocationState, LoopState } from '../src/types.js';
 
 const occurredAt = '2026-08-20T10:00:00.000Z';
 const ATTEMPT_ID = '11111111-1111-4111-8111-111111111111';
@@ -39,6 +41,49 @@ function checkpoint(): ReturnType<typeof createCheckpointV2> {
 }
 
 describe('workflow transition public risk behavior', () => {
+  it('rejects duplicate sink invocations within the same loop iteration scope', () => {
+    const branchPath = [{ nodeId: 'condition', outputPort: 'true' }];
+    const iterationPath = [{ loopNodeId: 'loop', ordinal: 0 }];
+    const loop: LoopState = {
+      controlInvocationKey: 'loop-control',
+      loopId: 'loop',
+      branchPath,
+      iterationPath: [],
+      bodyRootNodeIds: ['body'],
+      bodySinkNodeId: 'body',
+      collection: inline(ATTEMPT_ID),
+      collectionChecksum: 'sum',
+      collectionSize: 1,
+      maxConcurrency: 1,
+      maxIterations: 1,
+      nextOrdinal: 1,
+      activeOrdinals: [0],
+      terminalOrdinals: [],
+    };
+    const sink: InvocationState = {
+      invocationKey: 'sink-a',
+      nodeId: 'body',
+      status: 'succeeded',
+      attemptNumber: 1,
+      branchPath,
+      iterationPath,
+    };
+    const otherBranch: InvocationState = {
+      ...sink,
+      invocationKey: 'other-branch',
+      branchPath: [{ nodeId: 'condition', outputPort: 'false' }],
+    };
+    expect(scopedLoopSinkInvocation(loop, 0, [sink, otherBranch])).toEqual(
+      sink,
+    );
+    expect(() =>
+      scopedLoopSinkInvocation(loop, 0, [
+        sink,
+        { ...sink, invocationKey: 'sink-b' },
+      ]),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
   it.each([
     { joinId: '', branchIds: ['a'], policy: { kind: 'all' as const } },
     { joinId: 'join', branchIds: [], policy: { kind: 'all' as const } },

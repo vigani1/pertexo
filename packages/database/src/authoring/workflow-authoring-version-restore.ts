@@ -1,9 +1,5 @@
-import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  workflowDraftRepresentationTag,
-  type WorkflowDefinitionCatalogV1,
-} from '@pertexo/workflow-model/graph';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/graph';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
@@ -14,13 +10,12 @@ import type {
   RestoreWorkflowVersionInput,
   WorkflowAuthoringDatabase,
 } from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringTestHooks } from './workflow-authoring-types.js';
-import type {
-  WorkflowDraftRecord,
-  WorkflowRecord,
-  WorkflowVersionRecord,
-} from './workflow-authoring-records.js';
+import type { WorkflowDraftRecord } from './workflow-authoring-records.js';
+import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import {
+  mapDraft,
+  mapVersion,
+  mapWorkflow,
   workflowRowSelection,
   workflowVersionRowSelection,
 } from './workflow-authoring-rows.js';
@@ -30,44 +25,13 @@ type VersionRestoreStore = Pick<
   'restoreWorkflowVersion'
 >;
 
-type SelectedCatalogs = Readonly<{
-  definitionCatalog: WorkflowDefinitionCatalogV1;
-  placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;
-}>;
-
-export type WorkflowVersionRestoreContext = Readonly<{
-  mapDraft(
-    row: Record<string, unknown>,
-    definitionCatalog: WorkflowDefinitionCatalogV1,
-  ): WorkflowDraftRecord;
-  mapVersion(row: Record<string, unknown>): WorkflowVersionRecord;
-  mapWorkflow(row: Record<string, unknown>): WorkflowRecord;
-  requireAuthor(
-    client: PoolClient,
-    workspaceId: string,
-    actorId: string,
-  ): Promise<void>;
-  requirePlaceable(
-    previous: WorkflowDraftRecord['graphJson'],
-    next: WorkflowDraftRecord['graphJson'],
-    placementCatalog: WorkflowDefinitionCatalogV1 | undefined,
-  ): void;
-  selectCatalogs(client: Pick<PoolClient, 'query'>): Promise<SelectedCatalogs>;
-  testHooks?: WorkflowAuthoringTestHooks;
-  transact<T>(
-    workspaceId: string,
-    actorId: string,
-    operation: (client: PoolClient) => Promise<T>,
-  ): Promise<T>;
-}>;
-
 const uuidSchema = z.uuid();
 const workflowDraftTagSchema = z
   .string()
   .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
 
 async function restoreWorkflowVersion(
-  context: WorkflowVersionRestoreContext,
+  context: WorkflowAuthoringWriteContext,
   input: RestoreWorkflowVersionInput,
 ): Promise<WorkflowDraftRecord> {
   const workspaceId = uuidSchema.parse(input.workspaceId);
@@ -92,7 +56,7 @@ async function restoreWorkflowVersion(
     const workflowRow = workflowResult.rows[0];
     if (workflowRow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    context.mapWorkflow(workflowRow);
+    mapWorkflow(workflowRow);
 
     const draftResult = await client.query<Record<string, unknown>>(
       `select * from app.workflow_drafts
@@ -103,7 +67,7 @@ async function restoreWorkflowVersion(
     const draftRow = draftResult.rows[0];
     if (draftRow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const currentDraft = context.mapDraft(draftRow, definitionCatalog);
+    const currentDraft = mapDraft(draftRow, definitionCatalog);
     const currentTag = workflowDraftRepresentationTag({
       workflowId,
       revision: currentDraft.revision,
@@ -124,7 +88,7 @@ async function restoreWorkflowVersion(
     const sourceRow = sourceResult.rows[0];
     if (sourceRow === undefined)
       throw new WorkflowNotFoundError('Workflow version is not visible');
-    const sourceVersion = context.mapVersion(sourceRow);
+    const sourceVersion = mapVersion(sourceRow);
     await context.testHooks?.afterVersionRestoreStep?.('source');
     context.requirePlaceable(
       currentDraft.graphJson,
@@ -158,7 +122,7 @@ async function restoreWorkflowVersion(
         currentDraft.revision,
         currentTag,
       );
-    const restoredDraft = context.mapDraft(updatedRow, definitionCatalog);
+    const restoredDraft = mapDraft(updatedRow, definitionCatalog);
     await context.testHooks?.afterVersionRestoreStep?.('draft');
 
     await client.query(
@@ -186,7 +150,7 @@ async function restoreWorkflowVersion(
 }
 
 export function createWorkflowVersionRestoreStore(
-  context: WorkflowVersionRestoreContext,
+  context: WorkflowAuthoringWriteContext,
 ): VersionRestoreStore {
   return Object.freeze({
     restoreWorkflowVersion: (input) => restoreWorkflowVersion(context, input),

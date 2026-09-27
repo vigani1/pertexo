@@ -22,7 +22,7 @@ vi.mock('../src/tenant-access/workspace.js', () => ({
   },
 }));
 
-import { createFailureNotificationDestinationDatabase } from '../src/execution/failure-notification-destinations.js';
+import { createFailureNotificationDestinationDatabase } from '../src/execution/notifications/failure-notification-destinations.js';
 
 const actorId = '11111111-1111-4111-8111-111111111111';
 const workspaceId = '22222222-2222-4222-8222-222222222222';

@@ -300,4 +300,6 @@ export interface WorkflowTransitionPlan {
   readonly events: readonly EngineEventPlan[];
   readonly nodeRunAdmissions: readonly NodeRunAdmissionPlan[];
   readonly attempts: readonly AttemptAdmissionPlan[];
+  /** A durable wakeup is needed for scheduler work with no admitted attempt. */
+  readonly immediateContinuation?: true;
 }

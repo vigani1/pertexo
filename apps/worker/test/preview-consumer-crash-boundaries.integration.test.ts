@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/execution';
 
 import {
   createOutboxDispatcherDatabase,
@@ -11,7 +12,6 @@ import { Redis } from 'ioredis';
 import { describe, expect, it } from 'vitest';
 
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import { createDatabasePreviewAttemptRunStore } from '../src/execution/preview-attempt-runtime.js';
 import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
 import { spawnPreviewCrashChild } from './support/preview-consumer-crash-process.support.js';
 import {
