@@ -63,6 +63,30 @@ describe('branch and join scheduling', () => {
     ).toMatchObject({ kind: 'satisfied', selectedBranchIds: ['a'] });
   });
 
+  it.each([
+    ['failed', 'branch_failed'],
+    ['canceled', 'branch_canceled'],
+  ] as const)(
+    'does not satisfy an all join when a branch is %s',
+    (disposition, reasonCode) => {
+      expect(
+        decide({ kind: 'all' }, [
+          ['a', 'arrived'],
+          ['b', disposition],
+        ]),
+      ).toMatchObject({ kind: 'unsatisfied', reasonCode });
+    },
+  );
+
+  it('rejects duplicate declared branches before deciding a join', () => {
+    expect(() =>
+      decide({ kind: 'any' }, [
+        ['a', 'arrived'],
+        ['a', 'missing'],
+      ]),
+    ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
+  });
+
   it('makes an exact duplicate branch fact idempotent and rejects conflicts', () => {
     const initial = ledger([
       ['b', 'pending'],

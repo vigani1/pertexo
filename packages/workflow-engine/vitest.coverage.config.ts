@@ -10,7 +10,7 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/workflow-engine',
       include: [
-        'src/{advance-workflow,checkpoint,checkpoint-executable-validation,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,coordinator-failures,coordinator-observations,coordinator-output,executable-compatibility,executable-graph,executable-graph-boundary,executable-graph-rules,executable-validation,graph-scheduler,node-attempt-input,operations,output-reference,persisted-observation-parser,persisted-observations,retries,scheduling,transition-decisions,transitions,workflow-transition-derived,workflow-transition-observations,workflow-transition-plan,workflow-transition-state,workflow-transition-stops}.ts',
+        'src/{advance-workflow,checkpoint,checkpoint-executable-validation,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,coordinator-failures,coordinator-loop-observations,coordinator-observations,coordinator-output,executable-compatibility,executable-graph,executable-graph-boundary,executable-graph-rules,executable-validation,graph-scheduler,node-attempt-input,operations,output-reference,persisted-observation-parser,persisted-observations,retries,scheduling,transition-decisions,transitions,workflow-transition-derived,workflow-transition-loops,workflow-transition-observations,workflow-transition-plan,workflow-transition-state,workflow-transition-stops}.ts',
         'src/{checkpoint-identity,core-definition-identities,errors,executable-boundary,executable-compilation,executable-foundation,executable-graph-validation-index,executable-identity,graph-scheduler-indexes,operation-values,ordering,runtime,scope,server-only,testing-graph,testing,types}.ts',
       ],
       thresholds: {
@@ -19,7 +19,7 @@ export default defineConfig({
         lines: 91,
         statements: 90,
         // Preserve the stronger pre-expansion ratchet for its original cohort.
-        'src/{advance-workflow,checkpoint,checkpoint-executable-validation,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,executable-graph,node-attempt-input,operations,output-reference,retries,transitions,workflow-transition-observations,workflow-transition-state}.ts':
+        'src/{advance-workflow,checkpoint,checkpoint-executable-validation,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,executable-graph,node-attempt-input,operations,output-reference,retries,transitions,workflow-transition-loops,workflow-transition-observations,workflow-transition-state}.ts':
           {
             branches: 91,
             functions: 93.5,
@@ -27,6 +27,7 @@ export default defineConfig({
             statements: 94.4,
           },
         'src/coordinator-observations.ts': { branches: 82 },
+        'src/coordinator-loop-observations.ts': { branches: 82 },
         'src/executable-compatibility.ts': { branches: 75 },
         'src/executable-graph-boundary.ts': { branches: 87 },
         'src/executable-graph-rules.ts': {
