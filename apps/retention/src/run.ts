@@ -9,7 +9,7 @@ import type {
 } from '@pertexo/database/maintenance';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
-import { waitForAbortableDelay } from '@pertexo/observability/runtime';
+import { waitForDelayOrStop } from '@pertexo/observability/runtime';
 
 import { runMaintenanceLoops } from './maintenance-loops.js';
 import type { RetentionMetrics } from './metrics.js';
@@ -131,7 +131,7 @@ async function monitorRegionalReplicaLag(
         error,
       );
     }
-    await waitForAbortableDelay(
+    await waitForDelayOrStop(
       resources.replicaMonitor.sampleIntervalMs,
       signal,
     ).catch((error: unknown) => {

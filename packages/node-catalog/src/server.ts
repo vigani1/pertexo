@@ -27,6 +27,7 @@ import {
 } from './definition-resolution.js';
 import {
   createNodeRegistry,
+  bindRegistryRelease,
   type NodeExecutionRequest,
   type NodeExecutionResult,
   type NodeExecutorRegistration,
@@ -57,21 +58,6 @@ export function createPlatformNodeRegistryForRelease(
   dependencies: PlatformNodeRegistryDependencies = {},
 ): PlatformNodeRegistry {
   const release = parseSupportedPlatformRelease(releaseInput);
-
-  const definitionsByIdentity = new Map(
-    PLATFORM_NODE_DEFINITION_REGISTRATIONS.map((registration) => [
-      platformIdentityToken(registration.manifest.definition),
-      registration,
-    ]),
-  );
-  const releaseDefinitions = release.definitions.map((manifest) => {
-    const registration = definitionsByIdentity.get(
-      platformIdentityToken(manifest.definition),
-    );
-    if (registration === undefined)
-      throw new Error('Platform compatibility definition is not implemented');
-    return Object.freeze({ ...registration, manifest });
-  });
 
   const requiredExecutors = new Set(
     release.executors.map(({ executor }) => platformIdentityToken(executor)),
@@ -147,25 +133,13 @@ export function createPlatformNodeRegistryForRelease(
     ...CORE_NODE_EXECUTOR_REGISTRATIONS,
     ...providerExecutors,
   ];
-  const executorsByIdentity = new Map(
-    executorRegistrations.map((registration) => [
-      platformIdentityToken(registration.executor),
-      registration,
-    ]),
+  const registry = createNodeRegistry(
+    bindRegistryRelease({
+      release,
+      definitions: PLATFORM_NODE_DEFINITION_REGISTRATIONS,
+      executors: executorRegistrations,
+    }),
   );
-  const releaseExecutors = release.executors.map((manifest) => {
-    const registration = executorsByIdentity.get(
-      platformIdentityToken(manifest.executor),
-    );
-    if (registration === undefined)
-      throw new Error('Platform compatibility executor is not implemented');
-    return Object.freeze({ ...manifest, execute: registration.execute });
-  });
-  const registry = createNodeRegistry({
-    release,
-    definitions: releaseDefinitions,
-    executors: releaseExecutors,
-  });
   return Object.freeze({
     compatibility: registry.compatibility,
     historicalCatalog: registry.historicalCatalog,

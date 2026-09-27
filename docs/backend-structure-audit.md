@@ -44,8 +44,8 @@ is recorded. Recommendation strength is not permission to omit an item.
 | API2 | Legacy OIDC browser-binding cookie policy duplicated | auth and invitation controllers each serialize same cookie | One legacy OIDC binding-cookie owner; invitation/session/Better Auth cookies remain distinct | Implemented; focused API tests passed |
 | W3 | Storage principal/bucket isolation duplicated | recovery and retention reconstruct region-pair invariant | Artifact-store configuration invariant, consumed by distinct executable parsers | Implemented; both executable suites passed |
 | AS2 | Artifact identity and durable key formatting duplicated | store.ts and artifact-download.ts | Private artifact identity/key module; byte format unchanged; ledger keys remain separate | Implemented; storage suite passed |
-| EX2 | Release-to-registration binding algorithm duplicated | core and catalog indexing, selection and facade assembly | Existing node SDK binds releases; callers retain cohort/provider policy | Pending |
-| W4 | Same wait name hides resolve-on-stop versus reject-on-cancel | observability/runtime and worker/runtime/abortable-delay | Explicit semantic contracts and proportionate feature/runtime placement | Pending |
+| EX2 | Release-to-registration binding algorithm duplicated | core and catalog indexing, selection and facade assembly | Existing node SDK binds releases; callers retain cohort/provider policy | Implemented; SDK/core/catalog suites passed |
+| W4 | Same wait name hides resolve-on-stop versus reject-on-cancel | observability/runtime and worker/runtime/abortable-delay | Explicit semantic contracts and proportionate feature/runtime placement | Implemented; runtime/consumer suites passed |
 | EX3 | Structured-node flatten/find repeated in transition admission | transition state/plan/decisions each search | One immutable transition-local node lookup; no global cache or draft-validation conflation | Pending |
 | EX4 | Engine families flat despite established prefixes | 53 flat source files | compilation, checkpoint, observation, transition and attempt families; stable public entries | Pending |
 
@@ -156,8 +156,35 @@ run HTTP-stack and response-contract tests passed 94/94 in 10 files. API typeche
 scoped ESLint and architecture checks (19/19; no static import cycles) passed.
 This stage has not yet rerun full-stack PostgreSQL/OIDC integration.
 
+### SDK binding and timer semantics evidence: EX2, W4
+
+The server-only SDK `bindRegistryRelease` owns exact registration lookup and
+release-manifest binding, preserving local Zod schemas and executor functions.
+Core retains its successor policy; catalog retains release/cohort validation and
+lazy provider construction. Their small named execution-only facades remain
+deliberate caller interfaces rather than adding a generic facade factory.
+Missing implementations report the exact definition/executor identity. Browser
+entry tests reject the new server helper. SDK tests passed 54/54 (including
+binding, missing identities and schema/executor preservation), core 109/109 and
+catalog 77/77; all three typechecks passed. SDK coverage passed unchanged
+thresholds at 91.68% statements, 82.80% branches, 97.70% functions and 92.08%
+lines. The initial new fixture incorrectly used an executor-only lifecycle;
+typecheck caught it and the corrected definition lifecycle passed.
+
+Orderly-stop waits are now named `waitForDelayOrStop`; attempt cancellation
+waits are `waitForCancelableDelay`. Supervisor waits retain their explicit
+resolve-on-stop policy. The existing observability `/runtime` subpath remains
+the small shared executable-runtime seam: moving it would require a new package
+or application-to-application imports without additional ownership benefit.
+Operational waits remain worker-local. No cancellation behavior was homogenized.
+Observability tests passed 112/112, worker delay/attempt/coordinator/trigger
+tests 69/69, retention 100/100 and lifecycle-command 27/27. Consumer builds and
+all four typechecks passed; ESLint and formatting passed. The first compiled
+lifecycle test run used stale dist imports; rebuilding its consumer resolved
+that artifact mismatch, and the full process-lifecycle suite then passed.
+
 ## Remaining work
 
-W1, EX1, AS1, AS2, API1, API2 and W3 are implemented; EX2–EX4, W2, W4 and the complete
+W1, EX1, EX2, AS1, AS2, API1, API2, W3 and W4 are implemented; EX3–EX4, W2 and the complete
 17-module counterpart review remain open.
 No structural stage is declared complete yet.

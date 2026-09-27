@@ -32,6 +32,7 @@ describe('@pertexo/node-sdk package contract', () => {
       node: './dist/server.js',
     });
     expect(Object.keys(browserEntry)).not.toContain('createNodeRegistry');
+    expect(Object.keys(browserEntry)).not.toContain('bindRegistryRelease');
     expect(Object.keys(browserEntry).sort()).toEqual(
       Object.keys(releaseEntry).sort(),
     );

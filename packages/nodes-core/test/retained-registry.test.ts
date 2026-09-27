@@ -168,7 +168,7 @@ describe('core node retained registry', () => {
       policies: CORE_REGISTRY_RELEASE.policies,
     });
     expect(() => createCoreNodeRegistryForRelease(successor)).toThrow(
-      'Core compatibility definition is not implemented',
+      /definition .* is not implemented/u,
     );
   });
 
@@ -198,7 +198,7 @@ describe('core node retained registry', () => {
       policies: CORE_REGISTRY_RELEASE.policies,
     });
     expect(() => createCoreNodeRegistryForRelease(successor)).toThrow(
-      'Core compatibility executor is not implemented',
+      /executor .* is not implemented/u,
     );
   });
 

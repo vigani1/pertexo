@@ -24,6 +24,7 @@ import {
 } from './executor-errors.js';
 import { canonicalizeBoundedJson, isJsonObject } from './json-boundary.js';
 import { assertDefinitionExecutorBinding } from './registry-binding.js';
+export { bindRegistryRelease } from './registry-binding.js';
 
 import {
   type DefinitionIdentity,

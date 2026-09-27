@@ -6,6 +6,7 @@ import {
 } from '@pertexo/node-sdk';
 import {
   createNodeRegistry,
+  bindRegistryRelease,
   type NodeExecutionRequest,
   type NodeExecutionResult,
   type NodeRegistry,
@@ -17,10 +18,6 @@ import { CORE_NODE_EXECUTOR_REGISTRATIONS } from './registrations.js';
 
 export { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
 export { CORE_NODE_EXECUTOR_REGISTRATIONS } from './registrations.js';
-
-function identityToken(identity: Readonly<{ key: string; version: number }>) {
-  return `${identity.key}\u0000${String(identity.version)}`;
-}
 
 export interface CoreNodeRegistry {
   readonly compatibility: NodeRegistry['compatibility'];
@@ -57,39 +54,13 @@ export function createCoreNodeRegistryForRelease(
     if (successor.fingerprint !== release.fingerprint)
       throw new Error('Core compatibility release successor changed');
   }
-  const definitionsByIdentity = new Map(
-    CORE_NODE_DEFINITION_REGISTRATIONS.map((registration) => [
-      identityToken(registration.manifest.definition),
-      registration,
-    ]),
+  const registry = createNodeRegistry(
+    bindRegistryRelease({
+      release,
+      definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
+      executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
+    }),
   );
-  const releaseDefinitions = release.definitions.map((manifest) => {
-    const registration = definitionsByIdentity.get(
-      identityToken(manifest.definition),
-    );
-    if (registration === undefined)
-      throw new Error('Core compatibility definition is not implemented');
-    return Object.freeze({ ...registration, manifest });
-  });
-  const executorsByIdentity = new Map(
-    CORE_NODE_EXECUTOR_REGISTRATIONS.map((registration) => [
-      identityToken(registration.executor),
-      registration,
-    ]),
-  );
-  const releaseExecutors = release.executors.map((manifest) => {
-    const registration = executorsByIdentity.get(
-      identityToken(manifest.executor),
-    );
-    if (registration === undefined)
-      throw new Error('Core compatibility executor is not implemented');
-    return Object.freeze({ ...manifest, execute: registration.execute });
-  });
-  const registry = createNodeRegistry({
-    release,
-    definitions: releaseDefinitions,
-    executors: releaseExecutors,
-  });
   return Object.freeze({
     compatibility: registry.compatibility,
     historicalCatalog: registry.historicalCatalog,

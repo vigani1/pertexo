@@ -21,7 +21,7 @@ import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { classifyProcessError } from '@pertexo/observability/process-error-classification';
-import { waitForAbortableDelay } from '../runtime/abortable-delay.js';
+import { waitForCancelableDelay } from '../runtime/abortable-delay.js';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import {
   createNodeExecutionEnvironment,
@@ -160,7 +160,7 @@ function startNodeAttemptHeartbeat(
   const heartbeat = (async (): Promise<void> => {
     try {
       while (!heartbeatSignal.aborted) {
-        await waitForAbortableDelay(
+        await waitForCancelableDelay(
           dependencies.heartbeatIntervalMillis,
           heartbeatSignal,
         );

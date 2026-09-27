@@ -1,4 +1,5 @@
-export function waitForAbortableDelay(
+/** Orderly loop stop resolves this wait; operational cancellation is distinct. */
+export function waitForDelayOrStop(
   milliseconds: number,
   signal: AbortSignal,
 ): Promise<void> {
