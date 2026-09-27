@@ -2112,7 +2112,7 @@
           "branchType": "binary-expr",
           "line": 88,
           "column": 4,
-          "sourceFingerprint": "sha256:3b21d477c1815ac079f1674d9cf30f7ea90a90bf6941f4c7fa1bb163d78e4092",
+          "sourceFingerprint": "sha256:ac525f39b954a722e6aeadd41a4365a3ed6cbce22538dfbfd12450c9c864d69b",
           "classification": "defensive",
           "justification": "The optional nearest branch must exist before its node and output port can justify removing one branch scope from an upstream descriptor."
         },
@@ -2122,7 +2122,7 @@
           "branchType": "cond-expr",
           "line": 89,
           "column": 8,
-          "sourceFingerprint": "sha256:3b21d477c1815ac079f1674d9cf30f7ea90a90bf6941f4c7fa1bb163d78e4092",
+          "sourceFingerprint": "sha256:ac525f39b954a722e6aeadd41a4365a3ed6cbce22538dfbfd12450c9c864d69b",
           "classification": "defensive",
           "justification": "Only an upstream descriptor sourced from the nearest matching branch uses its parent scope; all other descriptors retain the complete branch path."
         },
@@ -2132,7 +2132,7 @@
           "branchType": "if",
           "line": 117,
           "column": 2,
-          "sourceFingerprint": "sha256:3b21d477c1815ac079f1674d9cf30f7ea90a90bf6941f4c7fa1bb163d78e4092",
+          "sourceFingerprint": "sha256:ac525f39b954a722e6aeadd41a4365a3ed6cbce22538dfbfd12450c9c864d69b",
           "classification": "unreachable",
           "justification": "Canonical JSON rejects undefined and exactKeys requires the descriptor value member."
         },
@@ -2142,7 +2142,7 @@
           "branchType": "if",
           "line": 152,
           "column": 2,
-          "sourceFingerprint": "sha256:3b21d477c1815ac079f1674d9cf30f7ea90a90bf6941f4c7fa1bb163d78e4092",
+          "sourceFingerprint": "sha256:ac525f39b954a722e6aeadd41a4365a3ed6cbce22538dfbfd12450c9c864d69b",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2152,7 +2152,7 @@
           "branchType": "if",
           "line": 206,
           "column": 2,
-          "sourceFingerprint": "sha256:3b21d477c1815ac079f1674d9cf30f7ea90a90bf6941f4c7fa1bb163d78e4092",
+          "sourceFingerprint": "sha256:ac525f39b954a722e6aeadd41a4365a3ed6cbce22538dfbfd12450c9c864d69b",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2162,7 +2162,7 @@
           "branchType": "cond-expr",
           "line": 223,
           "column": 31,
-          "sourceFingerprint": "sha256:dee67a7e6148481bbafcf0378e707a46c63b5f82a1d37e9a2b8cb3928abd870a",
+          "sourceFingerprint": "sha256:69df644749cccc3cc1bfc5189102c5a2a61048151e4fd96c9b2d28ec01df5ef2",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2172,7 +2172,7 @@
           "branchType": "cond-expr",
           "line": 223,
           "column": 47,
-          "sourceFingerprint": "sha256:3b21d477c1815ac079f1674d9cf30f7ea90a90bf6941f4c7fa1bb163d78e4092",
+          "sourceFingerprint": "sha256:ac525f39b954a722e6aeadd41a4365a3ed6cbce22538dfbfd12450c9c864d69b",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         }
@@ -2186,9 +2186,9 @@
           "branchId": "3",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 111,
+          "line": 113,
           "column": 37,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "unreachable",
           "justification": "Recursive scheduler projection always materializes structuredBodies as an array."
         },
@@ -2196,9 +2196,9 @@
           "branchId": "15",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 319,
+          "line": 276,
           "column": 4,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2206,9 +2206,9 @@
           "branchId": "17",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 348,
+          "line": 305,
           "column": 4,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2216,9 +2216,9 @@
           "branchId": "21",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 371,
+          "line": 328,
           "column": 6,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2226,9 +2226,9 @@
           "branchId": "23",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 375,
+          "line": 332,
           "column": 4,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2236,9 +2236,9 @@
           "branchId": "24",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 377,
+          "line": 334,
           "column": 7,
-          "sourceFingerprint": "sha256:44da5b717fdd79eaed8e6583696e104d9c30559a0f6279d265614dbbd5d86c16",
+          "sourceFingerprint": "sha256:9b328c300ed9d6e8fcf132650ea624ee1b0c49d92de6413a5eed618cfede25c3",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2246,9 +2246,9 @@
           "branchId": "24",
           "locationIndex": 2,
           "branchType": "binary-expr",
-          "line": 377,
+          "line": 334,
           "column": 53,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2256,9 +2256,9 @@
           "branchId": "25",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 380,
+          "line": 337,
           "column": 4,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2266,9 +2266,9 @@
           "branchId": "27",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 415,
+          "line": 372,
           "column": 4,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2276,9 +2276,9 @@
           "branchId": "29",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 422,
+          "line": 379,
           "column": 47,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2286,9 +2286,9 @@
           "branchId": "32",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 464,
+          "line": 421,
           "column": 4,
-          "sourceFingerprint": "sha256:9851a23e3fbcac999c3de84fa9a440b40349fadae97ccdf130c097fb47edc541",
+          "sourceFingerprint": "sha256:2f94af09ac3284466a6144a588ae113a4fbb2c1204b6b46742e8e42edf882cfa",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         }
@@ -3570,9 +3570,9 @@
           "branchId": "16",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 268,
+          "line": 295,
           "column": 2,
-          "sourceFingerprint": "sha256:303c5f1db898f9d02c0677ec24f417b52e74bb27f6f861114df025c35d6f10b9",
+          "sourceFingerprint": "sha256:da500ef8866543e820f965469c178f3d25b012fc34e65ca674bcf4b4ac4cd74e",
           "classification": "defensive",
           "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
         }
