@@ -24,11 +24,15 @@ function listHandler(pages: (after: string | null) => Record<string, unknown>) {
 
 const startedRunId = '34343434-3434-4343-8343-343434343434';
 
-/** Accepts one run start, recording its key and body. */
-function startRunHandler(starts: { key: string | null; body: unknown }[]) {
+/** Accepts one run start, once `gate` opens, recording its key and body. */
+function startRunHandler(
+  starts: { key: string | null; body: unknown }[],
+  gate: Promise<void> = Promise.resolve(),
+) {
   return http.post(
     `${api}/workflows/${workflowId}/runs`,
     async ({ request }) => {
+      await gate;
       starts.push({
         key: request.headers.get('idempotency-key'),
         body: await request.json(),
@@ -129,6 +133,43 @@ describe('running from the workflow list', () => {
       );
     });
     expect(starts).toHaveLength(1);
+  });
+
+  it('leaves you where you went if a run starts after you moved on', async () => {
+    const starts: { key: string | null; body: unknown }[] = [];
+    let accept: () => void = () => undefined;
+    const accepted = new Promise<void>((resolve) => {
+      accept = resolve;
+    });
+    mockServer.use(
+      ...discoveryHandlers(['run:start', 'connection:read']),
+      draftHandler(),
+      listHandler(() => ({
+        items: [
+          summary(workflowId, 'Daily intake', {
+            publishedVersionId: versionId,
+            activationStatus: 'active',
+          }),
+        ],
+        nextCursor: null,
+      })),
+      startRunHandler(starts, accepted),
+    );
+    const { router } = renderApp(`/w/${workspaceId}/workflows`);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Run Daily intake' }));
+    await router.navigate({
+      to: '/w/$workspaceId/connections',
+      params: { workspaceId },
+    });
+    accept();
+    // It still started, and says so, without taking you back to it.
+    expect(await screen.findByText('Daily intake started')).toBeVisible();
+    expect(starts).toHaveLength(1);
+    expect(router.state.location.pathname).toBe(
+      `/w/${workspaceId}/connections`,
+    );
   });
 
   it('offers no Run to people who can’t start runs', async () => {
