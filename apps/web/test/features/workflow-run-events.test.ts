@@ -266,6 +266,93 @@ describe('run event lifecycle', () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it('treats a drop after a stream that delivered as a fresh one, not one more in a row', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const disconnected = new ApiError({
+      kind: 'network',
+      message: 'disconnected',
+    });
+    const stream = vi
+      .fn<ApiClient['stream']>()
+      .mockRejectedValueOnce(disconnected)
+      .mockRejectedValueOnce(disconnected)
+      .mockRejectedValueOnce(disconnected)
+      .mockResolvedValueOnce(openEventStream([event(1)], { ends: true }))
+      .mockReturnValue(new Promise(() => undefined));
+    const request = vi
+      .fn<ApiClient['request']>()
+      .mockResolvedValue({ run: { status: 'running' } } as never);
+    const apiClient = { request, stream } as unknown as ApiClient;
+    const result = renderHook(
+      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      { wrapper: queryWrapper(false) },
+    );
+
+    await reachFirstSnapshotRecovery();
+    expect(result.result.current.connectionStatus).toBe('degraded');
+    // The fourth stream delivers an event, then drops.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_000);
+      await Promise.resolve();
+    });
+    expect(result.result.current.timeline).toEqual([event(1)]);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+      await Promise.resolve();
+    });
+    expect(stream).toHaveBeenCalledTimes(5);
+    expect(result.result.current.connectionStatus).toBe('reconnecting');
+  });
+
+  it('treats a drop after a long quiet stream as a fresh one', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const disconnected = new ApiError({
+      kind: 'network',
+      message: 'disconnected',
+    });
+    // Opens quietly, then drops 30 seconds after it opened.
+    const quiet = () =>
+      Promise.resolve({
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            setTimeout(() => {
+              controller.error(new TypeError('network connection was lost'));
+            }, 30_000);
+          },
+        }),
+        close: () => undefined,
+      });
+    const stream = vi
+      .fn<ApiClient['stream']>()
+      .mockRejectedValueOnce(disconnected)
+      .mockRejectedValueOnce(disconnected)
+      .mockRejectedValueOnce(disconnected)
+      .mockImplementationOnce(quiet)
+      .mockReturnValue(new Promise(() => undefined));
+    const request = vi
+      .fn<ApiClient['request']>()
+      .mockResolvedValue({ run: { status: 'waiting' } } as never);
+    const apiClient = { request, stream } as unknown as ApiClient;
+    const result = renderHook(
+      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      { wrapper: queryWrapper(false) },
+    );
+
+    await reachFirstSnapshotRecovery();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_000);
+    });
+    expect(result.result.current.connectionStatus).toBe('live');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+      await Promise.resolve();
+    });
+    expect(stream).toHaveBeenCalledTimes(5);
+    expect(result.result.current.connectionStatus).toBe('reconnecting');
+  });
+
   it('does not retry a rate-limited degraded snapshot before Retry-After', async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, 'random').mockReturnValue(0);
@@ -371,7 +458,10 @@ function streamApiClient(open: () => ApiByteStream): ApiClient {
   } as ApiClient;
 }
 
-function openEventStream(events: readonly WorkflowRunEvent[]): ApiByteStream {
+function openEventStream(
+  events: readonly WorkflowRunEvent[],
+  options: Readonly<{ ends?: boolean }> = {},
+): ApiByteStream {
   let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -384,6 +474,7 @@ function openEventStream(events: readonly WorkflowRunEvent[]): ApiByteStream {
           ),
         );
       }
+      if (options.ends === true) controller.close();
     },
   });
   return {
