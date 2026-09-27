@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -13,7 +13,9 @@ import type { ApiClient } from '@/lib/api/client';
 /**
  * Runs a workflow's published version from the list, with an empty input like
  * Build's "Run published version", then opens the new run. An unconfirmed
- * start keeps its idempotency key, so Try again can't start it twice.
+ * start keeps its idempotency key, so Try again can't start it twice. A start
+ * confirmed after you left the list, or switched workspace, only says so: it
+ * doesn't take you back.
  */
 export function useRunWorkflow({
   apiClient,
@@ -31,9 +33,20 @@ export function useRunWorkflow({
   const [pendingId, setPendingId] = useState<string>();
   const busy = useRef(false);
   const unconfirmed = useRef(new Map<string, string>());
+  // The list, in one workspace, that a start's answer may still act on.
+  const owner = useRef<symbol | undefined>(undefined);
+
+  useEffect(() => {
+    const current = Symbol('run-workflow');
+    owner.current = current;
+    return () => {
+      if (owner.current === current) owner.current = undefined;
+    };
+  }, [apiClient, userId, workspaceId]);
 
   async function run(workflow: WorkflowSummary): Promise<void> {
     if (busy.current) return;
+    const runOwner = owner.current;
     busy.current = true;
     const idempotencyKey =
       unconfirmed.current.get(workflow.id) ?? crypto.randomUUID();
@@ -50,7 +63,9 @@ export function useRunWorkflow({
       void queryClient.invalidateQueries({
         queryKey: workflowRunKeys.scope(userId, workspaceId),
       });
-      onRunStarted(started.id);
+      if (runOwner !== undefined && owner.current === runOwner)
+        onRunStarted(started.id);
+      else notifications.success({ title: `${workflow.name} started` });
     } catch (cause) {
       const uncertain = isUncertainOutcome(cause);
       if (!uncertain) unconfirmed.current.delete(workflow.id);
