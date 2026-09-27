@@ -19,7 +19,6 @@ import { WorkflowHubPending } from './page-pending';
 import { pageTitle } from './page-title';
 import {
   authoringPrefetches,
-  prefetchResource,
   probeResource,
   settlePrefetches,
   warmPrefetches,
@@ -66,15 +65,18 @@ export const workflowBuildRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   pendingComponent: WorkflowHubPending,
   path: '/',
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return { found: false };
-    return prefetchResource(context, [
-      queryClient.query(
-        workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
-      ),
-      ...authoringPrefetches(context, user.id, workspace.id),
+    const draftRead = queryClient.query(
+      workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
+    );
+    const supportingReads = authoringPrefetches(context, user.id, workspace.id);
+    const [draft] = await Promise.all([
+      probeResource(context, draftRead),
+      settlePrefetches(context, supportingReads),
     ]);
+    return draft;
   },
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Build', match.context.workspace.name) }],

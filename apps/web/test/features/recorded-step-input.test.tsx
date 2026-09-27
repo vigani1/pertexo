@@ -119,6 +119,74 @@ const dataIn = () =>
   );
 
 describe('recorded step input', () => {
+  it.each([false, true])(
+    'does not claim skipped steps received input (uses connection: %s)',
+    async (usesConnection) => {
+      const server = serve(() => recorded({ never: 'read' }));
+      renderStep({
+        ...row(sendRunId, 'send-receipt', 'Send receipt', 'skipped', 0),
+        usesConnection,
+      });
+      expect(
+        await screen.findByText(
+          'This step was skipped, so it received no input.',
+        ),
+      ).toBeVisible();
+      expect(server.reads()).toBe(0);
+      expect(
+        screen.queryByRole('region', { name: 'Where it came from' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Pertexo didn’t keep exactly/u),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/this step sends it through a connection/u),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([500, 403])(
+    'stops polling and offers recovery after an empty read then HTTP %s',
+    async (status) => {
+      let calls = 0;
+      let recovered = false;
+      const server = serve(() => {
+        calls += 1;
+        if (recovered) return recorded({ recovered: true });
+        return calls === 1
+          ? none()
+          : HttpResponse.json(
+              { code: 'internal', message: 'Unavailable' },
+              { status },
+            );
+      });
+      renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
+      expect(await screen.findByText('Not recorded yet.')).toBeVisible();
+      const problem = await screen.findByRole('alert', {}, { timeout: 3_000 });
+      expect(problem).toHaveTextContent(
+        'Couldn’t load exactly what this step received.',
+      );
+      expect(screen.queryByText('Not recorded yet.')).not.toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 1_500));
+      expect(server.reads()).toBe(2);
+      recovered = true;
+      await userEvent
+        .setup()
+        .click(within(problem).getByRole('button', { name: 'Try again' }));
+      expect(await dataIn()).toHaveTextContent(/recovered: true/u);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    },
+  );
+
+  it('stops after five empty reads instead of polling indefinitely', async () => {
+    const server = serve(none);
+    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
+    expect(await screen.findByText('Not recorded yet.')).toBeVisible();
+    // Reads occur immediately, then after 1, 2, 4 and 8 seconds.
+    await new Promise((resolve) => setTimeout(resolve, 18_000));
+    expect(server.reads()).toBe(5);
+  }, 25_000);
+
   it('reads again when a running step records its input after the first read', async () => {
     let calls = 0;
     serve(() => {

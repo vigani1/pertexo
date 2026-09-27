@@ -122,6 +122,105 @@ const graph = {
 } as unknown as NonNullable<Parameters<typeof buildThreadView>[0]['graph']>;
 
 describe('thread view', () => {
+  it('names invoked nested loop steps without listing unrun body steps as pending roots', () => {
+    sequence = 0;
+    const nestedGraph = {
+      schemaVersion: 1,
+      settings: {},
+      edges: [],
+      nodes: [
+        {
+          id: 'outer',
+          label: 'Outer pair',
+          definition: { key: 'core.foreach', version: 1 },
+          position: { x: 0, y: 0 },
+          configVersion: 1,
+          config: {},
+          inputMappings: {},
+          connectionRefs: {},
+          structured: {
+            kind: 'for_each',
+            maxIterations: 2,
+            maxConcurrency: 1,
+            body: {
+              schemaVersion: 1,
+              settings: {},
+              inputPorts: ['item', 'ordinal'],
+              outputPorts: ['result'],
+              edges: [],
+              nodes: [
+                {
+                  id: 'inner',
+                  label: 'Inner pair',
+                  definition: { key: 'core.foreach', version: 1 },
+                  position: { x: 0, y: 0 },
+                  configVersion: 1,
+                  config: {},
+                  inputMappings: {},
+                  connectionRefs: {},
+                  structured: {
+                    kind: 'for_each',
+                    maxIterations: 2,
+                    maxConcurrency: 1,
+                    body: {
+                      schemaVersion: 1,
+                      settings: {},
+                      inputPorts: ['item', 'ordinal'],
+                      outputPorts: ['result'],
+                      edges: [],
+                      nodes: [
+                        {
+                          id: 'leaf',
+                          label: 'Nested receipt',
+                          definition: { key: 'core.set', version: 1 },
+                          position: { x: 0, y: 0 },
+                          configVersion: 1,
+                          config: {},
+                          inputMappings: {},
+                          connectionRefs: {},
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    } as unknown as NonNullable<Parameters<typeof buildThreadView>[0]['graph']>;
+    const event = nodeEvent('node.succeeded', 2, {
+      nodeId: 'inner',
+      invocationKey: 'inner:outer:0',
+    });
+    const view = buildThreadView({
+      run: runSummary('running'),
+      nodes: [
+        node('outer', 'waiting'),
+        node('inner', 'succeeded', {
+          invocationKey: 'inner:outer:0',
+          completedAt: at(2),
+        }),
+      ],
+      events: [event],
+      graph: nestedGraph,
+      nowMs: start + 3_000,
+    });
+
+    expect(view.rows.map((row) => row.label)).toEqual([
+      'Outer pair',
+      'Inner pair',
+    ]);
+    expect(view.rows[1]?.kindLabel).toBe('For each');
+    expect(
+      describeRunEvent(
+        event,
+        start,
+        () => view.rows.find((row) => row.nodeId === 'inner')?.label,
+      ).step,
+    ).toBe('Inner pair');
+  });
+
   it('turns attempts, a scheduled retry and a running attempt into one row', () => {
     sequence = 0;
     const events = [

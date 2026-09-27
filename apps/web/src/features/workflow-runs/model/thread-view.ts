@@ -74,28 +74,39 @@ const TICK_STEPS_MS = [
   43_200_000, 86_400_000,
 ];
 
-type GraphLabel = Readonly<{ step: StepLabel; order: number }>;
+type GraphLabel = Readonly<{
+  step: StepLabel;
+  order: number;
+  root: boolean;
+}>;
 
 function graphLabels(
   graph: WorkflowGraphContract | undefined,
 ): ReadonlyMap<string, GraphLabel> {
   const labels = new Map<string, GraphLabel>();
-  graph?.nodes.forEach((node, order) => {
-    // The catalog's name for the step type, the same words Build uses.
-    const kind = describeStep(node.definition.key).name;
-    const label = node.label?.trim();
-    const connected =
-      Object.keys(node.connectionRefs).length > 0
-        ? { usesConnection: true }
-        : {};
-    labels.set(node.id, {
-      step:
-        label === undefined || label === ''
-          ? { label: kind, ...connected }
-          : { label, kindLabel: kind, ...connected },
-      order,
-    });
-  });
+  let order = 0;
+  const visit = (current: WorkflowGraphContract, root: boolean) => {
+    for (const node of current.nodes) {
+      // The catalog's name for the step type, the same words Build uses.
+      const kind = describeStep(node.definition.key).name;
+      const label = node.label?.trim();
+      const connected =
+        Object.keys(node.connectionRefs).length > 0
+          ? { usesConnection: true }
+          : {};
+      labels.set(node.id, {
+        step:
+          label === undefined || label === ''
+            ? { label: kind, ...connected }
+            : { label, kindLabel: kind, ...connected },
+        order: order++,
+        root,
+      });
+      if (node.structured?.kind === 'for_each')
+        visit(node.structured.body, false);
+    }
+  };
+  if (graph !== undefined) visit(graph, true);
   return labels;
 }
 
@@ -325,7 +336,7 @@ export function buildThreadView(
     });
   const invoked = new Set(invocations.map((invocation) => invocation.nodeId));
   const pending = [...labels.entries()]
-    .filter(([nodeId]) => !invoked.has(nodeId))
+    .filter(([nodeId, label]) => label.root && !invoked.has(nodeId))
     .sort(([, left], [, right]) => left.order - right.order)
     .map(([nodeId, label]) => notStartedRow(nodeId, label.step, bounds));
   const allRows = [...rows, ...pending];
