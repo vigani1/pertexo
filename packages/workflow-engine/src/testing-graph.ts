@@ -4,7 +4,7 @@ import {
 } from '@pertexo/workflow-model/graph';
 
 import { WorkflowEngineError } from './errors.js';
-import type { SchedulerState } from './graph-scheduler.js';
+import type { SchedulerState } from './transition/graph-scheduler.js';
 
 export type SchedulerGraph = SchedulerState;
 

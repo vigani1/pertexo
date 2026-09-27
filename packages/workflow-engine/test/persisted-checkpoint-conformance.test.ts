@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { parseCheckpoint } from '../src/checkpoint.js';
+import { parseCheckpoint } from '../src/checkpoint/checkpoint.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000101';
 const mergeKey = `${workflowVersionId}|merge|b:|i:`;

@@ -1,11 +1,11 @@
 import './server-only.js';
 
-import { advanceWorkflowFromSchedulerState } from './advance-workflow.js';
-import { parseCheckpoint } from './checkpoint.js';
+import { advanceWorkflowFromSchedulerState } from './transition/advance-workflow.js';
+import { parseCheckpoint } from './checkpoint/checkpoint.js';
 import {
   configuredParallelOutputPorts,
   deriveReadyNodes,
-} from './graph-scheduler.js';
+} from './transition/graph-scheduler.js';
 import { parseSchedulerGraph, type SchedulerGraph } from './testing-graph.js';
 import type { WorkflowObservation, WorkflowTransitionPlan } from './types.js';
 
@@ -55,30 +55,30 @@ export function advanceWorkflow(
 
 export { configuredParallelOutputPorts, deriveReadyNodes, parseSchedulerGraph };
 export type { SchedulerGraph, WorkflowObservation };
-export type { ReadyNodeDecision } from './graph-scheduler.js';
+export type { ReadyNodeDecision } from './transition/graph-scheduler.js';
 export {
   admitLoopIterations,
   completeLoopIteration,
   createLoopState,
   recordBranchDisposition,
   settleJoin,
-} from './scheduling.js';
-export type { JoinDecision, LoopAdmission } from './scheduling.js';
+} from './transition/scheduling.js';
+export type { JoinDecision, LoopAdmission } from './transition/scheduling.js';
 export {
   decideRetry,
   ENGINE_RETRY_POLICY_V1,
   providerIdempotencyKey,
   resolveRetryPolicy,
-} from './retries.js';
+} from './attempt/retries.js';
 export type {
   AttemptObservation,
   RetryDecision,
   RetryPolicy,
-} from './retries.js';
+} from './attempt/retries.js';
 export {
   assertAttemptTransition,
   assertNodeTransition,
   assertRunTransition,
-} from './transitions.js';
+} from './transition/transitions.js';
 export { ATTEMPT_STATUSES, NODE_STATUSES, RUN_STATUSES } from './types.js';
 export * from './index.js';

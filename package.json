@@ -16,7 +16,7 @@
       "packages/contracts/src/http/workflow-authoring.ts": [
         "duplicates"
       ],
-      "packages/workflow-engine/src/executable-foundation.ts": [
+      "packages/workflow-engine/src/compilation/executable-foundation.ts": [
         "duplicates"
       ]
     },

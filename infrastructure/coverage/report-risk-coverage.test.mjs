@@ -139,7 +139,7 @@ test('pins an exact file inventory for every risk cohort', async () => {
   assert.ok(
     inventories
       .get('workflow-engine')
-      .includes('packages/workflow-engine/src/advance-workflow.ts'),
+      .includes('packages/workflow-engine/src/transition/advance-workflow.ts'),
   );
   assert.throws(
     () =>
@@ -154,7 +154,7 @@ test('pins an exact file inventory for every risk cohort', async () => {
                   .filter(
                     (file) =>
                       file !==
-                      'packages/workflow-engine/src/advance-workflow.ts',
+                      'packages/workflow-engine/src/transition/advance-workflow.ts',
                   ),
               },
             ],

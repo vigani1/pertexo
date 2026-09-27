@@ -976,7 +976,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint-executable-validation.ts",
+      "file": "packages/workflow-engine/src/checkpoint/checkpoint-executable-validation.ts",
       "reviews": [
         {
           "branchId": "2",
@@ -1062,7 +1062,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint-identity.ts",
+      "file": "packages/workflow-engine/src/checkpoint/checkpoint-identity.ts",
       "reviews": [
         {
           "branchId": "4",
@@ -1078,7 +1078,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint-shared.ts",
+      "file": "packages/workflow-engine/src/checkpoint/checkpoint-shared.ts",
       "reviews": [
         {
           "branchId": "39",
@@ -1104,7 +1104,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint-v1-join.ts",
+      "file": "packages/workflow-engine/src/checkpoint/checkpoint-v1-join.ts",
       "reviews": [
         {
           "branchId": "7",
@@ -1130,7 +1130,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint-v1.ts",
+      "file": "packages/workflow-engine/src/checkpoint/checkpoint-v1.ts",
       "reviews": [
         {
           "branchId": "8",
@@ -1156,7 +1156,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint-v2.ts",
+      "file": "packages/workflow-engine/src/checkpoint/checkpoint-v2.ts",
       "reviews": [
         {
           "branchId": "5",
@@ -1172,7 +1172,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
+      "file": "packages/workflow-engine/src/checkpoint/checkpoint.ts",
       "reviews": [
         {
           "branchId": "5",
@@ -1208,7 +1208,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/coordinator-failures.ts",
+      "file": "packages/workflow-engine/src/observation/coordinator-failures.ts",
       "reviews": [
         {
           "branchId": "0",
@@ -1294,7 +1294,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/coordinator-observations.ts",
+      "file": "packages/workflow-engine/src/observation/coordinator-observations.ts",
       "reviews": [
         {
           "branchId": "6",
@@ -1430,7 +1430,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/coordinator-loop-observations.ts",
+      "file": "packages/workflow-engine/src/observation/coordinator-loop-observations.ts",
       "reviews": [
         {
           "branchId": "5",
@@ -1536,7 +1536,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/coordinator-output.ts",
+      "file": "packages/workflow-engine/src/observation/coordinator-output.ts",
       "reviews": [
         {
           "branchId": "3",
@@ -1562,7 +1562,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/executable-compatibility.ts",
+      "file": "packages/workflow-engine/src/compilation/executable-compatibility.ts",
       "reviews": [
         {
           "branchId": "0",
@@ -1598,7 +1598,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/executable-foundation.ts",
+      "file": "packages/workflow-engine/src/compilation/executable-foundation.ts",
       "reviews": [
         {
           "branchId": "8",
@@ -1614,7 +1614,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/executable-graph-boundary.ts",
+      "file": "packages/workflow-engine/src/compilation/executable-graph-boundary.ts",
       "reviews": [
         {
           "branchId": "2",
@@ -1700,7 +1700,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+      "file": "packages/workflow-engine/src/compilation/executable-graph-rules.ts",
       "reviews": [
         {
           "branchId": "0",
@@ -1906,7 +1906,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/executable-graph-validation-index.ts",
+      "file": "packages/workflow-engine/src/compilation/executable-graph-validation-index.ts",
       "reviews": [
         {
           "branchId": "2",
@@ -1922,7 +1922,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/executable-validation.ts",
+      "file": "packages/workflow-engine/src/compilation/executable-validation.ts",
       "reviews": [
         {
           "branchId": "17",
@@ -1948,7 +1948,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/graph-scheduler-indexes.ts",
+      "file": "packages/workflow-engine/src/transition/graph-scheduler-indexes.ts",
       "reviews": [
         {
           "branchId": "0",
@@ -1964,7 +1964,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/graph-scheduler.ts",
+      "file": "packages/workflow-engine/src/transition/graph-scheduler.ts",
       "reviews": [
         {
           "branchId": "36",
@@ -2120,7 +2120,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
+      "file": "packages/workflow-engine/src/attempt/node-attempt-input.ts",
       "reviews": [
         {
           "branchId": "8",
@@ -2328,7 +2328,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/persisted-observations.ts",
+      "file": "packages/workflow-engine/src/observation/persisted-observations.ts",
       "reviews": [
         {
           "branchId": "14",
@@ -2804,7 +2804,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/scheduling.ts",
+      "file": "packages/workflow-engine/src/transition/scheduling.ts",
       "reviews": [
         {
           "branchId": "10",
@@ -2902,7 +2902,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/transition-decisions.ts",
+      "file": "packages/workflow-engine/src/transition/transition-decisions.ts",
       "reviews": [
         {
           "branchId": "3",
@@ -2948,7 +2948,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-derived.ts",
+      "file": "packages/workflow-engine/src/transition/workflow-transition-derived.ts",
       "reviews": [
         {
           "branchId": "21",
@@ -3094,7 +3094,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
+      "file": "packages/workflow-engine/src/transition/workflow-transition-observations.ts",
       "reviews": [
         {
           "branchId": "4",
@@ -3190,7 +3190,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-loops.ts",
+      "file": "packages/workflow-engine/src/transition/workflow-transition-loops.ts",
       "reviews": [
         {
           "branchId": "17",
@@ -3286,7 +3286,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-plan.ts",
+      "file": "packages/workflow-engine/src/transition/workflow-transition-plan.ts",
       "reviews": [
         {
           "branchId": "11",
@@ -3312,7 +3312,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-state.ts",
+      "file": "packages/workflow-engine/src/transition/workflow-transition-state.ts",
       "reviews": [
         {
           "branchId": "2",
@@ -3408,7 +3408,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-stops.ts",
+      "file": "packages/workflow-engine/src/transition/workflow-transition-stops.ts",
       "reviews": [
         {
           "branchId": "2",
