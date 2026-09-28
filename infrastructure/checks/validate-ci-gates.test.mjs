@@ -21,6 +21,9 @@ function fixture() {
       'quality:local:check':
         'pnpm quality:local:contracts && pnpm performance:local:check',
       'quality:local:contracts': 'node local-quality.test.mjs',
+      'test:browser-probes': 'pnpm --filter @pertexo/api test:browser-probes',
+      'prepush:check':
+        'pnpm check && pnpm test:coverage && pnpm test:browser-probes',
     },
   };
   const workflow = parseYaml(`
@@ -35,6 +38,10 @@ jobs:
   integration:
     steps:
       - run: pnpm mutation:check
+  browser:
+    steps:
+      - run: pnpm --filter @pertexo/web exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm test:browser-probes
 `);
   return { packageManifest, workflow };
 }
@@ -151,5 +158,58 @@ test('requires performance validation beneath the local runner contract gate', (
   assert.throws(
     () => validateCiGatePolicy(input),
     /performance:local:check exactly once; observed 0/u,
+  );
+});
+
+test('requires browser probes exactly once in the installed-browser lane', () => {
+  for (const change of ['omitted', 'duplicated', 'misplaced']) {
+    const input = fixture();
+    if (change === 'duplicated')
+      input.workflow.jobs.browser.steps.push({
+        run: 'pnpm test:browser-probes',
+      });
+    else {
+      input.workflow.jobs.browser.steps.pop();
+      if (change === 'misplaced')
+        input.workflow.jobs.quality.steps.push({
+          run: 'pnpm test:browser-probes',
+        });
+    }
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /test:browser-probes must be owned exactly once by the browser job/u,
+    );
+  }
+});
+
+test('rejects optional probes or missing, late or optional browser installation', () => {
+  for (const change of [
+    'optional-probes',
+    'allowed-failure',
+    'missing-install',
+    'late-install',
+    'optional-install',
+  ]) {
+    const input = fixture();
+    const steps = input.workflow.jobs.browser.steps;
+    if (change === 'optional-probes') steps[1].if = 'false';
+    if (change === 'allowed-failure') steps[1]['continue-on-error'] = true;
+    if (change === 'missing-install') steps.shift();
+    if (change === 'late-install') steps.reverse();
+    if (change === 'optional-install') steps[0].if = 'false';
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /browser (?:probes|installation) must/u,
+    );
+  }
+});
+
+test('requires local pre-push to execute the separate browser probes', () => {
+  const input = fixture();
+  input.packageManifest.scripts['prepush:check'] =
+    'pnpm check && pnpm test:coverage';
+  assert.throws(
+    () => validateCiGatePolicy(input),
+    /prepush:check script must invoke test:browser-probes exactly once/u,
   );
 });

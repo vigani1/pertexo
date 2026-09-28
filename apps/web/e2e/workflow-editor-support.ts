@@ -140,6 +140,7 @@ export async function installEditorRoutes(
     (route) =>
       route.fulfill({
         json: { valid: true, issues: [], compatibility: compatibility() },
+        headers: { etag: currentEtag(remote) },
       }),
   );
   await page.route(

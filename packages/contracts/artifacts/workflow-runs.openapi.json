@@ -1150,6 +1150,7 @@
               "workflow.lifecycle_conflict",
               "workflow.name_conflict",
               "workflow.invalid",
+              "workflow.validation_unavailable",
               "workflow.not_published",
               "workflow.activation_failed",
               "run.not_cancelable",

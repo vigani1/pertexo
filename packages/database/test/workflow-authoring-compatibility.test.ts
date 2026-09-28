@@ -54,6 +54,11 @@ function variant(compatibilityRelease: CompatibilityReleaseExpectation) {
     definitionCatalog: catalog,
     placementDefinitionCatalog: catalog,
     executableCompiler: compiler,
+    validateAuthoringGraph: vi
+      .fn()
+      .mockRejectedValue(
+        new Error('admission not exercised by selection test'),
+      ),
   });
 }
 
@@ -116,6 +121,7 @@ describe('workflow authoring compatibility normalization', () => {
       definitionCatalog: selected.definitionCatalog,
       placementDefinitionCatalog: selected.placementDefinitionCatalog,
       executableCompiler: selected.executableCompiler,
+      validateAuthoringGraph: selected.validateAuthoringGraph,
     });
 
     await expect(compatibility.selectLocked({ query })).resolves.toEqual(

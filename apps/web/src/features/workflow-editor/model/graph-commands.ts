@@ -216,6 +216,7 @@ export type WorkflowNodeUpdate = Readonly<{
   inputMappings?: WorkflowNode['inputMappings'];
   connectionRefs?: WorkflowNode['connectionRefs'];
   disabled?: boolean;
+  structured?: WorkflowNode['structured'];
 }>;
 
 export function updateWorkflowNode(

@@ -1,23 +1,13 @@
-import type { WorkflowValidateResponse } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { retryAfterSeconds } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { publishWorkflow, validateWorkflow } from '../workflow-publish.api';
+import { publishWorkflow } from '../workflow-publish.api';
 import { workflowPublishKeys } from '../workflow-publish.queries';
 import { commandErrorMessage, isUncertainCommandError } from './command-utils';
-
-export type ValidationResult = Readonly<{
-  report: WorkflowValidateResponse;
-  generation: number;
-  revision: number;
-}>;
-
-type SavedDraft = Readonly<{
-  etag: string;
-  generation: number;
-  revision: number;
-}>;
+import {
+  useWorkflowDraftValidation,
+  type SavedDraft,
+} from './use-workflow-draft-validation';
 
 type PublishAttempt = SavedDraft & Readonly<{ idempotencyKey: string }>;
 
@@ -47,6 +37,7 @@ export function useWorkflowPublication({
   workflowId,
   verifyIdentity,
   ensureSaved,
+  isSavedDraftCurrent,
   onPublicationAccepted,
 }: Readonly<{
   apiClient: ApiClient;
@@ -55,26 +46,35 @@ export function useWorkflowPublication({
   workflowId: string;
   verifyIdentity: () => Promise<void>;
   ensureSaved: () => Promise<SavedDraft>;
+  isSavedDraftCurrent: (saved: SavedDraft) => boolean;
   onPublicationAccepted?: () => void;
 }>) {
   const queryClient = useQueryClient();
-  const [validation, setValidation] = useState<ValidationResult>();
-  // The check in flight, if any: it clears only its own marker, so a check
-  // from an earlier scope can't end a newer one's wait.
-  const [checking, setChecking] = useState<symbol>();
-  const validationPending = checking !== undefined;
-  const [validationError, setValidationError] = useState<string>();
-  const [validationBlockedUntil, setValidationBlockedUntil] =
-    useState<number>();
   const [publishStage, setPublishStage] = useState<PublishStage>();
   const [publishError, setPublishError] = useState<string>();
   const [publicationReceipt, setPublicationReceipt] =
     useState<PublicationReceipt>();
   const [publishRecoveryPending, setPublishRecoveryPending] = useState(false);
   const publishAttempt = useRef<PublishAttempt | undefined>(undefined);
-  const validationInFlight =
-    useRef<Promise<ValidationResult | undefined>>(undefined);
   const owner = useRef<symbol | undefined>(undefined);
+  const {
+    validation,
+    validationPending,
+    validationError,
+    validationBlockedUntil,
+    validate,
+    freshValidation,
+    assertValidationAvailable,
+    recordValidationCooldown,
+    resetValidation,
+  } = useWorkflowDraftValidation({
+    apiClient,
+    workspaceId,
+    workflowId,
+    owner,
+    ensureSaved,
+    isSavedDraftCurrent,
+  });
 
   useEffect(() => {
     const currentOwner = Symbol('workflow-publication');
@@ -83,69 +83,10 @@ export function useWorkflowPublication({
       if (owner.current === currentOwner) {
         owner.current = undefined;
         publishAttempt.current = undefined;
-        validationInFlight.current = undefined;
+        resetValidation();
       }
     };
-  }, [apiClient, workspaceId, workflowId]);
-
-  async function checkSavedDraft(
-    saved: SavedDraft,
-    checkOwner: symbol,
-  ): Promise<ValidationResult | undefined> {
-    const report = await validateWorkflow(apiClient, workspaceId, workflowId);
-    if (owner.current !== checkOwner) return undefined;
-    const result = {
-      report,
-      generation: saved.generation,
-      revision: saved.revision,
-    };
-    setValidation(result);
-    setValidationError(undefined);
-    setValidationBlockedUntil(undefined);
-    return result;
-  }
-
-  async function validate() {
-    const checkOwner = owner.current;
-    if (validationInFlight.current !== undefined || checkOwner === undefined)
-      return;
-    setChecking(checkOwner);
-    setValidationError(undefined);
-    const request = ensureSaved().then((saved) =>
-      owner.current === checkOwner
-        ? checkSavedDraft(saved, checkOwner)
-        : undefined,
-    );
-    validationInFlight.current = request;
-    try {
-      await request;
-    } catch (error) {
-      if (owner.current !== checkOwner) return;
-      const seconds = retryAfterSeconds(error);
-      if (seconds !== undefined)
-        setValidationBlockedUntil(Date.now() + seconds * 1_000);
-      setValidationError(commandErrorMessage(error, 'checking for issues'));
-    } finally {
-      if (validationInFlight.current === request)
-        validationInFlight.current = undefined;
-      setChecking((current) => (current === checkOwner ? undefined : current));
-    }
-  }
-
-  async function freshValidation(
-    saved: SavedDraft,
-    publishOwner: symbol,
-  ): Promise<ValidationResult | undefined> {
-    const inFlight = await validationInFlight.current?.catch(() => undefined);
-    const known = inFlight ?? validation;
-    if (
-      known?.generation === saved.generation &&
-      known.revision === saved.revision
-    )
-      return known;
-    setPublishStage('checking');
-    return checkSavedDraft(saved, publishOwner);
-  }
+  }, [apiClient, userId, workspaceId, workflowId, resetValidation]);
 
   async function prepareAttempt(
     publishOwner: symbol,
@@ -153,9 +94,17 @@ export function useWorkflowPublication({
     setPublishStage('saving');
     const saved = await ensureSaved();
     if (owner.current !== publishOwner) return undefined;
-    const checked = await freshValidation(saved, publishOwner);
+    const checked = await freshValidation(saved, publishOwner, () => {
+      setPublishStage('checking');
+    });
     if (owner.current !== publishOwner || checked === undefined)
       return undefined;
+    if (checked.etag !== saved.etag || !isSavedDraftCurrent(saved)) {
+      setPublishError(
+        'This check describes a different draft. Review the latest changes and check again before publishing.',
+      );
+      return 'blocked';
+    }
     if (!checked.report.valid) return 'blocked';
     return { ...saved, idempotencyKey: crypto.randomUUID() };
   }
@@ -169,10 +118,22 @@ export function useWorkflowPublication({
       setPublishStage('saving');
       await verifyIdentity();
       if (owner.current !== publishOwner) return failed;
+      if (publishAttempt.current === undefined) assertValidationAvailable();
       const prepared =
         publishAttempt.current ?? (await prepareAttempt(publishOwner));
       if (prepared === undefined) return failed;
       if (prepared === 'blocked') return { kind: 'blocked' };
+      if (owner.current !== publishOwner) return failed;
+      if (publishAttempt.current === undefined) assertValidationAvailable();
+      if (
+        publishAttempt.current === undefined &&
+        !isSavedDraftCurrent(prepared)
+      ) {
+        setPublishError(
+          'Your draft changed during the check. Review your changes and try again.',
+        );
+        return { kind: 'blocked' };
+      }
       publishAttempt.current = prepared;
       dispatched = true;
       setPublishStage('publishing');
@@ -206,6 +167,7 @@ export function useWorkflowPublication({
       if (dispatched && !isUncertainCommandError(error))
         publishAttempt.current = undefined;
       setPublishRecoveryPending(publishAttempt.current !== undefined);
+      recordValidationCooldown(error);
       setPublishError(commandErrorMessage(error, 'publishing'));
       return failed;
     } finally {

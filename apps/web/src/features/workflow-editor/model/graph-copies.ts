@@ -57,7 +57,7 @@ function copySteps<Level extends GraphLevel>(
   const idMap = new Map(sources.map((node) => [node.id, createId()]));
   const shift = offset ?? clearOffset(level, sources);
   const copies = sources.map((node) => ({
-    ...copyStep(node, idMap, createId),
+    ...copyStep(node, idMap, createId, level.nodes),
     position: { x: node.position.x + shift.x, y: node.position.y + shift.y },
   }));
   return {
@@ -107,10 +107,26 @@ function copyStep(
   node: WorkflowNode,
   idMap: ReadonlyMap<string, string>,
   createId: CreateId,
+  levelNodes: readonly WorkflowNode[],
 ): WorkflowNode {
+  const parallelId = node.config.parallelNodeId;
+  const parallel =
+    node.definition.key === 'core.merge' &&
+    [1, 2, 3].includes(node.definition.version) &&
+    typeof parallelId === 'string' &&
+    idMap.has(parallelId)
+      ? levelNodes.find((candidate) => candidate.id === parallelId)
+      : undefined;
+  const remapParallel =
+    parallel?.definition.key === 'core.parallel' &&
+    parallel.definition.version === node.definition.version &&
+    typeof parallelId === 'string';
   const copy: WorkflowNode = {
     ...node,
     id: idMap.get(node.id) ?? createId(),
+    config: remapParallel
+      ? { ...node.config, parallelNodeId: idMap.get(parallelId) ?? parallelId }
+      : node.config,
     inputMappings: Object.fromEntries(
       Object.entries(node.inputMappings).map(([key, source]) => [
         key,
@@ -130,7 +146,9 @@ function copyStep(
       ...structured,
       body: {
         ...body,
-        nodes: body.nodes.map((step) => copyStep(step, bodyIds, createId)),
+        nodes: body.nodes.map((step) =>
+          copyStep(step, bodyIds, createId, body.nodes),
+        ),
         edges: copyEdges(body.edges, bodyIds, createId),
       },
     },

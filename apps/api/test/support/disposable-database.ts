@@ -17,6 +17,7 @@ export type DropDisconnectedDatabaseOptions = Readonly<{
   timeoutMs?: number;
   queryTimeoutMs?: number;
   now?: () => number;
+  beforeDrop?: () => Promise<void>;
 }>;
 
 function quoteIdentifier(value: string): string {
@@ -64,6 +65,7 @@ export async function dropDisconnectedDatabase(
       throw new Error('Disposable database connection count is unavailable');
     remainingConnections = observed;
     if (remainingConnections === 0) {
+      await options.beforeDrop?.();
       await boundedQuery(
         admin,
         {

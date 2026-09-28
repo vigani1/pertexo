@@ -6,6 +6,8 @@ import { bodyIssuesOf } from '../../model/body-rules';
 import { useEditorStore } from '../../model/editor-store-context';
 import { loopSummary } from '../../model/graph-adapter';
 import type { WorkflowNode } from '../../model/graph-scopes';
+import type { NodeFormApi } from '../../model/node-form';
+import { LoopBoundsFields } from './loop-bounds-fields';
 
 /**
  * A For each step's body (ADR 020): it runs once per item within its item
@@ -15,12 +17,12 @@ import type { WorkflowNode } from '../../model/graph-scopes';
  */
 export function LoopBodySection({
   node,
-  editable,
+  form,
   onSelectStep,
   onAddStep,
 }: Readonly<{
   node: WorkflowNode;
-  editable: boolean;
+  form: NodeFormApi;
   onSelectStep: (nodeId: string) => void;
   /** Opens the step picker for the body, returning focus to `opener`. */
   onAddStep: (opener: HTMLElement) => void;
@@ -44,6 +46,9 @@ export function LoopBodySection({
         Its body runs for each item it’s given{bounds}. Steps after it continue
         once every item has finished.
       </p>
+      {node.structured === undefined ? null : (
+        <LoopBoundsFields structure={node.structured} form={form} />
+      )}
       {loop === null || loop.steps.length === 0 ? null : (
         <ul aria-label="Body steps" className="flex flex-col gap-1">
           {loop.steps.map((step) => (
@@ -70,7 +75,7 @@ export function LoopBodySection({
           </ul>
         </Notice>
       )}
-      {editable ? (
+      {form.editable ? (
         <Button
           type="button"
           size="sm"

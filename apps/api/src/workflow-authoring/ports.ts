@@ -13,6 +13,7 @@ export type WorkflowAuthoringPersistence = Pick<
   | 'listWorkflows'
   | 'getWorkflow'
   | 'getDraft'
+  | 'validateDraft'
   | 'listVersions'
   | 'saveDraft'
   | 'publishWorkflow'

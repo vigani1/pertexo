@@ -194,10 +194,16 @@ export function draftBody(graph: WorkflowGraphContract, revision: number) {
   };
 }
 
-export function validHandler(onValidate: () => void = () => undefined) {
+export function validHandler(
+  onValidate: () => void = () => undefined,
+  etag = etagB,
+) {
   return http.post(`${workflowApi}/validate`, () => {
     onValidate();
-    return HttpResponse.json({ valid: true, issues: [], compatibility });
+    return HttpResponse.json(
+      { valid: true, issues: [], compatibility },
+      { headers: { etag } },
+    );
   });
 }
 

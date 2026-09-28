@@ -17,13 +17,16 @@ export function validateWorkflow(
   apiClient: ApiClient,
   workspaceId: string,
   workflowId: string,
-): Promise<WorkflowValidateResponse> {
+): Promise<Readonly<{ report: WorkflowValidateResponse; etag: string }>> {
   return apiClient.request({
     path: `${workflowPath(workspaceId, workflowId)}/validate`,
     method: 'POST',
     response: {
       kind: 'json',
-      decode: (value) => workflowValidateResponseSchema.parse(value),
+      decode: (value, metadata) => ({
+        report: workflowValidateResponseSchema.parse(value),
+        etag: strongEtagSchema.parse(metadata.header('etag')),
+      }),
     },
   });
 }

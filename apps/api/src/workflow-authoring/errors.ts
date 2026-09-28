@@ -7,6 +7,8 @@ import {
   WorkflowNameRevisionConflictError,
 } from '@pertexo/database/api';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
+import { apiProblemIssueSchema } from '@pertexo/contracts/errors';
 import { z } from 'zod';
 
 import {
@@ -49,6 +51,8 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof AuthoringValidationUnavailableError)
+    return validationUnavailable();
   if (error instanceof AuthorizationError)
     return applicationError(error.code, {
       safeDetail: error.message,
@@ -101,11 +105,18 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
         'The workflow contains a definition that can no longer be added.',
       details: { issues: error.issues },
     });
-  if (error instanceof InvalidWorkflowGraphError)
+  if (error instanceof InvalidWorkflowGraphError) {
+    if (
+      error.issues.some(
+        (issue) => !apiProblemIssueSchema.safeParse(issue).success,
+      )
+    )
+      return validationUnavailable();
     return applicationError('workflow.invalid', {
       safeDetail: 'The workflow cannot be published in its current form.',
       details: { issues: error.issues },
     });
+  }
   // Compiling the executable finds setup the draft check can't see (a
   // Parallel or Switch edge on a branch that isn't configured): the
   // workflow is invalid, not the server broken.
@@ -134,6 +145,14 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
       safeDetail: 'The workflow graph is invalid.',
     });
   return applicationError('internal.unexpected', { cause: error });
+}
+
+function validationUnavailable(): ApplicationError {
+  return applicationError('workflow.validation_unavailable', {
+    safeDetail:
+      'Workflow validation is temporarily unavailable. Retry explicitly after a short wait.',
+    details: { retryAfterSeconds: 1 },
+  });
 }
 
 export function throwWorkflowApplicationError(error: unknown): never {

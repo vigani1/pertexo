@@ -13,6 +13,7 @@ import {
 import { IdentityError } from '../../src/identity/index.js';
 import { mapIdentityWorkspaceError } from '../../src/identity-workspace/index.js';
 import { APPLICATION_ERROR_MAPPERS } from '../../src/application-error-mappers.js';
+import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
 
 interface ResponseMock {
   body?: unknown;
@@ -52,6 +53,33 @@ function hostFor(
 }
 
 describe('RFC 9457 problem details filter', () => {
+  it('renders authoring admission failures as safe 503 with Retry-After, never raw causes or graph input', () => {
+    const contexts = new RequestContextStore();
+    const filter = new ProblemDetailsFilter(
+      contexts,
+      undefined,
+      APPLICATION_ERROR_MAPPERS,
+    );
+    const response = responseMock();
+    contexts.run('request-authoring', () => {
+      filter.catch(
+        new AuthoringValidationUnavailableError('report_limit'),
+        hostFor(
+          { url: '/v1/workspaces/workspace-a/workflows/workflow-a/validate' },
+          response,
+        ),
+      );
+    });
+    expect(response.status).toHaveBeenCalledWith(503);
+    expect(response.header).toHaveBeenCalledWith('retry-after', '1');
+    expect(response.body).toMatchObject({
+      code: 'workflow.validation_unavailable',
+      status: 503,
+    });
+    expect(apiProblemSchema.safeParse(response.body).success).toBe(true);
+    expect(response.body).not.toHaveProperty('cause');
+    expect(response.body).not.toHaveProperty('errors');
+  });
   it.each([null, undefined, false, 0, 'request.invalid'])(
     'does not classify primitive value %j as an application error',
     (value) => {

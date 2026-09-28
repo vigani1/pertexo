@@ -6,6 +6,7 @@ import {
   editorUrl,
   installEditorRoutes,
   remoteDraft,
+  workspace,
   type RemoteDraft,
 } from './workflow-editor-support';
 
@@ -85,6 +86,80 @@ async function openEditor(page: Page, remote: RemoteDraft) {
     definitions: [forEachDefinition, definition],
   });
   await page.goto(editorUrl);
+}
+
+for (const width of [390, 1024, 1280, 1440]) {
+  for (const editable of [true, false]) {
+    test(`loop limits are usable at ${String(width)}px for ${editable ? 'editable' : 'read-only'} actors`, async ({
+      context,
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const remote = orderLoopDraft();
+      const originalBody = savedBody(remote);
+      await addCsrfCookie(context);
+      await installEditorRoutes(page, remote, {
+        definitions: [forEachDefinition, definition],
+        accessibleWorkspace: {
+          ...workspace,
+          capabilities: editable
+            ? workspace.capabilities
+            : workspace.capabilities.filter(
+                (capability) => capability !== 'workflow:update',
+              ),
+        },
+      });
+      await page.goto(editorUrl);
+      const loop = page.getByTestId('rf__node-loop');
+      await loop.focus();
+      await page.keyboard.press('Enter');
+      if (width < 1024)
+        await page
+          .getByRole('navigation', { name: 'Editor panels' })
+          .getByRole('button', { name: 'Step', exact: true })
+          .click();
+      const items = page.getByLabel('Maximum items', { exact: true });
+      const concurrent = page.getByLabel('Items at a time', { exact: true });
+      await expect(items).toBeVisible();
+      await expect(concurrent).toBeVisible();
+      const bounds = await items.boundingBox();
+      expect(bounds?.width ?? 0).toBeGreaterThan(150);
+      expect(bounds?.x ?? -1).toBeGreaterThanOrEqual(0);
+      expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(
+        width,
+      );
+      if (!editable) {
+        await expect(items).toBeDisabled();
+        await expect(concurrent).toBeDisabled();
+        expect(remote.revision).toBe(1);
+      } else {
+        await items.fill('1');
+        await page.keyboard.press('Tab');
+        await expect(concurrent).toBeFocused();
+        await expect(concurrent).toHaveAttribute('aria-invalid', 'true');
+        await expect(
+          page.getByText('Items at a time cannot exceed Maximum items.'),
+        ).toBeVisible();
+        expect(remote.revision).toBe(1);
+        await concurrent.fill('1');
+        await expect.poll(() => remote.revision).toBeGreaterThan(1);
+        expect(savedBody(remote)).toEqual(originalBody);
+        await page.reload();
+        await loop.focus();
+        await page.keyboard.press('Enter');
+        if (width < 1024)
+          await page
+            .getByRole('navigation', { name: 'Editor panels' })
+            .getByRole('button', { name: 'Step', exact: true })
+            .click();
+        await expect(items).toHaveValue('1');
+        await expect(concurrent).toHaveValue('1');
+      }
+      await page.screenshot({
+        path: `/tmp/pertexo-f01-loop-${String(width)}-${editable ? 'edit' : 'read'}.png`,
+      });
+    });
+  }
 }
 
 test('draws For each as a container with its body steps inside and inspects it from the keyboard', async ({

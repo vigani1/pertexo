@@ -24,24 +24,26 @@ import type {
 } from '../src/identity-workspace/types.js';
 import type { WorkflowAuthoringRequest } from '../src/workflow-authoring/types.js';
 import type { WorkflowRunsRequest } from '../src/workflow-runs/request-context.js';
+import type { AbortableRequest } from '../src/platform/http/request-operation-signal.js';
 
 describe('validated response contract types', () => {
   it('keeps authenticated request fields owned by the identity request contract', () => {
     expectTypeOf<WorkflowAuthoringRequest>().toEqualTypeOf<
-      Readonly<
-        Pick<
-          IdentityWorkspaceRequest,
-          | 'authorizedWorkspace'
-          | 'cookies'
-          | 'headers'
-          | 'identitySession'
-          | 'method'
-          | 'params'
-          | 'query'
-          | 'requestId'
-          | 'traceId'
+      AbortableRequest &
+        Readonly<
+          Pick<
+            IdentityWorkspaceRequest,
+            | 'authorizedWorkspace'
+            | 'cookies'
+            | 'headers'
+            | 'identitySession'
+            | 'method'
+            | 'params'
+            | 'query'
+            | 'requestId'
+            | 'traceId'
+          >
         >
-      >
     >();
     expectTypeOf<WorkflowRunsRequest>().toEqualTypeOf<
       Readonly<
@@ -71,7 +73,12 @@ describe('validated response contract types', () => {
     expectTypeOf<
       ReturnType<ValidateWorkflowDraftUseCase['execute']>
     >().toEqualTypeOf<
-      Promise<z.output<typeof workflowValidateResponseSchema>>
+      Promise<
+        Readonly<{
+          body: z.output<typeof workflowValidateResponseSchema>;
+          representationTag: string;
+        }>
+      >
     >();
     expectTypeOf<
       ReturnType<ListWorkflowVersionsUseCase['execute']>

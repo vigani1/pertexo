@@ -28,6 +28,7 @@ pnpm --filter @pertexo/web build
 pnpm --filter @pertexo/web lint
 pnpm --filter @pertexo/web test
 pnpm --filter @pertexo/web exec playwright install chromium
+pnpm test:browser-probes
 pnpm --filter @pertexo/web test:e2e
 ```
 
@@ -40,6 +41,25 @@ identity/workspace HTTP boundary. Optionally set
 The tests do not require a live identity provider, backend, Redis or database;
 the API/database suites separately exercise the real callback and discovery
 stack.
+
+The supported `test:e2e` script first builds the node catalog and workflow
+engine's combined six-package dependency closure. The complete webhook/HTTP
+authoring regression reads real catalog pins, and the editor duplication unit
+test included by test typechecking reads the engine's admission interface, in
+the Node test process, not the browser bundle. This prerequisite is owned by the
+same local and CI command; it does not depend on another CI job's build output.
+Use the script rather than a direct Playwright invocation when those package
+artifacts have not been built.
+
+The separate `test:browser-probes` lane verifies browser lifetime accounting and
+verification-URL redaction with the actual Playwright reporter. It requires the
+installed Chromium executable, but no API/database/Redis service. Ordinary
+`pnpm check` and API unit/coverage discovery remain browser-free; coverage
+source selection and thresholds are unchanged. `pnpm prepush:check` explicitly
+runs the browser probes after check/coverage, so install Chromium first (or use
+the existing `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`). CI runs them as a required
+step in its browser job after browser installation. Missing executables fail
+this lane; probes are not skipped or run in every ordinary unit/coverage job.
 
 Root build/typecheck/lint/test commands include this workspace. CI runs both its
 unit tests and the authenticated Chromium journeys. The production output is
@@ -64,9 +84,9 @@ wiring remains deployment-owned.
 | `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                                                                    |
 | `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.                                               |
 | `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references.                                       |
-| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, history, saving and conflict recovery.                                           |
+| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, loop bounds/body authoring, history, saving and conflict recovery.               |
 | `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                                                                  |
-| `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                                                                |
+| `src/features/workflow-publish/`      | Checked-snapshot ETag validation, preview and exact-ETag publish actions.                                                         |
 | `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                                                                |
 | `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.                                            |
 | `src/features/workflow-settings/`     | Versions and compare, lifecycle, published triggers and the current failure-alert choice.                                         |

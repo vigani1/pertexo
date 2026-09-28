@@ -305,7 +305,10 @@ describe('publication', () => {
       request: (request: ApiJsonRequest<unknown>) => {
         paths.push(request.path.split('/').at(-1) ?? '');
         if (request.path.endsWith('/validate'))
-          return Promise.resolve({ valid, issues: [], compatibility });
+          return Promise.resolve({
+            report: { valid, issues: [], compatibility },
+            etag: saved.etag,
+          });
         return Promise.resolve({
           version: {
             id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
@@ -330,6 +333,10 @@ describe('publication', () => {
           workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
           verifyIdentity: () => Promise.resolve(),
           ensureSaved: () => Promise.resolve(saved),
+          isSavedDraftCurrent: (checked) =>
+            checked.generation === saved.generation &&
+            checked.revision === saved.revision &&
+            checked.etag === saved.etag,
         }),
       { wrapper: QueryWrapper },
     );

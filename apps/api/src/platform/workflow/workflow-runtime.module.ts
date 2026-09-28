@@ -14,6 +14,7 @@ import {
   type WorkflowAuthoringDatabase,
 } from '@pertexo/database/api';
 import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
+import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/authoring-validation';
 
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
 import {
@@ -66,6 +67,10 @@ export type ApiWorkflowRuntimeOverrides = Readonly<{
       WorkflowAuthoringDependencies['telemetry']
     >;
     expressionEvaluatorFactory?: () => JsonataEvaluator;
+    authoringValidatorFactory?: () => Pick<
+      WorkflowAuthoringValidator,
+      'validate' | 'shutdown'
+    >;
   }>;
   persistence?: Readonly<{
     notifications?: RunEventNotificationPublisher;
@@ -103,19 +108,28 @@ export async function createApiWorkflowRuntime(
     ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined;
   let eventDatabase: WorkspaceDatabase | undefined;
   let expressionEvaluator: JsonataEvaluator | undefined;
+  let authoringValidator:
+    Pick<WorkflowAuthoringValidator, 'validate' | 'shutdown'> | undefined;
   try {
-    database =
-      authoring.database ??
-      (authoring.databaseFactory ?? createWorkflowAuthoringDatabase)(
+    if (authoring.database !== undefined) {
+      database = authoring.database;
+    } else {
+      const validator =
+        authoring.authoringValidatorFactory?.() ??
+        new WorkflowAuthoringValidator();
+      authoringValidator = validator;
+      database = (authoring.databaseFactory ?? createWorkflowAuthoringDatabase)(
         databaseConfig,
         {
           ...createCoreAuthoringOptions(
             variants,
             readinessSupport.descriptions,
+            validator,
           ),
           ...(runtime === undefined ? {} : { runtime }),
         },
       );
+    }
     if (persistence.runs === undefined) {
       notifications =
         persistence.notifications ??
@@ -171,6 +185,7 @@ export async function createApiWorkflowRuntime(
     const acquiredEventDatabase = eventDatabase;
     const acquiredNotifications = notifications;
     const acquiredExpressionEvaluator = expressionEvaluator;
+    const acquiredAuthoringValidator = authoringValidator;
     let closePromise: Promise<void> | undefined;
     return Object.freeze({
       dependencies: Object.freeze({
@@ -203,6 +218,7 @@ export async function createApiWorkflowRuntime(
           acquiredEventDatabase,
           acquiredNotifications,
           acquiredExpressionEvaluator,
+          acquiredAuthoringValidator,
         );
         return closePromise;
       },
@@ -214,6 +230,7 @@ export async function createApiWorkflowRuntime(
       eventDatabase,
       notifications,
       expressionEvaluator,
+      authoringValidator,
     );
     if (cleanupFailures.length > 0)
       throw new AggregateError(
@@ -230,6 +247,7 @@ async function closeWorkflowResources(
   events: WorkspaceDatabase | undefined,
   notifications: RunEventNotificationPublisher | undefined,
   expressionEvaluator: JsonataEvaluator,
+  authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
 ): Promise<void> {
   const failures = await collectWorkflowCloseFailures(
     authoring,
@@ -237,6 +255,7 @@ async function closeWorkflowResources(
     events,
     notifications,
     expressionEvaluator,
+    authoringValidator,
   );
   if (failures.length > 0)
     throw new AggregateError(failures, 'Workflow resource shutdown failed');
@@ -248,7 +267,14 @@ async function collectWorkflowCloseFailures(
   events: WorkspaceDatabase | undefined,
   notifications: RunEventNotificationPublisher | undefined,
   expressionEvaluator: JsonataEvaluator | undefined,
+  authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
 ): Promise<unknown[]> {
+  const failures: unknown[] = [];
+  try {
+    await authoringValidator?.shutdown();
+  } catch (error) {
+    failures.push(error);
+  }
   const results = await Promise.allSettled([
     Promise.resolve().then(() => authoring?.close()),
     Promise.resolve().then(() => runs?.close()),
@@ -256,9 +282,12 @@ async function collectWorkflowCloseFailures(
     Promise.resolve().then(() => notifications?.close()),
     Promise.resolve().then(() => expressionEvaluator?.shutdown()),
   ]);
-  return results.flatMap((result) =>
-    result.status === 'rejected' ? [result.reason as unknown] : [],
-  );
+  return [
+    ...failures,
+    ...results.flatMap((result) =>
+      result.status === 'rejected' ? [result.reason as unknown] : [],
+    ),
+  ];
 }
 
 function productionTelemetry(): NonNullable<

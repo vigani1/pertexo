@@ -11,6 +11,29 @@ import {
 } from '../src/graph-contract.js';
 
 describe('workflow-model package contract', () => {
+  it('keeps authoring validation behind an explicit server-only facade', async () => {
+    const entry = await import('../src/authoring-validation.js');
+    expect(Object.keys(entry).sort()).toEqual([
+      'AUTHORING_VALIDATION_BUDGET',
+      'AuthoringValidationUnavailableError',
+      'WorkflowAuthoringValidator',
+    ]);
+    expect(await import('../src/index.js')).not.toHaveProperty(
+      'WorkflowAuthoringValidator',
+    );
+    const built = await import('../dist/authoring-validation.js');
+    const owner = new built.WorkflowAuthoringValidator();
+    try {
+      expect(
+        await owner.validate(
+          { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+          { releaseFingerprint: 'test-selected-release', definitions: [] },
+        ),
+      ).toMatchObject({ ok: true });
+    } finally {
+      await owner.shutdown();
+    }
+  });
   it('keeps the server root facade explicit and stable', async () => {
     const publicEntry = await import('../src/index.js');
     expect(Object.keys(publicEntry).sort()).toEqual([
@@ -64,6 +87,9 @@ describe('workflow-model package contract', () => {
       browser: Record<string, false>;
     };
     expect(json.dependencies).not.toHaveProperty('@pertexo/contracts');
+    expect(json.exports['./authoring-validation']).toMatchObject({
+      browser: false,
+    });
     const graphContract = json.exports['./graph-contract'];
     if (graphContract === undefined)
       throw new Error('missing browser-safe graph contract export');

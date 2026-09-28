@@ -31,9 +31,8 @@ describe('workflow publication recovery', () => {
       requests.push(request);
       if (request.path.endsWith('/validate'))
         return Promise.resolve({
-          valid: true,
-          issues: [],
-          compatibility: compatibility(),
+          report: { valid: true, issues: [], compatibility: compatibility() },
+          etag: etagA,
         });
       publishCalls += 1;
       if (publishCalls === 1)
@@ -63,6 +62,7 @@ describe('workflow publication recovery', () => {
           workflowId,
           verifyIdentity,
           ensureSaved: saveBarrier,
+          isSavedDraftCurrent: () => true,
         }),
       { wrapper: QueryWrapper },
     );

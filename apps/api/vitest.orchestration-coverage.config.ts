@@ -7,6 +7,7 @@ export default defineConfig({
       'dist/**',
       'node_modules/**',
       'test/**/*.integration.test.ts',
+      'test/**/*.browser-probe.test.ts',
       'test/executions/redis-run-event-publisher.test.ts',
     ],
     coverage: {

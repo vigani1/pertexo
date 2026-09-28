@@ -188,6 +188,14 @@ describe('restricted JSONata policy v1', () => {
     evaluators.push(evaluator);
     const context = { runInput: { name: 'Ada' }, nodeOutputs: {} };
     const expected = { kind: 'value', value: 'ADA', canonicalBytes: 5 };
+    // Matches the authoring UI's example; context is not a mapped-input object.
+    expect(
+      await evaluator.evaluate({
+        expression: 'runInput.amount > 5000',
+        policyVersion: 1,
+        context: { runInput: { amount: 6000 }, nodeOutputs: {} },
+      }),
+    ).toEqual({ kind: 'value', value: true, canonicalBytes: 4 });
     expect(
       await evaluator.evaluate({
         expression: '$uppercase(runInput.name)',

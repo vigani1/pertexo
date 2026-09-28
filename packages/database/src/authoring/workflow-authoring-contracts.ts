@@ -10,6 +10,7 @@ import type {
   WorkflowRecord,
   WorkflowVersionRecord,
 } from './workflow-authoring-records.js';
+import type { GraphValidationResult } from '@pertexo/workflow-model/graph';
 
 export type CreateWorkflowInput = Readonly<{
   id?: string;
@@ -47,6 +48,7 @@ export type RestoreWorkflowVersionInput = Readonly<{
   traceId?: string;
 }>;
 export type PublishWorkflowInput = Readonly<{
+  signal?: AbortSignal;
   workspaceId: string;
   workflowId: string;
   actorId: string;
@@ -141,6 +143,15 @@ export type WorkflowAuthoringDatabase = Readonly<{
     workflowId: string,
     actorId: string,
   ): Promise<WorkflowDraftRecord | null>;
+  validateDraft(
+    workspaceId: string,
+    workflowId: string,
+    actorId: string,
+    options?: Readonly<{ signal?: AbortSignal }>,
+  ): Promise<Readonly<{
+    draft: WorkflowDraftRecord;
+    validation: GraphValidationResult;
+  }> | null>;
   getVersion(
     workspaceId: string,
     workflowId: string,

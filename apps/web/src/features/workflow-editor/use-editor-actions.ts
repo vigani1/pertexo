@@ -9,6 +9,7 @@ import {
 } from './model/graph-commands';
 import { duplicateWorkflowNodes } from './model/graph-copies';
 import { levelAt, scopeOf, type ScopePath } from './model/graph-scopes';
+import { useInspectorNavigation } from './use-inspector-navigation';
 
 export type EditorFocusTarget = Readonly<{
   nodeId: string;
@@ -67,6 +68,7 @@ export function useEditorActions({
   isPaused,
 }: Readonly<{ store: EditorStore; isPaused: () => boolean }>) {
   const notifications = useNotifications();
+  const { focusStep, ...navigation } = useInspectorNavigation();
   const [pendingAction, setPendingAction] = useState<EditorAction>();
   const [scratchVersion, setScratchVersion] = useState(0);
   const [focusTarget, setFocusTarget] = useState<
@@ -81,6 +83,7 @@ export function useEditorActions({
           state.selectNodes(action.nodeIds);
           if (action.focusTarget !== undefined) {
             const target = action.focusTarget;
+            focusStep(target);
             setFocusTarget((current) => ({
               ...target,
               requestId: (current?.requestId ?? 0) + 1,
@@ -127,7 +130,7 @@ export function useEditorActions({
         }
       }
     },
-    [notifications, store],
+    [focusStep, notifications, store],
   );
 
   const request = useCallback(
@@ -146,12 +149,12 @@ export function useEditorActions({
   );
 
   const discardAndContinue = useCallback(() => {
-    if (pendingAction === undefined) return;
+    if (pendingAction === undefined || isPaused()) return;
     setPendingAction(undefined);
     setScratchVersion((current) => current + 1);
     store.getState().setInspectorScratch(false);
     perform(pendingAction);
-  }, [pendingAction, perform, store]);
+  }, [isPaused, pendingAction, perform, store]);
 
   const stay = useCallback(() => {
     setPendingAction(undefined);
@@ -171,6 +174,23 @@ export function useEditorActions({
     discardScratch,
     scratchVersion,
     focusTarget,
+    navigation: {
+      ...navigation,
+      fix: (target: EditorFocusTarget) => {
+        request({
+          kind: 'select',
+          nodeIds: [target.nodeId],
+          focusTarget: target,
+        });
+      },
+      showTestOutput: (nodeId: string) => {
+        request({
+          kind: 'select',
+          nodeIds: [nodeId],
+          focusTarget: { nodeId, testOutput: true },
+        });
+      },
+    },
   } as const;
 }
 

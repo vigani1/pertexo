@@ -19,6 +19,7 @@ import {
   type WorkflowSummary,
 } from '@pertexo/contracts/workflow-authoring';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 
 export {
   workflowCreateRequestSchema,
@@ -44,20 +45,21 @@ export type {
   WorkflowSummary,
 };
 
-export type WorkflowAuthoringRequest = Readonly<
-  Pick<
-    IdentityWorkspaceRequest,
-    | 'authorizedWorkspace'
-    | 'cookies'
-    | 'headers'
-    | 'identitySession'
-    | 'method'
-    | 'params'
-    | 'query'
-    | 'requestId'
-    | 'traceId'
-  >
->;
+export type WorkflowAuthoringRequest = AbortableRequest &
+  Readonly<
+    Pick<
+      IdentityWorkspaceRequest,
+      | 'authorizedWorkspace'
+      | 'cookies'
+      | 'headers'
+      | 'identitySession'
+      | 'method'
+      | 'params'
+      | 'query'
+      | 'requestId'
+      | 'traceId'
+    >
+  >;
 
 export interface WorkflowResponse {
   header(name: string, value: string): unknown;

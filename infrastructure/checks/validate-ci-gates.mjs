@@ -14,6 +14,7 @@ export const REQUIRED_ORDINARY_CI_GATES = Object.freeze([
 export const DELIBERATE_ORDINARY_CI_EXCLUSIONS = Object.freeze({
   'mutation:check': 'integration',
   'quality:local': null,
+  'test:browser-probes': 'browser',
 });
 
 const SCRIPT_NAME = /^[a-z][a-z0-9:-]*$/u;
@@ -83,6 +84,7 @@ export function validateCiGatePolicy({ packageManifest, workflow }) {
     'quality:local',
     'quality:local:check',
     'quality:local:contracts',
+    'test:browser-probes',
     ...REQUIRED_ORDINARY_CI_GATES,
   ])
     if (!SCRIPT_NAME.test(name) || typeof scripts[name] !== 'string')
@@ -148,6 +150,39 @@ export function validateCiGatePolicy({ packageManifest, workflow }) {
     if (owner !== null && (owners.length !== 1 || owners[0] !== owner))
       fail(`${excluded} must be owned exactly once by the ${owner} job`);
   }
+
+  const browserSteps = jobSteps(jobs, 'browser');
+  if (
+    browserSteps.filter(
+      (step) => directPnpmScript(step) === 'test:browser-probes',
+    ).length !== 1
+  )
+    fail('test:browser-probes must be owned exactly once by the browser job');
+  const probeIndex = browserSteps.findIndex(
+    (step) => directPnpmScript(step) === 'test:browser-probes',
+  );
+  const probe = browserSteps[probeIndex];
+  if (probe?.if !== undefined || probe?.['continue-on-error'] === true)
+    fail('browser probes must run unconditionally and fail the browser job');
+  const installIndex = browserSteps.findIndex(
+    (step) =>
+      typeof step?.run === 'string' &&
+      /^pnpm --filter @pertexo\/web exec playwright install --with-deps chromium(?:\s|$)/u.test(
+        step.run.trim().replace(/\s+/gu, ' '),
+      ),
+  );
+  if (installIndex < 0 || installIndex >= probeIndex)
+    fail('browser probes must run after Playwright Chromium installation');
+  if (
+    browserSteps[installIndex]?.if !== undefined ||
+    browserSteps[installIndex]?.['continue-on-error'] === true
+  )
+    fail('browser installation must be required before the probes');
+  const prepush = parsePnpmScriptSequence(
+    scripts['prepush:check'],
+    'prepush:check script',
+  );
+  requireExactlyOnce(prepush, ['test:browser-probes'], 'prepush:check script');
 
   return { requiredGates: [...REQUIRED_ORDINARY_CI_GATES] };
 }

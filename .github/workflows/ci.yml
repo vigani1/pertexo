@@ -241,6 +241,8 @@ jobs:
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
           chromium firefox webkit
+      - name: Verify browser harness lifetime and redaction
+        run: pnpm test:browser-probes
       - name: Run authenticated browser journeys
         run: pnpm --filter @pertexo/web test:e2e
       - name: Upload browser traces
@@ -399,7 +401,8 @@ jobs:
             --reporter=json --outputFile=../../artifacts/worker-gates.json
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             --exclude test/platform/compatibility-rollout.integration.test.ts \
-            --reporter=json --outputFile=../../artifacts/api-gates.json
+            --exclude test/editor-browser.integration.test.ts \
+            --reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json
       - name: Prove new regression tests fail under selected mutations
         run: pnpm mutation:check
       - name: Prove every required integration cohort executed

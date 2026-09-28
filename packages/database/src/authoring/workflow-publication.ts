@@ -2,6 +2,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 
 import {
   parseWorkflowGraphForPublish,
+  InvalidWorkflowGraphError,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,
@@ -9,6 +10,7 @@ import {
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
+import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
@@ -27,6 +29,7 @@ import type {
 import type {
   WorkflowAuthoringTestHooks,
   WorkflowExecutableCompiler,
+  WorkflowAuthoringGraphValidator,
 } from './workflow-authoring-types.js';
 import type { WorkflowVersionRecord } from './workflow-authoring-records.js';
 import {
@@ -34,8 +37,10 @@ import {
   mapVersion,
   workflowVersionRowSelection,
 } from './workflow-authoring-rows.js';
-import { workflowTriggerProjection } from '../triggers/workflow-trigger-projection.js';
-import { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
+import {
+  reconcileWorkflowTriggersPayload,
+  persistPublishedWorkflowTriggers,
+} from './workflow-trigger-reconciliation.js';
 
 export { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
 
@@ -71,6 +76,7 @@ type PublicationVariant = Readonly<{
   compatibilityRelease: CompatibilityReleaseExpectation | undefined;
   definitionCatalog: WorkflowDefinitionCatalogV1;
   executableCompiler: WorkflowExecutableCompiler | undefined;
+  validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
 }>;
 
 export type WorkflowPublicationDependencies = Readonly<{
@@ -91,6 +97,7 @@ export type WorkflowPublicationDependencies = Readonly<{
     workspaceId: string,
     actorId: string,
     operation: (client: PoolClient) => Promise<T>,
+    signal?: AbortSignal,
   ): Promise<T>;
 }>;
 
@@ -205,6 +212,13 @@ async function lockAndCompilePublication(
   });
   if (currentEtag !== workflowDraftTagSchema.parse(input.representationTag))
     throw new WorkflowRevisionConflictError(draft.revision, currentEtag);
+  const validation = await admitWorkflowAuthoring(
+    client,
+    variant.validateAuthoringGraph,
+    draft.graphJson,
+    input.signal,
+  );
+  if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
   const graph = parseWorkflowGraphForPublish(
     draft.graphJson,
     variant.definitionCatalog,
@@ -325,39 +339,11 @@ async function persistPublicationProjections(
       [input.workspaceId, version.id, JSON.stringify(usage)],
     );
   await hooks?.afterPublishStep?.('integration_usage');
-  const triggers = workflowTriggerProjection(version.graphJson);
-  await client.query(
-    `delete from app.workflow_triggers
-     where workspace_id=$1 and workflow_version_id=$2
-       and not (node_id=any($3::varchar[]))`,
-    [input.workspaceId, version.id, triggers.map(({ nodeId }) => nodeId)],
-  );
-  if (triggers.length > 0) {
-    const projection = triggers.map((trigger) => ({
-      id: generatePersistedId(),
-      node_id: trigger.nodeId,
-      kind: trigger.kind,
-      desired_config: trigger.config,
-      config_fingerprint: trigger.configFingerprint,
-    }));
-    await client.query(
-      `insert into app.workflow_triggers (
-         id,workspace_id,workflow_id,workflow_version_id,node_id,kind,
-         desired_config,config_fingerprint,status)
-       select item.id,$1,$2,$3,item.node_id,item.kind,item.desired_config,
-         item.config_fingerprint,'desired'
-       from jsonb_to_recordset($4::jsonb) as item(
-         id uuid,node_id varchar(128),kind varchar(16),desired_config jsonb,
-         config_fingerprint varchar(82))
-       on conflict (workflow_version_id,node_id) do update set
-         desired_config=excluded.desired_config,
-         config_fingerprint=excluded.config_fingerprint
-       where app.workflow_triggers.workspace_id=excluded.workspace_id
-         and app.workflow_triggers.workflow_id=excluded.workflow_id
-         and app.workflow_triggers.kind=excluded.kind`,
-      [input.workspaceId, workflowId, version.id, JSON.stringify(projection)],
-    );
-  }
+  await persistPublishedWorkflowTriggers(client, {
+    workspaceId: input.workspaceId,
+    workflowId,
+    version,
+  });
   await hooks?.afterPublishStep?.('trigger_projection');
 }
 
@@ -443,43 +429,48 @@ export function createWorkflowPublisher(
   dependencies: WorkflowPublicationDependencies,
 ): (input: PublishWorkflowInput) => Promise<PublishWorkflowResult> {
   return (input) =>
-    dependencies.transact(input.workspaceId, input.actorId, async (client) => {
-      await dependencies.requireAuthor(
-        client,
-        input.workspaceId,
-        input.actorId,
-      );
-      const claim = await claimPublication(client, input, dependencies);
-      if (claim.replay !== null) return claim.replay;
-      const publication = await lockAndCompilePublication(
-        client,
-        input,
-        claim.workflowId,
-        dependencies,
-      );
-      const { reused, version } = await persistVersion(
-        client,
-        input,
-        claim.workflowId,
-        publication,
-        dependencies,
-      );
-      await persistPublicationProjections(
-        client,
-        input,
-        claim.workflowId,
-        publication,
-        version,
-        dependencies.testHooks,
-      );
-      await finalizePublication(
-        client,
-        input,
-        claim,
-        version,
-        reused,
-        dependencies.testHooks,
-      );
-      return Object.freeze({ replayed: false, reused, version });
-    });
+    dependencies.transact(
+      input.workspaceId,
+      input.actorId,
+      async (client) => {
+        await dependencies.requireAuthor(
+          client,
+          input.workspaceId,
+          input.actorId,
+        );
+        const claim = await claimPublication(client, input, dependencies);
+        if (claim.replay !== null) return claim.replay;
+        const publication = await lockAndCompilePublication(
+          client,
+          input,
+          claim.workflowId,
+          dependencies,
+        );
+        const { reused, version } = await persistVersion(
+          client,
+          input,
+          claim.workflowId,
+          publication,
+          dependencies,
+        );
+        await persistPublicationProjections(
+          client,
+          input,
+          claim.workflowId,
+          publication,
+          version,
+          dependencies.testHooks,
+        );
+        await finalizePublication(
+          client,
+          input,
+          claim,
+          version,
+          reused,
+          dependencies.testHooks,
+        );
+        return Object.freeze({ replayed: false, reused, version });
+      },
+      input.signal,
+    );
 }

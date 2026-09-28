@@ -167,7 +167,7 @@ export function NodeInspector({
               {isForEach(node) ? (
                 <LoopBodySection
                   node={node}
-                  editable={editable}
+                  form={form}
                   onSelectStep={actions.onSelectStep}
                   onAddStep={actions.onAddToBody}
                 />

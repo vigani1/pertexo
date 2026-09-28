@@ -11,6 +11,7 @@ import {
   editorHandlers,
   editorPath,
   emptyGraph,
+  etagA,
   etagB,
   findCanvas,
   graphWithMappingNodes,
@@ -37,6 +38,39 @@ import {
 // The lazy editor route and React Flow are slow to start on a busy machine.
 
 describe('workflow editor publishing', { timeout: 30_000 }, () => {
+  it('keeps a different server snapshot readable and stale without publishing it', async () => {
+    let publishes = 0;
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph: graphWithNumericConfig({ requiredCount: 1 }),
+      }),
+    );
+    mockServer.use(
+      validHandler(undefined, etagB),
+      http.post(`${workflowApi}/publish`, () => {
+        publishes += 1;
+        return HttpResponse.json({}, { status: 500 });
+      }),
+    );
+    renderApp(editorPath, { strict: true });
+    const event = userEvent.setup();
+    await findCanvas();
+    await event.click(screen.getByRole('button', { name: 'Publish v1' }));
+    const lens = await screen.findByRole('dialog', { name: /Publish/u });
+    await event.click(within(lens).getByRole('button', { name: 'Publish v1' }));
+    expect(
+      await within(lens).findByText(/This check describes a different draft/u),
+    ).toBeVisible();
+    expect(publishes).toBe(0);
+    await event.click(within(lens).getByRole('button', { name: 'Cancel' }));
+    await event.click(screen.getByRole('button', { name: /No issues/u }));
+    expect(
+      await screen.findByText(
+        /This check describes a different draft; check again/u,
+      ),
+    ).toBeVisible();
+  });
+
   it('checks and publishes without a manual validate, then weaves in the new version', async () => {
     const publishes: Readonly<{ etag: string | null; key: string | null }>[] =
       [];
@@ -164,17 +198,20 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     mockServer.use(...editorHandlers(() => undefined));
     mockServer.use(
       http.post(`${workflowApi}/validate`, () =>
-        HttpResponse.json({
-          valid: false,
-          issues: [
-            {
-              path: '$',
-              code: 'cycle',
-              message: 'cycle contains a',
-            },
-          ],
-          compatibility,
-        }),
+        HttpResponse.json(
+          {
+            valid: false,
+            issues: [
+              {
+                path: '$',
+                code: 'cycle',
+                message: 'cycle contains a',
+              },
+            ],
+            compatibility,
+          },
+          { headers: { etag: etagB } },
+        ),
       ),
       http.post(`${workflowApi}/publish`, () => {
         publishes += 1;
@@ -301,22 +338,25 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     );
     mockServer.use(
       http.post(`${workflowApi}/validate`, () =>
-        HttpResponse.json({
-          valid: false,
-          issues: [
-            {
-              path: `$.nodes.${nodeId}.config.count`,
-              code: 'invalid_config',
-              message: 'count is required for this node',
-            },
-            {
-              path: '$',
-              code: 'invalid_graph',
-              message: 'The workflow also has a general issue.',
-            },
-          ],
-          compatibility,
-        }),
+        HttpResponse.json(
+          {
+            valid: false,
+            issues: [
+              {
+                path: `$.nodes.${nodeId}.config.count`,
+                code: 'invalid_config',
+                message: 'count is required for this node',
+              },
+              {
+                path: '$',
+                code: 'invalid_graph',
+                message: 'The workflow also has a general issue.',
+              },
+            ],
+            compatibility,
+          },
+          { headers: { etag: etagA } },
+        ),
       ),
     );
     renderApp(editorPath);
@@ -392,28 +432,31 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     );
     mockServer.use(
       http.post(`${workflowApi}/validate`, () =>
-        HttpResponse.json({
-          valid: false,
-          issues: [
-            {
-              path: '$.nodes.target.inputMappings.customer',
-              code: 'invalid_mapping',
-              message:
-                'node output mappings must reference a direct local predecessor',
-            },
-          ],
-          compatibility: {
-            compatible: false,
-            fingerprint: compatibility.fingerprint,
+        HttpResponse.json(
+          {
+            valid: false,
             issues: [
               {
-                code: 'unknown_definition',
-                definitionKey: 'core.retired',
-                version: 7,
+                path: '$.nodes.target.inputMappings.customer',
+                code: 'invalid_mapping',
+                message:
+                  'node output mappings must reference a direct local predecessor',
               },
             ],
+            compatibility: {
+              compatible: false,
+              fingerprint: compatibility.fingerprint,
+              issues: [
+                {
+                  code: 'unknown_definition',
+                  definitionKey: 'core.retired',
+                  version: 7,
+                },
+              ],
+            },
           },
-        }),
+          { headers: { etag: etagA } },
+        ),
       ),
     );
     renderApp(editorPath);

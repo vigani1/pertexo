@@ -23,10 +23,7 @@ import {
 import type { useCanvasEffects } from '../use-canvas-effects';
 import type { useEditorActions } from '../use-editor-actions';
 import { useEditorShortcuts } from '../use-editor-shortcuts';
-import {
-  useInspectorNavigation,
-  type MobilePanel,
-} from '../use-inspector-navigation';
+import type { MobilePanel } from '../use-inspector-navigation';
 import { useLastTest } from '../use-last-test';
 import { useQuickAdd } from '../use-quick-add';
 import { useStepPlacement } from '../use-step-placement';
@@ -103,8 +100,7 @@ export function EditorWorkspace({
   const testRef = useRef<NodeTestHandle>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
-  const { request } = actions;
-  const navigation = useInspectorNavigation(request);
+  const { request, navigation } = actions;
   const lastTest = useLastTest();
   const { setMobilePanel } = navigation;
   const addStep = useAddStepFold(editable, setMobilePanel);

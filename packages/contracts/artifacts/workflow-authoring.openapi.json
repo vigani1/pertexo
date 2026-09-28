@@ -941,6 +941,17 @@
                   "$ref": "#/components/schemas/WorkflowValidationResponse"
                 }
               }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Strong opaque validator for this draft representation",
+                "required": true,
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^\"draft-v1\\.[A-Za-z0-9_-]{43}\"$"
+                }
+              }
             }
           },
           "401": {
@@ -954,6 +965,9 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "$ref": "#/components/responses/ValidationUnavailable"
           }
         }
       }
@@ -1062,6 +1076,9 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "$ref": "#/components/responses/ValidationUnavailable"
           }
         }
       }
@@ -1216,6 +1233,7 @@
               "workflow.lifecycle_conflict",
               "workflow.name_conflict",
               "workflow.invalid",
+              "workflow.validation_unavailable",
               "workflow.not_published",
               "workflow.activation_failed",
               "run.not_cancelable",
@@ -5572,6 +5590,26 @@
           "application/problem+json": {
             "schema": {
               "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
+      "ValidationUnavailable": {
+        "description": "Workflow validation temporarily unavailable",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "description": "Bounded explicit-retry delay in seconds",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "const": 1
             }
           }
         }

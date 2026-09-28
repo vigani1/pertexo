@@ -11,6 +11,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { withRequestOperationSignal } from '../platform/http/request-operation-signal.js';
 
 import {
   CsrfProtectionGuard,
@@ -191,14 +192,20 @@ export class WorkflowAuthoringController {
   public async validate(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
+    @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = workflowParams(params);
     const context = requestContext(request, route.workspaceId);
-    return this.validateDraft.execute({
-      ...context,
-      routeWorkspaceId: route.workspaceId,
-      workflowId: route.workflowId,
-    });
+    const result = await withRequestOperationSignal(request, (signal) =>
+      this.validateDraft.execute({
+        ...context,
+        routeWorkspaceId: route.workspaceId,
+        workflowId: route.workflowId,
+        signal,
+      }),
+    );
+    response.header('ETag', result.representationTag);
+    return result.body;
   }
 
   @Post(':workflowId/publish')
@@ -215,18 +222,21 @@ export class WorkflowAuthoringController {
   ) {
     const route = workflowParams(params);
     const context = requestContext(request, route.workspaceId);
-    return this.publishWorkflow.execute({
-      ...context,
-      routeWorkspaceId: route.workspaceId,
-      workflowId: route.workflowId,
-      representationTag: parseStrongIfMatch(
-        requestHeaderValue(request.headers, 'if-match'),
-      ),
-      idempotencyKey: parseIdempotencyKey(
-        requestHeaderValue(request.headers, 'idempotency-key'),
-      ),
-      ...traceparent(request),
-    });
+    return withRequestOperationSignal(request, (signal) =>
+      this.publishWorkflow.execute({
+        ...context,
+        routeWorkspaceId: route.workspaceId,
+        workflowId: route.workflowId,
+        representationTag: parseStrongIfMatch(
+          requestHeaderValue(request.headers, 'if-match'),
+        ),
+        idempotencyKey: parseIdempotencyKey(
+          requestHeaderValue(request.headers, 'idempotency-key'),
+        ),
+        ...traceparent(request),
+        signal,
+      }),
+    );
   }
 
   @Post(':workflowId/versions/:versionId/restore')

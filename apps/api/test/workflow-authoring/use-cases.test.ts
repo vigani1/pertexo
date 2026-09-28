@@ -30,6 +30,7 @@ import {
 import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from '../../src/workflow-authoring/rename-use-case.js';
 import { RestoreWorkflowVersionUseCase } from '../../src/workflow-authoring/restore-version-use-case.js';
+import { validateWorkflowGraph } from '@pertexo/workflow-model/graph';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -137,6 +138,10 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
     listWorkflows: vi.fn().mockResolvedValue({ items: [workflow()] }),
     getWorkflow: vi.fn().mockResolvedValue(workflow()),
     getDraft: vi.fn().mockResolvedValue(draft()),
+    validateDraft: vi.fn().mockResolvedValue({
+      draft: draft(),
+      validation: validateWorkflowGraph(graph),
+    }),
     listVersions: vi.fn().mockResolvedValue({ items: [version()] }),
     saveDraft: vi.fn().mockResolvedValue(draft({ revision: 2 })),
     publishWorkflow: vi.fn().mockResolvedValue({
@@ -545,7 +550,10 @@ describe('workflow authoring application seams', () => {
   });
 
   it('fails closed when each draft read seam reports no visible workflow', async () => {
-    const store = persistence({ getDraft: vi.fn().mockResolvedValue(null) });
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(null),
+      validateDraft: vi.fn().mockResolvedValue(null),
+    });
     const access = authorization();
     const common = { actor, routeWorkspaceId: workspaceId, workflowId };
 
@@ -727,13 +735,15 @@ describe('workflow authoring application seams', () => {
     expect(publishInput?.requestHash).toMatch(/^[0-9a-f]{64}$/u);
   });
 
-  it('hashes the exact canonical publish identity and excludes diagnostic transport fields', async () => {
+  it('forwards the operation signal without changing canonical publish identity or diagnostic exclusions', async () => {
     const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
-    const publishWorkflow = vi.fn().mockResolvedValue({
-      version: version(),
-      reused: false,
-      replayed: false,
-    });
+    const publishWorkflow = vi
+      .fn<WorkflowAuthoringPersistence['publishWorkflow']>()
+      .mockResolvedValue({
+        version: version(),
+        reused: false,
+        replayed: false,
+      });
     const useCase = new PublishWorkflowUseCase(
       persistence({ publishWorkflow }),
       authorization(),
@@ -746,21 +756,29 @@ describe('workflow authoring application seams', () => {
       idempotencyKey: 'publish-hash',
     } as const;
 
-    await useCase.execute(base);
+    const withoutSignal = await useCase.execute(base);
     const expected =
       '5fc86496b8eb735fb38c90193e9736c63ea84bb96812b35651069abbaf47b03e';
     expect(publishWorkflow).toHaveBeenLastCalledWith(
       expect.objectContaining({ requestHash: expected }),
     );
-    await useCase.execute({
+    const signal = new AbortController().signal;
+    const withSignal = await useCase.execute({
       ...base,
+      signal,
       requestId: 'diagnostic-request',
       traceId: 'diagnostic-trace',
       traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
     });
     expect(publishWorkflow).toHaveBeenLastCalledWith(
-      expect.objectContaining({ requestHash: expected }),
+      expect.objectContaining({
+        requestHash: expected,
+        representationTag: tag,
+        idempotencyKey: base.idempotencyKey,
+      }),
     );
+    expect(publishWorkflow.mock.lastCall?.[0].signal).toBe(signal);
+    expect(withSignal).toEqual(withoutSignal);
   });
 
   it('changes the canonical publish hash for actor, workspace, workflow, and original tag identity', async () => {
@@ -966,7 +984,15 @@ describe('workflow authoring application seams', () => {
       ],
     };
     const store = persistence({
-      getDraft: vi.fn().mockResolvedValue(draft({ compatibility })),
+      validateDraft: vi.fn().mockResolvedValue({
+        draft: draft({ compatibility }),
+        validation: {
+          ok: true,
+          issues: [],
+          expandedInvocations: 0,
+          worstCaseLoopIterations: 0,
+        },
+      }),
     });
 
     await expect(
@@ -975,7 +1001,9 @@ describe('workflow authoring application seams', () => {
         routeWorkspaceId: workspaceId,
         workflowId,
       }),
-    ).resolves.toEqual({ valid: false, issues: [], compatibility });
+    ).resolves.toMatchObject({
+      body: { valid: false, issues: [], compatibility },
+    });
   });
 
   it('serializes exact workflow and version allowlists, retained graph, and timestamps', async () => {

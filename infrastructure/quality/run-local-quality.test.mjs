@@ -57,12 +57,71 @@ test('an EPERM zero-signal probe means the process group still exists', () => {
   );
 });
 
+test('ordinary API integration selection excludes opt-in browser and rollout owners', () => {
+  const cohort = LOCAL_QUALITY_COHORTS.find(
+    ({ id }) => id === 'integration-api',
+  );
+  assert.ok(cohort);
+  const arguments_ = cohort.command.slice(1);
+  const runIndex = arguments_.indexOf('run');
+  assert.notEqual(runIndex, -1);
+  arguments_[runIndex] = 'list';
+  const selected = new Set(
+    execFileSync(cohort.command[0], [...arguments_, '--filesOnly'], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 10_000,
+      maxBuffer: 65_536,
+    })
+      .trim()
+      .split('\n'),
+  );
+  assert.equal(selected.has('test/editor-browser.integration.test.ts'), false);
+  assert.equal(
+    selected.has('test/platform/compatibility-rollout.integration.test.ts'),
+    false,
+  );
+  assert.equal(
+    selected.has(
+      'test/identity-workspace/better-auth-membership-lifecycle.integration.test.ts',
+    ),
+    true,
+  );
+  assert.equal(
+    selected.has('test/support/editor-browser-process.integration.test.ts'),
+    true,
+  );
+});
+
 test('current CI supplies the shared local service and specialized-suite contract', async () => {
   const source = await readFile(
     path.join(root, '.github/workflows/ci.yml'),
     'utf8',
   );
   assert.doesNotThrow(() => assertCiLocalQualityContract(source));
+  assert.throws(
+    () =>
+      assertCiLocalQualityContract(
+        source.replace('--exclude test/editor-browser.integration.test.ts', ''),
+      ),
+    /Vitest commands diverged/u,
+  );
+  assert.equal(
+    LOCAL_QUALITY_COHORTS.find(
+      ({ id }) => id === 'integration-api',
+    )?.command.includes('--reporter=default'),
+    true,
+  );
+  assert.throws(
+    () =>
+      assertCiLocalQualityContract(
+        source.replace(
+          '--reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json',
+          '--reporter=json --outputFile=../../artifacts/api-gates.json',
+        ),
+      ),
+    /Vitest commands diverged/u,
+  );
   assert.throws(
     () =>
       assertCiLocalQualityContract(

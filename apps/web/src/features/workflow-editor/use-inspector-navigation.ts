@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { EditorAction, EditorFocusTarget } from './use-editor-actions';
+import { useCallback, useState } from 'react';
+import type { EditorFocusTarget } from './use-editor-actions';
 
 export type InspectorTab = 'setup' | 'inputs' | 'test' | 'runs' | 'about';
 export type MobilePanel = 'none' | 'add' | 'inspector';
@@ -9,9 +9,7 @@ export type MobilePanel = 'none' | 'add' | 'inspector';
  * small-screen panel, "Fix", which selects the step, opens the tab that
  * owns the field and focuses it, and "View output" for a step's last test.
  */
-export function useInspectorNavigation(
-  request: (action: EditorAction) => void,
-) {
+export function useInspectorNavigation() {
   const [tab, setTab] = useState<InspectorTab>('setup');
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
@@ -19,25 +17,24 @@ export function useInspectorNavigation(
    * Shows a tab. Every tab stays mounted, and a command's focus lands in an
    * effect after this render, once the tab is on screen.
    */
-  function openTab(next: InspectorTab) {
+  const openTab = useCallback((next: InspectorTab) => {
     setTab(next);
     setMobilePanel('inspector');
-  }
+  }, []);
 
-  function fix(target: EditorFocusTarget) {
-    openTab(target.mappingKey === undefined ? 'setup' : 'inputs');
-    request({ kind: 'select', nodeIds: [target.nodeId], focusTarget: target });
-  }
-
-  /** "View output": the step's Test tab, at its last test's result. */
-  function showTestOutput(nodeId: string) {
-    openTab('test');
-    request({
-      kind: 'select',
-      nodeIds: [nodeId],
-      focusTarget: { nodeId, testOutput: true },
-    });
-  }
+  /** Called only when the editor's guarded selection has been accepted. */
+  const focusStep = useCallback(
+    (target: EditorFocusTarget) => {
+      openTab(
+        target.testOutput === true
+          ? 'test'
+          : target.mappingKey === undefined
+            ? 'setup'
+            : 'inputs',
+      );
+    },
+    [openTab],
+  );
 
   return {
     tab,
@@ -45,7 +42,6 @@ export function useInspectorNavigation(
     mobilePanel,
     setMobilePanel,
     openTab,
-    fix,
-    showTestOutput,
+    focusStep,
   } as const;
 }

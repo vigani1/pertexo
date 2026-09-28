@@ -16,6 +16,7 @@ export function useWorkflowCommandSession({
   verifyIdentity,
   isSessionPaused,
   ensureSaved,
+  isSavedDraftCurrent,
   onRunAccepted,
   onRunCommandAccepted,
   onPublicationAccepted,
@@ -27,6 +28,7 @@ export function useWorkflowCommandSession({
   verifyIdentity: () => Promise<void>;
   isSessionPaused: () => boolean;
   ensureSaved: () => Promise<SavedDraftIdentity>;
+  isSavedDraftCurrent: (saved: SavedDraftIdentity) => boolean;
   onRunAccepted: (runId: string) => void;
   onRunCommandAccepted?: () => void;
   onPublicationAccepted?: () => void;
@@ -38,6 +40,7 @@ export function useWorkflowCommandSession({
     workflowId,
     verifyIdentity,
     ensureSaved,
+    isSavedDraftCurrent,
     ...(onPublicationAccepted === undefined ? {} : { onPublicationAccepted }),
   });
   const runSubmission = useWorkflowRunSubmission({

@@ -1,0 +1,94 @@
+import {
+  AuthoringValidationUnavailableError,
+  WorkflowAuthoringValidator,
+} from '@pertexo/workflow-model/authoring-validation';
+import {
+  EMPTY_DEFINITION_CATALOG_V1,
+  type WorkflowDefinitionCatalogV1,
+} from '@pertexo/workflow-model/graph';
+import type { DatabaseConfig } from '../../src/config.js';
+import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflow-authoring.js';
+import type {
+  WorkflowAuthoringDatabaseOptions,
+  WorkflowAuthoringGraphValidator,
+} from '../../src/authoring/workflow-authoring-types.js';
+
+/** Synthetic authoring fixtures explicitly pin the canonical restricted policy.
+ * Production derives these references from actual registry manifests instead.
+ * This is a real compiled model owner, never a structural-only admission stub.
+ */
+export function createWorkflowAuthoringFixtureDatabase(
+  config: DatabaseConfig,
+  options: WorkflowAuthoringDatabaseOptions = {},
+) {
+  let validator: WorkflowAuthoringValidator | undefined;
+  let closed = false;
+  function admission(
+    catalog: WorkflowDefinitionCatalogV1,
+    fingerprint: string,
+  ): WorkflowAuthoringGraphValidator {
+    const projection = {
+      releaseFingerprint: fingerprint,
+      definitions: catalog.definitions.map(({ key, version }) => ({
+        definition: { key, version },
+        policyReferences: [{ key: 'jsonata.restricted', version: 1 }],
+      })),
+    };
+    return (graph, command) => {
+      if (closed) throw new AuthoringValidationUnavailableError('closed');
+      validator ??= new WorkflowAuthoringValidator();
+      return validator.validate(graph, projection, command);
+    };
+  }
+  const variants = options.compatibilityReleaseVariants;
+  const database = createWorkflowAuthoringDatabase(
+    config,
+    variants === undefined
+      ? {
+          ...options,
+          validateAuthoringGraph:
+            options.validateAuthoringGraph ??
+            admission(
+              options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG_V1,
+              options.compatibilityRelease?.fingerprint ??
+                'synthetic-authoring-fixture',
+            ),
+        }
+      : {
+          ...options,
+          compatibilityReleaseVariants: variants.map((variant) => ({
+            ...variant,
+            validateAuthoringGraph:
+              variant.validateAuthoringGraph ??
+              admission(
+                variant.definitionCatalog,
+                variant.compatibilityRelease.fingerprint,
+              ),
+          })),
+        },
+  );
+  let closePromise: Promise<void> | undefined;
+  async function dispose() {
+    const failures: unknown[] = [];
+    try {
+      await validator?.shutdown();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
+      await database.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Authoring fixture shutdown failed');
+  }
+  return Object.freeze({
+    ...database,
+    close: () => {
+      closed = true;
+      closePromise ??= dispose();
+      return closePromise;
+    },
+  });
+}

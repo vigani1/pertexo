@@ -9,7 +9,7 @@ import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-w
 import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/execution/published-workflow-reader.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
-import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './support/workflow-authoring-admission.fixture.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
