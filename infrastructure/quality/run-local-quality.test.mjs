@@ -63,6 +63,22 @@ test('current CI supplies the shared local service and specialized-suite contrac
     'utf8',
   );
   assert.doesNotThrow(() => assertCiLocalQualityContract(source));
+  assert.equal(
+    LOCAL_QUALITY_COHORTS.find(
+      ({ id }) => id === 'integration-api',
+    )?.command.includes('--reporter=default'),
+    true,
+  );
+  assert.throws(
+    () =>
+      assertCiLocalQualityContract(
+        source.replace(
+          '--reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json',
+          '--reporter=json --outputFile=../../artifacts/api-gates.json',
+        ),
+      ),
+    /Vitest commands diverged/u,
+  );
   assert.throws(
     () =>
       assertCiLocalQualityContract(

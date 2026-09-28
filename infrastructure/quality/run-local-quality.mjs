@@ -134,6 +134,7 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
       'vitest.integration.config.ts',
       '--exclude',
       'test/platform/compatibility-rollout.integration.test.ts',
+      '--reporter=default',
     ],
   }),
   Object.freeze({
