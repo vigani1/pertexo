@@ -12,7 +12,7 @@ import {
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import Fastify from 'fastify';
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   createBetterAuthRuntime,
@@ -31,6 +31,7 @@ import {
 } from '../src/identity-infrastructure/authentication-mail.js';
 import { registerBetterAuthHandler } from '../src/identity-infrastructure/better-auth-fastify.js';
 import { BetterAuthSessionService } from '../src/identity-infrastructure/better-auth-session.js';
+import * as browserSessionBoundary from '../src/identity-infrastructure/better-auth-trusted-sessions.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -358,7 +359,15 @@ describe('Better Auth PostgreSQL cutover', () => {
     }
   });
 
-  it('links a fixture provider only after a fresh existing-method proof and rotates the session once', async () => {
+  const callbackOrderings = [
+    'uncontrolled callbacks',
+    'loser authentication after commit',
+    'both provider proofs before commit',
+  ] as const;
+  async function assertSingleProviderLink(
+    ordering: (typeof callbackOrderings)[number],
+    firstCallbackFailure?: 'early-return' | 'early-rejection',
+  ): Promise<void> {
     const email = `linked-${randomUUID()}@example.test`;
     const password = 'correct horse battery staple';
     const signup = await authRequest('/v1/auth/sign-up/email', {
@@ -390,6 +399,9 @@ describe('Better Auth PostgreSQL cutover', () => {
       string,
       { codeVerifier: string; nonce: string; redirectUri: string }
     >();
+    const bothProviderProofs = Promise.withResolvers<undefined>();
+    let providerProofs = 0;
+    let gateProviderProofs = false;
     const gateway: LinkProviderGateway = {
       available: ['google', 'github'],
       authorize: (input) => {
@@ -408,11 +420,17 @@ describe('Better Auth PostgreSQL cutover', () => {
           input.issuer !== null
         )
           return Promise.resolve(undefined);
-        return Promise.resolve({
+        const identity = {
           accountId: `${input.provider}-subject-${email}`,
           email,
           emailVerified: true,
-        });
+        };
+        if (gateProviderProofs) {
+          providerProofs += 1;
+          if (providerProofs === 2) bothProviderProofs.resolve(undefined);
+          return bothProviderProofs.promise.then(() => identity);
+        }
+        return Promise.resolve(identity);
       },
     };
     const linkingRuntime = createBetterAuthRuntime({
@@ -469,7 +487,10 @@ describe('Better Auth PostgreSQL cutover', () => {
         'POST',
         originalCookie ?? '',
         undefined,
-        { provider: 'google', existingMethod: { kind: 'password', password } },
+        {
+          provider: 'google',
+          existingMethod: { kind: 'password', password },
+        },
       );
       expect(started.status).toBe(200);
       const binding = started.headers
@@ -494,19 +515,113 @@ describe('Better Auth PostgreSQL cutover', () => {
       );
       expect(otherBrowser.headers.get('location')).toContain('linkError=true');
 
-      const [first, second] = await Promise.all([
-        linkRequest(callback, 'GET', originalCookie ?? '', binding),
-        linkRequest(callback, 'GET', originalCookie ?? '', binding),
-      ]);
-      const outcomes = [
-        first.headers.get('location'),
-        second.headers.get('location'),
-      ];
-      const linked = outcomes.filter((location) =>
-        location?.includes('linked=true'),
+      const loserEnteredAuthentication = Promise.withResolvers<undefined>();
+      const winnerCommitted = Promise.withResolvers<undefined>();
+      const originalAuthenticate =
+        browserSessionBoundary.authenticateBrowserRequest;
+      let authenticationCalls = 0;
+      const authenticationProbe =
+        ordering === 'loser authentication after commit'
+          ? vi
+              .spyOn(browserSessionBoundary, 'authenticateBrowserRequest')
+              .mockImplementation(async (...args) => {
+                authenticationCalls += 1;
+                if (authenticationCalls === 1) {
+                  await loserEnteredAuthentication.promise;
+                } else if (authenticationCalls === 2) {
+                  loserEnteredAuthentication.resolve(undefined);
+                  await winnerCommitted.promise;
+                }
+                return originalAuthenticate(...args);
+              })
+          : undefined;
+      gateProviderProofs = ordering === 'both provider proofs before commit';
+      const pendingCallbacks: Promise<Response>[] = [];
+      let first: Response;
+      let second: Response;
+      try {
+        const firstCallback =
+          firstCallbackFailure === 'early-return'
+            ? Promise.resolve(new Response(null, { status: 401 }))
+            : firstCallbackFailure === 'early-rejection'
+              ? Promise.reject(
+                  new Error('Fixture callback rejected before authentication'),
+                )
+              : linkRequest(callback, 'GET', originalCookie ?? '', binding);
+        pendingCallbacks.push(
+          firstCallback.finally(() => {
+            loserEnteredAuthentication.resolve(undefined);
+            winnerCommitted.resolve(undefined);
+            bothProviderProofs.resolve(undefined);
+          }),
+          linkRequest(callback, 'GET', originalCookie ?? '', binding).finally(
+            () => {
+              loserEnteredAuthentication.resolve(undefined);
+              winnerCommitted.resolve(undefined);
+              bothProviderProofs.resolve(undefined);
+            },
+          ),
+        );
+        [first, second] = await Promise.all([
+          required(pendingCallbacks[0]),
+          required(pendingCallbacks[1]),
+        ]);
+      } finally {
+        loserEnteredAuthentication.resolve(undefined);
+        winnerCommitted.resolve(undefined);
+        bothProviderProofs.resolve(undefined);
+        try {
+          const settled = await Promise.allSettled(pendingCallbacks);
+          if (firstCallbackFailure !== undefined) {
+            const survivingCallback = required(settled[1]);
+            expect(survivingCallback.status).toBe('fulfilled');
+            if (survivingCallback.status === 'fulfilled') {
+              expect(survivingCallback.value.status).toBe(302);
+              expect(survivingCallback.value.headers.get('location')).toBe(
+                'http://pertexo.test/account/security?linked=true',
+              );
+            }
+          }
+        } finally {
+          authenticationProbe?.mockRestore();
+          gateProviderProofs = false;
+        }
+      }
+      if (firstCallbackFailure === 'early-return') {
+        expect(first.status).toBe(401);
+        expect(authenticationCalls).toBe(1);
+        return;
+      }
+      if (ordering === 'loser authentication after commit')
+        expect(authenticationCalls).toBe(2);
+      if (ordering === 'both provider proofs before commit')
+        expect(providerProofs).toBe(2);
+      const responses = [first, second];
+      const acceptedLanding =
+        'http://pertexo.test/account/security?linked=true';
+      const linkErrorLanding =
+        'http://pertexo.test/account/security?linkError=true';
+      const reauthenticateLanding =
+        'http://pertexo.test/login?error=link_reauthenticate';
+      const linked = responses.filter(
+        (response) =>
+          response.status === 302 &&
+          response.headers.get('location') === acceptedLanding,
       );
+      const rejected = responses.filter(
+        (response) =>
+          response.status === 302 &&
+          [linkErrorLanding, reauthenticateLanding].includes(
+            response.headers.get('location') ?? '',
+          ) &&
+          response.headers.getSetCookie().length === 0,
+      );
+      const validCallbackPair =
+        linked.length === 1 &&
+        rejected.length === 1 &&
+        cookieValue(required(linked[0]).headers.getSetCookie()) !== undefined;
       let mismatchEvidence: unknown;
-      if (linked.length !== 1) {
+      if (!validCallbackPair) {
         const admin = new Pool({
           connectionString: databaseUrl(adminUrl),
           max: 1,
@@ -531,15 +646,18 @@ describe('Better Auth PostgreSQL cutover', () => {
             [email],
           );
           mismatchEvidence = {
-            outcomes: outcomes.map((location, index) => ({
-              status: index === 0 ? first.status : second.status,
-              kind: location?.includes('linked=true')
-                ? 'linked'
-                : location?.includes('linkError=true')
-                  ? 'link-error'
-                  : location?.includes('link_reauthenticate')
-                    ? 'reauthenticate'
-                    : 'other',
+            outcomes: responses.map((response) => ({
+              status: response.status,
+              kind:
+                response.headers.get('location') === acceptedLanding
+                  ? 'linked'
+                  : response.headers.get('location') === linkErrorLanding
+                    ? 'link-error'
+                    : response.headers.get('location') === reauthenticateLanding
+                      ? 'reauthenticate'
+                      : 'other',
+              sessionCookieIssued:
+                cookieValue(response.headers.getSetCookie()) !== undefined,
             })),
             durable: state.rows,
           };
@@ -547,14 +665,21 @@ describe('Better Auth PostgreSQL cutover', () => {
           await admin.end();
         }
       }
-      if (linked.length !== 1)
+      if (!validCallbackPair)
         throw new Error(
-          `Expected one accepted account-link callback: ${JSON.stringify(mismatchEvidence)}`,
+          `Expected one accepted and one safely rejected account-link callback: ${JSON.stringify(mismatchEvidence)}`,
         );
-      expect(
-        outcomes.filter((location) => location?.includes('linkError=true')),
-      ).toHaveLength(1);
-      const accepted = outcomes[0]?.includes('linked=true') ? first : second;
+      expect(linked).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      if (ordering === 'loser authentication after commit') {
+        expect(first.headers.get('location')).toBe(acceptedLanding);
+        expect(second.headers.get('location')).toBe(reauthenticateLanding);
+      }
+      if (ordering === 'both provider proofs before commit')
+        expect(required(rejected[0]).headers.get('location')).toBe(
+          linkErrorLanding,
+        );
+      const accepted = required(linked[0]);
       const replacementCookie = cookieValue(accepted.headers.getSetCookie());
       expect(replacementCookie).toBeDefined();
       expect(
@@ -569,7 +694,9 @@ describe('Better Auth PostgreSQL cutover', () => {
         replacementCookie ?? '',
         binding,
       );
-      expect(replay.headers.get('location')).toContain('linkError=true');
+      expect(replay.status).toBe(302);
+      expect(replay.headers.get('location')).toBe(linkErrorLanding);
+      expect(replay.headers.getSetCookie()).toEqual([]);
 
       const admin = new Pool({
         connectionString: databaseUrl(adminUrl),
@@ -651,7 +778,32 @@ describe('Better Auth PostgreSQL cutover', () => {
     } finally {
       await linkingRuntime.close();
     }
-  });
+  }
+  it.each(callbackOrderings)(
+    'links a fixture provider only after a fresh existing-method proof and rotates the session once: %s',
+    (ordering) => assertSingleProviderLink(ordering),
+  );
+  it.each(['early-return', 'early-rejection'] as const)(
+    'cleans up account-link callback gates and runtime after %s before authentication',
+    async (failure) => {
+      const originalAuthenticate =
+        browserSessionBoundary.authenticateBrowserRequest;
+      const operation = assertSingleProviderLink(
+        'loser authentication after commit',
+        failure,
+      );
+      if (failure === 'early-return') {
+        await expect(operation).resolves.toBeUndefined();
+      } else {
+        await expect(operation).rejects.toThrow(
+          'Fixture callback rejected before authentication',
+        );
+      }
+      expect(browserSessionBoundary.authenticateBrowserRequest).toBe(
+        originalAuthenticate,
+      );
+    },
+  );
 
   it('carries a real PostgreSQL signup and sign-in through the mounted HTTP guard', async () => {
     const application = Fastify();
