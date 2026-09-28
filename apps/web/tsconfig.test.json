@@ -6,5 +6,5 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "test", "e2e", "*.config.ts"]
+  "include": ["src", "test", "e2e", "e2e-live", "*.config.ts"]
 }

@@ -12,6 +12,35 @@ function client(
 }
 
 describe('API disposable database cleanup', () => {
+  it('rechecks approved service ownership immediately before DROP and preserves on mismatch', async () => {
+    const query = vi
+      .fn<DisposableDatabaseQueryClient['query']>()
+      .mockResolvedValue({ rows: [{ connections: 0 }] });
+    const ownershipLost = new Error('owned service identity changed');
+    const beforeDrop = vi.fn().mockRejectedValue(ownershipLost);
+    await expect(
+      dropDisconnectedDatabase(client(query), 'pertexo_test_recheck', {
+        beforeDrop,
+      }),
+    ).rejects.toBe(ownershipLost);
+    expect(beforeDrop).toHaveBeenCalledOnce();
+    expect(query).toHaveBeenCalledOnce();
+    expect(query.mock.calls[0]?.[0].text).toContain('pg_stat_activity');
+  });
+  it('orders successful ownership recheck after disconnect observation and before DROP', async () => {
+    const order: string[] = [];
+    const query = vi.fn<DisposableDatabaseQueryClient['query']>((config) => {
+      order.push(config.text.startsWith('drop') ? 'drop' : 'connections');
+      return Promise.resolve({ rows: [{ connections: 0 }] });
+    });
+    await dropDisconnectedDatabase(client(query), 'pertexo_test_recheck', {
+      beforeDrop: () => {
+        order.push('ownership');
+        return Promise.resolve();
+      },
+    });
+    expect(order).toEqual(['connections', 'ownership', 'drop']);
+  });
   it('drops the exact quoted target only after observing zero clients', async () => {
     const query = vi
       .fn<DisposableDatabaseQueryClient['query']>()

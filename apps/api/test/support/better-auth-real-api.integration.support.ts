@@ -18,10 +18,14 @@ import { createApiApplication } from '../../src/app.js';
 import { LocalAuthenticationMailSink } from '../../src/identity-infrastructure/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
+import { FixtureResourceOwner } from './fixture-resource-owner.js';
+import { dropDisconnectedDatabase } from './disposable-database.js';
+import { createCoreWorkflowCompatibility } from '../../src/platform/workflow/workflow-compatibility.js';
+import type { ApiConnectionRuntimeOverrides } from '../../src/platform/connections/connection-runtime.module.js';
 
 /*
  * The whole API with Better Auth as the only session authority and no legacy
- * OIDC, on its own disposable database (ADR 042/043).
+ * OIDC, on its own disposable database (ADRs 039/043).
  */
 export const betterAuthIntegrationEnabled =
   process.env.API_IDENTITY_INTEGRATION === 'true';
@@ -78,7 +82,25 @@ type SendInput = Readonly<{
  * the database afterwards. Each request gets its own client address, like
  * real users, so rate windows never couple the tests.
  */
-export function useBetterAuthRealApi(suite: string) {
+export function useBetterAuthRealApi(
+  suite: string,
+  options: Readonly<{
+    publicWebOrigin?: string;
+    nodeCompatibilityCohort?: ApiConfig['nodeCompatibilityCohort'];
+    redisUrl?: string;
+    logger?: StructuredLogger;
+    connections?: Readonly<{
+      config: NonNullable<ApiConfig['connections']>;
+      overrides: ApiConnectionRuntimeOverrides;
+    }>;
+    afterMigration?: (databaseUrl: (base: string) => string) => Promise<void>;
+    beforeClose?: () => Promise<void>;
+    beforeDrop?: () => Promise<void>;
+  }> = {},
+) {
+  const fixtureOrigin = options.publicWebOrigin ?? origin;
+  const owner = new FixtureResourceOwner();
+  let disposableDatabase: object | undefined;
   const databaseName = `pertexo_test_ba_${suite}_${randomUUID().replaceAll('-', '')}`;
   const databaseUrl = (base: string) => {
     const parsed = new URL(base);
@@ -101,12 +123,29 @@ export function useBetterAuthRealApi(suite: string) {
   let address = 0;
 
   beforeAll(async () => {
-    admin = new Pool({ connectionString: adminUrl, max: 1 });
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(
+    const creator = owner.acquire(
+      'database creator',
+      new Pool({ connectionString: adminUrl, max: 1 }),
+      (pool) => pool.end(),
+    );
+    await creator.query(
+      `create database "${databaseName}" owner pertexo_owner`,
+    );
+    disposableDatabase = owner.acquire('disposable database', {}, async () => {
+      const cleanup = new Pool({ connectionString: adminUrl, max: 1 });
+      try {
+        await dropDisconnectedDatabase(cleanup, databaseName, {
+          ...(options.beforeDrop === undefined
+            ? {}
+            : { beforeDrop: options.beforeDrop }),
+        });
+      } finally {
+        await cleanup.end();
+      }
+    });
+    await creator.query(
       `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker`,
     );
-    await admin.end();
     await migrateDatabase({
       apiRuntimeRole: 'pertexo_api',
       connectionString: databaseUrl(migrationBaseUrl),
@@ -117,41 +156,67 @@ export function useBetterAuthRealApi(suite: string) {
       ownerRole: 'pertexo_owner',
       workerRuntimeRole: 'pertexo_worker',
     });
-    admin = new Pool({ connectionString: databaseUrl(adminUrl), max: 1 });
-    const config = apiConfig(databaseConfig);
-    if (config.identity === undefined) throw new Error('Identity is missing');
-    identityRuntime = await createApiIdentityRuntime(
-      config.identity,
-      databaseConfig,
-      { authenticationMail: mail },
+    admin = owner.acquire(
+      'inspection pool',
+      new Pool({ connectionString: databaseUrl(adminUrl), max: 1 }),
+      (pool) => pool.end(),
     );
-    workspaceDatabase = createWorkspaceDatabase(databaseConfig);
-    application = await createApiApplication(config, {
-      database: workspaceDatabase,
-      identityRuntime,
-      logger: silent,
-      telemetry,
-    });
+    await options.afterMigration?.(databaseUrl);
+    const defaults = apiConfig(databaseConfig);
+    if (defaults.identity === undefined) throw new Error('Identity is missing');
+    const identity = { ...defaults.identity, publicWebOrigin: fixtureOrigin };
+    const config: ApiConfig = {
+      ...defaults,
+      identity,
+      nodeCompatibilityCohort: options.nodeCompatibilityCohort ?? 'core',
+      redisUrl: options.redisUrl ?? redisUrl,
+      ...(options.connections === undefined
+        ? {}
+        : { connections: options.connections.config }),
+    };
+    identityRuntime = owner.acquire(
+      'identity runtime',
+      await createApiIdentityRuntime(identity, databaseConfig, {
+        authenticationMail: mail,
+      }),
+      (runtime) => runtime.close(),
+    );
+    workspaceDatabase = owner.acquire(
+      'workspace database',
+      createWorkspaceDatabase(databaseConfig, {
+        compatibilityReleases: createCoreWorkflowCompatibility(
+          config.nodeCompatibilityCohort,
+        ).readinessSupport.descriptions,
+      }),
+      (database) => database.close(),
+    );
+    application = owner.acquire(
+      'API application',
+      await createApiApplication(config, {
+        database: workspaceDatabase,
+        identityRuntime,
+        logger: options.logger ?? silent,
+        telemetry,
+        ...(options.connections === undefined
+          ? {}
+          : { connectionOverrides: options.connections.overrides }),
+      }),
+      (app) => app.close(),
+    );
     await application.init();
   }, 60_000);
 
   afterAll(async () => {
-    await application.close();
-    await Promise.allSettled([
-      identityRuntime?.close(),
-      workspaceDatabase?.close(),
-      admin.end(),
-    ]);
-    const cleanup = new Pool({ connectionString: adminUrl, max: 1 });
-    try {
-      await cleanup.query(
-        `select pg_terminate_backend(pid) from pg_stat_activity where datname=$1 and pid<>pg_backend_pid()`,
-        [databaseName],
-      );
-      await cleanup.query(`drop database if exists "${databaseName}"`);
-    } finally {
-      await cleanup.end();
-    }
+    const failures: unknown[] = [];
+    await options.beforeClose?.().catch((error: unknown) => {
+      // A caller could not confirm that its external clients stopped. Close
+      // our listeners/pools, but do not drop the database under those clients.
+      if (disposableDatabase !== undefined) owner.transfer(disposableDatabase);
+      failures.push(error);
+    });
+    await owner.close().catch((error: unknown) => failures.push(error));
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Better Auth fixture cleanup failed');
   });
 
   function send(
@@ -165,7 +230,7 @@ export function useBetterAuthRealApi(suite: string) {
       url,
       remoteAddress: `203.0.113.${String(address % 250)}`,
       headers: {
-        origin,
+        origin: fixtureOrigin,
         ...(input.browser === undefined
           ? {}
           : {
@@ -213,7 +278,12 @@ export function useBetterAuthRealApi(suite: string) {
     return admin;
   }
 
-  return { send, signUp, signIn, mailedLink, database };
+  async function listen(): Promise<string> {
+    await application.listen(0, '127.0.0.1');
+    return application.getUrl();
+  }
+
+  return { send, signUp, signIn, mailedLink, database, listen };
 }
 
 function apiConfig(database: DatabaseConfig): ApiConfig {

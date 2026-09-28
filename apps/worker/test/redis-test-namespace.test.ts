@@ -70,6 +70,7 @@ class FakeRedisClient {
 function fixture(
   controlBehavior: ConstructorParameters<typeof FakeRedisClient>[0] = {},
   targetBehavior: ConstructorParameters<typeof FakeRedisClient>[0] = {},
+  beforeCleanup?: () => Promise<void>,
 ) {
   const control = new FakeRedisClient(controlBehavior);
   const target = new FakeRedisClient(targetBehavior);
@@ -80,6 +81,7 @@ function fixture(
     'ownership-proof',
     {
       token: 'fixed-owner-token',
+      ...(beforeCleanup === undefined ? {} : { beforeCleanup }),
       createClient: (url) => {
         urls.push(url);
         return urls.length === 1 ? control : target;
@@ -90,6 +92,18 @@ function fixture(
 }
 
 describe('Redis test namespace ownership', () => {
+  it('preserves its lease and disconnects without deletion after service ownership recheck fails', async () => {
+    const failure = new Error('service ownership changed');
+    const { control, target, namespace } = fixture({}, {}, () =>
+      Promise.reject(failure),
+    );
+    await namespace.acquire();
+    await expect(namespace.close()).rejects.toThrow(/cleanup failed/u);
+    expect(control.calls.filter(({ name }) => name === 'eval')).toEqual([]);
+    expect(target.calls.some(({ name }) => name === 'flushdb')).toBe(false);
+    expect(control.calls.at(-1)?.name).toBe('disconnect');
+    expect(target.calls.at(-1)?.name).toBe('disconnect');
+  });
   it('rejects invalid and reserved database identities before constructing clients', () => {
     expect(() =>
       createRedisTestNamespace('redis://localhost', 10, 'valid-owner'),
@@ -121,7 +135,6 @@ describe('Redis test namespace ownership', () => {
     expect(target.calls.map(({ name }) => name)).toEqual([
       'connect',
       'dbsize',
-      'flushdb',
       'quit',
     ]);
     const release = control.calls.find(({ name }) => name === 'eval');
@@ -129,6 +142,8 @@ describe('Redis test namespace ownership', () => {
       1,
       'pertexo:test:redis-db:14:owner',
       'ownership-proof:fixed-owner-token',
+      14,
+      10,
     ]);
   });
 
@@ -143,6 +158,30 @@ describe('Redis test namespace ownership', () => {
       'connect',
       'set',
       'quit',
+    ]);
+  });
+
+  it('checks ownership atomically before flushing and does not release another lease', async () => {
+    const { control, namespace, target } = fixture({ releaseResult: 0 });
+    await namespace.acquire();
+    await expect(namespace.close()).rejects.toThrow(/cleanup failed/u);
+    expect(target.calls.some(({ name }) => name === 'flushdb')).toBe(false);
+    const evaluations = control.calls.filter(({ name }) => name === 'eval');
+    expect(evaluations).toHaveLength(1);
+    const script = String(evaluations[0]?.arguments[0]);
+    expect(script.indexOf("redis.call('get'")).toBeLessThan(
+      script.indexOf("redis.call('flushdb'"),
+    );
+    expect(script).toContain("redis.call('select',ARGV[2])");
+    expect(script.indexOf("redis.call('flushdb'")).toBeLessThan(
+      script.indexOf("redis.call('del'"),
+    );
+    expect(evaluations[0]?.arguments.slice(1)).toEqual([
+      1,
+      'pertexo:test:redis-db:14:owner',
+      'ownership-proof:fixed-owner-token',
+      14,
+      10,
     ]);
   });
 
@@ -164,26 +203,18 @@ describe('Redis test namespace ownership', () => {
     ]);
   });
 
-  it('reports target cleanup and ownership-release failures together', async () => {
-    const flushError = new Error('flush failed');
+  it('preserves a failed atomic cleanup without a separate flush or lease release', async () => {
     const releaseError = new Error('release failed');
-    const { control, namespace, target } = fixture(
-      { releaseError },
-      { flushError },
-    );
+    const { control, namespace, target } = fixture({ releaseError }, {});
     await namespace.acquire();
 
     const error = await namespace.close().catch((cause: unknown) => cause);
 
     expect(error).toBeInstanceOf(AggregateError);
-    expect((error as AggregateError).errors).toEqual([
-      flushError,
-      releaseError,
-    ]);
+    expect((error as AggregateError).errors).toEqual([releaseError]);
     expect(target.calls.map(({ name }) => name)).toEqual([
       'connect',
       'dbsize',
-      'flushdb',
       'disconnect',
     ]);
     expect(control.calls.map(({ name }) => name)).toEqual([

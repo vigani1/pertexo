@@ -28,6 +28,7 @@ pnpm --filter @pertexo/web build
 pnpm --filter @pertexo/web lint
 pnpm --filter @pertexo/web test
 pnpm --filter @pertexo/web exec playwright install chromium
+pnpm test:browser-probes
 pnpm --filter @pertexo/web test:e2e
 ```
 
@@ -40,6 +41,16 @@ identity/workspace HTTP boundary. Optionally set
 The tests do not require a live identity provider, backend, Redis or database;
 the API/database suites separately exercise the real callback and discovery
 stack.
+
+The separate `test:browser-probes` lane verifies browser lifetime accounting and
+verification-URL redaction with the actual Playwright reporter. It requires the
+installed Chromium executable, but no API/database/Redis service. Ordinary
+`pnpm check` and API unit/coverage discovery remain browser-free; coverage
+source selection and thresholds are unchanged. `pnpm prepush:check` explicitly
+runs the browser probes after check/coverage, so install Chromium first (or use
+the existing `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`). CI runs them as a required
+step in its browser job after browser installation. Missing executables fail
+this lane; probes are not skipped or run in every ordinary unit/coverage job.
 
 Root build/typecheck/lint/test commands include this workspace. CI runs both its
 unit tests and the authenticated Chromium journeys. The production output is

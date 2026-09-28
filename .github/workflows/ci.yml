@@ -241,6 +241,8 @@ jobs:
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
           chromium firefox webkit
+      - name: Verify browser harness lifetime and redaction
+        run: pnpm test:browser-probes
       - name: Run authenticated browser journeys
         run: pnpm --filter @pertexo/web test:e2e
       - name: Upload browser traces
