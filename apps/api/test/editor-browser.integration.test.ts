@@ -20,6 +20,11 @@ import { useBetterAuthRealApi } from './support/better-auth-real-api.integration
 import { ownEditorBrowserProcess } from './support/editor-browser-process.js';
 import { verifyEditorBrowserOwnership } from './support/editor-browser-ownership.js';
 import {
+  prepareReadonlyEvidence,
+  readonlyEvidenceSchema,
+  readonlySetupSchema,
+} from './support/editor-readonly-evidence.js';
+import {
   expressionAdmissionEvidenceSchema,
   verifyExpressionAdmissionEvidence,
 } from './support/editor-expression-admission-evidence.js';
@@ -32,7 +37,13 @@ import {
 
 const enabled = process.env.EDITOR_BROWSER_INTEGRATION === 'true';
 const scenario = z
-  .enum(['nested-conflict', 'receipts', 'run-recovery', 'expression-admission'])
+  .enum([
+    'nested-conflict',
+    'receipts',
+    'run-recovery',
+    'expression-admission',
+    'readonly',
+  ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
 const workerDirectory = new URL('../../worker/', import.meta.url);
@@ -79,6 +90,10 @@ let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
 let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
 let expressionEvidence:
   z.infer<typeof expressionAdmissionEvidenceSchema> | undefined;
+let readonlyFixture:
+  Awaited<ReturnType<typeof prepareReadonlyEvidence>> | undefined;
+let readonlyEvidence: z.infer<typeof readonlyEvidenceSchema> | undefined;
+let readonlySetupPending = false;
 
 function phase(child: ChildProcess, expected: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -370,12 +385,46 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         }
         return;
       }
+      if (request.method === 'POST' && url.pathname === '/readonly-setup') {
+        if (
+          scenario !== 'readonly' ||
+          readonlyFixture !== undefined ||
+          readonlySetupPending
+        ) {
+          response.writeHead(409).end();
+          return;
+        }
+        readonlySetupPending = true;
+        let body = '';
+        request.on('data', (chunk: Buffer) => {
+          body += chunk.toString();
+          if (body.length > 1_024) request.destroy();
+        });
+        request.on('end', () => {
+          void (async () => {
+            try {
+              readonlyFixture = await prepareReadonlyEvidence(
+                api.database(),
+                readonlySetupSchema.parse(JSON.parse(body)),
+              );
+              response.setHeader('content-type', 'application/json');
+              response.end(JSON.stringify(readonlyFixture.scope));
+            } catch {
+              response.writeHead(400).end();
+            } finally {
+              readonlySetupPending = false;
+            }
+          })();
+        });
+        return;
+      }
       if (
         request.method === 'POST' &&
         (url.pathname === '/evidence' ||
           url.pathname === '/evidence/receipts' ||
           url.pathname === '/evidence/run-recovery' ||
-          url.pathname === '/evidence/expression-admission')
+          url.pathname === '/evidence/expression-admission' ||
+          url.pathname === '/evidence/readonly')
       ) {
         let body = '';
         request.on('data', (chunk: Buffer) => {
@@ -403,6 +452,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             )
               expressionEvidence =
                 expressionAdmissionEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/evidence/readonly' &&
+              scenario === 'readonly'
+            )
+              readonlyEvidence = readonlyEvidenceSchema.parse(value);
             else
               throw new Error('Evidence does not match the selected scenario');
             response.writeHead(204).end();
@@ -510,7 +564,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
                 ? 'editor-receipts.spec.ts'
                 : scenario === 'run-recovery'
                   ? 'editor-run-recovery.spec.ts'
-                  : 'editor-expression-admission.spec.ts',
+                  : scenario === 'expression-admission'
+                    ? 'editor-expression-admission.spec.ts'
+                    : 'editor-readonly.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -530,6 +586,15 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'readonly') {
+      if (readonlyFixture === undefined || readonlyEvidence === undefined)
+        throw new Error('Readonly editor evidence missing');
+      await readonlyFixture.verify(readonlyEvidence);
+      process.stdout.write(
+        `Live browser readonly evidence ${JSON.stringify(readonlyEvidence)}\n`,
+      );
+      return;
+    }
     if (scenario === 'expression-admission') {
       if (expressionEvidence === undefined)
         throw new Error('Expression admission evidence missing');
