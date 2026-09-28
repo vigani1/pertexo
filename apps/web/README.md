@@ -42,12 +42,14 @@ The tests do not require a live identity provider, backend, Redis or database;
 the API/database suites separately exercise the real callback and discovery
 stack.
 
-The supported `test:e2e` script first builds the node catalog's five-package
-dependency closure. The complete webhook/HTTP authoring regression reads those
-real catalog pins in the Node test process, not the browser bundle. This
-prerequisite is owned by the same local and CI command; it does not depend on
-another CI job's build output. Use the script rather than a direct Playwright
-invocation when those package artifacts have not been built.
+The supported `test:e2e` script first builds the node catalog and workflow
+engine's combined six-package dependency closure. The complete webhook/HTTP
+authoring regression reads real catalog pins, and the editor duplication unit
+test included by test typechecking reads the engine's admission interface, in
+the Node test process, not the browser bundle. This prerequisite is owned by the
+same local and CI command; it does not depend on another CI job's build output.
+Use the script rather than a direct Playwright invocation when those package
+artifacts have not been built.
 
 The separate `test:browser-probes` lane verifies browser lifetime accounting and
 verification-URL redaction with the actual Playwright reporter. It requires the
