@@ -28,8 +28,8 @@ const validSources = Object.freeze({
 
 test('accounts for every migration-owned application table', async () => {
   assert.deepEqual(await validateDatabaseSchemaOwnership(), {
-    migrationTableCount: 89,
-    typedTableCount: 60,
+    migrationTableCount: 93,
+    typedTableCount: 64,
     rawSqlTableCount: 29,
   });
 });

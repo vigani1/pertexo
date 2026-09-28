@@ -162,6 +162,7 @@ describe('selected published migration repair upgrade', () => {
       '0117_workspace_member_suspension.sql',
       '0118_workspace_ownership_transfer.sql',
       '0119_record_step_inputs.sql',
+      '0120_workspace_inbox_foundation.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

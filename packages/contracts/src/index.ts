@@ -45,3 +45,4 @@ export {
   schedulesOpenApiDocument,
 } from './schedules.js';
 export * from './http/schedules.js';
+export * from './workspace-inbox.js';
