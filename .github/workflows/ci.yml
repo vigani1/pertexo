@@ -401,7 +401,7 @@ jobs:
             --reporter=json --outputFile=../../artifacts/worker-gates.json
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             --exclude test/platform/compatibility-rollout.integration.test.ts \
-            --reporter=json --outputFile=../../artifacts/api-gates.json
+            --reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json
       - name: Prove new regression tests fail under selected mutations
         run: pnpm mutation:check
       - name: Prove every required integration cohort executed
