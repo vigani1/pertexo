@@ -102,12 +102,6 @@ export {
   rlsProbeRecords,
 } from './schema/foundation.js';
 export {
-  workspaceInboxAudience,
-  workspaceInboxEntries,
-  workspaceInboxRecipientState,
-  workspaceInboxSources,
-} from './schema/workspace-inbox.js';
-export {
   artifacts,
   outboxEvents,
   inboxReceipts,
