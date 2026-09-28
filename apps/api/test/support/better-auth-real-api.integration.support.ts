@@ -79,6 +79,26 @@ type SendInput = Readonly<{
   payload?: object;
 }>;
 
+type DatabaseCleanupFailure =
+  | 'database_query_deadline'
+  | 'database_query_read_timeout'
+  | 'database_cleanup_failure';
+
+function databaseCleanupFailure(error: unknown): DatabaseCleanupFailure {
+  const message: unknown =
+    error instanceof Error
+      ? Object.getOwnPropertyDescriptor(error, 'message')?.value
+      : undefined;
+  if (
+    typeof message === 'string' &&
+    /^Disposable database query exceeded [1-9][0-9]{0,8}ms$/u.test(message)
+  )
+    return 'database_query_deadline';
+  return message === 'Query read timeout'
+    ? 'database_query_read_timeout'
+    : 'database_cleanup_failure';
+}
+
 /**
  * Creates and migrates a disposable database, boots the API on it and drops
  * the database afterwards. Each request gets its own client address, like
@@ -105,6 +125,7 @@ export function useBetterAuthRealApi(
   const fixtureOrigin = options.publicWebOrigin ?? origin;
   const owner = new FixtureResourceOwner();
   let disposableDatabase: object | undefined;
+  let databaseCleanupLabel: DatabaseCleanupFailure | undefined;
   const databaseName = `pertexo_test_ba_${suite}_${randomUUID().replaceAll('-', '')}`;
   const databaseUrl = (base: string) => {
     const parsed = new URL(base);
@@ -136,15 +157,20 @@ export function useBetterAuthRealApi(
       `create database "${databaseName}" owner pertexo_owner`,
     );
     disposableDatabase = owner.acquire('disposable database', {}, async () => {
-      const cleanup = new Pool({ connectionString: adminUrl, max: 1 });
       try {
-        await dropDisconnectedDatabase(cleanup, databaseName, {
-          ...(options.beforeDrop === undefined
-            ? {}
-            : { beforeDrop: options.beforeDrop }),
-        });
-      } finally {
-        await cleanup.end();
+        const cleanup = new Pool({ connectionString: adminUrl, max: 1 });
+        try {
+          await dropDisconnectedDatabase(cleanup, databaseName, {
+            ...(options.beforeDrop === undefined
+              ? {}
+              : { beforeDrop: options.beforeDrop }),
+          });
+        } finally {
+          await cleanup.end();
+        }
+      } catch (error: unknown) {
+        databaseCleanupLabel = databaseCleanupFailure(error);
+        throw error;
       }
     });
     await creator.query(
@@ -222,16 +248,35 @@ export function useBetterAuthRealApi(
   }, 60_000);
 
   afterAll(async () => {
-    const failures: unknown[] = [];
-    await options.beforeClose?.().catch((error: unknown) => {
-      // A caller could not confirm that its external clients stopped. Close
-      // our listeners/pools, but do not drop the database under those clients.
-      if (disposableDatabase !== undefined) owner.transfer(disposableDatabase);
-      failures.push(error);
+    const report = { otherCleanupFailed: false };
+    await Promise.resolve()
+      .then(() => options.beforeClose?.())
+      .catch(() => {
+        // A caller could not confirm that its external clients stopped. Close
+        // our listeners/pools, but do not drop the database under those clients.
+        if (disposableDatabase !== undefined)
+          owner.transfer(disposableDatabase);
+        report.otherCleanupFailed = true;
+      });
+    await owner.close().catch((error: unknown) => {
+      // This is the unchanged owner's aggregate, not arbitrary resource data.
+      if (
+        databaseCleanupLabel === undefined ||
+        !(error instanceof AggregateError) ||
+        error.errors.length > 1
+      )
+        report.otherCleanupFailed = true;
     });
-    await owner.close().catch((error: unknown) => failures.push(error));
-    if (failures.length > 0)
-      throw new AggregateError(failures, 'Better Auth fixture cleanup failed');
+    const labels = [
+      ...(databaseCleanupLabel === undefined ? [] : [databaseCleanupLabel]),
+      ...(report.otherCleanupFailed ? ['other_cleanup_failure'] : []),
+    ];
+    // Vitest serializes nested errors, including their causes and properties.
+    // Keep originals inside the owner; only a fresh safe report crosses this boundary.
+    if (labels.length > 0)
+      throw new Error(
+        `Better Auth fixture cleanup failed: ${labels.join(', ')}`,
+      );
   });
 
   function send(
