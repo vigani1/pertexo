@@ -97,8 +97,8 @@ The new overlapping shutdown/diagnostic regression failed on the original code
 original background diagnostic case also produced an unhandled rejection.
 After the fix, authentication-mail runtime/delivery and coordinator/trigger
 runtime tests passed 57/57; worker typecheck passed. Additional synchronous
-handler and close-failure regressions are part of the focused suite. Whole-scope
-verification is still pending.
+handler and close-failure regressions are part of the focused suite. Broader
+verification is recorded below.
 
 ### EX1 production-policy evidence
 
@@ -154,7 +154,8 @@ Auth policies stay distinct.
 Focused controller, membership, invitation, authentication, module-composition,
 run HTTP-stack and response-contract tests passed 94/94 in 10 files. API typecheck,
 scoped ESLint and architecture checks (19/19; no static import cycles) passed.
-This stage has not yet rerun full-stack PostgreSQL/OIDC integration.
+Later controlled PostgreSQL/API integration evidence is recorded below; these
+checks do not certify an external OIDC provider.
 
 ### SDK binding and timer semantics evidence: EX2, W4
 
@@ -243,13 +244,61 @@ worker tests (803/803), scoped lint, architecture (19/19), complexity and
 built exports (9 tests, 35 consumer cases) passed. Risk-report infrastructure
 tests passed 30/30. Contracts generation checks passed with the existing
 identity/workspace redirect-operation warning. No performance improvement is
-claimed. Whole-scope gates and independent review remain outstanding.
+claimed. Whole-scope gates and independent review evidence follow below.
 
-## Remaining work
+## Delivery status and remaining gates
 
 All 12 findings are implemented and all 17 modules have owner dispositions.
-Whole-scope gates and independent review remain open.
-No structural stage is declared complete yet.
+Local verification and independent fixed-point review are complete. Remote PR
+checks and merge remain pending; this is not production or provider certification.
+
+### Whole-scope verification
+
+At `e3b40158`, serial `pnpm check` passed in the clean verification worktree:
+formatting, documentation, CI/runtime/quality contracts, architecture,
+dependencies, database-schema ownership, build, 35 built-export consumer cases,
+repository lint, complexity, duplication, contracts, all typechecks and all
+5,899 unit/component tests across 19 workspaces. This includes web 670/670,
+API 1,529/1,529, worker 803/803 and engine 405/405. A previous concurrent-gate
+run had five first-editor-render timeouts; unchanged focused tests passed 41/41,
+the default-concurrency web suite passed 670/670, and the serial full check also
+passed. No frontend assertions or timeouts were changed; the timeout cause is
+not claimed to be conclusively diagnosed.
+
+All 24 coverage cohorts passed their unchanged thresholds. The final canonical
+risk report passed 30 infrastructure tests and recorded zero unreviewed and 389
+reviewed **uncovered** branches across 202 files and 8,004 coverable lines.
+Reviews were matched to the same executable source/type/arm after moves and
+extractions; eight now-covered or deleted reviews were retired, with no new
+classifications. Nine direct storage-isolation matrix cases now cover the
+shared owner in its own cohort. Artifact tests passed 343/343 with 97.49%
+statements, 96.00% branches, 97.19% functions and 97.62% lines. Producer provenance
+bound the 24 cohorts to source fingerprint
+`sha256:54cb6b69bac705568dfc20e5522da3e3044454051dbd96b17f813f3354a8b0ed`.
+
+Controlled disposable integration evidence: artifact/ledger 6 passed with 3
+AWS-specific cases intentionally skipped under MinIO; Redis queue 1 passed;
+PostgreSQL 659 passed in 97 files. Worker integration passed 34 cases in 14 files
+on the established disposable stack and the 11 coordinator cases in 7 files on
+a fresh isolated stack (45/45 combined, not a single successful full invocation).
+API integration passed 93/93 in 14 files on the migrated fresh stack, including
+compatibility rollout. Dedicated resilience configurations were not rerun.
+
+The initial worker outage invocation omitted its Compose project and restarted
+the default local PostgreSQL service; its teardown restored healthy service,
+and that invocation is not accepted as outage evidence. An interrupted corrected
+run retained a namespace lease; neither that lease nor its data was deleted.
+Fresh `pertexo-structure-verify-20260928` containers were created only after unused
+localhost-port checks and verified by exact IDs, labels, config file, ports and
+health. API setup initially failed because the fresh base database was unmigrated;
+the canonical migration command initialized only that identified disposable
+database before the successful API run. No production database, external OIDC,
+email/provider, deployment, AWS IAM or disaster-recovery certification is claimed.
+
+Independent specification and standards reviews found no actionable findings.
+The engine's 39 moves were independently checked for import-only changes; new
+coverage metadata and the void-callback correction were separately reviewed.
+`git diff --check` passed. Normal push hooks and remote CI remain delivery gates.
 
 ### Counterpart review disposition
 
