@@ -1,6 +1,9 @@
 import type { WorkflowAuthoringDatabaseOptions } from '@pertexo/database/testing';
+import { platformExecutableRegistryHistory } from '@pertexo/node-catalog';
+import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/authoring-validation';
 import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createScheduleTriggerFixture } from './support/schedule-trigger-fixture.js';
 
@@ -32,20 +35,66 @@ function variants(fixture: ReturnType<typeof createScheduleTriggerFixture>) {
 }
 
 describe('Schedule fixture authoring admission ownership', () => {
-  it('wires every retained release to real authoring validation without service setup', async () => {
+  it('forwards every retained release policy and command through the same fixture owner', async () => {
     const fixture = createScheduleTriggerFixture({});
+    const validate = vi
+      .spyOn(WorkflowAuthoringValidator.prototype, 'validate')
+      .mockResolvedValue({
+        ok: true,
+        issues: [],
+        expandedInvocations: 0,
+        worstCaseLoopIterations: 0,
+      });
     try {
-      expect(variants(fixture).length).toBeGreaterThan(0);
-      for (const variant of variants(fixture)) {
+      const releases = platformExecutableRegistryHistory(fixture.releaseCohort);
+      const command = { signal: new AbortController().signal };
+      expect(releases.length).toBeGreaterThan(0);
+      expect(variants(fixture)).toHaveLength(releases.length);
+      for (const [index, variant] of variants(fixture).entries()) {
         expect(variant.validateAuthoringGraph).toBeTypeOf('function');
         if (variant.validateAuthoringGraph === undefined)
           throw new Error('Schedule authoring admission is not wired');
-        const report = await variant.validateAuthoringGraph(scheduleGraph, {});
-        expect(report.ok).toBe(true);
-        expect(report.issues).toEqual([]);
+        const release = releases[index];
+        if (release === undefined)
+          throw new Error('Retained release is missing');
+        const fingerprint =
+          composeExecutableCompatibilityRelease(release).fingerprint;
+        expect(variant.compatibilityRelease.fingerprint).toBe(fingerprint);
+        await variant.validateAuthoringGraph(scheduleGraph, command);
+        expect(validate).toHaveBeenLastCalledWith(
+          scheduleGraph,
+          {
+            releaseFingerprint: fingerprint,
+            definitions: release.definitions.map((manifest) => ({
+              definition: {
+                key: manifest.definition.key,
+                version: manifest.definition.version,
+              },
+              policyReferences: manifest.policyReferences.map(
+                ({ key, version }) => ({
+                  key,
+                  version,
+                }),
+              ),
+            })),
+          },
+          command,
+        );
+        expect(validate.mock.lastCall?.[0]).toBe(scheduleGraph);
+        expect(validate.mock.lastCall?.[2]).toBe(command);
+        expect(validate.mock.lastCall?.[2]?.signal).toBe(command.signal);
       }
+      expect(validate).toHaveBeenCalledTimes(releases.length);
+      expect(new Set(validate.mock.contexts).size).toBe(1);
+      expect(validate.mock.contexts[0]).toBeInstanceOf(
+        WorkflowAuthoringValidator,
+      );
     } finally {
-      await fixture.close();
+      try {
+        await fixture.close();
+      } finally {
+        validate.mockRestore();
+      }
     }
   });
 
@@ -99,7 +148,9 @@ describe('Schedule fixture authoring admission ownership', () => {
       await expect(
         validate(scheduleGraph, { signal: controller.signal }),
       ).rejects.toMatchObject({ reason: 'canceled' });
-      await validate(scheduleGraph, {});
+      const report = await validate(scheduleGraph, {});
+      expect(report.ok).toBe(true);
+      expect(report.issues).toEqual([]);
       const closing = fixture.close();
       expect(fixture.close()).toBe(closing);
       expect(() => validate(scheduleGraph, {})).toThrow(
