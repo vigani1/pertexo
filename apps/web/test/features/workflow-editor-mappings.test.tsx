@@ -269,6 +269,54 @@ describe('workflow editor input rows', { timeout: 30_000 }, () => {
 });
 
 describe('workflow editor input sources', { timeout: 30_000 }, () => {
+  it('describes the actual expression context and preserves policy and expression through live save', async () => {
+    let savedGraph: WorkflowGraphContract | undefined;
+    mockServer.use(
+      ...editorHandlers(
+        (_request, body) => {
+          savedGraph = body.graph;
+        },
+        {
+          graph: graphWithMappingNodes({
+            score: {
+              kind: 'expression',
+              language: 'jsonata',
+              expression: 'runInput.amount > 5000',
+              policyVersion: 1,
+            },
+          }),
+          definitions: [manualDefinition, mappingDefinition],
+        },
+      ),
+    );
+    renderApp(editorPath);
+    const event = userEvent.setup();
+    fireEvent.click((await findCanvas()).getByText('Target'));
+    await event.click(screen.getByRole('tab', { name: 'Inputs' }));
+    await event.click(
+      screen.getByRole('button', {
+        name: /score from.*expression runInput.amount > 5000/u,
+      }),
+    );
+    const expression = screen.getByLabelText('Expression');
+    expect(expression).toHaveAttribute('placeholder', 'runInput.amount > 5000');
+    expect(expression).toHaveAccessibleDescription(
+      /runInput and the available nodeOutputs, not this step’s mapped input/u,
+    );
+    fireEvent.change(expression, {
+      target: { value: 'runInput.amount > 6000' },
+    });
+    pressSave();
+    await waitFor(() => {
+      expect(savedGraph?.nodes[1]?.inputMappings.score).toEqual({
+        kind: 'expression',
+        language: 'jsonata',
+        expression: 'runInput.amount > 6000',
+        policyVersion: 1,
+      });
+    });
+  });
+
   it('keeps a disconnected step-output mapping and clears its warning when reconnected', async () => {
     mockServer.use(
       ...editorHandlers(() => undefined, {

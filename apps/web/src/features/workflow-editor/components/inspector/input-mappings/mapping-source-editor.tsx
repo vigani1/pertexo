@@ -74,7 +74,7 @@ export function MappingSourceEditor({
             name={`inputMapping.${row.id}.expression`}
             autoComplete="off"
             spellCheck={false}
-            placeholder="body.amount > 5000"
+            placeholder="runInput.amount > 5000"
             className="min-h-16 border-primary/30 font-mono text-[0.8rem]"
             value={row.expression}
             disabled={disabled}
@@ -85,7 +85,8 @@ export function MappingSourceEditor({
             }}
           />
           <FieldDescription id={`${controlId}-hint`}>
-            A JSONata expression over this step’s input, worked out when the
+            JSONata reads runInput and the available nodeOutputs, not this
+            step’s mapped input. The server validates and evaluates it when the
             step runs.
           </FieldDescription>
           {error === undefined ? null : (

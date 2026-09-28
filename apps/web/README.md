@@ -64,7 +64,7 @@ wiring remains deployment-owned.
 | `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                                                                    |
 | `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.                                               |
 | `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references.                                       |
-| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, history, saving and conflict recovery.                                           |
+| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, loop bounds/body authoring, history, saving and conflict recovery.               |
 | `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                                                                  |
 | `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                                                                |
 | `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                                                                |

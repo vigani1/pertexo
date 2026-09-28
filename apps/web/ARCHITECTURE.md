@@ -3671,8 +3671,9 @@ canvas.
 
 Do not equate this with a complete visual data-mapping experience:
 
-- `inputMappings` are preserved in the graph, but the current inspector does not
-  provide controls to edit them. New nodes begin with empty mappings.
+- The current Inputs tab edits all five shared mapping kinds. New nodes begin
+  with empty mappings; source-kind, path and scope constraints remain visible.
+  Restricted JSONata executes on the server, not in the browser.
 - Nested object/array configuration relies on advanced JSON, not specialized
   nested form controls. Catalog credential requirements are not automatically
   equivalent to supported connection selectors.
@@ -3695,10 +3696,12 @@ node for N4 as part of that review. Payments remain excluded.
   types from that contract; do not copy the discriminated union into web code.
 - Existing variants are `literal` (`value`), `run_input` (`path`), `node_output`
   (`nodeId`, `path`), `expression` (`language: 'jsonata'`, `expression`,
-  `policyVersion`) and `structured_input` (`port`, `path`). M1 offers creation
-  and editing of the first three only. Preserve expression/structured mappings
-  unchanged as labelled advanced rows; allow explicit removal with confirmation,
-  but no implicit conversion or expression evaluation in the browser.
+  `policyVersion`) and `structured_input` (`port`, `path`). The current editor
+  creates and edits all five (structured inputs within their body scope), with
+  live valid edits and locally guarded invalid scratch. Preserve policy versions
+  and unsupported values; no implicit conversion or expression evaluation in the
+  browser. JSONata context contains `runInput` and available `nodeOutputs`, not
+  the step's already-mapped input.
 - Mapping keys are top-level keys in the resolved input object, not edge-port
   names and not destination JSON paths. For example key `customer` with source
   `{ kind: 'node_output', nodeId: 'source-id', path: '$.customer' }` produces an
@@ -3869,9 +3872,28 @@ node for N4 as part of that review. Payments remain excluded.
 
 After M1 implementation, reconcile stale roadmap summaries and prepare one
 integrated review of N1–N3 plus M1 against the agreed baseline. Do not
-auto-start uploads, templates, usage, JSONata editing, nested loop editing or
-credential authoring. Those remain separate decisions, not prerequisites for
-completing M1.
+auto-start uploads, templates, further usage features, a new expression
+evaluator or new credential providers. JSONata editing and nested body authoring
+already exist; the dated initial M1 evidence above is not the current control
+inventory.
+
+##### F01 existing-control qualification (2026-09-28)
+
+The reviewed F01 parity pass adds loop item/concurrency fields through the same
+live-field scratch and graph-history ownership. Bounds come from the existing
+browser-safe workflow-authoring schema export, not duplicated constants;
+concurrency cannot exceed items, and invalid pairs remain unapplied scratch.
+Updates compute structure from the current node, retaining its body. Root/body
+duplication remaps known version 1/2/3 Merge references only when their matching
+Parallel is copied in the same scope; it never rewrites arbitrary config strings
+or expressions. Expression help describes the actual restricted runtime context.
+The 2026-09-25 evidence's deliberately deferred bounds now has this focused
+implementation; moving existing nodes between bodies remains outside the slice.
+
+Exact checks and outstanding connected browser/backend qualification are tracked
+in `docs/feature-plans/01-editor-capability-completion.md` and F00. This does
+not upgrade dated mocked-browser evidence to live-stack or production
+verification.
 
 #### U5 — workflow identity and name-based run discovery
 

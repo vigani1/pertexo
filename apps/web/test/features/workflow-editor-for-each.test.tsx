@@ -26,17 +26,23 @@ import {
 const definitions = [forEachDefinition, bodyStepDefinition];
 
 /** Renders the editor on `graph`, collecting what it saves. */
-async function openEditor(graph: WorkflowGraphContract) {
+async function openEditor(
+  graph: WorkflowGraphContract,
+  options: Readonly<{
+    strict?: boolean;
+    capabilities?: readonly string[];
+  }> = {},
+) {
   const saved: { graph?: WorkflowGraphContract } = {};
   mockServer.use(
     ...editorHandlers(
       (_request, body) => {
         saved.graph = body.graph;
       },
-      { graph, definitions },
+      { graph, definitions, ...options },
     ),
   );
-  renderApp(editorPath);
+  renderApp(editorPath, options);
   const canvas = await findCanvas();
   return { canvas, saved, event: userEvent.setup() };
 }
@@ -99,6 +105,93 @@ describe('For each on the canvas', () => {
 });
 
 describe('building a For each body', { timeout: 30_000 }, () => {
+  it('live-applies compatible limits together under StrictMode without losing the body, then undoes and redoes', async () => {
+    const graph = orderLoopGraph();
+    const { saved, event } = await openEditor(graph, { strict: true });
+    openByKeyboard(screen.getByLabelText('Each order, For each'));
+    const items = await screen.findByLabelText('Maximum items');
+    const concurrent = screen.getByLabelText('Items at a time');
+    fireEvent.change(items, { target: { value: '1' } });
+    fireEvent.blur(items);
+    expect(concurrent).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      screen.getByText('Items at a time cannot exceed Maximum items.'),
+    ).toBeVisible();
+    // A valid sibling correction commits both, rather than clamping either.
+    fireEvent.change(concurrent, { target: { value: '1' } });
+    pressSave();
+    await waitFor(() => {
+      expect(
+        saved.graph?.nodes.find((node) => node.id === 'loop')?.structured,
+      ).toEqual({
+        ...graph.nodes[1]?.structured,
+        maxIterations: 1,
+        maxConcurrency: 1,
+      });
+    });
+    await event.click(screen.getByRole('button', { name: /Undo/u }));
+    expect(items).toHaveValue('100');
+    expect(concurrent).toHaveValue('5');
+    await event.click(screen.getByRole('button', { name: /Redo/u }));
+    expect(items).toHaveValue('1');
+    expect(concurrent).toHaveValue('1');
+    fireEvent.change(items, { target: { value: '1000' } });
+    fireEvent.change(concurrent, { target: { value: '1000' } });
+    pressSave();
+    await waitFor(() => {
+      expect(
+        saved.graph?.nodes.find((node) => node.id === 'loop')?.structured,
+      ).toEqual({
+        ...graph.nodes[1]?.structured,
+        maxIterations: 1000,
+        maxConcurrency: 1000,
+      });
+    });
+  });
+
+  it.each(['', '0', '-1', '-', '1e', '1.5', '1001'])(
+    'keeps incomplete or invalid bounds %j as scratch and protects selection',
+    async (text) => {
+      const { saved, event } = await openEditor(orderLoopGraph());
+      openByKeyboard(screen.getByLabelText('Each order, For each'));
+      const items = await screen.findByLabelText('Maximum items');
+      fireEvent.change(items, { target: { value: text } });
+      fireEvent.blur(items);
+      expect(items).toHaveValue(text);
+      expect(items).toHaveAttribute('aria-invalid', 'true');
+      const section = screen.getByRole('region', {
+        name: 'Runs once per item',
+      });
+      await event.click(
+        within(section).getByRole('button', { name: 'Check stock' }),
+      );
+      expect(
+        await screen.findByRole('dialog', {
+          name: 'Discard the unfinished edit?',
+        }),
+      ).toBeVisible();
+      await event.click(screen.getByRole('button', { name: 'Stay' }));
+      expect(items).toHaveValue(text);
+      expect(saved.graph).toBeUndefined();
+      await event.click(
+        within(section).getByRole('button', { name: 'Check stock' }),
+      );
+      await event.click(
+        await screen.findByRole('button', { name: 'Discard edit' }),
+      );
+      pressSave();
+      // Discarding scratch leaves the original graph unchanged.
+      expect(saved.graph).toBeUndefined();
+    },
+  );
+
+  it('shows limits without permitting changes for a read-only actor', async () => {
+    await openEditor(orderLoopGraph(), { capabilities: ['workflow:read'] });
+    openByKeyboard(screen.getByLabelText('Each order, For each'));
+    expect(await screen.findByLabelText('Maximum items')).toBeDisabled();
+    expect(screen.getByLabelText('Items at a time')).toBeDisabled();
+  });
+
   it('draws the body in place and inspects the For each from the keyboard', async () => {
     const { canvas } = await openEditor(orderLoopGraph());
     // Unmeasured canvas nodes are hidden in jsdom, so find them by label.
