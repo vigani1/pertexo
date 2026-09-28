@@ -5,6 +5,14 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./workspace-inbox": {
+      "types": "./dist/workspace-inbox.d.ts",
+      "default": "./dist/workspace-inbox.js"
+    },
+    "./schemas/workspace-inbox": {
+      "types": "./dist/http/workspace-inbox.d.ts",
+      "default": "./dist/http/workspace-inbox.js"
+    },
     "./artifacts": {
       "types": "./dist/artifact-transfer.d.ts",
       "default": "./dist/artifact-transfer.js"

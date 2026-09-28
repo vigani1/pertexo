@@ -28,6 +28,10 @@ import {
   schedulesClientContract,
   schedulesOpenApiDocument,
 } from './schedules.js';
+import {
+  workspaceInboxClientContract,
+  workspaceInboxOpenApiDocument,
+} from './workspace-inbox.js';
 
 const CONTRACT_DOMAINS = Object.freeze([
   ['catalog', catalogClientContract, catalogOpenApiDocument],
@@ -51,6 +55,11 @@ const CONTRACT_DOMAINS = Object.freeze([
   ['workflow-runs', workflowRunsClientContract, workflowRunsOpenApiDocument],
   ['schedules', schedulesClientContract, schedulesOpenApiDocument],
   ['webhooks', webhooksClientContract, webhooksOpenApiDocument],
+  [
+    'workspace-inbox',
+    workspaceInboxClientContract,
+    workspaceInboxOpenApiDocument,
+  ],
 ] as const);
 
 export const CONTRACT_ARTIFACTS = Object.freeze(

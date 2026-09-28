@@ -63,6 +63,12 @@ import {
   workflowTriggers,
 } from './schema/authoring.js';
 import {
+  workspaceInboxAudience,
+  workspaceInboxEntries,
+  workspaceInboxRecipientState,
+  workspaceInboxSources,
+} from './schema/workspace-inbox.js';
+import {
   webhookTriggerSecretVersions,
   webhookTriggerEndpoints,
   webhookTriggerDeliveries,
@@ -176,6 +182,10 @@ export const databaseSchema = {
   workspaceMemberships,
   workspaceMemberRoleCommandReceipts,
   workspaceRenameCommandReceipts,
+  workspaceInboxAudience,
+  workspaceInboxEntries,
+  workspaceInboxRecipientState,
+  workspaceInboxSources,
   workspaceInvitations,
   workspaceInvitationCommandReceipts,
   workspaceInvitationDeliveryAttempts,
