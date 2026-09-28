@@ -21,19 +21,23 @@ export const WORKFLOW_GRAPH_LIMITS: WorkflowGraphLimits = Object.freeze({
   jsonValueDepth: 64,
 });
 
-export type GraphIssueCode =
-  | 'duplicate_node_id'
-  | 'duplicate_edge_id'
-  | 'dangling_edge'
-  | 'cycle'
-  | 'invalid_loop_limit'
-  | 'loop_iteration_limit'
-  | 'invalid_structured_body'
-  | 'invalid_mapping'
-  | 'expansion_limit'
-  | 'graph_limit'
-  | 'unknown_definition'
-  | 'invalid_graph';
+export const GRAPH_ISSUE_CODES = [
+  'duplicate_node_id',
+  'duplicate_edge_id',
+  'dangling_edge',
+  'cycle',
+  'invalid_loop_limit',
+  'loop_iteration_limit',
+  'invalid_structured_body',
+  'invalid_mapping',
+  'invalid_expression',
+  'expansion_limit',
+  'graph_limit',
+  'unknown_definition',
+  'invalid_graph',
+] as const;
+
+export type GraphIssueCode = (typeof GRAPH_ISSUE_CODES)[number];
 
 export interface GraphValidationIssue {
   readonly code: GraphIssueCode;

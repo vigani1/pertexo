@@ -18,6 +18,15 @@ export function validateWorkflowGraph(
   graph: WorkflowGraph,
   overrides: Partial<WorkflowGraphLimits> = {},
 ): GraphValidationResult {
+  return validateWorkflowGraphWithIssueAdmission(graph, overrides);
+}
+
+/** Internal collection seam; historical facades keep their original count-only contract. */
+export function validateWorkflowGraphWithIssueAdmission(
+  graph: WorkflowGraph,
+  overrides: Partial<WorkflowGraphLimits> = {},
+  admitIssue?: (issue: GraphValidationIssue) => void,
+): GraphValidationResult {
   const overrideSchema = z
     .object({
       nodes: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
@@ -71,9 +80,17 @@ export function validateWorkflowGraph(
     }
   }
   const aggregate = { nodes: 0, edges: 0 };
+  const issueCollection = { failed: false };
   const issue = (code: GraphIssueCode, path: string, message: string): void => {
-    if (issues.length < WORKFLOW_VALIDATION_MAX_ISSUES)
-      issues.push({ code, path, message });
+    if (issues.length >= WORKFLOW_VALIDATION_MAX_ISSUES) return;
+    const candidate = { code, path, message };
+    try {
+      admitIssue?.(candidate);
+    } catch (error) {
+      issueCollection.failed = true;
+      throw error;
+    }
+    issues.push(candidate);
   };
   let expandedInvocations = 0;
   let worstCaseLoopIterations = 0;
@@ -90,6 +107,8 @@ export function validateWorkflowGraph(
     expandedInvocations = totals.expanded;
     worstCaseLoopIterations = totals.iterations;
   } catch (error) {
+    // Collector refusal is operational, not evidence that the graph is invalid.
+    if (issueCollection.failed) throw error;
     issue(
       'invalid_graph',
       '$',

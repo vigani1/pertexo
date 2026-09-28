@@ -58,6 +58,12 @@
       "node": "./dist/invocation-key-v2.js",
       "default": "./dist/invocation-key-v2.js"
     },
+    "./authoring-validation": {
+      "types": "./dist/authoring-validation.d.ts",
+      "browser": false,
+      "node": "./dist/authoring-validation.js",
+      "default": "./dist/authoring-validation.js"
+    },
     "./expressions": {
       "types": "./dist/expressions.d.ts",
       "node": "./dist/expressions.js",
@@ -70,6 +76,7 @@
     "./dist/graph.js": false,
     "./dist/mapping.js": false,
     "./dist/expressions.js": false,
+    "./dist/authoring-validation.js": false,
     "./dist/attempt-failure.js": false,
     "./dist/invocation-key-v2.js": false
   },
