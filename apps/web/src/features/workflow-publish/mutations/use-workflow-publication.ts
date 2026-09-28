@@ -9,8 +9,6 @@ import {
   type SavedDraft,
 } from './use-workflow-draft-validation';
 
-export type { ValidationResult } from './use-workflow-draft-validation';
-
 type PublishAttempt = SavedDraft & Readonly<{ idempotencyKey: string }>;
 
 export type PublicationReceipt = Readonly<{
