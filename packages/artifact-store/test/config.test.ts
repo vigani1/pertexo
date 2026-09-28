@@ -36,7 +36,9 @@ describe('assertTenantStorageIsolation', () => {
   };
 
   it('accepts distinct principals and buckets across both regions', () => {
-    expect(() => assertTenantStorageIsolation(artifacts, ledger)).not.toThrow();
+    expect(() => {
+      assertTenantStorageIsolation(artifacts, ledger);
+    }).not.toThrow();
   });
 
   for (const control of ['primary', 'recovery'] as const) {
@@ -44,15 +46,15 @@ describe('assertTenantStorageIsolation', () => {
       it.each(['accessKeyId', 'bucket'] as const)(
         `rejects ${control} ledger sharing %s with ${tenant} artifacts`,
         (field) => {
-          expect(() =>
+          expect(() => {
             assertTenantStorageIsolation(artifacts, {
               ...ledger,
               [control]: {
                 ...ledger[control],
                 [field]: artifacts[tenant][field],
               },
-            }),
-          ).toThrow('distinct principals and buckets');
+            });
+          }).toThrow('distinct principals and buckets');
         },
       );
     }
