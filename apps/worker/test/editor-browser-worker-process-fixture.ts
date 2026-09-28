@@ -4,7 +4,10 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import {
+  createTriggerRuntime,
+  type TriggerRuntime,
+} from '../src/triggers/trigger-runtime.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createTransportMetrics } from '@pertexo/observability/transport-metrics';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
@@ -15,10 +18,11 @@ import {
   platformServingRegistryRelease,
 } from '@pertexo/node-catalog';
 import { Pool } from 'pg';
+import { EditorBrowserWorkerShutdownError } from './support/editor-browser-worker-cleanup.js';
 import {
-  closeEditorBrowserWorker,
-  EditorBrowserWorkerShutdownError,
-} from './support/editor-browser-worker-cleanup.js';
+  createEditorBrowserWorkerLifetime,
+  type EditorBrowserRuntimeConstruction,
+} from './support/editor-browser-worker-lifetime.js';
 
 const redisUrl = process.env.REDIS_URL;
 if (redisUrl === undefined || process.send === undefined)
@@ -58,41 +62,36 @@ const namespace = createRedisTestNamespace(
     },
   },
 );
-let coordinator:
-  Awaited<ReturnType<typeof createCoordinatorRuntime>> | undefined;
-let attempts: Awaited<ReturnType<typeof createNodeAttemptRuntime>> | undefined;
-let dispatcher: OutboxDispatcher | undefined;
-let dispatcherDatabase:
-  ReturnType<typeof createOutboxDispatcherDatabase> | undefined;
-let producer: ReturnType<typeof createQueueProducer> | undefined;
-const lifecycle = { starting: true, stopping: false };
-function assertSetupActive(): void {
-  if (lifecycle.stopping) throw new Error('Worker setup canceled');
-}
+const cohort =
+  process.env.EDITOR_BROWSER_CASE === 'schedule'
+    ? 'schedule_activation'
+    : 'validate_activation';
+const lifecycle = { stopping: false };
+let configuration:
+  | {
+      workerUrl: string;
+      dispatcherUrl: string;
+      apiUrl: string;
+      migrationUrl: string;
+    }
+  | undefined;
+const runtimeOwner = createEditorBrowserWorkerLifetime(
+  namespace,
+  constructRuntimes,
+);
 function disconnect(): void {
   if (process.connected) process.disconnect();
 }
 let cancelConfiguration: (() => void) | undefined;
-let closePromise: Promise<void> | undefined;
-const drain = new WorkerDrainState();
-const close = (): Promise<void> => {
-  closePromise ??= (async () => {
-    drain.beginDrain();
-    await closeEditorBrowserWorker({
-      dispatcher,
-      producer,
-      dispatcherDatabase,
-      attempts,
-      coordinator,
-      namespace,
-    });
-  })();
-  return closePromise;
-};
-async function finishShutdown(setupFailure?: unknown): Promise<void> {
+let finishing: Promise<void> | undefined;
+function finishShutdown(setupFailure?: unknown): Promise<void> {
+  finishing ??= performShutdown(setupFailure);
+  return finishing;
+}
+async function performShutdown(setupFailure?: unknown): Promise<void> {
   const phases: string[] = setupFailure === undefined ? [] : ['startup'];
   try {
-    await close();
+    await runtimeOwner.close();
   } catch (error) {
     phases.push(
       ...(error instanceof EditorBrowserWorkerShutdownError
@@ -126,114 +125,169 @@ async function finishShutdown(setupFailure?: unknown): Promise<void> {
 const stop = (): void => {
   lifecycle.stopping = true;
   cancelConfiguration?.();
-  // Let every in-progress constructor settle before releasing its resources.
-  if (lifecycle.starting) return;
+  // The runtime owner fences setup/restart synchronously and awaits its activity.
   void finishShutdown();
 };
 process.once('SIGTERM', stop);
 process.once('SIGINT', stop);
 process.once('disconnect', stop);
-
-try {
-  // Ownership is established before the parent API can write to this Redis DB.
-  await namespace.acquire();
-  assertSetupActive();
-  const configuration = new Promise<unknown>((resolve, reject) => {
-    process.once('message', resolve);
-    cancelConfiguration = () => {
-      reject(new Error('Worker configuration wait canceled'));
-    };
-  });
-  process.send({ phase: 'namespace-ready', database: namespace.database });
-  const raw = await configuration;
-  cancelConfiguration = undefined;
+process.on('message', (message: unknown) => {
   if (
-    typeof raw !== 'object' ||
-    raw === null ||
-    !('workerUrl' in raw) ||
-    !('dispatcherUrl' in raw) ||
-    !('apiUrl' in raw) ||
-    !('migrationUrl' in raw) ||
-    typeof raw.workerUrl !== 'string' ||
-    typeof raw.dispatcherUrl !== 'string' ||
-    typeof raw.apiUrl !== 'string' ||
-    typeof raw.migrationUrl !== 'string'
+    typeof message !== 'object' ||
+    message === null ||
+    !('phase' in message) ||
+    message.phase !== 'restart-worker-runtime' ||
+    !('requestId' in message) ||
+    typeof message.requestId !== 'string' ||
+    !/^[a-f0-9-]{36}$/u.test(message.requestId)
   )
-    throw new Error(
-      'Owned browser worker database configuration is incomplete',
-    );
-  assertSetupActive();
-  const inspector = new Pool({ connectionString: raw.migrationUrl, max: 1 });
-  const readCurrent = async () => {
-    const client = await inspector.connect();
+    return;
+  const requestId = message.requestId;
+  const reply = (success: boolean) => {
+    if (!process.connected) return;
     try {
-      await client.query('begin');
-      await client.query('set local role pertexo_owner');
-      const result = await client.query<{
-        epoch: number;
-        fingerprint: string;
-        catalog_json: unknown;
-      }>(
-        `select current.epoch, current.fingerprint, release.catalog_json
+      process.send?.(
+        { phase: 'worker-runtime-restarted', requestId, success },
+        (error: Error | null) => {
+          if (error !== null) stop();
+        },
+      );
+    } catch {
+      stop();
+    }
+  };
+  if (cohort !== 'schedule_activation' || lifecycle.stopping) {
+    reply(false);
+    return;
+  }
+  void Promise.resolve()
+    .then(() => runtimeOwner.restart())
+    .then(
+      () => {
+        reply(!lifecycle.stopping);
+      },
+      () => {
+        reply(false);
+        stop();
+      },
+    );
+});
+
+async function constructRuntimes(
+  resources: EditorBrowserRuntimeConstruction,
+  assertSetupActive: () => void,
+): Promise<void> {
+  if (configuration === undefined) {
+    // Ownership is established before the parent API can write to this Redis DB.
+    await namespace.acquire();
+    assertSetupActive();
+    const pendingConfiguration = new Promise<unknown>((resolve, reject) => {
+      process.once('message', resolve);
+      cancelConfiguration = () => {
+        reject(new Error('Worker configuration wait canceled'));
+      };
+    });
+    process.send?.({ phase: 'namespace-ready', database: namespace.database });
+    const raw = await pendingConfiguration;
+    cancelConfiguration = undefined;
+    if (
+      typeof raw !== 'object' ||
+      raw === null ||
+      !('workerUrl' in raw) ||
+      !('dispatcherUrl' in raw) ||
+      !('apiUrl' in raw) ||
+      !('migrationUrl' in raw) ||
+      typeof raw.workerUrl !== 'string' ||
+      typeof raw.dispatcherUrl !== 'string' ||
+      typeof raw.apiUrl !== 'string' ||
+      typeof raw.migrationUrl !== 'string'
+    )
+      throw new Error(
+        'Owned browser worker database configuration is incomplete',
+      );
+    assertSetupActive();
+    const inspector = new Pool({ connectionString: raw.migrationUrl, max: 1 });
+    const readCurrent = async () => {
+      const client = await inspector.connect();
+      try {
+        await client.query('begin');
+        await client.query('set local role pertexo_owner');
+        const result = await client.query<{
+          epoch: number;
+          fingerprint: string;
+          catalog_json: unknown;
+        }>(
+          `select current.epoch, current.fingerprint, release.catalog_json
           from app.node_compatibility_current current
           join app.node_compatibility_releases release
             on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
-      );
-      await client.query('commit');
-      return result.rows[0];
-    } catch (error: unknown) {
-      await client.query('rollback');
-      throw error;
+        );
+        await client.query('commit');
+        return result.rows[0];
+      } catch (error: unknown) {
+        await client.query('rollback');
+        throw error;
+      } finally {
+        client.release();
+      }
+    };
+    try {
+      const current = await readCurrent();
+      if (current === undefined)
+        throw new Error('Fresh fixture compatibility pointer is missing');
+      const target = platformServingRegistryRelease(cohort);
+      if (current.epoch > target.epoch)
+        throw new Error('Refusing fixture cohort downgrade');
+      for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.filter(
+        (release) =>
+          release.epoch > current.epoch && release.epoch <= target.epoch,
+      )) {
+        assertSetupActive();
+        await activateCompatibilityReleaseFixture({
+          actorId: 'editor-browser-fixture',
+          artifactPrefix: 'editor-browser-fixture',
+          apiUrl: raw.apiUrl,
+          workerUrl: raw.workerUrl,
+          migrationUrl: raw.migrationUrl,
+          targetRelease: release,
+          readCurrent,
+          reasons: {
+            prepare: 'Prepare isolated pure-node browser fixture release',
+            approve: 'Approve isolated pure-node browser fixture release',
+            activate: 'Activate isolated pure-node browser fixture release',
+          },
+        });
+      }
     } finally {
-      client.release();
+      await inspector.end();
     }
-  };
-  try {
-    const current = await readCurrent();
-    if (current === undefined)
-      throw new Error('Fresh fixture compatibility pointer is missing');
-    const target = platformServingRegistryRelease('validate_activation');
-    for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.filter(
-      (release) =>
-        release.epoch > current.epoch && release.epoch <= target.epoch,
-    )) {
-      assertSetupActive();
-      await activateCompatibilityReleaseFixture({
-        actorId: 'editor-browser-fixture',
-        artifactPrefix: 'editor-browser-fixture',
-        apiUrl: raw.apiUrl,
-        workerUrl: raw.workerUrl,
-        migrationUrl: raw.migrationUrl,
-        targetRelease: release,
-        readCurrent,
-        reasons: {
-          prepare: 'Prepare isolated pure-node browser fixture release',
-          approve: 'Approve isolated pure-node browser fixture release',
-          activate: 'Activate isolated pure-node browser fixture release',
-        },
-      });
-    }
-  } finally {
-    await inspector.end();
+    configuration = {
+      workerUrl: raw.workerUrl,
+      dispatcherUrl: raw.dispatcherUrl,
+      apiUrl: raw.apiUrl,
+      migrationUrl: raw.migrationUrl,
+    };
   }
+  const raw = configuration;
   assertSetupActive();
   const database = parseDatabaseConfig({
     connectionString: raw.workerUrl,
     max: 6,
   });
-  coordinator = await createCoordinatorRuntime({
+  const coordinator = await createCoordinatorRuntime({
     database,
     maximumAdmissions: 10,
-    releaseCohort: 'validate_activation',
+    releaseCohort: cohort,
     redisUrl: namespace.redisUrl,
   });
+  resources.coordinator = coordinator;
   assertSetupActive();
-  attempts = await createNodeAttemptRuntime(
+  const attempts = await createNodeAttemptRuntime(
     {
       database,
       heartbeatIntervalMillis: 1_000,
       leaseDurationSeconds: 10,
-      releaseCohort: 'validate_activation',
+      releaseCohort: cohort,
       redisUrl: namespace.redisUrl,
       workerId: `editor-browser-${randomUUID()}`,
     },
@@ -256,24 +310,52 @@ try {
       },
     },
   );
+  resources.attempts = attempts;
   assertSetupActive();
+  const triggers: TriggerRuntime[] = [];
+  resources.triggers = triggers;
+  if (cohort === 'schedule_activation') {
+    for (const scanner of ['one', 'two']) {
+      const trigger = await createTriggerRuntime({
+        database,
+        redisUrl: namespace.redisUrl,
+        releaseCohort: cohort,
+        batchSize: 10,
+        leaseDurationSeconds: 5,
+        leaseOwner: `editor-schedule-${scanner}:${randomUUID()}`,
+        onTimeWindowSeconds: 300,
+        pollIntervalMillis: 250,
+      });
+      triggers.push(trigger);
+      assertSetupActive();
+    }
+  }
   await Promise.all([
     coordinator.consumer.waitUntilReady(5_000),
+    coordinator.checkReadiness(),
     attempts.consumer.waitUntilReady(5_000),
+    attempts.checkReadiness?.(),
+    ...triggers.flatMap((trigger) => [
+      trigger.consumer.waitUntilReady(5_000),
+      trigger.checkReadiness(),
+    ]),
   ]);
   assertSetupActive();
-  dispatcherDatabase = createOutboxDispatcherDatabase(
+  const dispatcherDatabase = createOutboxDispatcherDatabase(
     parseDatabaseConfig({ connectionString: raw.dispatcherUrl, max: 2 }),
   );
-  producer = createQueueProducer({ redisUrl: namespace.redisUrl });
-  dispatcher = new OutboxDispatcher(
+  resources.dispatcherDatabase = dispatcherDatabase;
+  const producer = createQueueProducer({ redisUrl: namespace.redisUrl });
+  resources.producer = producer;
+  const dispatcher = new OutboxDispatcher(
     dispatcherDatabase,
     producer,
-    drain,
+    resources.drain,
     {
       enabledJobNames: [
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.executeNodeAttempt,
+        ...(triggers.length === 0 ? [] : [JOB_NAME.reconcileWorkflowTriggers]),
       ],
       batchSize: 25,
       leaseDurationMillis: 30_000,
@@ -287,14 +369,28 @@ try {
     createDispatchConsumerCapabilityRegistry([
       { jobName: JOB_NAME.advanceWorkflowRun, consumer: coordinator.consumer },
       { jobName: JOB_NAME.executeNodeAttempt, consumer: attempts.consumer },
+      ...(triggers[0] === undefined
+        ? []
+        : [
+            {
+              jobName: JOB_NAME.reconcileWorkflowTriggers,
+              consumer: triggers[0].consumer,
+            },
+          ]),
     ]),
   );
+  resources.dispatcher = dispatcher;
   dispatcher.start();
-  lifecycle.starting = false;
+  assertSetupActive();
+}
+
+try {
+  await runtimeOwner.start();
+  if (lifecycle.stopping) throw new Error('Worker stopped during readiness');
   process.send({
     phase: 'worker-ready',
     pid: process.pid,
-    cohort: 'validate_activation',
+    cohort,
   });
 } catch (error: unknown) {
   await finishShutdown(lifecycle.stopping ? undefined : error);

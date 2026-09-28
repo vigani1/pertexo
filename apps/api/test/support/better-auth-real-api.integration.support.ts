@@ -14,13 +14,14 @@ import type {
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
-import { createApiApplication } from '../../src/app.js';
+import type { createApiApplication } from '../../src/app.js';
 import { LocalAuthenticationMailSink } from '../../src/identity-infrastructure/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { FixtureResourceOwner } from './fixture-resource-owner.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { createCoreWorkflowCompatibility } from '../../src/platform/workflow/workflow-compatibility.js';
+import { createBetterAuthFixtureApplication } from './better-auth-fixture-application.js';
 import type { ApiConnectionRuntimeOverrides } from '../../src/platform/connections/connection-runtime.module.js';
 
 /*
@@ -88,6 +89,7 @@ export function useBetterAuthRealApi(
     publicWebOrigin?: string;
     nodeCompatibilityCohort?: ApiConfig['nodeCompatibilityCohort'];
     redisUrl?: string;
+    schedules?: boolean;
     logger?: StructuredLogger;
     connections?: Readonly<{
       config: NonNullable<ApiConfig['connections']>;
@@ -190,9 +192,9 @@ export function useBetterAuthRealApi(
       }),
       (database) => database.close(),
     );
-    application = owner.acquire(
-      'API application',
-      await createApiApplication(config, {
+    application = await createBetterAuthFixtureApplication(
+      config,
+      {
         database: workspaceDatabase,
         identityRuntime,
         logger: options.logger ?? silent,
@@ -200,8 +202,9 @@ export function useBetterAuthRealApi(
         ...(options.connections === undefined
           ? {}
           : { connectionOverrides: options.connections.overrides }),
-      }),
-      (app) => app.close(),
+      },
+      owner,
+      options.schedules,
     );
     await application.init();
   }, 60_000);

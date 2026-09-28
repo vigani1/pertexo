@@ -36,6 +36,8 @@ export function ownEditorBrowserProcess(
               'dispatcher-database',
               'attempts',
               'coordinator',
+              'triggers',
+              'restart',
               'redis-namespace',
             ].includes(phase),
         );

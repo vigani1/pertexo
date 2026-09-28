@@ -5,7 +5,19 @@ type Phase =
   | 'dispatcher-database'
   | 'attempts'
   | 'coordinator'
+  | 'triggers'
+  | 'startup'
+  | 'restart'
   | 'redis-namespace';
+
+export type EditorBrowserWorkerRuntimes = Readonly<{
+  dispatcher?: Closable | undefined;
+  producer?: Closable | undefined;
+  dispatcherDatabase?: Closable | undefined;
+  triggers?: readonly Closable[] | undefined;
+  attempts?: Closable | undefined;
+  coordinator?: Closable | undefined;
+}>;
 
 export class EditorBrowserWorkerShutdownError extends AggregateError {
   constructor(
@@ -17,15 +29,8 @@ export class EditorBrowserWorkerShutdownError extends AggregateError {
 }
 
 /** Owns the pure-node fixture's dependency order and retained-lease rule. */
-export async function closeEditorBrowserWorker(
-  resources: Readonly<{
-    dispatcher?: Closable | undefined;
-    producer?: Closable | undefined;
-    dispatcherDatabase?: Closable | undefined;
-    attempts?: Closable | undefined;
-    coordinator?: Closable | undefined;
-    namespace: Closable;
-  }>,
+export async function closeEditorBrowserWorkerRuntimes(
+  resources: EditorBrowserWorkerRuntimes,
 ): Promise<void> {
   const failures: { phase: Phase; error: unknown }[] = [];
   const owned: readonly (readonly [Phase, Closable | undefined])[] = [
@@ -34,6 +39,9 @@ export async function closeEditorBrowserWorker(
       'producer',
       resources.dispatcher === undefined ? resources.producer : undefined,
     ],
+    ...(resources.triggers ?? []).map(
+      (runtime) => ['triggers', runtime] as const,
+    ),
     [
       'dispatcher-database',
       resources.dispatcher === undefined
@@ -55,6 +63,12 @@ export async function closeEditorBrowserWorker(
       failures.map(({ phase }) => phase),
       failures.map(({ error }) => error),
     );
+}
+
+export async function closeEditorBrowserWorker(
+  resources: EditorBrowserWorkerRuntimes & Readonly<{ namespace: Closable }>,
+): Promise<void> {
+  await closeEditorBrowserWorkerRuntimes(resources);
   try {
     await resources.namespace.close();
   } catch (error) {

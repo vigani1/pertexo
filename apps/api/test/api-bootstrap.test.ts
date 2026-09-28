@@ -29,6 +29,9 @@ import { parseApiConfig } from '../src/platform/config/api-config.js';
 import type { ApiIdentityConfig } from '../src/platform/config/identity-config.js';
 import type { BetterAuthRuntime } from '../src/identity-infrastructure/index.js';
 import { ScheduleManagementService } from '../src/schedules/service.js';
+import { createApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
+import { createBetterAuthFixtureApplication } from './support/better-auth-fixture-application.js';
+import { FixtureResourceOwner } from './support/fixture-resource-owner.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
 import {
   workflowCompatibilityReport,
@@ -1334,6 +1337,161 @@ describe('API bootstrap ownership and health', () => {
       await application.close();
       application = undefined;
       expect(webhookClose).toHaveBeenCalledOnce();
+    });
+
+    it('registers requested schedule preview in the actual Better Auth fixture composition', async () => {
+      const owner = new FixtureResourceOwner();
+      const previewFireTimes = vi.fn().mockResolvedValue({
+        observedAt: new Date('2026-08-25T12:00:00.000Z'),
+        items: [new Date('2026-08-25T12:01:00.000Z')],
+      });
+      const scheduleDatabase = {
+        list: vi.fn().mockResolvedValue([]),
+        setEnabled: vi.fn().mockRejectedValue(new Error('unused')),
+        listOccurrences: vi.fn().mockResolvedValue({ items: [] }),
+        nextFireTimes: vi.fn().mockRejectedValue(new Error('unused')),
+        previewFireTimes,
+        checkReadiness: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const csrf = 'c'.repeat(32);
+      const cookie = `pertexo_session=${'s'.repeat(43)}; pertexo_csrf=${csrf}`;
+      const path =
+        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules/preview';
+      let suppliedRuntime: ApiScheduleRuntime | undefined;
+      try {
+        application = await createBetterAuthFixtureApplication(
+          config,
+          {
+            ...dependencies(),
+            identityRuntime: identityRuntime(undefined, true),
+          },
+          owner,
+          true,
+          async (selected) => {
+            const runtime = await createApiScheduleRuntime(
+              selected,
+              scheduleDatabase,
+            );
+            suppliedRuntime = { ...runtime, close: vi.fn(runtime.close) };
+            return suppliedRuntime;
+          },
+        );
+        const preview = await application.inject({
+          method: 'POST',
+          url: path,
+          headers: { cookie, 'x-csrf-token': csrf },
+          payload: {
+            config: { kind: 'interval', intervalMinutes: 1 },
+            count: 1,
+          },
+        });
+        expect(preview.statusCode).toBe(200);
+        expect(preview.json()).toEqual({
+          observedAt: '2026-08-25T12:00:00.000Z',
+          items: [{ scheduledAt: '2026-08-25T12:01:00.000Z' }],
+        });
+        expect(previewFireTimes).toHaveBeenCalledOnce();
+        expect(scheduleDatabase.checkReadiness).toHaveBeenCalled();
+        const noSession = await application.inject({
+          method: 'POST',
+          url: path,
+          payload: { config: { kind: 'interval', intervalMinutes: 1 } },
+        });
+        expect(noSession.statusCode).toBe(401);
+        const noCsrf = await application.inject({
+          method: 'POST',
+          url: path,
+          headers: { cookie },
+          payload: { config: { kind: 'interval', intervalMinutes: 1 } },
+        });
+        expect(noCsrf.statusCode).toBe(403);
+        const invalid = await application.inject({
+          method: 'POST',
+          url: path,
+          headers: { cookie, 'x-csrf-token': csrf },
+          payload: { config: { kind: 'interval', intervalMinutes: 0 } },
+        });
+        expect(invalid.statusCode).toBe(400);
+        expect(previewFireTimes).toHaveBeenCalledOnce();
+        const denied = await application.inject({
+          method: 'POST',
+          url: path.replace(
+            'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+          ),
+          headers: { cookie, 'x-csrf-token': csrf },
+          payload: { config: { kind: 'interval', intervalMinutes: 1 } },
+        });
+        expect(denied.statusCode).toBe(404);
+        expect(previewFireTimes).toHaveBeenCalledOnce();
+        previewFireTimes.mockRejectedValueOnce(
+          new Error('private database failure'),
+        );
+        const unavailable = await application.inject({
+          method: 'POST',
+          url: path,
+          headers: { cookie, 'x-csrf-token': csrf },
+          payload: { config: { kind: 'interval', intervalMinutes: 1 } },
+        });
+        expect(unavailable.statusCode).toBe(500);
+      } finally {
+        await owner.close();
+        application = undefined;
+      }
+      expect(scheduleDatabase.close).toHaveBeenCalledOnce();
+      expect(suppliedRuntime?.close).toHaveBeenCalledOnce();
+    });
+
+    it('keeps schedule composition off for existing Better Auth fixtures by default', async () => {
+      const owner = new FixtureResourceOwner();
+      const createSchedules = vi.fn(createApiScheduleRuntime);
+      try {
+        application = await createBetterAuthFixtureApplication(
+          config,
+          {
+            ...dependencies(),
+            identityRuntime: identityRuntime(undefined, true),
+          },
+          owner,
+          undefined,
+          createSchedules,
+        );
+        const response = await application.inject({
+          method: 'GET',
+          url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules',
+        });
+        expect(response.statusCode).toBe(404);
+        expect(createSchedules).not.toHaveBeenCalled();
+      } finally {
+        await owner.close();
+        application = undefined;
+      }
+    });
+
+    it('retains fixture ownership when schedule readiness fails before application construction', async () => {
+      const owner = new FixtureResourceOwner();
+      const close = vi.fn().mockResolvedValue(undefined);
+      const runtime: ApiScheduleRuntime = {
+        service: {} as ScheduleManagementService,
+        checkReadiness: () =>
+          Promise.reject(new Error('schedule readiness unavailable')),
+        close,
+      };
+      await expect(
+        createBetterAuthFixtureApplication(
+          config,
+          {
+            ...dependencies(),
+            identityRuntime: identityRuntime(undefined, true),
+          },
+          owner,
+          true,
+          () => Promise.resolve(runtime),
+        ),
+      ).rejects.toThrow('schedule readiness unavailable');
+      await owner.close();
+      expect(close).toHaveBeenCalledOnce();
     });
 
     it('enforces session and CSRF on schedule routes and owns readiness and close', async () => {

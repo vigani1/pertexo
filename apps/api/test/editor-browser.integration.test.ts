@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { Pool } from 'pg';
 import { createStructuredLogger } from '@pertexo/observability/logging';
 import { workspaceResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import {
@@ -19,6 +20,13 @@ import { FixtureResourceOwner } from './support/fixture-resource-owner.js';
 import { useBetterAuthRealApi } from './support/better-auth-real-api.integration.support.js';
 import { ownEditorBrowserProcess } from './support/editor-browser-process.js';
 import { verifyEditorBrowserOwnership } from './support/editor-browser-ownership.js';
+import { restartEditorBrowserWorker } from './support/editor-browser-worker-restart.js';
+import {
+  observeScheduleBeforeDue,
+  scheduleEvidenceSchema,
+  scheduleScopeSchema,
+  verifyScheduleEvidence,
+} from './support/editor-schedule-evidence.js';
 import {
   prepareReadonlyEvidence,
   readonlyEvidenceSchema,
@@ -43,6 +51,7 @@ const scenario = z
     'run-recovery',
     'expression-admission',
     'readonly',
+    'schedule',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -94,6 +103,20 @@ let readonlyFixture:
   Awaited<ReturnType<typeof prepareReadonlyEvidence>> | undefined;
 let readonlyEvidence: z.infer<typeof readonlyEvidenceSchema> | undefined;
 let readonlySetupPending = false;
+let scheduleEvidence: z.infer<typeof scheduleEvidenceSchema> | undefined;
+let scheduleRestart:
+  | {
+      scope: z.infer<typeof scheduleScopeSchema>;
+      triggerId: string;
+      nextFireAt: string;
+      requestId: string;
+    }
+  | undefined;
+let scheduleRestartUsed = false;
+const restartScope = new AbortController();
+function assertRestartScopeActive() {
+  if (restartScope.signal.aborted) throw new Error('Schedule fixture disposed');
+}
 
 function phase(child: ChildProcess, expected: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -221,7 +244,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   redis.pathname = '/11';
   const api = useBetterAuthRealApi('editor_browser', {
     publicWebOrigin: webOrigin,
-    nodeCompatibilityCohort: 'validate_activation',
+    nodeCompatibilityCohort:
+      scenario === 'schedule' ? 'schedule_activation' : 'validate_activation',
+    schedules: scenario === 'schedule',
     redisUrl: redis.toString(),
     connections: {
       config: {
@@ -261,6 +286,22 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       otlpHeaders: {},
     }),
     afterMigration: async (databaseUrl) => {
+      if (scenario === 'schedule') {
+        const inspector = new Pool({
+          connectionString: databaseUrl(process.env.DATABASE_ADMIN_URL ?? ''),
+        });
+        try {
+          const identity = await inspector.query<{ name: string; oid: number }>(
+            'select datname as name,oid::int as oid from pg_database where datname=current_database()',
+          );
+          expect(identity.rows).toHaveLength(1);
+          process.stdout.write(
+            `Live browser schedule database ${JSON.stringify(identity.rows[0])}\n`,
+          );
+        } finally {
+          await inspector.end();
+        }
+      }
       const ready = phase(worker, 'worker-ready');
       worker.send({
         workerUrl: databaseUrl(process.env.DATABASE_WORKER_URL ?? ''),
@@ -271,6 +312,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       await ready;
     },
     beforeClose: async () => {
+      restartScope.abort();
       // Stop before worker/lease cleanup if a browser descendant is unconfirmed.
       for (const child of browserChildren.toReversed()) await closeChild(child);
       await owner.close();
@@ -418,13 +460,73 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         });
         return;
       }
+      if (request.method === 'POST' && url.pathname === '/schedule-restart') {
+        if (
+          scenario !== 'schedule' ||
+          scheduleRestartUsed ||
+          restartScope.signal.aborted
+        ) {
+          response.writeHead(409).end();
+          return;
+        }
+        scheduleRestartUsed = true;
+        let body = '';
+        request.on('data', (chunk: Buffer) => {
+          body += chunk.toString();
+          if (body.length > 1_024) request.destroy();
+        });
+        request.on('end', () => {
+          void (async () => {
+            try {
+              const scope = scheduleScopeSchema.parse(JSON.parse(body));
+              const before = await observeScheduleBeforeDue(
+                api.database(),
+                scope,
+              );
+              const requestId = randomUUID();
+              await restartEditorBrowserWorker(
+                worker,
+                requestId,
+                restartScope.signal,
+              );
+              assertRestartScopeActive();
+              const after = await observeScheduleBeforeDue(
+                api.database(),
+                scope,
+              );
+              assertRestartScopeActive();
+              expect({ ...after, observedAt: before.observedAt }).toEqual(
+                before,
+              );
+              scheduleRestart = {
+                scope,
+                triggerId: before.triggerId,
+                nextFireAt: before.nextFireAt,
+                requestId,
+              };
+              response.setHeader('content-type', 'application/json');
+              response.end(
+                JSON.stringify({
+                  ...scheduleRestart,
+                  beforeObservedAt: before.observedAt,
+                  afterObservedAt: after.observedAt,
+                }),
+              );
+            } catch {
+              response.writeHead(400).end();
+            }
+          })();
+        });
+        return;
+      }
       if (
         request.method === 'POST' &&
         (url.pathname === '/evidence' ||
           url.pathname === '/evidence/receipts' ||
           url.pathname === '/evidence/run-recovery' ||
           url.pathname === '/evidence/expression-admission' ||
-          url.pathname === '/evidence/readonly')
+          url.pathname === '/evidence/readonly' ||
+          url.pathname === '/evidence/schedule')
       ) {
         let body = '';
         request.on('data', (chunk: Buffer) => {
@@ -457,6 +559,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
               scenario === 'readonly'
             )
               readonlyEvidence = readonlyEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/evidence/schedule' &&
+              scenario === 'schedule'
+            )
+              scheduleEvidence = scheduleEvidenceSchema.parse(value);
             else
               throw new Error('Evidence does not match the selected scenario');
             response.writeHead(204).end();
@@ -566,7 +673,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
                   ? 'editor-run-recovery.spec.ts'
                   : scenario === 'expression-admission'
                     ? 'editor-expression-admission.spec.ts'
-                    : 'editor-readonly.spec.ts',
+                    : scenario === 'readonly'
+                      ? 'editor-readonly.spec.ts'
+                      : 'editor-schedule.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -586,6 +695,35 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'schedule') {
+      if (scheduleEvidence === undefined || scheduleRestart === undefined)
+        throw new Error('Schedule restart/evidence missing');
+      expect(scheduleRestart.scope).toEqual({
+        workspaceId: scheduleEvidence.workspaceId,
+        workflowId: scheduleEvidence.workflowId,
+        workflowVersionId: scheduleEvidence.workflowVersionId,
+      });
+      expect(scheduleEvidence.triggerId).toBe(scheduleRestart.triggerId);
+      expect(scheduleEvidence.firstDueAt).toBe(scheduleRestart.nextFireAt);
+      process.stdout.write(
+        `Live browser schedule submitted/unverified ${JSON.stringify({
+          workspaceId: scheduleEvidence.workspaceId,
+          workflowId: scheduleEvidence.workflowId,
+          workflowVersionId: scheduleEvidence.workflowVersionId,
+          triggerId: scheduleEvidence.triggerId,
+          runId: scheduleEvidence.runId,
+          occurrenceId: scheduleEvidence.occurrenceId,
+          restartRequestId: scheduleRestart.requestId,
+          firstDueAt: scheduleEvidence.firstDueAt,
+          scheduledAt: scheduleEvidence.scheduledAt,
+        })}\n`,
+      );
+      await verifyScheduleEvidence(api.database(), scheduleEvidence);
+      process.stdout.write(
+        `Live browser schedule evidence ${JSON.stringify({ ...scheduleEvidence, restartRequestId: scheduleRestart.requestId })}\n`,
+      );
+      return;
+    }
     if (scenario === 'readonly') {
       if (readonlyFixture === undefined || readonlyEvidence === undefined)
         throw new Error('Readonly editor evidence missing');
