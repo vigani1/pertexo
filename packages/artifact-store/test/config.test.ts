@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  assertTenantStorageIsolation,
   parseArtifactStoreConfig,
   parseDualRegionArtifactStoreConfig,
 } from '../src/config.js';
@@ -12,6 +13,51 @@ const REQUIRED_ENVIRONMENT = {
   ARTIFACT_STORE_REGION: 'us-east-1',
   ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
 } as const;
+
+describe('assertTenantStorageIsolation', () => {
+  const artifact = parseArtifactStoreConfig(REQUIRED_ENVIRONMENT);
+  const artifacts = {
+    primary: artifact,
+    recovery: { ...artifact, accessKeyId: 'recovery', bucket: 'recovery' },
+  };
+  const ledgerRegion = {
+    ...artifact,
+    accessKeyId: 'ledger',
+    bucket: 'ledger',
+    minRetentionDays: 30,
+  };
+  const ledger = {
+    primary: ledgerRegion,
+    recovery: {
+      ...ledgerRegion,
+      accessKeyId: 'ledger-recovery',
+      bucket: 'ledger-recovery',
+    },
+  };
+
+  it('accepts distinct principals and buckets across both regions', () => {
+    expect(() => assertTenantStorageIsolation(artifacts, ledger)).not.toThrow();
+  });
+
+  for (const control of ['primary', 'recovery'] as const) {
+    for (const tenant of ['primary', 'recovery'] as const) {
+      it.each(['accessKeyId', 'bucket'] as const)(
+        `rejects ${control} ledger sharing %s with ${tenant} artifacts`,
+        (field) => {
+          expect(() =>
+            assertTenantStorageIsolation(artifacts, {
+              ...ledger,
+              [control]: {
+                ...ledger[control],
+                [field]: artifacts[tenant][field],
+              },
+            }),
+          ).toThrow('distinct principals and buckets');
+        },
+      );
+    }
+  }
+});
 
 describe('parseArtifactStoreConfig', () => {
   it('returns immutable config with bounded defaults', () => {
