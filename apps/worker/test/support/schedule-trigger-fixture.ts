@@ -16,6 +16,11 @@ import {
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
+import {
+  AuthoringValidationUnavailableError,
+  WorkflowAuthoringValidator,
+} from '@pertexo/workflow-model/authoring-validation';
+import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
 import { Queue } from 'bullmq';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 
@@ -28,7 +33,9 @@ type ScheduleRelease = ReturnType<
   typeof platformExecutableRegistryHistory
 >[number];
 
-function scheduleAuthoringOptions() {
+function scheduleAuthoringOptions(
+  validator: Pick<WorkflowAuthoringValidator, 'validate'>,
+) {
   const nodeReleases = platformExecutableRegistryHistory(releaseCohort);
   const history = createExecutableCompatibilityReleaseHistory(
     nodeReleases.map(composeExecutableCompatibilityRelease),
@@ -46,6 +53,19 @@ function scheduleAuthoringOptions() {
     );
     if (description === undefined)
       throw new Error('Schedule compatibility description is missing');
+    const authoringPolicies = {
+      releaseFingerprint: release.fingerprint,
+      definitions: nodeRelease.definitions.map((manifest) => ({
+        definition: {
+          key: manifest.definition.key,
+          version: manifest.definition.version,
+        },
+        policyReferences: manifest.policyReferences.map(({ key, version }) => ({
+          key,
+          version,
+        })),
+      })),
+    };
     const catalog = (placement: boolean) =>
       Object.freeze({
         schemaVersion: 1 as const,
@@ -84,6 +104,10 @@ function scheduleAuthoringOptions() {
       compatibilityRelease: description,
       definitionCatalog: catalog(false),
       placementDefinitionCatalog: catalog(true),
+      validateAuthoringGraph: (
+        graph: WorkflowGraph,
+        command: Readonly<{ signal?: AbortSignal }>,
+      ) => validator.validate(graph, authoringPolicies, command),
       executableCompiler: (
         graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
       ) => {
@@ -203,7 +227,16 @@ export function createScheduleTriggerFixture(
       ? {}
       : { password: decodeURIComponent(parsedRedis.password) }),
   });
-  const authoringOptions = scheduleAuthoringOptions();
+  let authoringValidator: WorkflowAuthoringValidator | undefined;
+  let admissionClosed = false;
+  const authoringOptions = scheduleAuthoringOptions({
+    validate: (...args) => {
+      if (admissionClosed)
+        throw new AuthoringValidationUnavailableError('closed');
+      authoringValidator ??= new WorkflowAuthoringValidator();
+      return authoringValidator.validate(...args);
+    },
+  });
   const scheduleCompatibility = createExecutableCompatibilityReleaseSupport(
     platformRegistryReleaseSupport(releaseCohort).map(
       composeExecutableCompatibilityRelease,
@@ -323,6 +356,7 @@ export function createScheduleTriggerFixture(
     });
 
   const close = (): Promise<void> => {
+    admissionClosed = true;
     closePromise ??= (async () => {
       const errors: unknown[] = [];
       const attempt = async (
@@ -339,6 +373,9 @@ export function createScheduleTriggerFixture(
             );
           });
       };
+      await attempt('close authoring validator', () =>
+        authoringValidator?.shutdown(),
+      );
       if (queue !== undefined) {
         await attempt('obliterate trigger queue', () =>
           queue?.obliterate({ force: true }),
