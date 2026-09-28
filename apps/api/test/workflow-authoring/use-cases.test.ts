@@ -735,13 +735,15 @@ describe('workflow authoring application seams', () => {
     expect(publishInput?.requestHash).toMatch(/^[0-9a-f]{64}$/u);
   });
 
-  it('hashes the exact canonical publish identity and excludes diagnostic transport fields', async () => {
+  it('forwards the operation signal without changing canonical publish identity or diagnostic exclusions', async () => {
     const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
-    const publishWorkflow = vi.fn().mockResolvedValue({
-      version: version(),
-      reused: false,
-      replayed: false,
-    });
+    const publishWorkflow = vi
+      .fn<WorkflowAuthoringPersistence['publishWorkflow']>()
+      .mockResolvedValue({
+        version: version(),
+        reused: false,
+        replayed: false,
+      });
     const useCase = new PublishWorkflowUseCase(
       persistence({ publishWorkflow }),
       authorization(),
@@ -754,21 +756,29 @@ describe('workflow authoring application seams', () => {
       idempotencyKey: 'publish-hash',
     } as const;
 
-    await useCase.execute(base);
+    const withoutSignal = await useCase.execute(base);
     const expected =
       '5fc86496b8eb735fb38c90193e9736c63ea84bb96812b35651069abbaf47b03e';
     expect(publishWorkflow).toHaveBeenLastCalledWith(
       expect.objectContaining({ requestHash: expected }),
     );
-    await useCase.execute({
+    const signal = new AbortController().signal;
+    const withSignal = await useCase.execute({
       ...base,
+      signal,
       requestId: 'diagnostic-request',
       traceId: 'diagnostic-trace',
       traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
     });
     expect(publishWorkflow).toHaveBeenLastCalledWith(
-      expect.objectContaining({ requestHash: expected }),
+      expect.objectContaining({
+        requestHash: expected,
+        representationTag: tag,
+        idempotencyKey: base.idempotencyKey,
+      }),
     );
+    expect(publishWorkflow.mock.lastCall?.[0].signal).toBe(signal);
+    expect(withSignal).toEqual(withoutSignal);
   });
 
   it('changes the canonical publish hash for actor, workspace, workflow, and original tag identity', async () => {
