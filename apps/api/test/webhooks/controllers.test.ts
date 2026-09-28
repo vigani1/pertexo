@@ -141,7 +141,7 @@ describe('webhook management controller public seam', () => {
             triggerId,
           },
         ),
-      ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+      ).rejects.toMatchObject({ code: 'request.invalid' });
       expect(service.provision).not.toHaveBeenCalled();
     },
   );
