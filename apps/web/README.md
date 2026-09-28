@@ -66,7 +66,7 @@ wiring remains deployment-owned.
 | `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references.                                       |
 | `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, loop bounds/body authoring, history, saving and conflict recovery.               |
 | `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                                                                  |
-| `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                                                                |
+| `src/features/workflow-publish/`      | Checked-snapshot ETag validation, preview and exact-ETag publish actions.                                                         |
 | `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                                                                |
 | `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.                                            |
 | `src/features/workflow-settings/`     | Versions and compare, lifecycle, published triggers and the current failure-alert choice.                                         |

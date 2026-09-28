@@ -81,6 +81,7 @@ export const workflowCompatibilityReportSchema = z
     issues: z.array(workflowCompatibilityIssueSchema).max(1_000),
   })
   .strict();
+/** Includes server authoring findings such as invalid_expression; executable issues remain supported. */
 export const workflowValidationIssueSchema = apiProblemIssueSchema;
 export const workflowValidationReportSchema = z
   .object({

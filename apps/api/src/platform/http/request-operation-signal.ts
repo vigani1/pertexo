@@ -1,6 +1,6 @@
 const EXTERNAL_OPERATION_TIMEOUT_MS = 30_000;
 
-type AbortableRequest = Readonly<{
+export type AbortableRequest = Readonly<{
   raw?: Readonly<{
     destroyed?: boolean;
     once(event: 'aborted', listener: () => void): unknown;

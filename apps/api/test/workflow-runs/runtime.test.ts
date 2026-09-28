@@ -75,6 +75,82 @@ function notifications(
 }
 
 describe('API workflow runtime ownership', () => {
+  it('drains one shared authoring owner before database disposal even when worker disposal fails', async () => {
+    let rejectDrain: (reason: unknown) => void = () => {
+      throw new Error('drain not initialized');
+    };
+    const drain = new Promise<void>((_resolve, reject) => {
+      rejectDrain = reject;
+    });
+    const shutdown = vi.fn(() => drain);
+    const validate = vi.fn().mockRejectedValue(new Error('not exercised'));
+    const close = vi.fn().mockResolvedValue(undefined);
+    const databaseFactory = vi.fn(() => authoringDatabase(close));
+    const runtime = await createApiWorkflowRuntime(
+      databaseConfig,
+      identityRuntime,
+      'redis://unused',
+      {
+        authoring: {
+          databaseFactory,
+          telemetry,
+          authoringValidatorFactory: () => ({ validate, shutdown }),
+        },
+        persistence: { runs: persistence },
+        streaming: { streamer },
+      },
+    );
+    const first = runtime.close();
+    const failure = expect(first).rejects.toBeInstanceOf(AggregateError);
+    expect(runtime.close()).toBe(first);
+    expect(shutdown).toHaveBeenCalledOnce();
+    expect(close).not.toHaveBeenCalled();
+    rejectDrain(new Error('unconfirmed worker exit'));
+    await failure;
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('cleans up the authoring owner after construction fails and never allocates it for an injected database', async () => {
+    const shutdown = vi.fn().mockResolvedValue(undefined);
+    const factory = vi.fn(() => ({
+      validate: vi.fn().mockRejectedValue(new Error('not exercised')),
+      shutdown,
+    }));
+    await expect(
+      createApiWorkflowRuntime(
+        databaseConfig,
+        identityRuntime,
+        'redis://unused',
+        {
+          authoring: {
+            databaseFactory: () => {
+              throw new Error('construction failed');
+            },
+            authoringValidatorFactory: factory,
+          },
+        },
+      ),
+    ).rejects.toThrow('construction failed');
+    expect(shutdown).toHaveBeenCalledOnce();
+    const runtime = await createApiWorkflowRuntime(
+      databaseConfig,
+      identityRuntime,
+      'redis://unused',
+      {
+        authoring: {
+          database: authoringDatabase(vi.fn().mockResolvedValue(undefined)),
+          telemetry,
+          authoringValidatorFactory: factory,
+        },
+        persistence: { runs: persistence },
+        streaming: { streamer },
+      },
+    );
+    await runtime.close();
+    expect(factory).toHaveBeenCalledOnce();
+    expect(shutdown).toHaveBeenCalledOnce();
+  });
+
   it('starts every shutdown thunk and caches the aggregate close outcome', async () => {
     const authoringFailure = new Error('authoring close failed');
     const runFailure = Object.freeze({ source: 'runs' });

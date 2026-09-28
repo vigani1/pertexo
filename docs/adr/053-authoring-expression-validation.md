@@ -210,6 +210,32 @@ persistence/API/frontend integration still requires model review first.
 
 ## Approved operational policy
 
+### Checked-snapshot metadata and adapter qualification
+
+Whole-draft validation returns the existing JSON report plus a required strong
+`ETag` header. Compute it with the existing draft representation-tag algorithm
+over the same mapped draft and selected catalog used for validation. No new tag
+semantics or browser DTO is introduced. Matching the saved tag is evidence of
+the checked snapshot, not a substitute for publication's atomic If-Match and
+fresh admission. A mismatched report is stale; missing/malformed metadata is a
+protocol failure. Neither condition automatically replays a write.
+
+The database owns budget qualification on the actual transaction connection.
+`idle_in_transaction_session_timeout` applies while PostgreSQL waits idle in a
+transaction during off-thread admission; it must be a known finite duration
+greater than the 2,250 ms scheduling-qualified parser-phase bound. Unknown,
+unlimited or insufficient effective settings fail closed for new admission.
+PostgreSQL timeout values require explicit unit parsing. Pool idle retirement
+does not apply to a checked-out transaction; `query_timeout` bounds individual
+queries, not application work between them or an entire transaction. Existing
+pool SQL deadline policy remains authoritative; no configuration is increased.
+
+Shutdown stops admission and drains requests before releasing authoring
+resources. An unconfirmed worker exit is surfaced as a disposal failure while
+independent database/resource cleanup still runs after transactions settle;
+failed worker capacity remains quarantined. Cleanup must not be stranded by
+the first rejected shutdown promise.
+
 Lifecycle owner: one `WorkflowAuthoringValidator` owned by API workflow runtime,
 with `validate(graph, selectedPolicies, { signal })` and memoized `shutdown()`.
 Its focused workflow-model implementation owns batch admission, one-shot parser

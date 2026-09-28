@@ -20,26 +20,30 @@ export const AUTHORING_VALIDATION_BUDGET = Object.freeze({
 export const policyProjectionSchema = z
   .object({
     releaseFingerprint: z.string().min(1),
-    definitions: z.array(
-      z
-        .object({
-          definition: z
-            .object({
-              key: z.string().min(1),
-              version: z.number().int().positive(),
-            })
-            .strict(),
-          policyReferences: z.array(
-            z
+    definitions: z
+      .array(
+        z
+          .object({
+            definition: z
               .object({
                 key: z.string().min(1),
                 version: z.number().int().positive(),
               })
               .strict(),
-          ),
-        })
-        .strict(),
-    ),
+            policyReferences: z
+              .array(
+                z
+                  .object({
+                    key: z.string().min(1),
+                    version: z.number().int().positive(),
+                  })
+                  .strict(),
+              )
+              .readonly(),
+          })
+          .strict(),
+      )
+      .readonly(),
   })
   .strict();
 
@@ -60,7 +64,9 @@ export type AuthoringValidationUnavailableReason =
   | 'invalid_response'
   | 'termination_failed'
   | 'report_limit'
-  | 'invalid_policy_projection';
+  | 'invalid_policy_projection'
+  | 'not_configured'
+  | 'database_budget';
 
 /** Never retains a graph, AST, original exception, or expression text. */
 export class AuthoringValidationUnavailableError extends Error {

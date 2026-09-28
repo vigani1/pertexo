@@ -161,6 +161,17 @@ function WorkflowEditorSession({
     verifyIdentity: verification.verifyOwner,
     isSessionPaused: verification.isPaused,
     ensureSaved,
+    isSavedDraftCurrent: (saved) => {
+      const current = store.getState();
+      return (
+        !verification.isPaused() &&
+        current.saveStatus === 'clean' &&
+        !current.inspectorScratch &&
+        current.etag === saved.etag &&
+        current.generation === saved.generation &&
+        current.revision === saved.revision
+      );
+    },
     onRunAccepted,
     onRunCommandAccepted: () => {
       void queryClient.invalidateQueries({

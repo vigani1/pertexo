@@ -10,6 +10,7 @@ import {
   deferred,
   editorHandlers,
   editorPath,
+  etagA,
   findCanvas,
   findPaused,
   oneStepGraph,
@@ -181,7 +182,7 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
     mockServer.use(...editorHandlers(() => undefined, { graph: oneStepGraph }));
     mockServer.use(
       ...publishedWorkflowHandlers(),
-      validHandler(),
+      validHandler(undefined, etagA),
       http.post(`${workflowApi}/publish`, () => {
         publishRequests += 1;
         return HttpResponse.error();

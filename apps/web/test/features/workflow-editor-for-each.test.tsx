@@ -2,6 +2,7 @@ import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { HttpResponse, http } from 'msw';
 import { BODY_ORIGIN } from '@/features/workflow-editor/model/body-layout';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph-adapter';
 import { mockServer } from '../support/mock-server';
@@ -16,11 +17,15 @@ import {
 } from '../support/for-each-fixtures';
 import {
   choose,
+  checkNow,
+  compatibility,
   editorHandlers,
   editorPath,
+  etagA,
   findCanvas,
   pressSave,
   toastAction,
+  workflowApi,
 } from '../support/workflow-editor-fixtures';
 
 const definitions = [forEachDefinition, bodyStepDefinition];
@@ -105,6 +110,118 @@ describe('For each on the canvas', () => {
 });
 
 describe('building a For each body', { timeout: 30_000 }, () => {
+  it.each([
+    { path: 'config.value', control: 'Value', value: '' },
+    {
+      path: 'inputMappings.expressionProof',
+      control: 'Field',
+      value: 'expressionProof',
+    },
+  ])(
+    'keeps nested $path findings actionable without changing tabs before scratch approval',
+    async ({ path, control, value }) => {
+      mockServer.use(
+        http.post(`${workflowApi}/validate`, () =>
+          HttpResponse.json(
+            {
+              valid: false,
+              issues: [
+                {
+                  path: `$.nodes.loop.structured.body.nodes.check.${path}`,
+                  code: 'invalid_expression',
+                  message: 'expression syntax is invalid',
+                },
+              ],
+              compatibility,
+            },
+            { headers: { etag: etagA } },
+          ),
+        ),
+      );
+      const graph = orderLoopGraph();
+      const check = graph.nodes[1]?.structured?.body.nodes[0];
+      if (check === undefined) throw new Error('Body step missing');
+      const withExpression = {
+        ...graph,
+        nodes: graph.nodes.map((node) =>
+          node.structured === undefined
+            ? node
+            : {
+                ...node,
+                structured: {
+                  ...node.structured,
+                  body: {
+                    ...node.structured.body,
+                    nodes: node.structured.body.nodes.map((bodyNode) =>
+                      bodyNode.id !== check.id
+                        ? bodyNode
+                        : {
+                            ...bodyNode,
+                            inputMappings: {
+                              expressionProof: {
+                                kind: 'expression',
+                                language: 'jsonata',
+                                expression: '(',
+                                policyVersion: 1,
+                              },
+                            },
+                          },
+                    ),
+                  },
+                },
+              },
+        ),
+      } satisfies WorkflowGraphContract;
+      const { event, saved } = await openEditor(withExpression, {
+        strict: true,
+      });
+      await checkNow(event);
+      expect(
+        await screen.findByText('Expression syntax is invalid.'),
+      ).toBeVisible();
+      await event.click(screen.getByRole('button', { name: 'Close issues' }));
+      openByKeyboard(screen.getByLabelText('Each order, For each'));
+      const items = await screen.findByLabelText('Maximum items');
+      fireEvent.change(items, { target: { value: '-' } });
+      await event.click(screen.getByRole('button', { name: '1 issue' }));
+      await event.click(
+        screen.getByRole('button', {
+          name: 'Fix: Expression syntax is invalid.',
+        }),
+      );
+      expect(
+        await screen.findByRole('dialog', {
+          name: 'Discard the unfinished edit?',
+        }),
+      ).toBeVisible();
+      expect(
+        screen.getByRole('tab', { name: 'Setup', hidden: true }),
+      ).toHaveAttribute('aria-selected', 'true');
+      await event.click(screen.getByRole('button', { name: 'Stay' }));
+      expect(screen.getByRole('tab', { name: 'Setup' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(items).toBeVisible();
+      expect(items).toHaveValue('-');
+      expect(screen.getByLabelText('Label')).toHaveValue('Each order');
+      expect(saved.graph).toBeUndefined();
+      await event.click(screen.getByRole('button', { name: '1 issue' }));
+      await event.click(
+        screen.getByRole('button', {
+          name: 'Fix: Expression syntax is invalid.',
+        }),
+      );
+      await event.click(
+        await screen.findByRole('button', { name: 'Discard edit' }),
+      );
+      await waitFor(() => {
+        expect(screen.getByLabelText(control)).toHaveFocus();
+      });
+      expect(screen.getByLabelText(control)).toHaveValue(value);
+    },
+  );
+
   it('live-applies compatible limits together under StrictMode without losing the body, then undoes and redoes', async () => {
     const graph = orderLoopGraph();
     const { saved, event } = await openEditor(graph, { strict: true });

@@ -9,6 +9,7 @@ import {
   workflowListQuerySchema,
   workflowRevisionConflictProblemSchema,
   workflowVersionsQuerySchema,
+  workflowValidationIssueSchema,
 } from '../src/http/workflow-authoring.js';
 import {
   workflowAuthoringClientContract,
@@ -16,6 +17,35 @@ import {
 } from '../src/workflow-authoring.js';
 
 describe('workflow-authoring public contracts', () => {
+  it('keeps expression and executable issue codes representable and declares checked snapshot/unavailability metadata', () => {
+    for (const code of ['invalid_expression', 'executable_invalid'])
+      expect(
+        workflowValidationIssueSchema.parse({
+          code,
+          path: '$.nodes.action.inputMappings.value',
+          message: 'The expression cannot be parsed.',
+        }).code,
+      ).toBe(code);
+    const validate =
+      workflowAuthoringOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/validate'
+      ].post;
+    expect(validate.responses['200'].headers).toMatchObject({
+      ETag: { required: true },
+    });
+    expect(validate.responses['503']).toEqual({
+      $ref: '#/components/responses/ValidationUnavailable',
+    });
+    const publish =
+      workflowAuthoringOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/publish'
+      ].post;
+    expect(publish.responses['503']).toEqual(validate.responses['503']);
+    expect(
+      workflowAuthoringOpenApiDocument.components.responses
+        .ValidationUnavailable.headers['Retry-After'].schema.const,
+    ).toBe(1);
+  });
   it('defines strict authoring input and strong ETag preconditions', () => {
     expect(
       workflowListQuerySchema.parse({ limit: '5', order: 'updated_desc' }),

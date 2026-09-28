@@ -2,6 +2,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 
 import {
   parseWorkflowGraphForPublish,
+  InvalidWorkflowGraphError,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,
@@ -9,6 +10,7 @@ import {
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
+import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
@@ -27,6 +29,7 @@ import type {
 import type {
   WorkflowAuthoringTestHooks,
   WorkflowExecutableCompiler,
+  WorkflowAuthoringGraphValidator,
 } from './workflow-authoring-types.js';
 import type { WorkflowVersionRecord } from './workflow-authoring-records.js';
 import {
@@ -71,6 +74,7 @@ type PublicationVariant = Readonly<{
   compatibilityRelease: CompatibilityReleaseExpectation | undefined;
   definitionCatalog: WorkflowDefinitionCatalogV1;
   executableCompiler: WorkflowExecutableCompiler | undefined;
+  validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
 }>;
 
 export type WorkflowPublicationDependencies = Readonly<{
@@ -91,6 +95,7 @@ export type WorkflowPublicationDependencies = Readonly<{
     workspaceId: string,
     actorId: string,
     operation: (client: PoolClient) => Promise<T>,
+    signal?: AbortSignal,
   ): Promise<T>;
 }>;
 
@@ -205,6 +210,13 @@ async function lockAndCompilePublication(
   });
   if (currentEtag !== workflowDraftTagSchema.parse(input.representationTag))
     throw new WorkflowRevisionConflictError(draft.revision, currentEtag);
+  const validation = await admitWorkflowAuthoring(
+    client,
+    variant.validateAuthoringGraph,
+    draft.graphJson,
+    input.signal,
+  );
+  if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
   const graph = parseWorkflowGraphForPublish(
     draft.graphJson,
     variant.definitionCatalog,
@@ -443,43 +455,48 @@ export function createWorkflowPublisher(
   dependencies: WorkflowPublicationDependencies,
 ): (input: PublishWorkflowInput) => Promise<PublishWorkflowResult> {
   return (input) =>
-    dependencies.transact(input.workspaceId, input.actorId, async (client) => {
-      await dependencies.requireAuthor(
-        client,
-        input.workspaceId,
-        input.actorId,
-      );
-      const claim = await claimPublication(client, input, dependencies);
-      if (claim.replay !== null) return claim.replay;
-      const publication = await lockAndCompilePublication(
-        client,
-        input,
-        claim.workflowId,
-        dependencies,
-      );
-      const { reused, version } = await persistVersion(
-        client,
-        input,
-        claim.workflowId,
-        publication,
-        dependencies,
-      );
-      await persistPublicationProjections(
-        client,
-        input,
-        claim.workflowId,
-        publication,
-        version,
-        dependencies.testHooks,
-      );
-      await finalizePublication(
-        client,
-        input,
-        claim,
-        version,
-        reused,
-        dependencies.testHooks,
-      );
-      return Object.freeze({ replayed: false, reused, version });
-    });
+    dependencies.transact(
+      input.workspaceId,
+      input.actorId,
+      async (client) => {
+        await dependencies.requireAuthor(
+          client,
+          input.workspaceId,
+          input.actorId,
+        );
+        const claim = await claimPublication(client, input, dependencies);
+        if (claim.replay !== null) return claim.replay;
+        const publication = await lockAndCompilePublication(
+          client,
+          input,
+          claim.workflowId,
+          dependencies,
+        );
+        const { reused, version } = await persistVersion(
+          client,
+          input,
+          claim.workflowId,
+          publication,
+          dependencies,
+        );
+        await persistPublicationProjections(
+          client,
+          input,
+          claim.workflowId,
+          publication,
+          version,
+          dependencies.testHooks,
+        );
+        await finalizePublication(
+          client,
+          input,
+          claim,
+          version,
+          reused,
+          dependencies.testHooks,
+        );
+        return Object.freeze({ replayed: false, reused, version });
+      },
+      input.signal,
+    );
 }

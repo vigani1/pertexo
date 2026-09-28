@@ -119,7 +119,7 @@ function describeState(state: IssuesState, count: number | undefined) {
   if (count === undefined)
     return 'Pertexo checks the draft for issues shortly after you stop editing.';
   const staleNote = state.stale
-    ? ' These are from before your latest edits.'
+    ? ' This check describes a different draft; check again after reviewing your changes.'
     : '';
   if (count === 0) return `Nothing blocks publishing.${staleNote}`;
   return `Fix these before publishing.${staleNote}`;

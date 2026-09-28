@@ -20,10 +20,18 @@ import type {
   WorkflowVersionRecord,
 } from './workflow-authoring-records.js';
 import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/graph';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
+import type { WorkflowAuthoringGraphValidator } from './workflow-authoring-types.js';
+import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 
 type ReadStore = Pick<
   WorkflowAuthoringDatabase,
-  'getDraft' | 'getVersion' | 'getWorkflow' | 'listVersions' | 'listWorkflows'
+  | 'getDraft'
+  | 'validateDraft'
+  | 'getVersion'
+  | 'getWorkflow'
+  | 'listVersions'
+  | 'listWorkflows'
 >;
 
 export type WorkflowAuthoringReadContext = Readonly<{
@@ -35,10 +43,17 @@ export type WorkflowAuthoringReadContext = Readonly<{
   selectDefinitionCatalog(
     client: Pick<PoolClient, 'query'>,
   ): Promise<WorkflowDefinitionCatalogV1>;
+  selectValidationVariant(client: Pick<PoolClient, 'query'>): Promise<
+    Readonly<{
+      definitionCatalog: WorkflowDefinitionCatalogV1;
+      validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
+    }>
+  >;
   transact<T>(
     workspaceId: string,
     actorId: string,
     operation: (client: PoolClient) => Promise<T>,
+    signal?: AbortSignal,
   ): Promise<T>;
 }>;
 
@@ -48,6 +63,35 @@ export function createWorkflowAuthoringReadStore(
   context: WorkflowAuthoringReadContext,
 ): ReadStore {
   return Object.freeze({
+    validateDraft: (
+      workspaceId: string,
+      workflowId: string,
+      actorId: string,
+      options: Readonly<{ signal?: AbortSignal }> = {},
+    ) =>
+      context.transact(
+        workspaceId,
+        actorId,
+        async (client) => {
+          await context.requireReader(client, workspaceId, actorId);
+          const variant = await context.selectValidationVariant(client);
+          const result = await client.query<Record<string, unknown>>(
+            'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
+            [workspaceId, uuidSchema.parse(workflowId)],
+          );
+          const row = result.rows[0];
+          if (row === undefined) return null;
+          const draft = mapDraft(row, variant.definitionCatalog);
+          const validation = await admitWorkflowAuthoring(
+            client,
+            variant.validateAuthoringGraph,
+            parseWorkflowGraphDraft(draft.graphJson),
+            options.signal,
+          );
+          return Object.freeze({ draft, validation });
+        },
+        options.signal,
+      ),
     getWorkflow: (workspaceId: string, workflowId: string, actorId: string) =>
       context.transact(workspaceId, actorId, async (client) => {
         await context.requireReader(client, workspaceId, actorId);

@@ -39,7 +39,8 @@ export function workflowIssuesView(
     groups,
     stale:
       validation !== undefined &&
-      (validation.generation !== draft.generation ||
+      (validation.etag !== validation.requestedEtag ||
+        validation.generation !== draft.generation ||
         validation.revision !== draft.revision),
     countsByNode: groups === undefined ? noCounts : issueCountsByNode(groups),
   };

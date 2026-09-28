@@ -134,6 +134,16 @@ const etagResponseHeader = {
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
+  ValidationUnavailable: {
+    ...problemResponse('Workflow validation temporarily unavailable'),
+    headers: {
+      'Retry-After': {
+        description: 'Bounded explicit-retry delay in seconds',
+        required: true,
+        schema: { type: 'integer', const: 1 },
+      },
+    },
+  },
   PreconditionRequired: problemResponse('Precondition required'),
   PreconditionFailed: {
     description: 'The draft representation is no longer current',
@@ -309,14 +319,16 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
         security: [{ cookieSession: [] }],
         parameters: [...workflowParameters, csrfParameter],
         responses: {
-          '200': jsonResponse(
+          '200': jsonResponseWithHeaders(
             'Workflow validation report',
             'WorkflowValidationResponse',
+            etagResponseHeader,
           ),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '500': responseReference('Unexpected'),
+          '503': responseReference('ValidationUnavailable'),
         },
       },
     },
@@ -341,6 +353,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           '428': responseReference('PreconditionRequired'),
           '422': responseReference('UnprocessableEntity'),
           '500': responseReference('Unexpected'),
+          '503': responseReference('ValidationUnavailable'),
         },
       },
     },

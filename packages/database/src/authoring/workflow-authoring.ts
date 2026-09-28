@@ -115,6 +115,7 @@ async function withAuthorTransaction<T>(
   workspaceIdInput: string,
   actorIdInput: string,
   operation: (client: PoolClient) => Promise<T>,
+  signal?: AbortSignal,
 ): Promise<T> {
   return withTenantScopedClient(
     pool,
@@ -123,6 +124,7 @@ async function withAuthorTransaction<T>(
       actorId: uuidSchema.parse(actorIdInput),
     },
     operation,
+    signal === undefined ? {} : { signal },
   );
 }
 
@@ -248,6 +250,30 @@ export function createWorkflowAuthoringDatabase(
   const selectCompatibilityVariant = compatibility.selectLocked;
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
+  const authoringOperations = new Set<Promise<unknown>>();
+  let closed = false;
+  let closePromise: Promise<void> | undefined;
+  async function transact<T>(
+    workspaceId: string,
+    actorId: string,
+    operation: (client: PoolClient) => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    if (closed) throw new Error('Workflow authoring database is closed');
+    const pending = withAuthorTransaction(
+      pool,
+      workspaceId,
+      actorId,
+      operation,
+      signal,
+    );
+    authoringOperations.add(pending);
+    try {
+      return await pending;
+    } finally {
+      authoringOperations.delete(pending);
+    }
+  }
   const authoringContext: WorkflowAuthoringWriteContext = {
     keyDigest,
     requireAuthor: requireWorkspaceAuthor,
@@ -256,8 +282,7 @@ export function createWorkflowAuthoringDatabase(
     ...(options.testHooks === undefined
       ? {}
       : { testHooks: options.testHooks }),
-    transact: (workspaceId, actorId, operation) =>
-      withAuthorTransaction(pool, workspaceId, actorId, operation),
+    transact,
   };
   const publishWorkflow = createWorkflowPublisher({
     durableResult: durablePublishResult,
@@ -265,8 +290,7 @@ export function createWorkflowAuthoringDatabase(
     requireAuthor: requireWorkspaceAuthor,
     selectVariant: selectCompatibilityVariant,
     testHooks: options.testHooks,
-    transact: (workspaceId, actorId, operation) =>
-      withAuthorTransaction(pool, workspaceId, actorId, operation),
+    transact,
   });
   return Object.freeze({
     ...createPreviewStore(pool),
@@ -276,12 +300,18 @@ export function createWorkflowAuthoringDatabase(
       requireReader: requireWorkspaceReader,
       selectDefinitionCatalog: async (client) =>
         (await selectCompatibilityVariant(client)).definitionCatalog,
-      transact: (workspaceId, actorId, operation) =>
-        withAuthorTransaction(pool, workspaceId, actorId, operation),
+      selectValidationVariant: selectCompatibilityVariant,
+      transact,
     }),
     publishWorkflow,
     ...createWorkflowAuthoringLifecycleStore(authoringContext),
     ...createWorkflowAuthoringRenameStore(authoringContext),
-    close: () => lease.close(),
+    close: () => {
+      closed = true;
+      closePromise ??= Promise.allSettled([...authoringOperations]).then(() =>
+        lease.close(),
+      );
+      return closePromise;
+    },
   });
 }

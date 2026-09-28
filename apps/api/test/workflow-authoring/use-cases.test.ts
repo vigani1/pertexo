@@ -30,6 +30,7 @@ import {
 import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from '../../src/workflow-authoring/rename-use-case.js';
 import { RestoreWorkflowVersionUseCase } from '../../src/workflow-authoring/restore-version-use-case.js';
+import { validateWorkflowGraph } from '@pertexo/workflow-model/graph';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -137,6 +138,10 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
     listWorkflows: vi.fn().mockResolvedValue({ items: [workflow()] }),
     getWorkflow: vi.fn().mockResolvedValue(workflow()),
     getDraft: vi.fn().mockResolvedValue(draft()),
+    validateDraft: vi.fn().mockResolvedValue({
+      draft: draft(),
+      validation: validateWorkflowGraph(graph),
+    }),
     listVersions: vi.fn().mockResolvedValue({ items: [version()] }),
     saveDraft: vi.fn().mockResolvedValue(draft({ revision: 2 })),
     publishWorkflow: vi.fn().mockResolvedValue({
@@ -545,7 +550,10 @@ describe('workflow authoring application seams', () => {
   });
 
   it('fails closed when each draft read seam reports no visible workflow', async () => {
-    const store = persistence({ getDraft: vi.fn().mockResolvedValue(null) });
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(null),
+      validateDraft: vi.fn().mockResolvedValue(null),
+    });
     const access = authorization();
     const common = { actor, routeWorkspaceId: workspaceId, workflowId };
 
@@ -966,7 +974,15 @@ describe('workflow authoring application seams', () => {
       ],
     };
     const store = persistence({
-      getDraft: vi.fn().mockResolvedValue(draft({ compatibility })),
+      validateDraft: vi.fn().mockResolvedValue({
+        draft: draft({ compatibility }),
+        validation: {
+          ok: true,
+          issues: [],
+          expandedInvocations: 0,
+          worstCaseLoopIterations: 0,
+        },
+      }),
     });
 
     await expect(
@@ -975,7 +991,9 @@ describe('workflow authoring application seams', () => {
         routeWorkspaceId: workspaceId,
         workflowId,
       }),
-    ).resolves.toEqual({ valid: false, issues: [], compatibility });
+    ).resolves.toMatchObject({
+      body: { valid: false, issues: [], compatibility },
+    });
   });
 
   it('serializes exact workflow and version allowlists, retained graph, and timestamps', async () => {

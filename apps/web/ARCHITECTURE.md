@@ -781,9 +781,18 @@ distributed-sync library in this plan.
 
 Validate and node-preview operations currently inspect the **server draft**.
 Apply pending form changes and wait for the intended save before requesting a
-report; associate it with the requested local generation/revision and mark it
-stale if editing continues. Node preview supplies expectedRevision; whole-draft
-validation cannot be presented as proof about unsaved local data.
+report. Whole-draft validation returns the required strong ETag of the exact
+checked server snapshot (ADR 053); the feature API decodes `{ report, etag }`,
+rejecting missing or malformed metadata as a protocol failure. Associate it with
+the requested saved ETag/local generation/revision. A different checked tag
+stays readable but stale and cannot authorize publication; local edits during
+the check also block a new publication. Reuse requires matching tags,
+generation/revision and the current authenticated editor scope. Mark it stale if
+editing continues. Unavailable checks honor Retry-After with a minimum
+five-second cooldown for manual/automatic validation and new publication
+preparation; no command is automatically replayed. Node preview supplies
+expectedRevision; whole-draft validation cannot be presented as proof about
+unsaved local data.
 
 An empty draft has nothing to check or publish: the issues chip names the first
 step to add and Publish stays disabled with that reason. That is client-side
@@ -1554,11 +1563,12 @@ value. Commit only when separately authorized under root Git instructions.
 
 - Editor commands cross the save barrier before validation, node preview,
   publish or run start. Validation is associated with the acknowledged draft
-  generation/revision and becomes visibly stale after another edit; publish
-  requires that exact valid snapshot, sends its opaque ETag and retains one
-  idempotency key for an uncertain retry. Backend validation findings remain
-  visible with their messages, codes and paths; resolvable node/config paths use
-  the editor's existing guarded selection flow to focus the relevant field.
+  generation/revision and checked server ETag, and becomes visibly stale after
+  another edit or a mismatched server snapshot; publish requires that exact
+  valid snapshot, sends its opaque ETag and retains one idempotency key for an
+  uncertain retry. Backend validation findings remain visible with their
+  messages, codes and paths; resolvable node/config paths use the editor's
+  existing guarded selection flow to focus the relevant field.
   Validation/publishing and run submission have separate mutation owners; the
   run dialog owns its input and deadline scratch state.
 - Node preview has distinct read-only validation and test-execution intents.

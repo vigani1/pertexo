@@ -20,12 +20,12 @@ import { migrateDatabase } from '../../src/migrations.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
 import {
-  createWorkflowAuthoringDatabase,
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   type WorkflowAuthoringDatabase,
 } from '../../src/authoring/workflow-authoring.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/workflow-integration-usage.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 

@@ -15,6 +15,7 @@ import {
 import type {
   WorkflowAuthoringDatabaseOptions,
   WorkflowExecutableCompiler,
+  WorkflowAuthoringGraphValidator,
 } from './workflow-authoring-types.js';
 
 type WorkflowAuthoringCompatibilitySelection = Readonly<{
@@ -22,6 +23,7 @@ type WorkflowAuthoringCompatibilitySelection = Readonly<{
   definitionCatalog: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;
   executableCompiler: WorkflowExecutableCompiler | undefined;
+  validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
 }>;
 
 type WorkflowAuthoringCompatibility = Readonly<{
@@ -63,7 +65,8 @@ export function normalizeWorkflowAuthoringCompatibility(
     (options.compatibilityRelease !== undefined ||
       options.definitionCatalog !== undefined ||
       options.placementDefinitionCatalog !== undefined ||
-      options.executableCompiler !== undefined)
+      options.executableCompiler !== undefined ||
+      options.validateAuthoringGraph !== undefined)
   )
     throw new TypeError(
       'Compatibility release variants cannot be combined with singular publication options',
@@ -106,6 +109,7 @@ export function normalizeWorkflowAuthoringCompatibility(
       definitionCatalog,
       placementDefinitionCatalog: options.placementDefinitionCatalog,
       executableCompiler: options.executableCompiler,
+      validateAuthoringGraph: options.validateAuthoringGraph,
     });
     return Object.freeze({
       selectLocked: async (client) => {
@@ -138,6 +142,7 @@ export function normalizeWorkflowAuthoringCompatibility(
         definitionCatalog: variant.definitionCatalog,
         placementDefinitionCatalog: variant.placementDefinitionCatalog,
         executableCompiler: variant.executableCompiler,
+        validateAuthoringGraph: variant.validateAuthoringGraph,
       });
     }),
   );

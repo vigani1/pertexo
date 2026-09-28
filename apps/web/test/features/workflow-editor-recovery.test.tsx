@@ -127,7 +127,7 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     mockServer.use(...editorHandlers(() => undefined, { graph: oneStepGraph }));
     mockServer.use(
       identityHandler(() => identity),
-      validHandler(),
+      validHandler(undefined, etagA),
       http.post(`${workflowApi}/publish`, async ({ request }) => {
         requests.push({
           body: await request.clone().text(),
@@ -276,7 +276,7 @@ describe(
       );
       mockServer.use(
         http.get(`${api}/users/me`, () => HttpResponse.json(identity)),
-        validHandler(),
+        validHandler(undefined, etagA),
         http.post(`${workflowApi}/publish`, () => {
           publishRequests += 1;
           return accepted.promise;

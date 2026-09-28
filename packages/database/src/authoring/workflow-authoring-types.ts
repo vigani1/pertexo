@@ -3,6 +3,7 @@ import type { CompatibilityReleaseExpectation } from '../compatibility/compatibi
 import type {
   WorkflowDefinitionCatalogV1,
   WorkflowGraph,
+  GraphValidationResult,
 } from '@pertexo/workflow-model/graph';
 
 export type WorkflowAuthoringTestHooks = Readonly<{
@@ -44,11 +45,17 @@ export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
   compatibilityReleaseFingerprint: string;
 }>;
 
+export type WorkflowAuthoringGraphValidator = (
+  graph: WorkflowGraph,
+  options: Readonly<{ signal?: AbortSignal }>,
+) => Promise<GraphValidationResult>;
+
 type WorkflowAuthoringCompatibilityVariant = Readonly<{
   compatibilityRelease: CompatibilityReleaseExpectation;
   definitionCatalog: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog: WorkflowDefinitionCatalogV1;
   executableCompiler: WorkflowExecutableCompiler;
+  validateAuthoringGraph?: WorkflowAuthoringGraphValidator;
 }>;
 
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
@@ -59,5 +66,6 @@ export type WorkflowAuthoringDatabaseOptions = Readonly<{
   placementDefinitionCatalog?: WorkflowDefinitionCatalogV1;
   runtime?: DatabaseRuntime;
   executableCompiler?: WorkflowExecutableCompiler;
+  validateAuthoringGraph?: WorkflowAuthoringGraphValidator;
   testHooks?: WorkflowAuthoringTestHooks;
 }>;

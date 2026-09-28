@@ -33,6 +33,7 @@ export const API_PROBLEM_CODES = [
   'workflow.lifecycle_conflict',
   'workflow.name_conflict',
   'workflow.invalid',
+  'workflow.validation_unavailable',
   'workflow.not_published',
   'workflow.activation_failed',
   'run.not_cancelable',
@@ -284,6 +285,12 @@ const apiProblemDetails = {
     status: 422,
     title: 'Invalid workflow',
     severity: 'info',
+    exposeDetail: true,
+  },
+  'workflow.validation_unavailable': {
+    status: 503,
+    title: 'Workflow validation unavailable',
+    severity: 'warn',
     exposeDetail: true,
   },
   'workflow.not_published': {

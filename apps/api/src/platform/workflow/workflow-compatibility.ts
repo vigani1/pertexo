@@ -15,6 +15,11 @@ import {
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
+import {
+  WorkflowAuthoringValidator,
+  AuthoringValidationUnavailableError,
+} from '@pertexo/workflow-model/authoring-validation';
+import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
 
 type PlatformRegistryRelease = ReturnType<
   typeof platformExecutableRegistryHistory
@@ -131,6 +136,27 @@ export function createCoreWorkflowCompatibility(
       compatibilityReleaseDescription,
       definitionCatalog,
       placementDefinitionCatalog,
+      authoringPolicies: Object.freeze({
+        releaseFingerprint: compatibilityRelease.fingerprint,
+        definitions: Object.freeze(
+          nodeRelease.definitions.map((manifest) =>
+            Object.freeze({
+              definition: Object.freeze({
+                key: manifest.definition.key,
+                version: manifest.definition.version,
+              }),
+              policyReferences: Object.freeze(
+                manifest.policyReferences.map((policy) =>
+                  Object.freeze({
+                    key: policy.key,
+                    version: policy.version,
+                  }),
+                ),
+              ),
+            }),
+          ),
+        ),
+      }),
     });
   });
   if (variants.length === 0)
@@ -147,6 +173,7 @@ export function createCoreAuthoringOptions(
   readinessReleases: ReturnType<
     typeof createCoreWorkflowCompatibility
   >['readinessSupport']['descriptions'],
+  validator: Pick<WorkflowAuthoringValidator, 'validate'>,
 ) {
   return {
     compatibilityReadinessReleases: readinessReleases,
@@ -156,10 +183,15 @@ export function createCoreAuthoringOptions(
         compatibilityReleaseDescription,
         definitionCatalog,
         placementDefinitionCatalog,
+        authoringPolicies,
       }) => ({
         compatibilityRelease: compatibilityReleaseDescription,
         definitionCatalog,
         placementDefinitionCatalog,
+        validateAuthoringGraph: (
+          graph: WorkflowGraph,
+          options: Readonly<{ signal?: AbortSignal }>,
+        ) => validator.validate(graph, authoringPolicies, options),
         executableCompiler: (
           graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
         ) => {
@@ -188,11 +220,49 @@ export function createCoreWorkflowAuthoringDatabase(
   runtime?: DatabaseRuntime,
 ): WorkflowAuthoringDatabase {
   const compatibility = createCoreWorkflowCompatibility(releaseCohort);
-  return createWorkflowAuthoringDatabase(databaseConfig, {
+  // Lazy owner: failed synchronous database construction acquires no workers.
+  let validator: WorkflowAuthoringValidator | undefined;
+  let closed = false;
+  const database = createWorkflowAuthoringDatabase(databaseConfig, {
     ...createCoreAuthoringOptions(
       compatibility.variants,
       compatibility.readinessSupport.descriptions,
+      {
+        validate: (...args) => {
+          if (closed) throw new AuthoringValidationUnavailableError('closed');
+          validator ??= new WorkflowAuthoringValidator();
+          return validator.validate(...args);
+        },
+      },
     ),
     ...(runtime === undefined ? {} : { runtime }),
   });
+  let closePromise: Promise<void> | undefined;
+  return Object.freeze({
+    ...database,
+    close: () => {
+      closed = true;
+      closePromise ??= closeCoreAuthoringDatabase(database, validator);
+      return closePromise;
+    },
+  });
+}
+
+async function closeCoreAuthoringDatabase(
+  database: WorkflowAuthoringDatabase,
+  validator: WorkflowAuthoringValidator | undefined,
+): Promise<void> {
+  const failures: unknown[] = [];
+  try {
+    await validator?.shutdown();
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    await database.close();
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Authoring database shutdown failed');
 }

@@ -96,9 +96,12 @@ function makeController() {
   };
   const validateDraft = {
     execute: vi.fn().mockResolvedValue({
-      valid: true,
-      issues: [],
-      compatibility: body.compatibility,
+      representationTag: tag,
+      body: {
+        valid: true,
+        issues: [],
+        compatibility: body.compatibility,
+      },
     }),
   };
   const listVersions = {
@@ -132,6 +135,39 @@ function makeController() {
 }
 
 describe('workflow authoring controller public seam', () => {
+  it('returns the checked snapshot tag and forwards the request signal for validate and publish', async () => {
+    const { controller, validateDraft, publishWorkflow } = makeController();
+    const header = vi.fn();
+    await expect(
+      controller.validate(request(), { workspaceId, workflowId }, { header }),
+    ).resolves.toEqual({
+      valid: true,
+      issues: [],
+      compatibility: body.compatibility,
+    });
+    expect(header).toHaveBeenCalledWith('ETag', tag);
+    expect(validateDraft.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ workflowId }),
+    );
+    expect(validateDraft.execute.mock.calls[0]?.[0]).toHaveProperty(
+      'signal',
+      expect.any(AbortSignal),
+    );
+    await controller.publish(
+      request({ 'if-match': tag, 'idempotency-key': 'original-key' }),
+      { workspaceId, workflowId },
+    );
+    expect(publishWorkflow.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        representationTag: tag,
+        idempotencyKey: 'original-key',
+      }),
+    );
+    expect(publishWorkflow.execute.mock.calls[0]?.[0]).toHaveProperty(
+      'signal',
+      expect.any(AbortSignal),
+    );
+  });
   it('delegates bounded list input and rejects empty or oversized cursors before delegation', async () => {
     const { controller, listWorkflows } = makeController();
     await expect(

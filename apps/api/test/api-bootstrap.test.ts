@@ -29,6 +29,13 @@ import { parseApiConfig } from '../src/platform/config/api-config.js';
 import type { ApiIdentityConfig } from '../src/platform/config/identity-config.js';
 import type { BetterAuthRuntime } from '../src/identity-infrastructure/index.js';
 import { ScheduleManagementService } from '../src/schedules/service.js';
+import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
+import {
+  workflowCompatibilityReport,
+  EMPTY_DEFINITION_CATALOG_V1,
+  EMPTY_WORKFLOW_GRAPH_V1,
+} from '@pertexo/workflow-model/graph';
+import { createDraftRepresentationTag } from '../src/workflow-authoring/etag.js';
 import {
   createApiPlatformFixture,
   createStubApiWorkflowRuntime,
@@ -189,6 +196,7 @@ function workflowAuthoringDatabase(
     listWorkflows: () => Promise.resolve({ items: [] }),
     getWorkflow: () => Promise.resolve(null),
     getDraft: () => Promise.resolve(null),
+    validateDraft: () => Promise.resolve(null),
     getVersion: () => Promise.resolve(null),
     listVersions: () => Promise.resolve({ items: [] }),
     saveDraft: () => Promise.reject(new Error('not used')),
@@ -1144,6 +1152,114 @@ describe('API bootstrap ownership and health', () => {
         'application/problem+json',
       );
       expect(response.json()).toMatchObject({ code: 'auth.unauthenticated' });
+    });
+
+    it('serves checked-snapshot ETag and admission 503 through real HTTP guards without bypassing session CSRF', async () => {
+      const selectedIdentity = identityRuntime(
+        vi.fn().mockResolvedValue(undefined),
+        true,
+      );
+      const baseRuntime = createStubApiWorkflowRuntime(
+        selectedIdentity.dependencies.authorization,
+      );
+      const graph = EMPTY_WORKFLOW_GRAPH_V1;
+      const compatibility = workflowCompatibilityReport(
+        graph,
+        EMPTY_DEFINITION_CATALOG_V1,
+      );
+      const draft = {
+        workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        revision: 11,
+        schemaVersion: 1,
+        graphJson: graph,
+        compatibility,
+        updatedBy: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        updatedAt: new Date(),
+      };
+      const validateDraft = vi.fn().mockResolvedValue({
+        draft,
+        validation: {
+          ok: true,
+          issues: [],
+          expandedInvocations: 0,
+          worstCaseLoopIterations: 0,
+        },
+      });
+      application = await createApiApplication(config, {
+        ...dependencies(),
+        identityRuntime: selectedIdentity,
+        workflowRuntime: {
+          ...baseRuntime,
+          dependencies: {
+            ...baseRuntime.dependencies,
+            persistence: {
+              ...baseRuntime.dependencies.persistence,
+              validateDraft,
+            },
+          },
+        },
+      });
+      const url = `/v1/workspaces/${draft.workspaceId}/workflows/${draft.workflowId}/validate`;
+      const cookie = `pertexo_session=${'s'.repeat(43)}`;
+      const denied = await application.inject({
+        method: 'POST',
+        url,
+        headers: { cookie },
+        payload: {},
+      });
+      expect(denied.statusCode).toBe(403);
+      expect(validateDraft).not.toHaveBeenCalled();
+      const csrf = 'c'.repeat(32);
+      const headers = {
+        cookie: `${cookie}; pertexo_csrf=${csrf}`,
+        'x-csrf-token': csrf,
+      };
+      const checked = await application.inject({
+        method: 'POST',
+        url,
+        headers,
+        payload: {},
+      });
+      expect(checked.statusCode).toBe(200);
+      expect(checked.headers.etag).toBe(
+        createDraftRepresentationTag({
+          workflowId: draft.workflowId,
+          revision: draft.revision,
+          graph,
+          compatibilityFingerprint: compatibility.fingerprint,
+        }),
+      );
+      expect(checked.json()).toMatchObject({
+        valid: true,
+        issues: [],
+        compatibility,
+      });
+      validateDraft.mockRejectedValue(
+        new AuthoringValidationUnavailableError('overloaded'),
+      );
+      const unavailable = await application.inject({
+        method: 'POST',
+        url,
+        headers,
+        payload: {},
+      });
+      expect(unavailable.statusCode).toBe(503);
+      expect(unavailable.headers['retry-after']).toBe('1');
+      expect(unavailable.json()).toMatchObject({
+        code: 'workflow.validation_unavailable',
+        status: 503,
+      });
+      expect(validateDraft).toHaveBeenCalledWith(
+        draft.workspaceId,
+        draft.workflowId,
+        draft.updatedBy,
+        expect.anything(),
+      );
+      expect(validateDraft.mock.calls[0]?.[3]).toHaveProperty(
+        'signal',
+        expect.any(AbortSignal),
+      );
     });
 
     it('registers workflow routes and closes identity and workflow runtimes together', async () => {

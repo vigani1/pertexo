@@ -1,11 +1,7 @@
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 
-import {
-  EMPTY_WORKFLOW_GRAPH_V1,
-  parseWorkflowGraphDraft,
-  validateWorkflowGraph,
-} from './graph.js';
+import { EMPTY_WORKFLOW_GRAPH_V1, parseWorkflowGraphDraft } from './graph.js';
 
 import {
   authorizeWorkspaceOperation,
@@ -28,7 +24,6 @@ import {
   workflowCreateRequestSchema,
   type WorkflowPublishResponse,
   type WorkflowSummary,
-  type WorkflowValidateResponse,
   type WorkflowVersionsResponse,
 } from './types.js';
 import type {
@@ -51,6 +46,7 @@ import {
   serializeWorkflowVersions,
   type WorkflowCreateResult,
   type WorkflowDraftResult,
+  type WorkflowValidationResult,
 } from './serializers.js';
 import { createDraftRepresentationTag } from './etag.js';
 
@@ -68,7 +64,7 @@ export type CreateWorkflowInput = WorkflowApplicationInput &
     traceId?: string;
   }>;
 export type WorkflowResourceInput = WorkflowApplicationInput &
-  Readonly<{ workflowId: string }>;
+  Readonly<{ workflowId: string; signal?: AbortSignal }>;
 export type SaveWorkflowDraftInput = WorkflowResourceInput &
   Readonly<{
     representationTag: string;
@@ -267,28 +263,27 @@ export class SaveWorkflowDraftUseCase {
 
 export class ValidateWorkflowDraftUseCase {
   public constructor(
-    private readonly persistence: AuthoringPersistence<'getDraft'>,
+    private readonly persistence: AuthoringPersistence<'validateDraft'>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
   public execute(
     input: WorkflowResourceInput,
-  ): Promise<WorkflowValidateResponse> {
+  ): Promise<WorkflowValidationResult> {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.validate,
       async () => {
         await authorize(input, ACTIVE_WORKFLOW_CAPABILITY, this.authorization);
-        const draft = await this.persistence.getDraft(
+        const result = await this.persistence.validateDraft(
           input.routeWorkspaceId,
           input.workflowId,
           input.actor.actorId,
+          input.signal === undefined ? {} : { signal: input.signal },
         );
-        if (draft === null)
+        if (result === null)
           throw new WorkflowNotFoundError('Workflow is not visible');
-        const graph = parseWorkflowGraphDraft(draft.graphJson);
-        const validation = validateWorkflowGraph(graph);
-        return serializeWorkflowValidation(draft, validation);
+        return serializeWorkflowValidation(result.draft, result.validation);
       },
     );
   }
@@ -318,6 +313,7 @@ export class PublishWorkflowUseCase {
           representationTag: input.representationTag,
           requestHash: publishRequestHash(input),
           idempotencyKey: input.idempotencyKey,
+          ...(input.signal === undefined ? {} : { signal: input.signal }),
           ...(input.requestId === undefined
             ? {}
             : { requestId: input.requestId }),
