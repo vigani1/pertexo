@@ -43,6 +43,9 @@ describe('editor browser worker shutdown ownership', () => {
       attempts: resource('attempts'),
       triggers: [resource('triggers')],
       coordinator: resource('coordinator'),
+      capabilities: resource('capabilities'),
+      controlledHttp: resource('http'),
+      envelopeKeys: resource('keys'),
       namespace: resource('namespace'),
     });
     expect(order).toEqual([
@@ -50,7 +53,45 @@ describe('editor browser worker shutdown ownership', () => {
       'triggers',
       'attempts',
       'coordinator',
+      'capabilities',
+      'http',
+      'keys',
       'namespace',
     ]);
   });
+  it('does not tear down credentials or target until attempts drain successfully', async () => {
+    const capabilities = { close: vi.fn().mockResolvedValue(undefined) };
+    const controlledHttp = { close: vi.fn().mockResolvedValue(undefined) };
+    const envelopeKeys = { close: vi.fn().mockResolvedValue(undefined) };
+    const namespace = { close: vi.fn().mockResolvedValue(undefined) };
+    await expect(
+      closeEditorBrowserWorker({
+        attempts: { close: () => Promise.reject(new Error('uncertain drain')) },
+        capabilities,
+        controlledHttp,
+        envelopeKeys,
+        namespace,
+      }),
+    ).rejects.toThrow(EditorBrowserWorkerShutdownError);
+    expect(capabilities.close).not.toHaveBeenCalled();
+    expect(controlledHttp.close).not.toHaveBeenCalled();
+    expect(envelopeKeys.close).not.toHaveBeenCalled();
+    expect(namespace.close).not.toHaveBeenCalled();
+  });
+  it.each(['capabilities', 'controlledHttp', 'envelopeKeys'] as const)(
+    'retains namespace when owned HTTP dependency %s fails close',
+    async (key) => {
+      const namespace = { close: vi.fn().mockResolvedValue(undefined) };
+      const resources = {
+        capabilities: { close: vi.fn().mockResolvedValue(undefined) },
+        controlledHttp: { close: vi.fn().mockResolvedValue(undefined) },
+        envelopeKeys: { close: vi.fn().mockResolvedValue(undefined) },
+      };
+      resources[key].close.mockRejectedValue(new Error('private details'));
+      await expect(
+        closeEditorBrowserWorker({ ...resources, namespace }),
+      ).rejects.toThrow(EditorBrowserWorkerShutdownError);
+      expect(namespace.close).not.toHaveBeenCalled();
+    },
+  );
 });

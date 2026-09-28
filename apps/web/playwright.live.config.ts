@@ -1,13 +1,26 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Playwright also saves ARIA error-context snapshots independently of trace,
+// video and screenshots. Live pages may reveal transient test credentials.
+// Only the isolated dummy-secret probe may demonstrate the unprotected path.
+const unprotectedSnapshotProbe =
+  process.env.PERTEXO_HTTP_REDACTION_PROBE === 'true' &&
+  process.env.PERTEXO_HTTP_REDACTION_SNAPSHOT_CONTROL === 'unprotected' &&
+  process.env.PERTEXO_LIVE_MAIL_ORIGIN === undefined &&
+  process.env.EDITOR_BROWSER_INTEGRATION !== 'true';
+if (unprotectedSnapshotProbe) delete process.env.PLAYWRIGHT_NO_COPY_PROMPT;
+else process.env.PLAYWRIGHT_NO_COPY_PROMPT = '1';
+
 export default defineConfig({
   testDir: './e2e-live',
   testMatch:
     process.env.PERTEXO_BROWSER_LIFETIME_PROBE !== undefined
       ? '**/*.lifetime-probe.ts'
-      : process.env.PERTEXO_VERIFICATION_REDACTION_PROBE === 'true'
-        ? '**/*.probe.ts'
-        : '**/*.spec.ts',
+      : process.env.PERTEXO_HTTP_REDACTION_PROBE === 'true'
+        ? '**/http-secret-actions.probe.ts'
+        : process.env.PERTEXO_VERIFICATION_REDACTION_PROBE === 'true'
+          ? '**/verification-navigation.probe.ts'
+          : '**/*.spec.ts',
   forbidOnly: true,
   retries: 0,
   workers: 1,

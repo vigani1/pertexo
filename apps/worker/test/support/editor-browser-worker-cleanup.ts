@@ -6,6 +6,9 @@ type Phase =
   | 'attempts'
   | 'coordinator'
   | 'triggers'
+  | 'capabilities'
+  | 'controlled-http'
+  | 'envelope-keys'
   | 'startup'
   | 'restart'
   | 'redis-namespace';
@@ -17,6 +20,9 @@ export type EditorBrowserWorkerRuntimes = Readonly<{
   triggers?: readonly Closable[] | undefined;
   attempts?: Closable | undefined;
   coordinator?: Closable | undefined;
+  capabilities?: Closable | undefined;
+  controlledHttp?: Closable | undefined;
+  envelopeKeys?: Closable | undefined;
 }>;
 
 export class EditorBrowserWorkerShutdownError extends AggregateError {
@@ -33,6 +39,7 @@ export async function closeEditorBrowserWorkerRuntimes(
   resources: EditorBrowserWorkerRuntimes,
 ): Promise<void> {
   const failures: { phase: Phase; error: unknown }[] = [];
+  let attemptsDrained = resources.attempts === undefined;
   const owned: readonly (readonly [Phase, Closable | undefined])[] = [
     ['dispatcher', resources.dispatcher],
     [
@@ -50,10 +57,19 @@ export async function closeEditorBrowserWorkerRuntimes(
     ],
     ['attempts', resources.attempts],
     ['coordinator', resources.coordinator],
+    ['capabilities', resources.capabilities],
+    ['controlled-http', resources.controlledHttp],
+    ['envelope-keys', resources.envelopeKeys],
   ];
   for (const [phase, resource] of owned) {
+    if (
+      !attemptsDrained &&
+      ['capabilities', 'controlled-http', 'envelope-keys'].includes(phase)
+    )
+      continue;
     try {
       await resource?.close();
+      if (phase === 'attempts') attemptsDrained = true;
     } catch (error) {
       failures.push({ phase, error });
     }

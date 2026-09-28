@@ -21,6 +21,11 @@
       ]
     },
     "workspaces": {
+      ".": {
+        "entry": [
+          "infrastructure/testing/editor-browser-envelope-keys.d.mts"
+        ]
+      },
       "apps/web": {
         "entry": [
           "src/main.tsx",

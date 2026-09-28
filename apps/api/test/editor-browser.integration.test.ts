@@ -1,5 +1,5 @@
 import { fork, spawn, type ChildProcess } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
 import { createServer as createTcpServer } from 'node:net';
@@ -10,6 +10,19 @@ import { promisify } from 'node:util';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { Pool } from 'pg';
+import {
+  ConnectionEnvelopeEncryption,
+  type ConnectionSecretContext,
+} from '@pertexo/integrations/server';
+import { createEditorBrowserEnvelopeKeys } from '../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
+import { createEditorWebhookRuntime } from './support/editor-webhook-runtime.js';
+import { createEditorHttpControl } from './support/editor-http-control.js';
+import {
+  httpCohort,
+  httpEffectsSchema,
+  submittedHttpEvidenceIds,
+  verifyHttpEvidence,
+} from './support/editor-http-evidence.js';
 import { createStructuredLogger } from '@pertexo/observability/logging';
 import { workspaceResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import {
@@ -52,6 +65,7 @@ const scenario = z
     'expression-admission',
     'readonly',
     'schedule',
+    'webhook-controlled-http',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -81,6 +95,17 @@ function ownChild<T extends ChildProcess>(
   return owner.acquire(name, child, closeChild);
 }
 let worker: ChildProcess;
+const httpMaster =
+  scenario === 'webhook-controlled-http' ? randomBytes(32) : undefined;
+const httpAuthorization =
+  scenario === 'webhook-controlled-http' ? `Bearer ${randomUUID()}` : undefined;
+let httpControl: ReturnType<typeof createEditorHttpControl> | undefined;
+let httpEffects: z.infer<typeof httpEffectsSchema> | undefined;
+function assertHttpDependenciesDisposable(child: ChildProcess | undefined) {
+  if (child === undefined) return;
+  if (processOwners.get(child)?.diagnostics().stage !== 'disposed')
+    throw new Error('Worker drain unconfirmed; retain HTTP dependencies');
+}
 const browserEvidenceSchema = z.strictObject({
   runId: z.uuid(),
   workspaceId: z.uuid(),
@@ -193,6 +218,26 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   // acquiring Redis or allowing the ordinary migrated UUID database fixture.
   beforeAll(async () => {
     await recheckOwnership();
+    if (httpMaster !== undefined && httpAuthorization !== undefined) {
+      // Reverse acquisition order: worker drains first, then sender/proxy; no
+      // key material or server is disposed while attempts may still dispatch.
+      owner.acquire('HTTP master key', httpMaster, (key) => {
+        assertHttpDependenciesDisposable(worker);
+        key.fill(0);
+      });
+      httpControl = owner.acquire(
+        'HTTP sender control',
+        createEditorHttpControl(
+          () => api.database(),
+          httpAuthorization,
+          assertRestartScopeActive,
+        ),
+        (control) => {
+          assertHttpDependenciesDisposable(worker);
+          return control.close();
+        },
+      );
+    }
     const probe = createTcpServer();
     await new Promise<void>((resolve, reject) => {
       probe.once('error', reject);
@@ -217,6 +262,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     );
     // Register the startup observer synchronously before the child can do work.
     worker.on('message', (value: unknown) => {
+      const observation = httpEffectsSchema.safeParse(value);
+      if (observation.success) {
+        httpEffects = observation.data;
+        return;
+      }
       if (
         typeof value !== 'object' ||
         value === null ||
@@ -245,8 +295,18 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   const api = useBetterAuthRealApi('editor_browser', {
     publicWebOrigin: webOrigin,
     nodeCompatibilityCohort:
-      scenario === 'schedule' ? 'schedule_activation' : 'validate_activation',
+      scenario === 'schedule'
+        ? 'schedule_activation'
+        : scenario === 'webhook-controlled-http'
+          ? httpCohort
+          : 'validate_activation',
     schedules: scenario === 'schedule',
+    ...(httpMaster === undefined
+      ? {}
+      : {
+          webhookRuntime: (config) =>
+            createEditorWebhookRuntime(config.database, httpCohort, httpMaster),
+        }),
     redisUrl: redis.toString(),
     connections: {
       config: {
@@ -256,18 +316,39 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       overrides: {
         // Discovery/authorization/persistence are real. This pure-node gate
         // neither provisions credentials nor permits outbound provider calls.
-        encryption: {
-          value: {
-            seal: () =>
-              Promise.reject(
-                new Error('Credential writes are outside the pure-node gate'),
-              ),
-            open: () =>
-              Promise.reject(
-                new Error('Credential reads are outside the pure-node gate'),
-              ),
-          },
-        },
+        encryption:
+          httpMaster === undefined
+            ? {
+                value: {
+                  seal: () =>
+                    Promise.reject(
+                      new Error(
+                        'Credential writes are outside the pure-node gate',
+                      ),
+                    ),
+                  open: () =>
+                    Promise.reject(
+                      new Error(
+                        'Credential reads are outside the pure-node gate',
+                      ),
+                    ),
+                },
+              }
+            : {
+                factory: () => {
+                  const keys =
+                    createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
+                      httpMaster,
+                      'connection',
+                    );
+                  return {
+                    encryption: new ConnectionEnvelopeEncryption(keys),
+                    close: () => {
+                      keys.close();
+                    },
+                  };
+                },
+              },
         clients: {
           http: {
             execute: () =>
@@ -286,7 +367,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       otlpHeaders: {},
     }),
     afterMigration: async (databaseUrl) => {
-      if (scenario === 'schedule') {
+      if (scenario === 'schedule' || scenario === 'webhook-controlled-http') {
         const inspector = new Pool({
           connectionString: databaseUrl(process.env.DATABASE_ADMIN_URL ?? ''),
         });
@@ -296,7 +377,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           );
           expect(identity.rows).toHaveLength(1);
           process.stdout.write(
-            `Live browser schedule database ${JSON.stringify(identity.rows[0])}\n`,
+            `Live browser ${scenario} database ${JSON.stringify(identity.rows[0])}\n`,
           );
         } finally {
           await inspector.end();
@@ -308,6 +389,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         dispatcherUrl: databaseUrl(process.env.DATABASE_DISPATCHER_URL ?? ''),
         apiUrl: databaseUrl(process.env.DATABASE_API_URL ?? ''),
         migrationUrl: databaseUrl(process.env.DATABASE_MIGRATION_URL ?? ''),
+        ...(httpMaster === undefined
+          ? {}
+          : {
+              connectionMasterKey: httpMaster.toString('hex'),
+              authorizationValue: httpAuthorization,
+            }),
       });
       await ready;
     },
@@ -374,12 +461,14 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       expect(response.statusCode, `${path}: ${response.payload}`).toBe(200);
     }
     const apiOrigin = await api.listen();
+    httpControl?.setApiOrigin(apiOrigin);
     const readiness = await fetch(`${apiOrigin}/health/ready`);
     expect(readiness.status).toBe(200);
 
     // Separate loopback test-control listener for the local mail sink and
     // non-secret result IDs. This is never registered in the application API.
     const mailServer = createServer((request, response) => {
+      if (httpControl?.handle(request, response) === true) return;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
       if (
         request.method === 'POST' &&
@@ -675,7 +764,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
                     ? 'editor-expression-admission.spec.ts'
                     : scenario === 'readonly'
                       ? 'editor-readonly.spec.ts'
-                      : 'editor-schedule.spec.ts',
+                      : scenario === 'schedule'
+                        ? 'editor-schedule.spec.ts'
+                        : 'editor-webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -695,6 +786,19 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'webhook-controlled-http') {
+      if (httpControl === undefined || httpEffects === undefined)
+        throw new Error('Owned HTTP control/effect evidence missing');
+      const submitted = httpControl.readEvidence();
+      process.stdout.write(
+        `Live browser controlled HTTP submitted/unverified identities ${JSON.stringify(submittedHttpEvidenceIds(submitted))}\n`,
+      );
+      await verifyHttpEvidence(api.database(), submitted, httpEffects);
+      process.stdout.write(
+        `Live browser controlled HTTP verified evidence ${JSON.stringify({ ...submitted, effects: httpEffects })}\n`,
+      );
+      return;
+    }
     if (scenario === 'schedule') {
       if (scheduleEvidence === undefined || scheduleRestart === undefined)
         throw new Error('Schedule restart/evidence missing');

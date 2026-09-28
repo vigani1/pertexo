@@ -23,6 +23,7 @@ import { dropDisconnectedDatabase } from './disposable-database.js';
 import { createCoreWorkflowCompatibility } from '../../src/platform/workflow/workflow-compatibility.js';
 import { createBetterAuthFixtureApplication } from './better-auth-fixture-application.js';
 import type { ApiConnectionRuntimeOverrides } from '../../src/platform/connections/connection-runtime.module.js';
+import type { ApiWebhookRuntime } from '../../src/platform/webhooks/webhook-runtime.module.js';
 
 /*
  * The whole API with Better Auth as the only session authority and no legacy
@@ -90,6 +91,7 @@ export function useBetterAuthRealApi(
     nodeCompatibilityCohort?: ApiConfig['nodeCompatibilityCohort'];
     redisUrl?: string;
     schedules?: boolean;
+    webhookRuntime?: (config: ApiConfig) => Promise<ApiWebhookRuntime>;
     logger?: StructuredLogger;
     connections?: Readonly<{
       config: NonNullable<ApiConfig['connections']>;
@@ -192,6 +194,14 @@ export function useBetterAuthRealApi(
       }),
       (database) => database.close(),
     );
+    const webhookRuntime =
+      options.webhookRuntime === undefined
+        ? undefined
+        : owner.acquire(
+            'webhook runtime',
+            await options.webhookRuntime(config),
+            (runtime) => runtime.close(),
+          );
     application = await createBetterAuthFixtureApplication(
       config,
       {
@@ -199,6 +209,7 @@ export function useBetterAuthRealApi(
         identityRuntime,
         logger: options.logger ?? silent,
         telemetry,
+        ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
         ...(options.connections === undefined
           ? {}
           : { connectionOverrides: options.connections.overrides }),
@@ -206,6 +217,7 @@ export function useBetterAuthRealApi(
       owner,
       options.schedules,
     );
+    if (webhookRuntime !== undefined) owner.transfer(webhookRuntime);
     await application.init();
   }, 60_000);
 

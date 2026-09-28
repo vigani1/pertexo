@@ -1,9 +1,17 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/database/execution';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import {
+  ConnectionEnvelopeEncryption,
+  type ConnectionSecretContext,
+} from '@pertexo/integrations/server';
+import { createEditorBrowserEnvelopeKeys } from '../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
+import { createEditorControlledHttpTarget } from './support/editor-controlled-http.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,
@@ -66,6 +74,30 @@ const cohort =
   process.env.EDITOR_BROWSER_CASE === 'schedule'
     ? 'schedule_activation'
     : 'validate_activation';
+const controlledHttp =
+  process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http';
+let httpTarget: ReturnType<typeof createEditorControlledHttpTarget> | undefined;
+function sendHttpEffects() {
+  if (!process.connected || httpTarget === undefined) return;
+  const observed = httpTarget.observe();
+  try {
+    process.send?.(
+      {
+        phase: 'controlled-http-effects',
+        requests: observed.requests,
+        effects: observed.effects,
+        bodyHashes: observed.bodies.map((body) =>
+          createHash('sha256').update(body).digest('hex'),
+        ),
+      },
+      (error: Error | null) => {
+        if (error !== null) stop();
+      },
+    );
+  } catch {
+    stop();
+  }
+}
 const lifecycle = { stopping: false };
 let configuration:
   | {
@@ -73,6 +105,8 @@ let configuration:
       dispatcherUrl: string;
       apiUrl: string;
       migrationUrl: string;
+      connectionMasterKey?: string;
+      authorizationValue?: string;
     }
   | undefined;
 const runtimeOwner = createEditorBrowserWorkerLifetime(
@@ -100,6 +134,7 @@ async function performShutdown(setupFailure?: unknown): Promise<void> {
     );
   }
   if (phases.length > 0) process.exitCode = 1;
+  sendHttpEffects();
   try {
     if (process.connected && process.send !== undefined) {
       await new Promise<void>((resolve, reject) => {
@@ -266,6 +301,23 @@ async function constructRuntimes(
       dispatcherUrl: raw.dispatcherUrl,
       apiUrl: raw.apiUrl,
       migrationUrl: raw.migrationUrl,
+      ...(!controlledHttp
+        ? {}
+        : (() => {
+            if (
+              !('connectionMasterKey' in raw) ||
+              typeof raw.connectionMasterKey !== 'string' ||
+              !/^[a-f0-9]{64}$/u.test(raw.connectionMasterKey) ||
+              !('authorizationValue' in raw) ||
+              typeof raw.authorizationValue !== 'string' ||
+              raw.authorizationValue.length > 128
+            )
+              throw new Error('Owned HTTP configuration incomplete');
+            return {
+              connectionMasterKey: raw.connectionMasterKey,
+              authorizationValue: raw.authorizationValue,
+            };
+          })()),
     };
   }
   const raw = configuration;
@@ -282,6 +334,43 @@ async function constructRuntimes(
   });
   resources.coordinator = coordinator;
   assertSetupActive();
+  let controlledCapabilities:
+    Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>> | undefined;
+  if (controlledHttp) {
+    if (
+      raw.connectionMasterKey === undefined ||
+      raw.authorizationValue === undefined
+    )
+      throw new Error('Owned HTTP configuration incomplete');
+    const master = Buffer.from(raw.connectionMasterKey, 'hex');
+    const keys = createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
+      master,
+      'connection',
+    );
+    master.fill(0);
+    resources.envelopeKeys = {
+      close: () => {
+        keys.close();
+        return Promise.resolve();
+      },
+    };
+    httpTarget = createEditorControlledHttpTarget(
+      raw.authorizationValue,
+      undefined,
+      sendHttpEffects,
+    );
+    resources.controlledHttp = httpTarget;
+    await httpTarget.start();
+    assertSetupActive();
+    controlledCapabilities = await createWorkerNodeRuntimeCapabilities(
+      { database, redisUrl: namespace.redisUrl },
+      { connectionEncryption: new ConnectionEnvelopeEncryption(keys) },
+    );
+    resources.capabilities = controlledCapabilities;
+    assertSetupActive();
+    await controlledCapabilities.checkReadiness();
+    assertSetupActive();
+  }
   const attempts = await createNodeAttemptRuntime(
     {
       database,
@@ -294,28 +383,69 @@ async function constructRuntimes(
     {
       // These fail closed if a supposedly pure graph tries to use a provider.
       // Registry, evaluator, durable run store and execution engine remain real.
-      runtimeCapabilities: {
-        connections: () => ({
-          resolve: () =>
-            Promise.reject(
-              new Error('Provider access is outside this pure-node fixture'),
+      ...(controlledCapabilities === undefined || httpTarget === undefined
+        ? {
+            runtimeCapabilities: {
+              connections: () => ({
+                resolve: () =>
+                  Promise.reject(
+                    new Error(
+                      'Provider access is outside this pure-node fixture',
+                    ),
+                  ),
+              }),
+              artifacts: () => ({
+                write: () =>
+                  Promise.reject(
+                    new Error('Artifacts are outside this pure-node fixture'),
+                  ),
+              }),
+            },
+          }
+        : {
+            registry: createPlatformNodeRegistryForRelease(
+              platformServingRegistryRelease(cohort),
+              {
+                httpRequest: { httpClient: httpTarget.httpClient },
+                // Never allow unused provider executors to fall back to real networking.
+                slackSendMessage: {
+                  client: {
+                    sendMessage: () =>
+                      Promise.reject(
+                        new Error('Provider outside controlled HTTP fixture'),
+                      ),
+                  },
+                },
+                emailSendNotification: {
+                  client: {
+                    sendNotification: () =>
+                      Promise.reject(
+                        new Error('Provider outside controlled HTTP fixture'),
+                      ),
+                  },
+                },
+              },
             ),
-        }),
-        artifacts: () => ({
-          write: () =>
-            Promise.reject(
-              new Error('Artifacts are outside this pure-node fixture'),
-            ),
-        }),
-      },
+            runtimeCapabilities: {
+              ...controlledCapabilities.factories,
+              artifacts: () => ({
+                write: () =>
+                  Promise.reject(
+                    new Error('Artifacts outside inline HTTP fixture'),
+                  ),
+              }),
+            },
+          }),
     },
   );
   resources.attempts = attempts;
   assertSetupActive();
   const triggers: TriggerRuntime[] = [];
   resources.triggers = triggers;
-  if (cohort === 'schedule_activation') {
-    for (const scanner of ['one', 'two']) {
+  if (cohort === 'schedule_activation' || controlledHttp) {
+    for (const scanner of cohort === 'schedule_activation'
+      ? ['one', 'two']
+      : ['webhook']) {
       const trigger = await createTriggerRuntime({
         database,
         redisUrl: namespace.redisUrl,

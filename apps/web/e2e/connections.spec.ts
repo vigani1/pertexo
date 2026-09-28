@@ -181,6 +181,54 @@ async function installRoutes(page: Page) {
   );
 }
 
+test('opens the add-connection HTTP choice with an ordinary pointer while background choices remain', async ({
+  page,
+}) => {
+  await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
+  await installRoutes(page);
+  await page.goto(`/w/${workspaceId}/connections`);
+  await page
+    .getByRole('button', { name: 'Add connection', exact: true })
+    .click();
+  const chooser = page.getByRole('dialog', {
+    name: 'Add a connection',
+    exact: true,
+  });
+  await expect(chooser).toBeVisible();
+  // Both sockets are deliberate; the command belongs to the open chooser.
+  await expect(page.locator('button[aria-label="Connect HTTP"]')).toHaveCount(
+    2,
+  );
+  const http = chooser.getByRole('button', {
+    name: 'Connect HTTP',
+    exact: true,
+  });
+  await expect
+    .poll(() =>
+      http.evaluate((button) => {
+        const bounds = button.getBoundingClientRect();
+        return button.contains(
+          document.elementFromPoint(
+            bounds.x + bounds.width / 2,
+            bounds.y + bounds.height / 2,
+          ),
+        );
+      }),
+    )
+    .toBe(true);
+  await http.click();
+  const credential = page.getByRole('dialog', {
+    name: 'Connect HTTP',
+    exact: true,
+  });
+  await expect(
+    credential.getByLabel('Header 1 name', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    credential.getByLabel('Header 1 value', { exact: true }),
+  ).toBeVisible();
+});
+
 test('creates a connection and exposes its safe identity to the editor picker', async ({
   context,
   page,
