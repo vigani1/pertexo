@@ -183,7 +183,7 @@ test('current CI supplies the shared local service and specialized-suite contrac
     () =>
       assertCiLocalQualityContract(
         source.replace(
-          'docker compose up -d --wait postgres redis artifact-store control-ledger-primary control-ledger-recovery',
+          'docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery',
           'docker compose up -d --wait postgres redis',
         ),
       ),

@@ -353,8 +353,8 @@ const expectedCiServiceLifecycleCommands = Object.freeze(
     'docker compose run --rm control-ledger-primary-bootstrap',
     'docker compose run --rm control-ledger-recovery-bootstrap',
     'docker compose up -d --wait postgres',
-    'docker compose up -d --wait postgres redis artifact-store control-ledger-primary control-ledger-recovery',
-    'docker compose up -d --wait postgres redis artifact-store control-ledger-primary control-ledger-recovery',
+    'docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery',
+    'docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery',
     'pnpm --filter @pertexo/database test:coverage',
     'pnpm database:coverage:merge',
     'pnpm db:migrate',
@@ -737,7 +737,14 @@ export function createRunId() {
 }
 
 function localEnvironment(ciEnvironment, ports, project) {
-  const [postgres, redis, artifact, ledgerPrimary, ledgerRecovery] = ports;
+  const [
+    postgres,
+    redis,
+    artifact,
+    artifactRecovery,
+    ledgerPrimary,
+    ledgerRecovery,
+  ] = ports;
   const database = (user, password, name = 'pertexo') =>
     `postgresql://${user}:${password}@127.0.0.1:${String(postgres)}/${name}`;
   return {
@@ -749,6 +756,7 @@ function localEnvironment(ciEnvironment, ports, project) {
     POSTGRES_PORT: String(postgres),
     REDIS_PORT: String(redis),
     ARTIFACT_STORE_PORT: String(artifact),
+    ARTIFACT_STORE_RECOVERY_PORT: String(artifactRecovery),
     CONTROL_LEDGER_PORT: String(ledgerPrimary),
     CONTROL_LEDGER_RECOVERY_PORT: String(ledgerRecovery),
     POSTGRES_OPERATOR_PASSWORD: 'pertexo-local-operator',
@@ -787,7 +795,7 @@ function localEnvironment(ciEnvironment, ports, project) {
     ),
     REDIS_URL: `redis://:${ciEnvironment.REDIS_PASSWORD}@127.0.0.1:${String(redis)}/0`,
     ARTIFACT_STORE_ENDPOINT: `http://127.0.0.1:${String(artifact)}`,
-    ARTIFACT_STORE_RECOVERY_ENDPOINT: `http://127.0.0.1:${String(artifact)}`,
+    ARTIFACT_STORE_RECOVERY_ENDPOINT: `http://127.0.0.1:${String(artifactRecovery)}`,
     CONTROL_LEDGER_ENDPOINT: `http://127.0.0.1:${String(ledgerPrimary)}`,
     CONTROL_LEDGER_RECOVERY_ENDPOINT: `http://127.0.0.1:${String(ledgerRecovery)}`,
   };
@@ -1172,7 +1180,7 @@ async function run() {
       try {
         if (definition.internal === 'prerequisites') {
           await assertCommands(process.env, needsDocker);
-          if (needsDocker) reservations = await reserveAvailablePorts(5);
+          if (needsDocker) reservations = await reserveAvailablePorts(6);
           environment = needsDocker
             ? localEnvironment(
                 ciEnvironment,
@@ -1196,6 +1204,7 @@ async function run() {
               'postgres',
               'redis',
               'artifact-store',
+              'artifact-store-recovery',
               'control-ledger-primary',
               'control-ledger-recovery',
             ),
@@ -1206,6 +1215,11 @@ async function run() {
             ['postgres', '5432', environment.POSTGRES_PORT],
             ['redis', '6379', environment.REDIS_PORT],
             ['artifact-store', '9090', environment.ARTIFACT_STORE_PORT],
+            [
+              'artifact-store-recovery',
+              '9090',
+              environment.ARTIFACT_STORE_RECOVERY_PORT,
+            ],
             ['control-ledger-primary', '9000', environment.CONTROL_LEDGER_PORT],
             [
               'control-ledger-recovery',

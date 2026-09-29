@@ -55,7 +55,8 @@ env:
   ARTIFACT_STORE_SECRET_ACCESS_KEY: pertexo-local-secret-key
   ARTIFACT_STORE_BUCKET: pertexo-artifacts
   ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
-  ARTIFACT_STORE_RECOVERY_ENDPOINT: http://127.0.0.1:9090
+  ARTIFACT_STORE_RECOVERY_PORT: '9094'
+  ARTIFACT_STORE_RECOVERY_ENDPOINT: http://127.0.0.1:9094
   ARTIFACT_STORE_RECOVERY_REGION: us-west-2
   ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: pertexo-local-recovery-access-key
   ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: pertexo-local-recovery-secret-key
@@ -369,7 +370,7 @@ jobs:
         run: pnpm build
       - name: Start disposable integration dependencies
         run: |
-          docker compose up -d --wait postgres redis artifact-store control-ledger-primary control-ledger-recovery
+          docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery
           docker compose run --rm control-ledger-primary-bootstrap
           docker compose run --rm control-ledger-recovery-bootstrap
       - name: Verify service boundaries and Redis durability policy
@@ -378,6 +379,7 @@ jobs:
           test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
           test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
           test "$(docker compose port artifact-store 9090)" = "127.0.0.1:$ARTIFACT_STORE_PORT"
+          test "$(docker compose port artifact-store-recovery 9090)" = "127.0.0.1:$ARTIFACT_STORE_RECOVERY_PORT"
           unauthenticated_output="$(docker compose exec -T redis redis-cli --raw ping 2>&1 | tr -d '\r')"
           case "$unauthenticated_output" in
             NOAUTH*) ;;
@@ -422,7 +424,7 @@ jobs:
         run: |
           mkdir -p artifacts
           docker compose ps --all > artifacts/service-status.log
-          docker compose logs --no-color --timestamps postgres redis artifact-store control-ledger-primary control-ledger-recovery > artifacts/service-logs.log
+          docker compose logs --no-color --timestamps postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery > artifacts/service-logs.log
       - name: Upload integration reports
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -468,7 +470,7 @@ jobs:
       - name: Start disposable recovery dependencies
         run:
           docker compose up -d --wait postgres redis artifact-store
-          control-ledger-primary control-ledger-recovery
+          artifact-store-recovery control-ledger-primary control-ledger-recovery
       - name: Run destructive crash, outage, and recovery proofs
         env:
           API_SSE_RESILIENCE_INTEGRATION: 'true'
@@ -500,7 +502,7 @@ jobs:
         run: |
           mkdir -p artifacts
           docker compose ps --all > artifacts/service-status.log
-          docker compose logs --no-color --timestamps postgres redis artifact-store control-ledger-primary control-ledger-recovery > artifacts/service-logs.log
+          docker compose logs --no-color --timestamps postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery > artifacts/service-logs.log
       - name: Upload recovery reports
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

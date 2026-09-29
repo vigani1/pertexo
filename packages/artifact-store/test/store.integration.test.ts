@@ -85,6 +85,17 @@ integrationDescribe('ArtifactStore S3 integration', () => {
     };
 
     try {
+      // The API refuses to boot unless both buckets report their own region.
+      await expect(store.checkReadiness()).resolves.toMatchObject({
+        primary: {
+          bucket: config.primary.bucket,
+          region: config.primary.region,
+        },
+        recovery: {
+          bucket: config.recovery.bucket,
+          region: config.recovery.region,
+        },
+      });
       await expect(
         store.put({ ...metadata, body: Readable.from([body]) }),
       ).resolves.toEqual(metadata);

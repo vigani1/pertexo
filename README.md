@@ -96,7 +96,7 @@ Prerequisites: Node.js 24, pnpm 11, Docker, and Docker Compose.
 ```bash
 pnpm install
 cp .env.example .env
-docker compose up -d --wait postgres redis artifact-store control-ledger-primary control-ledger-recovery
+docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery
 docker compose run --rm control-ledger-primary-bootstrap
 docker compose run --rm control-ledger-recovery-bootstrap
 pnpm build
