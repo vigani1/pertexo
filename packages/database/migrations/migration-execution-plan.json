@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0120_workspace_inbox_foundation.sql",
+  "transactionalThrough": "0121_workspace_inbox_capture.sql",
   "migrations": {}
 }

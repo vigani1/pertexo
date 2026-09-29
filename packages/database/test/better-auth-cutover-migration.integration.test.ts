@@ -104,6 +104,7 @@ describe('Better Auth cutover migration rehearsal', () => {
         '0118_workspace_ownership_transfer.sql',
         '0119_record_step_inputs.sql',
         '0120_workspace_inbox_foundation.sql',
+        '0121_workspace_inbox_capture.sql',
       ]);
 
       const verifier = new Pool({

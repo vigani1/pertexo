@@ -747,7 +747,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0120_workspace_inbox_foundation.sql',
+        migrationHead: '0121_workspace_inbox_capture.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -946,7 +946,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0120_workspace_inbox_foundation.sql',
+        migrationHead: '0121_workspace_inbox_capture.sql',
       });
     } finally {
       await pool.end();

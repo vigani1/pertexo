@@ -309,3 +309,29 @@ This closes only the foundation gate, not the complete lifecycle: source
 production, projection, retention execution, operator recovery, HTTP, frontend,
 read-all, SSE, integrated browser/multi-instance/load evidence and production
 activation remain open. Existing run SSE/external alerts are not substitutes.
+
+The foundation subsequently merged through PR115 at main
+`e292c857152ec61b2995f6608239c668a66e22c6`; natural main CI 36495495693 and
+CodeQL 36495495631 passed. The next **inactive P1 capture-persistence checkpoint**
+is locally verified but uncommitted, documented in ADR054 and F03: migration 0121,
+one owned claim/capture/accounting operation, atomic audience/marker and tracked
+deadline/disposal admission. No-service database checks passed 124 files / 902
+tests; build/typecheck, schema and architecture checks passed. One separately
+approved PostgreSQL run passed all 18 capture cases (zero failures/skips/retries;
+8.81-second suite). Independent review accepted the result in
+`/tmp/pertexo-inbox-capture-pg.PhjxF6`. Its owned database
+`pertexo_test_inbox_capture_85cb54612211495db66323042171c902` (OID 281930) was
+normally removed with zero connections; parent/child exited zero and the child
+group was absent. The seven-database baseline remained SHA256
+`8dea1fc6b8892e8d35c3ad819bf609bc769ec90956eef9dde6c275522bb6f954`.
+Runtime-role/tenant guards, audience/fence contention, uncertainty/rollback,
+expiry/statement-timeout and removed/corrupt-evidence cases passed. Corrections now
+observe driver end before releasing admission, check fresh expiry after audience
+completion, and consume removed source/outbox evidence only as an unavailable
+no-op. Retained evidence still validates; deleted bytes cannot be authenticated
+by the identifier-only interface. Disposal is not proof of backend rollback.
+No services were started/stopped, and no Redis/API/browser/providers were used.
+Driver-interposed acknowledgment loss and an arranged shortened lease are not
+aggregate-load or cancellation-capability-at-load proof. No producer, worker/
+transport integration, activation or first usable inbox is claimed. Full F03,
+retention/resume and real runtime/load gates still precede producer activation.

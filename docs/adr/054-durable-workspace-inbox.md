@@ -473,3 +473,81 @@ future capture/projection commands, retention execution or concurrency/load.
 No HTTP/browser/live-stream/provider gates ran, and no F03 completion is claimed.
 Readiness currently advances the migration-head inventory; feature-specific
 command/body/grant readiness must accompany the later runtime implementation.
+
+### Inactive P1 implementation evidence — 2026-09-29
+
+The reviewed foundation was subsequently merged through PR115 at main
+`e292c857152ec61b2995f6608239c668a66e22c6`. Natural main CI 36495495693 and
+CodeQL 36495495631 passed without reruns. Historical failed/corrected PostgreSQL
+qualification above remains unchanged.
+
+Uncommitted P1 adds forward migration 0121 and
+[capture persistence](../../packages/database/src/execution/workspace-inbox/capture-store.ts),
+not an enabled producer or projection runtime. One owned `capture` operation
+contains claim, capture and acknowledged-rollback failure accounting. Narrow
+context-validating owner-executed commands preserve forced tenant RLS, avoid
+granting worker access to user/member tables, and acquire the shared workspace
+lifecycle lock before the source lock. One unlimited INSERT statement freezes
+the audience; its completed count and marker commit in the same transaction.
+Lease/fence, ten-acquisition failure budgets, stored jittered delays and
+successful-marker reset remain durable. Lost COMMIT acknowledgments never trigger failure accounting or
+automatic recapture. Process admission includes raw checkout/query settlement
+and observed pinned-driver connection end, not just synchronous pool removal.
+Unconfirmed disposal fails readiness and refuses further local writes, including
+after a late closure. Client end is disposal evidence, not proof of backend
+rollback or a measured cancellation bound. A fresh wall-clock check after the
+entire audience INSERT prevents an earlier statement timestamp from accepting
+capture past absolute source expiry; failure rolls back audience and marker.
+
+After strict input/context/workspace checks, missing source and outbox together
+return unavailable without writes, reconstruction or a successful receipt.
+Missing outbox with retained source is rejected; retained outbox payload,
+trace/checksum and aggregate evidence are validated even if the source is gone.
+The identifier-only interface cannot authenticate already-deleted bytes. This
+safe unavailable disposition grants no authority and does not verify delivery.
+
+Executed no-service checks: 124 database files / 902 tests (33 new unit/static),
+database build/typecheck, five schema tests (93 tables) and 19 architecture tests
+plus graph/import checks passed. Independent correction re-review returned no
+standards/spec findings and passed all 42 focused unit/static cases.
+
+One separately authorized run of the
+[PostgreSQL cases](../../packages/database/test/workspace-inbox-capture.integration.test.ts)
+passed **18/18**, with zero failures, pending/skipped tests or retries (8.81-second
+suite). It used the approved isolated PostgreSQL 18 fixture on 127.0.0.1:55436,
+with actual migration/API/worker roles and forced tenant RLS. Cases cover command
+authority, frozen unlimited audience, claim contention/stale fencing, atomic
+rollback and failure budgets, delayed COMMIT acknowledgment, source-lock
+reconciliation, absolute/in-flight expiry, actual statement timeout, and the
+absent/retained/corrupt evidence matrix. Sanitized results and cleanup evidence
+are in `/tmp/pertexo-inbox-capture-pg.PhjxF6`; independent review accepted them.
+
+The fresh owned database
+`pertexo_test_inbox_capture_85cb54612211495db66323042171c902` (OID 281930,
+owner `pertexo_owner`) was removed by normal fixture cleanup after disconnection.
+Parent and child exited zero, zero connections remained, and the owned child
+process group was absent. All seven preexisting database names/OIDs/owners were
+unchanged: SHA256 `8dea1fc6b8892e8d35c3ad819bf609bc769ec90956eef9dde6c275522bb6f954`.
+No force drop/backend termination, service start/stop, Redis, API/browser or
+provider journey occurred. P1 is locally verified and uncommitted, not full
+projection or F03 completion.
+
+Review-correction feedback: the first five added assertions failed before the
+disposal/expiry fixes (three locally settled COMMIT/rollback/abort admission
+cases, unconfirmed-end quarantine, static post-INSERT clock ordering). The
+missing-evidence branch assertion also failed before its correction. Additional
+unit cases cover already-ended clients and closure before rollback accounting.
+The PostgreSQL additions assert complete expiry rollback and the absent/retained
+source/outbox matrix; those assertions passed in the single approved run.
+
+The delayed-ack case interposes the driver response after a real COMMIT; the
+paused-owner case shortens only an arranged fixture lease. These are bounded
+persistence regressions, not aggregate-load, cancellation-capability-at-load,
+OS-process-crash, worker/transport or production-capacity qualification. Client
+end still must not be treated as proof of backend rollback. No repeat run or
+producer/activation authority is implied by this evidence.
+
+No accepted activation decision is changed here. The proposed deployment-global
+control epoch and authoritative terminal-transaction cut remain unapproved.
+Fan-out, durable runtime scheduling, source resume, dependency-aware retention,
+HTTP/frontend, read-all/SSE, declared-load and activation gates remain required.

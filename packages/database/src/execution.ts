@@ -151,3 +151,9 @@ export {
 } from './triggers/workflow-triggers.js';
 export type { WorkflowTriggerReconciliationDatabase } from './triggers/workflow-triggers.js';
 export type { DatabaseReadiness } from './platform/readiness.js';
+export { createWorkspaceInboxCaptureStore } from './execution/workspace-inbox/capture-store.js';
+export type {
+  WorkspaceInboxCaptureInput,
+  WorkspaceInboxCaptureResult,
+  WorkspaceInboxCaptureStore,
+} from './execution/workspace-inbox/capture-contract.js';
