@@ -18,6 +18,10 @@ correctness constraints are clear. Security reports must follow
 - Never commit secrets, local environment files, generated runtime data, or
   unrelated formatting changes.
 
+To run the services, API, worker, and web app locally from `.env.example`,
+follow the README's [Local Development](./README.md#local-development) section;
+every terminal that runs a pnpm process needs `.env` loaded.
+
 Install dependencies with `pnpm install`; it configures the tracked pre-push
 hook. Ordinary pushes automatically run `pnpm prepush:fast`: every static gate
 from `pnpm check`, plus lint, typecheck, and related unit tests scoped to the

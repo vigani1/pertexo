@@ -99,24 +99,47 @@ cp .env.example .env
 docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery
 docker compose run --rm control-ledger-primary-bootstrap
 docker compose run --rm control-ledger-recovery-bootstrap
+set -a; . ./.env; set +a
 pnpm build
 pnpm db:migrate
 ```
 
 The example environment is for local development only. Review `.env` before
 starting processes; do not commit credentials or production configuration.
+Compose reads `.env` itself, but the pnpm commands read only the shell
+environment, so load `.env` (`set -a; . ./.env; set +a`) in every terminal that
+runs one. Refresh a `.env` copied from an older `.env.example`: the artifact
+recovery store now runs on its own port (`ARTIFACT_STORE_RECOVERY_*`), and the
+worker needs `OUTBOX_DISPATCH_JOB_NAMES` to dispatch runs.
+
+To use the app in a browser, start each process in its own terminal:
+
+```bash
+pnpm dev:api
+pnpm dev:worker
+pnpm dev:web
+```
+
+Open `http://127.0.0.1:5173` and create an account. Local authentication mail is
+never sent: in development the API prints each verification or reset link to its
+console. The example environment leaves connection encryption
+(`CONNECTION_KMS_*`) unset, so the connections API is off and the workflow
+editor offers no connections. The worker dispatches only the job kinds in
+`OUTBOX_DISPATCH_JOB_NAMES`, which the example sets to run workflows started
+manually.
 
 Common commands:
 
 Workspace packages resolve their compiled `dist` exports. After changing a
 shared package, run `pnpm build` and restart the affected development process.
 The API/worker source watchers do not replace the shared-package build step.
-`pnpm dev:api` compiles the API with TypeScript before watching its emitted
-JavaScript, preserving the decorator metadata required by NestJS.
+`pnpm dev:api` and `pnpm dev:worker` compile with TypeScript before watching the
+emitted JavaScript, preserving the decorator metadata required by NestJS.
 
 ```bash
 pnpm dev:api
 pnpm dev:worker
+pnpm dev:web
 pnpm test
 pnpm check
 pnpm prepush:fast
