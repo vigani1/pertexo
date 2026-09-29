@@ -19,7 +19,11 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: 'coverage/api-run-event-publisher',
-      include: ['packages/queue/src/run-event-notifications.ts'],
+      // The run-event publisher sends through the shared bounded publisher.
+      include: [
+        'packages/queue/src/redis-bounded-publisher.ts',
+        'packages/queue/src/run-event-notifications.ts',
+      ],
       thresholds: {
         branches: 81,
         functions: 100,

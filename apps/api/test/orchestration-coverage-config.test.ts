@@ -56,6 +56,7 @@ describe('API orchestration coverage inventory', () => {
       'apps/api/test/executions/redis-run-event-publisher.test.ts',
     ]);
     expect(publisherConfig.test?.coverage?.include).toEqual([
+      'packages/queue/src/redis-bounded-publisher.ts',
       'packages/queue/src/run-event-notifications.ts',
     ]);
     expect(publisherConfig.root).toBe(resolve(apiDirectory, '../..'));
