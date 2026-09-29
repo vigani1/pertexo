@@ -22,7 +22,7 @@
     "@pertexo/workflow-model": "workspace:*",
     "@tanstack/react-query": "5.102.8",
     "@tanstack/react-router": "1.170.36",
-    "@xyflow/react": "12.11.6",
+    "@xyflow/react": "12.12.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "lucide-react": "1.17.0",
