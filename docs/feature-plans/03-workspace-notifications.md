@@ -143,9 +143,9 @@ ledger; it is not external object-provider evidence. Full F03 remains in progres
 not complete, merged or production-qualified. At the 2026-09-29 verification
 checkpoint, its foundation also remained uncommitted.
 
-### Inactive capture persistence P1 — locally verified, uncommitted (2026-09-29)
+### Inactive capture persistence P1 — merged, bounded persistence verified (2026-09-29)
 
-The next uncommitted checkpoint adds migration 0121 and a feature-owned
+The capture checkpoint adds migration 0121 and a feature-owned
 `createWorkspaceInboxCaptureStore().capture()` operation. It owns a separately
 committed claim, single-snapshot audience insertion and atomic marker commit, fenced
 failure accounting after acknowledged rollback, and uncertain-COMMIT
@@ -185,8 +185,71 @@ the child process group was absent and the unchanged seven-database inventory
 matched SHA256 `8dea1fc6b8892e8d35c3ad819bf609bc769ec90956eef9dde6c275522bb6f954`.
 Independent review accepted this bounded persistence evidence.
 
+P1 subsequently merged through PR116 at main
+`61a1e9135cb14ababbf8cb73f64431525b855b3d`. Natural main CI 36513163444 and
+CodeQL 36513163353 passed without reruns. Full F03 is not delivered or activated.
+
 No service was started/stopped; no Redis, API/browser or provider journey ran.
 The delayed-ack case uses driver interposition and the paused-owner case shortens
 only an arranged lease. Neither proves aggregate load, cancellation capability
 at declared load or production capacity. Worker/transport/projection lifecycle,
 resume/retention and activation gates remain open; this is not full F03.
+
+### Inactive fan-out persistence P2 — locally qualified, uncommitted (2026-09-29)
+
+Migration 0122 and `createWorkspaceInboxProjectionStore().projectNextPage()` add
+owned pages of at most 100 saved audience IDs. Workspace/user/member locks
+precede the source; one ownership/cursor/candidate revalidation cannot acquire
+new participant locks or loop. Current eligibility, entry/revision, terminal
+audience decisions and cursor commit atomically, with fresh final expiry. A
+private delivery validator preserves capture checks; capture/projection share
+feature-local admission and disposal, not a generic command framework. Exact
+worker mutation-grant revocations and function/readiness pins accompany the
+commands. No producer, queue/worker wiring, retention, HTTP/UI/SSE or activation.
+
+Seven focused files / **88 unit/static tests**, database source/test typecheck,
+isolated-output build and scoped lint passed. The first lint run failed with
+11 test-only typing/callback/conditional errors; reviewed corrections preserved
+assertions and the scoped recheck, 88 tests and typecheck passed. The initial
+formatter's implicit local dependency/hook reconciliation produced no tracked
+dependency/config changes; subsequent checks used direct installed binaries.
+Build output was isolated from the running API's primary `dist`.
+
+**19/19 real PostgreSQL cases passed** in one separately authorized controlled
+run (4,332 ms suite, zero failures, skips or retries): raw/command authority, bounded
+pages and frozen audience, eligibility/skip/replay behavior, contention/lock
+order, rollback/uncertain commit, attempts/expiry/timeouts and shared-recipient
+serialization. Manager review first corrected two recipient-state statements to
+contiguous placeholders and explicit per-statement values, retaining every
+`42501` assertion. Formatting/lint/typecheck passed. Independent standards/spec
+reviews returned zero findings; the manager accepted the actual PostgreSQL
+results and cleanup in `/tmp/pertexo-inbox-projection-pg.PpEFGy`.
+The owned database `pertexo_test_inbox_projection_ad30f47fbbc14a159d91adde452d70cd`
+(OID 285525) was normally removed with zero connections. Parent/child exited zero,
+monitor closed and process group was absent; the protected seven-database
+inventory retained SHA256 `8dea1fc6b8892e8d35c3ad819bf609bc769ec90956eef9dde6c275522bb6f954`.
+No services were started/stopped or everyday stores/Redis/API/browser/providers
+used. Shared-recipient concurrent promises do not establish deterministic
+contention; arranged status/lease and driver-ack cases do not prove OS crash,
+cancellation at load or capacity. No worker/producer/HTTP/UI/activation or full
+F03 completion is claimed. Detailed
+scope, exact results and remaining gates are in
+[ADR054](../adr/054-durable-workspace-inbox.md#inactive-p2-fan-out-persistence--locally-qualified-uncommitted-2026-09-29).
+
+Final no-service qualification: full database tests initially passed 126 files /
+928 cases; schema (five tests, unchanged 93 tables), architecture (19 tests plus
+graph/import), database lint, Knip, complexity (three tests plus ratchet), docs
+(21 tests, 348 links), formatting and diff checks passed. The unchanged
+duplication gate then exposed two shared lifetime blocks. Reviewed private
+extraction into the existing `write-activity.ts` preserved command logic,
+budgets, admission/quarantine and uncertain outcomes. Eight regressions through
+both public stores bring focused checks to **96 passing tests**; typecheck,
+isolated build and independent standards/spec follow-up reviews passed. Two
+new test-only deferred-void lint errors were corrected without changing assertions.
+The duplication recheck passed unchanged source/test baselines (21 / 10 clone
+groups); both the failed and passing reports are retained. Post-extraction full
+database tests passed **126 files / 936 tests**, followed by database lint, Knip,
+graph/import, complexity, formatting and diff checks. The **19 PostgreSQL cases
+predate this lifetime extraction** and were not rerun; SQL/transaction code is
+unchanged, not new post-extraction database evidence. Root prepush/coverage and
+all runtime, retention/resume, browser/live/load and activation gates remain open.

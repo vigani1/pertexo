@@ -12,7 +12,7 @@ import {
 } from '../src/testing.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
-import { runCaptureTransaction } from '../src/execution/workspace-inbox/capture-transaction.js';
+import { runInboxWriteTransaction } from '../src/execution/workspace-inbox/inbox-write-transaction.js';
 
 // Written during P1; execution requires separate authority for the established
 // disposable environment. Never fall back to an unidentified local database.
@@ -649,7 +649,7 @@ describe.skipIf(!configured)(
           throw new Error('Unexpected disposal failure');
         },
       };
-      const transaction = runCaptureTransaction(
+      const transaction = runInboxWriteTransaction(
         pool,
         item.workspaceId,
         controller.signal,
@@ -662,6 +662,7 @@ describe.skipIf(!configured)(
           owned.result?.fenceToken,
         ],
         (row) => row,
+        'capture',
       );
       await Promise.race([
         reached.promise,

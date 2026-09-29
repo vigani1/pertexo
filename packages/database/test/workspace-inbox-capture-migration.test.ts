@@ -13,6 +13,10 @@ const readiness = await readFile(
   ),
   'utf8',
 );
+const projectionMigration = await readFile(
+  new URL('../migrations/0122_workspace_inbox_projection.sql', import.meta.url),
+  'utf8',
+);
 describe('inbox capture migration/readiness (static evidence only)', () => {
   it('pins exact owned function bodies including the private checksum', () => {
     const functions = [
@@ -23,9 +27,16 @@ describe('inbox capture migration/readiness (static evidence only)', () => {
     expect(functions).toHaveLength(4);
     for (const definition of functions) {
       expect(readiness).toContain(definition[1]);
+      const effectiveBody =
+        definition[1] === 'claim_workspace_inbox_capture'
+          ? /CREATE OR REPLACE FUNCTION app\.claim_workspace_inbox_capture\([\s\S]*?AS \$\$([\s\S]*?)\$\$;/u.exec(
+              projectionMigration,
+            )?.[1]
+          : definition[2];
+      expect(effectiveBody).toBeDefined();
       expect(readiness).toContain(
         createHash('md5')
-          .update(definition[2] ?? '')
+          .update(effectiveBody ?? '')
           .digest('hex'),
       );
       expect(migration).toContain(`ALTER FUNCTION app.${definition[1] ?? ''}`);

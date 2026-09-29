@@ -481,7 +481,7 @@ The reviewed foundation was subsequently merged through PR115 at main
 CodeQL 36495495631 passed without reruns. Historical failed/corrected PostgreSQL
 qualification above remains unchanged.
 
-Uncommitted P1 adds forward migration 0121 and
+P1 adds forward migration 0121 and
 [capture persistence](../../packages/database/src/execution/workspace-inbox/capture-store.ts),
 not an enabled producer or projection runtime. One owned `capture` operation
 contains claim, capture and acknowledged-rollback failure accounting. Narrow
@@ -529,8 +529,10 @@ Parent and child exited zero, zero connections remained, and the owned child
 process group was absent. All seven preexisting database names/OIDs/owners were
 unchanged: SHA256 `8dea1fc6b8892e8d35c3ad819bf609bc769ec90956eef9dde6c275522bb6f954`.
 No force drop/backend termination, service start/stop, Redis, API/browser or
-provider journey occurred. P1 is locally verified and uncommitted, not full
-projection or F03 completion.
+provider journey occurred. P1 subsequently merged through PR116 at main
+`61a1e9135cb14ababbf8cb73f64431525b855b3d`; natural main CI 36513163444 and
+CodeQL 36513163353 passed without reruns. This delivers the inactive capture
+checkpoint, not projection or full F03 completion.
 
 Review-correction feedback: the first five added assertions failed before the
 disposal/expiry fixes (three locally settled COMMIT/rollback/abort admission
@@ -551,3 +553,137 @@ No accepted activation decision is changed here. The proposed deployment-global
 control epoch and authoritative terminal-transaction cut remain unapproved.
 Fan-out, durable runtime scheduling, source resume, dependency-aware retention,
 HTTP/frontend, read-all/SSE, declared-load and activation gates remain required.
+
+### Inactive P2 fan-out persistence — locally qualified, uncommitted (2026-09-29)
+
+Forward [migration 0122](../../packages/database/migrations/0122_workspace_inbox_projection.sql)
+and the feature-owned
+[projection store](../../packages/database/src/execution/workspace-inbox/projection-store.ts)
+add one owned `projectNextPage` operation. Ordinary callers do not receive
+lease, cursor or failure-accounting authority. No producer, queue registration,
+worker composition, operator recovery, retention execution, HTTP, UI, SSE or
+activation is added. Historical migrations 0120/0121 remain unchanged.
+
+The page saves at most 100 pending recipient IDs, locks the workspace then
+ordered users/memberships before the source, and revalidates ownership, cursor
+and the same candidate predicate once. Changed ownership returns without writes;
+a same-owner candidate mismatch fails closed without extra participant locks or
+an in-transaction retry loop. Current active-user/member and owner/admin/operator
+eligibility determines insertion; observed role revision is evidence, not an
+equality gate. Entry, recipient revision, inserted/skipped decision and cursor
+commit together, with fresh expiry checks during and after the entire page.
+Terminal decisions prevent later restoration or entry deletion from recreating
+an entry. A zero audience completes without manufacturing recipient state.
+
+A private owner-only delivery validator factors the existing capture checks;
+capture branch precedence, marker/failure behavior and budgets are retained.
+Capture and projection share feature-local process admission, raw query/checkout
+settlement, observed driver end and sticky unconfirmed-disposal quarantine.
+Projection uses the documented two-second statement and eight-second whole
+operation budgets; capture keeps five/ten seconds, both with one-second locks,
+two-second checkout/settlement and a 30-second lease. Failure accounting requires
+acknowledged rollback and disposed connection; an uncertain COMMIT never causes
+automatic accounting/replay. All budgets remain unmeasured defaults.
+
+Worker raw audience/entry/state INSERT and progress/decision/revision UPDATE
+grants are revoked; only the owned commands can perform those mutations.
+Feature readiness pins exact effective bodies, owners, configuration, ACLs and
+forced RLS, including the private validator and absence of user/member grants.
+Migration-head fixtures advance additively to 0122 without changing historical
+expectations or weakening assertions.
+
+Executed **no-service** checks: seven focused capture/projection/foundation,
+migration-history and serving-readiness files, **88 unit/static tests passed**
+(initial 495 ms; after test-only lint correction 449 ms). Database source/test
+typecheck passed before and after that correction. Database build passed with
+output and metadata isolated in `/tmp/pertexo-inbox-p2-build.iWK6vi`, not primary
+runtime `dist`. Scoped ESLint initially failed with 11 errors confined to the two
+new test files; reviewed row/rejection typing, tuple-guard and callback-syntax
+corrections preserved assertions, and one scoped recheck passed. Scoped formatting
+passed. The initial pnpm formatter unexpectedly reconciled local dependencies
+and ran the hook installer; inspection found no tracked package/lock/workspace/
+hook changes. Subsequent checks used direct installed binaries, not pnpm.
+
+[Nineteen PostgreSQL cases](../../packages/database/test/workspace-inbox-projection.integration.test.ts)
+passed **19/19** in one separately authorized controlled run (4,332 ms suite;
+zero failures, pending/skipped tests or retries). They cover command/raw-grant
+authority, >100 frozen recipients/late joins, current
+eligibility and terminal skips, zero audience, contention/fences, rollback and
+ten-attempt exhaustion, capture/projection interleaving, stale lease recovery,
+user/source lock barriers and candidate changes, delayed COMMIT acknowledgment,
+fixed/in-flight expiry, real statement timeout, removed/corrupt evidence,
+read/deleted-entry replay and concurrent sources sharing recipients. Before that
+run, manager review corrected the raw-grant test's two non-contiguous parameter
+bindings into explicit per-statement SQL/values; all expected `42501` and positive
+command assertions were preserved. Direct formatting, lint and isolated-metadata
+typecheck passed for that test-only correction. Independent standards and spec
+reviews returned zero findings within the inactive scope.
+
+The reviewed runner was syntax-checked, then executed once with
+`/Users/vigan/.nvm/versions/node/v24.15.0/bin/node /tmp/pertexo-inbox-projection-pg.PpEFGy/run.mjs`.
+Its child invoked the installed Vitest binary directly from `packages/database`,
+using `run --config vitest.integration.config.ts test/workspace-inbox-projection.integration.test.ts --reporter=json`.
+It verified the controlled PostgreSQL 18 fixture on 127.0.0.1:55436 and isolated
+all eight runtime-role URL variables; no inherited everyday database or Redis
+configuration was used. Sanitized `outcome.json`, `results.json`, `after.json`
+and the runner/manifest are in `/tmp/pertexo-inbox-projection-pg.PpEFGy`.
+The manager independently inspected and accepted the result and cleanup.
+
+The fresh database `pertexo_test_inbox_projection_ad30f47fbbc14a159d91adde452d70cd`
+(OID 285525, owner `pertexo_owner`) was removed by normal fixture cleanup with
+zero remaining connections. Parent and child exited zero; monitor closed and
+child process group was absent. No watchdog/output/observation failure occurred.
+The seven protected database names/OIDs/owners remained unchanged: SHA256
+`8dea1fc6b8892e8d35c3ad819bf609bc769ec90956eef9dde6c275522bb6f954`.
+No repeat run, forced drop, backend termination or service start/stop occurred.
+
+Arranged user-status updates and driver acknowledgment interposition are not
+product session, OS-process-crash or cancellation-at-load proof. The shared-
+recipient `Promise.all` case is a concurrency exercise, not deterministic
+contention or a load measurement. No everyday-store, Redis, API/browser/provider,
+worker/producer, HTTP/UI/SSE, activation or full F03 qualification is claimed.
+All remaining runtime, retention/resume and declared-load gates remain required.
+
+#### Final no-service qualification and private lifetime extraction
+
+Before the lifetime extraction, full database unit/static checks passed 126 files /
+928 tests (5.34 seconds). Schema checks passed five tests and the unchanged
+93-table inventory (64 typed, 29 raw SQL); architecture passed 19 tests and
+graph/import validation. Database-wide ESLint, Knip, three complexity tests and
+ratchet, 21 documentation tests and 348 links across 112 files, scoped formatting
+and diff checks passed. These are no-service checks, not integration/load proof.
+
+The unchanged duplication gate initially failed: source clones 23 versus 21,
+394 duplicated lines versus 353 and 3,612 tokens versus 3,223. Actual reports are
+retained in `/tmp/pertexo-inbox-p2-duplication.pt1rvL`; test scanning stopped at
+the source failure. Review identified duplicated settlement and close lifecycle
+between capture/projection. A private `createInboxWriteLifetime` in the existing
+feature-owned `write-activity.ts` now owns per-store task tracking, matching
+controller cleanup, synchronous close/abort, memoized close promise and deferred
+pool release. The command-specific work, cancellation races, deadlines, SQL,
+transaction helper, admission/quarantine and public interfaces are unchanged.
+No generic retry framework or injected-runtime reference counting was added.
+
+Eight new public-store regressions cover both capture/projection: same close
+promise/one pool close, pending readiness rejected after close, idle-peer close
+not canceling active work, and ordinary `whenIdle` not imposing a disposal
+deadline. Two test-only `withResolvers<void>` lint errors were corrected to the
+existing `undefined` convention without assertion changes. Scoped lint and
+seven files / **96 focused tests** passed (588 ms), followed by source/test
+typecheck and an isolated build in `/tmp/pertexo-inbox-p2-lifetime-build.gPgruu`.
+Independent standards/spec follow-up reviews returned zero findings.
+
+One authorized direct-tool duplication recheck passed against the unchanged
+baseline: source 21 clones / 352 lines / 3,222 tokens; tests 10 / 294 / 2,765.
+Reports are retained in `/tmp/pertexo-inbox-p2-duplication-corrected.2dvNJa`.
+After extraction, full database checks passed **126 files / 936 tests** (6.25
+seconds); database-wide ESLint, Knip, architecture graph/import checks,
+complexity ratchet, scoped formatting and diff checks passed again.
+
+The **19/19 PostgreSQL run above predates this behavior-preserving lifetime
+extraction**. It was not repeated; migration/SQL and transaction code remained
+unchanged, with current lifetime behavior requalified at both public-store
+seams. The prior run is not new post-extraction PostgreSQL evidence. No root
+runtime build, prepush/coverage, worker/browser/live/provider or declared-load
+qualification is claimed. This remains an inactive, uncommitted P2 checkpoint,
+not full F03 delivery or permission to activate a producer.

@@ -3,26 +3,28 @@ import type { Pool, PoolClient } from 'pg';
 import { acquireAbortablePoolClient } from '../../platform/abortable-pool-checkout.js';
 import { destroyCanceledPoolClient } from '../../platform/pool-client-disposal.js';
 
-export type CaptureActivity = Readonly<{
+export type InboxWriteActivity = Readonly<{
   track<T>(promise: Promise<T>): Promise<T>;
   failDisposal(): void;
 }>;
 
-export type CaptureTransactionResult<T> =
+export type InboxWriteTransactionResult<T> =
   | Readonly<{ kind: 'committed'; value: T }>
   | Readonly<{ kind: 'rolled_back'; error: unknown }>
   | Readonly<{ kind: 'uncertain'; error: unknown }>;
 
 /** Feature-owned transaction: rollback knowledge must not leak into callers. */
-export async function runCaptureTransaction<T>(
+export async function runInboxWriteTransaction<T>(
   pool: Pool,
   workspaceId: string,
   signal: AbortSignal,
-  activity: CaptureActivity,
+  activity: InboxWriteActivity,
   statement: string,
   values: readonly unknown[],
   decode: (value: unknown) => T,
-): Promise<CaptureTransactionResult<T>> {
+  mode: 'capture' | 'projection',
+): Promise<InboxWriteTransactionResult<T>> {
+  const statementMillis = mode === 'capture' ? 5_000 : 2_000;
   const checkout = new AbortController();
   const checkoutTimer = setTimeout(() => {
     checkout.abort();
@@ -105,8 +107,8 @@ export async function runCaptureTransaction<T>(
     const settings = await query(
       `select set_config('app.workspace_id',$1,true) workspace,
               set_config('lock_timeout','1000ms',true) lock_timeout,
-              set_config('statement_timeout','5000ms',true) statement_timeout`,
-      [workspaceId],
+              set_config('statement_timeout',$2,true) statement_timeout`,
+      [workspaceId, `${String(statementMillis)}ms`],
     );
     const row: unknown = settings.rows[0];
     if (
@@ -129,7 +131,7 @@ export async function runCaptureTransaction<T>(
       !('lock_millis' in actual) ||
       Number(actual.lock_millis) !== 1_000 ||
       !('statement_millis' in actual) ||
-      Number(actual.statement_millis) !== 5_000
+      Number(actual.statement_millis) !== statementMillis
     )
       throw new Error('Inbox capture transaction budgets are incompatible');
     const result = await query(statement, values);

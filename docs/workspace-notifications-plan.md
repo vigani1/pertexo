@@ -312,8 +312,8 @@ activation remain open. Existing run SSE/external alerts are not substitutes.
 
 The foundation subsequently merged through PR115 at main
 `e292c857152ec61b2995f6608239c668a66e22c6`; natural main CI 36495495693 and
-CodeQL 36495495631 passed. The next **inactive P1 capture-persistence checkpoint**
-is locally verified but uncommitted, documented in ADR054 and F03: migration 0121,
+CodeQL 36495495631 passed. The **inactive P1 capture-persistence checkpoint**
+is verified within the bounded evidence below, documented in ADR054 and F03: migration 0121,
 one owned claim/capture/accounting operation, atomic audience/marker and tracked
 deadline/disposal admission. No-service database checks passed 124 files / 902
 tests; build/typecheck, schema and architecture checks passed. One separately
@@ -335,3 +335,60 @@ Driver-interposed acknowledgment loss and an arranged shortened lease are not
 aggregate-load or cancellation-capability-at-load proof. No producer, worker/
 transport integration, activation or first usable inbox is claimed. Full F03,
 retention/resume and real runtime/load gates still precede producer activation.
+
+P1 subsequently merged through PR116 at main
+`61a1e9135cb14ababbf8cb73f64431525b855b3d`, with natural main CI 36513163444 and
+CodeQL 36513163353 passed without reruns. This does not complete F03.
+
+The next **inactive P2 fan-out persistence checkpoint is locally qualified but
+uncommitted**. Migration 0122 adds owner-executed claim/page/failure
+commands, private delivery validation and exact raw worker write revocations;
+historical migrations remain unchanged. `projectNextPage` owns <=100 saved IDs,
+ordered shared user/member locks before source locking, one fixed-set
+revalidation, current eligibility and atomic entry/revision/decision/cursor.
+Fresh post-page time rejects expiry without partial progress. Shared
+feature-local capture/projection admission retains unsettled raw operations and
+driver disposal; uncertain commits never initiate failure accounting or replay.
+Capture behavior/budgets remain intact; the existing numerical budgets are still
+unmeasured defaults, not capacity claims.
+
+Executed no-service evidence: seven focused files / 88 unit/static tests, database
+source/test typecheck, isolated-output build and scoped lint passed. Initial lint
+failed with 11 test-only errors; reviewed typing/callback/tuple corrections
+preserved assertions, then the lint recheck, focused tests and typecheck passed.
+Manager review then corrected two raw-grant-test placeholder/value bindings,
+preserving every expected `42501`; direct formatting/lint/typecheck passed.
+Independent standards/spec reviews returned zero findings. **19/19 real PostgreSQL
+regressions passed** in one authorized run (4,332 ms suite, zero failures/skips/
+retries). Manager inspection accepted `/tmp/pertexo-inbox-projection-pg.PpEFGy`:
+fresh database `pertexo_test_inbox_projection_ad30f47fbbc14a159d91adde452d70cd`
+(OID 285525) normally removed, zero connections, parent/child exit zero, monitor
+closed and child group absent; the protected seven-database inventory retained
+SHA256 `8dea1fc6b8892e8d35c3ad819bf609bc769ec90956eef9dde6c275522bb6f954`.
+No service actions, everyday-store/Redis access or further PostgreSQL run occurred.
+Concurrent shared-recipient promises are not deterministic contention or load
+proof; arranged user-status and driver-ack cases are not OS-process-crash or
+cancellation-at-load qualification. No runtime/worker/producer, browser/provider,
+load qualification is claimed. The existing
+[ADR054 evidence](adr/054-durable-workspace-inbox.md#inactive-p2-fan-out-persistence--locally-qualified-uncommitted-2026-09-29)
+records scope, commands/results and tooling limitations. No producer, queue
+registration, worker composition, operator recovery, retention execution,
+HTTP/frontend, read-all/SSE or deployment-global activation is introduced.
+
+Final affected no-service gates passed: schema (five tests, unchanged 93 tables),
+architecture (19 tests plus graph/import), database ESLint, Knip, complexity
+(three tests plus ratchet), docs (21 tests, 348 links), formatting and diff checks.
+Full database tests first passed 126 files / 928 tests. The unchanged duplication
+gate then failed on two shared capture/projection lifetime blocks; reviewed
+private extraction in the existing `write-activity.ts` preserved command logic,
+deadlines, admission/quarantine and uncertain-COMMIT semantics. Eight public-store
+regressions bring focused checks to **96 passed**; isolated typecheck/build and
+independent standards/spec follow-up reviews passed after two test-only
+deferred-void lint corrections. Duplication recheck passed the unchanged baseline
+(source 21 clones / 352 lines; tests 10 / 294), with both reports retained.
+Post-extraction full database tests passed **126 files / 936 tests**, then
+database lint, Knip, graph/import, complexity, formatting and diff checks passed.
+The **19-case PostgreSQL evidence is pre-extraction**, not a fresh run of the
+final lifetime code; SQL/transactions remain unchanged and public-store tests
+qualify the reviewed lifecycle extraction. No root prepush/coverage or complete
+runtime/load/activation gate is claimed; P2 remains inactive and uncommitted.
