@@ -156,3 +156,8 @@ export type {
   WorkspaceInboxChange,
   WorkspaceInboxFoldStore,
 } from './execution/workspace-inbox/inbox-fold-store.js';
+export { createWorkflowTriggerPauseFoldStore } from './execution/trigger-pause/trigger-pause-fold-store.js';
+export type {
+  WorkflowTriggerPauseDecision,
+  WorkflowTriggerPauseFoldStore,
+} from './execution/trigger-pause/trigger-pause-fold-store.js';

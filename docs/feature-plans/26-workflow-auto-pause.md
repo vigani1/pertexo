@@ -153,3 +153,9 @@ Evidence log:
   the occurrence outcomes of ADR 048, webhook ingress order (ADR 026) and
   delivery outcomes (ADR 045), trigger and lifecycle gates (ADR 034), the role
   policy and run trigger types; ADR 056 records the decisions.
+- 2026-09-30: slice 2a (database) lands inactive — migration 0124's pause
+  state, settings, outcome log, streaks and fold; paused schedule occurrences
+  and webhook deliveries; the producer behind an off-by-default store option.
+  Real-database tests cover the threshold, reset, concurrent folds, observe
+  mode, overrides, archived workflows, paused admission and replays. The worker
+  loop, `WORKFLOW_AUTO_PAUSE` and the API's 423 follow in slice 2b.

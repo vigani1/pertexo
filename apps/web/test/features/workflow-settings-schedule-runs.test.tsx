@@ -26,7 +26,7 @@ const nextRunsPath = `${workflowApi}/triggers/${scheduleId}/schedule/next-runs`;
 function occurrence(
   id: string,
   scheduledAt: string,
-  outcome: 'accepted' | 'skipped',
+  outcome: 'accepted' | 'skipped' | 'paused',
   recordedAt = scheduledAt,
 ) {
   return {
@@ -43,7 +43,7 @@ async function scheduleCard() {
 }
 
 describe('schedule run history in words', () => {
-  it('says whether a run started on time, caught up late or was skipped', () => {
+  it('says whether a run started on time, caught up late, was skipped or paused', () => {
     expect(
       describeOccurrence(
         occurrence('a', '2026-09-14T10:00:00.000Z', 'accepted'),
@@ -64,6 +64,14 @@ describe('schedule run history in words', () => {
         occurrence('c', '2026-09-14T10:00:00.000Z', 'skipped'),
       ),
     ).toMatchObject({ tone: 'skipped', label: 'Skipped' });
+    expect(
+      describeOccurrence(occurrence('d', '2026-09-14T10:00:00.000Z', 'paused')),
+    ).toEqual({
+      tone: 'attention',
+      label: 'Paused',
+      detail:
+        'The workflow was paused after failing repeatedly. No run started.',
+    });
   });
 
   it('explains attempts that never became a run time only while it is on', () => {

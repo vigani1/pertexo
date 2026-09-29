@@ -67,5 +67,12 @@ export function describeDelivery(
         detail:
           'Too many runs were waiting in this workspace. The sender can try again later.',
       };
+    case 'paused':
+      return {
+        tone: 'attention',
+        label: 'Paused',
+        detail:
+          'Signed correctly, but the workflow was paused after failing repeatedly. No run started.',
+      };
   }
 }

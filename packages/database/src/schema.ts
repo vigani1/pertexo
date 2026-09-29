@@ -20,8 +20,8 @@ import {
   workspaceInvitationClaimCleanupCursors,
   auditEvents,
   usageEvents,
-  rlsProbeRecords,
 } from './schema/foundation.js';
+import { rlsProbeRecords } from './schema/rls-probe.js';
 import {
   workspaceControlLedgerProjection,
   workspaceLegalHolds,
@@ -68,6 +68,10 @@ import {
   workspaceInboxThreads,
 } from './schema/workspace-inbox.js';
 import {
+  workflowFailureStreaks,
+  workflowTriggerOutcomes,
+} from './schema/trigger-pause.js';
+import {
   webhookTriggerSecretVersions,
   webhookTriggerEndpoints,
   webhookTriggerDeliveries,
@@ -98,8 +102,8 @@ export {
   workspaceRenameCommandReceipts,
   auditEvents,
   usageEvents,
-  rlsProbeRecords,
 } from './schema/foundation.js';
+export { rlsProbeRecords } from './schema/rls-probe.js';
 export {
   artifacts,
   outboxEvents,
@@ -184,6 +188,8 @@ export const databaseSchema = {
   workspaceInboxEvents,
   workspaceInboxReads,
   workspaceInboxThreads,
+  workflowFailureStreaks,
+  workflowTriggerOutcomes,
   workspaceInvitations,
   workspaceInvitationCommandReceipts,
   workspaceInvitationDeliveryAttempts,

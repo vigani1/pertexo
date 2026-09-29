@@ -531,7 +531,8 @@
                     "authentication_failed",
                     "invalid_request",
                     "conflict",
-                    "rate_limited"
+                    "rate_limited",
+                    "paused"
                   ]
                 },
                 "httpStatus": {

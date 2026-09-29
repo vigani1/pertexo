@@ -123,6 +123,7 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
         claimed: 0,
         accepted: 0,
         skipped: 0,
+        paused: 0,
         deferred: 0,
         maxLagSeconds: 0,
       }),

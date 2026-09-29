@@ -33,6 +33,15 @@ import {
   resolveScheduleObservation,
 } from './schedule-recurrence.js';
 import {
+  claimedScheduleWorkflowPaused,
+  type RecordedScheduleOccurrence,
+} from './schedule-pause.js';
+import {
+  claimCleanupTimeoutMillis,
+  retireInterruptedBatch,
+  retireScheduleClaim,
+} from './schedule-claim-retirement.js';
+import {
   withPlatformTransaction,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
@@ -65,6 +74,7 @@ export type ScanDueSchedulesResult = Readonly<{
   claimed: number;
   accepted: number;
   skipped: number;
+  paused: number;
   deferred: number;
   maxLagSeconds: number;
 }>;
@@ -92,66 +102,6 @@ export class ScheduleClaimLostError extends Error {
 }
 
 type ScheduleClaim = z.output<typeof claimSchema>;
-type ClaimRetirement =
-  | Readonly<{ kind: 'defer'; retryAfterSeconds: number }>
-  | Readonly<{ kind: 'fail' | 'release' }>;
-
-const claimCleanupTimeoutMillis = 5_000;
-
-async function retireScheduleClaim(
-  pool: Pool,
-  claim: Pick<ScheduleClaim, 'lease_token' | 'trigger_id'>,
-  retirement: ClaimRetirement,
-  signal: AbortSignal,
-): Promise<void> {
-  await withPlatformTransaction(
-    pool,
-    async (client) => {
-      if (retirement.kind === 'defer') {
-        await client.query(
-          'select app.defer_trigger_schedule_claim($1,$2,$3)',
-          [claim.trigger_id, claim.lease_token, retirement.retryAfterSeconds],
-        );
-        return;
-      }
-      await client.query(
-        retirement.kind === 'fail'
-          ? 'select app.fail_trigger_schedule_claim($1,$2)'
-          : 'select app.release_trigger_schedule_claim($1,$2)',
-        [claim.trigger_id, claim.lease_token],
-      );
-    },
-    { signal },
-  );
-}
-
-/**
- * Retire the current claim according to its outcome and release every later
- * validated claim. Cleanup is bounded and diagnostic only: it cannot replace
- * the failure that interrupted the batch.
- */
-async function retireInterruptedBatch(
-  pool: Pool,
-  claims: readonly ScheduleClaim[],
-  first: ClaimRetirement,
-): Promise<readonly unknown[]> {
-  const signal = AbortSignal.timeout(claimCleanupTimeoutMillis);
-  const failures: unknown[] = [];
-  for (const [index, claim] of claims.entries()) {
-    try {
-      await retireScheduleClaim(
-        pool,
-        claim,
-        index === 0 ? first : { kind: 'release' },
-        signal,
-      );
-    } catch (error: unknown) {
-      failures.push(error);
-    }
-  }
-  return Object.freeze(failures);
-}
-
 function throwableError(value: unknown, fallbackMessage: string): Error {
   return value instanceof Error
     ? value
@@ -183,7 +133,7 @@ async function closeScheduleScannerLeases(
 }
 
 type ScanDueInput = Parameters<ScheduleTriggerScanner['scanDue']>[0];
-type ClaimOutcome = ScheduleOccurrenceDisposition | 'deferred';
+type ClaimOutcome = RecordedScheduleOccurrence | 'deferred';
 type ClaimedOccurrence = Readonly<{
   disposition: ScheduleOccurrenceDisposition;
   nextAt: Date;
@@ -299,9 +249,13 @@ async function persistClaimedOccurrence(
   occurrence: ClaimedOccurrence,
   compatibilityReleases: CompatibilityReleaseExpectationSet,
   checkpointFactory: ScheduleCheckpointFactory,
-): Promise<void> {
+): Promise<RecordedScheduleOccurrence> {
+  const disposition: RecordedScheduleOccurrence =
+    (await claimedScheduleWorkflowPaused(transaction, claim))
+      ? 'paused'
+      : occurrence.disposition;
   const runId =
-    occurrence.disposition === 'accepted'
+    disposition === 'accepted'
       ? await admitScheduledRun(
           transaction,
           claim,
@@ -313,11 +267,12 @@ async function persistClaimedOccurrence(
   const completed = await transaction.db.execute<{ completed: boolean }>(sql`
     select app.complete_trigger_schedule_claim(
       ${claim.trigger_id},${claim.lease_token},${generatePersistedId()},
-      ${occurrence.scheduledAt},${occurrence.disposition},${runId},
+      ${occurrence.scheduledAt},${disposition},${runId},
       ${occurrence.nextAt}) completed
   `);
   if (completed.rows[0]?.completed !== true)
     throw new ScheduleClaimLostError('Schedule claim expired');
+  return disposition;
 }
 
 async function processScheduleClaim(
@@ -379,7 +334,7 @@ async function processScheduleClaim(
     scheduledAt: observation.greatestDueAt,
   });
   try {
-    await withWorkspaceTransaction(
+    const recorded = await withWorkspaceTransaction(
       resources.acceptancePool,
       claim.workspace_id,
       (transaction) =>
@@ -392,7 +347,7 @@ async function processScheduleClaim(
         ),
       input.signal === undefined ? {} : { signal: input.signal },
     );
-    return Object.freeze({ kind: occurrence.disposition, lagSeconds });
+    return Object.freeze({ kind: recorded, lagSeconds });
   } catch (error: unknown) {
     const aborted = cancellationFailure(input.signal);
     if (aborted !== undefined) {
@@ -437,7 +392,7 @@ async function scanDueSchedules(
     .max(3_600)
     .parse(input.onTimeWindowSeconds);
   const batch = await claimDueSchedules(resources.claimPool, input);
-  const outcomes = { accepted: 0, deferred: 0, skipped: 0 };
+  const outcomes = { accepted: 0, deferred: 0, paused: 0, skipped: 0 };
   let maxLagSeconds = 0;
   for (const [index] of batch.claims.entries()) {
     const outcome = await processScheduleClaim(

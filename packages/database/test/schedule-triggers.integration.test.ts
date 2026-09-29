@@ -483,11 +483,95 @@ describe('schedule trigger PostgreSQL slice', () => {
     );
   });
 
+  it('records a due occurrence as paused, without a run, while the workflow is paused', async () => {
+    const pausedTriggerId = randomUUID();
+    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(pausedTriggerId).digest('hex')}`;
+    await ownerQuery(
+      `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
+         node_id,kind,status,desired_config,config_fingerprint,health_status)
+       values($1,$2,$3,$4,'schedule-paused','schedule','active',$5::jsonb,$6,'healthy')`,
+      [
+        pausedTriggerId,
+        workspaceId,
+        workflowId,
+        versionId,
+        JSON.stringify({
+          kind: 'interval',
+          intervalMinutes: 1,
+          misfirePolicy: 'catch_up_once',
+        }),
+        fingerprint,
+      ],
+    );
+    await ownerQuery(
+      `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,
+         interval_minutes,misfire_policy,config_fingerprint,anchor_at,next_fire_at)
+       values($1,$2,'interval',1,'catch_up_once',$3,clock_timestamp()-interval '50 minutes',
+         clock_timestamp()-interval '50 minutes')`,
+      [pausedTriggerId, workspaceId, fingerprint],
+    );
+    const pause = (state: 'paused' | 'none') =>
+      ownerQuery(
+        state === 'paused'
+          ? `update app.workflows
+                set trigger_pause_state='paused',trigger_paused_at=clock_timestamp(),
+                    trigger_pause_reason='consecutive_failures',trigger_pause_failures=10,
+                    trigger_pause_last_run_id=gen_random_uuid(),
+                    trigger_pause_revision=trigger_pause_revision+1
+              where workspace_id=$1 and id=$2`
+          : `update app.workflows
+                set trigger_pause_state='none',trigger_paused_at=null,
+                    trigger_pause_reason=null,trigger_pause_failures=null,
+                    trigger_pause_last_run_id=null,
+                    trigger_pause_revision=trigger_pause_revision+1
+              where workspace_id=$1 and id=$2`,
+        [workspaceId, workflowId],
+      );
+    await pause('paused');
+    try {
+      await expect(
+        schedule.scannerOne.scanDue({
+          leaseOwner: 'paused-scanner',
+          limit: 1,
+          leaseSeconds: 30,
+          onTimeWindowSeconds: 300,
+          checkpointFactory,
+        }),
+      ).resolves.toMatchObject({ claimed: 1, accepted: 0, paused: 1 });
+      await expect(
+        ownerQuery(
+          `select occurrence.disposition,occurrence.workflow_run_id,
+                  schedule.last_fire_at is not null fired,
+                  schedule.next_fire_at>schedule.last_fire_at advanced
+             from app.trigger_schedule_occurrences occurrence
+             join app.trigger_schedules schedule on schedule.trigger_id=occurrence.trigger_id
+            where occurrence.trigger_id=$1`,
+          [pausedTriggerId],
+        ),
+      ).resolves.toMatchObject({
+        rows: [
+          {
+            disposition: 'paused',
+            workflow_run_id: null,
+            fired: true,
+            advanced: true,
+          },
+        ],
+      });
+    } finally {
+      await pause('none');
+      await ownerQuery(
+        "update app.trigger_schedules set status='disabled' where trigger_id=$1",
+        [pausedTriggerId],
+      );
+    }
+  });
+
   it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
     await expect(
       checkDatabaseReadiness(schedule.worker),
     ).resolves.toMatchObject({
-      migrationHead: '0123_workspace_inbox_threads.sql',
+      migrationHead: '0124_workflow_trigger_pause.sql',
       role: 'pertexo_worker',
     });
     const crashed = await schedule.worker.query<{ trigger_id: string }>(

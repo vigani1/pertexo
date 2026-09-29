@@ -264,7 +264,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0123_workspace_inbox_threads.sql',
+          migrationHead: '0124_workflow_trigger_pause.sql',
           role: expectedRole,
         });
       } finally {

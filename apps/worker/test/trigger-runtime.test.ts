@@ -31,6 +31,7 @@ function dependencies() {
       claimed: 0,
       accepted: 0,
       skipped: 0,
+      paused: 0,
       deferred: 0,
       maxLagSeconds: 0,
     }),
@@ -168,6 +169,7 @@ describe('trigger runtime', () => {
       claimed: number;
       accepted: number;
       skipped: number;
+      paused: number;
       deferred: number;
       maxLagSeconds: number;
     }>();
@@ -205,6 +207,7 @@ describe('trigger runtime', () => {
       claimed: 0,
       accepted: 0,
       skipped: 0,
+      paused: 0,
       deferred: 0,
       maxLagSeconds: 0,
     });
@@ -222,6 +225,7 @@ describe('trigger runtime', () => {
         claimed: 0,
         accepted: 0,
         skipped: 0,
+        paused: 0,
         deferred: 0,
         maxLagSeconds: 0,
       });
@@ -281,6 +285,7 @@ describe('trigger runtime', () => {
       claimed: 0,
       accepted: 0,
       skipped: 0,
+      paused: 0,
       deferred: 0,
       maxLagSeconds: 0,
     });
@@ -337,6 +342,7 @@ describe('trigger runtime', () => {
         claimed: 1,
         accepted: 0,
         skipped: 1,
+        paused: 0,
         deferred: 0,
         maxLagSeconds: 3,
       });

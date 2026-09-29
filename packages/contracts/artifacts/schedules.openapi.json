@@ -524,7 +524,8 @@
                   "type": "string",
                   "enum": [
                     "accepted",
-                    "skipped"
+                    "skipped",
+                    "paused"
                   ]
                 },
                 "runId": {

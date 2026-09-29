@@ -44,6 +44,7 @@ import {
   WebhookIngressRateLimitExceededError,
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
+  WebhookWorkflowPausedError,
 } from './webhook-trigger-errors.js';
 import {
   withTenantScopedClient,
@@ -141,6 +142,7 @@ export {
   WebhookIngressRateLimitExceededError,
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
+  WebhookWorkflowPausedError,
 };
 function keyHash(value: string): string {
   return createHash('sha256')
@@ -291,8 +293,9 @@ async function lockEligibleEndpoint(
 ): Promise<void> {
   const eligible = await transaction.db.execute<{
     workflow_version_id: string;
+    trigger_pause_state: string;
   }>(sql`
-    select trigger.workflow_version_id
+    select trigger.workflow_version_id,workflow.trigger_pause_state
       from app.webhook_trigger_endpoints endpoint
       join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id
        and trigger.id=endpoint.trigger_id
@@ -315,8 +318,11 @@ async function lockEligibleEndpoint(
            and endpoint.previous_secret_valid_until>clock_timestamp()))
      for share of endpoint,trigger,workflow,workspace
   `);
-  if (eligible.rows[0] === undefined)
-    throw new WebhookDeliveryIneligibleError();
+  const row = eligible.rows[0];
+  if (row === undefined) throw new WebhookDeliveryIneligibleError();
+  // ADR 056: the shared workflow lock orders this admission against a pause.
+  if (row.trigger_pause_state === 'paused')
+    throw new WebhookWorkflowPausedError();
 }
 
 export function createWebhookTriggerDatabase(
