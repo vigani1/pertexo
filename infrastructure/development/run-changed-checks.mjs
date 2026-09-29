@@ -12,6 +12,11 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const LINTABLE = /\.(?:[cm]?[jt]sx?)$/u;
+// Type-aware ESLint loads each package's whole project graph; give it the same
+// heap as pnpm lint so a scoped run cannot fail where the full one passes.
+const LINT_ENVIRONMENT = Object.freeze({
+  NODE_OPTIONS: '--max-old-space-size=8192',
+});
 const TEST_EXCLUDES = [
   '**/*.integration.test.ts',
   '**/*.browser-probe.test.ts',
@@ -104,6 +109,7 @@ export function planChangedChecks(files, packages, exists = () => true) {
         label: `lint ${owner.name}`,
         cwd: owner.directory,
         command: ['pnpm', 'exec', 'eslint', ...lintable],
+        environment: LINT_ENVIRONMENT,
       });
     const testable = ownFiles.filter(
       (file) => LINTABLE.test(file) && !file.endsWith('.d.ts'),
@@ -140,6 +146,7 @@ export function planChangedChecks(files, packages, exists = () => true) {
       label: 'lint infrastructure',
       cwd: '.',
       command: ['pnpm', 'exec', 'eslint', ...infrastructureScripts],
+      environment: LINT_ENVIRONMENT,
     });
     const nodeTests = [
       ...new Set(
@@ -204,6 +211,7 @@ function main() {
     const [executable, ...arguments_] = step.command;
     const result = spawnSync(executable, arguments_, {
       cwd: path.join(root, step.cwd),
+      env: { ...process.env, ...step.environment },
       stdio: 'inherit',
     });
     if (result.status !== 0) {
