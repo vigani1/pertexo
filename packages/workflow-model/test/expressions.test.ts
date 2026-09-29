@@ -910,6 +910,8 @@ describe('restricted JSONata policy v1', () => {
     expect(result.message).toContain('startup');
     expect(evaluator.diagnostics().workerCreations).toBe(1);
   });
+  // Starting real worker threads under coverage instrumentation takes most of
+  // vitest's 5s default on a CI runner, so give the pool room to start.
   it('is byte-deterministic across two workers and a pool restart', async () => {
     const request = {
       expression: '{"b": runInput.b, "a": runInput.a}',
@@ -954,5 +956,5 @@ describe('restricted JSONata policy v1', () => {
         poolRestarted: true,
       }),
     );
-  });
+  }, 30_000);
 });
