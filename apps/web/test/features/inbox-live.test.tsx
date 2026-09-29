@@ -91,6 +91,62 @@ describe('inbox live updates', () => {
     });
   });
 
+  it.each([502, 503])(
+    'keeps reconnecting through a %i gateway answer without problem details',
+    async (status) => {
+      vi.useFakeTimers();
+      const stream = vi
+        .fn<ApiClient['stream']>()
+        .mockRejectedValueOnce(
+          new ApiError({
+            kind: 'protocol',
+            status,
+            message: 'The server returned an unexpected error response.',
+          }),
+        )
+        .mockResolvedValue(
+          openStream(
+            'event: inbox.ready\ndata: {"schemaVersion":1,"revision":null}\n\n',
+          ),
+        );
+      const apiClient = client(stream);
+      const { result } = renderHook(
+        () => useInboxLive(apiClient, userId, workspaceId, true),
+        { wrapper: wrapper(new QueryClient()) },
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current).toBe('reconnecting');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_500);
+      });
+      expect(stream).toHaveBeenCalledTimes(2);
+      expect(result.current).toBe('live');
+    },
+  );
+
+  it('stops when a successful answer is not an event stream', async () => {
+    const stream = vi.fn(() =>
+      Promise.reject(
+        new ApiError({
+          kind: 'protocol',
+          status: 200,
+          message: 'The server returned an unexpected content type.',
+        }),
+      ),
+    );
+    const apiClient = client(stream);
+    const { result } = renderHook(
+      () => useInboxLive(apiClient, userId, workspaceId, true),
+      { wrapper: wrapper(new QueryClient()) },
+    );
+    await waitFor(() => {
+      expect(result.current).toBe('paused');
+    });
+    expect(stream).toHaveBeenCalledOnce();
+  });
+
   it('opens nothing for a person without the inbox', () => {
     const stream = vi.fn<ApiClient['stream']>();
     const apiClient = client(stream);

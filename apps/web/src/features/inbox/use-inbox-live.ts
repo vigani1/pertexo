@@ -32,7 +32,12 @@ function stopsLiveUpdates(error: unknown): boolean {
   if (!isApiError(error)) return false;
   if (error.status === 401 || error.status === 403 || error.status === 404)
     return true;
-  return error.kind === 'protocol';
+  // A gateway answering for a restarting API sends a 5xx without problem
+  // details; that passes, so only an unreadable non-5xx answer is final.
+  return (
+    error.kind === 'protocol' &&
+    (error.status === undefined || error.status < 500)
+  );
 }
 
 function retryDelay(error: unknown, failures: number): number {
