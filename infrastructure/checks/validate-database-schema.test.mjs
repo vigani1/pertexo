@@ -28,8 +28,8 @@ const validSources = Object.freeze({
 
 test('accounts for every migration-owned application table', async () => {
   assert.deepEqual(await validateDatabaseSchemaOwnership(), {
-    migrationTableCount: 93,
-    typedTableCount: 64,
+    migrationTableCount: 92,
+    typedTableCount: 63,
     rawSqlTableCount: 29,
   });
 });
@@ -40,6 +40,24 @@ test('validates a minimal typed and raw ownership inventory', () => {
     typedTableCount: 1,
     rawSqlTableCount: 1,
   });
+});
+
+test('ignores tables a later migration drops', () => {
+  const retired = `${validSources.migrationSql}
+    CREATE TABLE app.retired_table(id uuid primary key);
+    DROP TABLE app.retired_table;`;
+  assert.deepEqual(
+    validateDatabaseSchemaSources({ ...validSources, migrationSql: retired }),
+    { migrationTableCount: 2, typedTableCount: 1, rawSqlTableCount: 1 },
+  );
+  assert.throws(
+    () =>
+      validateDatabaseSchemaSources({
+        ...validSources,
+        migrationSql: `${validSources.migrationSql}\nDROP TABLE IF EXISTS app.typed_table;`,
+      }),
+    /Typed tables absent from migrations: typed_table/u,
+  );
 });
 
 test('rejects invalid raw-table registry fields', () => {

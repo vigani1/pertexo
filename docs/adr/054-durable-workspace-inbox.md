@@ -1,6 +1,10 @@
 # ADR 054: Durable workspace inbox projection and recovery
 
-- **Status:** accepted for implementation — operating/load and live gates pending
+- **Status:** superseded in part by
+  [ADR 055](055-workspace-inbox-failure-threads.md) — its product and
+  authorization rules stand; its delivery model (audience capture,
+  per-recipient fan-out, per-entry retention, resumable read-all and source
+  resume) was never activated and is retired by migration 0123
 - **Date:** 2026-09-28
 
 ## Context
@@ -482,7 +486,7 @@ CodeQL 36495495631 passed without reruns. Historical failed/corrected PostgreSQL
 qualification above remains unchanged.
 
 P1 adds forward migration 0121 and
-[capture persistence](../../packages/database/src/execution/workspace-inbox/capture-store.ts),
+capture persistence (`packages/database/src/execution/workspace-inbox/capture-store.ts`, removed with ADR 055),
 not an enabled producer or projection runtime. One owned `capture` operation
 contains claim, capture and acknowledged-rollback failure accounting. Narrow
 context-validating owner-executed commands preserve forced tenant RLS, avoid
@@ -512,7 +516,7 @@ plus graph/import checks passed. Independent correction re-review returned no
 standards/spec findings and passed all 42 focused unit/static cases.
 
 One separately authorized run of the
-[PostgreSQL cases](../../packages/database/test/workspace-inbox-capture.integration.test.ts)
+PostgreSQL cases (`packages/database/test/workspace-inbox-capture.integration.test.ts`, removed with ADR 055)
 passed **18/18**, with zero failures, pending/skipped tests or retries (8.81-second
 suite). It used the approved isolated PostgreSQL 18 fixture on 127.0.0.1:55436,
 with actual migration/API/worker roles and forced tenant RLS. Cases cover command
@@ -558,7 +562,7 @@ HTTP/frontend, read-all/SSE, declared-load and activation gates remain required.
 
 Forward [migration 0122](../../packages/database/migrations/0122_workspace_inbox_projection.sql)
 and the feature-owned
-[projection store](../../packages/database/src/execution/workspace-inbox/projection-store.ts)
+projection store (`packages/database/src/execution/workspace-inbox/projection-store.ts`, removed with ADR 055)
 add one owned `projectNextPage` operation. Ordinary callers do not receive
 lease, cursor or failure-accounting authority. No producer, queue registration,
 worker composition, operator recovery, retention execution, HTTP, UI, SSE or
@@ -604,7 +608,7 @@ passed. The initial pnpm formatter unexpectedly reconciled local dependencies
 and ran the hook installer; inspection found no tracked package/lock/workspace/
 hook changes. Subsequent checks used direct installed binaries, not pnpm.
 
-[Nineteen PostgreSQL cases](../../packages/database/test/workspace-inbox-projection.integration.test.ts)
+Nineteen PostgreSQL cases (`packages/database/test/workspace-inbox-projection.integration.test.ts`, removed with ADR 055)
 passed **19/19** in one separately authorized controlled run (4,332 ms suite;
 zero failures, pending/skipped tests or retries). They cover command/raw-grant
 authority, >100 frozen recipients/late joins, current

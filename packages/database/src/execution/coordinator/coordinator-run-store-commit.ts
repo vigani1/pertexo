@@ -38,7 +38,10 @@ import { observeScheduleToStartSeconds } from './coordinator-schedule-observatio
 export async function commitCoordinatorAdvancePlan(
   pool: Pool,
   input: CommitAdvancePlanInput,
-  options: Readonly<{ runTimeoutFailureContextEnabled: boolean }>,
+  options: Readonly<{
+    runTimeoutFailureContextEnabled: boolean;
+    workspaceInboxProducerEnabled: boolean;
+  }>,
 ): Promise<CommitAdvancePlanResult> {
   if (!(input.signal instanceof AbortSignal))
     throw new CoordinatorPlanInvalidError();
@@ -137,6 +140,7 @@ export async function commitCoordinatorAdvancePlan(
           row: commitState.row,
           runTimeoutFailureContextEnabled:
             options.runTimeoutFailureContextEnabled,
+          workspaceInboxProducerEnabled: options.workspaceInboxProducerEnabled,
           runId,
           ...(traceparent === undefined ? {} : { traceparent }),
           workflowVersionId,

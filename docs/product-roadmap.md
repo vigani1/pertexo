@@ -43,11 +43,10 @@ competitor has ever offered. Later items are decision-gated options.
   CodeQL 36481275347 passed on that exact source. See F00/F01 for accepted local
   evidence and preserved external limitations. Do not repeat those journeys
   merely to update status or implement every roadmap row at once.
-- Preserve existing dirty CONTEXT.md and
-  [notifications proposal](workspace-notifications-plan.md). At the 2026-09-29
-  foundation verification checkpoint, that proposal remained untracked. It is
-  the detailed F03 plan, qualified by accepted ADR054 and its
-  foundation evidence. CONTEXT.md remains outside the scoped delivery changes.
+- Preserve existing dirty CONTEXT.md. The
+  [notifications plan](workspace-notifications-plan.md) is the detailed F03
+  plan under accepted [ADR055](adr/055-workspace-inbox-failure-threads.md).
+  CONTEXT.md remains outside the scoped delivery changes.
 - No runtime tests were executed for this planning pass. Current-code presence,
   historical verification and new acceptance requirements are distinct.
 - Original intermittent account-link behavior remains an explicit qualification
@@ -265,10 +264,10 @@ proposals. Update it only if an approved implementation changes its claims.
 ## First selected planning session
 
 F03 inbox is the current selected feature after the accepted F00/F01 local and
-release gates. [ADR054](adr/054-durable-workspace-inbox.md) accepts its decisions
-for implementation; contracts and database foundation passed the scoped checks
-and eight real PostgreSQL cases. Projection/runtime, HTTP, inbox UI, read-all,
-SSE and integrated/load gates remain subsequent increments. Separately make
+release gates. [ADR055](adr/055-workspace-inbox-failure-threads.md) replaced
+[ADR054](adr/054-durable-workspace-inbox.md)'s per-recipient delivery, whose
+increments merged inactive, with per-workflow threads computed on read. The
+database, worker/API and frontend slices follow in that order. Separately make
 the F04 consumer decision and F08 input/output/pinning design; those are planning
 tasks, not permission to start three large implementations at once.
 

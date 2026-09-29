@@ -33,6 +33,8 @@ export type {
 };
 export type CoordinatorRunStoreOptions = Readonly<{
   runTimeoutFailureContextEnabled?: boolean;
+  /** ADR 055: record terminal failures for the workspace inbox. */
+  workspaceInboxProducerEnabled?: boolean;
 }>;
 
 export function createCoordinatorRunStore(
@@ -51,6 +53,8 @@ export function createCoordinatorRunStore(
       commitCoordinatorAdvancePlan(pool, input, {
         runTimeoutFailureContextEnabled:
           options.runTimeoutFailureContextEnabled ?? false,
+        workspaceInboxProducerEnabled:
+          options.workspaceInboxProducerEnabled ?? false,
       }),
     close: () => lease.close(),
   });

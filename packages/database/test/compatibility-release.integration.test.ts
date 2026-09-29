@@ -287,7 +287,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0122_workspace_inbox_projection.sql',
+        migrationHead: '0123_workspace_inbox_threads.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -410,7 +410,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0122_workspace_inbox_projection.sql',
+        migrationHead: '0123_workspace_inbox_threads.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -575,7 +575,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0122_workspace_inbox_projection.sql',
+          migrationHead: '0123_workspace_inbox_threads.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -607,7 +607,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0122_workspace_inbox_projection.sql',
+        migrationHead: '0123_workspace_inbox_threads.sql',
       });
     } finally {
       await pool.end();

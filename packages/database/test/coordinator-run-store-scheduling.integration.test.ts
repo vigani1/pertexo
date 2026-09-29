@@ -170,6 +170,28 @@ async function failureNotificationIdentity(runId: string): Promise<{
   return first;
 }
 
+/** The worker may only insert inbox events, so read them as the owner. */
+async function inboxEvents(runId: string) {
+  return asOwner(
+    workspaceA,
+    async (client) =>
+      (
+        await client.query<{
+          kind: string;
+          terminal_event_sequence: string;
+          occurred_at: string;
+        }>(
+          `select kind,terminal_event_sequence::text,
+                to_char(occurred_at at time zone 'UTC',
+                  'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') occurred_at
+           from app.workspace_inbox_events
+          where workspace_id=$1 and run_id=$2`,
+          [workspaceA, runId],
+        )
+      ).rows,
+  );
+}
+
 type FailureNotificationQueryFailure = Readonly<{
   matches(sql: string): boolean;
   message: string;
@@ -1066,6 +1088,69 @@ describe('Coordinator scheduling and notification invariants', () => {
     ).resolves.toMatchObject({
       rows: [{ run_status: 'timed_out', intent_count: 0 }],
     });
+    await expect(inboxEvents(runId)).resolves.toEqual([]);
+  });
+
+  it('records one workspace inbox failure only when the producer is enabled', async () => {
+    const runId = await insertRun({
+      status: 'running',
+      schedulerState: checkpoint({ runStatus: 'running' }),
+    });
+    const inboxStore = createCoordinatorRunStore(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerBaseUrl),
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+      undefined,
+      { workspaceInboxProducerEnabled: true },
+    );
+    const input = {
+      workspaceId: workspaceA,
+      runId,
+      workflowVersionId: versionA,
+      delivery: await testDelivery(workspaceA, runId, 0),
+      signal: new AbortController().signal,
+      plan: {
+        expectedRevision: 0,
+        expectedNextEventSequence: 2,
+        consumedThroughEventSequence: 1,
+        checkpoint: checkpoint({
+          revision: 1,
+          runStatus: 'outcome_unknown',
+          nextEventSequence: 3,
+          invocations: [],
+        }),
+        events: [
+          {
+            schemaVersion: 1 as const,
+            sequence: 2,
+            name: 'run.outcome_unknown' as const,
+            occurredAt: '2026-09-28T10:01:00.000Z',
+          },
+        ],
+        nodeRunAdmissions: [],
+        attempts: [],
+      },
+    };
+    try {
+      await expect(inboxStore.commitAdvancePlan(input)).resolves.toMatchObject({
+        kind: 'committed',
+      });
+      await expect(inboxStore.commitAdvancePlan(input)).resolves.toMatchObject({
+        kind: 'already_committed',
+      });
+    } finally {
+      await inboxStore.close();
+    }
+    await expect(inboxEvents(runId)).resolves.toEqual([
+      {
+        kind: 'outcome_unknown',
+        terminal_event_sequence: '2',
+        occurred_at: '2026-09-28T10:01:00.000Z',
+      },
+    ]);
   });
 
   it('atomically creates one policy-pinned safe failure notification intent', async () => {
