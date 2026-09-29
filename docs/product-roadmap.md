@@ -2,8 +2,8 @@
 
 Status: user-authorized sequential delivery; F00/F01 bounded local qualification
 and release checks are complete through merged PR113/114. External qualification
-remains open. F03 is in progress: every slice is merged with the producer off;
-integrated acceptance evidence and activation remain. Later feature plans retain their individual design/decision gates.
+remains open. F03 is delivered: every slice is merged, the local acceptance run is recorded
+and the producer is on. Later feature plans retain their individual design/decision gates.
 Created 2026-09-28 (Europe/Belgrade). User authorization is recorded separately
 from this document; external provisioning, spending and production release
 remain unapproved.
@@ -143,7 +143,7 @@ the then-current code. Do not spend weeks finalizing far-future schemas.
 
 | Wave | Order within wave | Why |
 | --- | --- | --- |
-| 0 — Close current work | F00/F01 (merged) → finish F03 inbox | Trusted foundation and the first operational feedback loop |
+| 0 — Close current work | F00/F01 (merged) → F03 inbox (delivered) | Trusted foundation and the first operational feedback loop |
 | 1 — Run safely at scale | F26 auto-pause → F12 usage and limits → F29 per-workflow concurrency → F30 connection health | Before usage grows: stop runaway failures, measure and bound consumption, stop runs overlapping themselves, catch broken credentials early |
 | 2 — Daily usability | F05 duplicate workflow (first slice) → F02 test cases → rest of F05 portability → F06 templates; F27 notification preferences; F07 organization | Safe iteration, reuse and a quieter, personal inbox |
 | 3 — Reusable reliable automation | F08 subworkflows → F09 failure routes and retry from the failed step; F24 transforms; F21's generic OAuth2 connections for HTTP Request; F04 files once a file workflow is chosen | Expand what workflows can do while keeping behavior inspectable; OAuth2 widens API reach without bespoke connectors |
@@ -188,7 +188,7 @@ only after its gate is resolved.
 | [F00](feature-plans/00-release-baseline.md) | Release baseline and existing-capability qualification | Existing implementation / evidence gate | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F01](feature-plans/01-editor-capability-completion.md) | Complete and qualify the existing editor surface | Frontend-led parity, not a rebuild | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F02](feature-plans/02-workflow-test-workspace.md) | Saved test cases, pinned samples and workflow regression runs | New product over existing previews | L | Proposed |
-| [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | In progress: redesigned under ADR055; database (PR118), worker (PR119), API (PR120) and web slices merged with the producer off; integrated acceptance evidence remains |
+| [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | Delivered: ADR055 database (PR118), worker (PR119), API (PR120) and web (PR123) slices merged; local acceptance recorded; producer on |
 | [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs and artifact lifecycle | Backend foundation exists; consumer contract + frontend missing | L | Proposed |
 | [F05](feature-plans/05-workflow-portability.md) | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Proposed |
 | [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Proposed |
@@ -294,12 +294,12 @@ proposals. Update it only if an approved implementation changes its claims.
 
 ## First selected planning session
 
-F03 inbox is the current selected feature after the accepted F00/F01 local and
-release gates. [ADR055](adr/055-workspace-inbox-failure-threads.md) replaced
+F03 inbox was the first selected feature after the accepted F00/F01 local and
+release gates; it is delivered, and wave 1 starts with F26 auto-pause. [ADR055](adr/055-workspace-inbox-failure-threads.md) replaced
 [ADR054](adr/054-durable-workspace-inbox.md)'s per-recipient delivery, whose
 increments merged inactive, with per-workflow threads computed on read. The
-database, worker, API and frontend slices merged in that order; integrated
-acceptance evidence and activation are next. Separately make
+database, worker, API and frontend slices merged in that order, and the local
+acceptance run is recorded with the producer on. Separately make
 the F04 consumer decision and F08 input/output/pinning design; those are planning
 tasks, not permission to start three large implementations at once.
 

@@ -1,6 +1,6 @@
 # Workspace inbox notifications and live updates
 
-Status: in progress under accepted
+Status: delivered under accepted
 [ADR055](adr/055-workspace-inbox-failure-threads.md), which supersedes
 [ADR054](adr/054-durable-workspace-inbox.md)'s per-recipient delivery model.
 Created 2026-09-25; redesigned 2026-09-29. Delivery is tracked in
