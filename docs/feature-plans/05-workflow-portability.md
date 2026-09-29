@@ -49,8 +49,12 @@ Versioned bounded portable manifest, normal graph admission, recursive identity/
 
 ## Delivery slices
 
-1. Define manifest and exported source (draft versus immutable version), validate size/depth and secret handling.
-2. Deliver same-workspace duplicate with shared remapper; then export/import with dry-run compatibility and credential slots.
+1. Deliver same-workspace **Duplicate workflow** first, as a standalone quick
+   win: copy the current draft or a chosen version into a new draft with every
+   identity remapped and connection references kept (same workspace, same
+   authority). It needs no manifest and can ship ahead of the rest of F05.
+2. Define manifest and exported source (draft versus immutable version), validate size/depth and secret handling;
+   then export/import with dry-run compatibility and credential slots, reusing the duplicate remapper.
 3. Test nested graphs, multiple versions and idempotent import; add dependency bundles only after subworkflows exist.
 
 Each slice ends in a usable, tested behavior; do not ship enabled placeholder

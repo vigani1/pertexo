@@ -52,6 +52,12 @@ Versioned node/graph failure semantics in model/engine; sanitized error outputs,
 1. Map existing retry/replay UI to contracts and close only real gaps.
 2. ADR/select one initial failure-route model; implement isolated engine and persistence behavior.
 3. Add authoring/run UI and tests; consider reusable error workflows separately after 08.
+4. **Retry from the failed step**: a new run that reuses the recorded outputs of
+   steps that already succeeded and executes from the failed step onward. It
+   is offered only when the version is unchanged, the recorded outputs are
+   still retained, and no earlier step ended `outcome_unknown`; otherwise the
+   person gets a full replay with the reason. Lineage links the new run to the
+   original. Needs its own ADR on reuse eligibility and retention.
 
 Each slice ends in a usable, tested behavior; do not ship enabled placeholder
 controls backed by invented responses.
@@ -67,7 +73,7 @@ the live gate. Record unsupported environments explicitly.
 
 ## Non-goals
 
-Arbitrary rewind/resume, retroactively editing immutable versions, guaranteeing exactly-once external effects.
+Arbitrary rewind or resuming the original run in place (retry from the failed step starts a new, linked run), retroactively editing immutable versions, guaranteeing exactly-once external effects.
 
 ## Rollout and rollback
 
@@ -79,7 +85,7 @@ retention/membership-deletion handling before enablement.
 
 ## Competitor context
 
-n8n has error workflows and Make has incomplete execution recovery; distinguish our new-run replay from their continuation products. Sources: [n8n error handling](https://docs.n8n.io/build/flow-logic/handle-errors-gracefully.md); [Make incomplete execution management](https://help.make.com/manage-incomplete-executions).
+n8n has error workflows and Make has incomplete execution recovery; our retry from the failed step is a new linked run with explicit reuse rules, not in-place continuation. Sources: [n8n error handling](https://docs.n8n.io/build/flow-logic/handle-errors-gracefully.md); [Make incomplete execution management](https://help.make.com/manage-incomplete-executions).
 
 Research checked 2026-09-28; product editions and availability can change.
 This context informs the outcome, not Pertexo's implementation or billing policy.

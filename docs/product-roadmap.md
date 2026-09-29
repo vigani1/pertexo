@@ -85,7 +85,7 @@ user-delivered because a table or executor exists.
 
 ## Competitor comparison: capability benchmarks, not a scorecard
 
-Official documentation was checked on 2026-09-28, and for the F26/F27 rows on
+Official documentation was checked on 2026-09-28, and for the F26–F30 rows on
 2026-09-29. “Not assessed” is not “absent”.
 No prices, connector counts, blanket parity percentages or unsupported
 performance/reliability rankings are asserted. Editions differ.
@@ -99,6 +99,9 @@ performance/reliability rankings are asserted. Editions differ.
 | Understand/recover failure | [n8n error handling](https://docs.n8n.io/build/flow-logic/handle-errors-gracefully.md) and [Make incomplete execution management](https://help.make.com/manage-incomplete-executions) | Existing retry/replay; workflow-authored handling F09 is separate |
 | Stop an automation that keeps failing | [Zapier turns off Zaps that keep erroring](https://help.zapier.com/hc/en-us/articles/8496216132621-Zap-is-not-running); [Make errors before deactivation](https://help.make.com/scenario-settings) | Missing; F26 pauses triggers and announces it in the inbox |
 | Choose how failures reach each person | [Zapier error notification frequency](https://help.zapier.com/hc/en-us/articles/8496289225229-Manage-notifications-when-errors-occur-in-Zap-workflows) | F03 inbox plus per-workflow alerts exist; per-person preferences and email digest F27 |
+| Keep a workflow from overlapping itself | [Make process data in order](https://help.make.com/scenario-settings) | Workspace limits only; per-workflow limit F29 |
+| Sign in through the company directory | [Zapier SAML](https://help.zapier.com/hc/en-us/articles/8496279747085-Set-up-single-sign-on-with-SAML) and [SCIM](https://help.zapier.com/hc/en-us/articles/8496291497741-Provision-user-accounts-with-SCIM); [n8n SSO](https://docs.n8n.io/hosting/securing/set-up-sso/) | Password/social sign-in exists; organization SSO and provisioning F28 |
+| Know a connection broke before runs fail | [Zapier app connections](https://help.zapier.com/hc/en-us/articles/8496290788109-Manage-your-app-connections) marks expired connections for reconnection | Test-only health today; F30 |
 | Human intervention before continuation | [Zapier Human in the Loop](https://help.zapier.com/hc/en-us/sections/38731226552845-Human-in-the-Loop) | New durable decision product F10 |
 | Forms start workflows | [n8n Form Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger) | New product F11 |
 | File data in workflows | [n8n file and binary data](https://docs.n8n.io/build/work-with-data/handle-special-data-types/work-with-files-and-images) | Storage/output exists; complete input/consumer F04 |
@@ -123,32 +126,36 @@ the then-current code. Do not spend weeks finalizing far-future schemas.
 ### Plan first
 
 1. **F00/F01/F03:** agree the starting evidence and first usable inbox slice.
-2. **F02/F04/F05:** design preview isolation, file consumer and portable format;
+2. **F26/F12/F29/F30:** settle pause, limits, concurrency and connection-health
+   semantics together; they share admission and failure signals.
+3. **F02/F04/F05:** design preview isolation, file consumer and portable format;
    they constrain later reuse without requiring immediate implementation.
-3. **F08:** settle subworkflow pinning, input/output and parent/child durability
+4. **F08:** settle subworkflow pinning, input/output and parent/child durability
    early; do not code around those decisions with internal HTTP calls.
-4. **F09/F10/F11:** settle handled-error and human-resume semantics together,
+5. **F09/F10/F11:** settle handled-error and human-resume semantics together,
    keeping the domains distinct.
-5. **F12/F13/F16/F17:** agree measurement/configuration/identity before future
-   billing and environment schema.
-6. **F14/F18–F25:** refine only when a real user journey or commercial decision
+6. **F13/F16/F17/F28:** agree configuration and machine and organization
+   identity before future environment and enterprise schema.
+7. **F14/F18–F25:** refine only when a real user journey or commercial decision
    promotes the item. Their initial plans keep requirements from being forgotten.
 
 ### Recommended delivery sequence
 
 | Wave | Order within wave | Why |
 | --- | --- | --- |
-| 0 — Close current work | Structural cleanup and F00; bounded F01 verification/fixes | Establish trusted foundation without another broad cleanup cycle |
-| 1 — Daily usability | F03 inbox → F02 test cases → F05 portability → F06 templates | Immediate usefulness, safe testing and less repeated authoring |
-| 1b — Parallel-ready optional slices | F04 file consumer/upload; F07 organization; selected F24 transforms | Independent product work after their gates; file decision must not block everything |
-| 2 — Reusable reliable automation | F08 subworkflows → F09 failure routes; F26 auto-pause and F27 notification preferences after F03; F12 usage before large adoption | Expand what workflows can do while keeping behavior inspectable, and stop failures from running unattended |
-| 3 — Human workflows | F10 approvals → F11 forms/resume input; F13 configuration | Durable human actions and reusable configuration |
-| 4 — Team/developer platform | F16 machine tokens → F17 environments; F18 governance; F19 comments/presence | Operational control; multiplayer remains its own later milestone |
-| 5 — Optional power features | F14 data tables; F15 sync responses; F20 sandbox; F25 coordination | High cost/security/semantics; promote by demand, not to fill a checklist |
-| 6 — Ecosystem expansion | F21 selected providers/polling; F22 AI; F23 only after business approval | Core product first, as requested; no broad catalog or billing detour |
+| 0 — Close current work | F00/F01 (merged) → finish F03 inbox | Trusted foundation and the first operational feedback loop |
+| 1 — Run safely at scale | F26 auto-pause → F12 usage and limits → F29 per-workflow concurrency → F30 connection health | Before usage grows: stop runaway failures, measure and bound consumption, stop runs overlapping themselves, catch broken credentials early |
+| 2 — Daily usability | F05 duplicate workflow (first slice) → F02 test cases → rest of F05 portability → F06 templates; F27 notification preferences; F07 organization | Safe iteration, reuse and a quieter, personal inbox |
+| 3 — Reusable reliable automation | F08 subworkflows → F09 failure routes and retry from the failed step; F24 transforms; F21's generic OAuth2 connections for HTTP Request; F04 files once a file workflow is chosen | Expand what workflows can do while keeping behavior inspectable; OAuth2 widens API reach without bespoke connectors |
+| 4 — Human workflows | F10 approvals → F11 forms/resume input; F13 configuration | Durable human actions and reusable configuration |
+| 5 — Team and enterprise platform | F16 machine tokens → F17 environments; F18 governance; F28 single sign-on and provisioning; F19 comments/presence | Operational control for larger organizations; multiplayer remains its own later milestone |
+| 6 — Optional power features | F14 data tables; F15 sync responses; F20 sandbox; F25 coordination | High cost/security/semantics; promote by demand, not to fill a checklist |
+| 7 — Ecosystem expansion | F21 selected providers/polling (after its OAuth2 slice) → F22 AI, starting with a bounded model step before agents; F23 only after business approval | Breadth after the core product is complete, by product choice |
 
 Waves express priority, not a requirement to finish every optional row before
-moving on. The first complete core path is F00/F01 → F03 → F02 → F05/F06 → F08.
+moving on. The first complete core path is F00/F01 → F03 → F26/F12 → F02 →
+F05/F06 → F08. Integrations stay late on purpose: the core product and its
+safety controls come first, and providers are added on top of them.
 File inputs can move ahead of templates if a validated file workflow is the
 higher-value journey. A specific launch-critical provider may move earlier only
 by explicit product choice, not automatically because polling was once named
@@ -158,8 +165,11 @@ a V1 follow-up.
 
 - F05 → F06; F05 + F13 + F16 → F17.
 - F03 → F10 → resume-input part of F11; public start forms can be independent.
-- F03 → F27 → notices from F26 (pauses) and F12 (limits); F26 can pause
-  before F27 exists but announces pauses through F27's notice kinds.
+- F03 → F27 → notices from F26 (pauses), F12 (limits) and F30 (connection
+  health); F26 can pause before F27 exists but announces pauses through F27's
+  notice kinds.
+- F12 → F29 queue visibility; F26 and F29 share run admission.
+- F18 → F28 organization administration.
 - F04 → file fields/parsers; not required for plain JSON subworkflows.
 - F08 → reusable error workflows and AI tool workflows, not every error route.
 - F12 → commercial F23; trustworthy measurement before pricing.
@@ -203,6 +213,9 @@ only after its gate is resolved.
 | [F25](feature-plans/25-event-coordination.md) | Business-event deduplication, debounce and throttling | Optional durable coordination beyond queue reliability | XL | Proposed |
 | [F26](feature-plans/26-workflow-auto-pause.md) | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Proposed |
 | [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
+| [F28](feature-plans/28-single-sign-on-and-provisioning.md) | Single sign-on (SAML/OIDC) and SCIM user provisioning | Extends the session authority for organizations | L–XL | Proposed |
+| [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Proposed |
+| [F30](feature-plans/30-connection-health.md) | Connection health from real failures, used-by and reconnection | Extends existing connections | M–L | Proposed |
 
 ## Shared implementation rules
 
