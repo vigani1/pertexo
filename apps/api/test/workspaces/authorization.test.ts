@@ -68,6 +68,7 @@ describe('workspace authorization policy', () => {
       'connection:manage',
       'member:read',
       'member:manage',
+      'notification:read',
     ]);
   });
 
@@ -88,6 +89,10 @@ describe('workspace authorization policy', () => {
     expect(hasCapability('viewer', 'workflow:read')).toBe(true);
     expect(hasCapability('viewer', 'run:start')).toBe(false);
     expect(hasCapability('viewer', 'connection:use')).toBe(false);
+    // ADR 055: the inbox is for people who act on failed runs.
+    expect(hasCapability('operator', 'notification:read')).toBe(true);
+    expect(hasCapability('builder', 'notification:read')).toBe(false);
+    expect(hasCapability('viewer', 'notification:read')).toBe(false);
   });
 
   it('keeps the complete role policy explicit and duplicate-free', () => {
@@ -109,6 +114,7 @@ describe('workspace authorization policy', () => {
       'connection:manage',
       'member:read',
       'member:manage',
+      'notification:read',
     ]);
     expect(capabilitiesForRole('builder')).toEqual([
       'artifact:read',
@@ -134,6 +140,7 @@ describe('workspace authorization policy', () => {
       'run:cancel',
       'run:replay',
       'connection:use',
+      'notification:read',
     ]);
     expect(capabilitiesForRole('viewer')).toEqual([
       'artifact:read',

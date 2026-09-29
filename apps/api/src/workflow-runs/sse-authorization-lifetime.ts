@@ -1,6 +1,8 @@
 import {
   authorizeWorkspaceOperation,
+  type AuthorizationCapability,
   type WorkspaceAuthorizationSource,
+  type WorkspaceStatus,
 } from '../workspaces/index.js';
 import type { WorkflowRunApplicationInput } from './ports.js';
 
@@ -9,6 +11,9 @@ type SseAuthorizationLifetimeInput = Pick<
   'actor' | 'routeWorkspaceId'
 > &
   Readonly<{
+    /** What the stream shows; run events by default. */
+    capability?: AuthorizationCapability;
+    allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
     sessionExpiresAt: Date;
     reauthorizeSession: (signal: AbortSignal) => Promise<
       Readonly<{
@@ -99,10 +104,14 @@ export function createStreamAuthorizationLifetime(
     await authorizeWorkspaceOperation({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,
-      capability: 'run:read',
+      capability: input.capability ?? 'run:read',
       access: authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+      allowedWorkspaceStatuses: input.allowedWorkspaceStatuses ?? [
+        'active',
+        'suspended',
+        'pending_deletion',
+      ],
       signal,
     });
     signal.throwIfAborted();

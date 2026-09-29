@@ -135,3 +135,22 @@ cover these paths plus shutdown during a fold. A real PostgreSQL and Redis
 test proves a pending failure becomes a thread, is consumed, and publishes one
 content-free hint carrying the thread's revision. The run-event publisher now
 shares the same bounded Redis publisher.
+
+### API evidence (2026-09-29, PR B2)
+
+The API serves the ADR 055 contract under
+`/v1/workspaces/:workspaceId/notifications`: the list with an opaque keyset
+cursor bound to its workspace and filter, the summary, single read and read-all
+by the revision the reader saw, and the `inbox.ready`/`inbox.changed` hint
+stream. Owners, admins and operators hold `notification:read`; the guard hides
+the inbox from other roles as not found, and row-level security applies the
+same eligibility to every statement. Each API process shares one Redis
+subscriber across its open inboxes, keeps only the newest undelivered hint for
+a slow client, tells every open inbox to resync after a reconnect, and
+reauthorizes each stream under ADR 004's watchdog.
+
+A full-stack test signs people in through Better Auth on a disposable database
+and proves eligibility, cross-role denial, private reads, the read-all cut,
+CSRF on commands and a worker hint reaching an open stream over real Redis.
+HTTP-level, hub, stream and cursor tests cover tampering, slow clients,
+reconnects and authorization loss.
