@@ -5,6 +5,10 @@ import {
   type AuthenticationMailRuntime,
 } from '../execution/authentication-mail-runtime.js';
 
+import {
+  WORKSPACE_INBOX_RUNTIME,
+  type WorkspaceInboxRuntime,
+} from '../execution/workspace-inbox-runtime.js';
 import { WORKSPACE_DATABASE } from '../platform/database/database.module.js';
 import {
   COORDINATOR_RUNTIME,
@@ -50,6 +54,9 @@ export class WorkerReadiness {
     @Optional()
     @Inject(AUTHENTICATION_MAIL_RUNTIME)
     private readonly authenticationMailRuntime?: AuthenticationMailRuntime,
+    @Optional()
+    @Inject(WORKSPACE_INBOX_RUNTIME)
+    private readonly workspaceInboxRuntime?: WorkspaceInboxRuntime,
   ) {}
 
   public assertCanAcceptWork(): void {
@@ -67,6 +74,7 @@ export class WorkerReadiness {
       this.nodeAttemptRuntime?.checkReadiness?.(),
       this.coordinatorRuntime?.checkReadiness(),
       this.maintenanceRuntime?.checkReadiness(),
+      this.workspaceInboxRuntime?.checkReadiness(),
     ]);
     this.authenticationMailRuntime?.checkReadiness();
     this.assertCanAcceptWork();

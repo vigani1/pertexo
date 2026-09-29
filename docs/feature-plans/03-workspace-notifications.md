@@ -1,8 +1,8 @@
 # F03 — Durable in-app notifications and live inbox
 
 Status: in progress — redesigned under accepted
-[ADR055](../adr/055-workspace-inbox-failure-threads.md); database layer in
-review. Worker, API and frontend slices open.
+[ADR055](../adr/055-workspace-inbox-failure-threads.md); database layer
+merged, worker slice in review. API and frontend slices open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New frontend + backend product. Relative size: **L**, not a calendar estimate.
 
@@ -68,10 +68,12 @@ Under `/v1/workspaces/:workspaceId/notifications`, requiring
    commands (refusing to run if any hold rows) and adds events, threads and
    reads with RLS; producer wiring behind the store option; fold/expiry
    commands with startup readiness; recipient read store; purge participation.
-2. **Worker and API (PR B):** producer flag, fold/expiry loop, Redis hints,
-   `notification:read`, contracts and HTTP/SSE endpoints with real-database
-   API tests.
-3. **Frontend (PR C):** bell with unread badge, inbox panel, mark read and
+2. **Worker (PR B1):** `WORKSPACE_INBOX_PRODUCER` flag, fold/expiry loop with
+   startup compatibility, readiness and shutdown, and per-workspace Redis
+   hints.
+3. **API (PR B2):** `notification:read`, thread contracts and HTTP/SSE
+   endpoints with real-database API tests.
+4. **Frontend (PR C):** bell with unread badge, inbox panel, mark read and
    read-all, deep links to the latest run and the workflow's failed runs, live
    refresh via SSE plus refetch on focus and reconnect; component and browser
    tests against the local stack.
@@ -103,8 +105,9 @@ paid provisioning or external calls are authorized by this plan.
 
 - [x] ADR054 foundation, capture and fan-out increments merged inactive (PR115–PR117).
 - [x] Redesign accepted as ADR055 before any activation.
-- [ ] Database layer (PR A) merged with green checks.
-- [ ] Worker and API (PR B) merged with green checks.
+- [x] Database layer (PR A, PR118) merged with green checks.
+- [ ] Worker (PR B1) merged with green checks.
+- [ ] API (PR B2) merged with green checks.
 - [ ] Frontend (PR C) merged with green checks.
 - [ ] Real integrated acceptance evidence recorded.
 
@@ -120,3 +123,15 @@ privacy, the read-all cut, keyset paging, monotonic reads, expiry with legal
 hold and release, and child-first workspace purge. The coordinator suite proves
 the producer writes nothing when off and exactly one event per terminal failure
 when on, including redelivery.
+
+### Worker evidence (2026-09-29, PR B1)
+
+The worker reads `WORKSPACE_INBOX_PRODUCER` (default `false`) into the
+coordinator's run store, and runs the fold/expiry loop on every worker. The
+loop checks the reviewed commands once before running any, folds bursts back
+to back, sweeps expiry on its own interval, and reports readiness from its
+latest cycle. A failed hint is logged and never fails a cycle. Unit tests
+cover these paths plus shutdown during a fold. A real PostgreSQL and Redis
+test proves a pending failure becomes a thread, is consumed, and publishes one
+content-free hint carrying the thread's revision. The run-event publisher now
+shares the same bounded Redis publisher.

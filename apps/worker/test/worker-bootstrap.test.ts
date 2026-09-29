@@ -53,6 +53,12 @@ const workerConfig = {
     dueWakeupPollIntervalMillis: 250,
     maximumAdmissions: 32,
     runTimeoutFailureContextEnabled: false,
+    workspaceInboxProducerEnabled: false,
+  },
+  workspaceInbox: {
+    foldBatchSize: 500,
+    foldPollMillis: 1_000,
+    expiryPollMillis: 300_000,
   },
   nodeAttempt: {
     heartbeatIntervalMillis: 10_000,
@@ -173,6 +179,11 @@ function dependencies(
     waitUntilReady: vi.fn().mockResolvedValue(undefined),
   };
   const metrics = transportMetrics();
+  const workspaceInboxRuntime = {
+    start: vi.fn(),
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
   return {
     database: selectedDatabase,
     dispatcherClose,
@@ -185,6 +196,7 @@ function dependencies(
     telemetry,
     transportMetrics: metrics.metrics,
     workerProcessStart: metrics.recordWorkerProcessStart,
+    workspaceInboxRuntime,
   };
 }
 

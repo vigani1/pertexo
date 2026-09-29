@@ -3,25 +3,15 @@ import './server-only.js';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
-import { Redis } from 'ioredis';
+import type { Redis } from 'ioredis';
 import { z } from 'zod';
+
 import {
-  notifyRedisConnectionEvent,
-  observeRedisOperation,
-  type RedisTelemetryObserver,
-} from './redis-telemetry-contracts.js';
-import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
-import { normalizeRedisEndpoint } from './redis-endpoint.js';
+  BoundedRedisPublisher,
+  type BoundedRedisPublisherOptions,
+} from './redis-bounded-publisher.js';
 
-const DEFAULT_PUBLISH_TIMEOUT_MS = 2_000;
 const MAX_LIVE_MESSAGE_BYTES = 512;
-
-const optionsSchema = z
-  .object({
-    publishTimeoutMs: z.number().int().positive().max(60_000).optional(),
-    redisUrl: z.string().trim().min(1),
-  })
-  .strict();
 const identitySchema = z
   .object({ runId: z.uuid(), workspaceId: z.uuid() })
   .strict();
@@ -29,11 +19,7 @@ const eventReferenceSchema = identitySchema
   .extend({ sequence: z.number().int().positive() })
   .strict();
 
-export interface RunEventNotificationPublisherOptions {
-  readonly publishTimeoutMs?: number;
-  readonly redisUrl: string;
-  readonly redisTelemetry?: RedisTelemetryObserver;
-}
+export type RunEventNotificationPublisherOptions = BoundedRedisPublisherOptions;
 export interface RunEventIdentity {
   readonly runId: string;
   readonly workspaceId: string;
@@ -54,18 +40,6 @@ export class RunEventNotificationConfigurationError extends Error {
 }
 export class RunEventNotificationPublishError extends Error {
   public override readonly name = 'RunEventNotificationPublishError';
-}
-
-function parseRedisUrl(value: string): string {
-  return normalizeRedisEndpoint(
-    value,
-    (reason) =>
-      new RunEventNotificationConfigurationError(
-        reason === 'invalid_url'
-          ? 'Redis URL is invalid'
-          : 'Redis URL must use redis:// or rediss:// with a hostname',
-      ),
-  );
 }
 
 export function runEventChannel(workspaceId: string, runId: string): string {
@@ -98,62 +72,34 @@ function boundedMessage(value: unknown): string {
 }
 
 export class RedisRunEventNotificationPublisher implements RunEventNotificationPublisher {
-  private closed = false;
-  private readonly publishTimeoutMs: number;
-  private readonly redis: Redis;
-  private readonly redisTelemetry: RedisTelemetryObserver | undefined;
+  private readonly publisher: BoundedRedisPublisher;
 
   public constructor(
     options: RunEventNotificationPublisherOptions,
     createRedis?: () => Redis,
   ) {
-    const parsed = optionsSchema.safeParse({
-      publishTimeoutMs: options.publishTimeoutMs,
-      redisUrl: options.redisUrl,
-    });
-    if (!parsed.success)
-      throw new RunEventNotificationConfigurationError(
-        'Redis run event publisher configuration is invalid',
-      );
-    const redisUrl = parseRedisUrl(parsed.data.redisUrl);
-    this.publishTimeoutMs =
-      parsed.data.publishTimeoutMs ?? DEFAULT_PUBLISH_TIMEOUT_MS;
-    this.redisTelemetry =
-      options.redisTelemetry ?? createProductionRedisTelemetryObserver();
-    this.redis =
-      createRedis?.() ??
-      new Redis(redisUrl, {
-        connectTimeout: this.publishTimeoutMs,
-        enableOfflineQueue: false,
-        maxRetriesPerRequest: 1,
-      });
-    for (const event of ['ready', 'close', 'end', 'error'] as const) {
-      this.redis.on(event, () => {
-        notifyRedisConnectionEvent(
-          this.redisTelemetry,
-          'run_event_publisher',
-          event,
-        );
-      });
-    }
+    this.publisher = new BoundedRedisPublisher(
+      'run_event_publisher',
+      {
+        label: 'Run event',
+        configuration: (message) =>
+          new RunEventNotificationConfigurationError(message),
+        publish: (message) => new RunEventNotificationPublishError(message),
+        isPublishError: (error) =>
+          error instanceof RunEventNotificationPublishError,
+      },
+      options,
+      createRedis,
+    );
   }
 
   public close(): Promise<void> {
-    if (!this.closed) {
-      this.closed = true;
-      this.redis.disconnect(false);
-    }
-    return observeRedisOperation(
-      this.redisTelemetry,
-      'run_event_publisher',
-      'close',
-      () => Promise.resolve(),
-    );
+    return this.publisher.close();
   }
 
   public publish(reference: RunEventReference) {
     const parsed = eventReferenceSchema.parse(reference);
-    return this.publishMessage(
+    return this.publisher.publish(
       runEventChannel(parsed.workspaceId, parsed.runId),
       encodeRunEventReference(parsed),
     );
@@ -161,47 +107,9 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
 
   public resync(identity: RunEventIdentity) {
     const parsed = identitySchema.parse(identity);
-    return this.publishMessage(
+    return this.publisher.publish(
       runEventChannel(parsed.workspaceId, parsed.runId),
       encodeRunEventResync(parsed),
     );
-  }
-
-  private async publishMessage(channel: string, payload: string) {
-    return observeRedisOperation(
-      this.redisTelemetry,
-      'run_event_publisher',
-      'publish',
-      () => this.performPublishMessage(channel, payload),
-    );
-  }
-
-  private async performPublishMessage(channel: string, payload: string) {
-    if (this.closed)
-      throw new RunEventNotificationPublishError(
-        'Run event publisher is closed',
-      );
-    let timer: NodeJS.Timeout | undefined;
-    try {
-      const receivers = await Promise.race([
-        this.redis.publish(channel, payload),
-        new Promise<never>((_resolve, reject) => {
-          timer = setTimeout(() => {
-            reject(
-              new RunEventNotificationPublishError('Redis publish timed out'),
-            );
-          }, this.publishTimeoutMs);
-          timer.unref();
-        }),
-      ]);
-      return { receivers };
-    } catch (error: unknown) {
-      if (error instanceof RunEventNotificationPublishError) throw error;
-      throw new RunEventNotificationPublishError(
-        error instanceof Error ? error.message : 'Redis publish failed',
-      );
-    } finally {
-      if (timer !== undefined) clearTimeout(timer);
-    }
   }
 }

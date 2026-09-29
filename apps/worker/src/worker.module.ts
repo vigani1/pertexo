@@ -7,13 +7,19 @@ import type {
   DatabaseRuntime,
   WorkspaceDatabase,
 } from '@pertexo/database/execution';
-import { createAuthenticationMailDeliveryStore } from '@pertexo/database/execution';
+import {
+  createAuthenticationMailDeliveryStore,
+  createWorkspaceInboxFoldStore,
+} from '@pertexo/database/execution';
 import {
   createApplicationSecretEnvelope,
   createNodeSecureHttpClient,
   createResendClient,
 } from '@pertexo/integrations/server';
-import type { QueueProducer } from '@pertexo/queue';
+import {
+  RedisWorkspaceInboxHintPublisher,
+  type QueueProducer,
+} from '@pertexo/queue';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -31,6 +37,11 @@ import {
   createAuthenticationMailRuntime,
   type AuthenticationMailRuntime,
 } from './execution/authentication-mail-runtime.js';
+import {
+  createWorkspaceInboxRuntime,
+  WORKSPACE_INBOX_RUNTIME,
+  type WorkspaceInboxRuntime,
+} from './execution/workspace-inbox-runtime.js';
 import {
   DatabaseModule,
   WORKSPACE_DATABASE,
@@ -60,6 +71,7 @@ export type WorkerModuleDependencies = Readonly<{
   dispatcherDatabase?: OutboxDispatcherDatabase;
   dispatcherDatabaseRuntime?: DatabaseRuntime;
   queueProducer?: QueueProducer;
+  workspaceInboxRuntime?: WorkspaceInboxRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
   transportMetrics?: TransportMetrics;
@@ -171,6 +183,29 @@ export class WorkerModule {
           },
         },
         {
+          provide: WORKSPACE_INBOX_RUNTIME,
+          useFactory: (): WorkspaceInboxRuntime =>
+            dependencies.workspaceInboxRuntime ??
+            createWorkspaceInboxRuntime(
+              createWorkspaceInboxFoldStore(
+                config.database,
+                dependencies.databaseRuntime,
+              ),
+              new RedisWorkspaceInboxHintPublisher({
+                redisUrl: config.redisUrl,
+              }),
+              config.workspaceInbox,
+              {
+                cycleFailed: () => {
+                  dependencies.logger.error('workspace_inbox.cycle_failed');
+                },
+                hintFailed: () => {
+                  dependencies.logger.warn('workspace_inbox.hint_failed');
+                },
+              },
+            ),
+        },
+        {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
           useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
@@ -199,14 +234,18 @@ export class WorkerModule {
             OutboxDispatcherLifecycle,
             WORKSPACE_DATABASE,
             AUTHENTICATION_MAIL_RUNTIME,
+            WORKSPACE_INBOX_RUNTIME,
           ],
           useFactory: (
             shutdown: WorkerShutdownCoordinator,
             transport: OutboxDispatcherLifecycle,
             database: WorkspaceDatabase,
             authenticationMail: AuthenticationMailRuntime | undefined,
+            workspaceInbox: WorkspaceInboxRuntime,
           ) => {
             authenticationMail?.start();
+            workspaceInbox.start();
+            shutdown.register('workspace-inbox', () => workspaceInbox.close());
             if (authenticationMail !== undefined)
               shutdown.register('authentication-mail', () =>
                 authenticationMail.close(),

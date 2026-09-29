@@ -88,6 +88,12 @@ const config = {
     dueWakeupPollIntervalMillis: 250,
     maximumAdmissions: 32,
     runTimeoutFailureContextEnabled: false,
+    workspaceInboxProducerEnabled: false,
+  },
+  workspaceInbox: {
+    foldBatchSize: 500,
+    foldPollMillis: 1_000,
+    expiryPollMillis: 300_000,
   },
   database: {
     connectionString: 'postgresql://unused',
@@ -154,6 +160,11 @@ try {
     queueProducer,
     readinessMarker,
     telemetry,
+    workspaceInboxRuntime: {
+      start: () => undefined,
+      checkReadiness: () => Promise.resolve(),
+      close: () => Promise.resolve(),
+    },
     ...(mode === 'active'
       ? {
           coordinatorRuntime: {
