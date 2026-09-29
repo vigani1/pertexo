@@ -19,6 +19,8 @@ async function notifyLifetime(
 
 /** Pending before launch, disposed only after explicit close; never inferred. */
 export const test = base.extend<
+  // Playwright's way to declare that this adds no test-scoped fixtures.
+  // eslint-disable-next-line @typescript-eslint/no-generated-empty-object-type
   Record<never, never>,
   { browserLifetime: string }
 >({
