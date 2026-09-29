@@ -31,7 +31,7 @@ void sendS3(
 ).then(
   (output) => {
     // @ts-expect-error A HEAD result cannot expose a GET response body.
-    void output.Body;
+    const _body: unknown = output.Body;
   },
   () => undefined,
 );

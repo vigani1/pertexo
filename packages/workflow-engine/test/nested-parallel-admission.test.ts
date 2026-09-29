@@ -535,12 +535,8 @@ describe('nested Parallel admission through the public engine', () => {
     let nextAttemptId = 400;
     let lastCompletion:
       | Readonly<{
-          observations: NonNullable<
-            Parameters<typeof advanceWorkflow>[0]['observations']
-          >;
-          completedOutputs: NonNullable<
-            Parameters<typeof advanceWorkflow>[0]['completedOutputs']
-          >;
+          observations: unknown;
+          completedOutputs: unknown;
         }>
       | undefined;
     const advance = async (

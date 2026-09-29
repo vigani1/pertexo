@@ -201,8 +201,6 @@ describe('wait and control production operations', () => {
           waitKind: _waitKind,
           ...active
         } = invocation;
-        void _resumeAt;
-        void _waitKind;
         return invocation.invocationKey === manual.invocationKey
           ? { ...active, status: 'pending' as const }
           : invocation;
@@ -219,8 +217,6 @@ describe('wait and control production operations', () => {
           waitKind: _waitKind,
           ...active
         } = invocation;
-        void _resumeAt;
-        void _waitKind;
         return invocation.invocationKey === manual.invocationKey
           ? { ...active, status: 'succeeded' as const }
           : invocation;

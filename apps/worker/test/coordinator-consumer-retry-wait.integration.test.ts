@@ -272,8 +272,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
             waitKind: _waitKind,
             ...active
           } = invocation;
-          void _resumeAt;
-          void _waitKind;
           return {
             ...active,
             status: 'running' as const,

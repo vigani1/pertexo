@@ -327,7 +327,6 @@ describe('coordinator advance engine', () => {
 
     const { currentCompatibilityRelease: _current, ...withoutCurrent } =
       baseProjection;
-    void _current;
     await expect(advance(withoutCurrent)).rejects.toThrow(
       'compatibility release is missing',
     );

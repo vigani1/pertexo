@@ -46,8 +46,6 @@ export function createFakeOidcProvider(
       codeVerifier: string;
       redirectUri: string;
     }) {
-      void input.codeVerifier;
-      void input.redirectUri;
       const request = latestRequest;
       if (request === undefined)
         throw new Error('authorization was not started');

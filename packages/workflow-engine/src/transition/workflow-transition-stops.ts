@@ -35,8 +35,6 @@ function stopInvocation(
   if (status === undefined) return;
   assertNodeTransition(invocation.status, status);
   const { resumeAt: _resumeAt, waitKind: _waitKind, ...active } = invocation;
-  void _resumeAt;
-  void _waitKind;
   const stopped = { ...active, status };
   state.invocations.set(invocation.invocationKey, stopped);
   state.eventDrafts.push(
@@ -167,8 +165,6 @@ export function applyWorkflowStops(
       if (control !== undefined && !isTerminalNodeStatus(control.status)) {
         const terminalStatus = loop.terminalStatus ?? controlStopStatus;
         const { resumeAt: _resumeAt, waitKind: _waitKind, ...active } = control;
-        void _resumeAt;
-        void _waitKind;
         const stopped = { ...active, status: terminalStatus };
         invocations.set(control.invocationKey, stopped);
         eventDrafts.push(

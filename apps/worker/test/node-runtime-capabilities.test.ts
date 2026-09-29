@@ -1535,9 +1535,8 @@ describe('worker node runtime capabilities', () => {
         },
         artifactStore: {
           put: async (request) => {
-            for await (const chunk of request.body) {
+            for await (const _chunk of request.body) {
               // Consume the owned upload stream before acknowledging storage.
-              void chunk;
             }
             return {
               artifactId: request.artifactId,
@@ -1687,7 +1686,9 @@ describe('worker node runtime capabilities', () => {
         },
         artifactStore: {
           put: async (request) => {
-            for await (const _chunk of request.body) void _chunk;
+            for await (const _chunk of request.body) {
+              // Drain the body; the chunks are not needed.
+            }
             return {
               artifactId: request.artifactId,
               workspaceId: request.workspaceId,
@@ -1736,7 +1737,9 @@ describe('worker node runtime capabilities', () => {
         },
         artifactStore: {
           put: async (request) => {
-            for await (const _chunk of request.body) void _chunk;
+            for await (const _chunk of request.body) {
+              // Drain the body; the chunks are not needed.
+            }
             return {
               artifactId: request.artifactId,
               workspaceId: request.workspaceId,

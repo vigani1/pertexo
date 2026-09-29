@@ -22,8 +22,7 @@ function fixtureWithAdmin(
 
 describe('disposable database fixture', () => {
   it('accepts only an owned test namespace before querying', async () => {
-    const query = vi.fn((text: string) => {
-      void text;
+    const query = vi.fn((_text: string) => {
       return Promise.resolve({ rows: [] });
     });
     const end = vi.fn(() => Promise.resolve());

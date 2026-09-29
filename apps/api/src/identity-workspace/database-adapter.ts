@@ -247,9 +247,8 @@ export class DatabaseIdentityWorkspaceAdapter
 
   public async revokeByDigest(
     tokenDigest: string,
-    revokedAt: Date,
+    _revokedAt: Date,
   ): Promise<boolean> {
-    void revokedAt;
     return this.database.revokeSessionByDigest(tokenDigest);
   }
 }

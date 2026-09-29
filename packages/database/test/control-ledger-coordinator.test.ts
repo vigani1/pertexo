@@ -120,11 +120,8 @@ class OneSidedRepairLedger implements ControlLedger {
     await Promise.resolve();
     this.appendCalls += 1;
     const { signal, ...material } = request;
-    void signal;
     const { recordHash, schemaVersion, ...existingMaterial } =
       this.primaryRecord;
-    void recordHash;
-    void schemaVersion;
     if (JSON.stringify(material) !== JSON.stringify(existingMaterial)) {
       throw new ControlLedgerCommandConflictError();
     }

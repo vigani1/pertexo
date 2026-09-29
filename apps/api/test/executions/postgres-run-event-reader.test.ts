@@ -52,9 +52,8 @@ describe('PostgreSQL run event reader', () => {
       async <T>(
         workspaceId: string,
         operation: (selected: WorkspaceTransaction) => Promise<T>,
-        options?: { readonly signal?: AbortSignal },
+        _options?: { readonly signal?: AbortSignal },
       ): Promise<T> => {
-        void options;
         return operation(transaction);
       },
     );

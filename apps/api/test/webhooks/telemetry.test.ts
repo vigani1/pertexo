@@ -100,15 +100,13 @@ describe('webhook ingress telemetry', () => {
   it.each([
     {
       name: 'a synchronous tracer failure before its callback',
-      start: (callback: (span: Span) => Promise<unknown>) => {
-        void callback;
+      start: (_callback: (span: Span) => Promise<unknown>) => {
         throw new Error('trace failed before callback');
       },
     },
     {
       name: 'a tracer rejection before its callback',
-      start: (callback: (span: Span) => Promise<unknown>) => {
-        void callback;
+      start: (_callback: (span: Span) => Promise<unknown>) => {
         return Promise.reject(new Error('trace rejected before callback'));
       },
     },

@@ -446,13 +446,11 @@ function lifecycleTransitionAllowed<State extends string>(
 
 function immutableDefinitionJson(manifest: NodeManifest): string {
   const { lifecycle, ...behavior } = definitionProjection(manifest);
-  void lifecycle;
   return stableJson(behavior);
 }
 
 function immutableExecutorJson(manifest: ExecutorManifest): string {
   const { lifecycle, ...behavior } = executorProjection(manifest);
-  void lifecycle;
   return stableJson(behavior);
 }
 function assertDefinitionSuccessors(

@@ -298,8 +298,7 @@ describe('node testing controller', () => {
     [['first', 'second'], 'multiple'],
   ] as const)(
     'rejects %s execution idempotency as %s',
-    async (value, label) => {
-      void label;
+    async (value, _label) => {
       const fixture = controller();
 
       await expect(

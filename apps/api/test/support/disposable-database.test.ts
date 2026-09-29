@@ -109,8 +109,7 @@ describe('API disposable database cleanup', () => {
   });
 
   it('bounds a stalled query without issuing DROP or session termination', async () => {
-    const query = vi.fn<DisposableDatabaseQueryClient['query']>((config) => {
-      void config;
+    const query = vi.fn<DisposableDatabaseQueryClient['query']>((_config) => {
       return new Promise<never>(() => undefined);
     });
 
