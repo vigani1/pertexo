@@ -1,3 +1,20 @@
+import { z } from 'zod';
+
+export const workspaceInboxDeliveryInputSchema = z
+  .object({
+    workspaceId: z.uuid(),
+    sourceId: z.uuid(),
+    workerId: z.string().min(1).max(128),
+    delivery: z
+      .object({
+        outboxEventId: z.uuid(),
+        payloadChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
+      })
+      .strict(),
+    signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal),
+  })
+  .strict();
+
 export type WorkspaceInboxCaptureInput = Readonly<{
   workspaceId: string;
   sourceId: string;

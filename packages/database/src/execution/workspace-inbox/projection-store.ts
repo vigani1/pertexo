@@ -7,10 +7,10 @@ import {
   type DatabaseRuntime,
 } from '../../platform/database-runtime.js';
 import type {
-  WorkspaceInboxCaptureInput,
-  WorkspaceInboxCaptureStore,
-  WorkspaceInboxCaptureResult,
-} from './capture-contract.js';
+  WorkspaceInboxProjectionInput,
+  WorkspaceInboxProjectionStore,
+  WorkspaceInboxProjectionResult,
+} from './projection-contract.js';
 import { runInboxWriteTransaction } from './inbox-write-transaction.js';
 import {
   admitInboxWrite,
@@ -18,7 +18,7 @@ import {
   inboxWritesAvailable,
   withinInboxWriteSettlement,
 } from './write-activity.js';
-import { checkInboxCaptureReadiness } from './capture-readiness.js';
+import { checkInboxProjectionReadiness } from './projection-readiness.js';
 import { workspaceInboxDeliveryInputSchema } from './capture-contract.js';
 
 const fenceSchema = z
@@ -28,14 +28,23 @@ const fenceSchema = z
 const resultSchema = z.discriminatedUnion('kind', [
   z
     .object({
-      kind: z.literal('captured'),
-      audienceCount: z.string().regex(/^(0|[1-9][0-9]{0,18})$/u),
+      kind: z.literal('projected'),
+      processedCount: z.number().int().min(0).max(100),
+      insertedCount: z.number().int().min(0).max(100),
+      skippedCount: z.number().int().min(0).max(100),
+      hasMore: z.boolean(),
     })
-    .strict(),
+    .strict()
+    .refine(
+      (value) =>
+        value.processedCount === value.insertedCount + value.skippedCount,
+    ),
   z.object({ kind: z.literal('owned'), fenceToken: fenceSchema }).strict(),
   z
     .object({
       kind: z.enum([
+        'completed',
+        'not_captured',
         'unavailable',
         'inactive',
         'expired',
@@ -50,20 +59,20 @@ const resultSchema = z.discriminatedUnion('kind', [
 ]);
 const rowSchema = z.object({ result: resultSchema });
 
-export function createWorkspaceInboxCaptureStore(
+export function createWorkspaceInboxProjectionStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkspaceInboxCaptureStore {
+): WorkspaceInboxProjectionStore {
   const lease = acquireDatabasePool(config, runtime, { role: 'worker' });
   const lifetime = createInboxWriteLifetime(lease.close);
   const assertReady = (): void => {
     if (lifetime.isClosed() || !inboxWritesAvailable())
-      throw new Error('Inbox capture store is unavailable');
+      throw new Error('Inbox projection store is unavailable');
   };
   return Object.freeze({
-    capture: async (
-      raw: WorkspaceInboxCaptureInput,
-    ): Promise<WorkspaceInboxCaptureResult> => {
+    projectNextPage: async (
+      raw: WorkspaceInboxProjectionInput,
+    ): Promise<WorkspaceInboxProjectionResult> => {
       assertReady();
       const input = workspaceInboxDeliveryInputSchema.parse(raw);
       input.signal.throwIfAborted();
@@ -73,7 +82,7 @@ export function createWorkspaceInboxCaptureStore(
       const signal = AbortSignal.any([input.signal, controller.signal]);
       const timer = setTimeout(() => {
         controller.abort();
-      }, 10_000);
+      }, 8_000);
       const leaseToken = randomUUID();
       const transaction = <T>(
         statement: string,
@@ -88,12 +97,12 @@ export function createWorkspaceInboxCaptureStore(
           statement,
           values,
           decode,
-          'capture',
+          'projection',
         );
       const decode = (row: unknown) => rowSchema.parse(row).result;
-      const work = async (): Promise<WorkspaceInboxCaptureResult> => {
+      const work = async (): Promise<WorkspaceInboxProjectionResult> => {
         const claim = await transaction(
-          'select app.claim_workspace_inbox_capture($1,$2,$3,$4,$5,$6) result',
+          'select app.claim_workspace_inbox_projection($1,$2,$3,$4,$5,$6) result',
           [
             input.workspaceId,
             input.sourceId,
@@ -106,7 +115,7 @@ export function createWorkspaceInboxCaptureStore(
         );
         if (claim.kind === 'uncertain') return { kind: 'outcome_unknown' };
         if (claim.kind === 'rolled_back')
-          throw new Error('Inbox capture claim rejected');
+          throw new Error('Inbox projection claim rejected');
         if (claim.value.kind !== 'owned') return claim.value;
         const values = [
           input.workspaceId,
@@ -114,39 +123,41 @@ export function createWorkspaceInboxCaptureStore(
           leaseToken,
           claim.value.fenceToken,
         ];
-        const captured = await transaction(
-          'select app.capture_workspace_inbox_audience($1,$2,$3,$4) result',
+        const page = await transaction(
+          'select app.project_workspace_inbox_page($1,$2,$3,$4) result',
           values,
           decode,
         );
-        if (captured.kind === 'uncertain') return { kind: 'outcome_unknown' };
-        if (captured.kind === 'committed') {
-          if (captured.value.kind === 'owned')
-            throw new Error('Invalid inbox capture result');
-          return captured.value;
+        if (page.kind === 'uncertain') return { kind: 'outcome_unknown' };
+        if (page.kind === 'committed') {
+          if (page.value.kind === 'owned')
+            throw new Error('Invalid inbox projection result');
+          return page.value;
         }
         // Only this transaction owner knows rollback was acknowledged. An
         // uncertain COMMIT never reaches failure accounting or a fresh command.
         const failure = await transaction(
-          'select app.fail_workspace_inbox_capture($1,$2,$3,$4) result',
+          'select app.fail_workspace_inbox_projection($1,$2,$3,$4) result',
           values,
           decode,
         );
         if (failure.kind !== 'committed') return { kind: 'outcome_unknown' };
         if (failure.value.kind === 'owned')
-          throw new Error('Invalid inbox capture failure result');
+          throw new Error('Invalid inbox projection failure result');
         return failure.value;
       };
       const { task, settled } = lifetime.observe(controller, activity, work);
       let onAbort: (() => void) | undefined;
       try {
-        const canceled = new Promise<WorkspaceInboxCaptureResult>((resolve) => {
-          onAbort = () => {
-            resolve({ kind: 'outcome_unknown' });
-          };
-          signal.addEventListener('abort', onAbort, { once: true });
-          if (signal.aborted) onAbort();
-        });
+        const canceled = new Promise<WorkspaceInboxProjectionResult>(
+          (resolve) => {
+            onAbort = () => {
+              resolve({ kind: 'outcome_unknown' });
+            };
+            signal.addEventListener('abort', onAbort, { once: true });
+            if (signal.aborted) onAbort();
+          },
+        );
         const result = await Promise.race([task, canceled]);
         await withinInboxWriteSettlement(settled);
         return result;
@@ -157,7 +168,7 @@ export function createWorkspaceInboxCaptureStore(
     },
     checkReadiness: async (signal?: AbortSignal): Promise<void> => {
       assertReady();
-      await checkInboxCaptureReadiness(
+      await checkInboxProjectionReadiness(
         lease.pool,
         config.ownerRole,
         config.workerRuntimeRole,

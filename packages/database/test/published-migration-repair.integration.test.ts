@@ -164,6 +164,7 @@ describe('selected published migration repair upgrade', () => {
       '0119_record_step_inputs.sql',
       '0120_workspace_inbox_foundation.sql',
       '0121_workspace_inbox_capture.sql',
+      '0122_workspace_inbox_projection.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 
