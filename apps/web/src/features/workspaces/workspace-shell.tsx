@@ -28,6 +28,8 @@ type WorkspaceShellProps = Readonly<{
   workspaces: readonly AccessibleWorkspace[];
   /** Runs running right now; undefined when the role can't read runs. */
   liveRunCount: number | undefined;
+  /** Unread inbox notices; undefined when the role has no inbox. */
+  unreadNoticeCount: number | undefined;
   /** Steps after the workspace in the breadcrumb, outermost first. */
   crumbs: readonly Readonly<{ key: string; label: ReactNode }>[];
   logoutPending: boolean;
@@ -46,6 +48,7 @@ export function WorkspaceShell({
   workspace,
   workspaces,
   liveRunCount,
+  unreadNoticeCount,
   crumbs,
   logoutPending,
   onLogout,
@@ -62,6 +65,7 @@ export function WorkspaceShell({
       <WorkspaceSpine
         workspace={workspace}
         liveRunCount={liveRunCount}
+        unreadNoticeCount={unreadNoticeCount}
         onOpenSearch={onOpenSearch}
         account={
           <AccountMenu
@@ -108,6 +112,7 @@ export function WorkspaceShell({
       <WorkspaceMobileBar
         workspace={workspace}
         liveRunCount={liveRunCount}
+        unreadNoticeCount={unreadNoticeCount}
         more={
           <>
             <Link

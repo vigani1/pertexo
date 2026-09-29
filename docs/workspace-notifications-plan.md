@@ -66,7 +66,7 @@ pinned by startup readiness (see
   active user, active owner/admin/operator membership, and the actor is the
   session user. RLS applies it to every thread read and every read-row change.
 - The shared role policy grants the same roles `notification:read`, which the
-  API requires and the web uses to show the bell.
+  API requires and the web uses to show the Inbox destination.
 - The API role can select threads and insert or raise its own read rows; it
   cannot write threads or events. The worker can only insert events for its
   tenant context.
@@ -103,13 +103,14 @@ hint, on focus and on reconnect, so a missed hint loses nothing.
 
 ## 7. Frontend
 
-`apps/web/src/features/notifications/` owns the API, queries, stream hook,
-presentation helpers and the bell and inbox components. TanStack Query owns
-threads and counts, keyed by account, workspace and filter; one stream per
-active workspace per tab invalidates them, coalesced. Mutations are pessimistic
-and then invalidate. Opening the bell does not mark anything read; opening a
-thread marks it read and navigates to its latest run, with a link to the
-workflow's failed runs. Loading, empty, error, stale and forbidden states are
+`apps/web/src/features/inbox/` owns the API, queries, mutations, stream hook,
+presentation model and the inbox page. The workspace spine and phone bar show
+an Inbox destination with the unread count to people who hold
+`notification:read`. TanStack Query owns threads and counts, keyed by account,
+workspace and filter; one stream per active workspace per tab invalidates
+them, coalesced. Mutations are pessimistic and then invalidate. Visiting the
+inbox does not mark anything read; opening a thread marks it read and
+navigates to its latest run, with a link to the workflow's run history. Loading, empty, error, stale and forbidden states are
 distinct; keyboard, focus return, reduced motion and 390px widths are required.
 
 ## 8. Retention and deletion

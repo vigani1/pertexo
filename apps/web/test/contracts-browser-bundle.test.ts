@@ -19,6 +19,7 @@ describe('browser contract consumer bundle', () => {
       'workflows',
       'workflowRun',
       'webhooks',
+      'workspaceInbox',
     ]);
     const applicationDirectory = fileURLToPath(new URL('../', import.meta.url));
     const entry = fileURLToPath(
@@ -73,6 +74,9 @@ describe('browser contract consumer bundle', () => {
       true,
     );
     expect(moduleIds.some((id) => id.endsWith('/http/webhooks.js'))).toBe(true);
+    expect(
+      moduleIds.some((id) => id.endsWith('/http/workspace-inbox.js')),
+    ).toBe(true);
     expect(moduleIds).not.toEqual(
       expect.arrayContaining([
         expect.stringMatching(/\/schema-projection\.js$/u),

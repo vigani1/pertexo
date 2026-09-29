@@ -1,7 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import { Link, useMatchRoute } from '@tanstack/react-router';
-import { MoreHorizontalIcon, WavesIcon, WorkflowIcon } from 'lucide-react';
+import {
+  InboxIcon,
+  MoreHorizontalIcon,
+  WavesIcon,
+  WorkflowIcon,
+} from 'lucide-react';
 import { CoreOrb } from '@/components/patterns/core-orb';
 import {
   Sheet,
@@ -16,27 +21,36 @@ import { spineDestinations } from './spine-destinations';
 const barLinkClass =
   "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-[0.68rem] text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground data-[active=true]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
 
-/** Bottom navigation for phones: Home, Workflows, Runs and More. */
+/** Bottom navigation for phones: Home, Workflows, Runs, Inbox and More. */
 export function WorkspaceMobileBar({
   workspace,
   liveRunCount,
+  unreadNoticeCount,
   more,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   liveRunCount: number | undefined;
+  unreadNoticeCount: number | undefined;
   more: ReactNode;
 }>) {
   const [moreOpen, setMoreOpen] = useState(false);
-  const destinations = spineDestinations(workspace, liveRunCount);
+  const destinations = spineDestinations(
+    workspace,
+    liveRunCount,
+    unreadNoticeCount,
+  );
   const secondary = [
     ...destinations.primary.filter(
       (destination) =>
         destination.to !== '/w/$workspaceId/workflows' &&
-        destination.to !== '/w/$workspaceId/runs',
+        destination.to !== '/w/$workspaceId/runs' &&
+        destination.to !== '/w/$workspaceId/inbox',
     ),
     ...destinations.workspace,
   ];
   const canReadRuns = workspace.capabilities.includes('run:read');
+  const canReadInbox = workspace.capabilities.includes('notification:read');
+  const unread = unreadNoticeCount ?? 0;
   // Pages that live under More light More, so a page always shows where it is.
   const matchRoute = useMatchRoute();
   const moreActive = secondary.some(
@@ -87,6 +101,27 @@ export function WorkspaceMobileBar({
           >
             <WavesIcon aria-hidden="true" />
             Runs
+          </Link>
+        ) : null}
+        {canReadInbox ? (
+          <Link
+            to="/w/$workspaceId/inbox"
+            params={{ workspaceId: workspace.id }}
+            aria-label={
+              unread === 0 ? 'Inbox' : `Inbox, ${String(unread)} unread`
+            }
+            className={barLinkClass}
+          >
+            <span className="relative">
+              <InboxIcon aria-hidden="true" />
+              {unread === 0 ? null : (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-action"
+                />
+              )}
+            </span>
+            Inbox
           </Link>
         ) : null}
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>

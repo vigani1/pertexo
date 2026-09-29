@@ -1,8 +1,10 @@
 # F03 — Durable in-app notifications and live inbox
 
 Status: in progress — redesigned under accepted
-[ADR055](../adr/055-workspace-inbox-failure-threads.md); database and worker
-layers merged. API and frontend slices open.
+[ADR055](../adr/055-workspace-inbox-failure-threads.md); database, worker, API
+and frontend slices merged with the producer off by default
+(`WORKSPACE_INBOX_PRODUCER=false`). Integrated acceptance evidence and
+activation remain.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New frontend + backend product. Relative size: **L**, not a calendar estimate.
 
@@ -73,10 +75,11 @@ Under `/v1/workspaces/:workspaceId/notifications`, requiring
    hints.
 3. **API (PR B2):** `notification:read`, thread contracts and HTTP/SSE
    endpoints with real-database API tests.
-4. **Frontend (PR C):** bell with unread badge, inbox panel, mark read and
-   read-all, deep links to the latest run and the workflow's failed runs, live
-   refresh via SSE plus refetch on focus and reconnect; component and browser
-   tests against the local stack.
+4. **Frontend (PR C):** an Inbox destination with the unread count in the
+   workspace spine and phone bar, an inbox page, mark read and read-all, deep
+   links to the latest run and the workflow's run history, live refresh via
+   SSE plus refetch on focus and reconnect; component and browser tests
+   against mocked APIs.
 
 Each slice ends in tested behavior; no enabled control is backed by an absent
 endpoint.
@@ -109,8 +112,8 @@ paid provisioning or external calls are authorized by this plan.
 - [x] Redesign accepted as ADR055 before any activation.
 - [x] Database layer (PR A, PR118) merged with green checks.
 - [x] Worker (PR B1, PR119) merged with green checks.
-- [ ] API (PR B2) merged with green checks.
-- [ ] Frontend (PR C) merged with green checks.
+- [x] API (PR B2, PR120) merged with green checks.
+- [x] Frontend (PR C) merged with green checks.
 - [ ] Real integrated acceptance evidence recorded.
 
 ### Database layer evidence (2026-09-29, PR A)
@@ -156,3 +159,16 @@ and proves eligibility, cross-role denial, private reads, the read-all cut,
 CSRF on commands and a worker hint reaching an open stream over real Redis.
 HTTP-level, hub, stream and cursor tests cover tampering, slow clients,
 reconnects and authorization loss.
+
+### Frontend evidence (2026-09-29, PR C)
+
+The workspace spine and the phone bar show an Inbox destination with the
+unread count to people who hold `notification:read`. The inbox page lists one
+notice per failing workflow with its latest failure, how often it failed and
+where, links to the latest run and the workflow's run history, marks a notice
+read when opened or on request, and marks all read up to what the list showed.
+The shell keeps one live stream per tab: hints and returning to the tab refetch
+the inbox, a dropped stream reconnects with jittered backoff, and losing access
+stops it. Component, hook and Playwright tests (desktop and 390px) cover these
+paths against mocked APIs; the API slice's full-stack test covers the server
+side.

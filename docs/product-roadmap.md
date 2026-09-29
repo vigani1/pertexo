@@ -2,8 +2,8 @@
 
 Status: user-authorized sequential delivery; F00/F01 bounded local qualification
 and release checks are complete through merged PR113/114. External qualification
-remains open. F03 is in progress: its foundation is locally verified, not a
-delivered inbox. Later feature plans retain their individual design/decision gates.
+remains open. F03 is in progress: every slice is merged with the producer off;
+integrated acceptance evidence and activation remain. Later feature plans retain their individual design/decision gates.
 Created 2026-09-28 (Europe/Belgrade). User authorization is recorded separately
 from this document; external provisioning, spending and production release
 remain unapproved.
@@ -188,7 +188,7 @@ only after its gate is resolved.
 | [F00](feature-plans/00-release-baseline.md) | Release baseline and existing-capability qualification | Existing implementation / evidence gate | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F01](feature-plans/01-editor-capability-completion.md) | Complete and qualify the existing editor surface | Frontend-led parity, not a rebuild | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F02](feature-plans/02-workflow-test-workspace.md) | Saved test cases, pinned samples and workflow regression runs | New product over existing previews | L | Proposed |
-| [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | In progress: redesigned under ADR055; database (PR118) and worker (PR119) merged; API and web slices follow |
+| [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | In progress: redesigned under ADR055; database (PR118), worker (PR119), API (PR120) and web slices merged with the producer off; integrated acceptance evidence remains |
 | [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs and artifact lifecycle | Backend foundation exists; consumer contract + frontend missing | L | Proposed |
 | [F05](feature-plans/05-workflow-portability.md) | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Proposed |
 | [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Proposed |
@@ -298,7 +298,8 @@ F03 inbox is the current selected feature after the accepted F00/F01 local and
 release gates. [ADR055](adr/055-workspace-inbox-failure-threads.md) replaced
 [ADR054](adr/054-durable-workspace-inbox.md)'s per-recipient delivery, whose
 increments merged inactive, with per-workflow threads computed on read. The
-database, worker/API and frontend slices follow in that order. Separately make
+database, worker, API and frontend slices merged in that order; integrated
+acceptance evidence and activation are next. Separately make
 the F04 consumer decision and F08 input/output/pinning design; those are planning
 tasks, not permission to start three large implementations at once.
 

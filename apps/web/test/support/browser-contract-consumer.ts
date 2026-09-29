@@ -9,6 +9,7 @@ import { scheduleTriggerListResponseSchema } from '@pertexo/contracts/schemas/sc
 import { workflowListResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { workflowRunResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
 import { webhookTriggerListResponseSchema } from '@pertexo/contracts/schemas/webhooks';
+import { workspaceInboxListResponseSchema } from '@pertexo/contracts/schemas/workspace-inbox';
 
 export const browserContractConsumer = Object.freeze({
   artifact: artifactMetadataResponseSchema,
@@ -22,4 +23,5 @@ export const browserContractConsumer = Object.freeze({
   workflows: workflowListResponseSchema,
   workflowRun: workflowRunResponseSchema,
   webhooks: webhookTriggerListResponseSchema,
+  workspaceInbox: workspaceInboxListResponseSchema,
 });
