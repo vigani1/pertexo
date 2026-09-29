@@ -85,7 +85,7 @@
         "WORKER_MAX_RSS_BYTES": "805306368",
         "WORKER_RESOURCE_SAMPLE_MILLIS": "5000",
         "WORKER_RESOURCE_UNHEALTHY_SAMPLES": "3",
-        "WORKSPACE_INBOX_PRODUCER": "false"
+        "WORKSPACE_INBOX_PRODUCER": "true"
       },
       "configuration": [
         "ARTIFACT_STORE_BUCKET",

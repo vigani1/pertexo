@@ -1,10 +1,10 @@
 # F03 — Durable in-app notifications and live inbox
 
-Status: in progress — redesigned under accepted
-[ADR055](../adr/055-workspace-inbox-failure-threads.md); database, worker, API
-and frontend slices merged with the producer off by default
-(`WORKSPACE_INBOX_PRODUCER=false`). Integrated acceptance evidence and
-activation remain.
+Status: delivered under accepted
+[ADR055](../adr/055-workspace-inbox-failure-threads.md). All four slices are
+merged, the integrated acceptance run on the local stack is recorded below, and
+the deployment and local configuration turn the producer on
+(`WORKSPACE_INBOX_PRODUCER=true`; the code default stays off).
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New frontend + backend product. Relative size: **L**, not a calendar estimate.
 
@@ -102,9 +102,11 @@ extend the same thread model.
 ## Rollout and rollback
 
 Deploy the migration and readers first; the producer flag stays off until the
-worker's fold readiness passes. Turning the flag off stops new events; existing
-threads age out. Rollback never drops populated tables. No production rollout,
-paid provisioning or external calls are authorized by this plan.
+worker's fold readiness passes. With every slice merged and the acceptance run
+recorded, `infrastructure/ecs/workloads.json` and `.env.example` set the flag
+on. Setting it back to `false` stops new events; existing threads age out.
+Rollback never drops populated tables. No production rollout, paid
+provisioning or external calls are authorized by this plan.
 
 ## Delivery tracker
 
@@ -114,7 +116,8 @@ paid provisioning or external calls are authorized by this plan.
 - [x] Worker (PR B1, PR119) merged with green checks.
 - [x] API (PR B2, PR120) merged with green checks.
 - [x] Frontend (PR C) merged with green checks.
-- [ ] Real integrated acceptance evidence recorded.
+- [x] Real integrated acceptance evidence recorded.
+- [x] Producer enabled in the deployment and local configuration.
 
 ### Database layer evidence (2026-09-29, PR A)
 
@@ -172,3 +175,30 @@ the inbox, a dropped stream reconnects with jittered backoff, and losing access
 stops it. Component, hook and Playwright tests (desktop and 390px) cover these
 paths against mocked APIs; the API slice's full-stack test covers the server
 side.
+
+### Integrated acceptance evidence (2026-09-29)
+
+Recorded on the local stack: a migrated disposable database, the built API,
+the worker with `WORKSPACE_INBOX_PRODUCER=true`, and the Vite web app in a real
+browser, all against local PostgreSQL and Redis. Artifact storage and the
+connection API were left unconfigured, as local development allows.
+
+- A published Manual → Set workflow whose expression divides by the run's
+  `count` failed for real at the Set step (`execution.attempt_invalid`). Two
+  browser tabs already showing the empty inbox updated without a reload to one
+  unread notice, and the spine icon showed the unread badge.
+- A second failure of the same workflow folded into the same notice ("Failed
+  2 times", latest run updated); a successful run added nothing.
+- Opening the notice went to the latest run's failure detail and marked it
+  read. A later failure made it unread again, and a second failing workflow got
+  its own notice, newest first.
+- At 390px the phone bar's Inbox link carried the count ("Inbox, 2 unread"),
+  the page had no horizontal overflow, and Mark all read cleared both notices.
+- With the API stopped, the worker still folded a new failure; after the API
+  restarted, the open tab reconnected and showed it within about 26 seconds.
+
+The run exposed two web defects, fixed alongside this evidence: a proxy's 5xx
+answer without problem details stopped the inbox's live updates until a reload
+(the run-event stream already retried it), and a failure newer than the
+once-a-minute clock read "in a moment" in the inbox, the runs list, Home and
+connection health.
