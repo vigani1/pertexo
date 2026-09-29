@@ -24,7 +24,7 @@ describe('API orchestration coverage inventory', () => {
 
   it('measures identity, webhooks, authoring, and application bootstrap separately', () => {
     expect(priorityConfig.test?.coverage?.include).toEqual([
-      'src/app.ts',
+      'src/{api-runtimes,app}.ts',
       'src/identity/{csrf,oidc,session}.ts',
       'src/identity-infrastructure/{oidc-adapter,oidc-request-validation,oidc-response-cleanup,oidc-secret-encryption}.ts',
       'src/identity-workspace/{module,persistence-capabilities,use-cases}.ts',
