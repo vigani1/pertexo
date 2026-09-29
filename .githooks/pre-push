@@ -9,5 +9,11 @@ fi
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-echo "Running Pertexo pre-push checks (static, unit, and coverage gates)..."
-exec pnpm prepush:check
+if [ "${PERTEXO_PRE_PUSH_FULL:-}" = "1" ]; then
+  echo "Running the full Pertexo pre-push checks (static, unit, coverage, and browser probe gates)..."
+  exec pnpm prepush:check
+fi
+
+echo "Running the fast Pertexo pre-push checks (static gates plus lint, typecheck, and unit tests for changed packages)..."
+echo "CI runs every suite on the pull request; set PERTEXO_PRE_PUSH_FULL=1 to run them all locally."
+exec pnpm prepush:fast

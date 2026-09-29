@@ -19,9 +19,12 @@ correctness constraints are clear. Security reports must follow
   unrelated formatting changes.
 
 Install dependencies with `pnpm install`; it configures the tracked pre-push
-hook. Ordinary pushes automatically run `pnpm prepush:check`, covering the
-repository's static, unit, and critical-file coverage gates. Run the narrow
-tests for the changed behavior while developing. Run `pnpm prepush:full` when
+hook. Ordinary pushes automatically run `pnpm prepush:fast`: every static gate
+from `pnpm check`, plus lint, typecheck, and related unit tests scoped to the
+packages the branch changed (`pnpm prepush:changed`). The protected GitHub
+checks run every suite on the pull request. Run `pnpm prepush:check` (or push
+with `PERTEXO_PRE_PUSH_FULL=1`) to run the repository-wide unit, critical-file
+coverage, and browser probe gates locally. Run `pnpm prepush:full` when
 PostgreSQL, Redis, queue, object-store, HTTP, or process behavior changes; it
 adds the service-backed integration suite. Document any environment-dependent
 check that could not run. `PERTEXO_SKIP_PRE_PUSH_CHECKS=1 git push` is an
