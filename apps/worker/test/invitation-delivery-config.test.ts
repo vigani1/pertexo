@@ -16,6 +16,26 @@ describe('parseInvitationDeliveryConfig', () => {
     expect(parseInvitationDeliveryConfig({}, false, true)).toBeUndefined();
   });
 
+  it('ignores the public web origin the API shares with the worker', () => {
+    expect(
+      parseInvitationDeliveryConfig(
+        { PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173' },
+        false,
+        false,
+      ),
+    ).toBeUndefined();
+  });
+
+  it('still requires the public web origin once delivery is configured', () => {
+    const { PUBLIC_WEB_ORIGIN: _origin, ...withoutOrigin } =
+      invitationEnvironment;
+    void _origin;
+
+    expect(() =>
+      parseInvitationDeliveryConfig(withoutOrigin, false, false),
+    ).toThrow();
+  });
+
   it('parses configured delivery into a normalized origin and key ring', () => {
     const config = parseInvitationDeliveryConfig(
       {
