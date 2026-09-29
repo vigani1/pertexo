@@ -5,11 +5,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   betterAuthIntegrationEnabled,
-  origin,
   useBetterAuthRealApi,
   type Browser,
 } from '../support/better-auth-real-api.integration.support.js';
 
+// Authentication is rate limited per origin; a suite-owned origin keeps this
+// suite's sign-ups out of the buckets that parallel identity suites share.
+const origin = 'https://inbox.integration.test';
 const redisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 
@@ -21,7 +23,10 @@ const redisUrl =
 describe.runIf(betterAuthIntegrationEnabled)(
   'workspace inbox through the API',
   () => {
-    const api = useBetterAuthRealApi('inbox', { notifications: true });
+    const api = useBetterAuthRealApi('inbox', {
+      notifications: true,
+      publicWebOrigin: origin,
+    });
     const { send, signIn, signUp } = api;
 
     async function person(): Promise<
