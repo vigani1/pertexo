@@ -187,7 +187,6 @@ function applyInvocationObservation(
   if (observation.kind === 'resume') {
     assertNodeTransition(existing.status, 'ready');
     const { resumeAt: _, ...rest } = existing;
-    void _;
     const resumed = { ...rest, status: 'ready' as const };
     state.invocations.set(existing.invocationKey, resumed);
     if (!state.externalFactsArePersisted)
@@ -266,7 +265,6 @@ function applyDueResumptions(
     if (existing.status === 'ready' || existing.status === 'running') continue;
     assertNodeTransition(existing.status, 'ready');
     const { resumeAt: _, ...rest } = existing;
-    void _;
     const resumed = { ...rest, status: 'ready' as const };
     state.invocations.set(existing.invocationKey, resumed);
     state.eventDrafts.push(event('node.ready', due.occurredAt, resumed));

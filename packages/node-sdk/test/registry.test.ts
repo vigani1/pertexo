@@ -1205,7 +1205,6 @@ describe('node-sdk exact server registry', () => {
     expect(beforeDispatch).toHaveBeenCalledOnce();
 
     const { runtime: _runtime, ...withoutRuntime } = request;
-    void _runtime;
     await expect(registry.execute(withoutRuntime)).rejects.toBeInstanceOf(
       NodeExecutionRuntimeRequiredError,
     );

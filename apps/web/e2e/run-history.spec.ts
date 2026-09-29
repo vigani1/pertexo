@@ -213,7 +213,6 @@ async function installRoutes(page: Page, workflowName?: string) {
         input: { incident: 'INC-42' },
       });
       const { workflowName, ...acceptedRun } = run(replayRunId, 'failed');
-      void workflowName;
       await route.fulfill({
         status: 202,
         json: {

@@ -804,7 +804,6 @@ describe('http.request@1 server executor', () => {
       () => {
         const withRuntime = invocation(runtime().value);
         const { runtime: _runtime, ...withoutRuntime } = withRuntime;
-        void _runtime;
         return withoutRuntime;
       },
     ],
@@ -1103,7 +1102,6 @@ describe('http.request@1 server executor', () => {
     const noArtifactState = runtime();
     const { artifacts: _artifacts, ...runtimeWithoutArtifacts } =
       noArtifactState.value;
-    void _artifacts;
     await expect(
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {

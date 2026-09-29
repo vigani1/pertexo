@@ -339,7 +339,6 @@ describe('run page', () => {
       http.post(`${apiBase}/runs/${runId}/cancel`, () => {
         cancels += 1;
         const { workflowName, ...summary } = retryingRun();
-        void workflowName;
         return HttpResponse.json({
           run: { ...summary, cancelRequestedAt: secondsAgo(0) },
           alreadyRequested: false,
