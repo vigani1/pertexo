@@ -85,7 +85,8 @@ user-delivered because a table or executor exists.
 
 ## Competitor comparison: capability benchmarks, not a scorecard
 
-Official documentation was checked on 2026-09-28. “Not assessed” is not “absent”.
+Official documentation was checked on 2026-09-28, and for the F26/F27 rows on
+2026-09-29. “Not assessed” is not “absent”.
 No prices, connector counts, blanket parity percentages or unsupported
 performance/reliability rankings are asserted. Editions differ.
 
@@ -96,6 +97,8 @@ performance/reliability rankings are asserted. Editions differ.
 | Test without repeated external effects | [n8n pinning and mocking](https://docs.n8n.io/build/work-with-data/pin-and-mock-data) distinguishes development pinning from production | Previews exist; durable fixtures/pins F02 |
 | Share reusable workflow structure | [Make blueprints](https://help.make.com/blueprints) supports export/import with account reconnection | Safe portable format F05, curated onboarding F06 |
 | Understand/recover failure | [n8n error handling](https://docs.n8n.io/build/flow-logic/handle-errors-gracefully.md) and [Make incomplete execution management](https://help.make.com/manage-incomplete-executions) | Existing retry/replay; workflow-authored handling F09 is separate |
+| Stop an automation that keeps failing | [Zapier turns off Zaps that keep erroring](https://help.zapier.com/hc/en-us/articles/8496216132621-Zap-is-not-running); [Make errors before deactivation](https://help.make.com/scenario-settings) | Missing; F26 pauses triggers and announces it in the inbox |
+| Choose how failures reach each person | [Zapier error notification frequency](https://help.zapier.com/hc/en-us/articles/8496289225229-Manage-notifications-when-errors-occur-in-Zap-workflows) | F03 inbox plus per-workflow alerts exist; per-person preferences and email digest F27 |
 | Human intervention before continuation | [Zapier Human in the Loop](https://help.zapier.com/hc/en-us/sections/38731226552845-Human-in-the-Loop) | New durable decision product F10 |
 | Forms start workflows | [n8n Form Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger) | New product F11 |
 | File data in workflows | [n8n file and binary data](https://docs.n8n.io/build/work-with-data/handle-special-data-types/work-with-files-and-images) | Storage/output exists; complete input/consumer F04 |
@@ -138,7 +141,7 @@ the then-current code. Do not spend weeks finalizing far-future schemas.
 | 0 — Close current work | Structural cleanup and F00; bounded F01 verification/fixes | Establish trusted foundation without another broad cleanup cycle |
 | 1 — Daily usability | F03 inbox → F02 test cases → F05 portability → F06 templates | Immediate usefulness, safe testing and less repeated authoring |
 | 1b — Parallel-ready optional slices | F04 file consumer/upload; F07 organization; selected F24 transforms | Independent product work after their gates; file decision must not block everything |
-| 2 — Reusable reliable automation | F08 subworkflows → F09 failure routes; F12 usage before large adoption | Expand what workflows can do while keeping behavior inspectable |
+| 2 — Reusable reliable automation | F08 subworkflows → F09 failure routes; F26 auto-pause and F27 notification preferences after F03; F12 usage before large adoption | Expand what workflows can do while keeping behavior inspectable, and stop failures from running unattended |
 | 3 — Human workflows | F10 approvals → F11 forms/resume input; F13 configuration | Durable human actions and reusable configuration |
 | 4 — Team/developer platform | F16 machine tokens → F17 environments; F18 governance; F19 comments/presence | Operational control; multiplayer remains its own later milestone |
 | 5 — Optional power features | F14 data tables; F15 sync responses; F20 sandbox; F25 coordination | High cost/security/semantics; promote by demand, not to fill a checklist |
@@ -155,6 +158,8 @@ a V1 follow-up.
 
 - F05 → F06; F05 + F13 + F16 → F17.
 - F03 → F10 → resume-input part of F11; public start forms can be independent.
+- F03 → F27 → notices from F26 (pauses) and F12 (limits); F26 can pause
+  before F27 exists but announces pauses through F27's notice kinds.
 - F04 → file fields/parsers; not required for plain JSON subworkflows.
 - F08 → reusable error workflows and AI tool workflows, not every error route.
 - F12 → commercial F23; trustworthy measurement before pricing.
@@ -173,7 +178,7 @@ only after its gate is resolved.
 | [F00](feature-plans/00-release-baseline.md) | Release baseline and existing-capability qualification | Existing implementation / evidence gate | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F01](feature-plans/01-editor-capability-completion.md) | Complete and qualify the existing editor surface | Frontend-led parity, not a rebuild | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F02](feature-plans/02-workflow-test-workspace.md) | Saved test cases, pinned samples and workflow regression runs | New product over existing previews | L | Proposed |
-| [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | In progress: ADR054 accepted; contracts/database foundation locally verified; runtime/UI/live gates open |
+| [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | In progress: redesigned under ADR055; database (PR118) and worker (PR119) merged; API and web slices follow |
 | [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs and artifact lifecycle | Backend foundation exists; consumer contract + frontend missing | L | Proposed |
 | [F05](feature-plans/05-workflow-portability.md) | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Proposed |
 | [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Proposed |
@@ -196,6 +201,8 @@ only after its gate is resolved.
 | [F23](feature-plans/23-billing-and-commercialization.md) | Billing and commercial entitlements | Explicitly deferred optional business slice | XL | Proposed |
 | [F24](feature-plans/24-data-transform-toolkit.md) | Discoverable data transforms and batch tools | New node UX over existing mapping/JSONata foundations | L | Proposed |
 | [F25](feature-plans/25-event-coordination.md) | Business-event deduplication, debounce and throttling | Optional durable coordination beyond queue reliability | XL | Proposed |
+| [F26](feature-plans/26-workflow-auto-pause.md) | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Proposed |
+| [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
 
 ## Shared implementation rules
 
