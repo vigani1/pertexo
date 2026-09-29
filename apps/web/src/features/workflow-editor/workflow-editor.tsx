@@ -13,7 +13,7 @@ import {
 import { ReactFlowProvider } from '@xyflow/react';
 import { useMemo, useState } from 'react';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
+import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
 import {
   IssuesLens,
   useAutoValidation,
@@ -49,6 +49,8 @@ import { useEditorSessionVerification } from './use-editor-session-verification'
 import { useLeaveGuard } from './use-leave-guard';
 import { workflowDraftQueryOptions } from './workflow-editor.queries';
 
+const NO_CONNECTIONS: readonly ConnectionResponse[] = [];
+
 export function WorkflowEditorPage({
   apiClient,
   user,
@@ -72,7 +74,7 @@ export function WorkflowEditorPage({
     authoringCatalogQueryOptions(apiClient, user.id),
   );
   const connections = useSuspenseQuery(
-    connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
+    editorConnectionsQueryOptions(apiClient, user.id, workspace.id),
   );
   return (
     <EditorProvider
@@ -91,7 +93,8 @@ export function WorkflowEditorPage({
           workspace={workspace}
           workflowId={workflowId}
           definitions={catalog.data.definitions.items}
-          connections={connections.data.items}
+          connections={connections.data?.items ?? NO_CONNECTIONS}
+          connectionsAvailable={connections.data !== null}
           onRunAccepted={onRunAccepted}
           {...(onPublished === undefined ? {} : { onPublished })}
         />
@@ -112,6 +115,7 @@ function WorkflowEditorSession({
   workflowId,
   definitions,
   connections,
+  connectionsAvailable,
   onRunAccepted,
   onPublished,
 }: Readonly<{
@@ -121,6 +125,7 @@ function WorkflowEditorSession({
   workflowId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
+  connectionsAvailable: boolean;
   onRunAccepted: (runId: string) => void;
   onPublished?: () => void;
 }>) {
@@ -218,6 +223,7 @@ function WorkflowEditorSession({
           workflowId={workflowId}
           definitions={definitions}
           connections={connections}
+          connectionsAvailable={connectionsAvailable}
           canUpdate={canUpdate}
           paused={paused}
           issues={issues}

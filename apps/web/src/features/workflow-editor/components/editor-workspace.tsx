@@ -59,6 +59,7 @@ export function EditorWorkspace({
   workflowId,
   definitions,
   connections,
+  connectionsAvailable,
   canUpdate,
   paused,
   issues,
@@ -77,6 +78,8 @@ export function EditorWorkspace({
   workflowId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
+  /** False when the workspace's connections can't be read here at all. */
+  connectionsAvailable: boolean;
   canUpdate: boolean;
   paused: boolean;
   issues: WorkflowIssuesView;
@@ -207,8 +210,14 @@ export function EditorWorkspace({
           definitions={definitions}
           connections={connections}
           userId={userId}
-          lookUpChannels={workspace.capabilities.includes('connection:use')}
-          addConnections={workspace.capabilities.includes('connection:manage')}
+          lookUpChannels={
+            connectionsAvailable &&
+            workspace.capabilities.includes('connection:use')
+          }
+          addConnections={
+            connectionsAvailable &&
+            workspace.capabilities.includes('connection:manage')
+          }
           editable={editable}
           tab={navigation.tab}
           onTabChange={navigation.setTab}

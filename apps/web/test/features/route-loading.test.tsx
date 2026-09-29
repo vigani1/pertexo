@@ -238,7 +238,8 @@ describe('route loading', () => {
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows`);
   });
 
-  it('does not call an existing workflow missing when connection discovery is unavailable', async () => {
+  it('opens an existing workflow’s editor when connection discovery is unavailable', async () => {
+    // A local API without connection encryption answers 404 for connections.
     installExistingEditorHandlers(undefined, notFoundProblem);
     const { router } = renderApp(editorRoute);
     await waitFor(() => {
@@ -249,11 +250,14 @@ describe('route loading', () => {
       ).toEqual({ found: true });
     });
     expect(
+      await screen.findByRole('application', {}, coldStart),
+    ).toBeInTheDocument();
+    expect(
       screen.queryByRole('heading', { name: 'This workflow doesn’t exist' }),
     ).toBeNull();
     expect(
-      await screen.findByRole('heading', { name: 'This doesn’t exist' }),
-    ).toBeVisible();
+      screen.queryByRole('heading', { name: 'This doesn’t exist' }),
+    ).toBeNull();
   });
 
   it('observes an early supporting failure while the draft read is delayed', async () => {
