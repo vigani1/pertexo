@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  workspaceInboxEntrySchema,
   workspaceInboxListQuerySchema,
   workspaceInboxListResponseSchema,
+  workspaceInboxReadAllRequestSchema,
   workspaceInboxReadRequestSchema,
   workspaceInboxReadResponseSchema,
+  workspaceInboxStreamEventSchema,
   workspaceInboxSummaryResponseSchema,
+  workspaceInboxThreadSchema,
 } from '../src/http/workspace-inbox.js';
 import {
   workspaceInboxClientContract,
@@ -14,140 +16,178 @@ import {
 } from '../src/workspace-inbox.js';
 import { CONTRACT_ARTIFACTS } from '../src/artifacts.js';
 
-const entry = {
-  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  kind: 'failed',
-  runId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+const thread = {
   workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  occurredAt: '2026-09-28T10:00:00.000100Z',
-  createdAt: '2026-09-28T10:00:00.000900Z',
-  expiresAt: '2026-10-28T10:00:00.000900Z',
-  readAt: null,
+  workflowName: 'Nightly import',
+  kind: 'failed',
+  occurrenceCount: 3,
+  firstOccurredAt: '2026-09-28T10:00:00.000100Z',
+  latestOccurredAt: '2026-09-28T11:00:00.000900Z',
+  latestRunId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  latestFailedStep: {
+    nodeId: 'fetch',
+    label: 'Fetch orders',
+    definitionKey: 'core.http',
+    safeErrorCode: 'provider.unavailable',
+  },
+  revision: '9007199254740993',
+  unread: true,
 };
 
-describe('private workspace inbox contracts', () => {
+describe('workspace inbox thread contracts (ADR 055)', () => {
   it.each(['failed', 'timed_out', 'outcome_unknown'])(
-    'allows %s and preserves microseconds',
+    'accepts a %s thread and preserves microseconds and bigint revisions',
     (kind) => {
-      expect(workspaceInboxEntrySchema.parse({ ...entry, kind })).toEqual({
-        ...entry,
+      expect(workspaceInboxThreadSchema.parse({ ...thread, kind })).toEqual({
+        ...thread,
         kind,
       });
     },
   );
+
   it.each(['succeeded', 'canceled', 'running'])(
-    'rejects non-failure %s',
+    'rejects a non-failure %s thread',
     (kind) => {
       expect(
-        workspaceInboxEntrySchema.safeParse({ ...entry, kind }).success,
+        workspaceInboxThreadSchema.safeParse({ ...thread, kind }).success,
       ).toBe(false);
     },
   );
-  it.each(['recipientId', 'error', 'input', 'providerToken', 'html'])(
-    'rejects unexpected %s payload',
+
+  it.each(['recipientId', 'error', 'input', 'output', 'html'])(
+    'rejects unexpected %s content',
     (key) => {
       expect(
-        workspaceInboxEntrySchema.safeParse({ ...entry, [key]: 'private' })
+        workspaceInboxThreadSchema.safeParse({ ...thread, [key]: 'private' })
           .success,
       ).toBe(false);
     },
   );
-  it('preserves bigint revision strings and explicit unread/read state', () => {
-    const revision = '9007199254740993';
+
+  it('rejects impossible counts and unsafe revisions or timestamps', () => {
+    for (const change of [
+      { occurrenceCount: 0 },
+      { occurrenceCount: Number.MAX_SAFE_INTEGER + 1 },
+      { revision: '01' },
+      { revision: '-1' },
+      { revision: '1'.repeat(20) },
+      { revision: 1 },
+      { latestOccurredAt: '2026-09-28T11:00:00.0009001Z' },
+      { latestFailedStep: { nodeId: 'fetch' } },
+    ])
+      expect(
+        workspaceInboxThreadSchema.safeParse({ ...thread, ...change }).success,
+      ).toBe(false);
+    expect(
+      workspaceInboxThreadSchema.parse({ ...thread, latestFailedStep: null })
+        .latestFailedStep,
+    ).toBeNull();
+  });
+
+  it('bounds pages and carries the read-all cut', () => {
     expect(
       workspaceInboxListResponseSchema.parse({
-        items: [entry],
-        nextCursor: null,
-        revision,
+        items: [thread],
+        nextCursor: 'opaque',
+        revision: '42',
       }).revision,
-    ).toBe(revision);
+    ).toBe('42');
     expect(
-      workspaceInboxReadResponseSchema.parse({
-        entry: { ...entry, readAt: '2026-09-28T10:00:01.000123Z' },
-        revision,
-      }).entry.readAt,
-    ).toBe('2026-09-28T10:00:01.000123Z');
+      workspaceInboxListResponseSchema.safeParse({
+        items: Array.from({ length: 101 }, () => thread),
+        nextCursor: null,
+        revision: '42',
+      }).success,
+    ).toBe(false);
     expect(
       workspaceInboxSummaryResponseSchema.parse({
         unreadCount: 0,
         revision: '0',
       }),
     ).toEqual({ unreadCount: 0, revision: '0' });
-  });
-  it.each([{}, { filter: 'unread', limit: '100', after: 'opaque' }])(
-    'accepts bounded query %j',
-    (query) => {
-      expect(workspaceInboxListQuerySchema.safeParse(query).success).toBe(true);
-    },
-  );
-  it.each([
-    { limit: 101 },
-    { limit: 0 },
-    { after: '' },
-    { filter: 'read' },
-    { recipientId: entry.id },
-  ])('rejects query %j', (query) => {
-    expect(workspaceInboxListQuerySchema.safeParse(query).success).toBe(false);
-  });
-  it('rejects unsafe counters, revisions, oversized pages and non-microsecond output', () => {
-    for (const revision of ['-1', '01', '1.5', '1e3', '1'.repeat(20), 1]) {
-      expect(
-        workspaceInboxSummaryResponseSchema.safeParse({
-          unreadCount: 0,
-          revision,
-        }).success,
-      ).toBe(false);
-    }
     expect(
       workspaceInboxSummaryResponseSchema.safeParse({
         unreadCount: -1,
         revision: '0',
       }).success,
     ).toBe(false);
+  });
+
+  it.each([{}, { filter: 'unread', limit: '100', after: 'opaque' }])(
+    'accepts bounded query %j',
+    (query) => {
+      expect(workspaceInboxListQuerySchema.safeParse(query).success).toBe(true);
+    },
+  );
+
+  it.each([
+    { limit: 101 },
+    { limit: 0 },
+    { after: '' },
+    { filter: 'read' },
+    { recipientId: thread.workflowId },
+  ])('rejects query %j', (query) => {
+    expect(workspaceInboxListQuerySchema.safeParse(query).success).toBe(false);
+  });
+
+  it('reads only by a seen revision, never for another person', () => {
+    for (const schema of [
+      workspaceInboxReadRequestSchema,
+      workspaceInboxReadAllRequestSchema,
+    ]) {
+      expect(schema.parse({ revision: '7' })).toEqual({ revision: '7' });
+      expect(schema.safeParse({}).success).toBe(false);
+      expect(
+        schema.safeParse({ revision: '7', recipientId: thread.workflowId })
+          .success,
+      ).toBe(false);
+    }
     expect(
-      workspaceInboxSummaryResponseSchema.safeParse({
-        unreadCount: Number.MAX_SAFE_INTEGER + 1,
-        revision: '0',
-      }).success,
-    ).toBe(false);
-    expect(
-      workspaceInboxListResponseSchema.safeParse({
-        items: Array.from({ length: 101 }, () => entry),
-        revision: '1',
-        nextCursor: null,
-      }).success,
-    ).toBe(false);
-    expect(
-      workspaceInboxEntrySchema.safeParse({
-        ...entry,
-        createdAt: '2026-09-28T10:00:00.0009001Z',
-      }).success,
+      workspaceInboxReadResponseSchema.parse({
+        workflowId: thread.workflowId,
+        unread: false,
+        revision: '7',
+      }).unread,
     ).toBe(false);
   });
-  it('never accepts a recipient or cutoff in the single-read command', () => {
-    expect(workspaceInboxReadRequestSchema.parse({})).toEqual({});
+
+  it('keeps stream events content-free', () => {
     expect(
-      workspaceInboxReadRequestSchema.safeParse({ recipientId: entry.id })
-        .success,
-    ).toBe(false);
-  });
-  it('declares ordinary cookie/CSRF protection and nondisclosing collection 404', () => {
-    const paths = workspaceInboxOpenApiDocument.paths;
-    const read =
-      paths['/v1/workspaces/{workspaceId}/notifications/{notificationId}/read']
-        .post;
-    expect(read.security).toEqual([{ cookieSession: [] }]);
-    expect(read.parameters).toContainEqual(
-      expect.objectContaining({
-        name: 'X-CSRF-Token',
-        in: 'header',
-        required: true,
+      workspaceInboxStreamEventSchema.parse({
+        schemaVersion: 1,
+        revision: null,
       }),
-    );
+    ).toEqual({ schemaVersion: 1, revision: null });
+    expect(
+      workspaceInboxStreamEventSchema.safeParse({
+        schemaVersion: 1,
+        revision: '3',
+        workflowName: 'Nightly import',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('declares cookie sessions, CSRF on commands and nondisclosing 404s', () => {
+    const paths = workspaceInboxOpenApiDocument.paths;
+    for (const command of [
+      paths['/v1/workspaces/{workspaceId}/notifications/{workflowId}/read']
+        .post,
+      paths['/v1/workspaces/{workspaceId}/notifications/read-all'].post,
+    ]) {
+      expect(command.security).toEqual([{ cookieSession: [] }]);
+      expect(command.parameters).toContainEqual(
+        expect.objectContaining({
+          name: 'X-CSRF-Token',
+          in: 'header',
+          required: true,
+        }),
+      );
+      expect(command.responses).toHaveProperty('404');
+    }
     expect(
       paths['/v1/workspaces/{workspaceId}/notifications'].get.responses,
     ).toHaveProperty('404');
-    expect(workspaceInboxClientContract.routes).toHaveLength(3);
+    expect(workspaceInboxClientContract.routes).toHaveLength(5);
     expect(
       CONTRACT_ARTIFACTS.filter((artifact) =>
         artifact.fileName.startsWith('workspace-inbox.'),

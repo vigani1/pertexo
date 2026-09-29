@@ -2,6 +2,7 @@ import { mapConnectionError } from './connections/errors.js';
 import { mapArtifactError } from './artifacts/errors.js';
 import { mapIdentityWorkspaceError } from './identity-workspace/errors.js';
 import { mapNodeTestingError } from './node-testing/errors.js';
+import { mapNotificationError } from './notifications/errors.js';
 import type {
   ApplicationError,
   HttpApplicationErrorMapper,
@@ -43,6 +44,10 @@ const ROUTE_ERROR_MAPPERS: readonly RouteErrorMapper[] = Object.freeze([
     route:
       /^\/v1\/workspaces\/[^/]+\/(?:connections(?:\/|$)|failure-notification-destinations(?:\/|$)|workflows\/[^/]+\/failure-notification-policy$)/u,
     map: mapConnectionError,
+  },
+  {
+    route: /^\/v1\/workspaces\/[^/]+\/notifications(?:\/|$)/u,
+    map: mapNotificationError,
   },
   {
     route: /^\/v1\/workspaces\/[^/]+\/workflows(?:\/|$)/u,

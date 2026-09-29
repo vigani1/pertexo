@@ -24,6 +24,7 @@ import { createCoreWorkflowCompatibility } from '../../src/platform/workflow/wor
 import { createBetterAuthFixtureApplication } from './better-auth-fixture-application.js';
 import type { ApiConnectionRuntimeOverrides } from '../../src/platform/connections/connection-runtime.module.js';
 import type { ApiWebhookRuntime } from '../../src/platform/webhooks/webhook-runtime.module.js';
+import { createApiNotificationRuntime } from '../../src/platform/notifications/notification-runtime.module.js';
 
 /*
  * The whole API with Better Auth as the only session authority and no legacy
@@ -111,6 +112,8 @@ export function useBetterAuthRealApi(
     nodeCompatibilityCohort?: ApiConfig['nodeCompatibilityCohort'];
     redisUrl?: string;
     schedules?: boolean;
+    /** Compose the real workspace inbox runtime (ADR 055). */
+    notifications?: boolean;
     webhookRuntime?: (config: ApiConfig) => Promise<ApiWebhookRuntime>;
     logger?: StructuredLogger;
     connections?: Readonly<{
@@ -228,6 +231,14 @@ export function useBetterAuthRealApi(
             await options.webhookRuntime(config),
             (runtime) => runtime.close(),
           );
+    const notificationRuntime =
+      options.notifications === true
+        ? owner.acquire(
+            'notification runtime',
+            createApiNotificationRuntime(databaseConfig, config.redisUrl),
+            (runtime) => runtime.close(),
+          )
+        : undefined;
     application = await createBetterAuthFixtureApplication(
       config,
       {
@@ -236,6 +247,7 @@ export function useBetterAuthRealApi(
         logger: options.logger ?? silent,
         telemetry,
         ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
+        ...(notificationRuntime === undefined ? {} : { notificationRuntime }),
         ...(options.connections === undefined
           ? {}
           : { connectionOverrides: options.connections.overrides }),
@@ -244,6 +256,7 @@ export function useBetterAuthRealApi(
       options.schedules,
     );
     if (webhookRuntime !== undefined) owner.transfer(webhookRuntime);
+    if (notificationRuntime !== undefined) owner.transfer(notificationRuntime);
     await application.init();
   }, 60_000);
 

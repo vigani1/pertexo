@@ -35,6 +35,7 @@ const expectedCapabilitiesByRole = {
     'connection:manage',
     'member:read',
     'member:manage',
+    'notification:read',
   ],
   builder: [
     'artifact:read',
@@ -60,6 +61,7 @@ const expectedCapabilitiesByRole = {
     'run:cancel',
     'run:replay',
     'connection:use',
+    'notification:read',
   ],
   viewer: [
     'artifact:read',

@@ -674,7 +674,7 @@ describe('workspace settings', () => {
     expect(
       access.getByText('See workflows, runs and connections'),
     ).toHaveTextContent('See workflows, runs and connections');
-    expect(access.getAllByText(': not with your role')).toHaveLength(7);
+    expect(access.getAllByText(': not with your role')).toHaveLength(8);
     expect(
       screen.getByRole('button', { name: /^Copy workspace ID / }),
     ).toBeVisible();
