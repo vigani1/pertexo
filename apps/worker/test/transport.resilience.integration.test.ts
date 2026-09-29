@@ -818,7 +818,7 @@ describeResilience(
           consumer = undefined;
 
           expect(measurements).toMatchObject({
-            bullmqVersion: '6.1.2',
+            bullmqVersion: '6.3.9',
             migrationHead: EXPECTED_MIGRATION_HEAD,
           });
           proofCompleted = true;
