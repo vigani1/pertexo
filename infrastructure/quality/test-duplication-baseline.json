@@ -1,5 +1,5 @@
 {
-  "toolVersion": "4.0.5",
+  "toolVersion": "4.3.0",
   "scopes": {
     "source": {
       "paths": ["apps/*/src", "packages/*/src"],
