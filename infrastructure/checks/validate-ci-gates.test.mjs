@@ -24,6 +24,8 @@ function fixture() {
       'test:browser-probes': 'pnpm --filter @pertexo/api test:browser-probes',
       'prepush:check':
         'pnpm check && pnpm test:coverage && pnpm test:browser-probes',
+      'prepush:fast':
+        'pnpm ci:gates:check && pnpm quality:local:check && pnpm architecture:check && pnpm build && pnpm built-exports:check && pnpm prepush:changed',
     },
   };
   const workflow = parseYaml(`
@@ -211,5 +213,39 @@ test('requires local pre-push to execute the separate browser probes', () => {
   assert.throws(
     () => validateCiGatePolicy(input),
     /prepush:check script must invoke test:browser-probes exactly once/u,
+  );
+});
+
+test('requires the fast pre-push gate to keep every static gate from check', () => {
+  const input = fixture();
+  input.packageManifest.scripts['prepush:fast'] =
+    'pnpm ci:gates:check && pnpm build && pnpm built-exports:check && pnpm prepush:changed';
+  assert.throws(
+    () => validateCiGatePolicy(input),
+    /prepush:fast script must invoke quality:local:check exactly once/u,
+  );
+});
+
+test('lets the fast pre-push gate scope lint, typecheck, and tests to the change', () => {
+  const input = fixture();
+  input.packageManifest.scripts.check +=
+    ' && pnpm lint && pnpm typecheck && pnpm test';
+  assert.equal(validateCiGatePolicy(input).requiredGates.length, 3);
+
+  input.packageManifest.scripts['prepush:fast'] =
+    'pnpm ci:gates:check && pnpm quality:local:check && pnpm architecture:check && pnpm build && pnpm built-exports:check';
+  assert.throws(
+    () => validateCiGatePolicy(input),
+    /prepush:fast script must invoke prepush:changed exactly once/u,
+  );
+});
+
+test('requires the fast pre-push gate to build before validating exports', () => {
+  const input = fixture();
+  input.packageManifest.scripts['prepush:fast'] =
+    'pnpm ci:gates:check && pnpm quality:local:check && pnpm architecture:check && pnpm built-exports:check && pnpm build && pnpm prepush:changed';
+  assert.throws(
+    () => validateCiGatePolicy(input),
+    /prepush:fast script must build before validating built exports/u,
   );
 });

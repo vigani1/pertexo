@@ -17,6 +17,14 @@ export const DELIBERATE_ORDINARY_CI_EXCLUSIONS = Object.freeze({
   'test:browser-probes': 'browser',
 });
 
+// The fast pre-push gate runs every static gate in check, but replaces these
+// repository-wide steps with prepush:changed, scoped to the changed packages.
+export const FAST_PRE_PUSH_SCOPED_GATES = Object.freeze([
+  'lint',
+  'test',
+  'typecheck',
+]);
+
 const SCRIPT_NAME = /^[a-z][a-z0-9:-]*$/u;
 
 function fail(message) {
@@ -183,6 +191,25 @@ export function validateCiGatePolicy({ packageManifest, workflow }) {
     'prepush:check script',
   );
   requireExactlyOnce(prepush, ['test:browser-probes'], 'prepush:check script');
+
+  const fastPrepush = parsePnpmScriptSequence(
+    scripts['prepush:fast'],
+    'prepush:fast script',
+  );
+  requireExactlyOnce(
+    fastPrepush,
+    [
+      ...localCheck.filter(
+        (name) => !FAST_PRE_PUSH_SCOPED_GATES.includes(name),
+      ),
+      'prepush:changed',
+    ],
+    'prepush:fast script',
+  );
+  if (
+    fastPrepush.indexOf('built-exports:check') <= fastPrepush.indexOf('build')
+  )
+    fail('prepush:fast script must build before validating built exports');
 
   return { requiredGates: [...REQUIRED_ORDINARY_CI_GATES] };
 }

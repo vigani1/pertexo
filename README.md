@@ -119,6 +119,7 @@ pnpm dev:api
 pnpm dev:worker
 pnpm test
 pnpm check
+pnpm prepush:fast
 pnpm prepush:check
 pnpm prepush:full
 pnpm quality:local
@@ -143,9 +144,13 @@ coverage outputs. See the
 for partial investigative runs, cleanup behavior, and the named AWS-only limits.
 
 `pnpm install` configures the repository-managed pre-push hook. Every ordinary
-push runs `pnpm prepush:check`, which combines `pnpm check` with the
-critical-file coverage thresholds. Run `pnpm prepush:full` before pushing
-changes to PostgreSQL, Redis, queues, object storage, HTTP behavior, or process
+push runs `pnpm prepush:fast`, which keeps every static gate from `pnpm check`
+but scopes lint, typecheck, and unit tests to the packages the branch changed;
+the protected GitHub checks still run every suite on the pull request.
+`pnpm prepush:check` combines the whole of `pnpm check` with the critical-file
+coverage thresholds and browser probes; push with `PERTEXO_PRE_PUSH_FULL=1` to
+make the hook run it. Run `pnpm prepush:full` before pushing changes to
+PostgreSQL, Redis, queues, object storage, HTTP behavior, or process
 coordination; it adds the service-backed integration suite and therefore
 requires the local services above. The explicit
 `PERTEXO_SKIP_PRE_PUSH_CHECKS=1 git push` escape hatch is for documented
