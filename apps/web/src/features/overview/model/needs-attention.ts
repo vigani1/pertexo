@@ -3,7 +3,7 @@ import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
 import type { StatusTone } from '@/components/ui/status';
-import { formatRelativeTime } from '@/lib/format-time';
+import { formatElapsedTime } from '@/lib/format-time';
 
 // "Needs attention" is derived from reads the app already makes: problem
 // runs from the last day, workflows whose triggers aren't healthy,
@@ -63,7 +63,7 @@ function groupDetail(group: RunGroup, nowMs: number): string {
     group.timedOut > 0 ? `${String(group.timedOut)} timed out` : undefined,
     group.unknown > 0 ? `${String(group.unknown)} unknown` : undefined,
   ].filter((part): part is string => part !== undefined);
-  const latest = `latest ${formatRelativeTime(group.latest.createdAt, nowMs)}`;
+  const latest = `latest ${formatElapsedTime(group.latest.createdAt, nowMs)}`;
   return parts.length > 1 ? `${parts.join(', ')} · ${latest}` : latest;
 }
 

@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   formatCountdown,
+  formatElapsedTime,
   formatRelativeTime,
   formatShortTime,
 } from '../../src/lib/format-time';
@@ -142,5 +143,20 @@ describe('formatRelativeTime', () => {
     expect(formatRelativeTime(new Date(now + 20_000).toISOString(), now)).toBe(
       'in a moment',
     );
+  });
+});
+
+describe('formatElapsedTime', () => {
+  it('reads an event newer than a once-a-minute clock as just now', () => {
+    const lastTick = Date.now();
+    const arrivedSinceTick = new Date(lastTick + 40_000).toISOString();
+    expect(formatElapsedTime(arrivedSinceTick, lastTick)).toBe('just now');
+    expect(
+      formatElapsedTime(
+        new Date(lastTick - 3 * 60_000).toISOString(),
+        lastTick,
+      ),
+    ).toBe('3m ago');
+    expect(formatElapsedTime(null, lastTick)).toBe(formatRelativeTime(null));
   });
 });

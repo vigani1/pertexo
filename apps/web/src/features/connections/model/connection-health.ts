@@ -3,7 +3,7 @@ import type {
   ConnectionTestResponse,
 } from '@pertexo/contracts/schemas/connections';
 import type { StatusTone } from '@/components/ui/status';
-import { formatRelativeTime } from '@/lib/format-time';
+import { formatElapsedTime } from '@/lib/format-time';
 import type { ProviderKey } from './connection-providers';
 
 /** Where a connection test stands, as the test thread draws it. */
@@ -84,7 +84,7 @@ export function describeConnectionHealth(
   const { health } = connection;
   if (connection.status === 'revoked')
     return {
-      text: `revoked ${formatRelativeTime(connection.updatedAt, now)}`,
+      text: `revoked ${formatElapsedTime(connection.updatedAt, now)}`,
       tone: 'quiet',
     };
   if (health.lastErrorCode !== null)
@@ -95,7 +95,7 @@ export function describeConnectionHealth(
   if (health.lastTestedAt === null)
     return { text: 'never tested', tone: 'quiet' };
   return {
-    text: `tested ${formatRelativeTime(health.lastTestedAt, now)} · OK`,
+    text: `tested ${formatElapsedTime(health.lastTestedAt, now)} · OK`,
     tone: 'quiet',
   };
 }

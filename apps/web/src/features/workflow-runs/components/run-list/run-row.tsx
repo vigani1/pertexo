@@ -7,7 +7,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   formatDateTime,
   formatDurationMs,
-  formatRelativeTime,
+  formatElapsedTime,
 } from '@/lib/format-time';
 import { shortRunId, workflowLabel } from '../../model/run-list';
 import { describeListedFailure } from '../../model/run-failure';
@@ -34,7 +34,7 @@ function StartedAt({
       title={formatDateTime(run.createdAt)}
       className={cn('font-mono text-xs', className)}
     >
-      {formatRelativeTime(run.createdAt, nowMs)}
+      {formatElapsedTime(run.createdAt, nowMs)}
     </time>
   );
 }
