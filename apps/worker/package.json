@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/main.ts",
+    "dev": "node ../../infrastructure/development/run-nest-dev.mjs",
     "start": "node dist/main.js",
     "test": "vitest run",
     "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/worker/test-results.json && vitest run --config vitest.lifecycle-coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/worker-lifecycle/test-results.json",

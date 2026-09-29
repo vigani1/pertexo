@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "node scripts/dev.mjs",
+    "dev": "node ../../infrastructure/development/run-nest-dev.mjs",
     "start": "node dist/main.js",
     "test": "node --test ../../infrastructure/testing/editor-browser-envelope-keys.test.mjs && vitest run",
     "test:browser-probes": "vitest run --config vitest.browser-probes.config.ts",

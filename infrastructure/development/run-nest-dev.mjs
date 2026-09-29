@@ -1,10 +1,14 @@
+// Runs a NestJS app from its package directory: compile with TypeScript, then
+// watch the emitted JavaScript. tsx and other esbuild runners drop the
+// decorator metadata Nest needs to inject constructor parameters by type.
+
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import process from 'node:process';
 
 const require = createRequire(import.meta.url);
 const compiler = require.resolve('typescript/bin/tsc');
-const directory = fileURLToPath(new URL('../', import.meta.url));
+const directory = process.cwd();
 
 function start(args) {
   return spawn(process.execPath, args, {
@@ -17,9 +21,7 @@ function start(args) {
 function completion(child) {
   return new Promise((resolve) => {
     child.once('error', (error) => {
-      process.stderr.write(
-        `API development process failed: ${error.message}\n`,
-      );
+      process.stderr.write(`Development process failed: ${error.message}\n`);
       resolve(1);
     });
     child.once('close', (code) => resolve(code ?? 1));
