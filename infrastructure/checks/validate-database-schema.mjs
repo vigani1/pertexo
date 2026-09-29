@@ -66,10 +66,7 @@ export function validateDatabaseSchemaSources({
   if (typeof migrationSql !== 'string' || typeof schemaSource !== 'string')
     throw new TypeError('Database schema sources must be strings');
 
-  const migrationTables = matches(
-    migrationSql,
-    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?app\.([a-z0-9_]+)/giu,
-  );
+  const migrationTables = liveTables(migrationSql);
   const typedTables = matches(
     schemaSource,
     /appSchema\.table\(\s*['"]([^'"]+)/gu,
@@ -145,6 +142,18 @@ export function validateDatabaseSchemaSources({
     typedTableCount: typedTables.size,
     rawSqlTableCount: registeredTables.size,
   });
+}
+
+/** Tables the migrations leave in place, applying creates and drops in order. */
+function liveTables(migrationSql) {
+  const tables = new Set();
+  for (const [, command, name] of migrationSql.matchAll(
+    /(CREATE|DROP)\s+TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?app\.([a-z0-9_]+)/giu,
+  )) {
+    if (command.toUpperCase() === 'CREATE') tables.add(name);
+    else tables.delete(name);
+  }
+  return tables;
 }
 
 function matches(source, pattern) {

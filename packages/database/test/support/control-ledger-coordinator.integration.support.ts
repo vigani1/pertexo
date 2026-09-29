@@ -88,6 +88,7 @@ const MIGRATIONS_AFTER_0045 = [
   '0120_workspace_inbox_foundation.sql',
   '0121_workspace_inbox_capture.sql',
   '0122_workspace_inbox_projection.sql',
+  '0123_workspace_inbox_threads.sql',
 ] as const;
 
 export class MemoryLedger implements ControlLedger {

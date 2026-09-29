@@ -63,10 +63,9 @@ import {
   workflowTriggers,
 } from './schema/authoring.js';
 import {
-  workspaceInboxAudience,
-  workspaceInboxEntries,
-  workspaceInboxRecipientState,
-  workspaceInboxSources,
+  workspaceInboxEvents,
+  workspaceInboxReads,
+  workspaceInboxThreads,
 } from './schema/workspace-inbox.js';
 import {
   webhookTriggerSecretVersions,
@@ -182,10 +181,9 @@ export const databaseSchema = {
   workspaceMemberships,
   workspaceMemberRoleCommandReceipts,
   workspaceRenameCommandReceipts,
-  workspaceInboxAudience,
-  workspaceInboxEntries,
-  workspaceInboxRecipientState,
-  workspaceInboxSources,
+  workspaceInboxEvents,
+  workspaceInboxReads,
+  workspaceInboxThreads,
   workspaceInvitations,
   workspaceInvitationCommandReceipts,
   workspaceInvitationDeliveryAttempts,

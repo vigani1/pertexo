@@ -9,6 +9,7 @@ import {
   type ParsedTransitionPlan,
 } from './coordinator-run-store-plan.js';
 import { persistFailureNotificationIntent } from './coordinator-run-store-terminal.js';
+import { persistWorkspaceInboxEvent } from '../workspace-inbox/inbox-producer.js';
 import { canonicalOutboxPayloadChecksum } from '../transport/outbox.js';
 import {
   parseStoredExecutionValueV1,
@@ -84,6 +85,7 @@ export async function persistCoordinatorRunTransition(
     planFingerprint: string;
     row: CoordinatorCommitRow;
     runTimeoutFailureContextEnabled: boolean;
+    workspaceInboxProducerEnabled: boolean;
     runId: string;
     traceparent?: string;
     workflowVersionId: string;
@@ -97,6 +99,7 @@ export async function persistCoordinatorRunTransition(
     planFingerprint,
     row,
     runTimeoutFailureContextEnabled,
+    workspaceInboxProducerEnabled,
     runId,
     traceparent,
     workflowVersionId,
@@ -120,6 +123,14 @@ export async function persistCoordinatorRunTransition(
     plan,
     ...(traceparent === undefined ? {} : { traceparent }),
   });
+  if (workspaceInboxProducerEnabled)
+    await persistWorkspaceInboxEvent(client, {
+      workspaceId,
+      workflowId: row.workflow_id,
+      runId,
+      cancellationRequested: authoritativeCancellation,
+      plan,
+    });
 
   const checkpointUpdate = await client.query(
     `update app.run_checkpoints

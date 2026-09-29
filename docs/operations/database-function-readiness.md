@@ -20,12 +20,16 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.activate_node_compatibility_release(uuid,integer,character varying,uuid,character varying,character varying,character varying)` | `bc6581fed30a75832fdf7133613f355e` | definer, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
 | `app.node_compatibility_artifact_set_valid(jsonb)` | `1ee6b6a001eb02b6b5a95f671240ae69` | invoker, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
 | `app.compatibility_preactivation_cohort_complete(character varying,integer,character varying,character varying,jsonb)` | `4bd8e8a005eebc013d41ae6b6a55b976` | invoker, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
+| `app.fold_workspace_inbox_events(integer)` | `899c9594fabccef911b6d08fa32a65cb` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, worker-only | `0123_workspace_inbox_threads.sql` |
+| `app.expire_workspace_inbox_threads(integer)` | `9deadaa33d0fa9e847c4cdc4127a837c` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, worker-only | `0123_workspace_inbox_threads.sql` |
 
 The executable inventory is split between
 `packages/database/src/platform/readiness.ts` (compatibility-release functions)
 and `packages/database/src/platform/readiness-probe-3.sql.ts` (the preview pin
-guard). This table is an operator aid and must change in the same commit whenever
-either inventory changes.
+guard), with the workspace inbox fold and expiry commands in
+`packages/database/src/execution/workspace-inbox/inbox-fold-readiness.ts`,
+which the worker checks at startup. This table is an operator aid and must
+change in the same commit whenever an owning inventory changes.
 
 ## Synchronized update procedure
 
@@ -50,6 +54,18 @@ either inventory changes.
    in-place replacement cannot support both application versions, hold traffic
    closed until the new API and worker startup compatibility checks pass. Do not
    mix an old image with a body hash it does not recognize.
+
+### Patching a function by text
+
+Some migrations change an existing function by reading its body with
+`pg_get_functiondef`, replacing a marker, and executing the result, so each
+feature adds its lines without copying the whole function. From migration 0123
+on, every such replacement must first count its marker and raise unless it
+occurs exactly once; a presence check alone lets a marker that later appears
+twice receive the change twice or in the wrong place.
+`packages/database/test/migration-function-patching.test.ts` enforces this.
+Published migrations before 0123 keep their original presence checks and must
+not be edited.
 
 ## Failure and rollback
 

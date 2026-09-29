@@ -205,6 +205,15 @@ export type {
   WorkflowStepHealthRecord,
   WorkflowStepRunRecord,
 } from './execution/runs/workflow-step-history.js';
+export { createWorkspaceInboxDatabase } from './execution/workspace-inbox/inbox-read-store.js';
+export type {
+  WorkspaceInboxCursor,
+  WorkspaceInboxDatabase,
+  WorkspaceInboxFailureKind,
+  WorkspaceInboxSummary,
+  WorkspaceInboxThreadPage,
+  WorkspaceInboxThreadRecord,
+} from './execution/workspace-inbox/inbox-read-store.js';
 export type { WorkflowTriggerHealth } from './triggers/workflow-triggers.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
