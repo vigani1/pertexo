@@ -14,12 +14,17 @@ describe('API development runner', () => {
       ),
     );
     const runner = readFileSync(
-      new URL('../scripts/dev.mjs', import.meta.url),
+      new URL(
+        '../../../infrastructure/development/run-nest-dev.mjs',
+        import.meta.url,
+      ),
       'utf8',
     );
 
     expect(packageJson).toMatchObject({
-      scripts: { dev: 'node scripts/dev.mjs' },
+      scripts: {
+        dev: 'node ../../infrastructure/development/run-nest-dev.mjs',
+      },
     });
     expect(compilerConfig).toMatchObject({
       compilerOptions: {
@@ -27,6 +32,7 @@ describe('API development runner', () => {
         experimentalDecorators: true,
       },
     });
+    expect(runner).toContain('process.cwd()');
     expect(runner).toContain('typescript/bin/tsc');
     expect(runner).toContain("'--watch'");
     expect(runner).toContain("'dist/main.js'");
