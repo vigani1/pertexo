@@ -47,6 +47,18 @@ Resolve in an ADR before code:
   run input, output or provider error text.
 - **Preference storage** per person and workspace, removed with membership.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Email | Off (in the app only) | Off, immediately, hourly digest, daily digest | Each person; workspace admins set the default | “You get one email per changed notice, or one digest” |
+| Daily digest time | 09:00 in the person's time zone | Any hour | Each person | “Your digest arrives at this time” |
+| Mute a workflow or connection | Not muted | Muted or not | Each person | “You stop seeing its notices; others still do” |
+| Follow a workflow | Not followed | Followed or not | Each person who may read its runs | “You get its notices without any other access” |
+
 ## Ownership and structure
 
 Database preference, follow and mute state plus notice kinds; worker digest and

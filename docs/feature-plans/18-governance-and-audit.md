@@ -31,6 +31,16 @@ Which events may users read, separation of duties, owner emergency policy, reten
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Keep run data | Platform default | 1 day to the platform default | Workspace owners and admins; audited | “Run inputs and outputs older than this are deleted; legal holds still apply” |
+| Require review before publishing | Off | Off or on | Workspace owners | “Publishing waits for an approving reviewer who is not the author” |
+
 ## Ownership and structure
 
 Identity/workspace policy plus authoring review commands; database audit/read/review ownership; contracts; web audit/review.
