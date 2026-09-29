@@ -46,6 +46,8 @@ import type { ApiWebhookRuntime } from './platform/webhooks/webhook-runtime.modu
 import { WebhookModule } from './webhooks/module.js';
 import type { ApiScheduleRuntime } from './platform/schedules/schedule-runtime.module.js';
 import { ScheduleModule } from './schedules/module.js';
+import type { ApiNotificationRuntime } from './platform/notifications/notification-runtime.module.js';
+import { NotificationsModule } from './notifications/module.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
 import { APPLICATION_ERROR_MAPPERS } from './application-error-mappers.js';
@@ -63,6 +65,7 @@ export type ApiModuleDependencies = Readonly<{
   workflowRuntime?: ApiWorkflowRuntime;
   webhookRuntime?: ApiWebhookRuntime;
   scheduleRuntime?: ApiScheduleRuntime;
+  notificationRuntime?: ApiNotificationRuntime;
   artifactRuntime?: ApiArtifactRuntime;
   rateLimitConsumer?: RateLimitConsumer;
   logger: StructuredLogger;
@@ -122,9 +125,11 @@ export class AppModule {
     const scheduleRuntime = dependencies.scheduleRuntime;
     const workflowRuntime = dependencies.workflowRuntime;
     const artifactRuntime = dependencies.artifactRuntime;
+    const notificationRuntime = dependencies.notificationRuntime;
     const runtimeReadiness =
       workflowRuntime === undefined &&
       scheduleRuntime === undefined &&
+      notificationRuntime === undefined &&
       artifactRuntime === undefined
         ? undefined
         : {
@@ -132,6 +137,7 @@ export class AppModule {
               await Promise.all([
                 workflowRuntime?.checkReadiness?.(),
                 scheduleRuntime?.checkReadiness(),
+                notificationRuntime?.checkReadiness(),
                 artifactRuntime?.checkReadiness(),
               ]);
             },
@@ -186,6 +192,10 @@ export class AppModule {
               shutdown.register('webhook', () => webhookRuntime.close());
             if (scheduleRuntime !== undefined)
               shutdown.register('schedule', () => scheduleRuntime.close());
+            if (notificationRuntime !== undefined)
+              shutdown.register('notification', () =>
+                notificationRuntime.close(),
+              );
             if (artifactRuntime !== undefined)
               shutdown.register('artifact', () => artifactRuntime.close());
             shutdown.register('telemetry', () =>
@@ -246,6 +256,15 @@ function registerFeatureModules(
     modules.push(
       ScheduleModule.register(
         dependencies.scheduleRuntime.service,
+        authorization,
+        identityModule,
+      ),
+    );
+  if (dependencies.notificationRuntime !== undefined)
+    modules.push(
+      NotificationsModule.register(
+        dependencies.notificationRuntime.service,
+        dependencies.notificationRuntime.hints,
         authorization,
         identityModule,
       ),

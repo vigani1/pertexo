@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "routes": [
     {
       "method": "GET",
@@ -11,9 +11,24 @@
     },
     {
       "method": "POST",
-      "path": "/v1/workspaces/:workspaceId/notifications/:notificationId/read",
+      "path": "/v1/workspaces/:workspaceId/notifications/:workflowId/read",
       "requiredHeaders": [
         "X-CSRF-Token"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/workspaces/:workspaceId/notifications/read-all",
+      "requiredHeaders": [
+        "X-CSRF-Token"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/workspaces/:workspaceId/notifications/events",
+      "events": [
+        "inbox.ready",
+        "inbox.changed"
       ]
     }
   ]

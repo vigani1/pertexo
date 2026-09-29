@@ -6,8 +6,11 @@ import {
   workspaceInboxFilterSchema,
   workspaceInboxLimitSchema,
   workspaceInboxListResponseSchema,
+  workspaceInboxReadAllRequestSchema,
+  workspaceInboxReadAllResponseSchema,
   workspaceInboxReadRequestSchema,
   workspaceInboxReadResponseSchema,
+  workspaceInboxStreamEventSchema,
   workspaceInboxSummaryResponseSchema,
 } from './http/workspace-inbox.js';
 import {
@@ -42,12 +45,24 @@ const schemas = Object.freeze({
     workspaceInboxReadResponseSchema,
     'output',
   ),
+  WorkspaceInboxReadAllRequest: jsonSchema(
+    workspaceInboxReadAllRequestSchema,
+    'input',
+  ),
+  WorkspaceInboxReadAllResponse: jsonSchema(
+    workspaceInboxReadAllResponseSchema,
+    'output',
+  ),
+  WorkspaceInboxStreamEvent: jsonSchema(
+    workspaceInboxStreamEventSchema,
+    'output',
+  ),
 });
 const responses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
   Unauthenticated: problemResponse('Authentication required'),
   Forbidden: problemResponse('CSRF validation failed'),
-  NotFound: problemResponse('Inbox or entry unavailable'),
+  NotFound: problemResponse('Inbox or thread unavailable'),
   RateLimited: problemResponse('Rate limited'),
   Unexpected: problemResponse('Unexpected server error'),
 });
@@ -58,10 +73,14 @@ const readProblems = {
   '429': responseReference('RateLimited'),
   '500': responseReference('Unexpected'),
 } as const;
+const commandProblems = {
+  ...readProblems,
+  '403': responseReference('Forbidden'),
+} as const;
 
-/** Declared interface only: handlers and feature exposure ship separately. */
+/** ADR 055: failure threads read on demand, with private read state. */
 export const workspaceInboxClientContract = Object.freeze({
-  schemaVersion: 1,
+  schemaVersion: 2,
   routes: Object.freeze([
     { method: 'GET', path: '/v1/workspaces/:workspaceId/notifications' },
     {
@@ -70,14 +89,24 @@ export const workspaceInboxClientContract = Object.freeze({
     },
     {
       method: 'POST',
-      path: '/v1/workspaces/:workspaceId/notifications/:notificationId/read',
+      path: '/v1/workspaces/:workspaceId/notifications/:workflowId/read',
       requiredHeaders: ['X-CSRF-Token'],
+    },
+    {
+      method: 'POST',
+      path: '/v1/workspaces/:workspaceId/notifications/read-all',
+      requiredHeaders: ['X-CSRF-Token'],
+    },
+    {
+      method: 'GET',
+      path: '/v1/workspaces/:workspaceId/notifications/events',
+      events: ['inbox.ready', 'inbox.changed'],
     },
   ]),
 });
 export const workspaceInboxOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
-  info: { title: 'Pertexo Workspace Inbox API', version: '1.0.0' },
+  info: { title: 'Pertexo Workspace Inbox API', version: '2.0.0' },
   components: authenticatedComponents(schemas, responses),
   paths: {
     '/v1/workspaces/{workspaceId}/notifications': {
@@ -92,7 +121,7 @@ export const workspaceInboxOpenApiDocument = Object.freeze({
         ],
         responses: {
           '200': jsonResponse(
-            'Private unexpired notices',
+            'Failing workflows, newest failure first',
             'WorkspaceInboxListResponse',
           ),
           ...readProblems,
@@ -106,30 +135,65 @@ export const workspaceInboxOpenApiDocument = Object.freeze({
         parameters: [workspace],
         responses: {
           '200': jsonResponse(
-            'Private unexpired unread count',
+            'Unread thread count',
             'WorkspaceInboxSummaryResponse',
           ),
           ...readProblems,
         },
       },
     },
-    '/v1/workspaces/{workspaceId}/notifications/{notificationId}/read': {
+    '/v1/workspaces/{workspaceId}/notifications/{workflowId}/read': {
       post: {
-        operationId: 'markWorkspaceInboxEntryRead',
+        operationId: 'markWorkspaceInboxThreadRead',
         security,
         parameters: [
           workspace,
-          simpleUuidPathParameter('notificationId'),
+          simpleUuidPathParameter('workflowId'),
           csrfHeaderParameter('X-CSRF-Token'),
         ],
         requestBody: jsonRequest('WorkspaceInboxReadRequest'),
         responses: {
           '200': jsonResponse(
-            'Monotonic read acknowledgment',
+            'Monotonic, private read of the seen revision',
             'WorkspaceInboxReadResponse',
           ),
+          ...commandProblems,
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/notifications/read-all': {
+      post: {
+        operationId: 'markWorkspaceInboxRead',
+        security,
+        parameters: [workspace, csrfHeaderParameter('X-CSRF-Token')],
+        requestBody: jsonRequest('WorkspaceInboxReadAllRequest'),
+        responses: {
+          '200': jsonResponse(
+            'Threads at or below the seen revision are read',
+            'WorkspaceInboxReadAllResponse',
+          ),
+          ...commandProblems,
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/notifications/events': {
+      get: {
+        operationId: 'streamWorkspaceInboxHints',
+        security,
+        parameters: [workspace],
+        responses: {
+          '200': {
+            description:
+              'Server-sent `inbox.ready` and `inbox.changed` hints whose data is a WorkspaceInboxStreamEvent',
+            content: {
+              'text/event-stream': {
+                schema: {
+                  $ref: '#/components/schemas/WorkspaceInboxStreamEvent',
+                },
+              },
+            },
+          },
           ...readProblems,
-          '403': responseReference('Forbidden'),
         },
       },
     },

@@ -49,6 +49,7 @@ import {
   type SseVisibilityMetrics,
   type SseVisibilityPath,
 } from '../platform/observability/sse-visibility-metrics.js';
+import { prepareSseResponse } from '../platform/http/sse-response.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { throwWorkflowRunError } from './errors.js';
 import {
@@ -296,19 +297,6 @@ function guardAuthorization(
   request: WorkflowRunsRequest,
 ): Pick<WorkflowRunsRequest, 'authorizedWorkspace'> {
   return optionalAuthorizedWorkspace(request);
-}
-
-function prepareSseResponse(reply: FastifyReply): void {
-  reply.raw.statusCode = 200;
-  reply.raw.setHeader('Content-Type', 'text/event-stream');
-  reply.raw.setHeader('Connection', 'keep-alive');
-  reply.raw.setHeader(
-    'Cache-Control',
-    'private, no-cache, no-store, must-revalidate, max-age=0',
-  );
-  reply.raw.setHeader('X-Accel-Buffering', 'no');
-  reply.hijack();
-  reply.raw.flushHeaders();
 }
 
 function routeLastEventPath(lastEventId: number): SseVisibilityPath {

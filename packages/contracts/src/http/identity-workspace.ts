@@ -313,13 +313,14 @@ export const workspaceCapabilitySchema = z.enum([
   'connection:manage',
   'member:read',
   'member:manage',
+  'notification:read',
 ]);
 export const accessibleWorkspaceSchema = workspaceResponseSchema
   .extend({
     status: z.enum(['active', 'suspended', 'pending_deletion']),
     revision: workspaceRevisionSchema,
     role: workspaceRoleSchema,
-    capabilities: z.array(workspaceCapabilitySchema).max(17),
+    capabilities: z.array(workspaceCapabilitySchema).max(18),
   })
   .strict();
 export const workspaceRenameResponseSchema = z

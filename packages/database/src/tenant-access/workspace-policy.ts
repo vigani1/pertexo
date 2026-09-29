@@ -34,6 +34,7 @@ export const AUTHORIZATION_CAPABILITIES = Object.freeze([
   'connection:manage',
   'member:read',
   'member:manage',
+  'notification:read',
 ] as const);
 
 export type AuthorizationCapability =
@@ -64,6 +65,7 @@ const adminCapabilities = Object.freeze([
   'connection:manage',
   'member:read',
   'member:manage',
+  'notification:read',
 ] as const satisfies readonly AuthorizationCapability[]);
 
 const builderCapabilities = Object.freeze([
@@ -83,6 +85,8 @@ const operatorCapabilities = Object.freeze([
   'run:cancel',
   'run:replay',
   'connection:use',
+  // ADR 055: people who act on failed runs see the workspace inbox.
+  'notification:read',
 ] as const satisfies readonly AuthorizationCapability[]);
 
 const roleCapabilities: Readonly<

@@ -1611,7 +1611,7 @@
                 ]
               },
               "capabilities": {
-                "maxItems": 17,
+                "maxItems": 18,
                 "type": "array",
                 "items": {
                   "type": "string",
@@ -1632,7 +1632,8 @@
                     "connection:use",
                     "connection:manage",
                     "member:read",
-                    "member:manage"
+                    "member:manage",
+                    "notification:read"
                   ]
                 }
               }

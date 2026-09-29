@@ -65,6 +65,11 @@ export const ROLE_MATRIX: readonly Readonly<{
     roles: ['owner', 'admin', 'operator'],
   },
   {
+    ability: 'Get notified when workflows fail',
+    capabilities: ['notification:read'],
+    roles: ['owner', 'admin', 'operator'],
+  },
+  {
     ability: 'Build, test and publish workflows',
     capabilities: ['workflow:create', 'workflow:update', 'workflow:publish'],
     roles: ['owner', 'admin', 'builder'],
