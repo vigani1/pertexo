@@ -31,6 +31,16 @@ Period zone/reset, inclusion/exclusion, read capability, freshness, retention co
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Usage warning | At 80% of a limit | 50–95% | Workspace admins | “Admins get a notice when usage reaches this share of a limit” |
+| Reporting time zone | Workspace time zone | Any IANA zone | Workspace admins | “Periods start at midnight in this zone” |
+
 ## Ownership and structure
 
 Application usage/insights reads; database bounded aggregate owner; contracts; web usage. Existing limits/accounting owners remain authoritative.

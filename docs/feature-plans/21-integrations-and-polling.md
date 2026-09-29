@@ -49,6 +49,12 @@ Existing SDK/catalog/integrations pattern; provider-specific idempotency/retry/e
 
 ## Delivery slices
 
+0. **Generic OAuth2 connections for HTTP Request.** HTTP Request already
+   accepts header credentials (`http_headers` connections), so most APIs work
+   today. An OAuth2 connection type with authorization-code consent, encrypted
+   token storage, refresh and reauthorization unlocks the rest (for example
+   Google or Microsoft APIs) without a bespoke connector. Can ship before the
+   provider slices; each later provider reuses it.
 1. Rank requested end-to-end journeys and choose one provider, not a large arbitrary list.
 2. Ship one action with real sandbox compatibility and safe connection UX.
 3. Ship its highest-value trigger with crash/cursor/dedupe proof; repeat only when previous slice is usable.

@@ -30,6 +30,16 @@ Approve-any versus all, escalation/reassignment, decision visibility and retenti
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Approval expires after | 7 days | 1 hour–30 days | Workflow editors | “Unanswered approvals expire and the run ends with that reason” |
+| Who may decide | Workspace owners and admins | Roles or named members who may read the run | Workflow editors | “Only these people can approve or reject” |
+
 ## Ownership and structure
 
 Application approvals; database decisions; engine durable wait/resume; worker outbox; contracts; web approvals/editor; notifications only as projection.

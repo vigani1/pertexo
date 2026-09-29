@@ -31,6 +31,16 @@ Which events may users read, separation of duties, owner emergency policy, reten
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Keep run data | Platform default | 1 day to the platform default | Workspace owners and admins; audited | “Run inputs and outputs older than this are deleted; legal holds still apply” |
+| Require review before publishing | Off | Off or on | Workspace owners | “Publishing waits for an approving reviewer who is not the author” |
+
 ## Ownership and structure
 
 Identity/workspace policy plus authoring review commands; database audit/read/review ownership; contracts; web audit/review.
@@ -45,13 +55,14 @@ Audit viewer with authorized filters, revision diff and publishing review status
 
 ## Backend work
 
-Safe audit read projection and bounded indexes/retention; review record bound to immutable candidate hash; execution command rechecks permission and review freshness. SSO/SCIM and external secret stores require separately approved security/provider slices.
+Safe audit read projection and bounded indexes/retention; review record bound to immutable candidate hash; execution command rechecks permission and review freshness. Workspace-configurable retention of run data within ADR 013's bounds and legal holds. SSO/SCIM is planned in [F28](28-single-sign-on-and-provisioning.md); external secret stores require a separately approved security/provider slice.
 
 ## Delivery slices
 
 1. Expose sanitized audit events with retention coverage and exact actor attribution.
 2. Add publish-review policy with stale-review invalidation and reasoned decisions.
-3. Only then evaluate custom roles, SSO/SCIM or credential-sharing granularity from concrete team requirements.
+3. Add workspace run-data retention settings (shorter than the platform default, never beyond it or past a legal hold) with their audit trail.
+4. Only then evaluate custom roles or credential-sharing granularity from concrete team requirements; SSO/SCIM is F28.
 
 Each slice ends in a usable, tested behavior; do not ship enabled placeholder
 controls backed by invented responses.

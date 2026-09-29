@@ -1,8 +1,8 @@
 # F03 — Durable in-app notifications and live inbox
 
 Status: in progress — redesigned under accepted
-[ADR055](../adr/055-workspace-inbox-failure-threads.md); database layer
-merged, worker slice in review. API and frontend slices open.
+[ADR055](../adr/055-workspace-inbox-failure-threads.md); database and worker
+layers merged. API and frontend slices open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New frontend + backend product. Relative size: **L**, not a calendar estimate.
 
@@ -90,9 +90,11 @@ recovery, two tabs, and an actual local run failure reaching the inbox.
 
 ## Non-goals
 
-Push, mobile or email expansion; success or step notices; incident
-acknowledgement; per-person muting or builder subscriptions (later additions to
-the same thread model).
+Push or mobile delivery; success or step notices; incident acknowledgement.
+Per-person muting, builder subscriptions, email or digest delivery and more
+notice types are planned in [F27](27-notification-preferences-and-channels.md);
+pausing workflows that keep failing is [F26](26-workflow-auto-pause.md). Both
+extend the same thread model.
 
 ## Rollout and rollback
 
@@ -106,7 +108,7 @@ paid provisioning or external calls are authorized by this plan.
 - [x] ADR054 foundation, capture and fan-out increments merged inactive (PR115–PR117).
 - [x] Redesign accepted as ADR055 before any activation.
 - [x] Database layer (PR A, PR118) merged with green checks.
-- [ ] Worker (PR B1) merged with green checks.
+- [x] Worker (PR B1, PR119) merged with green checks.
 - [ ] API (PR B2) merged with green checks.
 - [ ] Frontend (PR C) merged with green checks.
 - [ ] Real integrated acceptance evidence recorded.
