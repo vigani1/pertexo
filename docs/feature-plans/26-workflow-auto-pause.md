@@ -56,6 +56,17 @@ The failure streak must not be a counter updated in every run's transaction:
 a noisy workflow would serialize its runs on that row. Evaluate it
 asynchronously from terminal outcomes, as ADR055's fold does.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Pause after failures in a row | 10 | 3–100 | Workspace admins set the default; workflow editors override per workflow | “Schedules and webhooks pause after N failed runs in a row; runs in progress finish” |
+| Auto-pause for this workflow | On | On or off | Workflow editors; turning it off is audited | “This workflow keeps starting runs however often it fails” |
+| Warn before pausing | On, two failures early | On or off | Workflow editors | “Eligible readers get a notice before the pause” |
+
 ## Ownership and structure
 
 Database streak evaluation and pause state; worker evaluator loop; trigger

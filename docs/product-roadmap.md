@@ -254,6 +254,17 @@ while exact post-cleanup paths must be inspected before implementation.
   governed by their original plan until explicitly extended.
 - Separate plan approval, code completion, local integrated verification,
   merged CI and production qualification. Never collapse these into “done”.
+- **Put control in people's hands, with safe defaults.** Where workflows or
+  people genuinely differ, make the behavior configurable. Each setting
+  declares four things in its plan: a default that works untouched; a
+  server-enforced range; its owner (workspace admins set workspace defaults,
+  workflow editors override per workflow, each person sets their own
+  notification preferences) and who may disable it, audited; and the
+  consequence shown beside the control. Advanced settings sit behind
+  progressive disclosure. Never configurable: tenant isolation, security and
+  correctness guarantees (such as no automatic retry after `outcome_unknown`),
+  legal holds, limits that protect other workspaces, and internal tuning such
+  as batch sizes.
 
 ## Tracking and definition of done
 

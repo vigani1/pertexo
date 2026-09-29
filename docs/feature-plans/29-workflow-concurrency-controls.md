@@ -40,6 +40,17 @@ Resolve in an ADR before code:
 - **Interactions**: replay and manual runs, cancellation freeing a slot,
   deadlines while queued, and F26 pausing a queued backlog.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Runs at once | Unlimited within workspace limits | 1 to the workspace active-run limit | Workflow editors | “At most N runs of this workflow run at the same time” |
+| When the limit is reached | Schedules skip; webhooks and manual runs queue | Queue or skip, per trigger | Workflow editors | “Extra runs wait their turn” or “are skipped and recorded” |
+| Queue length | 100 | 1–1,000, capped by the workspace | Workflow editors | “Runs beyond this are refused with a clear reason” |
+
 ## Ownership and structure
 
 Database admission and queue order; worker coordinator start; contracts;

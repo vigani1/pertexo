@@ -30,6 +30,15 @@ Recommend timeout returns accepted run reference rather than pretending run canc
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Wait for a result | 10 seconds | 1–30 seconds | Workflow editors | “After this, the caller gets the run reference; the run continues” |
+
 ## Ownership and structure
 
 Application webhooks/response reads; database response correlation; engine/worker response decision; contracts; web trigger settings.
