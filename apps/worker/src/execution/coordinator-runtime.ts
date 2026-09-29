@@ -68,6 +68,7 @@ export type CoordinatorRuntimeOptions = Readonly<{
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
   runTimeoutFailureContextEnabled?: boolean;
+  workspaceInboxProducerEnabled?: boolean;
   releaseCohort?: PlatformReleaseCohort;
   observer?: QueueConsumerObserver;
   redisUrl: string;
@@ -214,6 +215,8 @@ export async function createCoordinatorRuntime(
       factories.runStore(options.database, options.databaseRuntime, {
         runTimeoutFailureContextEnabled:
           options.runTimeoutFailureContextEnabled ?? false,
+        workspaceInboxProducerEnabled:
+          options.workspaceInboxProducerEnabled ?? false,
       });
     reader =
       dependencies.reader ??

@@ -67,6 +67,12 @@ describe('parseWorkerConfig', () => {
         dueWakeupPollIntervalMillis: 250,
         maximumAdmissions: 32,
         runTimeoutFailureContextEnabled: false,
+        workspaceInboxProducerEnabled: false,
+      },
+      workspaceInbox: {
+        foldBatchSize: 500,
+        foldPollMillis: 1_000,
+        expiryPollMillis: 300_000,
       },
       database: {
         connectionString:
@@ -426,6 +432,47 @@ describe('parseWorkerConfig', () => {
       ).toThrow(/invalid worker configuration/i);
     },
   );
+
+  it('enables the workspace inbox producer and tunes its loop only when asked', () => {
+    const config = parseWorkerConfig({
+      DATABASE_DISPATCHER_URL:
+        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+      DATABASE_WORKER_URL:
+        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://:secret@localhost:6379/0',
+      WORKSPACE_INBOX_PRODUCER: 'true',
+      WORKSPACE_INBOX_FOLD_BATCH_SIZE: '1000',
+      WORKSPACE_INBOX_FOLD_POLL_MILLIS: '250',
+      WORKSPACE_INBOX_EXPIRY_POLL_MILLIS: '60000',
+    });
+
+    expect(config.coordinator.workspaceInboxProducerEnabled).toBe(true);
+    expect(config.workspaceInbox).toEqual({
+      foldBatchSize: 1_000,
+      foldPollMillis: 250,
+      expiryPollMillis: 60_000,
+    });
+  });
+
+  it.each([
+    ['WORKSPACE_INBOX_PRODUCER', 'TRUE'],
+    ['WORKSPACE_INBOX_PRODUCER', '1'],
+    ['WORKSPACE_INBOX_FOLD_BATCH_SIZE', '0'],
+    ['WORKSPACE_INBOX_FOLD_BATCH_SIZE', '1001'],
+    ['WORKSPACE_INBOX_FOLD_POLL_MILLIS', '99'],
+    ['WORKSPACE_INBOX_EXPIRY_POLL_MILLIS', '999'],
+  ])('rejects an invalid workspace inbox setting (%s=%s)', (name, value) => {
+    expect(() =>
+      parseWorkerConfig({
+        DATABASE_DISPATCHER_URL:
+          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_WORKER_URL:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://:secret@localhost:6379/0',
+        [name]: value,
+      }),
+    ).toThrow(/invalid worker configuration/i);
+  });
 
   it.each([
     ['WORKFLOW_DUE_WAKEUP_BATCH_SIZE', '0'],

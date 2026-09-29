@@ -92,6 +92,19 @@ export type {
   RunEventNotificationPublisherOptions,
   RunEventReference,
 } from './run-event-notifications.js';
+export {
+  RedisWorkspaceInboxHintPublisher,
+  WorkspaceInboxHintConfigurationError,
+  WorkspaceInboxHintPublishError,
+  encodeWorkspaceInboxHint,
+  parseWorkspaceInboxHint,
+  workspaceInboxChannel,
+} from './workspace-inbox-notifications.js';
+export type {
+  WorkspaceInboxChangeHint,
+  WorkspaceInboxHint,
+  WorkspaceInboxHintPublisher,
+} from './workspace-inbox-notifications.js';
 export type {
   QueueConsumer,
   QueueConsumerCloseResult,

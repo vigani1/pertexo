@@ -153,6 +153,29 @@ const workerConfigSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
+    // ADR 055: terminal failures reach the workspace inbox only when enabled.
+    WORKSPACE_INBOX_PRODUCER: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    WORKSPACE_INBOX_FOLD_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1_000)
+      .default(500),
+    WORKSPACE_INBOX_FOLD_POLL_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(60_000)
+      .default(1_000),
+    WORKSPACE_INBOX_EXPIRY_POLL_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(3_600_000)
+      .default(300_000),
     WORKFLOW_DUE_WAKEUP_BATCH_SIZE: z.coerce
       .number()
       .int()
@@ -293,6 +316,10 @@ const workerConfigSchema = z
       OUTBOX_DISPATCH_RETRY_MILLIS,
       WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
       FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED,
+      WORKSPACE_INBOX_PRODUCER,
+      WORKSPACE_INBOX_FOLD_BATCH_SIZE,
+      WORKSPACE_INBOX_FOLD_POLL_MILLIS,
+      WORKSPACE_INBOX_EXPIRY_POLL_MILLIS,
       WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
       WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
       TRIGGER_SCHEDULE_BATCH_SIZE,
@@ -364,6 +391,12 @@ const workerConfigSchema = z
         maximumAdmissions: WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
         runTimeoutFailureContextEnabled:
           FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED,
+        workspaceInboxProducerEnabled: WORKSPACE_INBOX_PRODUCER,
+      },
+      workspaceInbox: {
+        foldBatchSize: WORKSPACE_INBOX_FOLD_BATCH_SIZE,
+        foldPollMillis: WORKSPACE_INBOX_FOLD_POLL_MILLIS,
+        expiryPollMillis: WORKSPACE_INBOX_EXPIRY_POLL_MILLIS,
       },
       nodeAttempt: {
         heartbeatIntervalMillis: NODE_ATTEMPT_HEARTBEAT_MILLIS,
@@ -521,6 +554,7 @@ export function parseWorkerConfig(
       nodeAttempt: Object.freeze(result.data.nodeAttempt),
       resourceSafety: Object.freeze(result.data.resourceSafety),
       triggerRuntime: Object.freeze(result.data.triggerRuntime),
+      workspaceInbox: Object.freeze(result.data.workspaceInbox),
       outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
     });
   } catch (error: unknown) {

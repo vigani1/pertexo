@@ -43,6 +43,8 @@ export function coordinatorRuntimeProvider(
           maximumAdmissions: config.coordinator.maximumAdmissions,
           runTimeoutFailureContextEnabled:
             config.coordinator.runTimeoutFailureContextEnabled,
+          workspaceInboxProducerEnabled:
+            config.coordinator.workspaceInboxProducerEnabled,
           observer,
           releaseCohort: config.nodeCompatibilityCohort,
           redisUrl: config.redisUrl,

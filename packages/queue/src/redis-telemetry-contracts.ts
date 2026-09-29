@@ -6,7 +6,9 @@ export type RedisClientRole =
   | 'queue_consumer'
   | 'queue_producer'
   | 'run_event_publisher'
-  | 'run_event_subscriber';
+  | 'run_event_subscriber'
+  | 'workspace_inbox_publisher'
+  | 'workspace_inbox_subscriber';
 
 export type RedisOperation =
   | 'close'
