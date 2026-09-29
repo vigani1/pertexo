@@ -106,6 +106,8 @@ export type ApiIdentityConfig = Readonly<{
   betterAuth?: Readonly<{
     secret: string;
     mailMode: 'local' | 'durable' | 'disabled';
+    /** Local development prints each local message's link to stdout. */
+    printLocalMailLinks?: true;
     durableMail?: Readonly<{ fromEmail: string; encryption: EncryptionKeys }>;
     providers: Readonly<{
       google?: Readonly<{ clientId: string; clientSecret: string }>;
@@ -328,10 +330,16 @@ function betterAuthConfig(
   const providers = parseAuthenticationProviders(environment);
   const durableMail = parseDurableAuthenticationMail(environment);
   if (environment.BETTER_AUTH_SECRET === undefined) return {};
+  // Local mail reaches a developer only as printed links; staging and
+  // production require durable mail, and tests read the sink directly.
+  const printLocalMailLinks =
+    environment.AUTH_MAIL_MODE === 'local' &&
+    environment.NODE_ENV === 'development';
   return {
     betterAuth: Object.freeze({
       secret: environment.BETTER_AUTH_SECRET,
       mailMode: environment.AUTH_MAIL_MODE,
+      ...(printLocalMailLinks ? { printLocalMailLinks } : {}),
       ...(durableMail === undefined ? {} : { durableMail }),
       providers,
     }),

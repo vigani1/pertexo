@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DurableAuthenticationMail,
   GenericOidcProviderAdapter,
+  LocalAuthenticationMailSink,
   disabledAuthenticationMail,
   type AuthenticationMail,
   type BetterAuthRuntime,
@@ -130,6 +131,46 @@ describe('Better Auth runtime composition', () => {
 
     expect(created[0]?.mail).toBe(disabledAuthenticationMail);
   });
+
+  it.each([
+    [true, 1],
+    [undefined, 0],
+  ] as const)(
+    'prints local mail links only when configured (%s)',
+    async (printLocalMailLinks, writes) => {
+      const write = vi
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+      try {
+        compose({
+          betterAuth: {
+            ...betterAuth('local'),
+            ...(printLocalMailLinks === undefined
+              ? {}
+              : { printLocalMailLinks }),
+          },
+        });
+        const mail = created[0]?.mail;
+        expect(mail).toBeInstanceOf(LocalAuthenticationMailSink);
+
+        await mail?.sendVerification({
+          recipient: 'ada@example.test',
+          displayName: 'Ada',
+          url: 'http://127.0.0.1:5173/verify-email?token=local-proof',
+        });
+
+        expect(write).toHaveBeenCalledTimes(writes);
+        if (writes > 0)
+          expect(write).toHaveBeenCalledWith(
+            expect.stringContaining(
+              'http://127.0.0.1:5173/verify-email?token=local-proof',
+            ),
+          );
+      } finally {
+        write.mockRestore();
+      }
+    },
+  );
 
   it('seals durable mail with the configured key and owns its enqueue store', async () => {
     const { runtime, acquired } = compose({
