@@ -3,6 +3,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import type { LinkProps } from '@tanstack/react-router';
 import {
   BellIcon,
+  InboxIcon,
   PlugIcon,
   SlidersHorizontalIcon,
   UsersIcon,
@@ -16,6 +17,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId'
     | '/w/$workspaceId/workflows'
     | '/w/$workspaceId/runs'
+    | '/w/$workspaceId/inbox'
     | '/w/$workspaceId/connections'
     | '/w/$workspaceId/team'
     | '/w/$workspaceId/alerts'
@@ -25,12 +27,15 @@ export type SpineDestination = Readonly<{
   icon: ReactNode;
   exact?: boolean;
   badge?: number;
+  /** Says what the badge counts, for its accessible name: "running". */
+  badgeNoun?: string;
 }>;
 
 /** Which destinations the current role may see, in spine order. */
 export function spineDestinations(
   workspace: AccessibleWorkspace,
   liveRunCount: number | undefined,
+  unreadNoticeCount: number | undefined,
 ): Readonly<{
   primary: readonly SpineDestination[];
   workspace: readonly SpineDestination[];
@@ -51,7 +56,16 @@ export function spineDestinations(
       icon: <WavesIcon />,
       ...(liveRunCount === undefined || liveRunCount === 0
         ? {}
-        : { badge: liveRunCount }),
+        : { badge: liveRunCount, badgeNoun: 'running' }),
+    });
+  if (can('notification:read'))
+    primary.push({
+      to: '/w/$workspaceId/inbox',
+      label: 'Inbox',
+      icon: <InboxIcon />,
+      ...(unreadNoticeCount === undefined || unreadNoticeCount === 0
+        ? {}
+        : { badge: unreadNoticeCount, badgeNoun: 'unread' }),
     });
   if (can('connection:read'))
     primary.push({

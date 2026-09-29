@@ -27,7 +27,7 @@ function SpineLink({
   const label =
     destination.badge === undefined
       ? destination.label
-      : `${destination.label}, ${String(destination.badge)} running`;
+      : `${destination.label}, ${String(destination.badge)} ${destination.badgeNoun ?? ''}`.trimEnd();
   return (
     <Tooltip>
       <TooltipTrigger
@@ -86,15 +86,21 @@ function HomeCore({
 export function WorkspaceSpine({
   workspace,
   liveRunCount,
+  unreadNoticeCount,
   onOpenSearch,
   account,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   liveRunCount: number | undefined;
+  unreadNoticeCount: number | undefined;
   onOpenSearch: () => void;
   account: ReactNode;
 }>) {
-  const destinations = spineDestinations(workspace, liveRunCount);
+  const destinations = spineDestinations(
+    workspace,
+    liveRunCount,
+    unreadNoticeCount,
+  );
   return (
     <nav
       aria-label="Workspace"

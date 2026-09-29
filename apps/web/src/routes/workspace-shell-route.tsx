@@ -8,6 +8,8 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { Outlet } from '@tanstack/react-router';
 import { useNotifications } from '@/components/ui/use-notifications';
+import { useInboxLive } from '@/features/inbox/live.public';
+import { inboxSummaryQueryOptions } from '@/features/inbox/queries.public';
 import { liveRunCountQueryOptions } from '@/features/workflow-runs/queries.public';
 import { rememberLastWorkspace } from '@/features/workspaces/last-workspace.public';
 import { WorkspaceShell } from '@/features/workspaces/public';
@@ -66,6 +68,13 @@ export function WorkspaceShellFrame({
     ...liveRunCountQueryOptions(apiClient, user.id, workspace.id),
     enabled: canReadRuns,
   });
+  const canReadInbox = workspace.capabilities.includes('notification:read');
+  const inboxSummary = useQuery({
+    ...inboxSummaryQueryOptions(apiClient, user.id, workspace.id),
+    enabled: canReadInbox,
+  });
+  // One live inbox stream per tab keeps the badge and the inbox current.
+  useInboxLive(apiClient, user.id, workspace.id, canReadInbox);
   const routeCrumbs = useShellCrumbs(workspace);
 
   // Stable, so pages that receive it through context don't re-render.
@@ -84,6 +93,9 @@ export function WorkspaceShellFrame({
       workspace={workspace}
       workspaces={workspaces.data ?? [workspace]}
       liveRunCount={canReadRuns ? liveRunCount.data : undefined}
+      unreadNoticeCount={
+        canReadInbox ? inboxSummary.data?.unreadCount : undefined
+      }
       crumbs={crumbs ?? routeCrumbs}
       logoutPending={logout.pending}
       onLogout={logout.requestLogout}

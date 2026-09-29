@@ -15,6 +15,11 @@ import {
 } from '@/features/connections/queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import {
+  inboxSummaryQueryOptions,
+  inboxThreadsInfiniteQueryOptions,
+  parseInboxSearch,
+} from '@/features/inbox/queries.public';
+import {
   anyRunQueryOptions,
   attentionRunsQueryOptions,
   filtersFromSearch,
@@ -301,6 +306,38 @@ export const connectionsRoute = createRoute({
     () => import('./connections-route'),
     'ConnectionsRoute',
   ),
+});
+
+/** ADR 055: the person's failure notices for this workspace. */
+export const inboxRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'inbox',
+  staticData: { crumb: 'Inbox' },
+  validateSearch: (search) => parseInboxSearch(search),
+  loaderDeps: ({ search }) => ({
+    filter: search.filter ?? ('all' as const),
+  }),
+  loader: ({ context, deps }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    if (!workspace.capabilities.includes('notification:read')) return;
+    warmPrefetches(context, [
+      queryClient.infiniteQuery(
+        inboxThreadsInfiniteQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+          deps.filter,
+        ),
+      ),
+      queryClient.query(
+        inboxSummaryQueryOptions(apiClient, user.id, workspace.id),
+      ),
+    ]);
+  },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Inbox', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(() => import('./inbox-route'), 'InboxRoute'),
 });
 
 export const teamRoute = createRoute({
