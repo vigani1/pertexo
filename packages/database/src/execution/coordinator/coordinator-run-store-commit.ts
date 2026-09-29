@@ -41,6 +41,7 @@ export async function commitCoordinatorAdvancePlan(
   options: Readonly<{
     runTimeoutFailureContextEnabled: boolean;
     workspaceInboxProducerEnabled: boolean;
+    workflowTriggerOutcomesEnabled: boolean;
   }>,
 ): Promise<CommitAdvancePlanResult> {
   if (!(input.signal instanceof AbortSignal))
@@ -141,6 +142,8 @@ export async function commitCoordinatorAdvancePlan(
           runTimeoutFailureContextEnabled:
             options.runTimeoutFailureContextEnabled,
           workspaceInboxProducerEnabled: options.workspaceInboxProducerEnabled,
+          workflowTriggerOutcomesEnabled:
+            options.workflowTriggerOutcomesEnabled,
           runId,
           ...(traceparent === undefined ? {} : { traceparent }),
           workflowVersionId,

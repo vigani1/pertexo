@@ -28,6 +28,13 @@ export function describeOccurrence(
       label: 'Skipped',
       detail: 'The missed-run setting skipped this run time. No run started.',
     };
+  if (occurrence.outcome === 'paused')
+    return {
+      tone: 'attention',
+      label: 'Paused',
+      detail:
+        'The workflow was paused after failing repeatedly. No run started.',
+    };
   const lateMs =
     Date.parse(occurrence.recordedAt) - Date.parse(occurrence.scheduledAt);
   return {

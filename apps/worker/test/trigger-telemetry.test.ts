@@ -44,11 +44,25 @@ describe('trigger runtime telemetry', () => {
     telemetry.reconciliationCompleted('succeeded');
     telemetry.reconciliationCompleted('failed');
     telemetry.scanCompleted(
-      { accepted: 2, claimed: 5, deferred: 0, maxLagSeconds: 4.5, skipped: 3 },
+      {
+        accepted: 2,
+        claimed: 6,
+        deferred: 0,
+        maxLagSeconds: 4.5,
+        paused: 1,
+        skipped: 3,
+      },
       1.25,
     );
     telemetry.scanCompleted(
-      { accepted: 1, claimed: 3, deferred: 2, maxLagSeconds: 8, skipped: 0 },
+      {
+        accepted: 1,
+        claimed: 3,
+        deferred: 2,
+        maxLagSeconds: 8,
+        paused: 0,
+        skipped: 0,
+      },
       2.5,
     );
     telemetry.scanFailed(3.75);
@@ -68,9 +82,11 @@ describe('trigger runtime telemetry', () => {
       { attributes: { outcome: 'accepted' }, value: 2 },
       { attributes: { outcome: 'deferred' }, value: 0 },
       { attributes: { outcome: 'skipped' }, value: 3 },
+      { attributes: { outcome: 'paused' }, value: 1 },
       { attributes: { outcome: 'accepted' }, value: 1 },
       { attributes: { outcome: 'deferred' }, value: 2 },
       { attributes: { outcome: 'skipped' }, value: 0 },
+      { attributes: { outcome: 'paused' }, value: 0 },
     ]);
     expect(harness.histograms.get('pertexo.schedule.scan.duration')).toEqual([
       { attributes: { outcome: 'succeeded' }, value: 1.25 },

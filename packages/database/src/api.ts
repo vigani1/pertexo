@@ -157,6 +157,7 @@ export {
   WebhookIngressRateLimitExceededError,
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
+  WebhookWorkflowPausedError,
   createWebhookTriggerDatabase,
 } from './triggers/webhook-triggers.js';
 export type {

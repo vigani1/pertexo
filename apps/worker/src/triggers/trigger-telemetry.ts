@@ -45,6 +45,7 @@ export function createTriggerRuntimeTelemetry(
       occurrences.add(result.accepted, { outcome: 'accepted' });
       occurrences.add(result.deferred, { outcome: 'deferred' });
       occurrences.add(result.skipped, { outcome: 'skipped' });
+      occurrences.add(result.paused, { outcome: 'paused' });
       health.add(1, { status: result.deferred > 0 ? 'throttled' : 'healthy' });
     },
     scanFailed: (durationSeconds: number) => {

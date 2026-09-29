@@ -35,6 +35,8 @@ export type CoordinatorRunStoreOptions = Readonly<{
   runTimeoutFailureContextEnabled?: boolean;
   /** ADR 055: record terminal failures for the workspace inbox. */
   workspaceInboxProducerEnabled?: boolean;
+  /** ADR 056: record schedule and webhook run outcomes for failure streaks. */
+  workflowTriggerOutcomesEnabled?: boolean;
 }>;
 
 export function createCoordinatorRunStore(
@@ -55,6 +57,8 @@ export function createCoordinatorRunStore(
           options.runTimeoutFailureContextEnabled ?? false,
         workspaceInboxProducerEnabled:
           options.workspaceInboxProducerEnabled ?? false,
+        workflowTriggerOutcomesEnabled:
+          options.workflowTriggerOutcomesEnabled ?? false,
       }),
     close: () => lease.close(),
   });

@@ -1,8 +1,11 @@
 import {
+  bigint,
+  boolean,
   foreignKey,
   index,
   integer,
   jsonb,
+  smallint,
   primaryKey,
   timestamp,
   uniqueIndex,
@@ -29,6 +32,22 @@ export const workflows = appSchema.table(
       .default('inactive')
       .notNull(),
     publishedVersionId: uuid('published_version_id'),
+    // ADR 056: operational auto-pause settings and trigger pause state.
+    autoPauseEnabled: boolean('auto_pause_enabled').default(true).notNull(),
+    autoPauseThreshold: smallint('auto_pause_threshold'),
+    triggerPauseState: varchar('trigger_pause_state', { length: 16 })
+      .default('none')
+      .notNull(),
+    triggerPausedAt: timestamp('trigger_paused_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    triggerPauseReason: varchar('trigger_pause_reason', { length: 32 }),
+    triggerPauseFailures: integer('trigger_pause_failures'),
+    triggerPauseLastRunId: uuid('trigger_pause_last_run_id'),
+    triggerPauseRevision: bigint('trigger_pause_revision', { mode: 'bigint' })
+      .default(sql`1`)
+      .notNull(),
     createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`date_trunc('milliseconds', clock_timestamp())`)

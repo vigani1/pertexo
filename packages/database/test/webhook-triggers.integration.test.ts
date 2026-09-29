@@ -20,6 +20,7 @@ import {
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
   WebhookTriggerNotFoundError,
+  WebhookWorkflowPausedError,
 } from '../src/triggers/webhook-triggers.js';
 import {
   createWorkflowTriggerReconciliationDatabase,
@@ -1190,7 +1191,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0123_workspace_inbox_threads.sql',
+      migrationHead: '0124_workflow_trigger_pause.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),
@@ -1696,6 +1697,76 @@ describe('generic webhook database seam', () => {
       delivery_seconds: 90 * 24 * 60 * 60,
       replay_seconds: 24 * 60 * 60,
     });
+  });
+
+  it('refuses new trigger work while the workflow is paused, still answering replays', async () => {
+    const { published, resources, verification } =
+      await createWebhookScenario();
+    const pausedWorkflowId = published.created.workflowId;
+    const input = {
+      verification,
+      verifiedSecretVersionId: verification.currentSecret.id,
+      requestFingerprint: hash('before-pause'),
+      idempotencyKeyHash: hash('before-pause-key'),
+      payload: { event: 'before-pause' },
+      bodyBytes: 64,
+      checkpointFactory,
+    } as const;
+    const before = await webhook.acceptVerifiedDelivery(input);
+    // ADR 056: the fold records a pause exactly like this.
+    await ownerQuery(
+      `update app.workflows
+          set trigger_pause_state='paused',trigger_paused_at=clock_timestamp(),
+              trigger_pause_reason='consecutive_failures',trigger_pause_failures=10,
+              trigger_pause_last_run_id=$3,
+              trigger_pause_revision=trigger_pause_revision+1
+        where workspace_id=$1 and id=$2`,
+      [workspaceId, pausedWorkflowId, before.runId],
+    );
+
+    await expect(webhook.acceptVerifiedDelivery(input)).resolves.toEqual({
+      runId: before.runId,
+      replayed: true,
+    });
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        ...input,
+        requestFingerprint: hash('during-pause'),
+        idempotencyKeyHash: hash('during-pause-key'),
+        payload: { event: 'during-pause' },
+      }),
+    ).rejects.toBeInstanceOf(WebhookWorkflowPausedError);
+    const runs = await ownerQuery<{ count: number }>(
+      `select count(*)::int as count from app.workflow_runs
+        where workspace_id=$1 and workflow_id=$2`,
+      [workspaceId, pausedWorkflowId],
+    );
+    expect(runs.rows).toEqual([{ count: 1 }]);
+
+    await ownerQuery(
+      `update app.trigger_schedules set next_fire_at=clock_timestamp()-interval '1 minute'
+         where workspace_id=$1 and trigger_id=$2`,
+      [workspaceId, resources.scheduleId],
+    );
+    const claimed = await workerQuery<{
+      lease_token: string;
+      trigger_id: string;
+    }>(
+      'select trigger_id,lease_token from app.claim_due_trigger_schedules($1,1,30)',
+      [`pause-gate-${randomUUID()}`],
+    );
+    const claim = claimed.rows[0];
+    if (claim === undefined) throw new Error('Paused schedule claim missing');
+    expect(claim.trigger_id).toBe(resources.scheduleId);
+    const paused = await workerQuery<{ paused: boolean }>(
+      'select app.schedule_claim_workflow_paused($1,$2) paused',
+      [claim.trigger_id, claim.lease_token],
+    );
+    expect(paused.rows[0]?.paused).toBe(true);
+    await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
+      claim.trigger_id,
+      claim.lease_token,
+    ]);
   });
 
   it('serializes expired keyed and fingerprint replay replacement with database time', async () => {

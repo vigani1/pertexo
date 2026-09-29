@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
   primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -60,6 +61,8 @@ export const workspaces = appSchema.table(
     retentionControlHash: char('retention_control_hash', { length: 64 })
       .default(sql`repeat('0', 64)`)
       .notNull(),
+    /** ADR 056: failures in a row that pause a workflow's triggers. */
+    autoPauseThreshold: smallint('auto_pause_threshold').default(10).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -481,19 +484,5 @@ export const usageEvents = appSchema.table(
       table.resourceId,
       table.id,
     ),
-  ],
-);
-export const rlsProbeRecords = appSchema.table(
-  'rls_probe_records',
-  {
-    id: uuid('id').primaryKey(),
-    workspaceId: uuid('workspace_id').notNull(),
-    label: text('label').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    index('rls_probe_records_workspace_idx').on(table.workspaceId, table.id),
   ],
 );
