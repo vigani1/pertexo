@@ -17,6 +17,10 @@ not a personal inbox. The detailed notifications plan is qualified by accepted
 recovery, retention, read-all and operating-budget decisions.
 
 At the 2026-09-29 verification checkpoint, the foundation remained uncommitted.
+It was subsequently reviewed, pushed and squash-merged through PR115 at
+`e292c857152ec61b2995f6608239c668a66e22c6`; the one natural main CI
+36495495693 and CodeQL 36495495631 passed. This is foundation delivery, not F03
+completion or runtime activation.
 It contains browser-safe list/summary/single-read
 contracts and generated artifacts, migration 0120, four typed tables, recipient
 RLS/grants, dedupe/first-read protection and explicit child-first workspace purge
@@ -67,6 +71,7 @@ Terminal fact→transactional outbox source→deduplicated recipient projection 
 1. ADR054 and additive list/summary/single-read contracts/database foundation
    are locally verified; at the 2026-09-29 verification checkpoint they remained
    uncommitted pending selective checkpoint review.
+   PR115 subsequently merged that reviewed foundation with green natural main checks.
 2. Deliver durable projection plus HTTP and plain inbox; verify one notice across redelivery/crashes.
 3. Add SSE snapshot recovery and multi-tab tests. Later separately scope preferences, grouping and authoritative connection-health notices.
 
@@ -137,3 +142,51 @@ multi-instance, load or provider gates ran. The purge case arranges the lifecycl
 ledger; it is not external object-provider evidence. Full F03 remains in progress,
 not complete, merged or production-qualified. At the 2026-09-29 verification
 checkpoint, its foundation also remained uncommitted.
+
+### Inactive capture persistence P1 — locally verified, uncommitted (2026-09-29)
+
+The next uncommitted checkpoint adds migration 0121 and a feature-owned
+`createWorkspaceInboxCaptureStore().capture()` operation. It owns a separately
+committed claim, single-snapshot audience insertion and atomic marker commit, fenced
+failure accounting after acknowledged rollback, and uncertain-COMMIT
+reconciliation without recapture. One process-local admission covers all store
+instances, raw pending checkout/query settlement and disposal; ordinary callers
+receive no lease or failure-accounting controls. Numeric defaults remain those
+unmeasured in ADR054. An inactive workspace is not frozen as an empty audience.
+
+This checkpoint has **no producer, queue registration, worker composition,
+activation/control ledger, fan-out, retention execution, operator recovery,
+HTTP or frontend**. Deployment-global activation/cut semantics remain a proposal,
+not an accepted extension. Do not activate a fixture/production producer before
+the remaining resume, retention, readiness, rollout and declared-load gates.
+
+No-service database tests passed: 124 files / 902 tests (33 new unit/static
+cases). Database build/typecheck, schema ownership (five tests; unchanged 93
+tables), architecture (19 tests and graph/import checks) passed. Database-wide
+ESLint, Knip, complexity (three tests and ratchet), documentation (21 tests;
+343 links), scoped formatting and diff checks passed. Independent correction
+re-review returned no standards/spec findings and independently passed the
+42 focused unit/static cases.
+Review corrections retain admission through observed driver end for uncertain
+COMMIT/rollback and abort, quarantine unconfirmed disposal, and use a fresh
+post-audience expiry check before the atomic marker. Missing source plus missing
+outbox is unavailable without reconstruction; retained evidence still validates.
+That no-op cannot authenticate deleted bytes and grants no delivery authority.
+Six added assertions were observed failing before their respective fixes.
+One separately approved run passed **18/18 real PostgreSQL cases**, with zero
+failures, skips or retries (8.81-second suite). It covers tenant/runtime authority,
+audience freezing, claim contention/fences, rollback/failure budgets, delayed
+COMMIT acknowledgment, source-lock recovery, expiry during insertion, real SQL
+statement timeout and retained/missing/corrupt evidence. Sanitized artifacts are
+in `/tmp/pertexo-inbox-capture-pg.PhjxF6`. The fresh owned database
+`pertexo_test_inbox_capture_85cb54612211495db66323042171c902` (OID 281930) was
+normally removed, with zero remaining connections. Parent/child exited zero,
+the child process group was absent and the unchanged seven-database inventory
+matched SHA256 `8dea1fc6b8892e8d35c3ad819bf609bc769ec90956eef9dde6c275522bb6f954`.
+Independent review accepted this bounded persistence evidence.
+
+No service was started/stopped; no Redis, API/browser or provider journey ran.
+The delayed-ack case uses driver interposition and the paused-owner case shortens
+only an arranged lease. Neither proves aggregate load, cancellation capability
+at declared load or production capacity. Worker/transport/projection lifecycle,
+resume/retention and activation gates remain open; this is not full F03.
