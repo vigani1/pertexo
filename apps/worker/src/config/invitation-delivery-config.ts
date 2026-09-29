@@ -14,17 +14,19 @@ export type InvitationDeliveryConfig = Readonly<{
   tokenEncryption: ApplicationKeyRing;
 }>;
 
+// PUBLIC_WEB_ORIGIN is shared with the API's sign-in, so it alone does not
+// mean invitation delivery is configured; delivery still requires it.
 const invitationDeliveryVariableNames = [
   'INVITATION_EMAIL_API_KEY',
   'INVITATION_EMAIL_FROM',
   'INVITATION_TOKEN_KEY',
   'INVITATION_TOKEN_KEY_VERSION',
-  'PUBLIC_WEB_ORIGIN',
 ] as const;
 
 /**
  * Parses workspace-invitation delivery configuration. It is required when the
- * worker dispatches invitation delivery and otherwise parsed only when present.
+ * worker dispatches invitation delivery and otherwise parsed only when one of
+ * its own variables is present.
  */
 export function parseInvitationDeliveryConfig(
   environment: Readonly<Record<string, string | undefined>>,

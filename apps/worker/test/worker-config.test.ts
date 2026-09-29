@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 import { JOB_NAME } from '@pertexo/queue';
@@ -652,5 +654,24 @@ describe('parseWorkerConfig', () => {
         OUTBOX_DISPATCH_JOB_NAMES: jobNames,
       }),
     ).toThrow(/invalid worker configuration/i);
+  });
+
+  it('starts from the shared local example environment and runs workflows', () => {
+    // Developers copy .env.example to .env and start the API and worker from it.
+    const config = parseWorkerConfig(
+      parseEnv(
+        readFileSync(new URL('../../../.env.example', import.meta.url), 'utf8'),
+      ),
+    );
+
+    expect(config.nodeEnv).toBe('development');
+    expect(config.invitationDelivery).toBeUndefined();
+    expect(config.outboxDispatcher.enabledJobNames).toEqual([
+      JOB_NAME.advanceWorkflowRun,
+      JOB_NAME.executeNodeAttempt,
+    ]);
+    expect(config.artifactStore?.recovery.region).not.toBe(
+      config.artifactStore?.primary.region,
+    );
   });
 });
