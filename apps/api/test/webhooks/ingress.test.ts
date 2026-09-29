@@ -107,8 +107,6 @@ describe('generic webhook ingress', () => {
     {
       name: 'a synchronous trace failure before the callback',
       trace: <T>(_parent: string | undefined, _work: () => Promise<T>) => {
-        void _parent;
-        void _work;
         throw new Error('trace failed before callback');
       },
     },
@@ -118,8 +116,6 @@ describe('generic webhook ingress', () => {
         _parent: string | undefined,
         _work: () => Promise<T>,
       ): Promise<T> => {
-        void _parent;
-        void _work;
         return Promise.reject(new Error('trace rejected before callback'));
       },
     },

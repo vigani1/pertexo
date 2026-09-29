@@ -78,9 +78,8 @@ export function failure(
   code: SecureHttpErrorCode,
   possiblyDispatched: boolean,
   ambiguous: boolean,
-  cause?: unknown,
+  _cause?: unknown,
 ): SecureHttpError {
-  void cause;
   return new SecureHttpError(
     code,
     ambiguous ? 'ambiguous' : 'definite_failure',

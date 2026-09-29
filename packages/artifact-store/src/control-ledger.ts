@@ -133,7 +133,6 @@ export function normalizeAppendControlLedgerRecord(
   request: AppendControlLedgerRecord,
 ): z.output<typeof appendSchema> {
   const { signal: _signal, ...untrustedCommand } = request;
-  void _signal;
   return Object.freeze(appendSchema.parse(untrustedCommand));
 }
 
@@ -211,7 +210,6 @@ function recordMaterial(
   record: ControlLedgerRecord,
 ): Omit<ControlLedgerRecord, 'recordHash'> {
   const { recordHash, ...material } = record;
-  void recordHash;
   return material;
 }
 

@@ -168,8 +168,7 @@ describe('coordinator schedule observation', () => {
     const query = deferred<QueryResult<{ observed_at: Date }>>();
     const queryStarted = deferred<undefined>();
     const released = deferred<undefined>();
-    const release = vi.fn((error?: boolean | Error) => {
-      void error;
+    const release = vi.fn((_error?: boolean | Error) => {
       released.resolve(undefined);
     });
     const client = {

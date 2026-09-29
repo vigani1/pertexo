@@ -316,7 +316,6 @@ describe('secure HTTP client', () => {
         new FakeTransport(() => Promise.resolve(failedFixture.response)),
       ).executeStreaming(request(), async (stream) => {
         for await (const _chunk of stream.body) {
-          void _chunk;
           throw consumerFailure;
         }
         return undefined;
@@ -965,7 +964,9 @@ describe('secure HTTP client', () => {
         request({ signal: controller.signal }),
         async (stream) => {
           controller.abort(reason);
-          for await (const _chunk of stream.body) void _chunk;
+          for await (const _chunk of stream.body) {
+            // Drain the body; the chunks are not needed.
+          }
           return undefined;
         },
       ),
@@ -1597,7 +1598,9 @@ describe('Node HTTP transport', () => {
       body: posted,
       timeoutMillis: 1_000,
     });
-    for await (const _chunk of postResponse.body) void _chunk;
+    for await (const _chunk of postResponse.body) {
+      // Drain the body; the chunks are not needed.
+    }
     postResponse.close();
   });
 

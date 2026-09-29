@@ -370,9 +370,8 @@ function abortError(signal: AbortSignal | undefined): Error {
 }
 
 async function consume(body: Readable): Promise<void> {
-  for await (const chunk of body) {
+  for await (const _chunk of body) {
     // Integrity is enforced by the verifier while bytes are discarded.
-    void chunk;
   }
 }
 

@@ -380,7 +380,6 @@ function pinRegistrations(
       throw new NodeRegistryCompatibilityError(
         `executor ${manifest.executor.key}@${String(manifest.executor.version)} cannot execute this release`,
       );
-    void definition;
   }
 
   return { definitionMap, executorMap };

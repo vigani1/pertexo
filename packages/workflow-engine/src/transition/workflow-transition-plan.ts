@@ -126,7 +126,6 @@ export function buildWorkflowTransitionPlan(
           ? ('retry' as const)
           : ('execute' as const);
     const { waitKind: _waitKind, ...withoutWaitKind } = invocation;
-    void _waitKind;
     const running = {
       ...withoutWaitKind,
       status: 'running' as const,

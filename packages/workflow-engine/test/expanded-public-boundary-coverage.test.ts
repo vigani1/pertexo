@@ -105,7 +105,6 @@ describe('expanded public workflow-engine boundaries', () => {
         )
           return definition;
         const { executorAbi: omitted, ...withoutAbi } = definition;
-        void omitted;
         return withoutAbi;
       }),
     });

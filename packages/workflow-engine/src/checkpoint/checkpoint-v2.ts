@@ -107,8 +107,6 @@ export function parseCheckpointV2Boundary(
     ...shared,
     invocations: invocations.map(
       ({ branchPath: _, iterationPath: __, ...invocation }) => {
-        void _;
-        void __;
         return invocation;
       },
     ),

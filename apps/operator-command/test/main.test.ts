@@ -60,7 +60,6 @@ function createFixture() {
     OperatorCommandBootstrapModules['command']['runOperatorCommand']
   >[0];
   const runOperatorCommand = vi.fn((_input: RunInput) => {
-    void _input;
     return Promise.resolve(result as never);
   });
   const createOperatorCommandDatabase = vi.fn(() => database);

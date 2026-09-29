@@ -25,7 +25,6 @@ function advanceWorkflow(input: AdvanceWorkflowInput) {
 describe('checkpoint seam', () => {
   it('defaults the additive retained deadline flag to false', () => {
     const { deadlineExpired: _, ...retained } = checkpoint();
-    void _;
     expect(parseCheckpoint(retained).deadlineExpired).toBe(false);
     expect(checkpoint().deadlineExpired).toBe(false);
   });

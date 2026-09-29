@@ -128,7 +128,6 @@ export function createOperatorCommandRuntime(
   inputOptions: OperatorCommandDatabaseOptions,
 ): OperatorCommandRuntime {
   const { ownerRole, workerRuntimeRole, ...poolConfig } = config;
-  void workerRuntimeRole;
   const options = parseOptions(inputOptions);
   const pool = createDatabasePool({ ...poolConfig, max: 1 });
   pool.on('error', () => undefined);
