@@ -12,5 +12,6 @@ export {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,
   disabledAuthenticationMail,
+  printLocalAuthenticationMail,
   type AuthenticationMail,
 } from './authentication-mail.js';

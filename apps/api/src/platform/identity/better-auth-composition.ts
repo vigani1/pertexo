@@ -11,6 +11,7 @@ import {
   LocalAuthenticationMailSink,
   createBetterAuthRuntime,
   disabledAuthenticationMail,
+  printLocalAuthenticationMail,
   type AuthenticationMail,
   type BetterAuthRuntime,
 } from '../../identity-infrastructure/index.js';
@@ -131,7 +132,11 @@ function selectAuthenticationMail(
 ): AuthenticationMail {
   if (input.authenticationMail !== undefined) return input.authenticationMail;
   if (input.betterAuth.mailMode === 'local')
-    return new LocalAuthenticationMailSink();
+    return new LocalAuthenticationMailSink(
+      input.betterAuth.printLocalMailLinks === true
+        ? printLocalAuthenticationMail
+        : undefined,
+    );
   if (input.betterAuth.mailMode !== 'durable')
     return disabledAuthenticationMail;
   const durable = input.betterAuth.durableMail;

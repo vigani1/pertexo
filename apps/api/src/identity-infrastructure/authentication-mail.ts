@@ -57,22 +57,25 @@ export type LocalAuthenticationMailMessage = Readonly<{
   createdAt: Date;
 }>;
 
-/** Non-persistent development/test sink. It never writes bearer URLs to logs. */
+/**
+ * Non-persistent development/test sink. It never writes bearer URLs to logs;
+ * in local development an observer may show each message to the developer.
+ */
 export class LocalAuthenticationMailSink implements AuthenticationMail {
   private readonly messages: LocalAuthenticationMailMessage[] = [];
+
+  public constructor(
+    private readonly observe?: (
+      message: LocalAuthenticationMailMessage,
+    ) => void,
+  ) {}
 
   public sendVerification(input: {
     recipient: string;
     displayName: string;
     url: string;
   }): Promise<void> {
-    this.messages.push(
-      Object.freeze({
-        purpose: 'verification',
-        ...input,
-        createdAt: new Date(),
-      }),
-    );
+    this.keep({ purpose: 'verification', ...input });
     return Promise.resolve();
   }
 
@@ -81,13 +84,7 @@ export class LocalAuthenticationMailSink implements AuthenticationMail {
     displayName: string;
     url: string;
   }): Promise<void> {
-    this.messages.push(
-      Object.freeze({
-        purpose: 'password_reset',
-        ...input,
-        createdAt: new Date(),
-      }),
-    );
+    this.keep({ purpose: 'password_reset', ...input });
     return Promise.resolve();
   }
 
@@ -97,13 +94,7 @@ export class LocalAuthenticationMailSink implements AuthenticationMail {
     newEmail: string;
     url: string;
   }): Promise<void> {
-    this.messages.push(
-      Object.freeze({
-        purpose: 'email_change_confirmation',
-        ...input,
-        createdAt: new Date(),
-      }),
-    );
+    this.keep({ purpose: 'email_change_confirmation', ...input });
     return Promise.resolve();
   }
 
@@ -116,6 +107,27 @@ export class LocalAuthenticationMailSink implements AuthenticationMail {
       ),
     );
   }
+
+  private keep(input: Omit<LocalAuthenticationMailMessage, 'createdAt'>): void {
+    const message = Object.freeze({ ...input, createdAt: new Date() });
+    this.messages.push(message);
+    this.observe?.(message);
+  }
+}
+
+/**
+ * Shows a local message's link to the developer, since a local API sends no
+ * mail. It writes to the process's own stdout rather than the structured log,
+ * whose redaction would hide the token; configuration allows it only for
+ * `AUTH_MAIL_MODE=local` in development.
+ */
+export function printLocalAuthenticationMail(
+  message: LocalAuthenticationMailMessage,
+  output: Pick<NodeJS.WritableStream, 'write'> = process.stdout,
+): void {
+  output.write(
+    `\nLocal authentication mail (development only): ${message.purpose} for ${message.recipient}\n${message.url}\n\n`,
+  );
 }
 
 export const disabledAuthenticationMail: AuthenticationMail = Object.freeze({

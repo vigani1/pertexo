@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
 
 import { parseApiConfig } from '../src/platform/config/api-config.js';
@@ -756,8 +758,44 @@ describe('parseApiConfig identity boundary', () => {
       betterAuth: {
         secret: 'standalone-better-auth-secret-at-least-32-characters',
         mailMode: 'local',
+        printLocalMailLinks: true,
         providers: {},
       },
     });
+  });
+
+  it.each([
+    ['local mail in development', {}, true],
+    ['local mail in tests', { NODE_ENV: 'test' }, undefined],
+    ['disabled mail in development', { AUTH_MAIL_MODE: 'disabled' }, undefined],
+  ])('prints links for %s: %s', (_name, changed, expected) => {
+    const config = parseApiConfig({
+      ...standaloneBetterAuthEnvironment(),
+      ...changed,
+    });
+
+    expect(config.identity?.betterAuth?.printLocalMailLinks).toBe(expected);
+  });
+
+  it('starts from the shared local example environment', () => {
+    // Developers copy .env.example to .env and start the API and worker from it.
+    const config = parseApiConfig(
+      parseEnv(
+        readFileSync(new URL('../../../.env.example', import.meta.url), 'utf8'),
+      ),
+    );
+
+    expect(config.nodeEnv).toBe('development');
+    expect(config.identity?.betterAuth).toMatchObject({
+      mailMode: 'local',
+      printLocalMailLinks: true,
+    });
+    expect(config.connections).toBeUndefined();
+    expect(config.artifacts?.recovery.region).not.toBe(
+      config.artifacts?.primary.region,
+    );
+    expect(config.artifacts?.recovery.endpoint).not.toBe(
+      config.artifacts?.primary.endpoint,
+    );
   });
 });
