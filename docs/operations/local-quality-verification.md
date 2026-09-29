@@ -8,8 +8,8 @@ pnpm quality:local
 ```
 
 The command derives its local service contract from `.github/workflows/ci.yml`.
-It allocates five available loopback ports, creates a unique Compose project,
-starts PostgreSQL, Redis, the artifact store, and both control-ledger stores,
+It allocates six available loopback ports, creates a unique Compose project,
+starts PostgreSQL, Redis, both artifact stores, and both control-ledger stores,
 bootstraps and migrates them, and removes only that project's containers,
 networks, and volumes after success, failure, `SIGINT`, or `SIGTERM`.
 
