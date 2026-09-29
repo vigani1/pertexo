@@ -65,6 +65,7 @@ const EXACT_RISK_COHORT_FILES = Object.freeze({
     'apps/api/src/workflow-runs/use-cases.ts',
   ],
   'api-priority': [
+    'apps/api/src/api-runtimes.ts',
     'apps/api/src/app.ts',
     'apps/api/src/identity/oidc.ts',
     'apps/api/src/identity-infrastructure/oidc-adapter.ts',

@@ -15,7 +15,7 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/api-priority',
       include: [
-        'src/app.ts',
+        'src/{api-runtimes,app}.ts',
         'src/identity/{csrf,oidc,session}.ts',
         'src/identity-infrastructure/{oidc-adapter,oidc-request-validation,oidc-response-cleanup,oidc-secret-encryption}.ts',
         'src/identity-workspace/{module,persistence-capabilities,use-cases}.ts',

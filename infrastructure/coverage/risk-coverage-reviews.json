@@ -3709,15 +3709,81 @@
     },
     {
       "cohort": "api-priority",
+      "file": "apps/api/src/api-runtimes.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 123,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "The public bootstrap permits either an injected workspace database or an owned database runtime; this arm creates the owned runtime only when neither injected source supplies that responsibility."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 163,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "Webhook ingress is composed only when both identity and webhook configuration are available; the arm is reachable through the supported production bootstrap configuration."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 177,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "The scheduler is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 189,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "The notification runtime is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice that unit bootstraps replace with a supplied runtime."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 202,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "Artifact handling is composed only when identity and artifact configuration are both available; the arm is a reachable optional-feature wiring choice."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 283,
+          "column": 8,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
       "file": "apps/api/src/app.ts",
       "reviews": [
         {
           "branchId": "2",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 142,
+          "line": 60,
           "column": 49,
-          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
+          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
           "classification": "defensive",
           "justification": "When the bootstrap owns or receives a database runtime, it forwards that optional runtime into the dynamic module; omission remains valid for an injected workspace database."
         },
@@ -3725,9 +3791,9 @@
           "branchId": "3",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 144,
+          "line": 62,
           "column": 12,
-          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
+          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
           "classification": "defensive",
           "justification": "The workspace database dependency is optional because production bootstrap can own its database runtime; this arm preserves omission when no database adapter is injected."
         },
@@ -3735,61 +3801,11 @@
           "branchId": "4",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 147,
+          "line": 65,
           "column": 12,
-          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
+          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
           "classification": "defensive",
           "justification": "The rate-limit consumer is an optional test/composition override, and this arm preserves omission so the module can construct its configured consumer."
-        },
-        {
-          "branchId": "20",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 253,
-          "column": 4,
-          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
-          "classification": "defensive",
-          "justification": "The public bootstrap permits either an injected workspace database or an owned database runtime; this arm creates the owned runtime only when neither injected source supplies that responsibility."
-        },
-        {
-          "branchId": "28",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 293,
-          "column": 4,
-          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
-          "classification": "defensive",
-          "justification": "Webhook ingress is composed only when both identity and webhook configuration are available; the arm is reachable through the supported production bootstrap configuration."
-        },
-        {
-          "branchId": "30",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 307,
-          "column": 4,
-          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
-          "classification": "defensive",
-          "justification": "The scheduler is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice."
-        },
-        {
-          "branchId": "32",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 319,
-          "column": 4,
-          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
-          "classification": "defensive",
-          "justification": "Artifact handling is composed only when identity and artifact configuration are both available; the arm is a reachable optional-feature wiring choice."
-        },
-        {
-          "branchId": "37",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 396,
-          "column": 8,
-          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
         }
       ]
     },
@@ -3972,102 +3988,102 @@
       "file": "apps/api/src/workflow-runs/sse-authorization-lifetime.ts",
       "reviews": [
         {
-          "branchId": "7",
+          "branchId": "9",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
           "classification": "generated",
           "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
         },
         {
-          "branchId": "8",
+          "branchId": "10",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
           "classification": "generated",
           "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
         },
         {
           "branchId": "17",
           "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "21",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "22",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "15",
-          "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 234,
+          "line": 243,
           "column": 23,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
           "classification": "defensive",
           "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
-        },
-        {
-          "branchId": "16",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 261,
-          "column": 4,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
-          "classification": "defensive",
-          "justification": "The watchdog checks the same composed signal immediately before constructing this private wait; the helper precheck safely contains a nonstandard synchronously changing signal."
         },
         {
           "branchId": "18",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 271,
+          "line": 270,
           "column": 4,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
           "classification": "defensive",
-          "justification": "Abort settlement clears the deadline timer and deadline settlement removes the abort listener; this callback guard contains a late host-timer delivery after the wait has already settled."
-        },
-        {
-          "branchId": "19",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 277,
-          "column": 4,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
-          "classification": "defensive",
-          "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
+          "justification": "The watchdog checks the same composed signal immediately before constructing this private wait; the helper precheck safely contains a nonstandard synchronously changing signal."
         },
         {
           "branchId": "20",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 283,
+          "line": 280,
+          "column": 4,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "defensive",
+          "justification": "Abort settlement clears the deadline timer and deadline settlement removes the abort listener; this callback guard contains a late host-timer delivery after the wait has already settled."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 286,
+          "column": 4,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "defensive",
+          "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 292,
           "column": 8,
-          "sourceFingerprint": "sha256:42c685689be8288b9eed34b87b2aa2e95e11c848ed143acb8dc70c8f2f88d83f",
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
           "classification": "defensive",
           "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
         }

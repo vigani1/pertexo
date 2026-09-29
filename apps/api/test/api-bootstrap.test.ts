@@ -24,6 +24,8 @@ import type { ApiConnectionRuntime } from '../src/platform/connections/connectio
 import type { ApiWebhookRuntime } from '../src/platform/webhooks/webhook-runtime.module.js';
 import type { WebhookManagementService } from '../src/webhooks/service.js';
 import type { ApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
+import type { ApiNotificationRuntime } from '../src/platform/notifications/notification-runtime.module.js';
+import { WorkspaceInboxService } from '../src/notifications/service.js';
 import type { ApiArtifactRuntime } from '../src/platform/artifacts/artifact-runtime.module.js';
 import { parseApiConfig } from '../src/platform/config/api-config.js';
 import type { ApiIdentityConfig } from '../src/platform/config/identity-config.js';
@@ -1627,6 +1629,67 @@ describe('API bootstrap ownership and health', () => {
       ).rejects.toThrow('schedule readiness unavailable');
       await owner.close();
       expect(close).toHaveBeenCalledOnce();
+    });
+
+    it('serves the workspace inbox through a supplied notification runtime and owns its readiness and close', async () => {
+      const inboxDatabase = {
+        listThreads: vi.fn(),
+        readSummary: vi
+          .fn()
+          .mockResolvedValue({ unreadCount: 2, revision: '11' }),
+        markThreadRead: vi.fn(),
+        markAllRead: vi.fn(),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const hints = {
+        checkReadiness: vi.fn().mockResolvedValue(undefined),
+        subscribe: vi.fn(),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const notificationRuntime: ApiNotificationRuntime = {
+        service: new WorkspaceInboxService(inboxDatabase),
+        hints,
+        checkReadiness: hints.checkReadiness,
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      application = await createApiApplication(config, {
+        ...dependencies(),
+        identityRuntime: identityRuntime(
+          vi.fn().mockResolvedValue(undefined),
+          true,
+        ),
+        notificationRuntime,
+      });
+      expect(hints.checkReadiness).toHaveBeenCalled();
+      const summary =
+        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/notifications/summary';
+      const cookie = `pertexo_session=${'s'.repeat(43)}`;
+      expect(
+        (await application.inject({ method: 'GET', url: summary })).statusCode,
+      ).toBe(401);
+      expect(
+        (
+          await application.inject({
+            method: 'GET',
+            url: summary.replace(
+              'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+            ),
+            headers: { cookie },
+          })
+        ).statusCode,
+      ).toBe(404);
+      const read = await application.inject({
+        method: 'GET',
+        url: summary,
+        headers: { cookie },
+      });
+      expect(read.statusCode).toBe(200);
+      expect(read.json()).toEqual({ unreadCount: 2, revision: '11' });
+
+      await application.close();
+      application = undefined;
+      expect(notificationRuntime.close).toHaveBeenCalledOnce();
     });
 
     it('enforces session and CSRF on schedule routes and owns readiness and close', async () => {
