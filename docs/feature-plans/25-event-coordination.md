@@ -31,6 +31,15 @@ Leading/trailing edge, late arrivals, key cardinality, ordering and fairness; do
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
 
+## User-configurable settings
+
+Recommended values, confirmed in this feature's ADR. The server enforces every
+range; the control states its consequence.
+
+| Setting | Default | Range | Who changes it | Consequence shown |
+| --- | --- | --- | --- | --- |
+| Coalescing window | None | 1 second–1 hour | Workflow editors | “Events with the same key within this window start one run” |
+
 ## Ownership and structure
 
 Application coordination policy; database durable event/window authority; worker scheduling; model/node contracts; web editor/inspection.
