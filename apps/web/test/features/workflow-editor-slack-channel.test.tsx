@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { parseChannelId } from '@/features/workflow-editor/model/slack-channel';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+import { notFoundProblem } from '../support/run-fixtures';
 import { slackChannelLookup, slackConnection } from '../support/slack-channels';
 import {
   api,
@@ -214,6 +215,41 @@ describe('the Slack step’s channel in Setup', { timeout: 30_000 }, () => {
         slack_bot_token: createdId,
       });
     });
+  });
+
+  it('offers no connection in place while connections are unavailable', async () => {
+    const lookups: string[] = [];
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph: slackGraph({
+          channelId: { kind: 'literal', value: 'C0123456789' },
+        }),
+        definitions: [slackDefinition],
+        capabilities: [
+          ...workspace.capabilities,
+          'connection:use',
+          'connection:manage',
+        ],
+      }),
+      slackChannelLookup(
+        workspaceApi,
+        { C0123456789: { name: 'ops-alerts' } },
+        lookups,
+      ),
+    );
+    // A local API without connection encryption has no connection routes.
+    mockServer.use(http.get(`${workspaceApi}/connections`, notFoundProblem));
+    renderApp(editorPath);
+    fireEvent.click((await findCanvas()).getByText('Tell ops'));
+
+    expect(await screen.findByLabelText('Slack connection')).toBeVisible();
+    expect(await screen.findByLabelText('Channel ID')).toHaveValue(
+      'C0123456789',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'New Slack connection' }),
+    ).toBeNull();
+    expect(lookups).toEqual([]);
   });
 
   it('leaves a channel from another source to the Inputs tab', async () => {

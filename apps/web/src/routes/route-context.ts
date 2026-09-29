@@ -9,7 +9,7 @@ import {
 } from '@/features/auth/queries.public';
 import { publishSessionChange } from '@/features/auth/session-sync.public';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
+import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
 
 export type RouterContext = Readonly<{
@@ -121,7 +121,7 @@ export function authoringPrefetches(
   return [
     queryClient.query(authoringCatalogQueryOptions(apiClient, userId)),
     queryClient.query(
-      connectionDiscoveryQueryOptions(apiClient, userId, workspaceId),
+      editorConnectionsQueryOptions(apiClient, userId, workspaceId),
     ),
   ];
 }

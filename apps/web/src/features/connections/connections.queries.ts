@@ -1,4 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import { isNotFound } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   getAllConnections,
@@ -14,6 +15,8 @@ export const connectionKeys = {
     [...connectionKeys.scope(userId, workspaceId), 'list'] as const,
   discovery: (userId: string, workspaceId: string) =>
     [...connectionKeys.scope(userId, workspaceId), 'discovery'] as const,
+  editor: (userId: string, workspaceId: string) =>
+    [...connectionKeys.scope(userId, workspaceId), 'editor'] as const,
   detail: (userId: string, workspaceId: string, connectionId: string) =>
     [
       ...connectionKeys.scope(userId, workspaceId),
@@ -91,6 +94,31 @@ export function connectionDiscoveryQueryOptions(
   return queryOptions({
     queryKey: connectionKeys.discovery(userId, workspaceId),
     queryFn: ({ signal }) => getAllConnections(apiClient, workspaceId, signal),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Every connection a workflow editor can offer its steps, or `null` when the
+ * API answers 404 because connections can't be read here (a local API
+ * without connection encryption has no connection routes). The editor then
+ * opens without connections instead of failing; other failures still throw.
+ */
+export function editorConnectionsQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+) {
+  return queryOptions({
+    queryKey: connectionKeys.editor(userId, workspaceId),
+    queryFn: async ({ signal }) => {
+      try {
+        return await getAllConnections(apiClient, workspaceId, signal);
+      } catch (error) {
+        if (isNotFound(error)) return null;
+        throw error;
+      }
+    },
     staleTime: 30_000,
   });
 }
