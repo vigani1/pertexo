@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { formatDateTime, formatElapsedTime } from '@/lib/format-time';
 import { cn } from '@/lib/utils';
 import { describeInboxThread } from '../model/inbox-thread';
 
@@ -64,7 +64,7 @@ export function InboxThreadRow({
             title={formatDateTime(thread.latestOccurredAt)}
             className="font-mono text-xs text-subtle-foreground"
           >
-            {formatRelativeTime(thread.latestOccurredAt, nowMs)}
+            {formatElapsedTime(thread.latestOccurredAt, nowMs)}
           </time>
         </div>
         <p className="min-w-0 text-xs text-muted-foreground">

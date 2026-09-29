@@ -90,6 +90,20 @@ export function formatRelativeTime(
   return relativeFormatter.format(Math.round(seconds / 86_400), 'day');
 }
 
+/**
+ * {@link formatRelativeTime} for something that already happened. A clock
+ * that ticks once a minute, or a server clock slightly ahead, can put a fresh
+ * event after "now"; it still reads "just now", never "in a moment".
+ */
+export function formatElapsedTime(
+  value: string | null | undefined,
+  now = Date.now(),
+): string {
+  const date = toDate(value);
+  if (date === undefined) return MISSING;
+  return formatRelativeTime(value, Math.max(now, date.getTime()));
+}
+
 /** Compact duration, one style everywhere: 0.12s, 4.2s, 15s, 1m 12s, 2h 05m. */
 export function formatDurationMs(
   durationMs: number | null | undefined,
