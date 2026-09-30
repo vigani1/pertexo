@@ -46,7 +46,7 @@ export function DialogContent({
   VariantProps<typeof dialogContentVariants>) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
+      <DialogPrimitive.Backdrop className="scrim fixed inset-0 z-50 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
       <DialogPrimitive.Viewport
         className={dialogViewportVariants({ placement })}
       >
