@@ -29,7 +29,6 @@ describe('parseInvitationDeliveryConfig', () => {
   it('still requires the public web origin once delivery is configured', () => {
     const { PUBLIC_WEB_ORIGIN: _origin, ...withoutOrigin } =
       invitationEnvironment;
-    void _origin;
 
     expect(() =>
       parseInvitationDeliveryConfig(withoutOrigin, false, false),
