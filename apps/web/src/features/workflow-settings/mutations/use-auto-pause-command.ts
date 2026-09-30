@@ -2,7 +2,10 @@ import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
-import { isUncertainOutcome } from '@/lib/api/api-error-copy';
+import {
+  describeCommandError,
+  isUncertainOutcome,
+} from '@/lib/api/api-error-copy';
 import { commandAutoPause, type AutoPauseCommand } from '../auto-pause.api';
 import { autoPauseKeys } from '../auto-pause.queries';
 import { settingsCommandError } from './settings-command';
@@ -52,18 +55,26 @@ export function useAutoPauseCommand(
       return true;
     } catch (cause) {
       const uncertain = isUncertainOutcome(cause);
+      const revisionConflict =
+        isApiError(cause) &&
+        cause.kind === 'problem' &&
+        cause.status === 409 &&
+        (cause.problem?.code === 'workflow.pause_conflict' ||
+          cause.problem?.code === 'workflow.auto_pause_settings_conflict' ||
+          cause.problem?.code === 'workspace.auto_pause_settings_conflict');
+      const action =
+        command.kind === 'resume'
+          ? 'resuming triggers'
+          : 'saving auto-pause settings';
       if (!uncertain) attempt.current = undefined;
       setUnconfirmed(uncertain);
-      setConflict(isApiError(cause) && cause.status === 409);
+      setConflict(revisionConflict);
       setProblem(
-        isApiError(cause) && cause.status === 409
+        revisionConflict
           ? 'This changed in another session. Your edits are kept. Review the refreshed settings, then save again.'
-          : settingsCommandError(
-              cause,
-              command.kind === 'resume'
-                ? 'resuming triggers'
-                : 'saving auto-pause settings',
-            ),
+          : uncertain
+            ? settingsCommandError(cause, action)
+            : describeCommandError(cause, action),
       );
       return false;
     } finally {

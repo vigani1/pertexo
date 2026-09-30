@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  bigint,
   foreignKey,
   index,
   integer,
@@ -18,6 +19,38 @@ import { workflowRuns } from './execution.js';
 import { workspaces } from './foundation.js';
 
 // ADR 056. String-mode timestamps preserve PostgreSQL precision.
+/** Closed pauses remain until workflow/tenant deletion, including disabled schedule lag. */
+export const workflowTriggerPausePeriods = appSchema.table(
+  'workflow_trigger_pause_periods',
+  {
+    workspaceId: uuid('workspace_id').notNull(),
+    workflowId: uuid('workflow_id').notNull(),
+    pauseRevision: bigint('pause_revision', { mode: 'bigint' }).notNull(),
+    pausedAt: timestamp('paused_at', {
+      withTimezone: true,
+      mode: 'string',
+    }).notNull(),
+    resumedAt: timestamp('resumed_at', {
+      withTimezone: true,
+      mode: 'string',
+    }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.workspaceId, table.workflowId, table.pauseRevision],
+    }),
+    foreignKey({
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [workflows.workspaceId, workflows.id],
+    }).onDelete('cascade'),
+    index('workflow_trigger_pause_periods_due_idx').on(
+      table.workspaceId,
+      table.workflowId,
+      table.pausedAt.desc(),
+    ),
+  ],
+);
+
 export const workflowAutoPauseCommandReceipts = appSchema.table(
   'workflow_auto_pause_command_receipts',
   {

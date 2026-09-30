@@ -25,6 +25,132 @@ const paused: WorkflowAutoPauseSettings = {
 };
 
 describe('workflow automatic pause controls', () => {
+  it('does not rebase retained edits after an idempotency conflict, even if refreshed settings change', async () => {
+    installQueries();
+    let current = unpausedWorkflowSettings;
+    const bodies: unknown[] = [];
+    mockServer.use(
+      http.get(`${workflowApi}/auto-pause`, () => HttpResponse.json(current)),
+      http.put(`${workflowApi}/auto-pause`, async ({ request }) => {
+        bodies.push(await request.json());
+        current = {
+          ...current,
+          thresholdOverride: 12,
+          effectiveThreshold: 12,
+          settingsRevision: 2,
+        };
+        return HttpResponse.json(
+          {
+            type: 'https://api.pertexo.test/problems/request.idempotency_conflict',
+            title: 'Idempotency conflict',
+            status: 409,
+            code: 'request.idempotency_conflict',
+            requestId: 'req-key-conflict',
+          },
+          {
+            status: 409,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        );
+      }),
+    );
+    renderApp(path);
+    const event = userEvent.setup();
+    const section = await screen.findByRole('region', {
+      name: 'Automatic pause',
+    });
+    const input = await within(section).findByRole('textbox', {
+      name: 'Pause after failures in a row',
+    });
+    await event.type(input, '6');
+    await event.click(
+      within(section).getByRole('button', { name: 'Save auto-pause rule' }),
+    );
+    await within(section).findByText(
+      'This request was already used with different details. Try again.',
+    );
+    await within(section).findByText(
+      'Current configured rule: 12 failures in a row.',
+    );
+    expect(input).toHaveValue('6');
+    expect(
+      within(section).queryByText(/Your edits are kept/u),
+    ).not.toBeInTheDocument();
+    await event.click(
+      within(section).getByRole('button', { name: 'Save auto-pause rule' }),
+    );
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    expect(bodies[1]).toEqual({
+      enabled: true,
+      thresholdOverride: 6,
+      expectedSettingsRevision: 1,
+    });
+  });
+
+  it('keeps an exact retry after malformed HTTP 409 problem details without claiming a revision conflict', async () => {
+    installQueries();
+    let current = unpausedWorkflowSettings;
+    const requests: { body: unknown; key: string | null }[] = [];
+    mockServer.use(
+      http.get(`${workflowApi}/auto-pause`, () => HttpResponse.json(current)),
+      http.put(`${workflowApi}/auto-pause`, async ({ request }) => {
+        requests.push({
+          body: await request.json(),
+          key: request.headers.get('idempotency-key'),
+        });
+        current = {
+          ...current,
+          thresholdOverride: 5,
+          effectiveThreshold: 5,
+          settingsRevision: 2,
+        };
+        if (requests.length === 1)
+          return HttpResponse.json(
+            { status: 409, code: 'workflow.auto_pause_settings_conflict' },
+            {
+              status: 409,
+              headers: { 'content-type': 'application/problem+json' },
+            },
+          );
+        return HttpResponse.json({ settings: current, replayed: true });
+      }),
+    );
+    renderApp(path);
+    const event = userEvent.setup();
+    const section = await screen.findByRole('region', {
+      name: 'Automatic pause',
+    });
+    await event.type(
+      await within(section).findByRole('textbox', {
+        name: 'Pause after failures in a row',
+      }),
+      '5',
+    );
+    await event.click(
+      within(section).getByRole('button', { name: 'Save auto-pause rule' }),
+    );
+    expect(
+      await within(section).findByText(
+        /We couldn’t confirm whether saving auto-pause settings went through/u,
+      ),
+    ).toBeVisible();
+    expect(
+      within(section).queryByText(/Your edits are kept/u),
+    ).not.toBeInTheDocument();
+    await event.click(
+      within(section).getByRole('button', { name: 'Retry same change' }),
+    );
+    await screen.findByText('Auto-pause settings saved');
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toEqual(requests[1]);
+    expect(requests[1]?.body).toEqual({
+      enabled: true,
+      thresholdOverride: 5,
+      expectedSettingsRevision: 1,
+    });
+  });
   it('can retry an uncertain Resume after the refreshed workflow is already unpaused', async () => {
     installQueries();
     let current = paused;

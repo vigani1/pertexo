@@ -230,6 +230,56 @@ describe('auto pause controls prior-head migration and readiness', () => {
       await expect(
         checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
       ).resolves.toBeDefined();
+      const admissionSignature =
+        'app.schedule_claim_workflow_paused(uuid,uuid,timestamptz)';
+      const admissionDefinition = (
+        await owner.query<{ definition: string }>(
+          'select pg_get_functiondef($1::regprocedure) as definition',
+          [admissionSignature],
+        )
+      ).rows[0]?.definition;
+      if (admissionDefinition === undefined)
+        throw new Error('Missing pause admission command');
+      try {
+        await owner.query(
+          admissionDefinition.replace(
+            'scheduled instant required',
+            'altered scheduled instant required',
+          ),
+        );
+        await expect(
+          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
+        ).rejects.toThrow('Workflow authoring schema is incompatible');
+      } finally {
+        await owner.query(admissionDefinition);
+      }
+      try {
+        await owner.query(
+          `grant execute on function ${admissionSignature} to pertexo_operator`,
+        );
+        await expect(
+          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
+        ).rejects.toThrow('Workflow authoring schema is incompatible');
+      } finally {
+        await owner.query(
+          `revoke execute on function ${admissionSignature} from pertexo_operator`,
+        );
+      }
+      try {
+        await owner.query(
+          'alter table app.workflow_trigger_pause_periods no force row level security',
+        );
+        await expect(
+          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
+        ).rejects.toThrow('Workflow authoring schema is incompatible');
+      } finally {
+        await owner.query(
+          'alter table app.workflow_trigger_pause_periods force row level security',
+        );
+      }
+      await expect(
+        checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
+      ).resolves.toBeDefined();
     } finally {
       await Promise.all([owner.end(), api.end(), fold.close()]);
       await fixture.drop();

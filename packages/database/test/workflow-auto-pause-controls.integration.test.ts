@@ -185,6 +185,13 @@ async function auditCount(scope: Scope, action: string) {
   );
   return result.rows[0]?.count;
 }
+async function pausePeriodCount(scope: Scope) {
+  const result = await admin.query<{ count: number }>(
+    'select count(*)::int as count from app.workflow_trigger_pause_periods where workspace_id=$1 and workflow_id=$2',
+    [scope.workspaceId, scope.workflowId],
+  );
+  return result.rows[0]?.count;
+}
 async function waitForBlocked(pid: number) {
   for (let attempt = 0; attempt < 200; attempt++) {
     const result = await admin.query<{ waiting: boolean }>(
@@ -286,6 +293,7 @@ describe('workflow auto pause operational controls', () => {
       ...accepted,
       replayed: true,
     });
+    expect(await pausePeriodCount(scope)).toBe(1);
     await expect(
       controls().resumeWorkflow({ ...command, idempotencyKey: randomUUID() }),
     ).rejects.toMatchObject({ currentRevision: '4' });
@@ -302,6 +310,7 @@ describe('workflow auto pause operational controls', () => {
     });
     expect(await failures(scope)).toBe(1);
     expect(await auditCount(scope, 'workflow.triggers_resumed')).toBe(0);
+    expect(await pausePeriodCount(scope)).toBe(0);
     await admin.query(
       `update app.workflows set trigger_pause_state='paused',trigger_paused_at=clock_timestamp(),
       trigger_pause_reason='consecutive_failures',trigger_pause_failures=3,trigger_pause_last_run_id=gen_random_uuid(),
@@ -641,6 +650,7 @@ describe('workflow auto pause operational controls', () => {
       );
       expect(await failures(scope)).toBe(3);
       expect(await auditCount(scope, 'workflow.triggers_resumed')).toBe(0);
+      expect(await pausePeriodCount(scope)).toBe(0);
     } finally {
       await admin.query(
         'alter table app.audit_events drop constraint test_pause_audit_failure',
@@ -650,6 +660,7 @@ describe('workflow auto pause operational controls', () => {
     expect(accepted.replayed).toBe(false);
     expect(accepted.settings.pauseState).toBe('none');
     expect(await failures(scope)).toBe(0);
+    expect(await pausePeriodCount(scope)).toBe(1);
   });
   it('reaps completed expired control receipts in the existing bounded transient reaper', async () => {
     const scope = await seed();

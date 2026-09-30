@@ -204,7 +204,7 @@ Evidence log:
   receipt expiry/legal holds, RLS, schedule and webhook admission. Disabled
   resources stay disabled after resume and lifecycle transitions. Database
   units: 870 passing tests. Startup pins are control
-  `8753b78e91a138add46bac4807553bbd` and fold
+  `2ce8ab04731f24bd9292bdc7cf9e4079` and fold
   `54c69650fa9bbf8c2580e0e86659e894`.
 - Slice 3 API evidence: 1,696 unit tests and 14 real session/CSRF HTTP
   integration cases pass, including all three strict conflict projections,
@@ -227,3 +227,28 @@ Evidence log:
   complexity/duplication ratchets, contracts, typechecking and unit suites.
   The two task-only PostgreSQL/Redis containers were removed after integration
   verification; everyday services and the dirty primary checkout were preserved.
+- 2026-10-01 review correction: actual resume also atomically retains the
+  closed pause interval in private, forced-RLS workflow history. Schedule
+  admission checks its actual due instant against the current pause or an
+  indexed predecessor interval (`LIMIT 1`), so scanner lag across resume
+  cannot turn a paused-period occurrence into a catch-up run. One row per
+  actual pause/resume cycle is retained until workflow/tenant deletion: it
+  cannot expire with command receipts because disabled schedules and delayed
+  claims may still refer to earlier cycles. No trigger/schedule enablement or
+  recurrence is rewritten, and resume never locks a schedule row. Admission
+  locks workspace before workflow, matching control/evaluator/purge ordering.
+  Startup also pins the due-aware admission command to
+  `7f7b9cf2e74f7e45644cd0fe3d37b205` with API/worker-only execution.
+- 2026-10-01 review correction: browser recovery branches on the exact problem
+  code, not HTTP 409 alone. Idempotency conflicts keep the original edit
+  revision and show command-specific recovery; malformed 409 responses remain
+  uncertain outcomes with the exact request/key available for retry. Focused
+  browser tests now pass 9 cases; the full web unit suite passes 749 tests.
+- Review correction verification: `pnpm check` passes again. All 27 isolated
+  PostgreSQL cases pass (6 new scanner-lag/race cases, 11 controls, 1 prior-head
+  migration/readiness drift case, 9 original fold/admission cases). These prove
+  both misfire policies, post-resume admission, earlier retained cycles after
+  disabled-schedule lag, exact half-open pause boundaries without blocking
+  pre-pause instants, both resume/admission lock orders, history privacy, and
+  history rollback/no-op/exact-replay semantics. The unpublished migration
+  0125 was corrected in place; enforcement and trigger enablement are unchanged.

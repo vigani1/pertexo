@@ -4,6 +4,29 @@ ALTER TABLE app.workflows ADD COLUMN auto_pause_settings_revision integer NOT NU
   CHECK (auto_pause_settings_revision>0);
 ALTER TABLE app.workflow_failure_streaks ADD COLUMN resumed_after timestamptz;
 
+-- One immutable closed interval per actual resume, not one row per schedule or
+-- missed occurrence. Keep these through disabled schedules and receipt expiry:
+-- a scanner may encounter an old due instant after several pause/resume cycles.
+CREATE TABLE app.workflow_trigger_pause_periods (
+  workspace_id uuid NOT NULL,
+  workflow_id uuid NOT NULL,
+  pause_revision bigint NOT NULL CHECK (pause_revision>0),
+  paused_at timestamptz NOT NULL,
+  resumed_at timestamptz NOT NULL,
+  PRIMARY KEY(workspace_id,workflow_id,pause_revision),
+  FOREIGN KEY(workspace_id,workflow_id) REFERENCES app.workflows(workspace_id,id) ON DELETE CASCADE,
+  CHECK (resumed_at>=paused_at)
+);
+CREATE INDEX workflow_trigger_pause_periods_due_idx ON app.workflow_trigger_pause_periods
+  (workspace_id,workflow_id,paused_at DESC) INCLUDE(resumed_at);
+ALTER TABLE app.workflow_trigger_pause_periods ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.workflow_trigger_pause_periods FORCE ROW LEVEL SECURITY;
+CREATE POLICY workflow_trigger_pause_periods_owner ON app.workflow_trigger_pause_periods
+  FOR ALL TO {{owner_role}} USING(true) WITH CHECK(true);
+REVOKE ALL ON app.workflow_trigger_pause_periods
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},
+    {{maintenance_role}},{{operator_role}},{{lifecycle_command_role}};
+
 CREATE TABLE app.workflow_auto_pause_command_receipts (
   workspace_id uuid NOT NULL REFERENCES app.workspaces(id) ON DELETE CASCADE,
   actor_id uuid NOT NULL,
@@ -36,7 +59,7 @@ SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
 DECLARE
   v_role text; v_workflow app.workflows%ROWTYPE; v_workspace app.workspaces%ROWTYPE;
   v_receipt app.workflow_auto_pause_command_receipts%ROWTYPE;
-  v_resource uuid; v_settings jsonb; v_changed boolean:=false; v_action text;
+  v_resource uuid; v_settings jsonb; v_changed boolean:=false; v_action text; v_resumed_at timestamptz;
 BEGIN
   IF p_workspace::text IS DISTINCT FROM nullif(current_setting('app.workspace_id',true),'')
      OR p_actor::text IS DISTINCT FROM nullif(current_setting('app.actor_id',true),'') THEN
@@ -130,13 +153,18 @@ BEGIN
         RAISE EXCEPTION 'pause revision conflict' USING ERRCODE='PTP09',DETAIL=v_workflow.trigger_pause_revision::text;
       END IF;
       IF v_workflow.trigger_pause_state='paused' THEN
+        v_resumed_at:=clock_timestamp();
+        INSERT INTO app.workflow_trigger_pause_periods
+          (workspace_id,workflow_id,pause_revision,paused_at,resumed_at)
+          VALUES(p_workspace,p_workflow,v_workflow.trigger_pause_revision,
+            v_workflow.trigger_paused_at,v_resumed_at);
         -- Cut on terminal time, not queue insertion time: even an outcome
         -- transaction committing late cannot apply a pre-resume failure.
         INSERT INTO app.workflow_failure_streaks(workspace_id,workflow_id,consecutive_failures,resumed_after)
-          VALUES(p_workspace,p_workflow,0,clock_timestamp())
+          VALUES(p_workspace,p_workflow,0,v_resumed_at)
           ON CONFLICT ON CONSTRAINT workflow_failure_streaks_pkey DO UPDATE
           SET consecutive_failures=0,last_run_id=NULL,last_ended_at=NULL,
-              resumed_after=clock_timestamp(),updated_at=clock_timestamp();
+              resumed_after=v_resumed_at,updated_at=clock_timestamp();
         UPDATE app.workflows SET trigger_pause_state='none',trigger_paused_at=NULL,
           trigger_pause_reason=NULL,trigger_pause_failures=NULL,trigger_pause_last_run_id=NULL,
           trigger_pause_revision=trigger_pause_revision+1
@@ -211,6 +239,50 @@ ALTER FUNCTION app.workflow_auto_pause_control(uuid,uuid,uuid,text,jsonb,text,te
 REVOKE ALL ON FUNCTION app.workflow_auto_pause_control(uuid,uuid,uuid,text,jsonb,text,text,text,text)
   FROM PUBLIC,{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}},{{operator_role}},{{lifecycle_command_role}};
 GRANT EXECUTE ON FUNCTION app.workflow_auto_pause_control(uuid,uuid,uuid,text,jsonb,text,text,text,text) TO {{api_runtime_role}};
+
+-- Admission uses the actual greatest due instant, not the scanner's current
+-- observation. The indexed predecessor interval lookup is bounded (LIMIT 1)
+-- even after many cycles. Lock workspace before workflow, as resume/fold/purge
+-- do; do not lock schedules here or make resume acquire a schedule lease lock.
+CREATE FUNCTION app.schedule_claim_workflow_paused(
+  p_trigger_id uuid,p_lease_token uuid,p_scheduled_at timestamptz)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE v_workspace_id uuid; v_workflow_id uuid; v_state varchar;
+  v_resumed_at timestamptz; v_prior_workspace text;
+BEGIN
+  IF p_scheduled_at IS NULL THEN RAISE EXCEPTION 'scheduled instant required' USING ERRCODE='22023'; END IF;
+  v_prior_workspace:=current_setting('app.workspace_id',true);
+  SELECT trigger.workspace_id,trigger.workflow_id INTO v_workspace_id,v_workflow_id
+    FROM app.workflow_triggers trigger WHERE trigger.id=p_trigger_id;
+  IF v_workspace_id IS NULL THEN RETURN false; END IF;
+  PERFORM set_config('app.workspace_id',v_workspace_id::text,true);
+  PERFORM 1 FROM app.workspaces WHERE id=v_workspace_id FOR SHARE;
+  SELECT workflow.trigger_pause_state INTO v_state
+    FROM app.trigger_schedules schedule
+    JOIN app.workflow_triggers trigger ON trigger.id=schedule.trigger_id
+    JOIN app.workflows workflow ON workflow.workspace_id=trigger.workspace_id
+      AND workflow.id=trigger.workflow_id
+    WHERE schedule.trigger_id=p_trigger_id AND schedule.lease_token=p_lease_token
+      AND schedule.lease_expires_at>clock_timestamp()
+    FOR SHARE OF workflow;
+  IF FOUND AND v_state<>'paused' THEN
+    SELECT period.resumed_at INTO v_resumed_at FROM app.workflow_trigger_pause_periods period
+      WHERE period.workspace_id=v_workspace_id AND period.workflow_id=v_workflow_id
+        AND period.paused_at<=p_scheduled_at
+      ORDER BY period.paused_at DESC LIMIT 1;
+  END IF;
+  PERFORM set_config('app.workspace_id',coalesce(v_prior_workspace,''),true);
+  RETURN coalesce(v_state='paused' OR p_scheduled_at<v_resumed_at,false);
+EXCEPTION WHEN OTHERS THEN
+  PERFORM set_config('app.workspace_id',coalesce(v_prior_workspace,''),true);
+  RAISE;
+END $$;
+ALTER FUNCTION app.schedule_claim_workflow_paused(uuid,uuid,timestamptz) OWNER TO {{owner_role}};
+REVOKE ALL ON FUNCTION app.schedule_claim_workflow_paused(uuid,uuid,timestamptz)
+  FROM PUBLIC,{{dispatcher_role}},{{maintenance_role}},{{operator_role}},{{lifecycle_command_role}};
+GRANT EXECUTE ON FUNCTION app.schedule_claim_workflow_paused(uuid,uuid,timestamptz)
+  TO {{api_runtime_role}},{{worker_runtime_role}};
 
 -- Select at most p_limit candidates without row locks. Lock workspace before
 -- workflow before queue, matching lifecycle/purge commands. Several evaluators
@@ -324,5 +396,5 @@ BEGIN
     RAISE EXCEPTION 'workspace tenant purge shape is incompatible';
   END IF;
   EXECUTE replace(v_definition,'''workspace_inbox_events'', ''workflow_failure_streaks''',
-    '''workspace_inbox_events'', ''workflow_auto_pause_command_receipts'', ''workflow_failure_streaks''');
+    '''workspace_inbox_events'', ''workflow_auto_pause_command_receipts'', ''workflow_trigger_pause_periods'', ''workflow_failure_streaks''');
 END $$;
