@@ -8,13 +8,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describeMisfirePolicy } from '@/features/catalog/presentation.public';
-import { fieldControlId } from '../../../model/node-form';
+import { fieldControlId } from '../../../model/inspector/node-form';
 import {
   timezoneChoices,
   type ScheduleDraft,
   type ScheduleIssue,
   type ScheduleSchema,
-} from '../../../model/schedule-draft';
+} from '../../../model/inspector/schedule-draft';
 import { ChoiceSelect } from '../choice-select';
 
 /** What every builder control needs: the draft, its issue and a way to edit. */

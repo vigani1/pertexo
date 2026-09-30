@@ -30,7 +30,7 @@ import {
   withoutRunFilter,
   withRunView,
   type RunSearch,
-} from './model/run-search';
+} from './model/list/run-search';
 import { useRunHistory } from './use-run-history';
 import { runStatisticsQueryOptions } from './workflow-runs.queries';
 

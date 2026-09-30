@@ -1,0 +1,556 @@
+// @vitest-environment node
+import type {
+  WorkflowNodeRunSummary,
+  WorkflowRunEvent,
+  WorkflowRunSummary,
+} from '@pertexo/contracts/schemas/workflow-runs';
+import { describe, expect, it } from 'vitest';
+import { describeRunEvent } from '@/features/workflow-runs/model/timeline/event-copy';
+import { describeRunSentence } from '@/features/workflow-runs/model/run-sentence';
+import { describeStepError } from '@/features/workflow-runs/model/step-inspection/step-error-copy';
+import {
+  stepTag,
+  storyEntryReason,
+} from '@/features/workflow-runs/model/step-inspection/step-copy';
+import { replayStep } from '@/features/workflow-runs/model/timeline/step-replay';
+import {
+  buildRunTimeline,
+  segmentPlacement,
+} from '@/features/workflow-runs/model/timeline/run-timeline-model';
+
+const start = Date.parse('2026-09-24T14:31:00.000Z');
+
+function at(seconds: number): string {
+  return new Date(start + seconds * 1_000).toISOString();
+}
+
+function runSummary(
+  status: WorkflowRunSummary['status'],
+  overrides: Partial<WorkflowRunSummary> = {},
+): WorkflowRunSummary {
+  return {
+    id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    status,
+    triggerType: 'webhook',
+    createdAt: at(0),
+    updatedAt: at(0),
+    startedAt: at(0),
+    completedAt: null,
+    deadlineAt: null,
+    cancelRequestedAt: null,
+    ...overrides,
+  };
+}
+
+function node(
+  nodeId: string,
+  status: WorkflowNodeRunSummary['status'],
+  overrides: Partial<WorkflowNodeRunSummary> = {},
+): WorkflowNodeRunSummary {
+  return {
+    id: `11111111-1111-4111-8111-11111111111${String(nodeId.length % 10)}`,
+    nodeId,
+    invocationKey: `${nodeId}:0`,
+    status,
+    currentAttemptNumber: 1,
+    startedAt: at(1),
+    completedAt: null,
+    resumeAt: null,
+    safeErrorCode: null,
+    ...overrides,
+  };
+}
+
+let sequence = 0;
+function nodeEvent(
+  type: WorkflowRunEvent['type'],
+  seconds: number,
+  payload: Partial<WorkflowRunEvent['payload']> = {},
+): WorkflowRunEvent {
+  sequence += 1;
+  return {
+    sequence,
+    type,
+    createdAt: at(seconds),
+    payload: {
+      schemaVersion: 1,
+      nodeId: 'send-receipt',
+      invocationKey: 'send-receipt:0',
+      ...payload,
+    },
+  };
+}
+
+const graph = {
+  schemaVersion: 1 as const,
+  nodes: [
+    {
+      id: 'post-erp',
+      label: 'Post to ERP',
+      definition: { key: 'http.request', version: 1 },
+      position: { x: 0, y: 0 },
+      configVersion: 1,
+      config: {},
+      inputMappings: {},
+      connectionRefs: {},
+    },
+    {
+      id: 'send-receipt',
+      label: 'Send receipt',
+      definition: { key: 'email.send_notification', version: 1 },
+      position: { x: 200, y: 0 },
+      configVersion: 1,
+      config: {},
+      inputMappings: {},
+      connectionRefs: {},
+    },
+    {
+      id: 'done',
+      definition: { key: 'core.terminate', version: 1 },
+      position: { x: 400, y: 0 },
+      configVersion: 1,
+      config: {},
+      inputMappings: {},
+      connectionRefs: {},
+    },
+  ],
+  edges: [],
+  settings: {},
+} as unknown as NonNullable<Parameters<typeof buildRunTimeline>[0]['graph']>;
+
+describe('thread view', () => {
+  it('names invoked nested loop steps without listing unrun body steps as pending roots', () => {
+    sequence = 0;
+    const nestedGraph = {
+      schemaVersion: 1,
+      settings: {},
+      edges: [],
+      nodes: [
+        {
+          id: 'outer',
+          label: 'Outer pair',
+          definition: { key: 'core.foreach', version: 1 },
+          position: { x: 0, y: 0 },
+          configVersion: 1,
+          config: {},
+          inputMappings: {},
+          connectionRefs: {},
+          structured: {
+            kind: 'for_each',
+            maxIterations: 2,
+            maxConcurrency: 1,
+            body: {
+              schemaVersion: 1,
+              settings: {},
+              inputPorts: ['item', 'ordinal'],
+              outputPorts: ['result'],
+              edges: [],
+              nodes: [
+                {
+                  id: 'inner',
+                  label: 'Inner pair',
+                  definition: { key: 'core.foreach', version: 1 },
+                  position: { x: 0, y: 0 },
+                  configVersion: 1,
+                  config: {},
+                  inputMappings: {},
+                  connectionRefs: {},
+                  structured: {
+                    kind: 'for_each',
+                    maxIterations: 2,
+                    maxConcurrency: 1,
+                    body: {
+                      schemaVersion: 1,
+                      settings: {},
+                      inputPorts: ['item', 'ordinal'],
+                      outputPorts: ['result'],
+                      edges: [],
+                      nodes: [
+                        {
+                          id: 'leaf',
+                          label: 'Nested receipt',
+                          definition: { key: 'core.set', version: 1 },
+                          position: { x: 0, y: 0 },
+                          configVersion: 1,
+                          config: {},
+                          inputMappings: {},
+                          connectionRefs: {},
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    } as unknown as NonNullable<
+      Parameters<typeof buildRunTimeline>[0]['graph']
+    >;
+    const event = nodeEvent('node.succeeded', 2, {
+      nodeId: 'inner',
+      invocationKey: 'inner:outer:0',
+    });
+    const view = buildRunTimeline({
+      run: runSummary('running'),
+      nodes: [
+        node('outer', 'waiting'),
+        node('inner', 'succeeded', {
+          invocationKey: 'inner:outer:0',
+          completedAt: at(2),
+        }),
+      ],
+      events: [event],
+      graph: nestedGraph,
+      nowMs: start + 3_000,
+    });
+
+    expect(view.rows.map((row) => row.label)).toEqual([
+      'Outer pair',
+      'Inner pair',
+    ]);
+    expect(view.rows[1]?.kindLabel).toBe('For each');
+    expect(
+      describeRunEvent(
+        event,
+        start,
+        () => view.rows.find((row) => row.nodeId === 'inner')?.label,
+      ).step,
+    ).toBe('Inner pair');
+  });
+
+  it('turns attempts, a scheduled retry and a running attempt into one row', () => {
+    sequence = 0;
+    const events = [
+      nodeEvent('node.started', 4, { attemptNumber: 1 }),
+      nodeEvent('node.retry_scheduled', 5, {
+        attemptNumber: 1,
+        dueAt: at(35),
+        safeErrorCode: 'provider.unavailable',
+      }),
+      nodeEvent('node.started', 35, { attemptNumber: 2 }),
+    ];
+    const view = buildRunTimeline({
+      run: runSummary('running'),
+      nodes: [
+        node('post-erp', 'succeeded', { completedAt: at(3) }),
+        node('send-receipt', 'running', { currentAttemptNumber: 2 }),
+      ],
+      events,
+      graph,
+      nowMs: start + 47_000,
+    });
+
+    expect(view.rows.map((row) => row.label)).toEqual([
+      'Post to ERP',
+      'Send receipt',
+      'Stop run',
+    ]);
+    // Step types read the way Build names them.
+    expect(view.rows.map((row) => row.kindLabel)).toEqual([
+      'HTTP request',
+      'Send email',
+      undefined,
+    ]);
+    const [erp, receipt, done] = view.rows;
+    expect(erp?.segments).toEqual([
+      expect.objectContaining({
+        kind: 'attempt',
+        tone: 'success',
+        end: 'knot',
+      }),
+    ]);
+    expect(
+      receipt?.segments.map((segment) => [segment.kind, segment.tone]),
+    ).toEqual([
+      ['attempt', 'failure'],
+      ['wait', 'waiting'],
+      ['attempt', 'live'],
+    ]);
+    expect(receipt?.segments[2]?.endMs).toBeNull();
+    expect(receipt?.story.map((entry) => [entry.kind, entry.outcome])).toEqual([
+      ['attempt', 'failed'],
+      ['retry', 'scheduled'],
+      ['attempt', 'running'],
+    ]);
+    // Each entry is named by the event that made it: unique, and the same
+    // for as long as later events keep arriving.
+    const ids = receipt?.story.map((entry) => entry.id) ?? [];
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.every((id) => /^event-\d+:(attempt|retry)$/u.test(id))).toBe(
+      true,
+    );
+    expect(receipt?.story[0]?.safeErrorCode).toBe('provider.unavailable');
+    expect(receipt?.story[1]?.endedAt).toBe(at(35));
+    expect(done?.status).toBe('not_started');
+    expect(done?.segments[0]).toMatchObject({ kind: 'pending', endMs: null });
+    if (receipt === undefined) throw new Error('Missing Send receipt row');
+    expect(stepTag(receipt, start + 47_000)).toBe('attempt 2');
+    expect(view.ticks[0]).toEqual({ offsetMs: 0, label: '0' });
+  });
+
+  it('names the retrying step in the run sentence and counts down the wait', () => {
+    sequence = 0;
+    const nowMs = start + 20_000;
+    const view = buildRunTimeline({
+      run: runSummary('running'),
+      nodes: [node('send-receipt', 'waiting')],
+      events: [
+        nodeEvent('node.started', 4, { attemptNumber: 1 }),
+        nodeEvent('node.retry_scheduled', 5, { dueAt: at(35) }),
+      ],
+      graph,
+      nowMs,
+    });
+    const receipt = view.rows.find((row) => row.nodeId === 'send-receipt');
+    expect(describeRunSentence(runSummary('running'), view.rows, nowMs)).toBe(
+      'Retrying Send receipt',
+    );
+    expect(receipt === undefined ? '' : stepTag(receipt, nowMs)).toBe(
+      'retry in 15s',
+    );
+    expect(view.endMs).toBe(start + 35_000);
+  });
+
+  it('falls back to node summaries when events are gone', () => {
+    const view = buildRunTimeline({
+      run: runSummary('failed', { completedAt: at(9) }),
+      nodes: [
+        node('send-receipt', 'failed', {
+          currentAttemptNumber: 3,
+          completedAt: at(9),
+          safeErrorCode: 'connection.reauthorization_required',
+        }),
+      ],
+      events: [],
+      nowMs: start + 60_000,
+    });
+    const [row] = view.rows;
+    expect(row?.label).toBe('send-receipt');
+    expect(row?.segments).toEqual([
+      expect.objectContaining({
+        kind: 'attempt',
+        tone: 'failure',
+        end: 'fray',
+      }),
+    ]);
+    expect(row?.safeErrorCode).toBe('connection.reauthorization_required');
+    expect(
+      describeRunSentence(
+        runSummary('failed', { completedAt: at(9) }),
+        view.rows,
+        start + 60_000,
+      ),
+    ).toBe('Failed at send-receipt after 3 attempts');
+  });
+
+  it('marks steps that use a connection and carries each node run’s attempt', () => {
+    const [post, receipt] = graph.nodes;
+    if (post === undefined || receipt === undefined)
+      throw new Error('fixture graph is missing');
+    const view = buildRunTimeline({
+      run: runSummary('running'),
+      nodes: [node('send-receipt', 'running', { currentAttemptNumber: 2 })],
+      events: [],
+      graph: {
+        ...graph,
+        nodes: [
+          post,
+          {
+            ...receipt,
+            connectionRefs: { email: '88888888-8888-4888-8888-888888888888' },
+          },
+        ],
+      },
+      nowMs: start + 60_000,
+    });
+    const byLabel = new Map(view.rows.map((row) => [row.label, row]));
+    expect(byLabel.get('Send receipt')).toMatchObject({
+      usesConnection: true,
+      currentAttemptNumber: 2,
+    });
+    expect(byLabel.get('Post to ERP')?.usesConnection).toBeUndefined();
+  });
+
+  it('places open segments at now and clamps them to the axis', () => {
+    const view = { startMs: 0, endMs: 10_000 };
+    expect(
+      segmentPlacement(
+        view,
+        { kind: 'attempt', tone: 'live', startMs: 2_000, endMs: null },
+        6_000,
+      ),
+    ).toEqual({ left: 20, width: 40 });
+    expect(
+      segmentPlacement(
+        view,
+        { kind: 'wait', tone: 'waiting', startMs: -5_000, endMs: 20_000 },
+        6_000,
+      ),
+    ).toEqual({ left: 0, width: 100 });
+  });
+});
+
+describe('run copy', () => {
+  it('describes finished runs in one sentence', () => {
+    const done = runSummary('succeeded', { completedAt: at(4.2) });
+    expect(describeRunSentence(done, [], start)).toBe('Succeeded in 4.2s');
+    expect(
+      describeRunSentence(
+        runSummary('running', { cancelRequestedAt: at(3) }),
+        [],
+        start,
+      ),
+    ).toBe('Stopping…');
+    expect(describeRunSentence(runSummary('queued'), [], start)).toBe(
+      'Waiting to start',
+    );
+  });
+
+  it('turns error codes into sentences with a fix and keeps unknown codes honest', () => {
+    expect(
+      describeStepError('connection.reauthorization_required'),
+    ).toMatchObject({
+      sentence: 'The connection this step uses needs to be reconnected.',
+      fix: 'reconnect',
+    });
+    expect(describeStepError('provider.rate_limited').sentence).toMatch(
+      /slow down/u,
+    );
+    expect(describeStepError('provider.something_new')).toBe(
+      describeStepError('provider.unavailable'),
+    );
+    expect(describeStepError('mystery.code').sentence).toBe(
+      'This step stopped with an error.',
+    );
+  });
+
+  it('humanises events with offsets and step names', () => {
+    sequence = 0;
+    const line = describeRunEvent(
+      nodeEvent('node.retry_scheduled', 5, { dueAt: at(35), attemptNumber: 2 }),
+      start,
+      () => 'Send receipt',
+    );
+    expect(line).toMatchObject({
+      offset: '+5s',
+      step: 'Send receipt',
+      sentence: 'retry scheduled in 30s · attempt 2',
+      tone: 'waiting',
+      rawType: 'node.retry_scheduled',
+    });
+  });
+});
+
+describe('a Wait step', () => {
+  it('stays one attempt across its pause and spans the whole wait', () => {
+    const replay = replayStep(
+      [
+        nodeEvent('node.started', 1, { attemptNumber: 1 }),
+        nodeEvent('node.waiting', 1.02, { dueAt: at(91) }),
+        nodeEvent('node.started', 91, { attemptNumber: 2 }),
+        nodeEvent('node.succeeded', 91.03, { attemptNumber: 2 }),
+      ],
+      node('send-receipt', 'succeeded', {
+        currentAttemptNumber: 2,
+        completedAt: at(91.03),
+      }),
+      Date.parse(at(92)),
+    );
+    expect(replay.attempts).toBe(1);
+    const attempts = replay.story.filter((entry) => entry.kind === 'attempt');
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      outcome: 'succeeded',
+      startedAt: at(1),
+      endedAt: at(91.03),
+    });
+  });
+
+  it('names each run of a step inside a loop by the item it ran for', () => {
+    const key = (ordinals: string) =>
+      `v1|charge|b:|i:${encodeURIComponent(ordinals)}`;
+    const view = buildRunTimeline({
+      run: runSummary('succeeded', { completedAt: at(9) }),
+      nodes: [
+        node('charge', 'succeeded', {
+          id: '11111111-1111-4111-8111-111111111101',
+          invocationKey: key('each:0'),
+        }),
+        node('charge', 'succeeded', {
+          id: '11111111-1111-4111-8111-111111111102',
+          invocationKey: key('each:2'),
+          startedAt: at(2),
+        }),
+        node('charge', 'succeeded', {
+          id: '11111111-1111-4111-8111-111111111103',
+          invocationKey: key('outer:1/each:4'),
+          startedAt: at(3),
+        }),
+      ],
+      events: [],
+      nowMs: start + 10_000,
+    });
+    expect(view.rows.map((row) => row.label)).toEqual([
+      'charge · item 1',
+      'charge · item 3',
+      'charge · item 2 › 5',
+    ]);
+  });
+
+  it('says why a step ended the way it did', () => {
+    const entry = {
+      id: 'event-1:attempt',
+      kind: 'attempt' as const,
+      outcome: 'failed' as const,
+      tone: 'failure' as const,
+      startedAt: at(1),
+    };
+    expect(storyEntryReason(entry)).toBeUndefined();
+    expect(
+      storyEntryReason({ ...entry, reasonCode: 'network', attemptNumber: 1 }),
+    ).toBe('Not retried: this step doesn’t retry this kind of failure.');
+    expect(
+      storyEntryReason({ ...entry, reasonCode: 'network', attemptNumber: 3 }),
+    ).toBe('Pertexo stopped retrying after attempt 3.');
+    expect(
+      storyEntryReason({ ...entry, reasonCode: 'unsafe_possible_dispatch' }),
+    ).toMatch(/may already have reached the service/u);
+    expect(
+      storyEntryReason({
+        ...entry,
+        kind: 'skipped',
+        outcome: 'skipped',
+        reasonCode: 'branch_failed',
+      }),
+    ).toBe('It didn’t start: a branch it waits for failed.');
+    expect(
+      storyEntryReason({ ...entry, reasonCode: 'canceled' }),
+    ).toBeUndefined();
+  });
+
+  it('keeps the reason a failure event gives on the story', () => {
+    const replay = replayStep(
+      [
+        nodeEvent('node.started', 1, { nodeId: 'charge', attemptNumber: 1 }),
+        nodeEvent('node.failed', 2, {
+          nodeId: 'charge',
+          attemptNumber: 1,
+          safeErrorCode: 'provider.timeout',
+          reasonCode: 'timeout',
+        }),
+      ],
+      undefined,
+      start + 2_000,
+    );
+    expect(replay.story.at(-1)).toMatchObject({
+      outcome: 'failed',
+      safeErrorCode: 'provider.timeout',
+      reasonCode: 'timeout',
+    });
+  });
+});

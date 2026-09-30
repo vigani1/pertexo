@@ -10,13 +10,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
-import { findDefinition, stepTitle } from '../../../model/graph-adapter';
-import type { GraphLevel } from '../../../model/graph-scopes';
+import { findDefinition, stepTitle } from '../../../model/graph/graph-adapter';
+import type { GraphLevel } from '../../../model/graph/graph-scopes';
 import {
   outputFieldsOf,
   propertyPath,
   type OutputField,
-} from '../../../model/input-mappings';
+} from '../../../model/inspector/input-mappings';
 
 export type InsertedSource =
   | Readonly<{ kind: 'node_output'; nodeId: string; path: string }>

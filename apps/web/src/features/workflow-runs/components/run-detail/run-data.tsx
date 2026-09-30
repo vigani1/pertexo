@@ -21,9 +21,12 @@ import {
   nodeRunOutputQueryOptions,
   workflowRunInputQueryOptions,
 } from '../../workflow-run-data.queries';
-import { describeValue, isEmptyValue } from '../../model/run-data-summary';
-import { feedingRows } from '../../model/step-inputs';
-import type { ThreadRow } from '../../model/thread-view';
+import {
+  describeValue,
+  isEmptyValue,
+} from '../../model/step-inspection/run-data-summary';
+import { feedingRows } from '../../model/step-inspection/step-inputs';
+import type { RunTimelineRow } from '../../model/timeline/run-timeline-model';
 
 export type RunDataScope = Readonly<{
   apiClient: ApiClient;
@@ -196,7 +199,7 @@ export function RunInputData({
   );
 }
 
-const UNFINISHED: ReadonlySet<ThreadRow['status']> = new Set([
+const UNFINISHED: ReadonlySet<RunTimelineRow['status']> = new Set([
   'pending',
   'ready',
   'running',
@@ -214,7 +217,7 @@ export function StepRunOutput({
   title,
 }: Readonly<{
   nodeRunId: string | undefined;
-  status: ThreadRow['status'];
+  status: RunTimelineRow['status'];
   scope: RunDataScope;
   title: string;
 }>) {
@@ -258,7 +261,7 @@ export function StepOutputData({
   row,
   scope,
   title,
-}: Readonly<{ row: ThreadRow; scope: RunDataScope; title: string }>) {
+}: Readonly<{ row: RunTimelineRow; scope: RunDataScope; title: string }>) {
   return (
     <StepRunOutput
       nodeRunId={row.nodeRunId}
@@ -270,7 +273,7 @@ export function StepOutputData({
 }
 
 /** Statuses in which a step's current attempt may still record its input. */
-const RECORDING: ReadonlySet<ThreadRow['status']> = new Set([
+const RECORDING: ReadonlySet<RunTimelineRow['status']> = new Set([
   'pending',
   'ready',
   'running',
@@ -287,8 +290,8 @@ export function StepInputData({
   upstream,
   scope,
 }: Readonly<{
-  row: ThreadRow;
-  rows: readonly ThreadRow[];
+  row: RunTimelineRow;
+  rows: readonly RunTimelineRow[];
   upstream: ReadonlyMap<string, readonly string[]> | undefined;
   scope: RunDataScope;
 }>) {
@@ -445,8 +448,8 @@ function InputSources({
   upstream,
   scope,
 }: Readonly<{
-  row: ThreadRow;
-  rows: readonly ThreadRow[];
+  row: RunTimelineRow;
+  rows: readonly RunTimelineRow[];
   /** Steps connected into each step; undefined while the version loads. */
   upstream: ReadonlyMap<string, readonly string[]> | undefined;
   scope: RunDataScope;

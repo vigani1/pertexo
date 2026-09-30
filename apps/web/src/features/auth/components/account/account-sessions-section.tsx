@@ -11,9 +11,9 @@ import { accountSecuritySessionsQueryOptions } from '../../account-security.quer
 import {
   accountCommandFailure,
   accountReadFailure,
-} from '../../model/account-failure';
-import { orderSessions } from '../../model/sessions';
-import { describeUserAgent } from '../../model/user-agent';
+} from '../../model/account/account-failure';
+import { orderSessions } from '../../model/account/sessions';
+import { describeUserAgent } from '../../model/account/user-agent';
 import {
   AccountReadFailure,
   AccountRowsPending,

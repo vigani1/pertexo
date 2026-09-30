@@ -13,8 +13,11 @@ import {
   type ScalarKind,
   type SwitchCase,
   moved,
-} from '../../../model/setup-builders';
-import { fieldControlId, type NodeFormApi } from '../../../model/node-form';
+} from '../../../model/inspector/setup-builders';
+import {
+  fieldControlId,
+  type NodeFormApi,
+} from '../../../model/inspector/node-form';
 import { ChoiceSelect } from '../choice-select';
 import { BuilderCard, EntryActions, LiveTextField } from './builder-parts';
 

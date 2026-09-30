@@ -8,7 +8,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { canLeaveWorkspace } from '../../model/workspace-roles';
-import { useLeaveWorkspaceCommand } from '../../mutations/use-leave-workspace-command';
+import { useLeaveWorkspaceCommand } from '../../mutations/lifecycle/use-leave-workspace-command';
 import { DangerAction } from './workspace-danger-zone';
 
 /**

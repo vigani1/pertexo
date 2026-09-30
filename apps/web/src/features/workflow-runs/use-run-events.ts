@@ -12,7 +12,7 @@ import {
   decodeRunEvent,
   isTerminalRunEvent,
   isTerminalRunStatus,
-} from './model/run-events';
+} from './model/timeline/run-events';
 import type { LiveConnectionStatus } from './model/live-updates';
 
 type ConnectionStatus = LiveConnectionStatus;

@@ -18,7 +18,7 @@ import { formatDate, localTimeZone } from '@/lib/format-time';
 import {
   presetRangeLabel,
   timeRangeLabel,
-} from '../../model/run-filter-labels';
+} from '../../model/list/run-filter-labels';
 import {
   customRangeInputs,
   customRangeSearch,
@@ -26,7 +26,7 @@ import {
   runPresetRanges,
   withoutTimeRange,
   type RunSearch,
-} from '../../model/run-search';
+} from '../../model/list/run-search';
 
 /**
  * When runs were created: rolling presets, or a custom range of calendar

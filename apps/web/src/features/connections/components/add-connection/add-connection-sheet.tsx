@@ -41,13 +41,13 @@ import {
 import {
   useConnectionTest,
   type ConnectionTest,
-} from '../../use-connection-test';
+} from '../connection-test/use-connection-test';
 import { CredentialFields } from '../credential/credential-fields';
 import {
   createHeaderRowId,
   useCredentialForm,
   type CredentialForm,
-} from '../../use-credential-form';
+} from '../credential/use-credential-form';
 import { ProviderSockets } from '../provider-sockets';
 import {
   NameStep,

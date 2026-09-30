@@ -3,8 +3,8 @@ import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections'
 import type { ReactNode } from 'react';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/editor-store-context';
-import { findDefinition } from '../../model/graph-adapter';
-import { locateStep } from '../../model/graph-scopes';
+import { findDefinition } from '../../model/graph/graph-adapter';
+import { locateStep } from '../../model/graph/graph-scopes';
 import type { EditorFocusTarget } from '../../use-editor-actions';
 import type { InspectorTab } from '../../use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';

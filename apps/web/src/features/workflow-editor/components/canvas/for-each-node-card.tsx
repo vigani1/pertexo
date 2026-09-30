@@ -2,11 +2,11 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { PlusIcon, RepeatIcon } from 'lucide-react';
 import { use } from 'react';
 import { StatusGlyph } from '@/components/ui/status';
-import { LOOP_FRAME } from '../../model/body-layout';
-import type { BodyIssue } from '../../model/body-rules';
+import { LOOP_FRAME } from '../../model/graph/for-each-body-layout';
+import type { BodyIssue } from '../../model/graph/for-each-body-rules';
 import { CanvasActionsContext } from '../../model/canvas-actions-context';
-import type { WorkflowFlowNode } from '../../model/graph-adapter';
-import { BODY_PORTS } from '../../model/graph-scopes';
+import type { WorkflowFlowNode } from '../../model/graph/graph-adapter';
+import { BODY_PORTS } from '../../model/graph/graph-scopes';
 import { CardHeading, IssueBadge, Mark, NodeMarks } from './node-card-parts';
 import {
   cardClassName,

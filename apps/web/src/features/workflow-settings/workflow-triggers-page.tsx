@@ -15,10 +15,10 @@ import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public
 import type { ApiClient } from '@/lib/api/client';
 import { visibleSettingsData } from './model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings-section';
-import { SettingsQueryState } from './components/settings-section';
+import { SettingsQueryState } from './components/settings-query-state';
 import { SchedulesSection } from './components/triggers/schedules-section';
 import { WebhooksSection } from './components/triggers/webhooks-section';
-import { triggerStepName } from './model/trigger-steps';
+import { triggerStepName } from './model/triggers/trigger-steps';
 import {
   scheduleTriggersQueryOptions,
   webhookTriggersQueryOptions,

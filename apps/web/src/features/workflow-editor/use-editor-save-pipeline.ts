@@ -3,7 +3,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
 import { getWorkflowDraft, saveWorkflowDraft } from './workflow-editor.api';
 import type { EditorStore } from './model/editor.store';
-import type { SaveCoordinatorTransport } from './model/save-coordinator';
+import type { SaveCoordinatorTransport } from './model/persistence/save-coordinator';
 import { useSaveCoordinator } from './use-save-coordinator';
 
 export type SavedDraftIdentity = Readonly<{

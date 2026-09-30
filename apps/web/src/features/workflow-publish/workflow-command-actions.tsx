@@ -6,12 +6,12 @@ import type {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { IssuesChip } from './components/issues-chip';
-import { PublishButton } from './components/publish-button';
-import { PublishLens } from './components/publish-lens';
-import { PublishedStamp } from './components/published-stamp';
-import { RunLens } from './components/run-lens';
-import { RunMenu } from './components/run-menu';
+import { IssuesChip } from './components/validation/issues-chip';
+import { PublishButton } from './components/publication/publish-button';
+import { PublishDialog } from './components/publication/publish-dialog';
+import { PublishedStamp } from './components/publication/published-stamp';
+import { RunInputDialog } from './components/run-submission/run-input-dialog';
+import { RunMenu } from './components/run-submission/run-menu';
 import type { WorkflowIssuesView } from './model/issues-state';
 import { emptyDraftHint } from './model/publish-readiness';
 import { summarizePublish } from './model/publish-summary';
@@ -203,7 +203,7 @@ export function WorkflowCommandActions({
           }}
         />
       ) : null}
-      <PublishLens
+      <PublishDialog
         open={publishOpen}
         onOpenChange={setPublishOpen}
         versionLabel={versionLabel ?? 'this draft'}
@@ -217,7 +217,7 @@ export function WorkflowCommandActions({
         onPublish={() => void confirmPublish()}
         onFix={onFix}
       />
-      <RunLens
+      <RunInputDialog
         open={runOpen}
         pending={runSubmission.pending}
         error={runSubmission.error}

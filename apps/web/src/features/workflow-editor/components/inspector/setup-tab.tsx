@@ -5,22 +5,22 @@ import { BracesIcon, ListIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
-import { schemaFields } from '../../model/inspector-draft';
-import { stepTitle } from '../../model/graph-adapter';
+import { schemaFields } from '../../model/inspector/inspector-draft';
+import { stepTitle } from '../../model/graph/graph-adapter';
 import {
   readParallelBranches,
   readSwitchCases,
   readValidateRules,
-} from '../../model/setup-builders';
-import type { GraphLevel } from '../../model/graph-scopes';
+} from '../../model/inspector/setup-builders';
+import type { GraphLevel } from '../../model/graph/graph-scopes';
 import {
   readScheduleSchema,
   type ScheduleSchema,
-} from '../../model/schedule-draft';
+} from '../../model/inspector/schedule-draft';
 import { ConfigJsonEditor } from './config-json-editor';
 import { ConnectionSlot } from './connection-slot';
 import { ScheduleBuilder } from './schedule/schedule-builder';
-import type { NodeFormApi } from '../../model/node-form';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 import { SchemaField } from './schema-field';
 import { ParallelBranches } from './builders/parallel-branches';
 import { SwitchCases } from './builders/switch-cases';

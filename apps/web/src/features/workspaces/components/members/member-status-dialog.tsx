@@ -4,7 +4,7 @@ import {
   firstNameOf,
   withArticle,
 } from '../../model/workspace-roles';
-import type { MemberStatusDirection } from '../../mutations/use-member-status-command';
+import type { MemberStatusDirection } from '../../mutations/members/use-member-status-command';
 import {
   MemberCommandDialog,
   type MemberCommandView,

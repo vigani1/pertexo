@@ -26,8 +26,8 @@ import {
   familyWord,
   StepTile,
 } from '@/features/catalog/presentation.public';
-import { useLiveField } from '../../use-live-field';
-import type { NodeFormApi } from '../../model/node-form';
+import { useInspectorDraftField } from './use-inspector-draft-field';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
@@ -57,7 +57,7 @@ export function InspectorHeader({
 }>) {
   const step = describeStep(node.definition.key, definition?.family);
   const labelId = `node-label-${node.id}`;
-  const label = useLiveField<string | undefined>({
+  const label = useInspectorDraftField<string | undefined>({
     value: node.label,
     format: (value) => value ?? '',
     parse: (text) => ({

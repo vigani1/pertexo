@@ -7,12 +7,12 @@ import { SkeletonThread } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/api-error';
 import { readFailureReason } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { filterRunsByTrigger } from '../../model/run-list';
+import { filterRunsByTrigger } from '../../model/list/run-list';
 import {
   clearedRunSearch,
   hasRunFilters,
   type RunSearch,
-} from '../../model/run-search';
+} from '../../model/list/run-search';
 import type { RunHistoryQuery } from '../../use-run-history';
 import { useNow } from '@/lib/use-now';
 import { RunLoom } from '../loom/run-loom';

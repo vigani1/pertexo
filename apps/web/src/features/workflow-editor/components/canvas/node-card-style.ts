@@ -4,7 +4,7 @@ import {
   type StepPresentation,
 } from '@/features/catalog/presentation.public';
 import { cn } from '@/lib/utils';
-import type { WorkflowFlowNode } from '../../model/graph-adapter';
+import type { WorkflowFlowNode } from '../../model/graph/graph-adapter';
 
 // Looks and words every step card shares, whatever its shape.
 

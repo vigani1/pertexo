@@ -79,6 +79,7 @@ wiring remains deployment-owned.
 | `src/routes/`                         | Session-aware routes, workspace shell composition and route recovery.                                                             |
 | `src/features/auth/`                  | Email/password and configured social entry, current session, account security and logout cleanup.                                 |
 | `src/features/workspaces/`            | Workspace discovery, member reads, lifecycle controls, selection and the shared shell.                                            |
+| `src/features/workspace-invitations/` | Invitee acceptance and account-entry journey; distinct from administrator invitations.                                            |
 | `src/features/overview/`              | Capability-scoped bounded workflow/run recency cards and independent recovery.                                                    |
 | `src/features/workflows/`             | Workflow list/create/rename transport, cache ownership, recovery and presentation.                                                |
 | `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                                                                    |
@@ -105,11 +106,37 @@ and depend only on shared UI and reviewed contracts. Do not create every future
 directory in advance. Extract a shared pattern only when real repetition
 demonstrates its interface.
 
+UI-local hooks live beside their consumers: connection testing and credential
+forms under their component areas, administrator invitation batching under
+workspace invitation components, and inbox arrivals/swipes under
+`features/inbox/components/arrivals/`. Inbox live synchronization remains at the
+feature root. Public entry files keep these private placements out of callers.
+
+The editor groups pure rules under `model/graph/`, `model/persistence/` and
+`model/inspector/`; its store/provider and shared field-unit rules retain their
+common model owner. Canvas/add-step and inspector draft hooks sit beside those
+UI areas. Runs group models under `model/list/`, `model/timeline/`,
+`model/step-inspection/` and `model/loom/`; the Loom renderer shares the
+geometry owner, while React keeps interaction/lifecycle. Editor/run tests mirror
+their feature ownership under `test/features/`.
+
+Account presentation helpers live under `auth/model/account/`, separately from
+the current browser's identity/lifecycle helpers under `auth/model/session/`.
+The display-name command lives beside its sole account form; security mutations
+remain at their common feature owner. Publishing UI groups validation,
+publication, run submission and node preview; its shared command-session and
+independently consumable schedule-preview interface remain at the root. Settings
+models group versions and triggers. Workflow list and creation UI have their own
+component areas, with visibility/ticking beside the list. Workspace member and
+lifecycle commands have mutation clusters; creation, rename and invitation
+command recovery retain their coordinated owners. Affected tests use the same
+feature groups, with scenario names and assertions unchanged.
+
 The current router is code-based, so there is no generated route-tree file or
 router build plugin. Define a route in its area module
-(`src/routes/authentication-routes.ts`, `workspace-routes.ts` or
-`workflow-routes.ts`), using the shared session and workspace loaders in
-`route-loaders.ts`, and register it in `src/routes/route-tree.ts`. Editor,
+(`src/routes/public-routes.ts`, `workspace-routes.ts` or
+`workflow-hub-routes.ts`), using the shared session and workspace loaders in
+`route-context.ts`, and register it in `src/routes/route-tree.ts`. Editor,
 settings and run pages use explicit lazy route modules; loader/query public
 interfaces remain separate so static loader imports do not collapse those
 chunks.

@@ -5,4 +5,4 @@ export {
   describeRunFailure,
   type RunFailure,
 } from './model/run-failure';
-export { shortStepError } from './model/step-error-copy';
+export { shortStepError } from './model/step-inspection/step-error-copy';

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
 import { cn } from '@/lib/utils';
-import { describeRunEvent } from '../../model/event-copy';
+import { describeRunEvent } from '../../model/timeline/event-copy';
 
 /**
  * A readable log of the run's events: offset from the start, the step's name

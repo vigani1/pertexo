@@ -3,7 +3,7 @@ import type { EditorStore } from './model/editor.store';
 import {
   createSaveCoordinator,
   type SaveCoordinatorTransport,
-} from './model/save-coordinator';
+} from './model/persistence/save-coordinator';
 
 export function useSaveCoordinator(
   store: EditorStore,

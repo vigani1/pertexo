@@ -12,18 +12,18 @@ import {
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { NewWorkflowSheet } from './components/new-workflow-sheet';
-import type { StartChoice } from './components/starter-choice';
+import { NewWorkflowSheet } from './components/creation/new-workflow-sheet';
+import type { StartChoice } from './components/creation/starter-choice';
 import { WorkflowLifecycleDialog } from './components/workflow-lifecycle-dialog';
-import { WorkflowListEmpty } from './components/workflow-list-empty';
+import { WorkflowListEmpty } from './components/list/workflow-list-empty';
 import {
   NewWorkflowButton,
   WorkflowListHeader,
-} from './components/workflow-list-header';
-import { WorkflowListResults } from './components/workflow-list-results';
-import { WorkflowListError } from './components/workflow-list-states';
+} from './components/list/workflow-list-header';
+import { WorkflowListResults } from './components/list/workflow-list-results';
+import { WorkflowListError } from './components/list/workflow-list-states';
 import { WorkflowRenameDialog } from './components/workflow-rename-dialog';
-import { WorkflowRowsSkeleton } from './components/workflow-rows';
+import { WorkflowRowsSkeleton } from './components/list/workflow-rows';
 import {
   lifecycleIntentFor,
   type LifecycleIntent,

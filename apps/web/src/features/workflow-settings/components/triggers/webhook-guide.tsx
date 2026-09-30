@@ -5,7 +5,7 @@ import {
   NODE_SNIPPET,
   WEBHOOK_FRESHNESS,
   WEBHOOK_MAX_BODY,
-} from '../../model/webhook-snippets';
+} from '../../model/triggers/webhook-snippets';
 
 const HEADERS = [
   ['Content-Type', 'application/json'],

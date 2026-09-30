@@ -6,8 +6,8 @@ import {
   redoHistory,
   undoHistory,
   type EditorHistory,
-} from './editor-history';
-import { indexGraph } from './graph-scopes';
+} from './persistence/editor-history';
+import { indexGraph } from './graph/graph-scopes';
 
 type SaveStatus =
   'clean' | 'dirty' | 'saving' | 'conflict' | 'failed' | 'uncertain';

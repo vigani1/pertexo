@@ -2,7 +2,7 @@ import { PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
-import type { FieldParseResult } from '../../../model/inspector-draft';
+import type { FieldParseResult } from '../../../model/inspector/inspector-draft';
 import {
   addValidateRule,
   parseRuleEnum,
@@ -16,8 +16,11 @@ import {
   type ValidateRule,
   type ValidateType,
   moved,
-} from '../../../model/setup-builders';
-import { fieldControlId, type NodeFormApi } from '../../../model/node-form';
+} from '../../../model/inspector/setup-builders';
+import {
+  fieldControlId,
+  type NodeFormApi,
+} from '../../../model/inspector/node-form';
 import { ChoiceSelect } from '../choice-select';
 import { BuilderCard, EntryActions, LiveTextField } from './builder-parts';
 

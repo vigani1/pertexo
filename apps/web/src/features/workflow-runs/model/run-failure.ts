@@ -4,7 +4,7 @@ import type {
   WorkflowRunResponse,
 } from '@pertexo/contracts/schemas/workflow-runs';
 import { describeStep } from '@/features/catalog/presentation.public';
-import { shortStepError } from './step-error-copy';
+import { shortStepError } from './step-inspection/step-error-copy';
 
 const FAILED_STEP_STATUSES: ReadonlySet<string> = new Set([
   'failed',

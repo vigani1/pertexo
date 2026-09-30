@@ -2,9 +2,12 @@ import { RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { useQuery } from '@tanstack/react-query';
-import type { ThreadRow } from '../../model/thread-view';
+import type { RunTimelineRow } from '../../model/timeline/run-timeline-model';
 import { nodeRunOutputQueryOptions } from '../../workflow-run-data.queries';
-import { describeValue, isEmptyValue } from '../../model/run-data-summary';
+import {
+  describeValue,
+  isEmptyValue,
+} from '../../model/step-inspection/run-data-summary';
 import { RunInputData, type RunDataScope } from './run-data';
 
 /** Past this many steps the list names each step's status, not its data. */
@@ -14,7 +17,7 @@ const SUMMARISED_STEPS = 25;
 function ResultSummary({
   row,
   scope,
-}: Readonly<{ row: ThreadRow; scope: RunDataScope }>) {
+}: Readonly<{ row: RunTimelineRow; scope: RunDataScope }>) {
   const query = useQuery(
     nodeRunOutputQueryOptions(
       scope.apiClient,
@@ -46,7 +49,7 @@ export function RunOutputsView({
   onReplay,
   onSelectStep,
 }: Readonly<{
-  rows: readonly ThreadRow[];
+  rows: readonly RunTimelineRow[];
   scope: RunDataScope;
   selectedKey: string | undefined;
   canReplay: boolean;

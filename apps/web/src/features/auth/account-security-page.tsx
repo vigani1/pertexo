@@ -15,7 +15,7 @@ import {
   AccountRowsPending,
 } from './components/account/account-section';
 import { AccountSessionsSection } from './components/account/account-sessions-section';
-import { accountReadFailure } from './model/account-failure';
+import { accountReadFailure } from './model/account/account-failure';
 import { Notice } from '@/components/ui/notice';
 
 type LinkOutcome = 'returned' | 'failed';

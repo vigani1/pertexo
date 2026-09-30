@@ -9,7 +9,7 @@ import {
   type SettingsQuery,
 } from '../../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings-section';
-import { SettingsQueryState } from '../settings-section';
+import { SettingsQueryState } from '../settings-query-state';
 
 function Moment({ label, value }: Readonly<{ label: string; value: string }>) {
   return (

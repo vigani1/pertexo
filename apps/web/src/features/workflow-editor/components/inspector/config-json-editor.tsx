@@ -6,9 +6,12 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import { parseConfigJson, type NodeConfig } from '../../model/inspector-draft';
-import { useLiveField } from '../../use-live-field';
-import type { NodeFormApi } from '../../model/node-form';
+import {
+  parseConfigJson,
+  type NodeConfig,
+} from '../../model/inspector/inspector-draft';
+import { useInspectorDraftField } from './use-inspector-draft-field';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 
 const CONFIG_JSON_FIELD = '\u0000json';
 
@@ -22,7 +25,7 @@ export function ConfigJsonEditor({
   description,
 }: Readonly<{ config: NodeConfig; form: NodeFormApi; description: string }>) {
   const id = `node-config-${form.nodeId}`;
-  const live = useLiveField<NodeConfig>({
+  const live = useInspectorDraftField<NodeConfig>({
     value: config,
     format: (value) => JSON.stringify(value, null, 2),
     parse: parseConfigJson,

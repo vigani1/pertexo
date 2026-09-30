@@ -24,7 +24,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isForbidden, isNotFound } from '@/lib/api/api-error-copy';
 import { isApiError } from '@/lib/api/api-error';
 import { DestinationCollection } from './components/destination-collection';
-import { DestinationForm } from './components/destination-lens';
+import { DestinationForm } from './components/destination-form';
 import { destinationEditMutationKey } from './failure-notifications.mutations';
 import { failureNotificationDestinationsQueryOptions } from './failure-notifications.queries';
 import type { FailureNotificationDestinationList } from './failure-notifications.api';

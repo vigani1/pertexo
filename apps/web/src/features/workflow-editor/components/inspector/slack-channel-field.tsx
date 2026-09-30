@@ -7,15 +7,18 @@ import {
   useSlackChannelNames,
 } from '@/features/failure-notifications/channel-names.public';
 import type { ApiClient } from '@/lib/api/client';
-import { fieldControlId, type NodeFormApi } from '../../model/node-form';
-import type { WorkflowNode } from '../../model/graph-scopes';
+import {
+  fieldControlId,
+  type NodeFormApi,
+} from '../../model/inspector/node-form';
+import type { WorkflowNode } from '../../model/graph/graph-scopes';
 import {
   parseChannelId,
   SLACK_CONNECTION,
   stepChannel,
   withChannelId,
-} from '../../model/slack-channel';
-import { useLiveField } from '../../use-live-field';
+} from '../../model/inspector/slack-channel';
+import { useInspectorDraftField } from './use-inspector-draft-field';
 
 /** Who looks channel names up, and whether their role lets them. */
 export type ChannelLookupScope = Readonly<{
@@ -80,7 +83,7 @@ function ChannelIdField({
   // Names are looked up once people leave the field, not per keystroke:
   // the lookup shares the connection test's rate limit.
   const [editing, setEditing] = useState(false);
-  const live = useLiveField<string | undefined>({
+  const live = useInspectorDraftField<string | undefined>({
     value: channelId,
     format: (value) => value ?? '',
     parse: parseChannelId,

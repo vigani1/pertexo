@@ -14,7 +14,10 @@ import {
 } from '@/components/ui/sheet';
 import { PatternGlyph } from '@/features/workflows/shape.public';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
-import { stepCountLabel, versionSteps } from '../../model/version-steps';
+import {
+  stepCountLabel,
+  versionSteps,
+} from '../../model/versions/version-steps';
 import { CopyField } from '../copy-field';
 import { VersionDiffSummary } from './version-diff-summary';
 

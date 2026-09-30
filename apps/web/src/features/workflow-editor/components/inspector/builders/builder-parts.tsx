@@ -9,9 +9,9 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { FieldParseResult } from '../../../model/inspector-draft';
-import type { NodeFormApi } from '../../../model/node-form';
-import { useLiveField } from '../../../use-live-field';
+import type { FieldParseResult } from '../../../model/inspector/inspector-draft';
+import type { NodeFormApi } from '../../../model/inspector/node-form';
+import { useInspectorDraftField } from '../use-inspector-draft-field';
 
 /** One entry of a setup list: a numbered card with its own controls. */
 export function BuilderCard({
@@ -149,7 +149,7 @@ export function LiveTextField<Value>({
   equals?: (left: Value, right: Value) => boolean;
   onCommit: (value: Value) => void;
 }>) {
-  const live = useLiveField<Value>({
+  const live = useInspectorDraftField<Value>({
     value,
     format,
     parse,

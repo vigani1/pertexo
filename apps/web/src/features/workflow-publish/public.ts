@@ -1,9 +1,9 @@
 export { WorkflowCommandActions } from './workflow-command-actions';
-export { IssuesLens } from './components/issues-lens';
+export { IssuesLens } from './components/validation/issues-lens';
 export {
   NodeTestPanel,
   type NodeTestHandle,
-} from './components/node-test-panel';
+} from './components/node-preview/node-test-panel';
 export { describePreviewStatus } from './model/preview-observation';
 export {
   workflowIssuesView,

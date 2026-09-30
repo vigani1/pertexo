@@ -15,7 +15,7 @@ Immutable workflow versions and draft validation exist. Node duplication exists 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
 - [apps/api/src/workflow-authoring](../../apps/api/src/workflow-authoring)
-- [apps/web/test/features/workflow-editor-body-model.test.ts](../../apps/web/test/features/workflow-editor-body-model.test.ts)
+- [apps/web/test/features/workflow-editor/workflow-editor-body-model.test.ts](../../apps/web/test/features/workflow-editor/workflow-editor-body-model.test.ts)
 - [packages/workflow-model/src/graph-contract.ts](../../packages/workflow-model/src/graph-contract.ts)
 
 “Not established” means no complete product was found in this targeted inventory,

@@ -19,9 +19,9 @@ import {
   useEditorStore,
   useEditorStoreApi,
 } from '../../model/editor-store-context';
-import { stepTitle } from '../../model/graph-adapter';
-import { connectWorkflowNodes } from '../../model/graph-commands';
-import { findStep, levelOf } from '../../model/graph-scopes';
+import { stepTitle } from '../../model/graph/graph-adapter';
+import { connectWorkflowNodes } from '../../model/graph/graph-commands';
+import { findStep, levelOf } from '../../model/graph/graph-scopes';
 import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../use-editor-actions';
 import { InspectorPanel } from './inspector-panel';

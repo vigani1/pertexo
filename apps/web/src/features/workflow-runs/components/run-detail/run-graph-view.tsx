@@ -19,8 +19,11 @@ import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
 import { Status, type StatusTone } from '@/components/ui/status';
 import { useMediaQuery } from '@/lib/use-media-query';
 import { cn } from '@/lib/utils';
-import { projectRunGraph, type GraphStepStatus } from '../../model/run-graph';
-import type { ThreadRow } from '../../model/thread-view';
+import {
+  projectRunGraph,
+  type GraphStepStatus,
+} from '../../model/timeline/run-graph';
+import type { RunTimelineRow } from '../../model/timeline/run-timeline-model';
 import { toneBorderClass } from '../../model/tone-styles';
 
 interface RunNodeData extends Record<string, unknown> {
@@ -160,7 +163,7 @@ export function RunGraphView({
   onSelectNode,
 }: Readonly<{
   graph: WorkflowGraphContract;
-  rows: readonly ThreadRow[];
+  rows: readonly RunTimelineRow[];
   selectedNodeId: string | undefined;
   onSelectNode: (nodeId: string) => void;
 }>) {

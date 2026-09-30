@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import type { WorkflowFlowNode } from '../../model/graph-adapter';
+import type { WorkflowFlowNode } from '../../model/graph/graph-adapter';
 import {
   CardHeading,
   IssueBadge,

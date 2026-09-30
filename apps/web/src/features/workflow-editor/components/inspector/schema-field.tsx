@@ -21,10 +21,13 @@ import {
   type FieldParseResult,
   type NodeConfig,
   type SchemaFieldSpec,
-} from '../../model/inspector-draft';
-import { useLiveField } from '../../use-live-field';
+} from '../../model/inspector/inspector-draft';
+import { useInspectorDraftField } from './use-inspector-draft-field';
 import { ChoiceSelect } from './choice-select';
-import { fieldControlId, type NodeFormApi } from '../../model/node-form';
+import {
+  fieldControlId,
+  type NodeFormApi,
+} from '../../model/inspector/node-form';
 
 type ConfigValue = NodeConfig[string] | undefined;
 
@@ -122,7 +125,7 @@ function useConfigText(
   format: (value: ConfigValue) => string,
   parse: (text: string) => FieldParseResult<ConfigValue>,
 ) {
-  return useLiveField<ConfigValue>({
+  return useInspectorDraftField<ConfigValue>({
     value,
     format,
     parse,

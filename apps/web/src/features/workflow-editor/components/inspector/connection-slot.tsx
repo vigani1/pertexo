@@ -9,7 +9,7 @@ import {
   providerForCredential,
 } from '@/features/connections/add-connection.public';
 import { AddConnectionContext } from '../../model/add-connection-context';
-import type { NodeFormApi } from '../../model/node-form';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 import { ChoiceSelect } from './choice-select';
 
 /**
