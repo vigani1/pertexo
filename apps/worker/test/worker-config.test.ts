@@ -70,11 +70,17 @@ describe('parseWorkerConfig', () => {
         maximumAdmissions: 32,
         runTimeoutFailureContextEnabled: false,
         workspaceInboxProducerEnabled: false,
+        workflowTriggerOutcomesEnabled: false,
       },
       workspaceInbox: {
         foldBatchSize: 500,
         foldPollMillis: 1_000,
         expiryPollMillis: 300_000,
+      },
+      workflowAutoPause: {
+        mode: 'off',
+        foldBatchSize: 500,
+        foldPollMillis: 1_000,
       },
       database: {
         connectionString:
@@ -434,6 +440,50 @@ describe('parseWorkerConfig', () => {
       ).toThrow(/invalid worker configuration/i);
     },
   );
+
+  it.each([
+    ['observe', false],
+    ['enforce', true],
+  ] as const)(
+    'records trigger outcomes and runs the auto-pause fold in %s mode',
+    (mode, enforce) => {
+      const config = parseWorkerConfig({
+        DATABASE_DISPATCHER_URL:
+          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_WORKER_URL:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://:secret@localhost:6379/0',
+        WORKFLOW_AUTO_PAUSE: mode,
+        WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE: '250',
+        WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS: '2000',
+      });
+      expect(config.coordinator.workflowTriggerOutcomesEnabled).toBe(true);
+      expect(config.workflowAutoPause).toEqual({
+        mode,
+        foldBatchSize: 250,
+        foldPollMillis: 2_000,
+      });
+      expect(config.workflowAutoPause.mode === 'enforce').toBe(enforce);
+    },
+  );
+
+  it.each([
+    ['WORKFLOW_AUTO_PAUSE', 'on'],
+    ['WORKFLOW_AUTO_PAUSE', 'ENFORCE'],
+    ['WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE', '0'],
+    ['WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS', '99'],
+  ])('rejects an invalid auto-pause setting (%s=%s)', (name, value) => {
+    expect(() =>
+      parseWorkerConfig({
+        DATABASE_DISPATCHER_URL:
+          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_WORKER_URL:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://:secret@localhost:6379/0',
+        [name]: value,
+      }),
+    ).toThrow(/invalid worker configuration/i);
+  });
 
   it('enables the workspace inbox producer and tunes its loop only when asked', () => {
     const config = parseWorkerConfig({

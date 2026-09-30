@@ -88,6 +88,7 @@
               "webhook.invalid_json",
               "webhook.idempotency_conflict",
               "webhook.rate_limited",
+              "webhook.workflow_paused",
               "webhook.unavailable",
               "internal.unexpected"
             ]
@@ -524,7 +525,8 @@
                   "type": "string",
                   "enum": [
                     "accepted",
-                    "skipped"
+                    "skipped",
+                    "paused"
                   ]
                 },
                 "runId": {

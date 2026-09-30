@@ -1495,7 +1495,6 @@ describe('workspace purge foundation', () => {
     }): ControlLedgerRecord => {
       input.signal?.throwIfAborted();
       const { signal: _signal, ...material } = input;
-      void _signal;
       const record = Object.freeze({
         ...material,
         recordHash: input.sequence.toString(16).padStart(64, '0'),

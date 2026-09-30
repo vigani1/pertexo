@@ -45,6 +45,8 @@ export function coordinatorRuntimeProvider(
             config.coordinator.runTimeoutFailureContextEnabled,
           workspaceInboxProducerEnabled:
             config.coordinator.workspaceInboxProducerEnabled,
+          workflowTriggerOutcomesEnabled:
+            config.coordinator.workflowTriggerOutcomesEnabled,
           observer,
           releaseCohort: config.nodeCompatibilityCohort,
           redisUrl: config.redisUrl,

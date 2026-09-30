@@ -54,11 +54,17 @@ const workerConfig = {
     maximumAdmissions: 32,
     runTimeoutFailureContextEnabled: false,
     workspaceInboxProducerEnabled: false,
+    workflowTriggerOutcomesEnabled: false,
   },
   workspaceInbox: {
     foldBatchSize: 500,
     foldPollMillis: 1_000,
     expiryPollMillis: 300_000,
+  },
+  workflowAutoPause: {
+    mode: 'off' as const,
+    foldBatchSize: 500,
+    foldPollMillis: 1_000,
   },
   nodeAttempt: {
     heartbeatIntervalMillis: 10_000,

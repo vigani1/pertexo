@@ -23,6 +23,7 @@ const HTTP_STATUS = Object.freeze({
   invalid_request: 400,
   conflict: 409,
   rate_limited: 429,
+  paused: 423,
 } as const);
 const OUTCOMES = [
   'accepted',
@@ -31,6 +32,7 @@ const OUTCOMES = [
   'invalid_request',
   'conflict',
   'rate_limited',
+  'paused',
 ] as const satisfies readonly (keyof typeof HTTP_STATUS)[];
 const SIGNATURE_CHECKS = ['verified', 'mismatch', 'not_checked'] as const;
 const REPLAY_CHECKS = [
@@ -119,6 +121,7 @@ const rejectedOutcomeSchema = z.enum([
   'invalid_request',
   'conflict',
   'rate_limited',
+  'paused',
 ]);
 
 /** Owners, admins and builders of an active workspace read trigger state. */

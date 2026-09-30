@@ -22,12 +22,15 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.compatibility_preactivation_cohort_complete(character varying,integer,character varying,character varying,jsonb)` | `4bd8e8a005eebc013d41ae6b6a55b976` | invoker, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
 | `app.fold_workspace_inbox_events(integer)` | `899c9594fabccef911b6d08fa32a65cb` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, worker-only | `0123_workspace_inbox_threads.sql` |
 | `app.expire_workspace_inbox_threads(integer)` | `9deadaa33d0fa9e847c4cdc4127a837c` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, worker-only | `0123_workspace_inbox_threads.sql` |
+| `app.fold_workflow_trigger_outcomes(integer,boolean)` | `3af0f138f2c5cd2b9b25df0c6d014215` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, worker-only | `0124_workflow_trigger_pause.sql` |
 
 The executable inventory is split between
 `packages/database/src/platform/readiness.ts` (compatibility-release functions)
 and `packages/database/src/platform/readiness-probe-3.sql.ts` (the preview pin
 guard), with the workspace inbox fold and expiry commands in
-`packages/database/src/execution/workspace-inbox/inbox-fold-readiness.ts`,
+`packages/database/src/execution/workspace-inbox/inbox-fold-readiness.ts` and
+the trigger pause fold (ADR 056) in
+`packages/database/src/execution/trigger-pause/trigger-pause-readiness.ts`,
 which the worker checks at startup. This table is an operator aid and must
 change in the same commit whenever an owning inventory changes.
 

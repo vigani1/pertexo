@@ -2,7 +2,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
 import { getCurrentUser } from './auth.api';
 
-export class SessionIdentityChangedError extends Error {
+class SessionIdentityChangedError extends Error {
   public override readonly name = 'SessionIdentityChangedError';
 
   public constructor() {
@@ -10,7 +10,7 @@ export class SessionIdentityChangedError extends Error {
   }
 }
 
-export class SessionIdentityUnverifiedError extends Error {
+class SessionIdentityUnverifiedError extends Error {
   public override readonly name = 'SessionIdentityUnverifiedError';
 
   public constructor(cause: unknown) {

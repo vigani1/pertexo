@@ -55,8 +55,15 @@ export const scheduleManagementCommandResponseSchema = z
   .object({ trigger: scheduleTriggerHealthSchema, replayed: z.boolean() })
   .strict();
 
-/** ADR 048: what one recorded occurrence did, in the scanner's own terms. */
-export const scheduleOccurrenceOutcomeSchema = z.enum(['accepted', 'skipped']);
+/**
+ * ADR 048: what one recorded occurrence did, in the scanner's own terms. ADR 056
+ * adds `paused`: recorded without a run while the workflow's triggers are paused.
+ */
+export const scheduleOccurrenceOutcomeSchema = z.enum([
+  'accepted',
+  'skipped',
+  'paused',
+]);
 export const scheduleOccurrenceCursorSchema = z.string().min(1).max(512);
 export const scheduleOccurrencePageLimitSchema = z.coerce
   .number()

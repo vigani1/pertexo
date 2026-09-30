@@ -90,7 +90,6 @@ describe('node testing error mapping', () => {
   ] as const)(
     'maps %s to its exact bounded public problem',
     (name, failure, code, safeDetail) => {
-      void name;
       expect(mapNodeTestingError(failure)).toEqual({
         code,
         ...(safeDetail === undefined ? {} : { safeDetail }),

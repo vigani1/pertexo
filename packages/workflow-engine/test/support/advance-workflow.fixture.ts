@@ -66,6 +66,5 @@ export function withExplicitSchedulerState(
 ): AdvanceWorkflowInput {
   const schedulerState = explicitSchedulerState(input);
   const { graph: _, ...withoutGraph } = input;
-  void _;
   return { ...withoutGraph, schedulerState };
 }

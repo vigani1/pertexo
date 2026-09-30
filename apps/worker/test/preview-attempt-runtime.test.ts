@@ -189,8 +189,7 @@ describe('platform preview node invoker', () => {
       }),
     );
     const beforeDispatch = vi.fn(
-      (input?: Readonly<{ providerDispatchBinding?: string }>) => {
-        void input;
+      (_input?: Readonly<{ providerDispatchBinding?: string }>) => {
         return Promise.resolve();
       },
     );

@@ -159,6 +159,7 @@ describe('webhook delivery outcomes', () => {
     ],
     ['conflict', 'verified', 'conflict', 'attention', 'Key reused'],
     ['rate_limited', 'verified', 'new', 'attention', 'Held back'],
+    ['paused', 'verified', 'new', 'attention', 'Paused'],
   ] as const)(
     'reads %s (%s, %s) as a %s “%s”',
     (outcome, signatureCheck, replayCheck, tone, label) => {

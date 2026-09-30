@@ -98,7 +98,6 @@ function createFixture() {
         RetentionBootstrapModules['worker']['runRetentionWorker']
       >[0],
     ) => {
-      void _resources;
       return Promise.resolve();
     },
   );

@@ -219,12 +219,10 @@ describe('retention artifact reclamation', () => {
       ),
     } satisfies ControlLedger;
     const artifacts = {
-      delete: vi.fn((input: ArtifactStoreInput) => {
-        void input;
+      delete: vi.fn((_input: ArtifactStoreInput) => {
         return Promise.resolve();
       }),
-      head: vi.fn((input: ArtifactStoreInput) => {
-        void input;
+      head: vi.fn((_input: ArtifactStoreInput) => {
         return Promise.resolve(null);
       }),
     };

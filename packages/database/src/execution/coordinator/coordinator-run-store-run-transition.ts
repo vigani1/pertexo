@@ -10,6 +10,7 @@ import {
 } from './coordinator-run-store-plan.js';
 import { persistFailureNotificationIntent } from './coordinator-run-store-terminal.js';
 import { persistWorkspaceInboxEvent } from '../workspace-inbox/inbox-producer.js';
+import { persistWorkflowTriggerOutcome } from '../trigger-pause/trigger-outcome-producer.js';
 import { canonicalOutboxPayloadChecksum } from '../transport/outbox.js';
 import {
   parseStoredExecutionValueV1,
@@ -86,6 +87,7 @@ export async function persistCoordinatorRunTransition(
     row: CoordinatorCommitRow;
     runTimeoutFailureContextEnabled: boolean;
     workspaceInboxProducerEnabled: boolean;
+    workflowTriggerOutcomesEnabled: boolean;
     runId: string;
     traceparent?: string;
     workflowVersionId: string;
@@ -100,6 +102,7 @@ export async function persistCoordinatorRunTransition(
     row,
     runTimeoutFailureContextEnabled,
     workspaceInboxProducerEnabled,
+    workflowTriggerOutcomesEnabled,
     runId,
     traceparent,
     workflowVersionId,
@@ -128,6 +131,15 @@ export async function persistCoordinatorRunTransition(
       workspaceId,
       workflowId: row.workflow_id,
       runId,
+      cancellationRequested: authoritativeCancellation,
+      plan,
+    });
+  if (workflowTriggerOutcomesEnabled)
+    await persistWorkflowTriggerOutcome(client, {
+      workspaceId,
+      workflowId: row.workflow_id,
+      runId,
+      triggerType: row.trigger_type,
       cancellationRequested: authoritativeCancellation,
       plan,
     });

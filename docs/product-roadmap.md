@@ -211,7 +211,7 @@ only after its gate is resolved.
 | [F23](feature-plans/23-billing-and-commercialization.md) | Billing and commercial entitlements | Explicitly deferred optional business slice | XL | Proposed |
 | [F24](feature-plans/24-data-transform-toolkit.md) | Discoverable data transforms and batch tools | New node UX over existing mapping/JSONata foundations | L | Proposed |
 | [F25](feature-plans/25-event-coordination.md) | Business-event deduplication, debounce and throttling | Optional durable coordination beyond queue reliability | XL | Proposed |
-| [F26](feature-plans/26-workflow-auto-pause.md) | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Proposed |
+| [F26](feature-plans/26-workflow-auto-pause.md) | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Design accepted (ADR056); implementation next |
 | [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
 | [F28](feature-plans/28-single-sign-on-and-provisioning.md) | Single sign-on (SAML/OIDC) and SCIM user provisioning | Extends the session authority for organizations | L–XL | Proposed |
 | [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Proposed |

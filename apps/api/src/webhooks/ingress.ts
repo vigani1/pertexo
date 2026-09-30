@@ -1,19 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { API_PROBLEM_MANIFEST } from '@pertexo/contracts/errors';
 import {
   idempotencyKeySchema,
   webhookJsonContentTypeSchema,
 } from '@pertexo/contracts/transport';
-import type { ApiProblemCode } from '@pertexo/contracts/errors';
 
 import {
-  WebhookDeliveryIneligibleError,
-  WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
-  RegionalWriteAdmissionPausedError,
-  WorkspaceRunAdmissionDeniedError,
-  WorkspaceRunQuotaExceededError,
   type WebhookCheckpointFactory,
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
@@ -29,6 +22,12 @@ import {
   recordRejectedAttempt,
   type RejectedAttempt,
 } from './delivery-log.js';
+import {
+  authenticationFailed,
+  problem,
+  record,
+  rejectAcceptance,
+} from './ingress-responses.js';
 import {
   createWebhookIngressTelemetry,
   type WebhookIngressTelemetry,
@@ -283,57 +282,6 @@ async function acceptWebhook(
   }
 }
 
-/** Maps a refused acceptance to its response and delivery-log fact. */
-async function rejectAcceptance(
-  error: unknown,
-  reply: FastifyReply,
-  requestId: string,
-  telemetry: WebhookIngressTelemetry,
-  reject: (attempt: RejectedAttempt) => Promise<void>,
-): Promise<void> {
-  if (error instanceof WebhookDeliveryReplayMismatchError) {
-    await reject(REJECTED_ATTEMPT.conflict);
-    record(() => {
-      telemetry.delivery('conflict');
-    });
-    record(() => {
-      telemetry.deduplication('conflict');
-    });
-    await problem(reply, 409, 'webhook.idempotency_conflict', requestId);
-    return;
-  }
-  if (error instanceof WorkspaceRunQuotaExceededError) {
-    await reject(REJECTED_ATTEMPT.throttled);
-    record(() => {
-      telemetry.delivery('rate_limited');
-    });
-    reply.header('retry-after', String(error.retryAfterSeconds));
-    await problem(reply, 429, 'webhook.rate_limited', requestId);
-    return;
-  }
-  if (error instanceof RegionalWriteAdmissionPausedError) {
-    // Tenant writes are paused, so this refusal is telemetry only.
-    record(() => {
-      telemetry.delivery('unavailable');
-    });
-    record(() => {
-      telemetry.health('degraded');
-    });
-    reply.header('retry-after', String(error.retryAfterSeconds));
-    await problem(reply, 503, 'webhook.unavailable', requestId);
-    return;
-  }
-  if (
-    error instanceof WebhookDeliveryIneligibleError ||
-    error instanceof WorkspaceRunAdmissionDeniedError
-  ) {
-    await reject(REJECTED_ATTEMPT.ineligible);
-    await authenticationFailed(reply, requestId, telemetry);
-    return;
-  }
-  throw error;
-}
-
 function diagnosticTraceparent(
   telemetry: WebhookIngressTelemetry,
 ): string | undefined {
@@ -455,41 +403,4 @@ function optionalIdempotencyKey(
 
 function sha256(value: string | Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
-}
-
-async function authenticationFailed(
-  reply: FastifyReply,
-  requestId: string,
-  telemetry: WebhookIngressTelemetry,
-): Promise<void> {
-  record(() => {
-    telemetry.delivery('authentication_failed');
-  });
-  await problem(reply, 401, 'webhook.authentication_failed', requestId);
-}
-
-function record(operation: () => void): void {
-  try {
-    operation();
-  } catch {
-    // Diagnostics cannot change webhook acceptance truth.
-  }
-}
-
-async function problem(
-  reply: FastifyReply,
-  status: number,
-  code: ApiProblemCode,
-  requestId: string,
-): Promise<void> {
-  const definition = API_PROBLEM_MANIFEST[code];
-  if (definition.status !== status)
-    throw new Error('Webhook problem status does not match its manifest');
-  await reply.code(definition.status).type('application/problem+json').send({
-    type: definition.type,
-    title: definition.title,
-    status: definition.status,
-    code,
-    requestId,
-  });
 }

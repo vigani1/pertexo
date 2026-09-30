@@ -29,7 +29,7 @@ describe('API orchestration coverage inventory', () => {
       'src/identity-infrastructure/{oidc-adapter,oidc-request-validation,oidc-response-cleanup,oidc-secret-encryption}.ts',
       'src/identity-workspace/{module,persistence-capabilities,use-cases}.ts',
       'src/platform/identity/{better-auth-composition,identity-runtime.module,oidc-runtime}.ts',
-      'src/webhooks/{delivery-log,ingress}.ts',
+      'src/webhooks/{delivery-log,ingress,ingress-responses}.ts',
       'src/workflow-authoring/{lifecycle-use-case,module,preconditions,rename-use-case,restore-version-use-case,use-cases}.ts',
     ]);
     expect(priorityConfig.test?.coverage?.thresholds).toEqual({

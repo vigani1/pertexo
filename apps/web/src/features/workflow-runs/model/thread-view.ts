@@ -326,7 +326,6 @@ export function buildThreadView(
     .map(({ row, index }) => {
       const repeated = (perNode.get(row.nodeId) ?? 0) > 1;
       const { firstActivityMs: _first, ...rest } = row;
-      void _first;
       if (!repeated) return rest;
       const item = loopItemOf(rest.invocationKey);
       return {

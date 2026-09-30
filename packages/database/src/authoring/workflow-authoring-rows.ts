@@ -37,6 +37,31 @@ const workflowRowSchema = z
     lifecycle_revision: revisionSchema,
     activation_status: workflowActivationStatusSchema,
     published_version_id: uuidSchema.nullable(),
+    // ADR 056: operational auto-pause settings and trigger pause state,
+    // present when a query selects every column.
+    auto_pause_enabled: z.boolean().optional(),
+    auto_pause_threshold: z
+      .number()
+      .int()
+      .min(3)
+      .max(100)
+      .nullable()
+      .optional(),
+    trigger_pause_state: z.enum(['none', 'paused']).optional(),
+    trigger_paused_at: z.coerce.date().nullable().optional(),
+    trigger_pause_reason: z
+      .literal('consecutive_failures')
+      .nullable()
+      .optional(),
+    trigger_pause_failures: z.number().int().positive().nullable().optional(),
+    trigger_pause_last_run_id: uuidSchema.nullable().optional(),
+    // bigint: text from a row query, a number from row_to_json.
+    trigger_pause_revision: z
+      .union([
+        z.string().regex(/^[1-9][0-9]{0,18}$/u),
+        z.number().int().positive(),
+      ])
+      .optional(),
     created_by: uuidSchema,
     created_at: z.coerce.date(),
     updated_at: z.coerce.date(),

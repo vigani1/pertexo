@@ -63,7 +63,11 @@ export const webhookIngressResponseSchema = z
   .object({ runId: z.uuid(), replayed: z.boolean() })
   .strict();
 
-/** ADR 045: what happened to one attributed request, metadata only. */
+/**
+ * ADR 045: what happened to one attributed request, metadata only. ADR 056
+ * adds `paused`: a verified delivery refused with 423 while the workflow's
+ * triggers are paused.
+ */
 export const webhookDeliveryOutcomeSchema = z.enum([
   'accepted',
   'replayed',
@@ -71,6 +75,7 @@ export const webhookDeliveryOutcomeSchema = z.enum([
   'invalid_request',
   'conflict',
   'rate_limited',
+  'paused',
 ]);
 export const webhookDeliverySignatureCheckSchema = z.enum([
   'verified',

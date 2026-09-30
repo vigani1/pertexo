@@ -84,7 +84,6 @@ function createFixture() {
         RecoveryBootstrapModules['recovery']['restoreBeforeServe']
       >[0],
     ) => {
-      void _resources;
       return Promise.resolve({} as never);
     },
   );

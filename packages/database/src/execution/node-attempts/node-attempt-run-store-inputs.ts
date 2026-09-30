@@ -101,7 +101,7 @@ function reconcileCompletedNodeOutputs(
 function projectCoordinatorInput(
   checkpoint: ParsedCheckpoint,
   invocationKey: string,
-): NonNullable<NodeAttemptInputs['coordinatorInput']> | undefined {
+) {
   const join = checkpoint.joins.find(
     ({ joinInvocationKey }) => joinInvocationKey === invocationKey,
   );

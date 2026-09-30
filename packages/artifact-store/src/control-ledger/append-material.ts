@@ -48,8 +48,5 @@ export function requestMaterialMatches(
 ): boolean {
   const { recordHash, schemaVersion, ...material } = record;
   const { signal, ...requested } = request;
-  void recordHash;
-  void schemaVersion;
-  void signal;
   return exactEqual(material, requested);
 }

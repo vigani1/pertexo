@@ -43,6 +43,11 @@ import {
   type WorkspaceInboxRuntime,
 } from './execution/workspace-inbox-runtime.js';
 import {
+  WORKFLOW_AUTO_PAUSE_RUNTIME,
+  type WorkflowAutoPauseRuntime,
+} from './execution/workflow-auto-pause-runtime.js';
+import { configuredWorkflowAutoPauseRuntime } from './execution/workflow-auto-pause-provider.js';
+import {
   DatabaseModule,
   WORKSPACE_DATABASE,
 } from './platform/database/database.module.js';
@@ -72,6 +77,7 @@ export type WorkerModuleDependencies = Readonly<{
   dispatcherDatabaseRuntime?: DatabaseRuntime;
   queueProducer?: QueueProducer;
   workspaceInboxRuntime?: WorkspaceInboxRuntime;
+  workflowAutoPauseRuntime?: WorkflowAutoPauseRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
   transportMetrics?: TransportMetrics;
@@ -206,6 +212,11 @@ export class WorkerModule {
             ),
         },
         {
+          provide: WORKFLOW_AUTO_PAUSE_RUNTIME,
+          useFactory: () =>
+            configuredWorkflowAutoPauseRuntime(config, dependencies),
+        },
+        {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
           useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
@@ -235,6 +246,7 @@ export class WorkerModule {
             WORKSPACE_DATABASE,
             AUTHENTICATION_MAIL_RUNTIME,
             WORKSPACE_INBOX_RUNTIME,
+            WORKFLOW_AUTO_PAUSE_RUNTIME,
           ],
           useFactory: (
             shutdown: WorkerShutdownCoordinator,
@@ -242,10 +254,14 @@ export class WorkerModule {
             database: WorkspaceDatabase,
             authenticationMail: AuthenticationMailRuntime | undefined,
             workspaceInbox: WorkspaceInboxRuntime,
+            autoPause: WorkflowAutoPauseRuntime | undefined,
           ) => {
             authenticationMail?.start();
             workspaceInbox.start();
+            autoPause?.start();
             shutdown.register('workspace-inbox', () => workspaceInbox.close());
+            if (autoPause !== undefined)
+              shutdown.register('workflow-auto-pause', () => autoPause.close());
             if (authenticationMail !== undefined)
               shutdown.register('authentication-mail', () =>
                 authenticationMail.close(),

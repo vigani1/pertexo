@@ -72,9 +72,8 @@ class FakeArtifactStore
   ) {}
 
   public beginDirectUpload(
-    request: BeginDirectUploadRequest,
+    _request: BeginDirectUploadRequest,
   ): Promise<DirectUpload> {
-    void request;
     return Promise.resolve({
       expiresAt: '2026-08-28T12:00:00.000Z',
       expiresInSeconds: 300,
@@ -85,9 +84,8 @@ class FakeArtifactStore
   }
 
   public beginDirectDownload(
-    request: BeginDirectDownloadRequest,
+    _request: BeginDirectDownloadRequest,
   ): Promise<DirectDownload> {
-    void request;
     this.directDownloadCalls += 1;
     return Promise.resolve({
       expiresAt: '2026-08-28T12:00:00.000Z',
@@ -108,8 +106,7 @@ class FakeArtifactStore
     if (this.closeError !== undefined) throw this.closeError;
   }
 
-  public delete(request: ArtifactRequest): Promise<void> {
-    void request;
+  public delete(_request: ArtifactRequest): Promise<void> {
     this.deleteCalls += 1;
     if (this.deleteError !== undefined) return Promise.reject(this.deleteError);
     this.stored = undefined;
@@ -131,9 +128,8 @@ class FakeArtifactStore
   }
 
   public purgeWorkspacePage(
-    request: PurgeWorkspaceObjectsRequest,
+    _request: PurgeWorkspaceObjectsRequest,
   ): Promise<WorkspaceObjectPurgePage> {
-    void request;
     return this.purgeError === undefined
       ? Promise.resolve(this.purgeResult)
       : Promise.reject(this.purgeError);

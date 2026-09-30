@@ -1,6 +1,7 @@
 # F26 — Automatic pause of repeatedly failing workflows
 
-Status: proposed plan; not implementation-authorized by this document.
+Status: design accepted in [ADR056](../adr/056-workflow-auto-pause.md);
+implementation slices 2 and 3 follow.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: New trigger control over existing run outcomes. Relative size: **L**, not a calendar estimate.
 
@@ -34,7 +35,10 @@ F03 for the notice that a workflow paused; F27 for the notice kinds and email
 delivery of that notice. Can precede F09; F09's handled errors must not count
 as failures once it exists.
 
-Resolve in an ADR before code:
+Resolved in [ADR056](../adr/056-workflow-auto-pause.md), which takes the
+recommended options below; resuming requires `workflow:publish`, held by the
+same people as `workflow:update`, because it changes production admission
+as ADR 034's archive and restore do:
 
 - **Rule.** Consecutive terminal failures of triggered runs (recommended: 10,
   configurable per workflow within bounds), or a failure rate over a window
@@ -134,8 +138,8 @@ This context informs the outcome, not Pertexo's implementation.
 
 ## Delivery tracker
 
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
+- [x] Baseline reconciled against current code and accepted decisions.
+- [x] Product choices resolved; necessary ADR accepted (ADR 056).
 - [ ] Contracts and failure/security model reviewed.
 - [ ] Backend behavior implemented and independently verified where needed.
 - [ ] Frontend behavior implemented and independently verified where needed.
@@ -143,4 +147,22 @@ This context informs the outcome, not Pertexo's implementation.
 - [ ] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
-Evidence log: none for this new plan.
+Evidence log:
+
+- 2026-09-30: baseline checked against `app.schedule_claim_is_eligible` and
+  the occurrence outcomes of ADR 048, webhook ingress order (ADR 026) and
+  delivery outcomes (ADR 045), trigger and lifecycle gates (ADR 034), the role
+  policy and run trigger types; ADR 056 records the decisions.
+- 2026-09-30: slice 2a (database) lands inactive — migration 0124's pause
+  state, settings, outcome log, streaks and fold; paused schedule occurrences
+  and webhook deliveries; the producer behind an off-by-default store option.
+  Real-database tests cover the threshold, reset, concurrent folds, observe
+  mode, overrides, archived workflows, paused admission and replays. The worker
+  loop, `WORKFLOW_AUTO_PAUSE` and the API's 423 follow in slice 2b.
+- 2026-09-30: slice 2b (worker and API) — `WORKFLOW_AUTO_PAUSE`
+  (`off`/`observe`/`enforce`, default `off`) turns on the outcome producer and
+  runs the fold loop with readiness, shutdown and a decision counter
+  (`pertexo.workflow.auto_pause.decision.count`: `paused` or `would_pause`).
+  The API answers a paused workflow's verified delivery with 423
+  `webhook.workflow_paused` and records it as `paused`. The deployment and
+  local example observe; enforcement waits for the resume command in slice 3.

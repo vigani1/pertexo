@@ -54,6 +54,11 @@ test('lints and tests only the changed package, and typechecks its dependents', 
     '--run',
   ]);
   assert.ok(related.command.includes('**/*.integration.test.ts'));
+  assert.equal(
+    commands.find((command) => command.label === 'lint @pertexo/contracts')
+      ?.environment?.NODE_OPTIONS,
+    '--max-old-space-size=8192',
+  );
   assert.equal(related.command.at(-1), 'src/http/workspace-inbox.ts');
 });
 
@@ -125,6 +130,10 @@ test('lints changed infrastructure scripts and runs their existing node tests', 
     'lint infrastructure',
     'infrastructure node tests',
   ]);
+  assert.equal(
+    commands[0].environment?.NODE_OPTIONS,
+    '--max-old-space-size=8192',
+  );
   assert.deepEqual(commands[1].command, [
     'node',
     '--test',

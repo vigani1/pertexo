@@ -4,13 +4,13 @@ import type {
 } from '@pertexo/database/execution';
 import type { WorkspaceInboxHintPublisher } from '@pertexo/queue';
 
-import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
+import {
+  createPollingRuntime,
+  reportDiagnostic,
+  type PollingRuntime,
+} from '../runtime/polling-runtime.js';
 
-export interface WorkspaceInboxRuntime {
-  start(): void;
-  checkReadiness(): Promise<void>;
-  close(): Promise<void>;
-}
+export type WorkspaceInboxRuntime = PollingRuntime;
 
 export const WORKSPACE_INBOX_RUNTIME = Symbol('WORKSPACE_INBOX_RUNTIME');
 
@@ -44,37 +44,23 @@ export function createWorkspaceInboxRuntime(
   options: WorkspaceInboxRuntimeOptions,
   diagnostics: WorkspaceInboxDiagnostics,
 ): WorkspaceInboxRuntime {
-  const controller = new AbortController();
-  const { signal } = controller;
-  let firstCycle: PromiseWithResolvers<undefined> | undefined;
-  let loop: Promise<void> | undefined;
-  let compatible = false;
-  let latestCycleFailed = true;
   let nextExpiryAt = 0;
-
-  const report = (diagnostic: () => void): void => {
-    try {
-      diagnostic();
-    } catch {
-      // Diagnostics cannot change inbox recovery or shutdown ownership.
-    }
-  };
   const hint = async (changes: readonly WorkspaceInboxChange[]) => {
     const published = await Promise.allSettled(
       changes.map((change) => publisher.publish(change)),
     );
     // A lost hint only delays a refresh; open inboxes also refetch on focus.
     if (published.some(({ status }) => status === 'rejected'))
-      report(diagnostics.hintFailed);
+      reportDiagnostic(diagnostics.hintFailed);
   };
-  const fold = async () => {
+  const fold = async (signal: AbortSignal) => {
     for (let round = 0; round < MAX_FOLDS_PER_CYCLE; round += 1) {
       const changes = await store.foldPending(options.foldBatchSize, signal);
       if (changes.length === 0) return;
       await hint(changes);
     }
   };
-  const expire = async () => {
+  const expire = async (signal: AbortSignal) => {
     if (Date.now() < nextExpiryAt) return;
     for (let batch = 0; batch < MAX_EXPIRY_BATCHES_PER_SWEEP; batch += 1)
       if (
@@ -84,67 +70,26 @@ export function createWorkspaceInboxRuntime(
         break;
     nextExpiryAt = Date.now() + options.expiryPollMillis;
   };
-  const cycle = async () => {
-    // Startup compatibility: never run commands other than the reviewed ones.
-    if (!compatible) {
-      await store.checkReadiness(signal);
-      compatible = true;
-    }
-    await fold();
-    await expire();
-  };
-  const run = async (settled: PromiseWithResolvers<undefined>) => {
-    while (!signal.aborted) {
-      try {
-        await cycle();
-        latestCycleFailed = false;
-      } catch {
-        // The signal can change while the cycle awaits I/O.
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (signal.aborted) break;
-        latestCycleFailed = true;
-        report(diagnostics.cycleFailed);
-      }
-      settled.resolve(undefined);
-      await waitForSupervisorDelay(options.foldPollMillis, signal);
-    }
-    settled.resolve(undefined);
-  };
-
-  let closePromise: Promise<void> | undefined;
-  return Object.freeze({
-    start: () => {
-      if (loop !== undefined || signal.aborted) return;
-      firstCycle = Promise.withResolvers<undefined>();
-      loop = run(firstCycle);
+  return createPollingRuntime({
+    name: 'Workspace inbox',
+    pollMillis: options.foldPollMillis,
+    checkCompatibility: (signal) => store.checkReadiness(signal),
+    cycle: async (signal) => {
+      await fold(signal);
+      await expire(signal);
     },
-    checkReadiness: async () => {
-      if (signal.aborted) throw new Error('Workspace inbox runtime is closed');
-      if (firstCycle === undefined)
-        throw new Error('Workspace inbox runtime has not started');
-      await firstCycle.promise;
-      if (!compatible)
-        throw new Error('Workspace inbox commands are incompatible');
-      if (latestCycleFailed)
-        throw new Error('Workspace inbox latest cycle failed');
-    },
-    close: () => {
-      closePromise ??= (async () => {
-        controller.abort();
-        firstCycle?.resolve(undefined);
-        await loop;
-        const closed = await Promise.allSettled([
-          store.close(),
-          publisher.close(),
-        ]);
-        const failures = closed.flatMap((result) =>
-          result.status === 'rejected' ? [result.reason as unknown] : [],
-        );
-        if (failures.length === 1) throw failures[0];
-        if (failures.length > 1)
-          throw new AggregateError(failures, 'Workspace inbox shutdown failed');
-      })();
-      return closePromise;
+    cycleFailed: diagnostics.cycleFailed,
+    release: async () => {
+      const closed = await Promise.allSettled([
+        store.close(),
+        publisher.close(),
+      ]);
+      const failures = closed.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason as unknown] : [],
+      );
+      if (failures.length === 1) throw failures[0];
+      if (failures.length > 1)
+        throw new AggregateError(failures, 'Workspace inbox shutdown failed');
     },
   });
 }

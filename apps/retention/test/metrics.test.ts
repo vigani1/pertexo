@@ -20,9 +20,8 @@ function setupMetrics() {
   };
   const createInstrument = (
     name: string,
-    options?: Readonly<{ unit?: string }>,
+    _options?: Readonly<{ unit?: string }>,
   ) => {
-    void options;
     return instrument(name);
   };
   const createCounter = vi.fn(createInstrument);

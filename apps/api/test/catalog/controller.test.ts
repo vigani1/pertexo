@@ -145,7 +145,6 @@ function customCatalog(): PlatformNodeDefinitionBrowserCatalog {
     publishable: boolean,
   ): PlatformNodeDefinitionBrowserProjection => {
     const { integration, ...common } = base;
-    void integration;
     return {
       ...common,
       definition: { key, version },
