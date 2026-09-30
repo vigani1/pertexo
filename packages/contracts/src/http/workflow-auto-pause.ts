@@ -16,8 +16,7 @@ const boundedPrefixes = Array.from(maxPauseRevision).flatMap((digit, index) => {
   const lower = index === 0 ? 1 : 0;
   const upper = Number(digit) - 1;
   if (upper < lower) return [];
-  const range =
-    upper === lower ? String(lower) : `[${String(lower)}-${String(upper)}]`;
+  const range = `[${String(lower)}-${String(upper)}]`;
   const remaining = maxPauseRevision.length - index - 1;
   return [
     `${maxPauseRevision.slice(0, index)}${range}${remaining === 0 ? '' : `[0-9]{${String(remaining)}}`}`,

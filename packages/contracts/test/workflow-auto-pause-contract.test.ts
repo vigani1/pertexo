@@ -30,6 +30,25 @@ const settings = {
 } as const;
 
 describe('automatic workflow pause contracts', () => {
+  it('matches bigint ordering at every decimal-prefix boundary in runtime and generated clients', () => {
+    const maximum = '9223372036854775807';
+    const validate = new Ajv2020({ strict: false }).compile(
+      workflowAuthoringClientContract.schemas.WorkflowResumeRequest,
+    );
+    for (let index = 0; index < maximum.length; index++) {
+      for (let digit = 0; digit <= 9; digit++) {
+        for (const suffixDigit of ['0', '9']) {
+          const revision = `${maximum.slice(0, index)}${String(digit)}${suffixDigit.repeat(maximum.length - index - 1)}`;
+          const expected =
+            !revision.startsWith('0') && BigInt(revision) <= BigInt(maximum);
+          expect(workflowPauseRevisionSchema.safeParse(revision).success).toBe(
+            expected,
+          );
+          expect(validate({ expectedPauseRevision: revision })).toBe(expected);
+        }
+      }
+    }
+  });
   it('preserves bigint revisions without number coercion in runtime and generated clients', () => {
     const projection =
       workflowAuthoringClientContract.schemas.WorkflowResumeRequest;
