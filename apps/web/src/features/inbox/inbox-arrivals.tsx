@@ -56,7 +56,7 @@ function ArrivalList({
       <Toast.Positioner
         key={toast.id}
         toast={toast}
-        className="z-60 data-anchor-hidden:hidden"
+        className="z-45 data-anchor-hidden:hidden"
       >
         {card}
       </Toast.Positioner>
@@ -176,9 +176,10 @@ export function InboxArrivals({
   return (
     <Toast.Provider toastManager={manager} limit={1}>
       <Toast.Portal>
+        {/* Above the spine it hangs from, below dialogs and sheets. */}
         <Toast.Viewport
           aria-label="New failures"
-          className="fixed top-0 left-0 z-60 outline-none"
+          className="fixed top-0 left-0 z-45 outline-none"
         >
           <ArrivalList
             workspaceId={scope.workspaceId}
