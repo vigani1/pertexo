@@ -547,6 +547,70 @@
     }
   }
 
+  /* A new failure: a thread leaves the Inbox icon and stops at a cross, where
+     the notice unfurls. Leaving, the notice folds, the cross goes and the
+     thread winds back into the icon. The root's fade ends last, because Base
+     UI removes the notice once the root's own animation finishes. */
+  [data-slot='inbox-arrival'][data-ending-style] {
+    animation: arrival-leave 440ms linear forwards;
+  }
+
+  .arrival-thread {
+    stroke-dasharray: 1;
+  }
+
+  .arrival-cross {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .arrival-thread {
+      --thread-length: 1;
+      animation: entry-thread-draw 300ms var(--ease-unspool) backwards;
+    }
+
+    .arrival-cross {
+      animation: arrival-snag 420ms var(--ease-unspool) 260ms backwards;
+    }
+
+    .arrival-card {
+      animation: arrival-unfurl 380ms var(--ease-unspool) 380ms backwards;
+    }
+
+    .arrival-card[data-side='top'] {
+      animation-name: arrival-unfurl-up;
+    }
+
+    .arrival-content {
+      animation: rise 300ms var(--ease-unspool) 520ms backwards;
+    }
+
+    [data-ending-style] .arrival-card {
+      animation: arrival-fold 220ms ease-in forwards;
+    }
+
+    [data-ending-style] .arrival-cross {
+      animation: arrival-unsnag 120ms ease-in 120ms forwards;
+    }
+
+    [data-ending-style] .arrival-thread {
+      animation: arrival-wind 260ms ease-in 160ms forwards;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot='inbox-arrival'] {
+      transition: opacity 200ms ease-out;
+    }
+
+    [data-slot='inbox-arrival'][data-starting-style],
+    [data-slot='inbox-arrival'][data-ending-style] {
+      opacity: 0;
+      animation: none;
+    }
+  }
+
   /* Notifications step aside from an open side sheet so they never cover its
      actions. A modal sheet makes them inert, so they must not catch clicks. */
   body:has([data-slot='sheet-content'][data-side='right'])
@@ -670,6 +734,77 @@
 @keyframes thread-timer {
   to {
     width: 0;
+  }
+}
+
+@keyframes arrival-snag {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+}
+
+@keyframes arrival-unsnag {
+  to {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes arrival-wind {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 1;
+  }
+}
+
+/* The resting edge sits outside the card, so its shadow is never clipped. */
+@keyframes arrival-unfurl {
+  from {
+    clip-path: inset(50% 0 50% 0 round var(--radius-lg));
+  }
+  to {
+    clip-path: inset(-6rem);
+  }
+}
+
+@keyframes arrival-unfurl-up {
+  from {
+    clip-path: inset(100% 0 0 0 round var(--radius-lg));
+  }
+  to {
+    clip-path: inset(-6rem);
+  }
+}
+
+@keyframes arrival-fold {
+  from {
+    clip-path: inset(-6rem);
+  }
+  to {
+    clip-path: inset(50% 0 50% 0 round var(--radius-lg));
+    opacity: 0;
+  }
+}
+
+@keyframes arrival-leave {
+  80% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes badge-roll {
+  from {
+    opacity: 0;
+    transform: translateY(0.4rem);
   }
 }
 

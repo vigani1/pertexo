@@ -2,12 +2,17 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Outlet } from '@tanstack/react-router';
+import { Outlet, useMatchRoute } from '@tanstack/react-router';
 import { useNotifications } from '@/components/ui/use-notifications';
+import {
+  InboxArrivals,
+  type InboxArrivalAnchor,
+} from '@/features/inbox/arrival.public';
 import { useInboxLive } from '@/features/inbox/live.public';
 import { inboxSummaryQueryOptions } from '@/features/inbox/queries.public';
 import { liveRunCountQueryOptions } from '@/features/workflow-runs/queries.public';
@@ -38,6 +43,27 @@ function useCommandShortcut(onOpen: () => void) {
       window.removeEventListener('keydown', listen);
     };
   }, []);
+}
+
+/** A destination hidden by the layout (the spine on a phone) has no boxes. */
+function isShown(element: Element | null): element is Element {
+  return element !== null && element.getClientRects().length > 0;
+}
+
+/**
+ * The Inbox destination that new-failure notices hang from: on the spine they
+ * open to its right, on the phone bar above it.
+ */
+function useInboxAnchors() {
+  const spine = useRef<HTMLAnchorElement>(null);
+  const bar = useRef<HTMLAnchorElement>(null);
+  const find = useCallback((): InboxArrivalAnchor | undefined => {
+    if (isShown(spine.current))
+      return { element: spine.current, side: 'right' };
+    if (isShown(bar.current)) return { element: bar.current, side: 'top' };
+    return undefined;
+  }, []);
+  return { refs: { spine, bar }, find };
 }
 
 /**
@@ -75,6 +101,14 @@ export function WorkspaceShellFrame({
   });
   // One live inbox stream per tab keeps the badge and the inbox current.
   useInboxLive(apiClient, user.id, workspace.id, canReadInbox);
+  const inboxAnchors = useInboxAnchors();
+  const matchRoute = useMatchRoute();
+  const onInboxPage =
+    matchRoute({
+      to: '/w/$workspaceId/inbox',
+      params: { workspaceId: workspace.id },
+      fuzzy: true,
+    }) !== false;
   const routeCrumbs = useShellCrumbs(workspace);
 
   // Stable, so pages that receive it through context don't re-render.
@@ -96,6 +130,7 @@ export function WorkspaceShellFrame({
       unreadNoticeCount={
         canReadInbox ? inboxSummary.data?.unreadCount : undefined
       }
+      inboxRefs={inboxAnchors.refs}
       crumbs={crumbs ?? routeCrumbs}
       logoutPending={logout.pending}
       onLogout={logout.requestLogout}
@@ -110,6 +145,14 @@ export function WorkspaceShellFrame({
         workspaces={workspaces.data ?? [workspace]}
         onLogout={logout.requestLogout}
       />
+      {canReadInbox ? (
+        <InboxArrivals
+          scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
+          summary={inboxSummary.data}
+          quiet={onInboxPage}
+          findAnchor={inboxAnchors.find}
+        />
+      ) : null}
     </WorkspaceShell>
   );
 }

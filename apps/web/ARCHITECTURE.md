@@ -1225,6 +1225,12 @@ payloads), `format-initials.ts`, `api/api-error-copy.ts` (generic read/command
 failure sentences, uncertain outcome, forbidden, rate-limit and support
 reference helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
+The inbox's new-failure notice is the one anchored toast. It uses its own Base
+UI toast manager (`features/inbox/inbox-arrivals.tsx`), not a second toast
+system: a thread leaves the Inbox destination and stops at the failure glyph
+where the notice opens. It never shows on the inbox page, failures arriving
+together share one notice, and the first summary a tab loads announces nothing.
+
 #### Structure
 
 - `/w/$workspaceId` resolves the person and workspace once (`beforeLoad`); an

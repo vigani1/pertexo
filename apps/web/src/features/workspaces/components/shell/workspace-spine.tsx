@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import { Link } from '@tanstack/react-router';
 import { SearchIcon } from 'lucide-react';
@@ -23,7 +23,12 @@ const spineLinkClass =
 function SpineLink({
   workspaceId,
   destination,
-}: Readonly<{ workspaceId: string; destination: SpineDestination }>) {
+  anchorRef,
+}: Readonly<{
+  workspaceId: string;
+  destination: SpineDestination;
+  anchorRef?: Ref<HTMLAnchorElement> | undefined;
+}>) {
   const label =
     destination.badge === undefined
       ? destination.label
@@ -33,6 +38,7 @@ function SpineLink({
       <TooltipTrigger
         render={
           <Link
+            ref={anchorRef}
             to={destination.to}
             params={{ workspaceId }}
             activeOptions={{ exact: destination.exact ?? false }}
@@ -44,7 +50,11 @@ function SpineLink({
         {destination.icon}
         {destination.badge === undefined ? null : (
           // A tinted count inside the tile, not a loud pill hanging off it.
-          <span className="absolute top-0.5 right-0.5 rounded-sm bg-action/15 px-0.5 font-mono text-[0.58rem] leading-[0.8rem] font-semibold text-accent-foreground ring-1 ring-action/30">
+          // A new count rolls in, so a change is seen without a flash.
+          <span
+            key={destination.badge}
+            className="absolute top-0.5 right-0.5 rounded-sm bg-action/15 px-0.5 font-mono text-[0.58rem] leading-[0.8rem] font-semibold text-accent-foreground ring-1 ring-action/30 motion-safe:animate-[badge-roll_320ms_var(--ease-unspool)]"
+          >
             {formatBadge(destination.badge)}
           </span>
         )}
@@ -87,12 +97,15 @@ export function WorkspaceSpine({
   workspace,
   liveRunCount,
   unreadNoticeCount,
+  inboxRef,
   onOpenSearch,
   account,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   liveRunCount: number | undefined;
   unreadNoticeCount: number | undefined;
+  /** The Inbox destination, which new-failure notices hang from. */
+  inboxRef?: Ref<HTMLAnchorElement> | undefined;
   onOpenSearch: () => void;
   account: ReactNode;
 }>) {
@@ -113,6 +126,9 @@ export function WorkspaceSpine({
           key={destination.to}
           workspaceId={workspace.id}
           destination={destination}
+          anchorRef={
+            destination.to === '/w/$workspaceId/inbox' ? inboxRef : undefined
+          }
         />
       ))}
       <span aria-hidden="true" className="my-1.5 h-px w-6 bg-white/9" />
