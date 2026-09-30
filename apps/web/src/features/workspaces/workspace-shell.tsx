@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { cn } from '@/lib/utils';
 import type {
   AccessibleWorkspace,
@@ -30,6 +30,11 @@ type WorkspaceShellProps = Readonly<{
   liveRunCount: number | undefined;
   /** Unread inbox notices; undefined when the role has no inbox. */
   unreadNoticeCount: number | undefined;
+  /** The Inbox destination on the spine and on the phone bar. */
+  inboxRefs?: Readonly<{
+    spine: Ref<HTMLAnchorElement>;
+    bar: Ref<HTMLAnchorElement>;
+  }>;
   /** Steps after the workspace in the breadcrumb, outermost first. */
   crumbs: readonly Readonly<{ key: string; label: ReactNode }>[];
   logoutPending: boolean;
@@ -49,6 +54,7 @@ export function WorkspaceShell({
   workspaces,
   liveRunCount,
   unreadNoticeCount,
+  inboxRefs,
   crumbs,
   logoutPending,
   onLogout,
@@ -66,6 +72,7 @@ export function WorkspaceShell({
         workspace={workspace}
         liveRunCount={liveRunCount}
         unreadNoticeCount={unreadNoticeCount}
+        inboxRef={inboxRefs?.spine}
         onOpenSearch={onOpenSearch}
         account={
           <AccountMenu
@@ -113,6 +120,7 @@ export function WorkspaceShell({
         workspace={workspace}
         liveRunCount={liveRunCount}
         unreadNoticeCount={unreadNoticeCount}
+        inboxRef={inboxRefs?.bar}
         more={
           <>
             <Link

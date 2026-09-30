@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import {
@@ -26,11 +26,14 @@ export function WorkspaceMobileBar({
   workspace,
   liveRunCount,
   unreadNoticeCount,
+  inboxRef,
   more,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   liveRunCount: number | undefined;
   unreadNoticeCount: number | undefined;
+  /** The Inbox destination, which new-failure notices hang from. */
+  inboxRef?: Ref<HTMLAnchorElement> | undefined;
   more: ReactNode;
 }>) {
   const [moreOpen, setMoreOpen] = useState(false);
@@ -105,6 +108,7 @@ export function WorkspaceMobileBar({
         ) : null}
         {canReadInbox ? (
           <Link
+            ref={inboxRef}
             to="/w/$workspaceId/inbox"
             params={{ workspaceId: workspace.id }}
             aria-label={

@@ -87,6 +87,7 @@ function inboxApi(state: {
 }) {
   const reads: unknown[] = [];
   const readAlls: unknown[] = [];
+  const unreadLists = { count: 0 };
   const stream = hintStream();
   mockServer.use(
     http.get('http://pertexo.test/v1/users/me', () => HttpResponse.json(user)),
@@ -105,6 +106,7 @@ function inboxApi(state: {
     http.get(`${api}/notifications/events`, () => stream.response()),
     http.get(`${api}/notifications`, ({ request }) => {
       const filter = new URL(request.url).searchParams.get('filter');
+      if (filter === 'unread') unreadLists.count += 1;
       return HttpResponse.json({
         items: state.threads.filter(
           (item) => filter !== 'unread' || item.unread,
@@ -136,7 +138,7 @@ function inboxApi(state: {
       },
     ),
   );
-  return { reads, readAlls, stream };
+  return { reads, readAlls, unreadLists, stream };
 }
 
 function spineInbox() {
@@ -276,5 +278,139 @@ describe('workspace inbox', () => {
       await screen.findByRole('heading', { name: 'The inbox is unavailable' }),
     ).toBeVisible();
     expect(spineInbox().queryByRole('link', { name: /Inbox/u })).toBeNull();
+  });
+});
+
+describe('new failure notice', () => {
+  const failedStep = {
+    nodeId: 'fetch',
+    label: 'Fetch orders',
+    definitionKey: 'core.http',
+    safeErrorCode: null,
+  };
+
+  it('announces a workflow that starts failing, not what was already unread', async () => {
+    const state = { threads: [thread(billingId)], revision: '7' };
+    const { stream } = inboxApi(state);
+    renderApp(`/w/${workspaceId}/settings`, { strict: true });
+
+    await waitFor(() => {
+      expect(
+        spineInbox().getByRole('link', { name: 'Inbox, 1 unread' }),
+      ).toBeVisible();
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    state.threads = [
+      thread(importId, {
+        revision: '8',
+        occurrenceCount: 3,
+        latestFailedStep: failedStep,
+      }),
+      thread(billingId),
+    ];
+    state.revision = '8';
+    stream.changed('8');
+
+    const notice = await screen.findByRole('dialog', {
+      name: 'Nightly import',
+    });
+    expect(notice).toHaveTextContent('Failed');
+    expect(notice).toHaveTextContent('Failed 3 times since');
+    expect(notice).toHaveTextContent('at Fetch orders');
+    expect(
+      within(notice).getByRole('link', { name: 'Open run' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/runs/${runId}`);
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  it('gathers failures that arrive together into one notice', async () => {
+    const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
+    const { stream } = inboxApi(state);
+    renderApp(`/w/${workspaceId}/settings`);
+
+    await waitFor(() => {
+      expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();
+    });
+    state.threads = [
+      thread(billingId, { revision: '9' }),
+      thread(importId, { revision: '8' }),
+    ];
+    state.revision = '9';
+    stream.changed('9');
+
+    const notice = await screen.findByRole('dialog', {
+      name: 'Several workflows are failing',
+    });
+    expect(notice).toHaveTextContent('Billing sync and Nightly import');
+    expect(
+      within(notice).getByRole('link', { name: 'Open inbox' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/inbox?filter=unread`);
+  });
+
+  it('opens the run from the notice and marks the workflow read', async () => {
+    const actor = userEvent.setup();
+    const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
+    const { reads, stream } = inboxApi(state);
+    mockServer.use(
+      http.get(`${api}/runs/*`, () =>
+        HttpResponse.json(
+          {
+            type: 'about:blank',
+            title: 'Not found',
+            status: 404,
+            code: 'run.not_found',
+          },
+          {
+            status: 404,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        ),
+      ),
+    );
+    const { router } = renderApp(`/w/${workspaceId}/settings`);
+
+    await waitFor(() => {
+      expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();
+    });
+    state.threads = [thread(importId, { revision: '8' })];
+    state.revision = '8';
+    stream.changed('8');
+    const notice = await screen.findByRole('dialog', {
+      name: 'Nightly import',
+    });
+    await actor.click(within(notice).getByRole('link', { name: 'Open run' }));
+
+    await waitFor(() => {
+      expect(reads).toEqual([{ workflowId: importId, revision: '8' }]);
+    });
+    expect(router.state.location.pathname).toBe(
+      `/w/${workspaceId}/runs/${runId}`,
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Nightly import' }),
+      ).toBeNull();
+    });
+  });
+
+  it('stays quiet on the inbox page, whose list shows the failure', async () => {
+    const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
+    const { stream, unreadLists } = inboxApi(state);
+    renderApp(`/w/${workspaceId}/inbox`);
+
+    await screen.findByRole('heading', { name: 'Inbox' });
+    state.threads = [thread(importId, { revision: '8' })];
+    state.revision = '8';
+    stream.changed('8');
+
+    expect(
+      await screen.findByRole('link', { name: 'Nightly import, unread' }),
+    ).toBeVisible();
+    await waitFor(() => {
+      expect(unreadLists.count).toBeGreaterThan(0);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
