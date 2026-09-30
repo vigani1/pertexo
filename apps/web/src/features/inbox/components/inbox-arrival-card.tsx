@@ -11,10 +11,12 @@ import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import {
   ARRIVAL_GAP_PX,
+  ARRIVAL_SWIPE_DIRECTION,
   describeInboxArrival,
   type InboxArrivalData,
   type InboxArrivalSide,
 } from '../model/inbox-arrival';
+import { useArrivalSwipe } from './use-arrival-swipe';
 
 const strokeProps = {
   fill: 'none',
@@ -79,7 +81,8 @@ function Snag({
 /**
  * The arrival notice: what failed, how often and where, with the way to the
  * run, or to the inbox when several workflows failed at once. Its timer is a
- * thread that pauses while the notice is hovered or focused.
+ * thread that pauses while the notice is hovered or focused. Swiping it
+ * toward the Inbox dismisses it, like the close button; it stays unread.
  */
 export function InboxArrivalCard({
   workspaceId,
@@ -93,7 +96,14 @@ export function InboxArrivalCard({
   onOpenInbox: () => void;
 }>) {
   const nowMs = useNow(30_000);
+  const { close } = Toast.useToastManager();
   const data = toast.data;
+  const swipe = useArrivalSwipe(
+    data?.side === undefined ? undefined : ARRIVAL_SWIPE_DIRECTION[data.side],
+    () => {
+      close(toast.id);
+    },
+  );
   if (data === undefined) return null;
   const view = describeInboxArrival(data.threads);
   const tone = statusToneText[view.tone];
@@ -101,8 +111,13 @@ export function InboxArrivalCard({
   return (
     <Toast.Root
       toast={toast}
+      {...swipe}
       data-slot="inbox-arrival"
-      className="group/arrival relative outline-none"
+      className={cn(
+        'group/arrival relative outline-none',
+        data.side === 'right' && 'touch-pan-y',
+        data.side === 'top' && 'touch-pan-x',
+      )}
     >
       {data.side === undefined ? null : (
         <Snag side={data.side} className={tone} />

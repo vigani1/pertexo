@@ -1156,6 +1156,14 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
   instead of adding variants. `font-heading` stays for small section headings.
   Inter for interface text; JetBrains Mono for instruments (times, durations,
   counts, short IDs) with tabular figures.
+- Glass: everything that floats is one material in three weights. Chrome (spine,
+  bars, inspectors, dialogs, sheets, ⌘K) uses `lens` (`--glass-background`,
+  62%). Popups that open over rows (menus, selects, popovers, toasts and the
+  new-failure notice) use `popup-lens` (`--glass-popup`, 70%) with a harder
+  blur, so the page shows through as colour and light, never as text. Tooltips
+  stay nearly solid. Dialogs and sheets sit on a `scrim` that dims and blurs the
+  page instead of blacking it out. With `prefers-reduced-transparency` or no
+  backdrop blur, every weight falls back to a solid surface.
 - Textures: `warp` (page background threads), `weave` (canvas and run maps),
   `ambient` (two slow aurora blobs in the shell). All decorative layers are
   `aria-hidden` and motion stops under `prefers-reduced-motion`.
@@ -1230,6 +1238,10 @@ UI toast manager (`features/inbox/inbox-arrivals.tsx`), not a second toast
 system: a thread leaves the Inbox destination and stops at the failure glyph
 where the notice opens. It never shows on the inbox page, failures arriving
 together share one notice, and the first summary a tab loads announces nothing.
+Base UI turns swiping off for anchored toasts, so the notice brings its own
+(`use-arrival-swipe.ts`): dragging it toward the Inbox, left from the spine or
+down into the phone bar, dismisses it like the close button, and it stays
+unread.
 
 #### Structure
 

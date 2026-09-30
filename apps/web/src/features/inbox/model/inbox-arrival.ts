@@ -52,6 +52,17 @@ export type InboxArrivalData = Readonly<{
   side?: InboxArrivalSide;
 }>;
 
+/**
+ * Swiping the notice toward the Inbox files it away: left into the spine,
+ * down into the phone bar.
+ */
+export const ARRIVAL_SWIPE_DIRECTION: Readonly<
+  Record<InboxArrivalSide, 'left' | 'down'>
+> = {
+  right: 'left',
+  top: 'down',
+};
+
 /** How far the notice sits from the icon: the snag thread spans the gap. */
 export const ARRIVAL_GAP_PX: Readonly<Record<InboxArrivalSide, number>> = {
   right: 48,

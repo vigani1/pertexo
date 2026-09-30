@@ -103,11 +103,16 @@
   --radius: 0.625rem;
   --glass-background: rgb(25 27 30 / 62%);
   --glass-fallback: #1a1c1f;
+  /* Popups open over busy rows, so their glass is denser and blurs harder
+     than the chrome's: what shows through is colour, never text. */
+  --glass-popup: rgb(29 31 35 / 70%);
+  --glass-popup-fallback: #1d1f22;
   --glass-border-strong: rgb(255 255 255 / 15%);
   --glass-border-subtle: rgb(255 255 255 / 7%);
   --control-background: rgb(0 0 0 / 22%);
   --control-border: rgb(255 255 255 / 11%);
   --blur-glass: 22px;
+  --blur-popup: 28px;
 }
 
 @layer base {
@@ -186,6 +191,29 @@
     background: var(--glass-background);
     backdrop-filter: blur(var(--blur-glass)) saturate(1.5);
   }
+
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--glass-fallback);
+    backdrop-filter: none;
+  }
+}
+
+/* Scrim: the dim behind a dialog or sheet. The page stays as soft colour and
+   light instead of going flat black, so the glass above it still reads as
+   glass. Without a backdrop blur, or with reduced transparency, it is a
+   plain darker dim. */
+@utility scrim {
+  background: rgb(6 7 9 / 62%);
+
+  @supports (backdrop-filter: blur(1px)) {
+    background: rgb(6 7 9 / 42%);
+    backdrop-filter: blur(10px) saturate(1.3);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    background: rgb(6 7 9 / 72%);
+    backdrop-filter: none;
+  }
 }
 
 /* Neon: the one primary action per screen, and a chosen day. A bright
@@ -225,18 +253,24 @@
   }
 }
 
-/* Menus, selects, popovers and toasts: small, read at a glance and often
-   over busy rows, so they're almost solid, and frosted: what little shows
-   through is blurred into colour, never text. Same edges as a lens. */
+/* Menus, selects, popovers, toasts and tooltips: the same glass as a lens,
+   denser and blurred harder because they open over busy rows, so the page
+   shows through as colour and light, never as text. Same edges as a lens.
+   Tooltips raise `--glass-popup` to stay nearly solid. */
 @utility popup-lens {
-  background: color-mix(in srgb, var(--popover) 97%, transparent);
+  background: var(--glass-popup-fallback);
   border: 1px solid var(--glass-border-subtle);
   border-top-color: var(--glass-border-strong);
   box-shadow: var(--shadow-lens);
 
   @supports (backdrop-filter: blur(1px)) {
-    background: color-mix(in srgb, var(--popover) 92%, transparent);
-    backdrop-filter: blur(18px) saturate(1.4);
+    background: var(--glass-popup);
+    backdrop-filter: blur(var(--blur-popup)) saturate(1.6);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--glass-popup-fallback);
+    backdrop-filter: none;
   }
 }
 
@@ -555,6 +589,38 @@
     animation: arrival-leave 440ms linear forwards;
   }
 
+  /* Dragged toward the Inbox (`use-arrival-swipe.ts`): the notice follows
+     the pointer, springs back from a short drag, and once let go past the
+     threshold keeps going the way it was flicked and fades, not folds. */
+  [data-slot='inbox-arrival'] {
+    transform: translate(
+      var(--arrival-drag-x, 0px),
+      var(--arrival-drag-y, 0px)
+    );
+    transition: transform 200ms var(--ease-unspool);
+  }
+
+  [data-slot='inbox-arrival'][data-dragging] {
+    cursor: grabbing;
+    transition: none;
+  }
+
+  [data-slot='inbox-arrival'][data-ending-style][data-swiped] {
+    animation: none;
+    opacity: 0;
+    transition:
+      transform 200ms ease-in,
+      opacity 200ms ease-in;
+  }
+
+  [data-slot='inbox-arrival'][data-ending-style][data-swiped='left'] {
+    transform: translateX(calc(var(--arrival-drag-x, 0px) - 2.5rem));
+  }
+
+  [data-slot='inbox-arrival'][data-ending-style][data-swiped='down'] {
+    transform: translateY(calc(var(--arrival-drag-y, 0px) + 2.5rem));
+  }
+
   .arrival-thread {
     stroke-dasharray: 1;
   }
@@ -590,6 +656,10 @@
       animation: arrival-fold 220ms ease-in forwards;
     }
 
+    [data-ending-style][data-swiped] .arrival-card {
+      animation: none;
+    }
+
     [data-ending-style] .arrival-cross {
       animation: arrival-unsnag 120ms ease-in 120ms forwards;
     }
@@ -608,6 +678,19 @@
     [data-slot='inbox-arrival'][data-ending-style] {
       opacity: 0;
       animation: none;
+    }
+
+    /* A swiped notice fades where it was let go. */
+    [data-slot='inbox-arrival'][data-ending-style][data-swiped] {
+      transition: opacity 200ms ease-out;
+    }
+
+    [data-slot='inbox-arrival'][data-ending-style][data-swiped='left'] {
+      transform: translateX(var(--arrival-drag-x, 0px));
+    }
+
+    [data-slot='inbox-arrival'][data-ending-style][data-swiped='down'] {
+      transform: translateY(var(--arrival-drag-y, 0px));
     }
   }
 
