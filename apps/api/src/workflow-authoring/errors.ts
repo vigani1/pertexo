@@ -5,6 +5,9 @@ import {
   WorkflowRevisionConflictError,
   WorkflowLifecycleRevisionConflictError,
   WorkflowNameRevisionConflictError,
+  WorkflowPauseRevisionConflictError,
+  WorkflowAutoPauseSettingsRevisionConflictError,
+  WorkspaceAutoPauseSettingsRevisionConflictError,
 } from '@pertexo/database/api';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
@@ -75,6 +78,23 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
     });
   if (error instanceof WorkflowNotFoundError)
     return applicationError('resource.not_found');
+  if (error instanceof WorkflowPauseRevisionConflictError)
+    return applicationError('workflow.pause_conflict', {
+      safeDetail: 'The workflow pause has changed; reload it before retrying.',
+      details: { currentPauseRevision: error.currentRevision },
+    });
+  if (error instanceof WorkflowAutoPauseSettingsRevisionConflictError)
+    return applicationError('workflow.auto_pause_settings_conflict', {
+      safeDetail:
+        'The automatic pause settings have changed; reload them before retrying.',
+      details: { currentSettingsRevision: error.currentRevision },
+    });
+  if (error instanceof WorkspaceAutoPauseSettingsRevisionConflictError)
+    return applicationError('workspace.auto_pause_settings_conflict', {
+      safeDetail:
+        'The workspace default has changed; reload it before retrying.',
+      details: { currentRevision: error.currentRevision },
+    });
   if (error instanceof WorkflowIdempotencyConflictError)
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',

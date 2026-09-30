@@ -5,6 +5,7 @@ import {
   type WorkflowHubTab,
 } from '@/features/workflows/hub.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
+import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
 import { useWorkflowHubScope } from './workflow-hub-scope';
 
 /** Layout for the scrolling hub tabs: the sticky bar, then the tab page. */
@@ -35,6 +36,14 @@ export function WorkflowHubTabFrame({
         />
       </div>
       <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16 sm:px-6">
+        <WorkflowPausedBanner
+          key={`${user.id}:${workspace.id}:${workflowId}`}
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflowId={workflowId}
+          showReadError={tab !== 'settings'}
+        />
         {children}
       </div>
     </>

@@ -1,6 +1,11 @@
 import { BadRequestException, HttpException } from '@nestjs/common';
 import type { ArgumentsHost } from '@nestjs/common';
 import { apiProblemSchema } from '@pertexo/contracts/errors';
+import {
+  workflowPauseConflictProblemSchema,
+  workflowAutoPauseSettingsConflictProblemSchema,
+  workspaceAutoPauseSettingsConflictProblemSchema,
+} from '@pertexo/contracts/workflow-authoring';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -146,6 +151,87 @@ describe('RFC 9457 problem details filter', () => {
       expect(response.body).not.toHaveProperty(field);
     },
   );
+  const autoPauseConflicts = [
+    {
+      code: 'workflow.pause_conflict',
+      field: 'currentPauseRevision',
+      value: '9223372036854775807',
+      schema: workflowPauseConflictProblemSchema,
+      invalid: [undefined, 1, '0', '01', '-1', '1.5', '9223372036854775808'],
+    },
+    {
+      code: 'workflow.auto_pause_settings_conflict',
+      field: 'currentSettingsRevision',
+      value: 7,
+      schema: workflowAutoPauseSettingsConflictProblemSchema,
+      invalid: [undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1],
+    },
+    {
+      code: 'workspace.auto_pause_settings_conflict',
+      field: 'currentRevision',
+      value: 7,
+      schema: workspaceAutoPauseSettingsConflictProblemSchema,
+      invalid: [undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1],
+    },
+  ] as const;
+
+  it.each(autoPauseConflicts)(
+    'projects a strict $code problem, preserving only its current revision',
+    ({ code, field, value, schema }) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(new RequestContextStore()).catch(
+        applicationError(code, {
+          details: {
+            currentPauseRevision: '2',
+            currentSettingsRevision: 3,
+            currentRevision: 4,
+            currentEtag: 'draft',
+            secret: 'not-public',
+            [field]: value,
+          },
+        }),
+        hostFor({ url: '/v1/workspaces/workspace/auto-pause' }, response),
+      );
+      expect(response.status).toHaveBeenCalledWith(409);
+      expect(schema.safeParse(response.body).success).toBe(true);
+      expect(response.body).toMatchObject({ code, [field]: value });
+      expect(response.body).not.toHaveProperty('secret');
+      expect(response.body).not.toHaveProperty('currentEtag');
+      for (const other of autoPauseConflicts)
+        if (other.field !== field)
+          expect(response.body).not.toHaveProperty(other.field);
+      expect(response.header).not.toHaveBeenCalledWith(
+        'etag',
+        expect.anything(),
+      );
+    },
+  );
+
+  it.each(
+    autoPauseConflicts.flatMap(({ code, field, invalid }) =>
+      invalid.map((value) => ({ code, field, value })),
+    ),
+  )(
+    'fails closed on malformed $code revision $value',
+    ({ code, field, value }) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(new RequestContextStore()).catch(
+        applicationError(code, {
+          details: { [field]: value, secret: 'not-public' },
+        }),
+        hostFor({}, response),
+      );
+      expect(response.status).toHaveBeenCalledWith(500);
+      expect(response.body).toMatchObject({ code: 'internal.unexpected' });
+      expect(response.body).not.toHaveProperty(field);
+      expect(response.body).not.toHaveProperty('secret');
+      expect(response.header).not.toHaveBeenCalledWith(
+        'etag',
+        expect.anything(),
+      );
+    },
+  );
+
   it('rejects oversized safe details before they can reach the response boundary', () => {
     expect(() =>
       applicationError('request.invalid', { safeDetail: 'x'.repeat(2_001) }),

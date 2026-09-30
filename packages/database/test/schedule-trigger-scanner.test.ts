@@ -379,6 +379,15 @@ describe('schedule misfire disposition (ADR 049)', () => {
         nextAt: new Date('2026-01-01T02:00:00.000Z'),
       });
       expect(
+        statements.find(({ sql }) =>
+          sql.includes('schedule_claim_workflow_paused'),
+        )?.params,
+      ).toEqual([
+        ids.triggerOne,
+        ids.leaseOne,
+        new Date('2026-01-01T01:00:00.000Z'),
+      ]);
+      expect(
         statements.some(({ sql }) =>
           sql.includes('schedule_claim_is_eligible'),
         ),

@@ -70,6 +70,8 @@ import {
 import {
   workflowFailureStreaks,
   workflowTriggerOutcomes,
+  workflowAutoPauseCommandReceipts,
+  workflowTriggerPausePeriods,
 } from './schema/trigger-pause.js';
 import {
   webhookTriggerSecretVersions,
@@ -190,6 +192,8 @@ export const databaseSchema = {
   workspaceInboxThreads,
   workflowFailureStreaks,
   workflowTriggerOutcomes,
+  workflowAutoPauseCommandReceipts,
+  workflowTriggerPausePeriods,
   workspaceInvitations,
   workspaceInvitationCommandReceipts,
   workspaceInvitationDeliveryAttempts,

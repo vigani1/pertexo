@@ -1,7 +1,9 @@
 # F26 — Automatic pause of repeatedly failing workflows
 
-Status: design accepted in [ADR056](../adr/056-workflow-auto-pause.md);
-implementation slices 2 and 3 follow.
+Status: design accepted in [ADR056](../adr/056-workflow-auto-pause.md).
+Slices 2a/2b are delivered; slice 3 controls are implemented and locally
+qualified, pending final review and merge. F27 notices/warnings remain deferred;
+enforcement is not enabled by this checkpoint.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: New trigger control over existing run outcomes. Relative size: **L**, not a calendar estimate.
 
@@ -17,7 +19,11 @@ Schedules and webhooks start runs; people can enable and disable schedules, and
 runs record terminal `failed`, `timed_out` and `outcome_unknown` outcomes.
 [ADR055](../adr/055-workspace-inbox-failure-threads.md) already groups
 failures per workflow for the inbox, and ADR 022 sends external failure alerts.
-Nothing stops triggers because of failures.
+Slices 2a/2b now supply the separate trigger pause state, bounded evaluator and
+paused schedule/webhook admission behind the deployment's `WORKFLOW_AUTO_PAUSE`
+mode. Slice 3 supplies authenticated resume, operational settings and shared
+workflow banners. The evaluator remains off by default; deployment examples
+use observe mode. No production rollout is authorized here.
 
 Inspected anchors (paths may move):
 
@@ -53,7 +59,7 @@ as ADR 034's archive and restore do:
   time, separate from a person turning a trigger off, so resuming never turns
   on something a person turned off.
 - **Warning first.** Optionally notify at a lower threshold before pausing.
-- **Resume.** People with `workflow:update` resume; resuming resets the streak
+- **Resume.** People with `workflow:publish` resume; resuming resets the streak
   and is audited.
 
 The failure streak must not be a counter updated in every run's transaction:
@@ -67,9 +73,13 @@ range; the control states its consequence.
 
 | Setting | Default | Range | Who changes it | Consequence shown |
 | --- | --- | --- | --- | --- |
-| Pause after failures in a row | 10 | 3–100 | Workspace admins set the default; workflow editors override per workflow | “Schedules and webhooks pause after N failed runs in a row; runs in progress finish” |
+| Pause after failures in a row | 10 | 3–100 | Workspace owners (`workspace:manage`) set the default; workflow editors override per workflow | “Schedules and webhooks pause after N failed runs in a row; runs in progress finish” |
 | Auto-pause for this workflow | On | On or off | Workflow editors; turning it off is audited | “This workflow keeps starting runs however often it fails” |
 | Warn before pausing | On, two failures early | On or off | Workflow editors | “Eligible readers get a notice before the pause” |
+
+The warning setting is a future F27 notice-kind capability, not a shipped
+slice 3 endpoint or control. Changing a configured rule does not enable the
+deployment evaluator or resume an existing pause.
 
 ## Ownership and structure
 
@@ -117,12 +127,27 @@ runs a pause prevented.
 
 ## Rollout and rollback
 
-Ship the evaluator in observe-only mode first (would-pause metrics, no pause),
-then enable per workspace. Disabling the evaluator stops new pauses; existing
-pauses stay until resumed.
+Ship the evaluator in observe-only mode first (would-pause metrics, no pause).
+The deployment-wide `WORKFLOW_AUTO_PAUSE` mode may move to `enforce` only after
+the resume controls and acceptance verification are qualified; this slice does
+not enable enforcement. Per-workflow opt-out remains independent. Disabling
+the evaluator stops new pauses; existing pauses stay until resumed.
 
 No production rollout, paid provisioning or real external calls are authorized
 by this plan.
+
+Migration 0125 replaces the fold body and adds the API-only operational command.
+Its exact startup hashes and the new migration head are one database/application
+release unit; an old image must not serve the new head. Keep serving traffic
+closed until the matching API and worker readiness checks pass, following the
+[function readiness procedure](../operations/database-function-readiness.md).
+Database rollback remains forward-only. This checkpoint changes neither
+`WORKFLOW_AUTO_PAUSE` defaults nor deployment mode.
+
+Settings drafts and uncertain command retry envelopes are browser-session
+memory only. Conflict/refetch preserves them while the page remains mounted;
+navigating away or reloading loses them. Cross-navigation/durable recovery and
+Firefox/WebKit feature-specific acceptance are not claimed by this slice.
 
 ## Competitor context
 
@@ -140,11 +165,11 @@ This context informs the outcome, not Pertexo's implementation.
 
 - [x] Baseline reconciled against current code and accepted decisions.
 - [x] Product choices resolved; necessary ADR accepted (ADR 056).
-- [ ] Contracts and failure/security model reviewed.
+- [x] Contracts and failure/security model reviewed.
 - [ ] Backend behavior implemented and independently verified where needed.
 - [ ] Frontend behavior implemented and independently verified where needed.
 - [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
+- [x] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log:
@@ -166,3 +191,64 @@ Evidence log:
   The API answers a paused workflow's verified delivery with 423
   `webhook.workflow_paused` and records it as `paused`. The deployment and
   local example observe; enforcement waits for the resume command in slice 3.
+- 2026-09-30: slice 3 implemented and locally qualified, pending review and
+  merge. Migration 0125 adds API-only settings/resume commands and private
+  24-hour receipts; exact retries return the accepted snapshot, while typed
+  conflicts expose the current revision. Pause revisions remain decimal
+  strings. Resume atomically clears the pause, resets the streak, records an
+  outcome cutoff and audits once; late-committing pre-resume outcomes cannot
+  re-pause the workflow. Settings and resume share the evaluator's workspace
+  then workflow lock order. Workspace defaults retain owner-only authority.
+- Slice 3 database evidence: 87 isolated PostgreSQL integration cases cover
+  controls, concurrent folds, prior-head migration and readiness drift,
+  receipt expiry/legal holds, RLS, schedule and webhook admission. Disabled
+  resources stay disabled after resume and lifecycle transitions. Database
+  units: 870 passing tests. Startup pins are control
+  `2ce8ab04731f24bd9292bdc7cf9e4079` and fold
+  `54c69650fa9bbf8c2580e0e86659e894`.
+- Slice 3 API evidence: 1,696 unit tests and 14 real session/CSRF HTTP
+  integration cases pass, including all three strict conflict projections,
+  exact replay, active-workspace and role checks, and unchanged lifecycle
+  revision. Contract generation/checks pass without changing existing workflow
+  summary or historical receipt formats. Worker units: 868 passing tests.
+- Slice 3 browser evidence: 747 unit tests and the complete 77-journey
+  Chromium suite pass. Workflow rule/opt-out, owner-only workspace defaults,
+  shared role-correct paused banners, stale-conflict refetch and exact-key
+  uncertain-outcome retry are covered. Desktop and mobile screenshots were
+  inspected; React Doctor reports 100/100. Browser acceptance uses mocked HTTP
+  contracts; live backend behavior is verified separately by the database and
+  HTTP suites, not claimed as a live full-stack browser journey.
+- Whole-feature backend/frontend and integrated acceptance remain open for
+  F27 warning/notice kinds and eligible-reader delivery. Enforcement remains
+  unchanged and disabled by default; no deployment, push or merge is part of
+  this local qualification.
+- Final local gate: `pnpm check` passes repository-wide formatting,
+  documentation, architecture, schema ownership, build/export, lint,
+  complexity/duplication ratchets, contracts, typechecking and unit suites.
+  The two task-only PostgreSQL/Redis containers were removed after integration
+  verification; everyday services and the dirty primary checkout were preserved.
+- 2026-10-01 review correction: actual resume also atomically retains the
+  closed pause interval in private, forced-RLS workflow history. Schedule
+  admission checks its actual due instant against the current pause or an
+  indexed predecessor interval (`LIMIT 1`), so scanner lag across resume
+  cannot turn a paused-period occurrence into a catch-up run. One row per
+  actual pause/resume cycle is retained until workflow/tenant deletion: it
+  cannot expire with command receipts because disabled schedules and delayed
+  claims may still refer to earlier cycles. No trigger/schedule enablement or
+  recurrence is rewritten, and resume never locks a schedule row. Admission
+  locks workspace before workflow, matching control/evaluator/purge ordering.
+  Startup also pins the due-aware admission command to
+  `7f7b9cf2e74f7e45644cd0fe3d37b205` with API/worker-only execution.
+- 2026-10-01 review correction: browser recovery branches on the exact problem
+  code, not HTTP 409 alone. Idempotency conflicts keep the original edit
+  revision and show command-specific recovery; malformed 409 responses remain
+  uncertain outcomes with the exact request/key available for retry. Focused
+  browser tests now pass 9 cases; the full web unit suite passes 749 tests.
+- Review correction verification: `pnpm check` passes again. All 27 isolated
+  PostgreSQL cases pass (6 new scanner-lag/race cases, 11 controls, 1 prior-head
+  migration/readiness drift case, 9 original fold/admission cases). These prove
+  both misfire policies, post-resume admission, earlier retained cycles after
+  disabled-schedule lag, exact half-open pause boundaries without blocking
+  pre-pause instants, both resume/admission lock orders, history privacy, and
+  history rollback/no-op/exact-replay semantics. The unpublished migration
+  0125 was corrected in place; enforcement and trigger enablement are unchanged.

@@ -654,7 +654,7 @@ describe('Coordinator observation integrity invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0124_workflow_trigger_pause.sql',
+      migrationHead: '0125_workflow_auto_pause_controls.sql',
     });
     await readinessPool.end();
   });

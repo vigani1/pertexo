@@ -1,11 +1,14 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  bigint,
   foreignKey,
   index,
   integer,
+  jsonb,
   primaryKey,
   timestamp,
+  text,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -13,8 +16,72 @@ import {
 import { appSchema } from './app-schema.js';
 import { workflows } from './authoring.js';
 import { workflowRuns } from './execution.js';
+import { workspaces } from './foundation.js';
 
 // ADR 056. String-mode timestamps preserve PostgreSQL precision.
+/** Closed pauses remain until workflow/tenant deletion, including disabled schedule lag. */
+export const workflowTriggerPausePeriods = appSchema.table(
+  'workflow_trigger_pause_periods',
+  {
+    workspaceId: uuid('workspace_id').notNull(),
+    workflowId: uuid('workflow_id').notNull(),
+    pauseRevision: bigint('pause_revision', { mode: 'bigint' }).notNull(),
+    pausedAt: timestamp('paused_at', {
+      withTimezone: true,
+      mode: 'string',
+    }).notNull(),
+    resumedAt: timestamp('resumed_at', {
+      withTimezone: true,
+      mode: 'string',
+    }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.workspaceId, table.workflowId, table.pauseRevision],
+    }),
+    foreignKey({
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [workflows.workspaceId, workflows.id],
+    }).onDelete('cascade'),
+    index('workflow_trigger_pause_periods_due_idx').on(
+      table.workspaceId,
+      table.workflowId,
+      table.pausedAt.desc(),
+    ),
+  ],
+);
+
+export const workflowAutoPauseCommandReceipts = appSchema.table(
+  'workflow_auto_pause_command_receipts',
+  {
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id').notNull(),
+    resourceId: uuid('resource_id').notNull(),
+    operation: text('operation').notNull(),
+    keyHash: text('key_hash').notNull(),
+    requestHash: text('request_hash').notNull(),
+    result: jsonb('result'),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' })
+      .default(sql`clock_timestamp()+interval '24 hours'`)
+      .notNull(),
+  },
+  (table) => [
+    index('workflow_auto_pause_receipts_expiry_idx')
+      .on(table.expiresAt)
+      .where(sql`${table.result} is not null`),
+    primaryKey({
+      columns: [
+        table.workspaceId,
+        table.actorId,
+        table.resourceId,
+        table.operation,
+        table.keyHash,
+      ],
+    }),
+  ],
+);
 
 /** Pending schedule and webhook run outcomes, deleted once folded. */
 export const workflowTriggerOutcomes = appSchema.table(
@@ -66,6 +133,10 @@ export const workflowFailureStreaks = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     consecutiveFailures: integer('consecutive_failures').notNull(),
+    resumedAfter: timestamp('resumed_after', {
+      withTimezone: true,
+      mode: 'string',
+    }),
     lastRunId: uuid('last_run_id'),
     lastEndedAt: timestamp('last_ended_at', {
       withTimezone: true,

@@ -251,7 +251,11 @@ async function persistClaimedOccurrence(
   checkpointFactory: ScheduleCheckpointFactory,
 ): Promise<RecordedScheduleOccurrence> {
   const disposition: RecordedScheduleOccurrence =
-    (await claimedScheduleWorkflowPaused(transaction, claim))
+    (await claimedScheduleWorkflowPaused(
+      transaction,
+      claim,
+      occurrence.scheduledAt,
+    ))
       ? 'paused'
       : occurrence.disposition;
   const runId =

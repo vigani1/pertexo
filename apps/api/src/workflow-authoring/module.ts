@@ -16,6 +16,8 @@ import {
   WorkflowPublishGuard,
   WorkflowReadGuard,
   WorkflowUpdateGuard,
+  WorkflowPauseDefaultGuard,
+  WorkspaceAutoPauseReadGuard,
 } from './guards.js';
 import { WorkflowAuthoringController } from './controllers.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
@@ -24,6 +26,11 @@ import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
 import { WORKFLOW_AUTHORING_AUTHORIZATION } from './tokens.js';
+import { WorkflowAutoPauseUseCase } from './auto-pause-use-case.js';
+import {
+  WorkflowAutoPauseController,
+  WorkspaceAutoPauseController,
+} from './auto-pause-controllers.js';
 
 @Module({})
 // Nest dynamic modules require a class container.
@@ -36,6 +43,19 @@ export class WorkflowAuthoringModule {
     const telemetry =
       dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY;
     const providers: Provider[] = [
+      ...(dependencies.autoPausePersistence === undefined
+        ? []
+        : [
+            {
+              provide: WorkflowAutoPauseUseCase,
+              useValue: new WorkflowAutoPauseUseCase(
+                dependencies.autoPausePersistence,
+                dependencies.authorization,
+              ),
+            },
+            WorkflowPauseDefaultGuard,
+            WorkspaceAutoPauseReadGuard,
+          ]),
       {
         provide: RestoreWorkflowVersionUseCase,
         useValue: new RestoreWorkflowVersionUseCase(
@@ -136,7 +156,12 @@ export class WorkflowAuthoringModule {
     return {
       module: WorkflowAuthoringModule,
       imports: [identityModule],
-      controllers: [WorkflowAuthoringController],
+      controllers: [
+        WorkflowAuthoringController,
+        ...(dependencies.autoPausePersistence === undefined
+          ? []
+          : [WorkflowAutoPauseController, WorkspaceAutoPauseController]),
+      ],
       providers,
       exports: [
         RestoreWorkflowVersionUseCase,

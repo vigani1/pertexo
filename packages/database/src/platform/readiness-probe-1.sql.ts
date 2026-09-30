@@ -1,3 +1,4 @@
+import { AUTO_PAUSE_AUTHORITY_SQL } from './readiness-probe-auto-pause.sql.js';
 export const READINESS_IDENTITY_AUTHORING_SQL = `
     select
       current_user,
@@ -354,7 +355,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
             ('workflows','created_by','uuid',true),
             ('workflows','created_at','timestamp with time zone',true),
             ('workflows','updated_at','timestamp with time zone',true),
-            ('workflows','auto_pause_enabled','boolean',true), ('workflows','auto_pause_threshold','smallint',false),
+            ('workflows','auto_pause_enabled','boolean',true), ('workflows','auto_pause_threshold','smallint',false), ('workflows','auto_pause_settings_revision','integer',true),
             ('workflows','trigger_pause_state','character varying(16)',true), ('workflows','trigger_paused_at','timestamp with time zone',false),
             ('workflows','trigger_pause_reason','character varying(32)',false), ('workflows','trigger_pause_failures','integer',false),
             ('workflows','trigger_pause_last_run_id','uuid',false), ('workflows','trigger_pause_revision','bigint',true),
@@ -398,7 +399,6 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflow_drafts') and conname='workflow_drafts_workflow_workspace_fk' and contype='f' and confrelid=to_regclass('app.workflows') and confdeltype='c')
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflow_versions') and conname='workflow_versions_workflow_workspace_fk' and contype='f' and confrelid=to_regclass('app.workflows') and confdeltype='r')
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflows') and conname='workflows_published_version_workspace_fk' and contype='f' and confrelid=to_regclass('app.workflow_versions') and confdeltype='r')
-        and (select count(*) = 19 from pg_attribute where attrelid = to_regclass('app.workflows') and attnum > 0 and not attisdropped)
         and (select count(*) = 7 from pg_attribute where attrelid = to_regclass('app.workflow_drafts') and attnum > 0 and not attisdropped)
         and (select count(*) = 12 from pg_attribute where attrelid = to_regclass('app.workflow_versions') and attnum > 0 and not attisdropped)
         and exists (select 1 from pg_attribute where attrelid = to_regclass('app.workflows') and attname = 'published_version_id' and atttypid = 'uuid'::regtype and not attnotnull)
@@ -414,7 +414,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
               where acl.grantee = 0 and acl.privilege_type = 'EXECUTE'
             )
         )
-      ) as phase2_schema_compatible,
+        and ${AUTO_PAUSE_AUTHORITY_SQL}) as phase2_schema_compatible,
       (
         (select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('app.workflows'))
         and (select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('app.workflow_drafts'))

@@ -15,7 +15,7 @@ const readinessSql = `select (
     where command.oid=to_regprocedure('app.fold_workflow_trigger_outcomes(integer,boolean)')
       and pg_get_userbyid(command.proowner)=$1
       and command.prosecdef
-      and md5(command.prosrc)='3af0f138f2c5cd2b9b25df0c6d014215'
+      and md5(command.prosrc)='54c69650fa9bbf8c2580e0e86659e894'
       and command.proconfig=array['search_path=pg_catalog, app, pg_temp','row_security=on']
       and has_function_privilege(current_user,command.oid,'EXECUTE')
       and not exists (

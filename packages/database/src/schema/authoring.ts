@@ -35,6 +35,9 @@ export const workflows = appSchema.table(
     // ADR 056: operational auto-pause settings and trigger pause state.
     autoPauseEnabled: boolean('auto_pause_enabled').default(true).notNull(),
     autoPauseThreshold: smallint('auto_pause_threshold'),
+    autoPauseSettingsRevision: integer('auto_pause_settings_revision')
+      .default(1)
+      .notNull(),
     triggerPauseState: varchar('trigger_pause_state', { length: 16 })
       .default('none')
       .notNull(),

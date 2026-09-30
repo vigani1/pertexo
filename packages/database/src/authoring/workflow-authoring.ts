@@ -20,6 +20,7 @@ import { createWorkflowVersionRestoreStore } from './workflow-authoring-version-
 import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import { createWorkflowAuthoringLifecycleStore } from './workflow-authoring-lifecycle.js';
 import { createWorkflowAuthoringRenameStore } from './workflow-authoring-rename.js';
+import { createWorkflowAutoPauseStore } from './workflow-auto-pause.js';
 export type {
   WorkflowDraftRecord,
   WorkflowRecord,
@@ -293,6 +294,7 @@ export function createWorkflowAuthoringDatabase(
     transact,
   });
   return Object.freeze({
+    autoPause: createWorkflowAutoPauseStore(transact),
     ...createPreviewStore(pool),
     ...createWorkflowAuthoringDraftStore(authoringContext),
     ...createWorkflowVersionRestoreStore(authoringContext),

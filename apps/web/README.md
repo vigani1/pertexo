@@ -7,7 +7,8 @@ workspace creation/display-name editing, a Home with exact run statistics and
 the Loom, bounded recent-activity Overview, the bounded workflow editor with
 conflict-safe draft persistence, validation, node preview, typed visual input
 mappings, exact-version publishing, run start, live run detail and
-contract-backed workflow settings/operations.
+contract-backed workflow settings/operations, including automatic trigger-pause
+rules, owner-managed workspace defaults and explicit Resume controls.
 
 For the proposed implementation direction, read
 [Frontend architecture and implementation plan](ARCHITECTURE.md). It covers
