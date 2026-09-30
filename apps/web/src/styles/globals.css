@@ -589,6 +589,38 @@
     animation: arrival-leave 440ms linear forwards;
   }
 
+  /* Dragged toward the Inbox (`use-arrival-swipe.ts`): the notice follows
+     the pointer, springs back from a short drag, and once let go past the
+     threshold keeps going the way it was flicked and fades, not folds. */
+  [data-slot='inbox-arrival'] {
+    transform: translate(
+      var(--arrival-drag-x, 0px),
+      var(--arrival-drag-y, 0px)
+    );
+    transition: transform 200ms var(--ease-unspool);
+  }
+
+  [data-slot='inbox-arrival'][data-dragging] {
+    cursor: grabbing;
+    transition: none;
+  }
+
+  [data-slot='inbox-arrival'][data-ending-style][data-swiped] {
+    animation: none;
+    opacity: 0;
+    transition:
+      transform 200ms ease-in,
+      opacity 200ms ease-in;
+  }
+
+  [data-slot='inbox-arrival'][data-ending-style][data-swiped='left'] {
+    transform: translateX(calc(var(--arrival-drag-x, 0px) - 2.5rem));
+  }
+
+  [data-slot='inbox-arrival'][data-ending-style][data-swiped='down'] {
+    transform: translateY(calc(var(--arrival-drag-y, 0px) + 2.5rem));
+  }
+
   .arrival-thread {
     stroke-dasharray: 1;
   }
@@ -624,6 +656,10 @@
       animation: arrival-fold 220ms ease-in forwards;
     }
 
+    [data-ending-style][data-swiped] .arrival-card {
+      animation: none;
+    }
+
     [data-ending-style] .arrival-cross {
       animation: arrival-unsnag 120ms ease-in 120ms forwards;
     }
@@ -642,6 +678,19 @@
     [data-slot='inbox-arrival'][data-ending-style] {
       opacity: 0;
       animation: none;
+    }
+
+    /* A swiped notice fades where it was let go. */
+    [data-slot='inbox-arrival'][data-ending-style][data-swiped] {
+      transition: opacity 200ms ease-out;
+    }
+
+    [data-slot='inbox-arrival'][data-ending-style][data-swiped='left'] {
+      transform: translateX(var(--arrival-drag-x, 0px));
+    }
+
+    [data-slot='inbox-arrival'][data-ending-style][data-swiped='down'] {
+      transform: translateY(var(--arrival-drag-y, 0px));
     }
   }
 

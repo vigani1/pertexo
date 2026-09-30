@@ -1238,6 +1238,10 @@ UI toast manager (`features/inbox/inbox-arrivals.tsx`), not a second toast
 system: a thread leaves the Inbox destination and stops at the failure glyph
 where the notice opens. It never shows on the inbox page, failures arriving
 together share one notice, and the first summary a tab loads announces nothing.
+Base UI turns swiping off for anchored toasts, so the notice brings its own
+(`use-arrival-swipe.ts`): dragging it toward the Inbox, left from the spine or
+down into the phone bar, dismisses it like the close button, and it stays
+unread.
 
 #### Structure
 
