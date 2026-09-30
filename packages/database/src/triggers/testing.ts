@@ -12,6 +12,7 @@ export {
   WebhookIngressRateLimitExceededError,
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
+  WebhookWorkflowPausedError,
   type AcceptVerifiedWebhookDeliveryInput,
   type SealedWebhookTriggerSecret,
   type WebhookCheckpointFactory,

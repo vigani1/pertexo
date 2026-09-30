@@ -69,6 +69,8 @@ export type CoordinatorRuntimeOptions = Readonly<{
   maximumAdmissions: number;
   runTimeoutFailureContextEnabled?: boolean;
   workspaceInboxProducerEnabled?: boolean;
+  /** ADR 056: record schedule and webhook run outcomes for failure streaks. */
+  workflowTriggerOutcomesEnabled?: boolean;
   releaseCohort?: PlatformReleaseCohort;
   observer?: QueueConsumerObserver;
   redisUrl: string;
@@ -217,6 +219,8 @@ export async function createCoordinatorRuntime(
           options.runTimeoutFailureContextEnabled ?? false,
         workspaceInboxProducerEnabled:
           options.workspaceInboxProducerEnabled ?? false,
+        workflowTriggerOutcomesEnabled:
+          options.workflowTriggerOutcomesEnabled ?? false,
       });
     reader =
       dependencies.reader ??

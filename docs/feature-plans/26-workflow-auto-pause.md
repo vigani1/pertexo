@@ -159,3 +159,10 @@ Evidence log:
   Real-database tests cover the threshold, reset, concurrent folds, observe
   mode, overrides, archived workflows, paused admission and replays. The worker
   loop, `WORKFLOW_AUTO_PAUSE` and the API's 423 follow in slice 2b.
+- 2026-09-30: slice 2b (worker and API) — `WORKFLOW_AUTO_PAUSE`
+  (`off`/`observe`/`enforce`, default `off`) turns on the outcome producer and
+  runs the fold loop with readiness, shutdown and a decision counter
+  (`pertexo.workflow.auto_pause.decision.count`: `paused` or `would_pause`).
+  The API answers a paused workflow's verified delivery with 423
+  `webhook.workflow_paused` and records it as `paused`. The deployment and
+  local example observe; enforcement waits for the resume command in slice 3.

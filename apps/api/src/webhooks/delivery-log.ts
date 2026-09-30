@@ -44,6 +44,11 @@ export const REJECTED_ATTEMPT = Object.freeze({
     signatureCheck: 'verified',
     replayCheck: 'new',
   },
+  paused: {
+    outcome: 'paused',
+    signatureCheck: 'verified',
+    replayCheck: 'new',
+  },
 } as const satisfies Readonly<Record<string, RejectedAttempt>>);
 
 /**

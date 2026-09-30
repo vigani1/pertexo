@@ -19,6 +19,502 @@
   },
   "reviewGroups": [
     {
+      "cohort": "api-entrypoints",
+      "file": "apps/api/src/main.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 51,
+          "column": 40,
+          "sourceFingerprint": "sha256:9ae4b61d6ef9ee3515ad372330a6a834a4c3aaa979dd759934b4a9a5feab5157",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 53,
+          "column": 45,
+          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 61,
+          "column": 55,
+          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 80,
+          "column": 14,
+          "sourceFingerprint": "sha256:fb3bce53b792370252b5a86856eb22d0c65bcf76fb45a6ef07f6711e759db4b6",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 120,
+          "column": 0,
+          "sourceFingerprint": "sha256:fb3bce53b792370252b5a86856eb22d0c65bcf76fb45a6ef07f6711e759db4b6",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        }
+      ]
+    },
+    {
+      "cohort": "api-orchestration",
+      "file": "apps/api/src/workflow-runs/sse-authorization-lifetime.ts",
+      "reviews": [
+        {
+          "branchId": "9",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 243,
+          "column": 23,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "defensive",
+          "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 270,
+          "column": 4,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "defensive",
+          "justification": "The watchdog checks the same composed signal immediately before constructing this private wait; the helper precheck safely contains a nonstandard synchronously changing signal."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 280,
+          "column": 4,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "defensive",
+          "justification": "Abort settlement clears the deadline timer and deadline settlement removes the abort listener; this callback guard contains a late host-timer delivery after the wait has already settled."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 286,
+          "column": 4,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "defensive",
+          "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 292,
+          "column": 8,
+          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
+          "classification": "defensive",
+          "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/api-runtimes.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 123,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "The public bootstrap permits either an injected workspace database or an owned database runtime; this arm creates the owned runtime only when neither injected source supplies that responsibility."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 163,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "Webhook ingress is composed only when both identity and webhook configuration are available; the arm is reachable through the supported production bootstrap configuration."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 177,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "The scheduler is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 189,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "The notification runtime is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice that unit bootstraps replace with a supplied runtime."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 202,
+          "column": 4,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "Artifact handling is composed only when identity and artifact configuration are both available; the arm is a reachable optional-feature wiring choice."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 283,
+          "column": 8,
+          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/app.ts",
+      "reviews": [
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 60,
+          "column": 49,
+          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
+          "classification": "defensive",
+          "justification": "When the bootstrap owns or receives a database runtime, it forwards that optional runtime into the dynamic module; omission remains valid for an injected workspace database."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 62,
+          "column": 12,
+          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
+          "classification": "defensive",
+          "justification": "The workspace database dependency is optional because production bootstrap can own its database runtime; this arm preserves omission when no database adapter is injected."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 65,
+          "column": 12,
+          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
+          "classification": "defensive",
+          "justification": "The rate-limit consumer is an optional test/composition override, and this arm preserves omission so the module can construct its configured consumer."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
+      "reviews": [
+        {
+          "branchId": "36",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent stream decisions are exercised through the provider boundary."
+        },
+        {
+          "branchId": "46",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent abort decisions are exercised through the provider boundary."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 407,
+          "column": 6,
+          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
+          "classification": "defensive",
+          "justification": "The platform ReadableStream reader returns the specified read-result shape; this branch rejects a malformed injected stream implementation before consuming provider bytes."
+        },
+        {
+          "branchId": "47",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 453,
+          "column": 2,
+          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
+          "classification": "defensive",
+          "justification": "The caller checks the same signal immediately before entering readChunk; this second check closes the narrow abort race before listener registration."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/identity-infrastructure/oidc-response-cleanup.ts",
+      "reviews": [
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 7,
+          "column": 57,
+          "sourceFingerprint": "sha256:7e81f44bd32a1f3e7b710bc882759db93e128c5b41933f72f603958b6942bc43",
+          "classification": "unreachable",
+          "justification": "The preceding condition proves response.body is non-null and unlocked, and the native Response body getter is stable for the response lifetime; the optional-chain null fallback cannot be selected."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/identity-infrastructure/oidc-secret-encryption.ts",
+      "reviews": [
+        {
+          "branchId": "28",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 116,
+          "column": 4,
+          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 148,
+          "column": 2,
+          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 181,
+          "column": 2,
+          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 225,
+          "column": 8,
+          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        },
+        {
+          "branchId": "36",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 302,
+          "column": 8,
+          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/identity-workspace/use-cases.ts",
+      "reviews": [
+        {
+          "branchId": "8",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:97f100b432dfc79fadbc2746b11ded913d705afdf7ec45f2bca8de065f7a95ae",
+          "classification": "generated",
+          "justification": "V8 reports this synthetic branch arm at line zero for transpiled control-flow bookkeeping; it has no distinct source location or independently callable source behavior."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/platform/identity/identity-runtime.module.ts",
+      "reviews": [
+        {
+          "branchId": "32",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 284,
+          "column": 42,
+          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
+          "classification": "defensive",
+          "justification": "IdentityWorkspaceModule.register always supplies its controller list; the empty-list fallback protects the dynamic-module seam against future contract drift."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 285,
+          "column": 38,
+          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
+          "classification": "defensive",
+          "justification": "IdentityWorkspaceModule.register always supplies its provider list; the empty-list fallback protects the dynamic-module seam against future contract drift."
+        },
+        {
+          "branchId": "34",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 286,
+          "column": 34,
+          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
+          "classification": "defensive",
+          "justification": "IdentityWorkspaceModule.register always supplies its export list; the empty-list fallback protects the dynamic-module seam against future contract drift."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/webhooks/ingress-responses.ts",
+      "reviews": [
+        {
+          "branchId": "6",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 102,
+          "column": 2,
+          "sourceFingerprint": "sha256:7fd6812f34758bed2e18fceeb009ca8aea1095ddf0843213c7913494911286a8",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/webhooks/ingress.ts",
+      "reviews": [
+        {
+          "branchId": "16",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:ab74069741454ea9307bc19917f6de769e59d2632350a250e33ce7d402b01602",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 143,
+          "column": 2,
+          "sourceFingerprint": "sha256:ab74069741454ea9307bc19917f6de769e59d2632350a250e33ce7d402b01602",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        },
+        {
+          "branchId": "31",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 387,
+          "column": 74,
+          "sourceFingerprint": "sha256:4da6eb6edc98114c2d06a27f02e49a1970142b1034fd07b112dd486c10e05f73",
+          "classification": "defensive",
+          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+        }
+      ]
+    },
+    {
       "cohort": "artifact-store",
       "file": "packages/artifact-store/src/config.ts",
       "reviews": [
@@ -449,18 +945,18 @@
       ]
     },
     {
-      "cohort": "integrations",
-      "file": "packages/integrations/src/security/application-secret-envelope.ts",
+      "cohort": "database",
+      "file": "packages/database/src/tenant-access/workspace.ts",
       "reviews": [
         {
-          "branchId": "3",
+          "branchId": "22",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 41,
-          "column": 2,
-          "sourceFingerprint": "sha256:4e65dc58f1318030964afba6c169fbf33dfbf1a12f884fe4a5bf042895b22bdd",
+          "line": 162,
+          "column": 4,
+          "sourceFingerprint": "sha256:7adf90b10882c76dd43f5bf48ef16597a237c2a90f89697cd504b4e63321b6c8",
           "classification": "unreachable",
-          "justification": "The current key is inserted into the local map from the same version immediately before lookup, so it cannot be absent without a built-in Map contract violation."
+          "justification": "The released-client guard is fail-closed after deterministic ownership cleanup; the branch protects against impossible re-entry once release has completed."
         }
       ]
     },
@@ -944,6 +1440,22 @@
     },
     {
       "cohort": "integrations",
+      "file": "packages/integrations/src/security/application-secret-envelope.ts",
+      "reviews": [
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 41,
+          "column": 2,
+          "sourceFingerprint": "sha256:4e65dc58f1318030964afba6c169fbf33dfbf1a12f884fe4a5bf042895b22bdd",
+          "classification": "unreachable",
+          "justification": "The current key is inserted into the local map from the same version immediately before lookup, so it cannot be absent without a built-in Map contract violation."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
       "file": "packages/integrations/src/server-only.ts",
       "reviews": [
         {
@@ -971,6 +1483,554 @@
           "sourceFingerprint": "sha256:e1982b57042730811f0b3eff6f5dcb8637db27d5880c1722cce850a0bb4886de",
           "classification": "defensive",
           "justification": "This residual provider boundary arm normalizes malformed request, response, retry, encryption, stream, or unknown-error material and keeps external I/O failures deterministic and fail closed."
+        }
+      ]
+    },
+    {
+      "cohort": "lifecycle-command",
+      "file": "apps/lifecycle-command/src/main.ts",
+      "reviews": [
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 159,
+          "column": 0,
+          "sourceFingerprint": "sha256:4c1d7ee79451e84d80766dc2cd47a6ba780fc2883d5a9b36c90b5081049d89c3",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        }
+      ]
+    },
+    {
+      "cohort": "operator-command-entrypoints",
+      "file": "apps/operator-command/src/main.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 60,
+          "column": 40,
+          "sourceFingerprint": "sha256:0f9f67dada805d41b9d76baea78d0d98cf5bac2602a673b0874b607d93e6a294",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 62,
+          "column": 45,
+          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 68,
+          "column": 49,
+          "sourceFingerprint": "sha256:bda928f95ecc9b6a795f69694543c5ddba0e6b5de2bd277758095a074677525c",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 76,
+          "column": 55,
+          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 135,
+          "column": 0,
+          "sourceFingerprint": "sha256:bda928f95ecc9b6a795f69694543c5ddba0e6b5de2bd277758095a074677525c",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        }
+      ]
+    },
+    {
+      "cohort": "recovery-entrypoints",
+      "file": "apps/recovery/src/main.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 83,
+          "column": 40,
+          "sourceFingerprint": "sha256:9c0e92c683a5c50119d733b9585ef617d7617dcd16f262b04700c760ef49d58a",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 85,
+          "column": 45,
+          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 91,
+          "column": 49,
+          "sourceFingerprint": "sha256:4d3a40bd5bb4ee7d7d6681b37244dad2bfb5374339fa0dc3223d6b8270907d23",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 101,
+          "column": 55,
+          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 162,
+          "column": 0,
+          "sourceFingerprint": "sha256:4d3a40bd5bb4ee7d7d6681b37244dad2bfb5374339fa0dc3223d6b8270907d23",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        }
+      ]
+    },
+    {
+      "cohort": "retention-entrypoints",
+      "file": "apps/retention/src/main.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 86,
+          "column": 2,
+          "sourceFingerprint": "sha256:bf45a43cdfb4c6037320148a1c5e2b44339558d656327c5833e3b498e99175f6",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 103,
+          "column": 40,
+          "sourceFingerprint": "sha256:56aaa69618f4fe6bc06f8412849e4d91985c2670ad16a811a260e865f1592156",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 105,
+          "column": 45,
+          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 111,
+          "column": 49,
+          "sourceFingerprint": "sha256:bf45a43cdfb4c6037320148a1c5e2b44339558d656327c5833e3b498e99175f6",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "5",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 126,
+          "column": 55,
+          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 279,
+          "column": 0,
+          "sourceFingerprint": "sha256:bf45a43cdfb4c6037320148a1c5e2b44339558d656327c5833e3b498e99175f6",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
+      "file": "apps/worker/src/execution/failure-notification-delivery.ts",
+      "reviews": [
+        {
+          "branchId": "27",
+          "locationIndex": 2,
+          "branchType": "switch",
+          "line": 513,
+          "column": 8,
+          "sourceFingerprint": "sha256:ca4578389ca8669f537a3321f50bbd53ce817b28ba6012a7795bdf6b5c7305e2",
+          "classification": "unreachable",
+          "justification": "The validated destination store port returns the closed Slack-or-email union, so TypeScript's assertNever default cannot be selected by a conforming adapter."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
+      "file": "apps/worker/src/execution/node-attempt-handler.ts",
+      "reviews": [
+        {
+          "branchId": "16",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 295,
+          "column": 2,
+          "sourceFingerprint": "sha256:6aec7991dbdad70d8b88a5c6196718bb8445a165d064fda138e6e2c385a9fe51",
+          "classification": "defensive",
+          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
+      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 88,
+          "column": 14,
+          "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
+          "classification": "integration",
+          "justification": "The named artifact-reference integration streams a normal node output through the database-backed pending-artifact persistence adapter.",
+          "evidenceId": "worker-artifact-reference"
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 97,
+          "column": 14,
+          "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
+          "classification": "defensive",
+          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 238,
+          "column": 13,
+          "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
+          "classification": "integration",
+          "justification": "The named HTTP node-attempt integration composes the dual-region artifact store and verifies the persisted streamed response.",
+          "evidenceId": "worker-http-node-attempt"
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 271,
+          "column": 12,
+          "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
+          "classification": "defensive",
+          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
+      "file": "apps/worker/src/runtime/worker-process-shutdown.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b462e6d59dec9447f719b7e119213521596c643b9858cf8c8762c17ecaa7da75",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 58,
+          "column": 35,
+          "sourceFingerprint": "sha256:a5d9b9a06d3457ffe5708f7b5d7f740be6a8de389c04494c46b5bff24bc3c74a",
+          "classification": "defensive",
+          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
+      "file": "apps/worker/src/runtime/worker-readiness-monitor.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 23,
+          "column": 4,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "defensive",
+          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 34,
+          "column": 6,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "defensive",
+          "justification": "Revocation attempts both marker operations with Promise.allSettled; a filesystem rejection is retained here so every cleanup failure is propagated together instead of masking the other operation."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 35,
+          "column": 4,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "defensive",
+          "justification": "Production-only marker filesystem failures are aggregated and propagated to the fail-closed lifecycle path; injected marker failures exercise that public shutdown behavior without mutating host /tmp state."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 66,
+          "column": 4,
+          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
+          "classification": "defensive",
+          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
+        }
+      ]
+    },
+    {
+      "cohort": "worker-entrypoints",
+      "file": "apps/worker/src/main.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 61,
+          "column": 40,
+          "sourceFingerprint": "sha256:04d1349161ed1a8c59bf1c4986efaa4ff68cdb1769e9bb366290662227c81a5c",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 63,
+          "column": 45,
+          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 72,
+          "column": 55,
+          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 80,
+          "column": 19,
+          "sourceFingerprint": "sha256:d06bab839de8ab575ba7b1184f59bab206b538cb8c85855a2e56e88e6a243310",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 92,
+          "column": 14,
+          "sourceFingerprint": "sha256:e23f278dda2be031343c06728d78cbc1c4d498102bbdcec9500bd7a2d1f734a0",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 135,
+          "column": 0,
+          "sourceFingerprint": "sha256:e23f278dda2be031343c06728d78cbc1c4d498102bbdcec9500bd7a2d1f734a0",
+          "classification": "defensive",
+          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/attempt/node-attempt-input.ts",
+      "reviews": [
+        {
+          "branchId": "8",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 88,
+          "column": 4,
+          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
+          "classification": "defensive",
+          "justification": "The optional nearest branch must exist before its node and output port can justify removing one branch scope from an upstream descriptor."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 89,
+          "column": 8,
+          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
+          "classification": "defensive",
+          "justification": "Only an upstream descriptor sourced from the nearest matching branch uses its parent scope; all other descriptors retain the complete branch path."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 117,
+          "column": 2,
+          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
+          "classification": "unreachable",
+          "justification": "Canonical JSON rejects undefined and exactKeys requires the descriptor value member."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 152,
+          "column": 2,
+          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 206,
+          "column": 2,
+          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 223,
+          "column": 31,
+          "sourceFingerprint": "sha256:7a340649bd747dca26fa581d90ecff9c7f2232cb12dea52ea2d26dd405e2fae6",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 223,
+          "column": 47,
+          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         }
       ]
     },
@@ -1203,340 +2263,6 @@
           "sourceFingerprint": "sha256:9cbf775b78c768dd22c16bc75763616c3ddac770e0200c6e9fec59e82bbc9c4f",
           "classification": "defensive",
           "justification": "When a dependency throws a non-Error value, this fallback prevents it escaping and emits the stable checkpoint parsing failed message."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/observation/coordinator-failures.ts",
-      "reviews": [
-        {
-          "branchId": "0",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 34,
-          "column": 55,
-          "sourceFingerprint": "sha256:8f9b5dd7d4e1044a55203a7eef449310170730b5f226874562223a1592eabab3",
-          "classification": "defensive",
-          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
-        },
-        {
-          "branchId": "1",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 35,
-          "column": 4,
-          "sourceFingerprint": "sha256:628dce3063c5074ca50275fe5ac85829e89a1fbcb4773f01d05466041284e8f6",
-          "classification": "defensive",
-          "justification": "A stale node-failure observation is ignored unless the matching invocation is still running at the same attempt number."
-        },
-        {
-          "branchId": "6",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 49,
-          "column": 12,
-          "sourceFingerprint": "sha256:628dce3063c5074ca50275fe5ac85829e89a1fbcb4773f01d05466041284e8f6",
-          "classification": "defensive",
-          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 50,
-          "column": 14,
-          "sourceFingerprint": "sha256:628dce3063c5074ca50275fe5ac85829e89a1fbcb4773f01d05466041284e8f6",
-          "classification": "defensive",
-          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 51,
-          "column": 14,
-          "sourceFingerprint": "sha256:628dce3063c5074ca50275fe5ac85829e89a1fbcb4773f01d05466041284e8f6",
-          "classification": "defensive",
-          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
-        },
-        {
-          "branchId": "12",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 101,
-          "column": 46,
-          "sourceFingerprint": "sha256:3663735ef21eca6406f333da8436d3cd095ff2d082a51aaf4469b9b130249dd4",
-          "classification": "defensive",
-          "justification": "A retry-policy outcome_unknown decision is preserved; every other exhausted retry decision maps to failed."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/observation/coordinator-observations.ts",
-      "reviews": [
-        {
-          "branchId": "6",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 72,
-          "column": 49,
-          "sourceFingerprint": "sha256:8f9b5dd7d4e1044a55203a7eef449310170730b5f226874562223a1592eabab3",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 73,
-          "column": 4,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "10",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 84,
-          "column": 6,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
-          "branchId": "14",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 106,
-          "column": 4,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "15",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 114,
-          "column": 4,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "17",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 135,
-          "column": 10,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "18",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 136,
-          "column": 49,
-          "sourceFingerprint": "sha256:8f9b5dd7d4e1044a55203a7eef449310170730b5f226874562223a1592eabab3",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "22",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 162,
-          "column": 4,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "26",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 186,
-          "column": 6,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "28",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 195,
-          "column": 12,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "29",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 197,
-          "column": 6,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "42",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 268,
-          "column": 20,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "44",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 270,
-          "column": 22,
-          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/observation/coordinator-loop-observations.ts",
-      "reviews": [
-        {
-          "branchId": "5",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 78,
-          "column": 2,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 83,
-          "column": 57,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "10",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 110,
-          "column": 4,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "12",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 124,
-          "column": 4,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "13",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 130,
-          "column": 49,
-          "sourceFingerprint": "sha256:8f9b5dd7d4e1044a55203a7eef449310170730b5f226874562223a1592eabab3",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "17",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 141,
-          "column": 6,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
-          "branchId": "18",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 149,
-          "column": 4,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "19",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 157,
-          "column": 4,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "21",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 178,
-          "column": 4,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "24",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 191,
-          "column": 34,
-          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/observation/coordinator-output.ts",
-      "reviews": [
-        {
-          "branchId": "3",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:61ced5c252913902a62f58cf40c93a38c48c0a15e0dee0807f93d5af05dc72eb",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
-        },
-        {
-          "branchId": "0",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 13,
-          "column": 2,
-          "sourceFingerprint": "sha256:61ced5c252913902a62f58cf40c93a38c48c0a15e0dee0807f93d5af05dc72eb",
-          "classification": "defensive",
-          "justification": "Coordinator output is an untrusted node boundary; the residual guard rejects a non-record JSON output before any output field is interpreted."
         }
       ]
     },
@@ -1928,273 +2654,121 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/transition/graph-scheduler-indexes.ts",
+      "file": "packages/workflow-engine/src/observation/coordinator-failures.ts",
       "reviews": [
         {
           "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 34,
+          "column": 55,
+          "sourceFingerprint": "sha256:8f9b5dd7d4e1044a55203a7eef449310170730b5f226874562223a1592eabab3",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "1",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 18,
-          "column": 2,
-          "sourceFingerprint": "sha256:a92910b660ad1c1417fc97535e23fc208fd24e9fed56f47f2e4ae4e84f0f5c92",
-          "classification": "unreachable",
-          "justification": "configuredPairedParallelId is private and its only caller invokes it inside a node loop after returning early for every non-Merge definition. The helper therefore cannot receive a non-Merge node through the scheduler's public seams."
+          "line": 35,
+          "column": 4,
+          "sourceFingerprint": "sha256:628dce3063c5074ca50275fe5ac85829e89a1fbcb4773f01d05466041284e8f6",
+          "classification": "defensive",
+          "justification": "A stale node-failure observation is ignored unless the matching invocation is still running at the same attempt number."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 49,
+          "column": 12,
+          "sourceFingerprint": "sha256:628dce3063c5074ca50275fe5ac85829e89a1fbcb4773f01d05466041284e8f6",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 50,
+          "column": 14,
+          "sourceFingerprint": "sha256:628dce3063c5074ca50275fe5ac85829e89a1fbcb4773f01d05466041284e8f6",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 51,
+          "column": 14,
+          "sourceFingerprint": "sha256:628dce3063c5074ca50275fe5ac85829e89a1fbcb4773f01d05466041284e8f6",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 101,
+          "column": 46,
+          "sourceFingerprint": "sha256:3663735ef21eca6406f333da8436d3cd095ff2d082a51aaf4469b9b130249dd4",
+          "classification": "defensive",
+          "justification": "A retry-policy outcome_unknown decision is preserved; every other exhausted retry decision maps to failed."
         }
       ]
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/transition/graph-scheduler.ts",
+      "file": "packages/workflow-engine/src/observation/coordinator-loop-observations.ts",
       "reviews": [
-        {
-          "branchId": "36",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
-          "classification": "unreachable",
-          "justification": "A parsed checkpoint invocation key is derived from its workflow, node, branch, and iteration identity. Within one scheduler scope it is therefore a root identity, while an existing entry is replaced only by that same root; the implicit inconsistent-key arm requires bypassing checkpoint validation."
-        },
-        {
-          "branchId": "41",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
-          "classification": "unreachable",
-          "justification": "Validated structured graphs cannot reconverge two branch paths before their declared Merge boundary, and descendant marking stops at Merge nodes. A node therefore cannot first receive a longer path and later an equal or shorter competing path in one scheduling pass."
-        },
-        {
-          "branchId": "3",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 53,
-          "column": 2,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
-          "classification": "unreachable",
-          "justification": "workflowControlOutputKind accepts only core.condition v1 and core.switch v1 as branch definitions. The preceding condition return handles core.condition v1, so a surviving branch definition cannot take this non-switch or non-v1 arm."
-        },
         {
           "branchId": "5",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 55,
+          "line": 78,
           "column": 2,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
           "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
         {
           "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 62,
-          "column": 2,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
-          "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "8",
           "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 66,
-          "column": 8,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "branchType": "binary-expr",
+          "line": 83,
+          "column": 57,
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
           "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
         {
           "branchId": "10",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 68,
-          "column": 2,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "line": 110,
+          "column": 4,
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
           "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
         {
-          "branchId": "22",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 127,
-          "column": 6,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
-          "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "26",
+          "branchId": "12",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 179,
+          "line": 124,
           "column": 4,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
           "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "29",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 182,
-          "column": 46,
-          "sourceFingerprint": "sha256:4205402469d069a3f2987d2725bee0d644c3bda5b147c686064e8c6ef1b8ff03",
-          "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "37",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 243,
-          "column": 34,
-          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
-          "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "38",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 260,
-          "column": 27,
-          "sourceFingerprint": "sha256:0c1dd4a8ebc6f456b7b8e85c4d12223b4c3aed1bf9231f5f522c3d06eedbb01a",
-          "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "49",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 325,
-          "column": 66,
-          "sourceFingerprint": "sha256:714295db5d5fcef849d4ad0f4f9ea53529d4b3aa357f733b4a59b6af70a884e5",
-          "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "53",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 356,
-          "column": 64,
-          "sourceFingerprint": "sha256:efbd2e09d994472350695c8927c246b172186be44757155a08a14d14ffd5a223",
-          "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "63",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 402,
-          "column": 47,
-          "sourceFingerprint": "sha256:a2d16540ecb74be4c954faebba5a76a0c8e7dcb0306aa5fc5768c1ff35bc5a73",
-          "classification": "unreachable",
-          "justification": "indexSchedulerGraph initializes a predecessor array for every graph node before readiness is derived, including isolated roots; the empty-array fallback guards only an internally inconsistent index."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/attempt/node-attempt-input.ts",
-      "reviews": [
-        {
-          "branchId": "8",
-          "locationIndex": 2,
-          "branchType": "binary-expr",
-          "line": 88,
-          "column": 4,
-          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
-          "classification": "defensive",
-          "justification": "The optional nearest branch must exist before its node and output port can justify removing one branch scope from an upstream descriptor."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 89,
-          "column": 8,
-          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
-          "classification": "defensive",
-          "justification": "Only an upstream descriptor sourced from the nearest matching branch uses its parent scope; all other descriptors retain the complete branch path."
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
         {
           "branchId": "13",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 117,
-          "column": 2,
-          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
-          "classification": "unreachable",
-          "justification": "Canonical JSON rejects undefined and exactKeys requires the descriptor value member."
-        },
-        {
-          "branchId": "18",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 152,
-          "column": 2,
-          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "28",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 206,
-          "column": 2,
-          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "29",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 223,
-          "column": 31,
-          "sourceFingerprint": "sha256:7a340649bd747dca26fa581d90ecff9c7f2232cb12dea52ea2d26dd405e2fae6",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "29",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 223,
-          "column": 47,
-          "sourceFingerprint": "sha256:3b4fb478c5d871ae85f8ae45ffb0092facb0e995906705014b978c26cf431688",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "reviews": [
-        {
-          "branchId": "3",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 113,
-          "column": 37,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
-          "classification": "unreachable",
-          "justification": "Recursive scheduler projection always materializes structuredBodies as an array."
-        },
-        {
-          "branchId": "15",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 276,
-          "column": 4,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "line": 130,
+          "column": 49,
+          "sourceFingerprint": "sha256:8f9b5dd7d4e1044a55203a7eef449310170730b5f226874562223a1592eabab3",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2202,9 +2776,29 @@
           "branchId": "17",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 305,
+          "line": 141,
+          "column": 6,
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 149,
           "column": 4,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 157,
+          "column": 4,
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2212,19 +2806,9 @@
           "branchId": "21",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 328,
-          "column": 6,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "23",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 332,
+          "line": 178,
           "column": 4,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         },
@@ -2232,59 +2816,9 @@
           "branchId": "24",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 334,
-          "column": 7,
-          "sourceFingerprint": "sha256:5d7a497322e06522819dda466506ce7786993e4bbdfc7ad2e9d2008402784a8a",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "24",
-          "locationIndex": 2,
-          "branchType": "binary-expr",
-          "line": 334,
-          "column": 53,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "25",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 337,
-          "column": 4,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "27",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 372,
-          "column": 4,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "29",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 379,
-          "column": 47,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "32",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 421,
-          "column": 4,
-          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "line": 191,
+          "column": 34,
+          "sourceFingerprint": "sha256:b940ccb4403117c562ea360579551c83522d09cc3f5a7adcd195c94c3b52debf",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         }
@@ -2292,17 +2826,163 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/output-reference.ts",
+      "file": "packages/workflow-engine/src/observation/coordinator-observations.ts",
       "reviews": [
         {
-          "branchId": "4",
+          "branchId": "6",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 72,
+          "column": 49,
+          "sourceFingerprint": "sha256:8f9b5dd7d4e1044a55203a7eef449310170730b5f226874562223a1592eabab3",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 73,
+          "column": 4,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 84,
+          "column": 6,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 106,
+          "column": 4,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 114,
+          "column": 4,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 135,
+          "column": 10,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 136,
+          "column": 49,
+          "sourceFingerprint": "sha256:8f9b5dd7d4e1044a55203a7eef449310170730b5f226874562223a1592eabab3",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 162,
+          "column": 4,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 186,
+          "column": 6,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 195,
+          "column": 12,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 197,
+          "column": 6,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "42",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 268,
+          "column": 20,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "44",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 270,
+          "column": 22,
+          "sourceFingerprint": "sha256:15364dccad408a245229c4a3a97d9fcc06a8b7408d564b98291818c9169b6d2d",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/observation/coordinator-output.ts",
+      "reviews": [
+        {
+          "branchId": "3",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:d50c7fae8a3213350af7ef9f02b5641111cc138dfc9083e0024517f18990f6b8",
+          "sourceFingerprint": "sha256:61ced5c252913902a62f58cf40c93a38c48c0a15e0dee0807f93d5af05dc72eb",
           "classification": "generated",
-          "justification": "V8 reports a zero-coordinate phantom branch for the final output-reference mismatch return; public transition and scheduling tests exercise the real discriminant outcomes."
+          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 13,
+          "column": 2,
+          "sourceFingerprint": "sha256:61ced5c252913902a62f58cf40c93a38c48c0a15e0dee0807f93d5af05dc72eb",
+          "classification": "defensive",
+          "justification": "Coordinator output is an untrusted node boundary; the residual guard rejects a non-record JSON output before any output field is interpreted."
         }
       ]
     },
@@ -2784,6 +3464,352 @@
     },
     {
       "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/operations.ts",
+      "reviews": [
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 113,
+          "column": 37,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "unreachable",
+          "justification": "Recursive scheduler projection always materializes structuredBodies as an array."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 276,
+          "column": 4,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 305,
+          "column": 4,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 328,
+          "column": 6,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 332,
+          "column": 4,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 334,
+          "column": 7,
+          "sourceFingerprint": "sha256:5d7a497322e06522819dda466506ce7786993e4bbdfc7ad2e9d2008402784a8a",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 334,
+          "column": 53,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 337,
+          "column": 4,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 372,
+          "column": 4,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 379,
+          "column": 47,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 421,
+          "column": 4,
+          "sourceFingerprint": "sha256:423d5ccdcef8962796a4100a1ccdd6c24958dc20041deeaa69e1f2e2f2417223",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/output-reference.ts",
+      "reviews": [
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:d50c7fae8a3213350af7ef9f02b5641111cc138dfc9083e0024517f18990f6b8",
+          "classification": "generated",
+          "justification": "V8 reports a zero-coordinate phantom branch for the final output-reference mismatch return; public transition and scheduling tests exercise the real discriminant outcomes."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/server-only.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 3,
+          "column": 0,
+          "sourceFingerprint": "sha256:afe0022e70146baaa58834191bb498a8e68d5b78be8229651fb5b27f1c424bc2",
+          "classification": "unreachable",
+          "justification": "Both package exports resolve only through the Node condition and are marked browser-false; this guard can fail only when an unsupported runtime or bundler bypasses the declared package contract."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/testing-graph.ts",
+      "reviews": [
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:a325300c1337ac0f6085a9bfcaeb2cad266ae94c5159765d0830defcf3f92cb1",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
+        },
+        {
+          "branchId": "5",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 49,
+          "column": 17,
+          "sourceFingerprint": "sha256:a325300c1337ac0f6085a9bfcaeb2cad266ae94c5159765d0830defcf3f92cb1",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/transition/graph-scheduler-indexes.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 18,
+          "column": 2,
+          "sourceFingerprint": "sha256:a92910b660ad1c1417fc97535e23fc208fd24e9fed56f47f2e4ae4e84f0f5c92",
+          "classification": "unreachable",
+          "justification": "configuredPairedParallelId is private and its only caller invokes it inside a node loop after returning early for every non-Merge definition. The helper therefore cannot receive a non-Merge node through the scheduler's public seams."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/transition/graph-scheduler.ts",
+      "reviews": [
+        {
+          "branchId": "36",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "unreachable",
+          "justification": "A parsed checkpoint invocation key is derived from its workflow, node, branch, and iteration identity. Within one scheduler scope it is therefore a root identity, while an existing entry is replaced only by that same root; the implicit inconsistent-key arm requires bypassing checkpoint validation."
+        },
+        {
+          "branchId": "41",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "unreachable",
+          "justification": "Validated structured graphs cannot reconverge two branch paths before their declared Merge boundary, and descendant marking stops at Merge nodes. A node therefore cannot first receive a longer path and later an equal or shorter competing path in one scheduling pass."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 53,
+          "column": 2,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "unreachable",
+          "justification": "workflowControlOutputKind accepts only core.condition v1 and core.switch v1 as branch definitions. The preceding condition return handles core.condition v1, so a surviving branch definition cannot take this non-switch or non-v1 arm."
+        },
+        {
+          "branchId": "5",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 55,
+          "column": 2,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 62,
+          "column": 2,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 66,
+          "column": 8,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 68,
+          "column": 2,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 127,
+          "column": 6,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 179,
+          "column": 4,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 182,
+          "column": 46,
+          "sourceFingerprint": "sha256:4205402469d069a3f2987d2725bee0d644c3bda5b147c686064e8c6ef1b8ff03",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "37",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 243,
+          "column": 34,
+          "sourceFingerprint": "sha256:eaa18aaa73cfe1feea07ff6329ec125f35a1b7a179f68b9251a8b2cb43f2cc35",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "38",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 260,
+          "column": 27,
+          "sourceFingerprint": "sha256:0c1dd4a8ebc6f456b7b8e85c4d12223b4c3aed1bf9231f5f522c3d06eedbb01a",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "49",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 325,
+          "column": 66,
+          "sourceFingerprint": "sha256:714295db5d5fcef849d4ad0f4f9ea53529d4b3aa357f733b4a59b6af70a884e5",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "53",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 356,
+          "column": 64,
+          "sourceFingerprint": "sha256:efbd2e09d994472350695c8927c246b172186be44757155a08a14d14ffd5a223",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "63",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 402,
+          "column": 47,
+          "sourceFingerprint": "sha256:a2d16540ecb74be4c954faebba5a76a0c8e7dcb0306aa5fc5768c1ff35bc5a73",
+          "classification": "unreachable",
+          "justification": "indexSchedulerGraph initializes a predecessor array for every graph node before readiness is derived, including isolated roots; the empty-array fallback guards only an internally inconsistent index."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/transition/scheduling.ts",
       "reviews": [
         {
@@ -2835,48 +3861,6 @@
           "sourceFingerprint": "sha256:e0312621d96c3443973482c4a8ec4f10478d23181905d7d7e0d5856a55429fda",
           "classification": "defensive",
           "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/server-only.ts",
-      "reviews": [
-        {
-          "branchId": "0",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 3,
-          "column": 0,
-          "sourceFingerprint": "sha256:afe0022e70146baaa58834191bb498a8e68d5b78be8229651fb5b27f1c424bc2",
-          "classification": "unreachable",
-          "justification": "Both package exports resolve only through the Node condition and are marked browser-false; this guard can fail only when an unsupported runtime or bundler bypasses the declared package contract."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/testing-graph.ts",
-      "reviews": [
-        {
-          "branchId": "3",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:a325300c1337ac0f6085a9bfcaeb2cad266ae94c5159765d0830defcf3f92cb1",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "5",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 49,
-          "column": 17,
-          "sourceFingerprint": "sha256:a325300c1337ac0f6085a9bfcaeb2cad266ae94c5159765d0830defcf3f92cb1",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
         }
       ]
     },
@@ -3044,102 +4028,6 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/transition/workflow-transition-observations.ts",
-      "reviews": [
-        {
-          "branchId": "4",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "31",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "32",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "9",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 75,
-          "column": 8,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "unreachable",
-          "justification": "declaredJoin always materializes joinInvocationKey before branch dispositions can be applied."
-        },
-        {
-          "branchId": "11",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 88,
-          "column": 2,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "defensive",
-          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        },
-        {
-          "branchId": "18",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 125,
-          "column": 6,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "unreachable",
-          "justification": "The node comparator requires equal invocation keys, which necessarily refer to the same validated node."
-        },
-        {
-          "branchId": "22",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 147,
-          "column": 10,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "defensive",
-          "justification": "A node-ready observation that omits branchPath preserves omission instead of materializing an empty scope."
-        },
-        {
-          "branchId": "23",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 150,
-          "column": 10,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "defensive",
-          "justification": "A node-ready observation that omits iterationPath preserves omission instead of materializing an empty iteration scope."
-        },
-        {
-          "branchId": "39",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 222,
-          "column": 2,
-          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
-          "classification": "unreachable",
-          "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
-        }
-      ]
-    },
-    {
-      "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/transition/workflow-transition-loops.ts",
       "reviews": [
         {
@@ -3229,6 +4117,102 @@
           "line": 212,
           "column": 2,
           "sourceFingerprint": "sha256:0c2aa508172b28dcfe1329c3ab82518f7ea267e633ce571db253edfed5379f32",
+          "classification": "unreachable",
+          "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/transition/workflow-transition-observations.ts",
+      "reviews": [
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "31",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 75,
+          "column": 8,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
+          "classification": "unreachable",
+          "justification": "declaredJoin always materializes joinInvocationKey before branch dispositions can be applied."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 88,
+          "column": 2,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
+          "classification": "defensive",
+          "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 125,
+          "column": 6,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
+          "classification": "unreachable",
+          "justification": "The node comparator requires equal invocation keys, which necessarily refer to the same validated node."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 147,
+          "column": 10,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
+          "classification": "defensive",
+          "justification": "A node-ready observation that omits branchPath preserves omission instead of materializing an empty scope."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 150,
+          "column": 10,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
+          "classification": "defensive",
+          "justification": "A node-ready observation that omits iterationPath preserves omission instead of materializing an empty iteration scope."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 222,
+          "column": 2,
+          "sourceFingerprint": "sha256:b5c7252d6bab36cfab8c07b9e306b872a773da31fd41040e89d136949f0a7936",
           "classification": "unreachable",
           "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
         }
@@ -3419,989 +4403,6 @@
           "sourceFingerprint": "sha256:f4501a60c4c1b826cf1da86a756cf2be9f9477247f521d81b0e7d27c9e81338a",
           "classification": "defensive",
           "justification": "This residual workflow-engine decision enforces deterministic validation, identity, ordering, deduplication, or transition behavior for malformed, repeated, legacy, or internally inconsistent durable state."
-        }
-      ]
-    },
-    {
-      "cohort": "database",
-      "file": "packages/database/src/tenant-access/workspace.ts",
-      "reviews": [
-        {
-          "branchId": "22",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 162,
-          "column": 4,
-          "sourceFingerprint": "sha256:7adf90b10882c76dd43f5bf48ef16597a237c2a90f89697cd504b4e63321b6c8",
-          "classification": "unreachable",
-          "justification": "The released-client guard is fail-closed after deterministic ownership cleanup; the branch protects against impossible re-entry once release has completed."
-        }
-      ]
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/failure-notification-delivery.ts",
-      "reviews": [
-        {
-          "branchId": "27",
-          "locationIndex": 2,
-          "branchType": "switch",
-          "line": 513,
-          "column": 8,
-          "sourceFingerprint": "sha256:ca4578389ca8669f537a3321f50bbd53ce817b28ba6012a7795bdf6b5c7305e2",
-          "classification": "unreachable",
-          "justification": "The validated destination store port returns the closed Slack-or-email union, so TypeScript's assertNever default cannot be selected by a conforming adapter."
-        }
-      ]
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "reviews": [
-        {
-          "branchId": "16",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 295,
-          "column": 2,
-          "sourceFingerprint": "sha256:6aec7991dbdad70d8b88a5c6196718bb8445a165d064fda138e6e2c385a9fe51",
-          "classification": "defensive",
-          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
-        }
-      ]
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "reviews": [
-        {
-          "branchId": "1",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 88,
-          "column": 14,
-          "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
-          "classification": "integration",
-          "justification": "The named artifact-reference integration streams a normal node output through the database-backed pending-artifact persistence adapter.",
-          "evidenceId": "worker-artifact-reference"
-        },
-        {
-          "branchId": "1",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 97,
-          "column": 14,
-          "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
-          "classification": "defensive",
-          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
-        },
-        {
-          "branchId": "23",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 238,
-          "column": 13,
-          "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
-          "classification": "integration",
-          "justification": "The named HTTP node-attempt integration composes the dual-region artifact store and verifies the persisted streamed response.",
-          "evidenceId": "worker-http-node-attempt"
-        },
-        {
-          "branchId": "30",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 271,
-          "column": 12,
-          "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
-          "classification": "defensive",
-          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
-        }
-      ]
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/preview-attempt-runtime.ts",
-      "reviews": []
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/runtime/worker-process-shutdown.ts",
-      "reviews": [
-        {
-          "branchId": "1",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b462e6d59dec9447f719b7e119213521596c643b9858cf8c8762c17ecaa7da75",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "3",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 58,
-          "column": 35,
-          "sourceFingerprint": "sha256:a5d9b9a06d3457ffe5708f7b5d7f740be6a8de389c04494c46b5bff24bc3c74a",
-          "classification": "defensive",
-          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
-        }
-      ]
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/runtime/worker-readiness-monitor.ts",
-      "reviews": [
-        {
-          "branchId": "0",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "1",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "13",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "14",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "21",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "0",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 23,
-          "column": 4,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "defensive",
-          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
-        },
-        {
-          "branchId": "1",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 34,
-          "column": 6,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "defensive",
-          "justification": "Revocation attempts both marker operations with Promise.allSettled; a filesystem rejection is retained here so every cleanup failure is propagated together instead of masking the other operation."
-        },
-        {
-          "branchId": "2",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 35,
-          "column": 4,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "defensive",
-          "justification": "Production-only marker filesystem failures are aggregated and propagated to the fail-closed lifecycle path; injected marker failures exercise that public shutdown behavior without mutating host /tmp state."
-        },
-        {
-          "branchId": "6",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 66,
-          "column": 4,
-          "sourceFingerprint": "sha256:b871fc4b434896b0fc7d8386daca51035d2b6aeb46be8c5ae55e4a035040d5f9",
-          "classification": "defensive",
-          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/identity-workspace/use-cases.ts",
-      "reviews": [
-        {
-          "branchId": "8",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:97f100b432dfc79fadbc2746b11ded913d705afdf7ec45f2bca8de065f7a95ae",
-          "classification": "generated",
-          "justification": "V8 reports this synthetic branch arm at line zero for transpiled control-flow bookkeeping; it has no distinct source location or independently callable source behavior."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/platform/identity/identity-runtime.module.ts",
-      "reviews": [
-        {
-          "branchId": "32",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 284,
-          "column": 42,
-          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
-          "classification": "defensive",
-          "justification": "IdentityWorkspaceModule.register always supplies its controller list; the empty-list fallback protects the dynamic-module seam against future contract drift."
-        },
-        {
-          "branchId": "33",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 285,
-          "column": 38,
-          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
-          "classification": "defensive",
-          "justification": "IdentityWorkspaceModule.register always supplies its provider list; the empty-list fallback protects the dynamic-module seam against future contract drift."
-        },
-        {
-          "branchId": "34",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 286,
-          "column": 34,
-          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
-          "classification": "defensive",
-          "justification": "IdentityWorkspaceModule.register always supplies its export list; the empty-list fallback protects the dynamic-module seam against future contract drift."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/api-runtimes.ts",
-      "reviews": [
-        {
-          "branchId": "0",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 123,
-          "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
-          "classification": "defensive",
-          "justification": "The public bootstrap permits either an injected workspace database or an owned database runtime; this arm creates the owned runtime only when neither injected source supplies that responsibility."
-        },
-        {
-          "branchId": "8",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 163,
-          "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
-          "classification": "defensive",
-          "justification": "Webhook ingress is composed only when both identity and webhook configuration are available; the arm is reachable through the supported production bootstrap configuration."
-        },
-        {
-          "branchId": "10",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 177,
-          "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
-          "classification": "defensive",
-          "justification": "The scheduler is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice."
-        },
-        {
-          "branchId": "12",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 189,
-          "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
-          "classification": "defensive",
-          "justification": "The notification runtime is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice that unit bootstraps replace with a supplied runtime."
-        },
-        {
-          "branchId": "14",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 202,
-          "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
-          "classification": "defensive",
-          "justification": "Artifact handling is composed only when identity and artifact configuration are both available; the arm is a reachable optional-feature wiring choice."
-        },
-        {
-          "branchId": "19",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 283,
-          "column": 8,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/app.ts",
-      "reviews": [
-        {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 60,
-          "column": 49,
-          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
-          "classification": "defensive",
-          "justification": "When the bootstrap owns or receives a database runtime, it forwards that optional runtime into the dynamic module; omission remains valid for an injected workspace database."
-        },
-        {
-          "branchId": "3",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 62,
-          "column": 12,
-          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
-          "classification": "defensive",
-          "justification": "The workspace database dependency is optional because production bootstrap can own its database runtime; this arm preserves omission when no database adapter is injected."
-        },
-        {
-          "branchId": "4",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 65,
-          "column": 12,
-          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
-          "classification": "defensive",
-          "justification": "The rate-limit consumer is an optional test/composition override, and this arm preserves omission so the module can construct its configured consumer."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
-      "reviews": [
-        {
-          "branchId": "36",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent stream decisions are exercised through the provider boundary."
-        },
-        {
-          "branchId": "46",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent abort decisions are exercised through the provider boundary."
-        },
-        {
-          "branchId": "40",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 407,
-          "column": 6,
-          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
-          "classification": "defensive",
-          "justification": "The platform ReadableStream reader returns the specified read-result shape; this branch rejects a malformed injected stream implementation before consuming provider bytes."
-        },
-        {
-          "branchId": "47",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 453,
-          "column": 2,
-          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
-          "classification": "defensive",
-          "justification": "The caller checks the same signal immediately before entering readChunk; this second check closes the narrow abort race before listener registration."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/identity-infrastructure/oidc-response-cleanup.ts",
-      "reviews": [
-        {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 7,
-          "column": 57,
-          "sourceFingerprint": "sha256:7e81f44bd32a1f3e7b710bc882759db93e128c5b41933f72f603958b6942bc43",
-          "classification": "unreachable",
-          "justification": "The preceding condition proves response.body is non-null and unlocked, and the native Response body getter is stable for the response lifetime; the optional-chain null fallback cannot be selected."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/identity-infrastructure/oidc-secret-encryption.ts",
-      "reviews": [
-        {
-          "branchId": "28",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "13",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 116,
-          "column": 4,
-          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        },
-        {
-          "branchId": "17",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 148,
-          "column": 2,
-          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        },
-        {
-          "branchId": "23",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 181,
-          "column": 2,
-          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        },
-        {
-          "branchId": "27",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 225,
-          "column": 8,
-          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        },
-        {
-          "branchId": "36",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 302,
-          "column": 8,
-          "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/webhooks/ingress.ts",
-      "reviews": [
-        {
-          "branchId": "16",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:4ac280422efef3372e1de408566e37f04c83535a062b991cfeeeb9285ed8b489",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "8",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 144,
-          "column": 2,
-          "sourceFingerprint": "sha256:4ac280422efef3372e1de408566e37f04c83535a062b991cfeeeb9285ed8b489",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        },
-        {
-          "branchId": "36",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 439,
-          "column": 74,
-          "sourceFingerprint": "sha256:4da6eb6edc98114c2d06a27f02e49a1970142b1034fd07b112dd486c10e05f73",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        },
-        {
-          "branchId": "42",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 486,
-          "column": 2,
-          "sourceFingerprint": "sha256:4ac280422efef3372e1de408566e37f04c83535a062b991cfeeeb9285ed8b489",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        }
-      ]
-    },
-    {
-      "cohort": "api-orchestration",
-      "file": "apps/api/src/workflow-runs/sse-authorization-lifetime.ts",
-      "reviews": [
-        {
-          "branchId": "9",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "10",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "19",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "23",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "24",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "17",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 243,
-          "column": 23,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "defensive",
-          "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
-        },
-        {
-          "branchId": "18",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 270,
-          "column": 4,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "defensive",
-          "justification": "The watchdog checks the same composed signal immediately before constructing this private wait; the helper precheck safely contains a nonstandard synchronously changing signal."
-        },
-        {
-          "branchId": "20",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 280,
-          "column": 4,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "defensive",
-          "justification": "Abort settlement clears the deadline timer and deadline settlement removes the abort listener; this callback guard contains a late host-timer delivery after the wait has already settled."
-        },
-        {
-          "branchId": "21",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 286,
-          "column": 4,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "defensive",
-          "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
-        },
-        {
-          "branchId": "22",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 292,
-          "column": 8,
-          "sourceFingerprint": "sha256:f785578e72110bc3bed89fe994162c4d3cb392c3da7b43365e76ade3a3cc0698",
-          "classification": "defensive",
-          "justification": "The SSE authorization lifetime owns its promise, timer, and abort-listener state; this residual guard prevents duplicate settlement, stale-owner cleanup, or an abort race after the surrounding state has already been normalized."
-        }
-      ]
-    },
-    {
-      "cohort": "lifecycle-command",
-      "file": "apps/lifecycle-command/src/main.ts",
-      "reviews": [
-        {
-          "branchId": "8",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 159,
-          "column": 0,
-          "sourceFingerprint": "sha256:4c1d7ee79451e84d80766dc2cd47a6ba780fc2883d5a9b36c90b5081049d89c3",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        }
-      ]
-    },
-    {
-      "cohort": "api-entrypoints",
-      "file": "apps/api/src/main.ts",
-      "reviews": [
-        {
-          "branchId": "1",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 51,
-          "column": 40,
-          "sourceFingerprint": "sha256:9ae4b61d6ef9ee3515ad372330a6a834a4c3aaa979dd759934b4a9a5feab5157",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 53,
-          "column": 45,
-          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "3",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 61,
-          "column": 55,
-          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "6",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 80,
-          "column": 14,
-          "sourceFingerprint": "sha256:fb3bce53b792370252b5a86856eb22d0c65bcf76fb45a6ef07f6711e759db4b6",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "9",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 120,
-          "column": 0,
-          "sourceFingerprint": "sha256:fb3bce53b792370252b5a86856eb22d0c65bcf76fb45a6ef07f6711e759db4b6",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        }
-      ]
-    },
-    {
-      "cohort": "worker-entrypoints",
-      "file": "apps/worker/src/main.ts",
-      "reviews": [
-        {
-          "branchId": "1",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 61,
-          "column": 40,
-          "sourceFingerprint": "sha256:04d1349161ed1a8c59bf1c4986efaa4ff68cdb1769e9bb366290662227c81a5c",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 63,
-          "column": 45,
-          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "3",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 72,
-          "column": 55,
-          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "4",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 80,
-          "column": 19,
-          "sourceFingerprint": "sha256:d06bab839de8ab575ba7b1184f59bab206b538cb8c85855a2e56e88e6a243310",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 92,
-          "column": 14,
-          "sourceFingerprint": "sha256:e23f278dda2be031343c06728d78cbc1c4d498102bbdcec9500bd7a2d1f734a0",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "10",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 135,
-          "column": 0,
-          "sourceFingerprint": "sha256:e23f278dda2be031343c06728d78cbc1c4d498102bbdcec9500bd7a2d1f734a0",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        }
-      ]
-    },
-    {
-      "cohort": "operator-command-entrypoints",
-      "file": "apps/operator-command/src/main.ts",
-      "reviews": [
-        {
-          "branchId": "1",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 60,
-          "column": 40,
-          "sourceFingerprint": "sha256:0f9f67dada805d41b9d76baea78d0d98cf5bac2602a673b0874b607d93e6a294",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 62,
-          "column": 45,
-          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "3",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 68,
-          "column": 49,
-          "sourceFingerprint": "sha256:bda928f95ecc9b6a795f69694543c5ddba0e6b5de2bd277758095a074677525c",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "4",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 76,
-          "column": 55,
-          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 135,
-          "column": 0,
-          "sourceFingerprint": "sha256:bda928f95ecc9b6a795f69694543c5ddba0e6b5de2bd277758095a074677525c",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        }
-      ]
-    },
-    {
-      "cohort": "recovery-entrypoints",
-      "file": "apps/recovery/src/main.ts",
-      "reviews": [
-        {
-          "branchId": "1",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 83,
-          "column": 40,
-          "sourceFingerprint": "sha256:9c0e92c683a5c50119d733b9585ef617d7617dcd16f262b04700c760ef49d58a",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 85,
-          "column": 45,
-          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "3",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 91,
-          "column": 49,
-          "sourceFingerprint": "sha256:4d3a40bd5bb4ee7d7d6681b37244dad2bfb5374339fa0dc3223d6b8270907d23",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "4",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 101,
-          "column": 55,
-          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 162,
-          "column": 0,
-          "sourceFingerprint": "sha256:4d3a40bd5bb4ee7d7d6681b37244dad2bfb5374339fa0dc3223d6b8270907d23",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        }
-      ]
-    },
-    {
-      "cohort": "retention-entrypoints",
-      "file": "apps/retention/src/main.ts",
-      "reviews": [
-        {
-          "branchId": "0",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 86,
-          "column": 2,
-          "sourceFingerprint": "sha256:bf45a43cdfb4c6037320148a1c5e2b44339558d656327c5833e3b498e99175f6",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 103,
-          "column": 40,
-          "sourceFingerprint": "sha256:56aaa69618f4fe6bc06f8412849e4d91985c2670ad16a811a260e865f1592156",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "3",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 105,
-          "column": 45,
-          "sourceFingerprint": "sha256:f8d82e862aeafb84a908b676985de87cda20954e189ca17e02ac402fe2ceb0ac",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "4",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 111,
-          "column": 49,
-          "sourceFingerprint": "sha256:bf45a43cdfb4c6037320148a1c5e2b44339558d656327c5833e3b498e99175f6",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "5",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 126,
-          "column": 55,
-          "sourceFingerprint": "sha256:a6f8c7b2f7784514ebf8fcac6e702867b6187e23baec7cf2887df28df105a7c8",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
-        },
-        {
-          "branchId": "9",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 279,
-          "column": 0,
-          "sourceFingerprint": "sha256:bf45a43cdfb4c6037320148a1c5e2b44339558d656327c5833e3b498e99175f6",
-          "classification": "defensive",
-          "justification": "This residual arm belongs to the optional bootstrap injection seam, cleanup guard, or direct-module execution boundary; isolated entrypoint tests use controlled dependencies while lifecycle suites exercise the composed process behavior."
         }
       ]
     }

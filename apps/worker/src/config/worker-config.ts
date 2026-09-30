@@ -19,6 +19,7 @@ import {
   parseInvitationDeliveryConfig,
   type InvitationDeliveryConfig,
 } from './invitation-delivery-config.js';
+import * as autoPause from './workflow-auto-pause-config.js';
 
 const workerEnvironments = [
   'development',
@@ -420,6 +421,8 @@ export type WorkerConfig = Readonly<
     connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
     authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
+    workflowAutoPause: autoPause.WorkflowAutoPauseConfig;
+    coordinator: { workflowTriggerOutcomesEnabled: boolean };
   }
 >;
 
@@ -524,6 +527,7 @@ export function parseWorkerConfig(
       ),
       deployed,
     );
+    const workflowAutoPause = autoPause.parseWorkflowAutoPauseConfig(raw);
     const authenticationMailDelivery = parseAuthenticationMailDeliveryConfig(
       raw,
       deployed,
@@ -550,7 +554,11 @@ export function parseWorkerConfig(
         : { authenticationMailDelivery }),
       database: Object.freeze(result.data.database),
       dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
-      coordinator: Object.freeze(result.data.coordinator),
+      workflowAutoPause,
+      coordinator: Object.freeze({
+        ...result.data.coordinator,
+        workflowTriggerOutcomesEnabled: workflowAutoPause.mode !== 'off',
+      }),
       nodeAttempt: Object.freeze(result.data.nodeAttempt),
       resourceSafety: Object.freeze(result.data.resourceSafety),
       triggerRuntime: Object.freeze(result.data.triggerRuntime),

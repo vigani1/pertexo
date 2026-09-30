@@ -14,6 +14,7 @@ export type WebhookDeliveryOutcome =
   | 'authentication_failed'
   | 'invalid_request'
   | 'rate_limited'
+  | 'paused'
   | 'conflict'
   | 'unavailable';
 

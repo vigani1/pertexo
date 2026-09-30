@@ -10,6 +10,7 @@ import {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
+  WebhookWorkflowPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from '@pertexo/database/testing';
@@ -555,6 +556,15 @@ describe('generic webhook ingress', () => {
     expect(fencedResponse.json<{ code: string }>().code).toBe(
       'webhook.unavailable',
     );
+
+    const paused = setup(undefined, new WebhookWorkflowPausedError());
+    const pausedResponse = await paused.application.inject(
+      request('{}', currentSecret),
+    );
+    expect(pausedResponse.statusCode).toBe(423);
+    expect(pausedResponse.json<{ code: string }>().code).toBe(
+      'webhook.workflow_paused',
+    );
   });
 
   it('fails closed for missing verification and malformed timestamp material', async () => {
@@ -797,6 +807,12 @@ describe('generic webhook ingress', () => {
         acceptanceError: new WorkspaceRunQuotaExceededError(),
         status: 429,
         fact: { ...verified, outcome: 'rate_limited', replayCheck: 'new' },
+      },
+      {
+        name: 'a paused workflow',
+        acceptanceError: new WebhookWorkflowPausedError(),
+        status: 423,
+        fact: { ...verified, outcome: 'paused', replayCheck: 'new' },
       },
       {
         name: 'an endpoint that stopped accepting',
