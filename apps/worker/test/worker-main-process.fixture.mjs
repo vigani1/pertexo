@@ -38,11 +38,17 @@ const config = {
     maximumAdmissions: 1,
     runTimeoutFailureContextEnabled: false,
     workspaceInboxProducerEnabled: false,
+    workflowTriggerOutcomesEnabled: false,
   },
   workspaceInbox: {
     foldBatchSize: 500,
     foldPollMillis: 1_000,
     expiryPollMillis: 300_000,
+  },
+  workflowAutoPause: {
+    mode: 'off',
+    foldBatchSize: 500,
+    foldPollMillis: 1_000,
   },
   database: {
     connectionString: 'postgresql://unused',

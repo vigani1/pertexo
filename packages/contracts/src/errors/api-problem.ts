@@ -50,6 +50,7 @@ export const API_PROBLEM_CODES = [
   'webhook.invalid_json',
   'webhook.idempotency_conflict',
   'webhook.rate_limited',
+  'webhook.workflow_paused',
   'webhook.unavailable',
   'internal.unexpected',
 ] as const;
@@ -386,6 +387,13 @@ const apiProblemDetails = {
   'webhook.rate_limited': {
     status: 429,
     title: 'Webhook rate limit reached',
+    severity: 'warn',
+    exposeDetail: false,
+  },
+  // ADR 056: returned only after the signature verified.
+  'webhook.workflow_paused': {
+    status: 423,
+    title: 'Workflow paused',
     severity: 'warn',
     exposeDetail: false,
   },

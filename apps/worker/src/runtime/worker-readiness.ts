@@ -9,6 +9,10 @@ import {
   WORKSPACE_INBOX_RUNTIME,
   type WorkspaceInboxRuntime,
 } from '../execution/workspace-inbox-runtime.js';
+import {
+  WORKFLOW_AUTO_PAUSE_RUNTIME,
+  type WorkflowAutoPauseRuntime,
+} from '../execution/workflow-auto-pause-runtime.js';
 import { WORKSPACE_DATABASE } from '../platform/database/database.module.js';
 import {
   COORDINATOR_RUNTIME,
@@ -57,6 +61,9 @@ export class WorkerReadiness {
     @Optional()
     @Inject(WORKSPACE_INBOX_RUNTIME)
     private readonly workspaceInboxRuntime?: WorkspaceInboxRuntime,
+    @Optional()
+    @Inject(WORKFLOW_AUTO_PAUSE_RUNTIME)
+    private readonly workflowAutoPauseRuntime?: WorkflowAutoPauseRuntime,
   ) {}
 
   public assertCanAcceptWork(): void {
@@ -75,6 +82,7 @@ export class WorkerReadiness {
       this.coordinatorRuntime?.checkReadiness(),
       this.maintenanceRuntime?.checkReadiness(),
       this.workspaceInboxRuntime?.checkReadiness(),
+      this.workflowAutoPauseRuntime?.checkReadiness(),
     ]);
     this.authenticationMailRuntime?.checkReadiness();
     this.assertCanAcceptWork();
