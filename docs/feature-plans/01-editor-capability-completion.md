@@ -20,11 +20,11 @@ Nested For Each commands, scoped layout, body UI, undo and editable JSONata/stru
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [apps/web/src/features/workflow-editor/model/graph-scopes.ts](../../apps/web/src/features/workflow-editor/model/graph-scopes.ts)
-- [apps/web/src/features/workflow-editor/model/graph-commands.ts](../../apps/web/src/features/workflow-editor/model/graph-commands.ts)
+- [apps/web/src/features/workflow-editor/model/graph/graph-scopes.ts](../../apps/web/src/features/workflow-editor/model/graph/graph-scopes.ts)
+- [apps/web/src/features/workflow-editor/model/graph/graph-commands.ts](../../apps/web/src/features/workflow-editor/model/graph/graph-commands.ts)
 - [apps/web/src/features/workflow-editor/components/inspector/input-mappings/mapping-source-editor.tsx](../../apps/web/src/features/workflow-editor/components/inspector/input-mappings/mapping-source-editor.tsx)
-- [apps/web/test/features/workflow-editor-for-each.test.tsx](../../apps/web/test/features/workflow-editor-for-each.test.tsx)
-- [apps/web/test/features/workflow-editor-body-model.test.ts](../../apps/web/test/features/workflow-editor-body-model.test.ts)
+- [apps/web/test/features/workflow-editor/workflow-editor-for-each.test.tsx](../../apps/web/test/features/workflow-editor/workflow-editor-for-each.test.tsx)
+- [apps/web/test/features/workflow-editor/workflow-editor-body-model.test.ts](../../apps/web/test/features/workflow-editor/workflow-editor-body-model.test.ts)
 - [apps/web/src/features/workflow-settings/workflow-versions-page.tsx](../../apps/web/src/features/workflow-settings/workflow-versions-page.tsx)
 
 “Not established” means no complete product was found in this targeted inventory,
@@ -117,7 +117,7 @@ top-level schema summary completely visualizes nested output shapes.
 | `expression` | JSONata text row, stored policy version retained | Runtime context is **`runInput` and `nodeOutputs`**, not already-resolved step input. Nonempty local check; restricted server validation/evaluation; no browser evaluator | Correct example/context, invalid expression row focus, actual evaluated output after reload |
 | `structured_input` | Loop source selector + path; available for body `item`/`ordinal`, or preserved unsupported existing row | No outer/other-body escape; engine scope context; unknown port remains visibly invalid | Nested 2×2 item/ordinal assertions through authored/saved graph |
 
-Canonical owners: `model/input-mappings.ts`,
+Canonical owners: `model/inspector/input-mappings.ts`,
 `components/inspector/input-mappings/`, `inputs-tab.tsx`, `use-live-mappings.ts`;
 runtime `packages/workflow-model/src/mapping.ts` and
 `expressions/policy.ts` (`ExpressionContextV1`). Do not duplicate types/parsers.
@@ -136,9 +136,9 @@ runtime `packages/workflow-model/src/mapping.ts` and
    read-only. Tests: 1/1000/zero/negative/partial, relational limits, nested body
    preservation, undo/redo, selection/route guard, autosave/reload, keyboard and
    390/1024/1280/1440 widths. Intended owners: `loop-body-section.tsx`, a meaningful
-   bounds component if substantial, `model/graph-commands.ts`/`node-form.ts`,
+   bounds component if substantial, `model/graph/graph-commands.ts`/`model/inspector/node-form.ts`,
    existing For Each model/component/browser tests.
-2. **Merge reference duplication:** `model/graph-copies.ts:copyStep` remaps
+2. **Merge reference duplication:** `model/graph/graph-copies.ts:copyStep` remaps
    `node_output.nodeId`, but leaves known `core.merge.config.parallelNodeId`
    attached to the original Parallel. Executable admission requires exactly one
    paired Merge per Parallel and matching pinned versions. Remap this specific

@@ -8,7 +8,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { WEBHOOK_URL_TEMPLATE, webhookPath } from '../../model/endpoint-key';
+import {
+  WEBHOOK_URL_TEMPLATE,
+  webhookPath,
+} from '../../model/triggers/endpoint-key';
 import { CopyField } from '../copy-field';
 
 function RevealContent({

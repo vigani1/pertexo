@@ -25,7 +25,7 @@ import {
   type WorkflowRunStatisticsResponse,
 } from '@pertexo/contracts/schemas/workflow-runs';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
-import type { RunHistoryFilters } from './model/run-search';
+import type { RunHistoryFilters } from './model/list/run-search';
 import { searchParams } from '@/lib/api/pagination';
 
 export function getWorkflowRunsPage(

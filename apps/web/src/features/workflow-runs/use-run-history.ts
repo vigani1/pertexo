@@ -2,7 +2,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import type { RunHistoryFilters } from './model/run-search';
+import type { RunHistoryFilters } from './model/list/run-search';
 import { workflowRunsInfiniteQueryOptions } from './workflow-runs.queries';
 
 const LIVE_REFRESH_MS = 10_000;

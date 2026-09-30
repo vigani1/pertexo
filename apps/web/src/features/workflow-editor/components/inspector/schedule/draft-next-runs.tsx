@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScheduleRunTimes } from '@/features/catalog/presentation.public';
 import { useSchedulePreview } from '@/features/workflow-publish/schedule-preview.public';
-import type { ScheduleRecurrence } from '../../../model/schedule-draft';
+import type { ScheduleRecurrence } from '../../../model/inspector/schedule-draft';
 
 /**
  * The next three run times of the rule on screen if it were published now,

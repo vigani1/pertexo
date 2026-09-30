@@ -12,7 +12,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { useDisplayNameChange } from '../../account-security.mutations';
+import { useDisplayNameChange } from './use-display-name-change';
 
 /** What is wrong with a name and how to fix it, from the contract's rules. */
 function nameProblem(value: string): string | undefined {

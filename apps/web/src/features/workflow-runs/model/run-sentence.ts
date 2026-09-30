@@ -1,17 +1,20 @@
 import type { WorkflowRunSummary } from '@pertexo/contracts/schemas/workflow-runs';
 import { formatDurationMs, formatShortTime } from '@/lib/format-time';
-import { runDurationMs } from './run-list';
+import { runDurationMs } from './list/run-list';
 import { isActiveRunStatus } from './run-status';
-import type { ThreadRow, ThreadStepStatus } from './thread-view';
+import type {
+  RunTimelineRow,
+  RunTimelineStepStatus,
+} from './timeline/run-timeline-model';
 
 type StepFacts = Pick<
-  ThreadRow,
+  RunTimelineRow,
   'label' | 'status' | 'attempts' | 'story' | 'resumeAt'
 >;
 
 function lastWith(
   rows: readonly StepFacts[],
-  status: ThreadStepStatus,
+  status: RunTimelineStepStatus,
 ): StepFacts | undefined {
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index];

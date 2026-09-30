@@ -12,20 +12,23 @@ import {
 } from '../../model/editor-store-context';
 import type { EditorFocusTarget } from '../../use-editor-actions';
 import type { InspectorTab } from '../../use-inspector-navigation';
-import { updateWorkflowNode } from '../../model/graph-commands';
+import { updateWorkflowNode } from '../../model/graph/graph-commands';
 import {
   findStep,
   isForEach,
   type GraphLevel,
   type WorkflowNode,
-} from '../../model/graph-scopes';
-import { isSlackStep } from '../../model/slack-channel';
-import { createScratchTracker } from '../../use-live-field';
+} from '../../model/graph/graph-scopes';
+import { isSlackStep } from '../../model/inspector/slack-channel';
+import { createScratchTracker } from './use-inspector-draft-field';
 import { AboutTab } from './about-tab';
 import { InputsTab } from './inputs-tab';
 import { InspectorHeader, type StepMenuActions } from './inspector-header';
 import { LoopBodySection } from './loop-body-section';
-import { fieldControlId, type NodeFormApi } from '../../model/node-form';
+import {
+  fieldControlId,
+  type NodeFormApi,
+} from '../../model/inspector/node-form';
 import { SetupTab } from './setup-tab';
 import {
   SlackChannelField,

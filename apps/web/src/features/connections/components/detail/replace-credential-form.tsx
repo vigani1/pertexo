@@ -17,7 +17,7 @@ import { CredentialFields } from '../credential/credential-fields';
 import {
   createHeaderRowId,
   useCredentialForm,
-} from '../../use-credential-form';
+} from '../credential/use-credential-form';
 
 /**
  * Replaces a connection's stored credential. The command names the secret

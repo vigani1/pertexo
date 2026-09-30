@@ -20,7 +20,11 @@ import {
 } from '../../model/live-updates';
 import { StatusGuide } from '@/components/patterns/status-guide';
 import { RUN_PAGE_GUIDE } from '../../model/run-guide';
-import { runDurationMs, shortRunId, workflowLabel } from '../../model/run-list';
+import {
+  runDurationMs,
+  shortRunId,
+  workflowLabel,
+} from '../../model/list/run-list';
 import {
   describeTrigger,
   isActiveRunStatus,

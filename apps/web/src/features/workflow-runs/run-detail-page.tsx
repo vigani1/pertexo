@@ -16,11 +16,17 @@ import type { ApiClient } from '@/lib/api/client';
 import { OutcomeUnknownCard } from './components/run-detail/outcome-unknown-card';
 import { RunDetailTabs } from './components/run-detail/run-detail-tabs';
 import { RunHeader } from './components/run-detail/run-header';
-import { StepError, StepLens } from './components/run-detail/step-lens';
+import {
+  StepError,
+  RunStepDetails,
+} from './components/run-detail/run-step-details';
 import { describeRunSentence } from './model/run-sentence';
 import { isActiveRunStatus } from './model/run-status';
-import { upstreamSteps } from './model/step-inputs';
-import { buildThreadView, type ThreadRow } from './model/thread-view';
+import { upstreamSteps } from './model/step-inspection/step-inputs';
+import {
+  buildRunTimeline,
+  type RunTimelineRow,
+} from './model/timeline/run-timeline-model';
 import { useMediaQuery } from '@/lib/use-media-query';
 import { useNow } from '@/lib/use-now';
 import { useRunEvents } from './use-run-events';
@@ -35,7 +41,7 @@ const LENS_MEDIA_QUERY = '(min-width: 48rem)';
 const PHONE_MEDIA_QUERY = '(max-width: 47.999rem)';
 
 /** The step worth opening first: what's running, waiting or went wrong. */
-function focusRow(rows: readonly ThreadRow[]): ThreadRow | undefined {
+function focusRow(rows: readonly RunTimelineRow[]): RunTimelineRow | undefined {
   const order = [
     'running',
     'waiting',
@@ -43,7 +49,7 @@ function focusRow(rows: readonly ThreadRow[]): ThreadRow | undefined {
     'failed',
     'timed_out',
   ];
-  const firstByStatus = new Map<string, ThreadRow>();
+  const firstByStatus = new Map<string, RunTimelineRow>();
   for (const row of rows)
     if (!firstByStatus.has(row.status)) firstByStatus.set(row.status, row);
   for (const status of order) {
@@ -60,11 +66,11 @@ function focusRow(rows: readonly ThreadRow[]): ThreadRow | undefined {
 /** The step whose error explains a failed run, for the phone's notice. */
 function failureRow(
   status: string,
-  rows: readonly ThreadRow[],
-): (ThreadRow & { safeErrorCode: string }) | undefined {
+  rows: readonly RunTimelineRow[],
+): (RunTimelineRow & { safeErrorCode: string }) | undefined {
   if (status !== 'failed' && status !== 'timed_out') return undefined;
   const explained = rows.filter(
-    (row): row is ThreadRow & { safeErrorCode: string } =>
+    (row): row is RunTimelineRow & { safeErrorCode: string } =>
       row.safeErrorCode !== undefined,
   );
   const failed = explained.filter(
@@ -114,7 +120,7 @@ export function RunDetailPage({
   const nowMs = useNow(1_000, active);
   const view = useMemo(
     () =>
-      buildThreadView({
+      buildRunTimeline({
         run,
         nodes: snapshot.nodes,
         events: events.timeline,
@@ -166,7 +172,7 @@ export function RunDetailPage({
   }
 
   const lens = (
-    <StepLens
+    <RunStepDetails
       row={selected}
       rows={view.rows}
       upstream={upstream}
@@ -271,7 +277,7 @@ function PhoneFailureNotice({
   workspace,
 }: Readonly<{
   run: Readonly<{ status: string }>;
-  rows: readonly ThreadRow[];
+  rows: readonly RunTimelineRow[];
   workspace: AccessibleWorkspace;
 }>) {
   const row = failureRow(run.status, rows);

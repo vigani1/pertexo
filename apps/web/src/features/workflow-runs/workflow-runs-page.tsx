@@ -15,7 +15,7 @@ import {
   filtersFromSearch,
   withRunView,
   type WorkflowRunSearch,
-} from './model/run-search';
+} from './model/list/run-search';
 import { useRunHistory } from './use-run-history';
 
 /**

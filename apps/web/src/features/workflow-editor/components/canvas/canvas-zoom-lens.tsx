@@ -1,6 +1,6 @@
 import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
 import { useEditorStore } from '../../model/editor-store-context';
-import type { WorkflowFlowNode } from '../../model/graph-adapter';
+import type { WorkflowFlowNode } from '../../model/graph/graph-adapter';
 
 // Family colours, as on the step tiles: trigger cyan, action ice, logic
 // lavender, transform mint, output neutral.

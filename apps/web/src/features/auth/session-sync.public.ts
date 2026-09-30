@@ -1,1 +1,4 @@
-export { publishSessionChange, subscribeSessionChanges } from './session-sync';
+export {
+  publishSessionChange,
+  subscribeSessionChanges,
+} from './model/session/session-sync';

@@ -3,7 +3,7 @@ import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import { extractEndpointKey } from '../../model/endpoint-key';
+import { extractEndpointKey } from '../../model/triggers/endpoint-key';
 
 function endpointProblem(pasted: string): string | undefined {
   return extractEndpointKey(pasted) === undefined

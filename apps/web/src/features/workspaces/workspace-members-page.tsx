@@ -19,7 +19,7 @@ import { isUnauthenticated } from '@/features/auth/session-identity.public';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import { InvitationsPanel } from './components/invitations/invitations-panel';
-import { InviteLens } from './components/invitations/invite-lens';
+import { InvitePeopleSheet } from './components/invitations/invite-people-sheet';
 import { MembersPanel } from './components/members/members-panel';
 import { RolesMatrix } from './components/members/roles-matrix';
 import type { TeamSearch } from './model/team-search';
@@ -239,7 +239,7 @@ export function WorkspaceMembersPage({
       </div>
 
       {canManage ? (
-        <InviteLens
+        <InvitePeopleSheet
           open={
             search.invite === true || command.activeAttempt?.kind === 'create'
           }

@@ -17,28 +17,28 @@ import {
   type RefObject,
 } from 'react';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import { levelPositions } from '../../model/body-layout';
-import { forEachBodyIssues } from '../../model/body-rules';
+import { levelPositions } from '../../model/graph/for-each-body-layout';
+import { forEachBodyIssues } from '../../model/graph/for-each-body-rules';
 import {
   projectWorkflowGraph,
   type CanvasDecorations,
   type WorkflowFlowEdge,
   type WorkflowFlowNode,
-} from '../../model/graph-adapter';
+} from '../../model/graph/graph-adapter';
 import {
   connectWorkflowNodes,
   moveWorkflowNodes,
   type PortRef,
-} from '../../model/graph-commands';
+} from '../../model/graph/graph-commands';
 import {
   useEditorStore,
   useEditorStoreApi,
 } from '../../model/editor-store-context';
-import { canConnectSteps } from '../../model/graph-scopes';
+import { canConnectSteps } from '../../model/graph/graph-scopes';
 import { gestureEndPoint, portDropSource } from '../../model/quick-add';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas-actions-context';
-import { useCanvasFraming } from '../../use-canvas-framing';
+import { useCanvasFraming } from './use-canvas-framing';
 import { CanvasZoomLens } from './canvas-zoom-lens';
 import { ForEachNodeCard } from './for-each-node-card';
 import { WorkflowEdge } from './workflow-edge';

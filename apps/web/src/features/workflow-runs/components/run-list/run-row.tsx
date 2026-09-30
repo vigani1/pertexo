@@ -9,12 +9,12 @@ import {
   formatDurationMs,
   formatElapsedTime,
 } from '@/lib/format-time';
-import { shortRunId, workflowLabel } from '../../model/run-list';
+import { shortRunId, workflowLabel } from '../../model/list/run-list';
 import { describeListedFailure } from '../../model/run-failure';
 import { describeRunStatus } from '../../model/run-status';
 import { CopyButton } from '@/components/ui/copy-button';
 import { RunRowMenu } from '../run-actions/run-row-menu';
-import { ThreadBar } from '../thread-bar';
+import { RunDurationBar } from '../run-duration-bar';
 import { TriggerLabel } from '../trigger-label';
 import { RUN_ROW_LAYOUT, type RunListVariant } from './run-row-layout';
 
@@ -132,7 +132,7 @@ export function RunRow({
           {failure.reason === undefined ? null : ` · ${failure.reason}`}
         </p>
       )}
-      <ThreadBar
+      <RunDurationBar
         share={share}
         tone={look.tone}
         className={cn(

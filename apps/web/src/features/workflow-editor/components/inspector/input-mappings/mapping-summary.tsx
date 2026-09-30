@@ -1,14 +1,14 @@
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import type { GraphLevel } from '../../../model/graph-scopes';
+import type { GraphLevel } from '../../../model/graph/graph-scopes';
 import type {
   InputMappingDraftRow,
   SchemaValueType,
-} from '../../../model/input-mappings';
+} from '../../../model/inspector/input-mappings';
 import {
   describeMappingSource,
   type MappingSourceTone,
-} from '../../../model/mapping-summary';
+} from '../../../model/inspector/mapping-summary';
 
 const chipVariants = cva(
   'inline-block max-w-full min-w-0 shrink truncate rounded-sm px-1.5 py-1 font-mono text-[0.66rem] leading-none font-semibold',

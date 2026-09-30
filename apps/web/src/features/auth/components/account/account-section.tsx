@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   accountCommandFailure,
   needsFreshSignIn,
-} from '../../model/account-failure';
+} from '../../model/account/account-failure';
 import { allowlistedReturnPath, returnToSearch } from '../../model/return-path';
 import { Notice } from '@/components/ui/notice';
 

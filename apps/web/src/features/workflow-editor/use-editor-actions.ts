@@ -1,14 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { EditorStore } from './model/editor.store';
-import { stepTitle } from './model/graph-adapter';
+import { stepTitle } from './model/graph/graph-adapter';
 import {
   removeWorkflowElements,
   restoreWorkflowElements,
   type RemovedElements,
-} from './model/graph-commands';
-import { duplicateWorkflowNodes } from './model/graph-copies';
-import { levelAt, scopeOf, type ScopePath } from './model/graph-scopes';
+} from './model/graph/graph-commands';
+import { duplicateWorkflowNodes } from './model/graph/graph-copies';
+import { levelAt, scopeOf, type ScopePath } from './model/graph/graph-scopes';
 import { useInspectorNavigation } from './use-inspector-navigation';
 
 export type EditorFocusTarget = Readonly<{

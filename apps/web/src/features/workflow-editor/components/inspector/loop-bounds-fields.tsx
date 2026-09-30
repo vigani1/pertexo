@@ -7,10 +7,13 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import type { WorkflowNode } from '../../model/graph-scopes';
-import { parseNumberField } from '../../model/inspector-draft';
-import { fieldControlId, type NodeFormApi } from '../../model/node-form';
-import { useLiveField } from '../../use-live-field';
+import type { WorkflowNode } from '../../model/graph/graph-scopes';
+import { parseNumberField } from '../../model/inspector/inspector-draft';
+import {
+  fieldControlId,
+  type NodeFormApi,
+} from '../../model/inspector/node-form';
+import { useInspectorDraftField } from './use-inspector-draft-field';
 
 type LoopStructure = NonNullable<WorkflowNode['structured']>;
 type Limits = Pick<LoopStructure, 'maxIterations' | 'maxConcurrency'>;
@@ -57,7 +60,7 @@ export function LoopBoundsFields({
   structure,
   form,
 }: Readonly<{ structure: LoopStructure; form: NodeFormApi }>) {
-  const live = useLiveField<Limits, LimitText>({
+  const live = useInspectorDraftField<Limits, LimitText>({
     value: structure,
     equals: (left, right) =>
       left.maxIterations === right.maxIterations &&

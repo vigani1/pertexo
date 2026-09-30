@@ -6,7 +6,7 @@ import type {
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
-import type { RunHistoryFilters } from './model/run-search';
+import type { RunHistoryFilters } from './model/list/run-search';
 import type { RunStatus } from './model/run-status';
 import {
   getRunsSince,

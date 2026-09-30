@@ -2,7 +2,7 @@ import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catal
 import { Button } from '@/components/ui/button';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/editor-store-context';
-import { definitionIdentity } from '../../model/graph-adapter';
+import { definitionIdentity } from '../../model/graph/graph-adapter';
 import { isStartTrigger, placeableDefinitions } from '../../model/step-catalog';
 
 /**

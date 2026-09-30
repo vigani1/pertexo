@@ -5,7 +5,7 @@ import {
   returnToSearch,
 } from '@/features/auth/return-path.public';
 import { firstNameOf } from '../../model/workspace-roles';
-import { feedbackFor } from '../../mutations/use-member-command';
+import { feedbackFor } from '../../mutations/members/use-member-command';
 import {
   MemberCommandDialog,
   type MemberCommandView,

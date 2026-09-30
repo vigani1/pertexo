@@ -11,7 +11,7 @@ import {
   type InputMappingDraftRow,
   type PredecessorOption,
   type SchemaValueType,
-} from '../../../model/input-mappings';
+} from '../../../model/inspector/input-mappings';
 import { ChoiceSelect } from '../choice-select';
 import { LiteralEditor } from './literal-editor';
 

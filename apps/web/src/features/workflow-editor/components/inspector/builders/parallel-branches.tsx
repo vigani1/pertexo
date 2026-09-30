@@ -7,8 +7,11 @@ import {
   PARALLEL_MIN_BRANCHES,
   readParallelBranches,
   withParallelBranchCount,
-} from '../../../model/setup-builders';
-import { fieldControlId, type NodeFormApi } from '../../../model/node-form';
+} from '../../../model/inspector/setup-builders';
+import {
+  fieldControlId,
+  type NodeFormApi,
+} from '../../../model/inspector/node-form';
 
 /**
  * How many branches a Parallel splits into. Each is an output on the canvas;

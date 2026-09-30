@@ -16,7 +16,7 @@ Inspected anchors (paths may move during the concurrent structural cleanup):
 
 - [apps/api/src/node-testing/use-case.ts](../../apps/api/src/node-testing/use-case.ts)
 - [apps/web/src/features/workflow-runs/workflow-runs.api.ts](../../apps/web/src/features/workflow-runs/workflow-runs.api.ts)
-- [apps/web/test/features/workflow-editor-test-bar.test.tsx](../../apps/web/test/features/workflow-editor-test-bar.test.tsx)
+- [apps/web/test/features/workflow-editor/workflow-editor-test-bar.test.tsx](../../apps/web/test/features/workflow-editor/workflow-editor-test-bar.test.tsx)
 
 “Not established” means no complete product was found in this targeted inventory,
 not proof of absence from every file. Recheck these anchors before implementation.

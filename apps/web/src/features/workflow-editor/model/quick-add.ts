@@ -1,7 +1,7 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { FinalConnectionState } from '@xyflow/react';
-import type { PortRef } from './graph-commands';
-import type { GraphLevel } from './graph-scopes';
+import type { PortRef } from './graph/graph-commands';
+import type { GraphLevel } from './graph/graph-scopes';
 
 // Quick add: a step created after another one and connected from one of its
 // outputs, either by dropping a connection on empty canvas or from the

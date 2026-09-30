@@ -17,4 +17,4 @@ export {
   filtersFromSearch,
   sanitizeRunSearch,
   sanitizeWorkflowRunSearch,
-} from './model/run-search';
+} from './model/list/run-search';

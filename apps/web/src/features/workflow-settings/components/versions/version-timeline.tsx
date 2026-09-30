@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
 import { cn } from '@/lib/utils';
-import { stepCountLabel } from '../../model/version-steps';
+import { stepCountLabel } from '../../model/versions/version-steps';
 
 /**
  * Versions as knots on one vertical thread, newest first. The published

@@ -10,8 +10,8 @@ import {
   describeRecurrence,
 } from '@/features/catalog/presentation.public';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
-import { describeScheduleHold } from '../../model/occurrence-outcome';
-import { describeTriggerState } from '../../model/trigger-state';
+import { describeScheduleHold } from '../../model/triggers/occurrence-outcome';
+import { describeTriggerState } from '../../model/triggers/trigger-state';
 
 function When({
   label,

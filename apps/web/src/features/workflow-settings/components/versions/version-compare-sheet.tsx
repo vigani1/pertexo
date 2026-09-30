@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/sheet';
 import { PatternGlyph } from '@/features/workflows/shape.public';
 import { formatDate } from '@/lib/format-time';
-import { stepCountLabel } from '../../model/version-steps';
+import { stepCountLabel } from '../../model/versions/version-steps';
 import { VersionDiffSummary } from './version-diff-summary';
 
 function versionLabel(version: WorkflowVersionResponse): string {

@@ -17,11 +17,11 @@ import {
   loomLayout,
   loomX,
   shapeLoom,
-} from '@/features/workflow-runs/model/loom';
+} from '@/features/workflow-runs/model/loom/loom-model';
 import {
   groupRunsByDay,
   threadBarScale,
-} from '@/features/workflow-runs/model/run-list';
+} from '@/features/workflow-runs/model/list/run-list';
 
 const now = Date.parse('2026-09-24T14:00:00.000Z');
 const minute = 60_000;

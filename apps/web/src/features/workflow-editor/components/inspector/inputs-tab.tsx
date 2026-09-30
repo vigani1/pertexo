@@ -6,21 +6,21 @@ import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useEditorStoreApi } from '../../model/editor-store-context';
 import type { EditorFocusTarget } from '../../use-editor-actions';
-import type { GraphLevel, WorkflowNode } from '../../model/graph-scopes';
+import type { GraphLevel, WorkflowNode } from '../../model/graph/graph-scopes';
 import {
   directPredecessorOptions,
   inputKeySuggestions,
   nodeUsesRunInputDirectly,
   type InputMappingDraftRow,
-} from '../../model/input-mappings';
-import { useLiveMappings } from '../../use-live-mappings';
+} from '../../model/inspector/input-mappings';
+import { useInputMappingDraft } from './input-mappings/use-input-mapping-draft';
 import { IncomingConnections } from './incoming-connections';
 import {
   InsertDataPicker,
   type InsertedSource,
 } from './input-mappings/insert-data-picker';
 import { MappingRow } from './input-mappings/mapping-row';
-import type { NodeFormApi } from '../../model/node-form';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 
 type RowDisclosure = Readonly<{
   /** Rows whose editor is open. */
@@ -65,7 +65,7 @@ export function InputsTab({
   const activeRowId = useRef<string | undefined>(undefined);
   const store = useEditorStoreApi();
   const notifications = useNotifications();
-  const mappings = useLiveMappings({
+  const mappings = useInputMappingDraft({
     node,
     graph,
     loopPorts,

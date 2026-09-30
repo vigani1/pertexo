@@ -4,7 +4,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { StatusGlyph } from '@/components/ui/status';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import type { GraphLevel } from '../../../model/graph-scopes';
+import type { GraphLevel } from '../../../model/graph/graph-scopes';
 import {
   changeInputMappingKind,
   inputMappingKeyControlId,
@@ -14,7 +14,7 @@ import {
   type InputMappingDraftRow,
   type InputMappingRowErrors,
   type PredecessorOption,
-} from '../../../model/input-mappings';
+} from '../../../model/inspector/input-mappings';
 import { MappingSourceEditor } from './mapping-source-editor';
 import { MappingSummary } from './mapping-summary';
 

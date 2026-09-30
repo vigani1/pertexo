@@ -1,5 +1,5 @@
-import { stepTitle } from './graph-adapter';
-import type { GraphLevel } from './graph-scopes';
+import { stepTitle } from './graph/graph-adapter';
+import type { GraphLevel } from './graph/graph-scopes';
 
 /** The default output port; any other port is named on the path. */
 const DEFAULT_PORT = 'out';

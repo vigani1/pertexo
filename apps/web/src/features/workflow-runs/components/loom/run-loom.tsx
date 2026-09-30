@@ -14,11 +14,11 @@ import {
   shapeLoom,
   type LoomModel,
   type LoomRun,
-} from '../../model/loom';
+} from '../../model/loom/loom-model';
 import { describeRunStatus } from '../../model/run-status';
 import { useNow } from '@/lib/use-now';
 import { LoomRunList } from './loom-run-list';
-import { LoomRenderer } from './loom-renderer';
+import { LoomRenderer } from '../../model/loom/loom-renderer';
 
 type Hover = Readonly<{
   run: LoomRun;

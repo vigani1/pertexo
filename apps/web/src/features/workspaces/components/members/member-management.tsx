@@ -16,15 +16,15 @@ import {
   type ManagedRole,
   type WorkspaceRole,
 } from '../../model/workspace-roles';
-import type { MemberCommandFeedback } from '../../mutations/use-member-command';
-import { useMemberRemovalCommand } from '../../mutations/use-member-removal-command';
-import { useMemberRoleCommand } from '../../mutations/use-member-role-command';
+import type { MemberCommandFeedback } from '../../mutations/members/use-member-command';
+import { useMemberRemovalCommand } from '../../mutations/members/use-member-removal-command';
+import { useMemberRoleCommand } from '../../mutations/members/use-member-role-command';
 import {
   statusChangeDone,
   useMemberStatusCommand,
   type MemberStatusDirection,
-} from '../../mutations/use-member-status-command';
-import { useOwnershipTransferCommand } from '../../mutations/use-ownership-transfer-command';
+} from '../../mutations/members/use-member-status-command';
+import { useOwnershipTransferCommand } from '../../mutations/members/use-ownership-transfer-command';
 import {
   MemberList,
   type MemberAction,

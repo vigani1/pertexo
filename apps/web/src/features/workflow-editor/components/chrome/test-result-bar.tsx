@@ -4,7 +4,7 @@ import { describePreviewStatus } from '@/features/workflow-publish/public';
 import { shortStepError } from '@/features/workflow-runs/failure.public';
 import { formatDurationMs } from '@/lib/format-time';
 import { useEditorStore } from '../../model/editor-store-context';
-import { levelOf } from '../../model/graph-scopes';
+import { levelOf } from '../../model/graph/graph-scopes';
 import { describeTestPath } from '../../model/test-path';
 import type { RecordedTest } from '../../use-last-test';
 

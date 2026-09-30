@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Status } from '@/components/ui/status';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
-import { describeTriggerState } from '../../model/trigger-state';
+import { describeTriggerState } from '../../model/triggers/trigger-state';
 import {
   WEBHOOK_ACTIONS,
   type UncertainWebhookCommand,

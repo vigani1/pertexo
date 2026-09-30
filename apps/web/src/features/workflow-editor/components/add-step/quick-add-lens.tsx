@@ -10,10 +10,10 @@ import {
 import { FieldLabel } from '@/components/ui/field';
 import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover';
 import { useEditorStore } from '../../model/editor-store-context';
-import { stepTitle } from '../../model/graph-adapter';
-import { findStep } from '../../model/graph-scopes';
+import { stepTitle } from '../../model/graph/graph-adapter';
+import { findStep } from '../../model/graph/graph-scopes';
 import { followingSteps } from '../../model/quick-add';
-import type { QuickAddRequest } from '../../use-quick-add';
+import type { QuickAddRequest } from './use-quick-add';
 import { ChoiceSelect } from '../inspector/choice-select';
 import { portName } from '@/features/catalog/presentation.public';
 import { firstStepChoice } from '../../model/step-catalog';

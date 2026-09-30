@@ -7,8 +7,11 @@ import {
   describeRecurrence,
 } from '@/features/catalog/presentation.public';
 import { canonicalizeJson } from '@/lib/canonical-json';
-import type { NodeConfig } from '../../../model/inspector-draft';
-import { fieldControlId, type NodeFormApi } from '../../../model/node-form';
+import type { NodeConfig } from '../../../model/inspector/inspector-draft';
+import {
+  fieldControlId,
+  type NodeFormApi,
+} from '../../../model/inspector/node-form';
 import {
   browserTimezone,
   configFromDraft,
@@ -20,8 +23,8 @@ import {
   type ScheduleMode,
   type ScheduleRecurrence,
   type ScheduleSchema,
-} from '../../../model/schedule-draft';
-import { useLiveField } from '../../../use-live-field';
+} from '../../../model/inspector/schedule-draft';
+import { useInspectorDraftField } from '../use-inspector-draft-field';
 import { ChoiceSelect } from '../choice-select';
 import { DraftNextRuns } from './draft-next-runs';
 import {
@@ -64,7 +67,7 @@ export function ScheduleBuilder({
   form: NodeFormApi;
 }>) {
   const [fallbackTimezone] = useState(browserTimezone);
-  const live = useLiveField<NodeConfig, ScheduleDraft>({
+  const live = useInspectorDraftField<NodeConfig, ScheduleDraft>({
     value: config,
     format: (value) => draftFromConfig(value, schema, fallbackTimezone),
     parse: (draft) => configFromDraft(draft, schema),

@@ -7,7 +7,7 @@ import {
 import { XIcon } from 'lucide-react';
 import { use, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
-import type { WorkflowFlowEdge } from '../../model/graph-adapter';
+import type { WorkflowFlowEdge } from '../../model/graph/graph-adapter';
 import { CanvasActionsContext } from '../../model/canvas-actions-context';
 
 const HIDE_DELAY_MS = 160;

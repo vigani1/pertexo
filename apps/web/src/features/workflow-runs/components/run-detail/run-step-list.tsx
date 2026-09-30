@@ -1,8 +1,8 @@
 import { StatusGlyph } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
 import { cn } from '@/lib/utils';
-import type { ThreadRow } from '../../model/thread-view';
-import { stepTag } from '../../model/step-copy';
+import type { RunTimelineRow } from '../../model/timeline/run-timeline-model';
+import { stepTag } from '../../model/step-inspection/step-copy';
 import { RunLoadingWave } from './run-loading-wave';
 
 /**
@@ -17,7 +17,7 @@ export function RunStepList({
   selectedKey,
   onSelectStep,
 }: Readonly<{
-  rows: readonly ThreadRow[];
+  rows: readonly RunTimelineRow[];
   active: boolean;
   nowMs: number;
   selectedKey: string | undefined;
@@ -79,7 +79,7 @@ export function RunStepList({
 }
 
 /** "Succeeded · 0.04s", "Waiting · resumes in 12m": the thread's tag in words. */
-function stepLine(row: ThreadRow, nowMs: number): string {
+function stepLine(row: RunTimelineRow, nowMs: number): string {
   const tag = stepTag(row, nowMs);
   if (tag === '') return row.statusLabel;
   // A tag that already starts with the status ("skipped · not taken")

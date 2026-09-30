@@ -9,13 +9,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StatusGlyph } from '@/components/ui/status';
-import { runFilterChips } from '../../model/run-filter-labels';
+import { runFilterChips } from '../../model/list/run-filter-labels';
 import {
   clearedRunSearch,
   withoutRunFilter,
   withoutTimeRange,
   type RunSearch,
-} from '../../model/run-search';
+} from '../../model/list/run-search';
 import {
   describeRunStatus,
   describeTrigger,

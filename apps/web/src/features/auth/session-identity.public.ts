@@ -2,5 +2,5 @@ export {
   assertSessionIdentity,
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
-} from './session-identity';
-export { isUnauthenticated } from './auth-errors';
+} from './model/session/session-identity';
+export { isUnauthenticated } from './model/session/session-errors';

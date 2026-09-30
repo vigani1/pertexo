@@ -9,9 +9,9 @@ import { NotificationsProvider } from '@/components/ui/toast';
 import { StepInputData } from '@/features/workflow-runs/components/run-detail/run-data';
 import { describeNodeStatus } from '@/features/workflow-runs/model/run-status';
 import type {
-  ThreadRow,
-  ThreadStepStatus,
-} from '@/features/workflow-runs/model/thread-view';
+  RunTimelineRow,
+  RunTimelineStepStatus,
+} from '@/features/workflow-runs/model/timeline/run-timeline-model';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../support/mock-server';
 import { testFetch } from '../support/render-app';
@@ -38,9 +38,9 @@ function row(
   nodeRunId: string,
   nodeId: string,
   label: string,
-  status: ThreadStepStatus,
+  status: RunTimelineStepStatus,
   currentAttemptNumber = 1,
-): ThreadRow {
+): RunTimelineRow {
   const look =
     status === 'not_started'
       ? { tone: 'queued' as const, label: 'Not started yet' }
@@ -87,9 +87,9 @@ const recorded = (value: unknown) =>
 const none = () => HttpResponse.json({ input: { kind: 'none' } });
 
 /** Renders Send receipt's Data in; `show` hands it the row a later snapshot has. */
-function renderStep(initial: ThreadRow) {
+function renderStep(initial: RunTimelineRow) {
   const queryClient = createQueryClient();
-  const view = (current: ThreadRow) => (
+  const view = (current: RunTimelineRow) => (
     <QueryClientProvider client={queryClient}>
       <NotificationsProvider>
         <StepInputData
@@ -103,7 +103,7 @@ function renderStep(initial: ThreadRow) {
   );
   const result = render(view(initial));
   return {
-    show: (next: ThreadRow) => {
+    show: (next: RunTimelineRow) => {
       result.rerender(view(next));
     },
   };

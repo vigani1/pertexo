@@ -16,7 +16,7 @@ Inspected anchors (paths may move during the concurrent structural cleanup):
 
 - [packages/nodes-core/src/definitions.ts](../../packages/nodes-core/src/definitions.ts)
 - [docs/adr/009-restricted-jsonata.md](../../docs/adr/009-restricted-jsonata.md)
-- [apps/web/src/features/workflow-editor/model/input-mappings.ts](../../apps/web/src/features/workflow-editor/model/input-mappings.ts)
+- [apps/web/src/features/workflow-editor/model/inspector/input-mappings.ts](../../apps/web/src/features/workflow-editor/model/inspector/input-mappings.ts)
 
 “Not established” means no complete product was found in this targeted inventory,
 not proof of absence from every file. Recheck these anchors before implementation.

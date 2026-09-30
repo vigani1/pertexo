@@ -13,8 +13,8 @@ import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format-time';
 import { cn } from '@/lib/utils';
 import { describeNodeStatus } from '../../model/run-status';
-import { shortStepError } from '../../model/step-error-copy';
-import { loopItemOf } from '../../model/thread-view';
+import { shortStepError } from '../../model/step-inspection/step-error-copy';
+import { loopItemOf } from '../../model/timeline/run-timeline-model';
 import {
   stepHealthQueryOptions,
   stepRunsQueryOptions,

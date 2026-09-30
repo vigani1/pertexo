@@ -2,7 +2,10 @@ import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catal
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { ReactNode } from 'react';
 import { CopyButton } from '@/components/ui/copy-button';
-import { outputFieldsOf, type OutputField } from '../../model/input-mappings';
+import {
+  outputFieldsOf,
+  type OutputField,
+} from '../../model/inspector/input-mappings';
 import {
   describeConnectionRequirement,
   describeRetryBehaviour,

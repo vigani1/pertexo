@@ -1,5 +1,8 @@
 # Frontend architecture and implementation plan
 
+Current structural refactor: see
+[frontend structure and naming implementation plan](#frontend-structure-and-naming-implementation-plan-2026-09-30).
+
 Status: **stages 1–6 implemented; the staged frontend baseline is available**.
 Inspected 2026-09-14 against foundation commit `9b1e28e` (merged to main as
 `12aded2`). The current app has browser-safe contracts and transport,
@@ -606,29 +609,30 @@ control and live-feedback slots), which links `aria-describedby` and sets
 `aria-invalid`; an invalid control draws its border in the error colour and the
 message sits below it — no line or glyph under the control. Keep a form-level
 `Notice` for failures without a known path. The editor's step panel has no
-submit (it applies valid values as people type), so its fields (`useLiveField`,
-`useLiveMappings`) show a problem once people leave the field or input row, then
-follow their typing until it's fixed.
+submit (it applies valid values as people type), so its fields
+(`useInspectorDraftField`, `useInputMappingDraft`) show a problem once people
+leave the field or input row, then follow their typing until it's fixed.
 
 Node inspectors use **live apply**, not an Apply button. Each field keeps its
-own text (`use-live-field.ts`): a value that parses is committed straight into
-the editor store as an undoable step — consecutive edits of the same field
-within two seconds coalesce into one step — and the save coordinator writes the
-draft after a one-second pause, serialized with the draft's ETag. Text that
-doesn't parse stays in the field as an unfinished local edit with its message;
-the store's `inspectorScratch` flag then keeps the save state from reading
-“Saved”, pauses automatic checks, blocks publish and runs (“Finish or discard
-the unfinished edit…”), asks Stay/Discard before a command would replace the
-inspected step (another step, undo/redo, deleting it) and asks before leaving
-the editor. No effect copies keystrokes between stores.
+own text (`components/inspector/use-inspector-draft-field.ts`): a value that
+parses is committed straight into the editor store as an undoable step —
+consecutive edits of the same field within two seconds coalesce into one step —
+and the save coordinator writes the draft after a one-second pause, serialized
+with the draft's ETag. Text that doesn't parse stays in the field as an
+unfinished local edit with its message; the store's `inspectorScratch` flag then
+keeps the save state from reading “Saved”, pauses automatic checks, blocks
+publish and runs (“Finish or discard the unfinished edit…”), asks Stay/Discard
+before a command would replace the inspected step (another step, undo/redo,
+deleting it) and asks before leaving the editor. No effect copies keystrokes
+between stores.
 
 The Inputs tab lists each mapping as a compact `field ← source` row
-(`input-mappings/mapping-summary.tsx`, words from `model/mapping-summary.ts`):
-the field, the source as a chip (a step › path, the run input, the loop item, a
-fixed value or an expression with its code under it) and the value type. The row
-is the disclosure button for its editor, which opens in place; rows that need
-attention and rows made there start open, and Fix opens the row it names before
-focusing its field.
+(`input-mappings/mapping-summary.tsx`, words from
+`model/inspector/mapping-summary.ts`): the field, the source as a chip (a step ›
+path, the run input, the loop item, a fixed value or an expression with its code
+under it) and the value type. The row is the disclosure button for its editor,
+which opens in place; rows that need attention and rows made there start open,
+and Fix opens the row it names before focusing its field.
 
 Catalog config/input/output schemas arrive as **JSON Schema documents**, not
 executable Zod schemas. Do not cast them to Zod or import server registrations.
@@ -659,12 +663,12 @@ inspector layer threads it through; without that scope nothing is shown.
 
 Switch cases, Parallel branches and Validate rules have list builders
 (`workflow-editor/components/inspector/builders`, model in
-`model/setup-builders.ts`). Each reads the stored list only when it can write it
-back exactly, and otherwise leaves the list on JSON; each applies live like any
-other field. A case or branch whose output still has a connection can't be
-removed from the builder, since publication rejects an edge leaving an
+`model/inspector/setup-builders.ts`). Each reads the stored list only when it
+can write it back exactly, and otherwise leaves the list on JSON; each applies
+live like any other field. A case or branch whose output still has a connection
+can't be removed from the builder, since publication rejects an edge leaving an
 unconfigured port (ADR 018, ADR 019). New steps start from
-`model/starting-config.ts`: a schema-valid setup the editor chooses (two
+`model/graph/starting-config.ts`: a schema-valid setup the editor chooses (two
 branches, one case, bounded HTTP limits, a Merge joining the only Parallel on
 its level), because the catalog publishes no defaults and a definition's schema
 can't change in place (ADR 010).
@@ -710,9 +714,9 @@ resolving the previous outcome before issuing a new command.
    place: body steps are the container's React Flow children, positioned
    relative to the body's corner, and every command resolves a step or
    connection to its level (the workflow or a body, named by the For each steps
-   above it) through `model/graph-scopes.ts`, then writes that level back as one
-   undoable graph change. Connections never cross a body's edge; a body is
-   stored in the layout it is shown in before its first change.
+   above it) through `model/graph/graph-scopes.ts`, then writes that level back
+   as one undoable graph change. Connections never cross a body's edge; a body
+   is stored in the layout it is shown in before its first change.
 5. The save coordinator captures `{graph}` and the last acknowledged ETag,
    validates structure and sends `PUT .../draft` with `If-Match`.
 6. The accepted response updates the acknowledged baseline/ETag. Edits made
@@ -1234,13 +1238,13 @@ failure sentences, uncertain outcome, forbidden, rate-limit and support
 reference helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
 The inbox's new-failure notice is the one anchored toast. It uses its own Base
-UI toast manager (`features/inbox/inbox-arrivals.tsx`), not a second toast
-system: a thread leaves the Inbox destination and stops at the failure glyph
-where the notice opens. It never shows on the inbox page, failures arriving
-together share one notice, and the first summary a tab loads announces nothing.
-Base UI turns swiping off for anchored toasts, so the notice brings its own
-(`use-arrival-swipe.ts`): dragging it toward the Inbox, left from the spine or
-down into the phone bar, dismisses it like the close button, and it stays
+UI toast manager (`features/inbox/components/arrivals/inbox-arrivals.tsx`), not
+a second toast system: a thread leaves the Inbox destination and stops at the
+failure glyph where the notice opens. It never shows on the inbox page, failures
+arriving together share one notice, and the first summary a tab loads announces
+nothing. Base UI turns swiping off for anchored toasts, so the notice brings its
+own (`use-arrival-swipe.ts`): dragging it toward the Inbox, left from the spine
+or down into the phone bar, dismisses it like the close button, and it stays
 unread.
 
 #### Structure
@@ -1787,48 +1791,49 @@ value. Commit only when separately authorized under root Git instructions.
 - Triggers, connections and alerts follow-up (2026-09-25). Each webhook card on
   the Triggers tab composes a “Recent deliveries” list
   (`workflow-settings/components/triggers/webhook-deliveries.tsx`) from the ADR
-  045 delivery log: outcome words and tones from `model/delivery-outcome.ts`,
-  HTTP status and body size, relative and exact times, a link to the admitted
-  run, ten rows per page through `LoadMore`, the shared stale line and an honest
-  empty state. Alerts rows and the destination lens show `#channel-name` from
-  the ADR 046 lookup (`failure-notifications/use-slack-channel-names.ts`, one
-  query per connection and group of ten channels through
-  `connections/queries.public.ts`, fresh for five minutes) and otherwise the
-  channel ID with a short reason from `model/channel-names.ts`; a failed lookup
-  never fails the page. The empty Triggers tab uses the shared `Empty` like the
-  Versions tab, without a glyph or a divider under the hub bar. Component and
-  model tests cover the delivery list, paging, failure and empty states,
-  resolved and unresolved channel names and the lookup failure; the web suite
-  passes 59 files with 441 tests.
+  045 delivery log: outcome words and tones from
+  `model/triggers/delivery-outcome.ts`, HTTP status and body size, relative and
+  exact times, a link to the admitted run, ten rows per page through `LoadMore`,
+  the shared stale line and an honest empty state. Alerts rows and the
+  destination lens show `#channel-name` from the ADR 046 lookup
+  (`failure-notifications/use-slack-channel-names.ts`, one query per connection
+  and group of ten channels through `connections/queries.public.ts`, fresh for
+  five minutes) and otherwise the channel ID with a short reason from
+  `model/channel-names.ts`; a failed lookup never fails the page. The empty
+  Triggers tab uses the shared `Empty` like the Versions tab, without a glyph or
+  a divider under the hub bar. Component and model tests cover the delivery
+  list, paging, failure and empty states, resolved and unresolved channel names
+  and the lookup failure; the web suite passes 59 files with 441 tests.
 - For each bodies and channel names follow-up (2026-09-25). For each bodies are
   edited on the canvas like the outer workflow. A body's steps are the
   container's children; the container sizes itself around them
-  (`model/body-layout.ts`), grows while one is dragged and draws the body's
-  `item · ordinal` inputs, its `result`, the bounds, Add step and what the body
-  still needs. The nested-graph layer (`model/graph-scopes.ts`) indexes every
-  level, and the existing graph commands (`graph-commands.ts`,
-  `graph-copies.ts`) act on a step's own level: add (a For each placed from the
-  palette starts with an empty body, 100 items one at a time), quick add from a
-  body port or “Add step after” (the new step joins its body), connect (React
-  Flow's `isValidConnection` refuses a connection across a body's edge), move in
-  body coordinates, delete with the Undo toast (restoring into the body, or
-  nothing once the body is gone), duplicate (a copied For each gets fresh body
-  IDs) and inspector edits. Selection survives in bodies, and deleting a For
-  each around the inspected step asks about unfinished edits. Keyboard access
-  matches the canvas: body steps focus and open with Enter, ⌫ deletes them, the
-  For each inspector lists its body steps as buttons and offers “Add step to
-  body”, and a body step's Inputs tab offers only its body siblings to connect
-  and map. Inside a body, Insert data offers “This item” (the whole item or its
-  position) as `structured_input` mappings, and the “Loop item” source edits
-  them. ADR 020's body rules show as issues, never as fixes
-  (`model/body-rules.ts`): an empty body, a connection across its edge, more
-  than one last step (the one whose output is each item's result, marked “Gives
-  the result”) and steps off the way from the body's start to that end. Server
-  validation still decides; its findings inside a body now resolve to the body
-  step for Fix. The Slack step's Setup tab edits its channel ID and shows
-  `#name` beside it, or the ADR 046 reason it can't, once the field is left
-  (never per keystroke) and only for people with `connection:use`; a channel
-  from another source stays on the Inputs tab. The workflow Settings
+  (`model/graph/for-each-body-layout.ts`), grows while one is dragged and draws
+  the body's `item · ordinal` inputs, its `result`, the bounds, Add step and
+  what the body still needs. The nested-graph layer
+  (`model/graph/graph-scopes.ts`) indexes every level, and the existing graph
+  commands (`graph-commands.ts`, `graph-copies.ts`) act on a step's own level:
+  add (a For each placed from the palette starts with an empty body, 100 items
+  one at a time), quick add from a body port or “Add step after” (the new step
+  joins its body), connect (React Flow's `isValidConnection` refuses a
+  connection across a body's edge), move in body coordinates, delete with the
+  Undo toast (restoring into the body, or nothing once the body is gone),
+  duplicate (a copied For each gets fresh body IDs) and inspector edits.
+  Selection survives in bodies, and deleting a For each around the inspected
+  step asks about unfinished edits. Keyboard access matches the canvas: body
+  steps focus and open with Enter, ⌫ deletes them, the For each inspector lists
+  its body steps as buttons and offers “Add step to body”, and a body step's
+  Inputs tab offers only its body siblings to connect and map. Inside a body,
+  Insert data offers “This item” (the whole item or its position) as
+  `structured_input` mappings, and the “Loop item” source edits them. ADR 020's
+  body rules show as issues, never as fixes
+  (`model/graph/for-each-body-rules.ts`): an empty body, a connection across its
+  edge, more than one last step (the one whose output is each item's result,
+  marked “Gives the result”) and steps off the way from the body's start to that
+  end. Server validation still decides; its findings inside a body now resolve
+  to the body step for Fix. The Slack step's Setup tab edits its channel ID and
+  shows `#name` beside it, or the ADR 046 reason it can't, once the field is
+  left (never per keystroke) and only for people with `connection:use`; a
+  channel from another source stays on the Inputs tab. The workflow Settings
   failure-alert label and choices read “#channel-name via Connection” when the
   name resolves. Both use the one lookup through
   `failure-notifications/channel-names.public.ts`. Deliberately left out:
@@ -1850,11 +1855,12 @@ value. Commit only when separately authorized under root Git instructions.
   deliveries" list and this one now share `RecentLog`, `RecentLogEntry`,
   `ReadFailure` and the feature's `RunLink` instead of two copies. Runs held
   back by workspace capacity or a failed start never become a run time, so the
-  card explains them from the schedule's health (`model/occurrence-outcome.ts`).
-  The editor's Schedule step previews an unsaved rule's next three runs (see
-  section 7). Component, hook and model tests cover the lists, DST zone names,
-  paging, empty, paused, held-back, failure, debounce, refresh and rate-limit
-  states; the web suite passes 70 files with 510 tests.
+  card explains them from the schedule's health
+  (`model/triggers/occurrence-outcome.ts`). The editor's Schedule step previews
+  an unsaved rule's next three runs (see section 7). Component, hook and model
+  tests cover the lists, DST zone names, paging, empty, paused, held-back,
+  failure, debounce, refresh and rate-limit states; the web suite passes 70
+  files with 510 tests.
 
 Order 2's visual kit includes the old colors/type/glass/button language, not
 every legacy component. Aurora and canvas details land where their real states
@@ -3773,9 +3779,10 @@ node for N4 as part of that review. Payments remain excluded.
    `workflow-editor/components/inspector/input-mappings/`, split by cohesive
    responsibility (section, row, source controls) only where useful. Put pure
    row-to-contract conversion, source options and validation under
-   `workflow-editor/model/input-mappings.ts` or a small owner-local directory.
-   Do not append another large feature to `workflow-inspector.tsx`, add a global
-   mapping store or spread new files into shared components/lib folders.
+   `workflow-editor/model/inspector/input-mappings.ts` or a small owner-local
+   directory. Do not append another large feature to `workflow-inspector.tsx`,
+   add a global mapping store or spread new files into shared components/lib
+   folders.
 4. Integrate mapping scratch with the existing inspector Apply/Cancel and dirty
    state. The draft graph remains the only persisted authority; Apply updates
    the selected node atomically through the current editor command/history seam,
@@ -4235,3 +4242,550 @@ fields and validation, loading/empty/stale/error/forbidden states, dirty-exit
 behavior, keyboard/mobile behavior, and one happy-path plus failure-path test.
 Treat unsupported backend functionality as blocked/deferred UI, not a clickable
 placeholder. This page map does not supersede the detailed protocol rules above.
+
+## Frontend structure and naming implementation plan (2026-09-30)
+
+Status: all feature/shared/route/test dispositions are implemented; the first
+and editor/run checkpoints are locally verified. Final existing-installation
+verification passed. Independent Standards and Spec reviews found the same
+single P3 documentation path, corrected below; no code blockers were reported.
+Scoped pin-matched qualification also passed in a separately approved isolated
+exact-lock snapshot. Final publication scope review remains; no commit, push or
+merge is claimed. Baseline: PR133 merged as
+`c75f55e08e37d16ccbec3e35ce4aa4a150b73aed`. The source inventory below was
+inspected at PR head `5720c8b4`, whose web tree was squash-merged unchanged.
+Earlier inspection of the primary checkout at `248551f4` omitted newer work,
+especially the inbox; it is not this plan's base. This section is the
+implementation checklist and supplements the placement rules above. It is a
+behavior-preserving frontend refactor, not a new backend phase.
+
+### Outcome and limits
+
+A maintainer should locate a screen, its interaction, its pure rules and its
+transport without guessing a visual metaphor or searching unrelated files. Every
+existing frontend feature is accounted for below, including explicit retain
+decisions. More folders and fewer lines are not completion criteria.
+
+Preserve UI appearance, text, routes, accessibility, responsive behavior, glass,
+motion, keyboard shortcuts, request semantics and feature behavior. Preserve
+PR133's arrival swipe. No backend, schema, endpoint, dependency or framework
+changes; no new feature implementation, redesigned state authority, or general
+cleanup of unrelated dirty files. Existing ADRs and domain terms stay intact. Do
+not copy old primary-checkout work into this branch.
+
+### Placement and naming rules for this pass
+
+1. Keep feature roots for page/composition entries, shared feature transport,
+   queries/mutations and deliberate public entry files. A root file is not wrong
+   merely because it is at the root; its ownership must be intelligible.
+2. Keep the existing `components`, `model`, `forms`, and `mutations` vocabulary.
+   Group substantial areas within these directories by responsibility. Avoid
+   replacing it with a different taxonomy for each feature. No mandatory
+   `hooks`, `types`, `utils`, `services`, or `helpers` folders.
+3. Put a hook used only by one UI area beside that area's UI. A hook shared by
+   several areas stays at their narrowest common owner. Pure rules remain
+   ordinary functions in a named model file; shared rules do not move into UI.
+4. Group model files when they form a real cluster (graph, persistence, input
+   mappings, run timeline). Do not create a one-file folder for symmetry. Small
+   local helpers stay in their owning file unless independently useful.
+5. Name files for their exported responsibility. Use explicit domain qualifiers
+   where `body`, `thread`, `data`, `state`, `command`, or `live` is ambiguous.
+   Distinguish a dialog, sheet, form, timeline, renderer and model where useful.
+   Keep established domain terms: an inbox thread is a real contract concept,
+   unlike a run timeline's purely visual thread metaphor. Product copy and CSS
+   design tokens do not need renaming alongside implementation filenames.
+6. Preserve existing external export names/paths by updating their internal
+   targets. Keep static queries/commands separate from lazy page exports. Do not
+   introduce export-everything barrels or internal imports through public files.
+   Remove obsolete private files after moves; do not leave compatibility stubs
+   for private paths. Any public-path change needs a demonstrated benefit and a
+   complete consumer migration, not merely naming consistency.
+7. Keep dependencies injected and state singular: Query for server snapshots,
+   Router for URL state, the scoped editor store for drafts, local state for UI.
+   Extraction must reduce the concepts a caller handles, not transfer an entire
+   page into a giant hook or add forwarding layers.
+8. Apply the same owner grouping to affected tests, keeping scenario names and
+   assertions. Existing separate `test/features` placement stays. Update exact
+   path references in tooling/docs where required; never weaken checks.
+
+### Complete feature disposition
+
+Counts are baseline inventory, not targets. Each row must receive a completed
+move/rename record or an explicit retained-with-reason disposition.
+
+| Feature                 | Files / root | Required disposition                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `artifacts`             | 5 / 4        | Retain the small layout and download interface. Review names; no speculative subdivisions.                                                                                                                                                                                                                                                                                                                   |
+| `auth`                  | 68 / 33      | Retain page/public/transport owners and existing UI areas. Group account helpers under `model/account/`; group session identity/lifecycle helpers separately only where several related files justify it. Colocate `use-sign-in` with sign-in UI if all consumers belong there. Keep shared request behavior at its common owner. Keep account-session management distinct from the current browser session. |
+| `catalog`               | 8 / 6        | Retain the small layout and public interfaces. Keep the two clear pure presentation files flat unless an actual cluster requires grouping.                                                                                                                                                                                                                                                                   |
+| `connections`           | 30 / 11      | Colocate `use-connection-test` in `components/connection-test/` and `use-credential-form` in `components/credential/`, updating all consumers. Preserve shared credential use by add/detail flows and common transport/query/mutation ownership.                                                                                                                                                             |
+| `failure-notifications` | 16 / 9       | Retain the shallow layout. Rename `components/destination-lens.tsx` to `destination-form.tsx` to match `DestinationForm`. Keep external failure-alert delivery distinct from the personal inbox.                                                                                                                                                                                                             |
+| `inbox`                 | 17 / 11      | Group `inbox-arrivals.tsx`, `use-inbox-arrivals.ts`, the arrival card and swipe hook under `components/arrivals/`; keep pure arrival logic in `model/inbox-arrival.ts`. Keep live synchronization separate from toast arrival behavior; preserve page/queries/live/arrival public entries and real inbox-thread terminology.                                                                                 |
+| `overview`              | 16 / 4       | Retain compact layout. Assess `use-setup-reads` for colocation with the first-run checklist and rename it to identify those reads if its consumers confirm that scope. Do not rename intentional product vocabulary mechanically.                                                                                                                                                                            |
+| `workflow-drafts`       | 3 / 2        | Retain the snapshot/ETag interface and graph-diff owner.                                                                                                                                                                                                                                                                                                                                                     |
+| `workflow-editor`       | 101 / 19     | Group model implementation into graph, persistence and inspector responsibilities as detailed below; colocate narrowly owned UI hooks. Preserve store, save serialization, undo and scratch ownership.                                                                                                                                                                                                       |
+| `workflow-publish`      | 33 / 12      | Group UI into validation, publication, run submission and node preview where multi-file clusters exist. Colocate corresponding UI-only hooks. Keep shared command-session orchestration separate, and preserve independently consumable schedule-preview transport/public entry.                                                                                                                             |
+| `workflow-runs`         | 74 / 17      | Retain established UI subareas. Group model clusters into list/filtering, timeline/detail, step inspection and overview visualization where imports support them. Keep a single live-event synchronization owner. Rename run-specific visual metaphors as detailed below.                                                                                                                                    |
+| `workflow-settings`     | 47 / 7       | Retain good settings/triggers/versions UI grouping. Group substantial model clusters into versions and triggers. Rename local `components/settings-section.tsx` to `settings-query-state.tsx`; shared `SettingsSection` remains unchanged.                                                                                                                                                                   |
+| `workflow-versions`     | 2 / 2        | Retain the small immutable-version transport/public interface.                                                                                                                                                                                                                                                                                                                                               |
+| `workflows`             | 42 / 16      | Group list UI under `components/list/`, creation under `components/creation/`; keep shared name/lifecycle controls at their common owner. Colocate row visibility/ticking hooks with their consumers where ownership is exclusive. Rename `use-seen-once` to express observed visibility, not persisted history.                                                                                             |
+| `workspace-invitations` | 12 / 5       | Retain the cohesive acceptance journey. Do not merge with administrator invitation management in `workspaces`.                                                                                                                                                                                                                                                                                               |
+| `workspaces`            | 71 / 17      | Retain existing shell/creation/member/invitation/settings UI areas. Move `use-invite-batch` beside invitation UI. Group member/lifecycle mutation clusters when substantial; retain shared roles/availability rules centrally.                                                                                                                                                                               |
+
+### Editor and run details
+
+For the editor, prepare exact old-to-new paths before moving. The intended
+clusters are `model/graph/` for graph scopes/order/commands/copies/adaptation,
+`model/persistence/` for save coordination/history, and `model/inspector/` for
+field parsing, forms, mappings and setup rules. Keep editor store/provider at
+the common model owner initially; prevent cycles between these clusters. Shared
+graph types stay with graph semantics, not whichever UI happens to import them.
+Use a deeper input-mappings subgroup only if it improves navigation beyond the
+inspector group. Keep canvas hooks with canvas and field/mapping hooks with
+inspector; application-wide editor orchestration stays at the feature entry.
+
+For runs, distinguish the step execution timeline from the overview Loom. Keep
+renderer geometry and hit testing together with their shared model owner; do not
+duplicate shaping for canvas and accessible lists. Keep run-event replay as
+presentation reconstruction, distinct from the command that starts a new run.
+Keep shared status, failure and label exports accessible through current public
+entries. Group the timeline's model and step-inspection rules without moving
+shared run-list/status rules into detail UI.
+
+Concrete naming changes to implement, with consumers and tests updated:
+
+| Baseline private name                                     | Target responsibility/name                                                                               |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `workflow-settings/components/settings-section.tsx`       | `settings-query-state.tsx`; existing `SettingsQueryState` export                                         |
+| `failure-notifications/components/destination-lens.tsx`   | `destination-form.tsx`; existing `DestinationForm` export                                                |
+| `workflow-editor/model/body-rules.ts`                     | `model/graph/for-each-body-rules.ts`; graph validation role                                              |
+| `workflow-editor/model/body-layout.ts`                    | A graph/canvas-owned `for-each-body-layout.ts`, after checking its actual consumers                      |
+| `workflow-runs/model/thread-view.ts`                      | Timeline cluster's `run-timeline-model.ts`; use timeline terminology for its private view types/builders |
+| `workflow-runs/components/run-detail/run-thread-view.tsx` | `run-timeline.tsx`; corresponding private export naming                                                  |
+| `workflow-runs/components/run-detail/step-lens.tsx`       | `run-step-details.tsx`; corresponding private export naming                                              |
+| `workflow-editor/use-live-field.ts`                       | Inspector-owned `use-inspector-draft-field.ts`; preserve valid apply/invalid scratch behavior            |
+| `workflow-editor/use-live-mappings.ts`                    | Input-mapping owner’s `use-input-mapping-draft.ts`; preserve whole-set validation and coalesced commits  |
+| `workflows/use-seen-once.ts`                              | Consumer-owned `use-has-been-visible.ts`, if the inspected IntersectionObserver behavior is unchanged    |
+
+Inspect remaining `lens`, `thread`, `body`, `data`, `state`, `utils`, and
+`helpers` filenames and exports across the inventory. Record rename or retain
+reasons; do not mass-replace tokens. In particular retain inbox threads, shared
+visual primitives and genuinely meaningful domain names. A filename should let
+someone predict its main export; similar names must not hide different roles.
+
+### Code clarity, not just file moves
+
+Read every feature root file and the implementation files participating in a
+move/rename. For every feature record whether further internal review found a
+concrete issue. Look for mixed responsibilities, repeated state, obscure boolean
+combinations, long prop plumbing, duplicated decisions, effect ownership and
+helpers extracted solely to satisfy file-size limits. Size alone is not a bug.
+Do not claim all code is clean merely because all paths were categorized.
+
+Specifically examine `useEditorActions`: command guarding, inspector navigation,
+deletion restoration and undo notification lifetime must stay coordinated. A
+private deletion/undo helper is justified only if it owns that whole behavior
+with fewer caller obligations; do not split each switch case into a module. Keep
+scratch discard and undo invariants explicit. Examine `RunDetailPage` for a
+cohesive timeline/selection derivation owner; retain page composition and
+responsive presentation locally rather than moving all logic into a giant hook.
+Inspect account-security mutation naming: display-name changes are profile work,
+while session revocation and sign-in methods are security work. Split only with
+clear consumers and retained cache/idempotency semantics.
+
+Separate mechanical moves from behavior-preserving internal extractions in the
+diff and commit history. Any suspected functional bug is reported separately
+with evidence; do not quietly change semantics during this refactor.
+
+### Routes, shared code, tests and documentation coverage
+
+Audit `src/app`, `src/routes`, `src/components/ui`, `src/components/patterns`,
+`src/lib`, styles and test/e2e/support/configuration paths as well as features.
+Retain route composition, shared transport and primitive ownership. No shared
+code may start importing features. No generic global hook/type directory. Rename
+a shared module only for a concrete mismatch; do not redesign the design system,
+utility classes or shared forms. Keep route paths and lazy imports intact.
+
+Capture a complete baseline list of tracked web source/test/config files and a
+disposition ledger in an owned temporary artifact before edits. Each baseline
+file must end as retained, moved, renamed, or deliberately refactored, with its
+final path and reason; additions and removals also need an owner. Compare the
+ledger to the final tree so no feature or test disappears silently. Record the
+artifact path and per-feature completion evidence in this section; no new
+permanent generic audit framework is needed. Update README ownership examples
+and this architecture standard to match the final tree. Backend progress and
+CONTEXT.md are outside this refactor unless their claims actually change.
+
+### Execution and verification
+
+1. Reconcile current branch/main, instructions, baseline tree and dependencies.
+   Use the clean `feat/frontend-structure-clarity` checkout; preserve the dirty
+   primary checkout and Claude's existing checkouts. Complete the disposition
+   ledger, then implement without waiting for another general approval.
+2. First checkpoint: unambiguous renames and narrow hook colocation, including
+   settings, destinations, connections, workspace invitations and inbox
+   arrivals.
+3. Second checkpoint: editor and runs model grouping, names and any justified
+   private extractions. Preserve all draft/concurrency and live recovery
+   behavior.
+4. Third checkpoint: remaining feature and shared/route/test dispositions,
+   documentation consistency, final stale-import/path sweep. All 16 feature rows
+   must be accounted for, including those deliberately unchanged.
+5. After each coherent change run focused relevant tests and lint/type checks.
+   At the final checkpoint run web typecheck, lint, complete unit suite and
+   build; relevant architecture/import, docs, complexity and duplication checks;
+   then the existing web Playwright suite against its owned fixture. Inspect
+   representative auth, workspace, editor, run and inbox routes, including
+   narrow layout, keyboard flows, dialogs and PR133 swipe/glass preservation.
+   Compare lazy/static import composition with baseline; no new eager page
+   imports.
+6. Read installed tooling/config before commands. Use pinned existing tools; no
+   incidental dependency reconciliation, installs or service startup. Build and
+   test artifacts belong to this isolated checkout. Browser verification may own
+   its normal isolated preview server, never the everyday app/store. No
+   PG/Redis/backend/provider/live-service qualification is needed or authorized.
+7. Stop at the first failed gate, preserve output and explain the cause before
+   further checks. Do not weaken assertions, thresholds, baselines or hooks. A
+   narrow refactor-caused correction can be reviewed and qualified; never
+   repeatedly rerun unchanged failures or repeat green tests without cause.
+8. Report actual commands/exits and scope, ledger reconciliation, rename-aware
+   diff, untracked inventory and remaining limitations. Independent manager
+   review precedes staging/commit/push. Commits should be coherent reviewable
+   refactors, not one per file or a fixed quota. Publication uses normal hooks
+   after review, with no force/history rewrite. No completion claim until all
+   required verification and review findings are resolved.
+
+### Implementation tracker
+
+- [x] Complete current-source disposition ledger, including routes/shared/tests.
+- [x] Apply first checkpoint and verify affected behavior.
+- [x] Apply editor/run checkpoint and verify state/lifetime invariants.
+- [x] Finish all remaining feature dispositions and synchronize documentation.
+- [x] Pass final web/browser/import/quality checks and inspect representative UI
+      with pin-matched tooling in the separately approved private snapshot.
+- [x] Complete independent Standards/Spec review and resolve its shared minor
+      documentation finding.
+- [ ] Complete final publication scope review; record actual commit/PR/CI/merge
+      and exact temporary-resource cleanup evidence separately.
+
+First-checkpoint evidence (2026-09-30): the complete baseline ledger is
+`/tmp/pertexo-frontend-structure.EXpXj2/ledger.json` (844 tracked web files),
+alongside the baseline public/route import snapshot. Eleven files moved or
+renamed: connection test/credential hooks, destination form, settings
+query-state presentation, administrator invitation batch, four inbox-arrival
+modules and two arrival tests. Fourteen consumers received import-only updates.
+Public entry paths/exports, arrival swipe and implementation behavior are
+preserved. No feature-wide cleanliness claim follows from these mechanical
+moves.
+
+Direct scoped formatting passed. The initial root-cwd lint failed with 21
+diagnostics: the root config omitted TSX tests, and existing compiled contracts
+predated the current inbox schema. An intermediate web-cwd command checked only
+14 tracked consumers; it is not complete gate evidence. After rebuilding only
+the existing workflow-model/contracts prerequisites in this isolated checkout,
+the corrected explicit 25-file web-cwd lint passed, both source and test
+typechecks passed, and 13 focused files passed 116/116 tests (6.50 s). The exact
+lint file list is retained beside the ledger. These checks cover connection,
+destination, settings, member/invitation and inbox behavior, including arrival
+swipes. Browser, final build/import/quality checks and independent review
+remained pending at that checkpoint. PR133's checks do not qualify this
+refactor.
+
+Editor/run checkpoint evidence (2026-09-30): exact old-to-new paths were
+recorded before edits in
+`/tmp/pertexo-frontend-structure.EXpXj2/checkpoint-2.json`. Forty production
+files moved or were renamed, and thirty editor/run tests were grouped under
+their feature owners without changing scenario names/assertions. Editor graph,
+persistence and inspector rules now have separate model clusters; field-unit
+rules remain at the common model owner because canvas cards and inspector fields
+both use them. Canvas/add-step and inspector draft hooks live beside their UI.
+Run list/filtering, timeline reconstruction, step inspection and Loom
+model/rendering have explicit owners. Private timeline and step-detail names
+changed; product labels, CSS tokens and public paths/exports did not.
+
+The full implementation review retained `useEditorActions`: scratch guarding,
+navigation, deletion restoration and undo-toast lifetime are coordinated there.
+`RunDetailPage` retains page composition and responsive selection/replay state,
+with timeline reconstruction already delegated to its pure model. No giant hook
+or speculative private extraction was added. The only type-ownership correction
+derives starting configuration from graph-owned `WorkflowNode['config']` rather
+than an inspector type; the type and runtime behavior are unchanged.
+
+The direct existing node-catalog/workflow-engine prerequisite build passed,
+followed by formatting, explicit 148-path web-cwd lint, source/test typechecks,
+32 focused files with 245/245 tests (30.14 s), diff-check and the existing
+source import/runtime-cycle validator. This covers scratch apply, undo,
+save/identity recovery, event reconstruction/reconnection, run replay and
+recorded inputs. No services or dependencies were installed or started.
+
+A supplemental owned comparison first flagged 29 differences and paused work.
+Read-only diagnosis found two comparator defects: the TypeScript printer kept
+original import wrapping, and a new directory was mistaken for an old module.
+After correcting only that temporary tool, 173 changed source/test files matched
+the baseline under exact move/import/private-identifier normalization; the
+starting-config type-only change is explicitly recorded as the sole exception.
+All 844 baseline files exist at their ledger paths and obsolete moved files are
+absent. Failure evidence remains in `checkpoint-2-equivalence-failure.json`
+beside the ledger. Final full-suite/build/browser/quality checks and independent
+review remained pending then; these focused checks are not whole-frontend
+completion evidence.
+
+Remaining-feature implementation evidence (2026-09-30): the pre-edit maps
+`checkpoint-3-production.json`, `checkpoint-3-tests.json` and
+`checkpoint-3-naming.json` beside the ledger record fifty production moves or
+renames and thirty-six test/fixture moves. Auth account helpers and browser
+session helpers have separate model owners; sign-in interaction is colocated.
+Publishing UI groups validation, publication, run submission and node preview.
+Settings models group versions and triggers. Workflow list/creation UI groups
+its own components and visibility/ticking hooks. Workspace member/lifecycle
+mutations form real multi-file clusters. Private `RunDurationBar` and
+`InvitePeopleSheet` names identify duration rendering and the actual sheet.
+Public entry paths/exports, CSS tokens, text and route paths are preserved.
+
+The separate internal extraction moves `useDisplayNameChange`, `NameAttempt` and
+`NameState` beside the sole `DisplayNameForm` consumer. The complete hook,
+including its nested send owner, is unchanged: original revision/key, exact
+uncertain retry, newer-profile reload and cached receipt replacement stay
+together. Security commands remain in `account-security.mutations.ts`; no
+forwarding wrapper or second state authority is added. The supplemental baseline
+comparison passed for 290 changed TypeScript files, including exact AST
+comparison of the extracted declarations and remaining security function bodies.
+The previously reviewed starting-config type-ownership correction is the only
+other non-mechanical exception. This is preservation evidence, not a replacement
+for runtime qualification.
+
+All feature root files and moved/renamed implementations were read before their
+changes. Remaining private files received placement/name dispositions, not a
+claim of exhaustive functional cleanliness. The reviewed feature outcomes are:
+
+| Feature               | Completed disposition and concrete retain decision                                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| artifacts             | Retain five-file download/link interface; no upload or speculative subdivision.                                                                                                                         |
+| auth                  | Account/session clusters, sign-in colocation and profile extraction; page-local entry journeys retain their own lifetime, shared request behavior stays common.                                         |
+| catalog               | Retain compact discovery interface and two named pure presentation modules; no substantial cluster.                                                                                                     |
+| connections           | Test/credential hook colocation; common metadata, credential and query/mutation owners remain shared by add/detail flows.                                                                               |
+| failure-notifications | DestinationForm naming; retain shallow destination layout, distinct from personal inbox state.                                                                                                          |
+| inbox                 | Arrival UI/swipe grouping; retain pure arrival model, live owner and actual inbox-thread terminology.                                                                                                   |
+| overview              | Retain compact layout: setup reads serve both FirstThreadSection and AttentionSection, not only the checklist.                                                                                          |
+| workflow-drafts       | Retain compact snapshot/opaque-ETag and graph-diff interface.                                                                                                                                           |
+| workflow-editor       | Graph/persistence/inspector clusters and UI-local hooks; keep scratch guarding, deletion restoration and undo lifetime coordinated in useEditorActions.                                                 |
+| workflow-publish      | Four UI areas; shared publication/run command session, auto-validation and independently consumed schedule-preview interface remain at their common owners.                                             |
+| workflow-runs         | List/timeline/step-inspection/Loom models and precise private names; RunDetailPage retains responsive selection/replay composition.                                                                     |
+| workflow-settings     | Trigger/version models and SettingsQueryState name; existing UI areas and common reads/recovery remain intact.                                                                                          |
+| workflow-versions     | Retain two-file immutable-version interface; a subdivision would be speculative.                                                                                                                        |
+| workflows             | List/creation UI and visibility/ticking; shared name/lifecycle controls and mutations retain their common consumers.                                                                                    |
+| workspace-invitations | Retain invitee acceptance/account-entry journey; do not merge administrator invitation management.                                                                                                      |
+| workspaces            | Member/lifecycle mutation clusters and invitation batching colocation; creation/rename retain identity verification, exact retry, discovery catch-up and late-response fencing in one transition owner. |
+
+The name sweep deliberately retains shared `FlowZoomLens`, decorative thread
+drawings and connection test threads as visual primitives. Auth stage/lens names
+describe the shared persistent glass stage; editor add-step/zoom lenses remain
+explicit within their existing UI areas. `SystemState` describes screen state
+composition, `SettingsSection` describes shared layout, and named
+inbox/trigger/workflow state and run-data modules keep their real domain scope.
+Small command feedback/parsing helpers stay local to the publishing mutation
+owner. No mass token replacement or visual redesign was performed.
+
+App/route inventory retains application-lifetime Query/Router creation,
+session/workspace loaders and lazy route compositions. README now names the
+actual `public-routes.ts`, `workspace-routes.ts`, `workflow-hub-routes.ts` and
+`route-context.ts` owners. Shared API/utility, Base UI primitive/pattern,
+style/static-asset and configuration owners remain intact, with no new shared
+imports of features. Shared test support and compact unaffected feature tests
+remain in their existing owners; affected feature tests are grouped without
+changing scenarios/assertions. Existing live-service e2e interfaces and the
+dated FRONTEND-AUDIT are retained as separate evidence, not claimed as qualified
+by this refactor.
+
+The ledger now has no pending dispositions: all 844 baseline files reconcile to
+845 current tracked/untracked files, with one owned profile-hook addition, no
+missing/unexplained files, no obsolete move sources and an empty index. Four
+explicitly authorized feature-plan documents are scoped collateral outside the
+web baseline; no other paths changed. Category totals are 674 retained, 148
+moved, 18 renamed and four refactored baseline files (the two web docs, profile
+extraction source and moved starting-config type correction). The browser
+lifetime fixture is byte-identical to baseline and is not a final refactor
+change. The exact maps record 167 path relocations, including that refactored
+starting-config file. No commits or publication have occurred.
+
+Final existing-installation verification checkpoint (2026-09-30):
+
+- Web source and test TypeScript passed separately with the existing TypeScript
+  6.0.3 executable:
+  `node ../../node_modules/typescript/bin/tsc --build --pretty false` and
+  `node ../../node_modules/typescript/bin/tsc --project tsconfig.test.json --pretty false`,
+  both from `apps/web`.
+- Whole-web ESLint passed:
+  `node ../../node_modules/eslint/bin/eslint.js . --max-warnings 0`. Its first
+  attempt in the older installation reported an unchanged directive as an
+  unknown rule in `e2e-live/support/browser-fixture.ts`. The manager then
+  authorized removing that one comment. Pinned qualification later showed the
+  rule exists in typescript-eslint 8.70.1 and the baseline exception is
+  deliberate for Playwright's keyless `Record<never, never>` test-fixture
+  generic. The exact original comment was restored in both copies after review;
+  the fixture now equals baseline bytes. The earlier failure/removal remains
+  historical as-run evidence, not a current source change or proof that the rule
+  was nonexistent.
+- Complete web Vitest passed **103 files / 740 tests** (29.03 seconds), using
+  `node ../../node_modules/vitest/vitest.mjs run`. Production Vite build passed
+  with 3,257 modules via `node node_modules/vite/bin/vite.js build`; this is
+  installed Vite 8.3.0 evidence, not qualification against the declared 8.3.1.
+- Architecture checks passed 19 tests, project-reference validation and
+  module-import validation. Documentation tests passed 21 tests. The first
+  documentation validator found seven links to relocated web files; the manager
+  authorized path-only collateral corrections in F01, F02, F05 and F24. Link
+  labels/targets and three explicit owner paths now follow the ledger, with no
+  guidance, status or evidence rewrite. The corrected validator passed **386
+  local links across 119 files**. `collateral.json` records those four documents
+  separately from the 844-file baseline and preserves the failure receipt.
+- Complexity passed its three tests and the unchanged hotspot ratchet.
+  Duplication passed eight tests and the unchanged reviewed clone baseline:
+  source 21 groups / 352 lines (0.22%); tests 10 groups / 294 lines (0.16%). The
+  existing pnpm was used with `COREPACK_ENABLE_NETWORK=0`; no installation or
+  threshold/baseline change was performed. Prettier passed the complete web tree
+  and the four collateral documents before this evidence-only update.
+- Existing Playwright passed **81 tests** in 1.0 minute: 75 Chromium journeys,
+  three Firefox smoke journeys and three WebKit smoke journeys. The existing
+  smoke regex does not match the current first-workspace test title; do not call
+  that unrun cross-browser scenario passed. The owned temporary configuration
+  retained the existing projects, assertions, retry and URL settings, supplied
+  absolute fixture/report paths and used the already-built Vite preview instead
+  of repeating the green build. Playwright and its cached browsers were 1.63.0
+  (Chromium revision 1243, Firefox 1543, WebKit 2359). No browser download
+  occurred.
+- Representative editor 1440/390, workspace 768, run-filter 390 and login 390
+  screenshots were inspected. The existing suite covers keyboard, dialog,
+  narrow-layout, conflict and scratch scenarios; it does not exercise rendered
+  inbox arrivals. A separate owned Chromium probe therefore checked arrival
+  anchoring/glass/bounds and pointer/wheel dismissal at 1440 and 390, plus
+  narrow login skip-link → Email focus. It passed without changing production
+  code. Short swipes, wrong-direction gestures and pinch input retain the
+  notice; swiping toward Inbox dismisses it, leaves the badge unread and sends
+  **zero read commands**. Both viewport probes reported zero page errors and no
+  horizontal overflow. Computed glass remains `blur(28px) saturate(1.6)` with
+  the existing background/border tokens. Arrival screenshots show an entrance
+  frame, not settled animation or timing-performance proof.
+- The supplemental probe's first two failures were incomplete catalog and
+  connections mocks. Its third failure reached an updated unread badge but no
+  card; read-only diagnosis proved the fixture's three-digit thread timestamps
+  fail the unchanged six-digit inbox decoder. The manager separately reviewed
+  each bounded correction/run. Only the two thread timestamp fields were
+  corrected to six digits; identity timestamps, behavioral assertions and
+  timeouts stayed unchanged. The final run additionally observed the initial
+  zero-unread baseline and recorded visible-tab, endpoint/revision timing
+  evidence. All three failure receipts remain alongside the final successful
+  `rendered-probe-trace.json` and screenshot artifacts. The probe uses a paused
+  stream fixture and an ordinary visibility hint to refetch; it is **not SSE
+  transport, real backend or provider qualification**.
+- Cached React Doctor 0.9.14 scanned 291 changed files with zero errors and one
+  maintainability warning for `StepInputData` complexity. Current/baseline
+  branches were read and matched modulo the planned type rename: retain this
+  pre-existing advisory, not a new refactor defect or a whole-codebase clean
+  claim. No autofix/suppression was applied. Supply-chain lookup, score API,
+  share URL and crash reporting were disabled; no numeric score-regression claim
+  is made. `doctor-triage.json` records the diagnostic disposition.
+- Final mechanical comparison passed **291 changed TypeScript counterparts**
+  under exact move/import/approved identifier normalization, with the two
+  explicit prior exceptions (graph-derived starting-config type and unchanged
+  profile declaration extraction). Missing and obsolete paths are empty. Public
+  comparison preserves all **62 facade consumer export names/kinds**. Both app
+  modules, all 48 route modules, the stylesheet and `index.html` are
+  byte-identical to the baseline: no route path, loader composition, eager/lazy
+  boundary, QueryClient/router or CSS-token change. There are no tracked or
+  ordinary untracked image/font assets or a `public` directory; locally served
+  font dependencies remain unchanged.
+- Final ledger reconciliation and `git diff --check` passed. The index remains
+  empty. `feat/frontend-structure-clarity` still points to the merged baseline
+  and has no upstream; no commit or push has occurred. Ledger-paired
+  rename-aware review output records original/final paths plus exact counterpart
+  diffs in `final-mapped.diff`, with `final-changed-inventory.json`; this is not
+  a staged Git diff. The complete artifact owner is
+  `/tmp/pertexo-frontend-structure.EXpXj2`.
+
+Earlier existing-installation limitation (as-run): those receipts used Prettier
+3.9.6 instead of declared 3.9.9, markdown-it 15.0.1 instead of 15.0.2 and jscpd
+4.0.5 instead of 4.3.0, in addition to Vite 8.3.0 instead of 8.3.1. TypeScript
+6.0.3, ESLint 9.39.5, Vitest 4.1.11 and Playwright 1.63.0 matched their declared
+versions, but that did not prove the full dependency tree was pin-matched. The
+manager authorized continuing checks with truthful existing-environment
+evidence, not dependency reconciliation, downloads or symlink retargeting. Final
+independent fixed-point reviews (2026-09-30): Standards reported one P3 and Spec
+reported one P3, both the same stale active owner path at line 671. The manager
+confirmed the target and authorized correcting only `model/starting-config.ts`
+to `model/graph/starting-config.ts`, plus this review evidence. No code blockers
+were reported. This documentation-only correction does not requalify runtime
+behavior or justify repeating green gates. A later separately approved isolated
+qualification is recorded below; the older receipts are not retroactively
+pin-matched by later dependency observations.
+
+Final isolated pin-matched qualification checkpoint (2026-09-30):
+
+- The user separately approved temporary source/private-store exact-lock
+  installation with lifecycle scripts disabled. The task-owned snapshot is
+  `/tmp/pertexo-pin-qualification.TDfQ7P/source`; store, cache, config and state
+  are private to that temporary root. Cached pnpm 11.22.0 and Node 24.15.0 were
+  invoked explicitly with frozen lockfile, store-integrity verification and
+  package-import copy. No dependency tree in the managed, primary or Claude
+  checkout was installed, copied or retargeted by this agent. No Git metadata,
+  ignored environment/runtime data, old build output or existing node_modules
+  was copied; the inert tracked `.env.example` was also omitted.
+- The snapshot contains 2,936 allowlisted source files; all 849 frozen web and
+  collateral files were verified before installation. Twenty-four tracked
+  package/lock/workspace/TypeScript inputs matched baseline. Tracked and
+  installed lockfiles have identical SHA-256
+  `2ab8d2308496c881da9d179bc907d0fce2331182f7d641092e956ae6a0e4d646`. All 45
+  root/web direct dependencies matched declarations/importers and 2,160 symlinks
+  stayed inside the canonical snapshot. The esbuild 0.28.2 executable worked
+  without lifecycle rebuild. These checks are not a supply-chain trust audit.
+- Actual pinned tools were Vite 8.3.1, Prettier 3.9.9, markdown-it 15.0.2, jscpd
+  4.3.0, TypeScript 6.0.3, ESLint 9.39.5, typescript-eslint 8.70.1, Vitest
+  4.1.11 and Playwright 1.63.0. Web source/test types and full web lint passed.
+  Cold test fixtures also required a direct existing node-catalog and
+  workflow-engine project-reference build inside the snapshot; no root-wide
+  build or service startup was used. Complete units passed **103 files / 740
+  tests** (40.99 seconds). Pinned Vite built 3,397 modules.
+- Architecture passed 19 tests plus reference/import validators; documentation
+  passed 21 tests and 386 links across 119 files; complexity passed its ratchet
+  and three tests; duplication passed eight tests and the unchanged baseline
+  totals (source 21 groups / 352 lines / 0.22%; tests 10 / 294 / 0.16%). The
+  unchanged duplication validator used only a task-owned cached-pnpm launcher
+  with process-local PATH. Scoped formatting passed all web files and the four
+  collateral documents after a reviewed linewrap-only correction to two
+  architecture paragraphs. No rule/threshold/assertion/config weakening
+  occurred.
+- The unchanged Playwright selection passed **81 tests**: 75 Chromium, three
+  Firefox and three WebKit, with zero skipped, flaky or unexpected tests. The
+  already-built pinned preview was owned and strict on port 4173; cached browser
+  revisions 1243/1543/2359 were reused without downloads. A separately approved
+  single replay of the unchanged supplemental arrival/login probe also passed
+  desktop/mobile anchoring, glass/bounds, short/wrong-direction/pinch retention,
+  pointer/wheel dismissal, unread preservation and narrow login keyboard focus.
+  It sent zero read commands and reported zero page errors. Seven representative
+  screenshots were viewed. The mocked API, paused-SSE/visibility-refetch and
+  entrance-frame limitations above still apply; no live/SSE/provider claim
+  follows.
+- Every failed attempt was stopped and preserved before reviewed corrections: an
+  unsupported CLI state option caused install→add argument parsing; a `/tmp`
+  versus `/private/tmp` preflight guard needed canonical roots; cold fixtures
+  lacked built declarations; the restored baseline fixture exception was
+  required by the pinned rule; two final document paragraphs needed pinned
+  formatting. Corrections were bounded and separately authorized. Green runtime
+  gates, cached Doctor and baseline-bound canonical/public/static proofs were
+  not repeatedly rerun. Doctor's original pre-existing complexity advisory and
+  the original 291-file comparison remain historical evidence; the restored
+  baseline fixture no longer participates in the final changed-file inventory.
+- Post-browser hashes verified all 2,936 managed/snapshot source files with no
+  drift except the two explicitly recorded historical deltas: the restored
+  baseline comment and document linewrapping. Original manifests/failure logs
+  remain preserved; new manifests record those deltas rather than rewriting
+  history. Both owned previews stopped, the browser closed, and read-only port
+  inspection found no listener. Temporary resources are retained for reviewed
+  publication and later exact-owned cleanup. The complete scoped receipt and
+  actual logs are `evidence/pin-matched-checkpoint.json` under the temporary
+  root; final rename-aware inventory and refreshed hashes remain beside the
+  original ledger.
+
+**Scoped pin-matched qualification passed; final publication scope review and
+actual commit/PR/CI/merge evidence remain pending.** No backend, PG, Redis or
+provider startup, everyday browser session, migration, ADR, deployment or live
+acceptance was part of this refactor.

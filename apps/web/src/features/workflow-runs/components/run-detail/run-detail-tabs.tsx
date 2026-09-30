@@ -2,13 +2,13 @@ import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-
 import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
 import { lazy, Suspense, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { ThreadView } from '../../model/thread-view';
+import type { RunTimelineModel } from '../../model/timeline/run-timeline-model';
 import { RunEventsView } from './run-events-view';
 import { RunLoadingWave } from './run-loading-wave';
 import type { RunDataScope } from './run-data';
 import { RunOutputsView } from './run-outputs-view';
 import { RunStepList } from './run-step-list';
-import { RunThreadView } from './run-thread-view';
+import { RunTimeline } from './run-timeline';
 
 type RunTab = 'thread' | 'graph' | 'events' | 'io';
 
@@ -68,7 +68,7 @@ export function RunDetailTabs({
   scope: RunDataScope;
   canReplay: boolean;
   onReplay: () => void;
-  view: ThreadView;
+  view: RunTimelineModel;
   nowMs: number;
   active: boolean;
   selectedKey: string | undefined;
@@ -115,7 +115,7 @@ export function RunDetailTabs({
             onSelectStep={onSelectStep}
           />
         ) : (
-          <RunThreadView
+          <RunTimeline
             view={view}
             nowMs={nowMs}
             active={active}
