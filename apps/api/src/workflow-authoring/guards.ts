@@ -20,6 +20,28 @@ abstract class WorkflowCapabilityGuard extends WorkspaceCapabilityGuard {
 }
 
 @Injectable()
+export class WorkflowPauseDefaultGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('workspace:manage', authorization, contexts, 'not_found', ['active']);
+  }
+}
+
+@Injectable()
+export class WorkspaceAutoPauseReadGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('workspace:read', authorization, contexts, 'not_found', ['active']);
+  }
+}
+
+@Injectable()
 export class WorkflowReadGuard extends WorkflowCapabilityGuard {
   public constructor(
     @Inject(WORKFLOW_AUTHORING_AUTHORIZATION)

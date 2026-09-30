@@ -17,7 +17,7 @@ describe('retained migration history fixture', () => {
       .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/u.test(name))
       .sort();
     expect(expected).toEqual(current.slice(current.indexOf(expected[0] ?? '')));
-    expect(expected.at(-1)).toBe('0124_workflow_trigger_pause.sql');
+    expect(expected.at(-1)).toBe('0125_workflow_auto_pause_controls.sql');
   });
 
   it('returns an exact suffix and rejects a missing start', async () => {
@@ -60,6 +60,7 @@ describe('retained migration history fixture', () => {
       '0122_workspace_inbox_projection.sql',
       '0123_workspace_inbox_threads.sql',
       '0124_workflow_trigger_pause.sql',
+      '0125_workflow_auto_pause_controls.sql',
     ]);
     await expect(
       expectedMigrationHistoryFrom('9999_missing.sql'),

@@ -4,6 +4,9 @@ import { z } from 'zod';
 import {
   WorkflowLifecycleRevisionConflictError,
   WorkflowNameRevisionConflictError,
+  WorkflowPauseRevisionConflictError,
+  WorkflowAutoPauseSettingsRevisionConflictError,
+  WorkspaceAutoPauseSettingsRevisionConflictError,
 } from '@pertexo/database/api';
 import {
   WorkflowIdempotencyConflictError,
@@ -28,6 +31,32 @@ import { AuthorizationError } from '../../src/workspaces/index.js';
 const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 
 describe('workflow authoring error mapping', () => {
+  it('projects operational conflicts without losing bigint revision precision', () => {
+    expect(
+      mapWorkflowAuthoringError(
+        new WorkflowPauseRevisionConflictError('9007199254740993'),
+      ),
+    ).toMatchObject({
+      code: 'workflow.pause_conflict',
+      details: { currentPauseRevision: '9007199254740993' },
+    });
+    expect(
+      mapWorkflowAuthoringError(
+        new WorkflowAutoPauseSettingsRevisionConflictError(2),
+      ),
+    ).toMatchObject({
+      code: 'workflow.auto_pause_settings_conflict',
+      details: { currentSettingsRevision: 2 },
+    });
+    expect(
+      mapWorkflowAuthoringError(
+        new WorkspaceAutoPauseSettingsRevisionConflictError(3),
+      ),
+    ).toMatchObject({
+      code: 'workspace.auto_pause_settings_conflict',
+      details: { currentRevision: 3 },
+    });
+  });
   it.each([
     [
       'missing If-Match',

@@ -40,6 +40,7 @@ const workflowRowSchema = z
     // ADR 056: operational auto-pause settings and trigger pause state,
     // present when a query selects every column.
     auto_pause_enabled: z.boolean().optional(),
+    auto_pause_settings_revision: revisionSchema.optional(),
     auto_pause_threshold: z
       .number()
       .int()

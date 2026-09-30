@@ -9,6 +9,7 @@ import { FailureAlertsSection } from './components/settings/failure-alerts-secti
 import { IdentitySection } from './components/settings/identity-section';
 import { LifecycleSection } from './components/settings/lifecycle-section';
 import { RunDurationSection } from './components/settings/run-duration-section';
+import { AutoPauseSection } from './components/settings/auto-pause-section';
 import { StepHealthSection } from './components/settings/step-health-section';
 import { visibleSettingsData } from './model/settings-query';
 
@@ -50,6 +51,12 @@ function SettingsSession({
         query={summary}
       />
       <FailureAlertsSection
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        workflowId={workflowId}
+      />
+      <AutoPauseSection
         apiClient={apiClient}
         userId={user.id}
         workspace={workspace}

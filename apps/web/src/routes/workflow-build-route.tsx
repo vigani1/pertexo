@@ -3,6 +3,7 @@ import { Link, useLoaderData, useNavigate } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { WorkflowEditorPage } from '@/features/workflow-editor/public';
 import { workflowSettingsKeys } from '@/features/workflow-settings/queries.public';
+import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
 import { ResourceNotFound } from './system-pages';
 import { useWorkflowHubScope } from './workflow-hub-scope';
 
@@ -34,6 +35,15 @@ export function WorkflowBuildRoute() {
       user={user}
       workspace={workspace}
       workflowId={workflowId}
+      triggerNotice={
+        <WorkflowPausedBanner
+          key={`${user.id}:${workspace.id}:${workflowId}`}
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflowId={workflowId}
+        />
+      }
       onRunAccepted={(runId) => {
         void navigate({
           to: '/w/$workspaceId/runs/$runId',

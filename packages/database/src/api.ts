@@ -1,5 +1,16 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
 export {
+  WorkflowPauseRevisionConflictError,
+  WorkflowAutoPauseSettingsRevisionConflictError,
+  WorkspaceAutoPauseSettingsRevisionConflictError,
+} from './authoring/workflow-auto-pause.js';
+export type {
+  WorkflowAutoPauseDatabase,
+  WorkflowAutoPauseSettings,
+  WorkspaceAutoPauseSettings,
+  AutoPauseCommandResult,
+} from './authoring/workflow-auto-pause.js';
+export {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,

@@ -81,6 +81,7 @@ const expectedSuffix = [
   '0122_workspace_inbox_projection.sql',
   '0123_workspace_inbox_threads.sql',
   '0124_workflow_trigger_pause.sql',
+  '0125_workflow_auto_pause_controls.sql',
 ] as const;
 
 interface FunctionMetadata {

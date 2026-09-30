@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './workflow-auto-pause.js';
 import {
   workflowActivationStatusSchema,
   workflowLifecycleStatusSchema,

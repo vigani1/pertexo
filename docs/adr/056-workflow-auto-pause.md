@@ -42,7 +42,7 @@ failures.
 ### The rule
 
 A workflow pauses when its streak reaches its threshold. The workspace default
-is 10; people with `workspace:manage` (owners and admins) can set it between 3
+is 10; people with `workspace:manage` (owners under the current role policy) can set it between 3
 and 100, and people with `workflow:update` can override it per workflow within
 the same range or turn auto-pause off for that workflow. These are operational
 settings on the workflow and workspace rows, not part of a published version:
@@ -117,6 +117,22 @@ the same people as `workflow:update`). A stale revision is a typed conflict; a
 workflow that is not paused is a no-op. Resuming clears the pause, resets the
 streak to zero and appends an audit fact in one transaction. It never touches a
 trigger, endpoint or schedule.
+
+The pause revision is a canonical positive decimal string in JSON, preserving
+the database's bigint precision. Operational settings have their own revision,
+independent of drafts, workflow lifecycle and pause state; the workspace default
+uses the workspace revision. Exact command retries replay the accepted snapshot
+before rechecking the historical revision, without rewriting older authoring
+receipts. Clients reload current authority after a command or conflict.
+
+Resume records a terminal-time cutoff: outcomes that ended before the resume
+are consumed without rebuilding the cleared streak, including delayed commits.
+Runs still in flight can contribute when they end after resume. The evaluator,
+resume and settings commands share workflow serialization; workspace default
+changes serialize against evaluation. The evaluator rechecks current settings
+and lifecycle under the workflow lock before recording a pause. Resume does not
+lock or delete pending outcome rows, avoiding an outcome-queue/producer lock
+cycle. A no-op resume changes neither the streak, cutoff, revision nor audit.
 
 There is no automatic resume.
 

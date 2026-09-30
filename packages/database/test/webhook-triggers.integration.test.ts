@@ -1191,7 +1191,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0124_workflow_trigger_pause.sql',
+      migrationHead: '0125_workflow_auto_pause_controls.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),
@@ -1767,6 +1767,102 @@ describe('generic webhook database seam', () => {
       claim.trigger_id,
       claim.lease_token,
     ]);
+    const controls = authoring.autoPause;
+    if (controls === undefined) throw new Error('Auto pause controls missing');
+    const scope = { workspaceId, workflowId: pausedWorkflowId, actorId };
+    await controls.resumeWorkflow({
+      ...scope,
+      expectedPauseRevision: '2',
+      idempotencyKey: randomUUID(),
+    });
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        ...input,
+        requestFingerprint: hash('after-resume'),
+        idempotencyKeyHash: hash('after-resume-key'),
+        payload: { event: 'after-resume' },
+      }),
+    ).resolves.toMatchObject({ replayed: false });
+    const resumedClaim = await workerQuery<{
+      trigger_id: string;
+      lease_token: string;
+    }>(
+      'select trigger_id,lease_token from app.claim_due_trigger_schedules($1,1,30)',
+      [`resume-gate-${randomUUID()}`],
+    );
+    const resumed = resumedClaim.rows[0];
+    if (resumed === undefined)
+      throw new Error('Resumed schedule claim missing');
+    expect(resumed.trigger_id).toBe(resources.scheduleId);
+    await expect(
+      workerQuery('select app.schedule_claim_workflow_paused($1,$2) paused', [
+        resumed.trigger_id,
+        resumed.lease_token,
+      ]),
+    ).resolves.toMatchObject({ rows: [{ paused: false }] });
+    await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
+      resumed.trigger_id,
+      resumed.lease_token,
+    ]);
+
+    // A person's disabled resources remain disabled through pause, archive,
+    // restore and resume. Only the separate pause state is cleared.
+    await workerQuery(
+      "update app.webhook_trigger_endpoints set status='disabled' where id=$1",
+      [resources.endpointId],
+    );
+    await ownerQuery(
+      "update app.workflow_triggers set status='disabled',health_status='disabled' where id=(select trigger_id from app.webhook_trigger_endpoints where id=$1)",
+      [resources.endpointId],
+    );
+    await ownerQuery(
+      "update app.trigger_schedules set status='disabled' where trigger_id=$1",
+      [resources.scheduleId],
+    );
+    await ownerQuery(
+      `update app.workflows set trigger_pause_state='paused',trigger_paused_at=clock_timestamp(),
+      trigger_pause_reason='consecutive_failures',trigger_pause_failures=10,trigger_pause_last_run_id=$3,
+      trigger_pause_revision=trigger_pause_revision+1 where workspace_id=$1 and id=$2`,
+      [workspaceId, pausedWorkflowId, before.runId],
+    );
+    await authoring.transitionWorkflowLifecycle({
+      ...scope,
+      command: 'archive',
+      expectedLifecycleRevision: 1,
+      idempotencyKey: randomUUID(),
+    });
+    await authoring.transitionWorkflowLifecycle({
+      ...scope,
+      command: 'restore',
+      expectedLifecycleRevision: 2,
+      idempotencyKey: randomUUID(),
+    });
+    expect((await controls.readWorkflowSettings(scope)).pauseState).toBe(
+      'paused',
+    );
+    await controls.resumeWorkflow({
+      ...scope,
+      expectedPauseRevision: '4',
+      idempotencyKey: randomUUID(),
+    });
+    await expect(
+      ownerQuery(
+        `select endpoint.status as endpoint_status,schedule.status as schedule_status
+      from app.webhook_trigger_endpoints endpoint join app.trigger_schedules schedule on schedule.trigger_id=$2
+      where endpoint.id=$1`,
+        [resources.endpointId, resources.scheduleId],
+      ),
+    ).resolves.toMatchObject({
+      rows: [{ endpoint_status: 'disabled', schedule_status: 'disabled' }],
+    });
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        ...input,
+        requestFingerprint: hash('still-disabled'),
+        idempotencyKeyHash: hash('still-disabled-key'),
+        payload: { event: 'still-disabled' },
+      }),
+    ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
   });
 
   it('serializes expired keyed and fingerprint replay replacement with database time', async () => {

@@ -32,6 +32,12 @@ import {
   setResponseHeader,
 } from './request-context.js';
 import { firstRequestHeader } from './request-headers.js';
+import {
+  normalizeAutoPauseConflict,
+  projectAutoPauseConflict,
+  type AutoPauseConflictProblem,
+  type AutoPauseConflictRevision,
+} from './auto-pause-conflict.js';
 
 export const HTTP_ERROR_LOGGER = Symbol('HTTP_ERROR_LOGGER');
 export const HTTP_APPLICATION_ERROR_MAPPERS = Symbol(
@@ -43,7 +49,8 @@ type ProblemDetails =
   | ApiProblem
   | WorkflowRevisionConflictProblem
   | WorkflowLifecycleConflictProblem
-  | WorkflowNameConflictProblem;
+  | WorkflowNameConflictProblem
+  | AutoPauseConflictProblem;
 
 export type HttpErrorLogEntry = Readonly<{
   code: ApplicationErrorCode;
@@ -84,6 +91,7 @@ type NormalizedProblem = Readonly<{
   retryAfterSeconds?: number;
   currentLifecycleRevision?: number;
   currentNameRevision?: number;
+  autoPauseConflict?: AutoPauseConflictRevision;
   cause?: unknown;
 }>;
 
@@ -207,6 +215,8 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
       ? { ...base, retryAfterSeconds }
       : base;
   }
+  const autoPauseConflict = normalizeAutoPauseConflict(error);
+  if (autoPauseConflict !== undefined) return { ...base, autoPauseConflict };
   if (error.code === 'workflow.lifecycle_conflict') {
     const parsed = workflowLifecycleRevisionSchema.safeParse(
       error.details?.currentLifecycleRevision,
@@ -378,6 +388,8 @@ function problemDetails(
   normalized: NormalizedProblem,
   baseProblem: ApiProblem,
 ): ProblemDetails {
+  if (normalized.autoPauseConflict !== undefined)
+    return projectAutoPauseConflict(baseProblem, normalized.autoPauseConflict);
   if (normalized.currentLifecycleRevision !== undefined)
     return workflowLifecycleConflictProblemSchema.parse({
       ...baseProblem,

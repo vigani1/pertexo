@@ -11,7 +11,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query';
 import { ReactFlowProvider } from '@xyflow/react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
 import {
@@ -58,6 +58,7 @@ export function WorkflowEditorPage({
   workflowId,
   onRunAccepted,
   onPublished,
+  triggerNotice,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
@@ -66,6 +67,7 @@ export function WorkflowEditorPage({
   onRunAccepted: (runId: string) => void;
   /** After a publish lands, for reads of the workflow outside the editor. */
   onPublished?: () => void;
+  triggerNotice?: ReactNode;
 }>) {
   const draft = useSuspenseQuery(
     workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
@@ -96,6 +98,7 @@ export function WorkflowEditorPage({
           connections={connections.data?.items ?? NO_CONNECTIONS}
           connectionsAvailable={connections.data !== null}
           onRunAccepted={onRunAccepted}
+          triggerNotice={triggerNotice}
           {...(onPublished === undefined ? {} : { onPublished })}
         />
       </ReactFlowProvider>
@@ -118,6 +121,7 @@ function WorkflowEditorSession({
   connectionsAvailable,
   onRunAccepted,
   onPublished,
+  triggerNotice,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -128,6 +132,7 @@ function WorkflowEditorSession({
   connectionsAvailable: boolean;
   onRunAccepted: (runId: string) => void;
   onPublished?: () => void;
+  triggerNotice?: ReactNode;
 }>) {
   const store = useEditorStoreApi();
   const queryClient = useQueryClient();
@@ -287,11 +292,14 @@ function WorkflowEditorSession({
             )
           }
           banner={
-            <ConflictBar
-              onCompare={() => {
-                setCompareOpen(true);
-              }}
-            />
+            <>
+              {triggerNotice}
+              <ConflictBar
+                onCompare={() => {
+                  setCompareOpen(true);
+                }}
+              />
+            </>
           }
         />
         <ConflictCompareDialog
