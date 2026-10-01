@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { acceptManualFixtureRun } from './manual-start.fixture.js';
 
 import {
-  acceptWorkflowRun,
   createConnectionDatabase,
   createWorkspaceDatabase,
   migrateDatabase as migrateSchema,
@@ -584,7 +584,7 @@ export async function resetProviderScenarioIsolation(
 
 export async function acceptRun() {
   return apiDatabase.withWorkspace(workspaceId, (transaction) =>
-    acceptWorkflowRun(transaction, {
+    acceptManualFixtureRun(transaction, actorId, {
       engineVersion: 'http-attempt-engine-v1',
       initialCheckpoint: createCheckpoint({
         engineVersion: 'http-attempt-engine-v1',
@@ -596,7 +596,7 @@ export async function acceptRun() {
       operation: 'workflow.run.accept',
       requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
       runInput: {},
-      scope: `http-attempt:${workflowId}`,
+      scope: `workflow:${workflowId}:manual`,
       triggerType: 'manual',
       workflowId,
       workflowVersionId,
@@ -642,7 +642,7 @@ export async function acceptProviderScenarioRun(provider: ProviderScenario) {
     );
   });
   const accepted = await apiDatabase.withWorkspace(workspaceId, (transaction) =>
-    acceptWorkflowRun(transaction, {
+    acceptManualFixtureRun(transaction, actorId, {
       engineVersion: 'http-attempt-engine-v1',
       initialCheckpoint: createCheckpoint({
         engineVersion: 'http-attempt-engine-v1',
@@ -654,7 +654,7 @@ export async function acceptProviderScenarioRun(provider: ProviderScenario) {
       operation: 'workflow.run.accept',
       requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
       runInput: {},
-      scope: `http-attempt-scenario:${scenarioWorkflowId}`,
+      scope: `workflow:${scenarioWorkflowId}:manual`,
       triggerType: 'manual',
       workflowId: scenarioWorkflowId,
       workflowVersionId: scenarioWorkflowVersionId,

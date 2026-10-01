@@ -465,6 +465,11 @@ async function seedIdentityAndExecutables(): Promise<void> {
         workspaceId,
       ]);
       await client.query(
+        `insert into app.workspace_memberships(workspace_id,user_id,role,status)
+         values ($1,$2,'owner','active')`,
+        [workspaceId, actorId],
+      );
+      await client.query(
         `insert into app.workspace_execution_entitlement_versions (
            workspace_id,version,status,active_run_limit,queued_run_limit,effective_at
          ) values ($1,2,'active',10000,100000,'-infinity'::timestamptz)`,
@@ -599,6 +604,20 @@ async function insertRun(input: {
   const runId = randomUUID();
   const workflowVersionId = input.workflowVersionId ?? versionA;
   await asRuntime(apiBaseUrl, workspaceId, async (client) => {
+    if ((input.triggerType ?? 'manual') === 'manual') {
+      await client.query("select set_config('app.actor_id',$1,true)", [
+        actorId,
+      ]);
+      await client.query(
+        'select app.lock_manual_workflow_run_start($1,$2,$3,$4)',
+        [
+          actorId,
+          input.workflowId ?? workflowA,
+          `workflow:${input.workflowId ?? workflowA}:manual`,
+          createHash('sha256').update(runId).digest('hex'),
+        ],
+      );
+    }
     await client.query(
       `insert into app.workflow_runs (
          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,

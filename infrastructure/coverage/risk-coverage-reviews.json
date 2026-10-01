@@ -954,9 +954,9 @@
           "branchType": "if",
           "line": 69,
           "column": 2,
-          "sourceFingerprint": "sha256:1de9503b11d879d8b4924025c55fd6c025868038cdaaa9b32e296b836665b2f1",
+          "sourceFingerprint": "sha256:d42a523098d85a0ab1d75b6593c9736351c74729dc2f34d335c10f8a5f218af3",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 capacity and ADR058 blocker schemas are below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
+          "justification": "This unchanged defensive timestamp-normalizer guard rejects malformed pagination material. The ADR061 optional checked-start field is below the normalizer; Istanbul's null end column fingerprints the whole file, so this existing review is re-pinned without adding an exception or changing its obligation."
         },
         {
           "branchId": "1",
@@ -964,9 +964,9 @@
           "branchType": "if",
           "line": 72,
           "column": 2,
-          "sourceFingerprint": "sha256:1de9503b11d879d8b4924025c55fd6c025868038cdaaa9b32e296b836665b2f1",
+          "sourceFingerprint": "sha256:d42a523098d85a0ab1d75b6593c9736351c74729dc2f34d335c10f8a5f218af3",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 capacity and ADR058 blocker schemas are below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
+          "justification": "This unchanged defensive timestamp-normalizer guard rejects malformed pagination material. The ADR061 optional checked-start field is below the normalizer; Istanbul's null end column fingerprints the whole file, so this existing review is re-pinned without adding an exception or changing its obligation."
         },
         {
           "branchId": "3",

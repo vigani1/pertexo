@@ -168,6 +168,42 @@ test('pins an exact file inventory for every risk cohort', async () => {
   );
 });
 
+test('keeps input cases and manual command hashing inside required API risk inventories', async () => {
+  const inventories = await riskCoverageCohortFileInventories(
+    path.resolve(import.meta.dirname, '../..'),
+  );
+  const requiredFiles = {
+    'api-orchestration': ['apps/api/src/workflow-runs/request-hashes.ts'],
+    'api-priority': [
+      'apps/api/src/workflow-authoring/input-case-controller.ts',
+      'apps/api/src/workflow-authoring/input-case-cursor.ts',
+      'apps/api/src/workflow-authoring/input-case-use-case.ts',
+    ],
+  };
+  for (const [cohort, required] of Object.entries(requiredFiles)) {
+    const files = inventories.get(cohort);
+    for (const file of required) {
+      assert.ok(files.includes(file), `${cohort} must cover ${file}`);
+      assert.throws(
+        () =>
+          assertRiskCoverageCohort(
+            {
+              scope: {
+                cohorts: [
+                  { cohort, files: files.filter((item) => item !== file) },
+                ],
+              },
+              uncoveredBranches: [],
+            },
+            cohort,
+            files,
+          ),
+        new RegExp(`Unexpected ${cohort} risk-coverage file inventory`, 'u'),
+      );
+    }
+  }
+});
+
 test('requires and partitions source-identical API priority coverage', () => {
   const coverage = (hits = 0) => ({
     path: '/repo/apps/api/src/shared.ts',

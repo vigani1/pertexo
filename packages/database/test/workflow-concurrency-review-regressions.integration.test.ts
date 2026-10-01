@@ -102,7 +102,7 @@ describe('workflow concurrency review regressions', () => {
           inserting = writer
             .query(
               `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
-             values($1,$2,$3,$4,'manual',$5)`,
+             values($1,$2,$3,$4,'api',$5)`,
               [randomUUID(), workspaceA, workflowId, workflowVersionId, status],
             )
             .then(

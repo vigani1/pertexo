@@ -1,10 +1,16 @@
 import type { Pool } from 'pg';
+import { lockManualFixtureClient } from './manual-start.fixture.js';
 
 export async function queryAsWorkspaceRole<Row extends Record<string, unknown>>(
   pool: Pool,
   workspaceId: string,
   statement: string,
   parameters: readonly unknown[] = [],
+  manualStart?: Readonly<{
+    actorId: string;
+    workflowId: string;
+    keyHash: string;
+  }>,
 ): Promise<readonly Row[]> {
   const client = await pool.connect();
   try {
@@ -12,6 +18,13 @@ export async function queryAsWorkspaceRole<Row extends Record<string, unknown>>(
     await client.query("select set_config('app.workspace_id', $1, true)", [
       workspaceId,
     ]);
+    if (manualStart !== undefined)
+      await lockManualFixtureClient(
+        client,
+        manualStart.actorId,
+        manualStart.workflowId,
+        manualStart.keyHash,
+      );
     const result = await client.query<Row>(statement, [...parameters]);
     await client.query('commit');
     return result.rows;

@@ -109,6 +109,9 @@ export class WorkflowRunsController {
       ...guardAuthorization(request),
       workflowId: route.workflowId,
       idempotencyKey: requiredIdempotencyKey(request),
+      ...(input.expectedPublishedVersionId === undefined
+        ? {}
+        : { expectedPublishedVersionId: input.expectedPublishedVersionId }),
       ...(input.input === undefined ? {} : { input: input.input }),
       ...(input.deadlineAt === undefined
         ? {}

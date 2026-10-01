@@ -127,7 +127,7 @@ async function addRuns(
     `insert into app.workflow_runs
        (id, workspace_id, workflow_id, workflow_version_id, trigger_type,
         status, created_at, updated_at)
-     select gen_random_uuid(), $1, $2, version.id, 'manual', $3,
+     select gen_random_uuid(), $1, $2, version.id, 'api', $3,
             now() - $5::interval, now() - $5::interval
      from app.workflow_versions version
      cross join generate_series(1, $4::integer)

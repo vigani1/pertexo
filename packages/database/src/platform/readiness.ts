@@ -28,6 +28,8 @@ export type DatabaseReadiness = Readonly<{
 }>;
 
 export type ReadinessOptions = Readonly<{
+  maintenanceRole?: string;
+  operatorRole?: string;
   apiRuntimeRole?: string;
   ownerRole: string;
   workerRuntimeRole?: string;
@@ -60,6 +62,8 @@ export async function checkDatabaseReadiness(
     options.ownerRole,
     options.workerRuntimeRole ?? 'pertexo_worker',
     options.apiRuntimeRole ?? 'pertexo_api',
+    options.maintenanceRole ?? 'pertexo_maintenance',
+    options.operatorRole ?? 'pertexo_operator',
   ]);
   const row = result.rows[0];
   assertDatabaseReadinessRow(row, {

@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import {
   workflowRunCancelResponseSchema,
   normalizeWorkflowRunCreatedAt,
@@ -11,7 +9,6 @@ import {
   type WorkflowRunResponse,
   type WorkflowRunStartResponse,
 } from '@pertexo/contracts/workflow-runs';
-import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 
 import {
   authorizeWorkspaceOperation,
@@ -45,6 +42,11 @@ import {
   streamProducerFailureReason,
   type StreamFailure,
 } from './stream-cleanup.js';
+import {
+  replayRequestHash,
+  sha256,
+  startRequestHash,
+} from './request-hashes.js';
 
 export class WorkflowRunNotFoundError extends Error {
   public override readonly name = 'WorkflowRunNotFoundError';
@@ -55,6 +57,7 @@ export type StartWorkflowRunInput = WorkflowRunApplicationInput &
     workflowId: string;
     idempotencyKey: string;
     input?: unknown;
+    expectedPublishedVersionId?: string;
     deadlineAt?: string;
     requestId?: string;
     traceId?: string;
@@ -140,6 +143,9 @@ export class StartWorkflowRunUseCase {
       idempotencyKeyHash: sha256(input.idempotencyKey),
       requestHash: startRequestHash(input),
       scope: `workflow:${input.workflowId}:manual`,
+      ...(input.expectedPublishedVersionId === undefined
+        ? {}
+        : { expectedPublishedVersionId: input.expectedPublishedVersionId }),
       ...(input.input === undefined ? {} : { input: input.input }),
       ...(deadlineAt === undefined ? {} : { deadlineAt }),
       ...requestIdentifiers(input),
@@ -431,43 +437,6 @@ function toStartResponse(
     run: toRunSummary(result.run),
     replayed: result.replayed,
   });
-}
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-function startRequestHash(input: StartWorkflowRunInput): string {
-  return sha256(
-    canonicalJson({
-      domain: 'pertexo.workflow-run.start-request',
-      version: 1,
-      actorId: input.actor.actorId,
-      workspaceId: input.routeWorkspaceId,
-      workflowId: input.workflowId,
-      ...(input.input === undefined ? {} : { input: input.input }),
-      ...(input.deadlineAt === undefined
-        ? {}
-        : { deadlineAt: input.deadlineAt }),
-    }),
-  );
-}
-
-function replayRequestHash(input: ReplayWorkflowRunInput): string {
-  return sha256(
-    canonicalJson({
-      domain: 'pertexo.workflow-run.replay-request',
-      version: 1,
-      actorId: input.actor.actorId,
-      workspaceId: input.routeWorkspaceId,
-      sourceRunId: input.runId,
-      workflowVersionId: input.workflowVersionId,
-      input: input.input,
-      ...(input.deadlineAt === undefined
-        ? {}
-        : { deadlineAt: input.deadlineAt }),
-    }),
-  );
 }
 
 function iso(value: Date | null): string | null {

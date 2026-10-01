@@ -232,6 +232,7 @@ async function workerQuery<T extends Record<string, unknown>>(
 async function apiQuery<T extends Record<string, unknown>>(
   statement: string,
   parameters: readonly unknown[] = [],
+  manualStart?: Readonly<{ workflowId: string; keyHash: string }>,
 ): Promise<readonly T[]> {
   const pool = new Pool({
     connectionString: databaseUrl(apiUrl),
@@ -243,6 +244,7 @@ async function apiQuery<T extends Record<string, unknown>>(
       workspaceId,
       statement,
       parameters,
+      manualStart === undefined ? undefined : { ...manualStart, actorId },
     );
   } finally {
     await pool.end();
