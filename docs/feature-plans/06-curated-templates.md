@@ -43,13 +43,17 @@ Implementation foundation update (2026-10-02): accepted decision recorded in
 policy in `fb4a2890`; additive HTTP/API origin forwarding, scoped projection
 capability and conditional command identity in `28a54ab6`. The chooser/guided
 setup uses the existing mounted recovered import session and remains explicitly
-off. No persistent origin SQL writer/reader, inheritance or migration has yet
+off. Retained-origin presentation is implemented behind an independent off gate,
+using the strict opt-in GET under the existing scoped query prefix; no asset
+lookup or current-safety inference. File-read/example-selection ownership is
+regression-tested (`f088e4dc`). No persistent origin SQL writer/reader, inheritance or migration has yet
 been installed; the opt-in API fails unavailable without a supported reader.
 Combined F02/F05 base and migration allocation remain release-owner gates.
 
 Foundation verification: 215 model and 124 catalog unit tests; 154 contract tests
 with regenerated artifact/OpenAPI checks; 113 focused API tests and two receipt
-identity tests; 876 web unit tests and 27 focused setup/recovery tests. Relevant
+identity tests; latest 887 web unit tests across 117 files and 38 focused
+setup/recovery/origin tests. Relevant
 builds/typechecks, scoped lint, browser import/export checks and architecture/
 complexity ratchets pass; React Doctor changed score 89 retains the same six
 advisory identities. Fresh pure proof of the actual repository assets passes

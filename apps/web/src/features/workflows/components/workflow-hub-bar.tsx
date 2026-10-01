@@ -12,6 +12,8 @@ import { describeWorkflowState } from '../model/workflow-state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
 import { WorkflowDuplicateAction } from './workflow-duplicate-dialog';
 import { WorkflowExportAction } from './portability/workflow-export-dialog';
+import { WorkflowTemplateOrigin } from './templates/workflow-template-origin';
+import { workflowTemplateOriginPresentationEnabled } from '../workflow-origin.queries';
 
 export type WorkflowHubTab =
   'build' | 'runs' | 'triggers' | 'versions' | 'settings';
@@ -150,6 +152,14 @@ export function WorkflowHubBar({
               </Link>
             ) : null}
           </div>
+          {workflowTemplateOriginPresentationEnabled() ? (
+            <WorkflowTemplateOrigin
+              apiClient={apiClient}
+              userId={userId}
+              workspace={workspace}
+              workflowId={workflowId}
+            />
+          ) : null}
         </div>
       </div>
       <nav
