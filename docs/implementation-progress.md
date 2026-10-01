@@ -14,9 +14,9 @@ external production evidence listed under Phase 7.
 
 The manager accepted [ADR059](./adr/059-connection-health-observations.md) and
 the [F30 plan](./feature-plans/30-connection-health.md) on 2026-10-01, based on
-reviewed F29 head `7561e822`. The narrow slice is implemented locally on
-`feat/connection-health`; local qualification passes and independent review
-and release remain open.
+reviewed F29 head `7561e822`. The narrow slice is independently reviewed and
+merged through PR139 and test-only follow-up PR140. Final natural main
+`adaa26df5f31ad4bbf69429f091f77acc707bf70` passed CI and CodeQL.
 Scope is Slack run-derived evidence,
 version/revision-fenced durable application, safe manual recovery, authorized
 published-version usage, and the existing connections/settings UI. Notices and
@@ -31,7 +31,7 @@ other automatic providers are deferred; production activation is not authorized.
       enabled HTTP/browser evidence.
 - [x] Repair the reviewed ordinary-command conflict eviction and prove real
       abandoned publication ownership recovery after natural lease expiry.
-- [ ] Complete independent reviews; merge a scoped green PR and inspect natural
+- [x] Complete independent reviews; merge a scoped green PR and inspect natural
       postmerge checks.
 
 Focused evidence: 23 run-health PostgreSQL cases, 16 boundary cases and two
@@ -70,8 +70,9 @@ documentation and coverage provenance passed again. Source fingerprint:
 The owned `pertexo-connection-health-20261001` PostgreSQL/Redis containers,
 network and two volumes were removed after all database clients closed and
 fixture Redis DB13 was empty. Evidence remains outside the checkout under
-`/Users/vigan/.codex/evidence/pertexo-f30-2026-10-01/`. No push was performed;
-43 unrelated primary-checkout changes were preserved. Review repairs are
+`/Users/vigan/.codex/evidence/pertexo-f30-2026-10-01/`. At that local qualification
+point, no push had been performed; 43 unrelated primary-checkout changes were
+preserved. Review repairs are
 `ef5c955d` (command conflicts) and `72a32b2f` (abandoned ownership proof).
 Fresh repair evidence is retained in the receipt's `repair/` directory; the
 original qualification receipt remains historical. The isolated
@@ -82,7 +83,7 @@ only the HTTP proof's bounded test ceiling accommodates actual lease expiry.
 Production mode remains `off`; no provider traffic outside owned fixtures is
 authorized.
 
-[PR139](https://github.com/vigani1/pertexo/pull/139) remains unmerged. Its
+[PR139](https://github.com/vigani1/pertexo/pull/139)'s earlier
 `06917f74` CI recovery and integration lanes exposed the same older HTTP-worker
 fixture reset failure after a legitimate email credential rotation: restoration
 omitted the revision-aware protocol. Repair `7abbc106` changes test fixtures only,
@@ -97,8 +98,42 @@ API integration cohort passes 21 files / 109 cases with the unchanged CI
 exclusions; API SSE reconstruction and worker transport service-loss recovery
 each pass one enabled case. All reports pass strict zero-skip validation.
 Owned fixture services/data were removed after zero-client/database/proof-key
-checks. Final results are recorded in the CI-repair receipt; hosted repaired-head
-CI and manager inspection remain required before any push or merge.
+checks. These local results are historical and recorded in the CI-repair receipt.
+
+Independent feature specification and standards reviews accepted the
+implementation and repairs. PR139 merged reviewed head
+`94509ee87171f1b06777aa692f7409edf675efca` as
+`4ad9f8afe7a82184e2356345eaeed3492688dfe5` after exact-head
+[CI](https://github.com/vigani1/pertexo/actions/runs/36830092069) and
+[CodeQL](https://github.com/vigani1/pertexo/actions/runs/36830092139) passed.
+Its [first natural-main run](https://github.com/vigani1/pertexo/actions/runs/36831587356)
+failed one statistics plan assertion. A retained
+pre-insert snapshot reproduced the bitmap-scan symptom and showed that a
+successful VACUUM alone did not establish all-visible fixture pages. Test-only
+[PR140](https://github.com/vigani1/pertexo/pull/140) added bounded snapshot
+readiness, explicit visibility assertions, a regression and diagnostic plan
+output without changing queries, planner settings or performance budgets.
+The original failed CI run captured no snapshot/plan state, so its precise
+cause remains unconfirmed. No unchanged failed run was retried for qualification.
+Local repair evidence passes 796 database integration tests, all 20 statistics
+cases and 891 database unit tests; both independent repair reviews found zero
+findings.
+
+PR140 merged reviewed head `0b22c49448d314ee9917dad6094cd7c771f5e9a8` after
+exact-head [CI](https://github.com/vigani1/pertexo/actions/runs/36835574309) and
+[CodeQL](https://github.com/vigani1/pertexo/actions/runs/36835574239) passed.
+Final natural main `adaa26df5f31ad4bbf69429f091f77acc707bf70` passed
+[CI](https://github.com/vigani1/pertexo/actions/runs/36837670529) and
+[CodeQL](https://github.com/vigani1/pertexo/actions/runs/36837670516).
+All applicable lanes passed, including integration, recovery, browser, coverage,
+production image, compatibility and deployment security; dependency review was
+appropriately skipped on main and passed on the PR. Final qualification and
+the indexed local evidence are recorded in
+`/Users/vigan/.codex/evidence/pertexo-f30-2026-10-01/final-receipt.md`.
+Owned disposable services were removed; unrelated primary-checkout work and
+everyday services were preserved. `CONNECTION_RUN_HEALTH_MODE` remains `off`.
+This closes only F30's planned narrow Slack slice, not production activation or
+any other phase.
 
 ### F29 — queue-only workflow concurrency
 
@@ -302,7 +337,7 @@ cleanup; the service-backed qualification above remains explicitly pre-cleanup.
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014, 023–026; provider, webhook, schedule, retained-history, and rollout evidence |
 | Phase 7 — production operations | **In progress** | Repository implementation is qualified locally; external deployment, provider, load, recovery, telemetry, and pager evidence remains open |
 | F29 — queue-only workflow concurrency | Qualified | ADR058 queue-only slice, independent reviews, PR138 exact-head and natural main CI/CodeQL; skip overflow deferred |
-| F30 — first Slack connection-health slice | Locally qualified; review/release open | Version/revision-fenced durable health, manual recovery and usage/UI; 795 PostgreSQL cases, enabled HTTP/browser, 24 source-bound coverage cohorts |
+| F30 — first Slack connection-health slice | Qualified | ADR059 narrow Slack slice; independent reviews, PR139/140 exact-head checks and natural main CI/CodeQL on `adaa26df`; production mode off |
 
 The 0A–0E rows subdivide the plan's single Phase 0 and do not change its
 authoritative scope. All accepted architecture decisions remain under

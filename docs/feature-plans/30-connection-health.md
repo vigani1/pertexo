@@ -1,6 +1,6 @@
 # F30 — Connection health and reconnection
 
-Status: first Slack slice implemented and qualified locally; independent review and release pending.
+Status: first Slack slice independently reviewed, merged and qualified on natural main; production mode remains off.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: Extends existing connections. Relative size: **M–L**, not a calendar estimate.
 
@@ -12,17 +12,17 @@ it in one place.
 
 ## Current implementation and evidence
 
-The accepted planning baseline was: connections record `lastTestedAt`, `lastHealthyAt` and `lastErrorCode`, and
-people can test and rotate them. Production runs do not currently report health.
-An internal bounded `findConnectionImpact` projection already indexes published
-version usage; there is no user-facing used-by endpoint. Reuse that projection.
-The standalone health writer is not a safe worker integration: it lacks a
-secret-version fence, sets test timestamps for every source, and does not
-restore active status on success. Manual-test completion fences the secret
-version, but claim/resolution/dispatch currently prevent testing a
-reauthorization-required connection, and concurrent same-version tests lack an
-ordering fence. Rotation currently preserves old health timestamps. These are
-explicit first-slice corrections, not evidence that recovery already works.
+The accepted planning baseline was: connections recorded `lastTestedAt`, `lastHealthyAt` and `lastErrorCode`, and
+people could test and rotate them. Production runs did not report health.
+An internal bounded `findConnectionImpact` projection already indexed published
+version usage; there was no user-facing used-by endpoint. The slice reused that projection.
+The standalone health writer was not a safe worker integration: it lacked a
+secret-version fence, set test timestamps for every source, and did not
+restore active status on success. Manual-test completion fenced the secret
+version, but claim/resolution/dispatch prevented testing a
+reauthorization-required connection, and concurrent same-version tests lacked an
+ordering fence. Rotation preserved old health timestamps. These were explicit
+first-slice corrections; the qualified result is recorded in the delivery tracker.
 
 Inspected anchors (paths may move):
 
@@ -273,12 +273,12 @@ This context informs the outcome, not Pertexo's implementation.
 
 - [x] Baseline reconciled against current code and accepted decisions.
 - [x] Product choices resolved; ADR059 accepted for the narrow first slice.
-- [ ] Contracts and security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
+- [x] Contracts and security model reviewed.
+- [x] Backend behavior implemented and independently verified where needed.
+- [x] Frontend behavior implemented and independently verified where needed.
 - [x] Real integrated acceptance evidence recorded.
 - [x] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+- [x] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log: 2026-10-01 manager baseline/ADR review on reviewed F29 head
 `7561e82251762dd3b1e2f9f355f4a7376e331670`. The first slice is implemented in
@@ -296,10 +296,9 @@ asserted. This is an abandoned-ownership proof, not an OS process-kill claim.
 The browser regression remains enabled; 822 web unit and 89 browser cases pass.
 Fresh PostgreSQL coverage repeats all 795 cases with zero skips, and the repaired
 source retains 24 coverage cohorts with zero unreviewed risk debt.
-Owned fixture services/data were cleaned up; production remains off. Backend
-and frontend implementation are locally verified, but their combined tracker
-items above remain open until independent review. Contracts/security review,
-scoped PR checks/merge and natural postmerge qualification remain open.
+Owned fixture services/data were cleaned up; production remains off. Both
+independent feature review axes accepted the implementation and repairs,
+including the contracts/security model and backend/frontend behavior.
 
 PR139's `06917f74` recovery/integration CI found an older shared HTTP-worker
 fixture restoring a rotated secret without the required revision protocol.
@@ -313,4 +312,41 @@ service-loss recovery each pass one enabled case, all strict zero-skip.
 No production source,
 migration, guard, budget or CI exclusion changed. Downstream results and owned
 cleanup are recorded separately under the local receipt's `ci-recovery/`
-directory; repaired-head hosted CI and manager inspection remain open.
+directory. These local results are historical; final hosted qualification is
+recorded below.
+
+Final qualification, verified 2026-10-01:
+
+- Feature [PR139](https://github.com/vigani1/pertexo/pull/139) merged reviewed
+  head `94509ee87171f1b06777aa692f7409edf675efca` as
+  `4ad9f8afe7a82184e2356345eaeed3492688dfe5` after exact-head
+  [CI](https://github.com/vigani1/pertexo/actions/runs/36830092069) and
+  [CodeQL](https://github.com/vigani1/pertexo/actions/runs/36830092139) passed.
+- Test-only follow-up [PR140](https://github.com/vigani1/pertexo/pull/140) merged
+  reviewed head `0b22c49448d314ee9917dad6094cd7c771f5e9a8` after exact-head
+  [CI](https://github.com/vigani1/pertexo/actions/runs/36835574309) and
+  [CodeQL](https://github.com/vigani1/pertexo/actions/runs/36835574239) passed.
+  Independent specification and standards reviews reported zero findings.
+- Final natural main `adaa26df5f31ad4bbf69429f091f77acc707bf70` passed
+  [CI](https://github.com/vigani1/pertexo/actions/runs/36837670529) and
+  [CodeQL](https://github.com/vigani1/pertexo/actions/runs/36837670516). All
+  applicable CI lanes passed; dependency review was appropriately skipped on
+  main and passed on the PR.
+
+The [first natural-main run](https://github.com/vigani1/pertexo/actions/runs/36831587356)
+after PR139 failed one statistics plan assertion.
+A retained pre-insert snapshot reproduced the bitmap-scan symptom: successful
+VACUUM alone did not establish the fixture's all-visible precondition. PR140
+added bounded snapshot readiness, explicit visibility assertions, a regression
+and diagnostic plan output. Queries, planner settings and performance budgets
+were unchanged. The failed CI run did not capture snapshot/plan state, so its
+precise cause remains unconfirmed; no unchanged failed run was retried for
+qualification. Local repair evidence passes 796 database integration tests and
+all 20 statistics cases, with zero failed/pending tests.
+
+The final receipt is
+`/Users/vigan/.codex/evidence/pertexo-f30-2026-10-01/final-receipt.md`; it indexes
+the feature, HTTP fixture and statistics repair receipts and reports. F30 is
+qualified only for this planned narrow Slack slice. `CONNECTION_RUN_HEALTH_MODE`
+remains `off`; no production activation, deployment or broader phase completion
+is claimed.
