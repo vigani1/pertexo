@@ -84,6 +84,8 @@ const EXACT_RISK_COHORT_FILES = Object.freeze({
     'apps/api/src/workflow-authoring/duplicate-use-case.ts',
     'apps/api/src/workflow-authoring/lifecycle-use-case.ts',
     'apps/api/src/workflow-authoring/module.ts',
+    'apps/api/src/workflow-authoring/portability-json-parser.ts',
+    'apps/api/src/workflow-authoring/portability-use-cases.ts',
     'apps/api/src/workflow-authoring/preconditions.ts',
     'apps/api/src/workflow-authoring/rename-use-case.ts',
     'apps/api/src/workflow-authoring/restore-version-use-case.ts',

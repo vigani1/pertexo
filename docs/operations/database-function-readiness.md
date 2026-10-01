@@ -44,6 +44,8 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.apply_workspace_deletion_side_effects()` | `908becdc3d5fbf1ec9a1a855c97c75bf` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, internal trigger | `0128_connection_health.sql` |
 | `app.reject_retention_batch_direct_mutation()` | `bd7d508fdf10cf97eb33467e8bd00f37` | invoker, `pg_catalog, pg_temp`, internal trigger | `0128_connection_health.sql` |
 | `app.create_workflow_duplicate_draft(uuid,uuid,uuid,uuid,character varying,integer,jsonb,character,character,text,uuid)` | `b70f29f6408a6ef018b23b10f45fb443` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0129_workflow_duplication.sql` |
+| `app.lock_workflow_portable_version(uuid,uuid,uuid,uuid)` | `00c1b41bf997942d194f9af7819f4d15` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only scoped read lock | `0132_workflow_portability.sql` |
+| `app.create_workflow_import_draft(uuid,uuid,uuid,jsonb,character,character,text)` | `6664b5e481156f7bd185447e5e9a8e17` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0132_workflow_portability.sql` |
 
 The executable inventory is split between
 `packages/database/src/platform/readiness.ts` (compatibility-release functions)
@@ -90,6 +92,31 @@ restore images accept 0129. This is not a zero-downtime mixed-head rollout.
 Application rollback requires an image qualified against 0129; it may leave the
 capability installed. Do not remove it while a supported image uses it, or rewrite
 migration history to admit an older image.
+
+Portable authoring (ADR062) is checked by
+`packages/database/src/platform/readiness-workflow-portability.sql.ts` in the
+same startup probe. It pins both API-only function bodies, owner, security
+configuration and execution ACLs, plus ownership and API read/immutable-singleton
+column grants on the default-off writer gate. Missing gate authority fails new
+imports closed; export and preview are independent readers. The version reader
+locks the exact scoped immutable version without granting API UPDATE on versions.
+The creator hashes a transient canonical command containing only the exact
+submitted manifest, bindings, normalized name and original catalog fingerprint;
+workspace and actor are independently guarded transaction/receipt scopes. It
+compares the rebound graph against that command and never persists its contents.
+
+Apply additive 0132 before serving the feature image, with traffic held closed
+until API, worker, dispatcher and restore images accept that exact head. This
+branch qualifies the 0129-to-0132 path; 0130/0131 belong to concurrent F02 and are
+not copied or renumbered here. Integration with that release must retain their
+checksums and qualify the combined prior-head suffix. No mixed-head rolling
+overlap is claimed. Reader availability is not writer activation: enabling the
+gate requires a separately authorized deployment decision, not a migration
+default. Rollback first disables new imports; exact authorized completed replay
+is resolved before gate/catalog/binding checks. Use an image qualified for 0132,
+leave imported normal workflows and the additive helpers readable, and retain
+the existing 24-hour receipt reaper, legal holds and bounded workspace erasure.
+No production activation is authorized.
 
 ## Synchronized update procedure
 

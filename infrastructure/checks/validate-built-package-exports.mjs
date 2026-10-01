@@ -68,6 +68,11 @@ export const BUILT_PACKAGE_CONSUMER_CASES = Object.freeze([
   {
     conditions: ['browser'],
     packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/workflow-portability',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
     specifier: '@pertexo/contracts/schemas/workflow-runs',
   },
   {
@@ -117,6 +122,21 @@ export const BUILT_PACKAGE_CONSUMER_CASES = Object.freeze([
     conditions: ['browser'],
     packageDirectory: 'packages/workflow-model',
     specifier: '@pertexo/workflow-model/graph-contract',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/workflow-model',
+    specifier: '@pertexo/workflow-model/portability-contract',
+  },
+  {
+    conditions: ['browser'],
+    expected: 'browser-rejected',
+    packageDirectory: 'packages/workflow-model',
+    specifier: '@pertexo/workflow-model/portability',
+  },
+  {
+    packageDirectory: 'packages/workflow-model',
+    specifier: '@pertexo/workflow-model/portability',
   },
   {
     packageDirectory: 'packages/workflow-model',

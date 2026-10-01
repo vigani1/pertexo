@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0129_workflow_duplication.sql",
+  "transactionalThrough": "0132_workflow_portability.sql",
   "migrations": {}
 }

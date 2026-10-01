@@ -1,6 +1,7 @@
 import { AUTO_PAUSE_AUTHORITY_SQL } from './readiness-probe-auto-pause.sql.js';
 import { READINESS_AUTHORING_GRANTS_SQL } from './readiness-authoring-grants.sql.js';
 import { READINESS_WORKFLOW_DUPLICATION_SQL } from './readiness-workflow-duplication.sql.js';
+import { READINESS_WORKFLOW_PORTABILITY_SQL } from './readiness-workflow-portability.sql.js';
 export const READINESS_IDENTITY_AUTHORING_SQL = `
     select
       current_user,
@@ -417,5 +418,6 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
             )
         )
         and ${AUTO_PAUSE_AUTHORITY_SQL}
-        and ${READINESS_WORKFLOW_DUPLICATION_SQL}) as phase2_schema_compatible,
+        and ${READINESS_WORKFLOW_DUPLICATION_SQL}
+        and ${READINESS_WORKFLOW_PORTABILITY_SQL}) as phase2_schema_compatible,
       ${READINESS_AUTHORING_GRANTS_SQL}`;

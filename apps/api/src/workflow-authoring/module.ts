@@ -23,6 +23,12 @@ import { WorkflowAuthoringController } from './controllers.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from './rename-use-case.js';
 import { DuplicateWorkflowUseCase } from './duplicate-use-case.js';
+import { WorkflowPortabilityController } from './portability-controller.js';
+import {
+  ExportWorkflowUseCase,
+  ImportWorkflowUseCase,
+  PreviewWorkflowImportUseCase,
+} from './portability-use-cases.js';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
@@ -45,7 +51,22 @@ export class WorkflowAuthoringModule {
   ): DynamicModule {
     const telemetry =
       dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY;
+    const portabilityPersistence = dependencies.portabilityPersistence;
     const providers: Provider[] = [
+      ...(portabilityPersistence === undefined
+        ? []
+        : [
+            ExportWorkflowUseCase,
+            ImportWorkflowUseCase,
+            PreviewWorkflowImportUseCase,
+          ].map((useCase) => ({
+            provide: useCase,
+            useValue: new useCase(
+              portabilityPersistence,
+              dependencies.authorization,
+              telemetry,
+            ),
+          }))),
       {
         provide: DuplicateWorkflowUseCase,
         useValue: new DuplicateWorkflowUseCase(
@@ -180,6 +201,9 @@ export class WorkflowAuthoringModule {
       imports: [identityModule],
       controllers: [
         WorkflowAuthoringController,
+        ...(dependencies.portabilityPersistence === undefined
+          ? []
+          : [WorkflowPortabilityController]),
         ...(dependencies.concurrencyPersistence === undefined
           ? []
           : [WorkflowConcurrencyController]),

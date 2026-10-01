@@ -3,6 +3,10 @@ import {
   workflowGraphStructuralSchemaV1,
 } from '@pertexo/workflow-model/graph-contract';
 import { z } from 'zod';
+import {
+  workflowPortableManifestSchema,
+  workflowPortableManifestStructuralSchemaV1,
+} from '@pertexo/workflow-model/portability-contract';
 
 import {
   boundedNodeTestJsonInputSchema,
@@ -111,6 +115,24 @@ export function projectContractSchema(
     reused: 'inline',
     unrepresentable: 'any',
     override: ({ zodSchema, jsonSchema }) => {
+      if (
+        zodSchema ===
+        (workflowPortableManifestSchema as unknown as typeof zodSchema)
+      ) {
+        replaceObject(
+          jsonSchema,
+          z.toJSONSchema(workflowPortableManifestStructuralSchemaV1, {
+            target: 'draft-2020-12',
+            reused: 'inline',
+            unrepresentable: 'any',
+            override: ({ zodSchema: nested, jsonSchema: projected }) => {
+              if (nested === (workflowGraphSchema as unknown as typeof nested))
+                replaceWorkflowGraph(projected);
+            },
+          }),
+        );
+        jsonSchema['x-pertexo-runtime-bounds'] = true;
+      }
       if (zodSchema === (workflowGraphSchema as unknown as typeof zodSchema))
         replaceWorkflowGraph(jsonSchema);
       if (

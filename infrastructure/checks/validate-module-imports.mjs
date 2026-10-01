@@ -16,6 +16,7 @@ const webAllowedWorkspaceImports = new Set([
   '@pertexo/contracts/schemas/catalog',
   '@pertexo/contracts/schemas/connections',
   '@pertexo/contracts/schemas/workflow-authoring',
+  '@pertexo/contracts/schemas/workflow-portability',
   '@pertexo/contracts/schemas/workflow-runs',
   '@pertexo/contracts/schemas/webhooks',
   '@pertexo/contracts/schemas/workspace-inbox',

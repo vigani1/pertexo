@@ -1,4 +1,6 @@
 export * from './controllers.js';
+export * from './portability-controller.js';
+export * from './portability-use-cases.js';
 export * from './duplicate-use-case.js';
 export * from './lifecycle-use-case.js';
 export * from './rename-use-case.js';

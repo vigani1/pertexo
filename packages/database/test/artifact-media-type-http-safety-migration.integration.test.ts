@@ -159,6 +159,7 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
         '0127_workflow_concurrency.sql',
         '0128_connection_health.sql',
         '0129_workflow_duplication.sql',
+        '0132_workflow_portability.sql',
       ]);
 
       await owner.query('begin');

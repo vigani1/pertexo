@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import type { WorkflowPortabilityCatalog } from '@pertexo/workflow-model/portability';
 import {
   EMPTY_DEFINITION_CATALOG_V1,
   type WorkflowDefinitionCatalogV1,
@@ -19,6 +20,7 @@ import type {
 } from './workflow-authoring-types.js';
 
 type WorkflowAuthoringCompatibilitySelection = Readonly<{
+  portableCatalog: WorkflowPortabilityCatalog | undefined;
   compatibilityRelease: CompatibilityReleaseExpectation | undefined;
   definitionCatalog: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;
@@ -66,7 +68,8 @@ export function normalizeWorkflowAuthoringCompatibility(
       options.definitionCatalog !== undefined ||
       options.placementDefinitionCatalog !== undefined ||
       options.executableCompiler !== undefined ||
-      options.validateAuthoringGraph !== undefined)
+      options.validateAuthoringGraph !== undefined ||
+      options.portableCatalog !== undefined)
   )
     throw new TypeError(
       'Compatibility release variants cannot be combined with singular publication options',
@@ -105,6 +108,7 @@ export function normalizeWorkflowAuthoringCompatibility(
         'Workflow placement requires matching compatibility authority',
       );
     const selection = Object.freeze({
+      portableCatalog: options.portableCatalog,
       compatibilityRelease,
       definitionCatalog,
       placementDefinitionCatalog: options.placementDefinitionCatalog,
@@ -138,6 +142,7 @@ export function normalizeWorkflowAuthoringCompatibility(
         'Executable workflow publication requires matching compatibility variants',
       );
       return Object.freeze({
+        portableCatalog: variant.portableCatalog,
         compatibilityRelease: release,
         definitionCatalog: variant.definitionCatalog,
         placementDefinitionCatalog: variant.placementDefinitionCatalog,

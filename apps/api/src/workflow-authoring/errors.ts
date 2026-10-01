@@ -11,6 +11,10 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
+  WorkflowPortabilityUnavailableError,
+  WorkflowPortabilityCompatibilityConflictError,
+  WorkflowPortabilityReviewConflictError,
+  WorkflowPortabilityValidationError,
 } from '@pertexo/database/api';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
@@ -57,6 +61,26 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof WorkflowPortabilityUnavailableError)
+    return applicationError('workflow.portability_unavailable', {
+      safeDetail:
+        'New workflow imports are unavailable. Exact accepted commands can still be retried.',
+    });
+  if (error instanceof WorkflowPortabilityCompatibilityConflictError)
+    return applicationError('workflow.portability_compatibility_conflict', {
+      safeDetail:
+        'The destination catalog changed. Preview the import again before creating it.',
+    });
+  if (error instanceof WorkflowPortabilityReviewConflictError)
+    return applicationError('workflow.portability_review_conflict', {
+      safeDetail:
+        'The source no longer matches the reviewed content. Review the current saved source before exporting.',
+    });
+  if (error instanceof WorkflowPortabilityValidationError)
+    return applicationError('workflow.portability_invalid', {
+      safeDetail:
+        'The portable workflow is unsafe or incompatible. Review the import preview.',
+    });
   if (error instanceof AuthoringValidationUnavailableError)
     return validationUnavailable();
   if (error instanceof AuthorizationError)

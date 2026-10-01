@@ -20,6 +20,10 @@ import {
   workflowAuthoringOpenApiDocument,
 } from './workflow-authoring.js';
 import {
+  workflowPortabilityClientContract,
+  workflowPortabilityOpenApiDocument,
+} from './workflow-portability.js';
+import {
   workflowRunsClientContract,
   workflowRunsOpenApiDocument,
 } from './workflow-runs.js';
@@ -53,6 +57,11 @@ const CONTRACT_DOMAINS = Object.freeze([
     workflowAuthoringOpenApiDocument,
   ],
   ['workflow-runs', workflowRunsClientContract, workflowRunsOpenApiDocument],
+  [
+    'workflow-portability',
+    workflowPortabilityClientContract,
+    workflowPortabilityOpenApiDocument,
+  ],
   ['schedules', schedulesClientContract, schedulesOpenApiDocument],
   ['webhooks', webhooksClientContract, webhooksOpenApiDocument],
   [

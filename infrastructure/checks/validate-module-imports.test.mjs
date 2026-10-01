@@ -99,6 +99,8 @@ test('web source allows only reviewed workspace package subpaths', () => {
       "import { accessibleWorkspacesResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';",
     'apps/web/src/features/workflows/workflows.api.ts':
       "import { workflowListResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';",
+    'apps/web/src/features/workflows/workflow-portability.api.ts':
+      "import { workflowImportResponseSchema } from '@pertexo/contracts/schemas/workflow-portability';",
     'apps/web/src/features/connections/connections.api.ts':
       "import { connectionListResponseSchema } from '@pertexo/contracts/schemas/connections';",
     'apps/web/src/features/catalog/catalog.api.ts':

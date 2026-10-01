@@ -264,7 +264,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0129_workflow_duplication.sql',
+          migrationHead: '0132_workflow_portability.sql',
           role: expectedRole,
         });
       } finally {

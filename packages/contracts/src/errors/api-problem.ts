@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  WORKFLOW_PORTABILITY_PROBLEM_CODES,
+  WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
+} from './workflow-portability-problems.js';
 
 export const API_PROBLEM_CODES = [
   'auth.unauthenticated',
@@ -39,6 +43,7 @@ export const API_PROBLEM_CODES = [
   'workflow.concurrency_limit_unavailable',
   'workspace.auto_pause_settings_conflict',
   'workflow.invalid',
+  ...WORKFLOW_PORTABILITY_PROBLEM_CODES,
   'workflow.validation_unavailable',
   'workflow.not_published',
   'workflow.activation_failed',
@@ -330,6 +335,7 @@ const apiProblemDetails = {
     severity: 'info',
     exposeDetail: true,
   },
+  ...WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
   'workflow.validation_unavailable': {
     status: 503,
     title: 'Workflow validation unavailable',

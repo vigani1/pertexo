@@ -654,7 +654,7 @@ describe('Coordinator observation integrity invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0129_workflow_duplication.sql',
+      migrationHead: '0132_workflow_portability.sql',
     });
     await readinessPool.end();
   });
