@@ -1,6 +1,6 @@
 # F29 — Per-workflow concurrency controls
 
-Status: proposed plan; not implementation-authorized by this document.
+Status: first queue-only slice authorized for implementation; not yet delivered.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: Extends run admission. Relative size: **M–L**, not a calendar estimate.
 
@@ -39,6 +39,25 @@ Resolve in an ADR before code:
   workspace limits, without a hot row per workflow on every run.
 - **Interactions**: replay and manual runs, cancellation freeing a slot,
   deadlines while queued, and F26 pausing a queued backlog.
+
+### Reviewed first-slice resolution
+
+[ADR058](../adr/058-workflow-concurrency-queue-admission.md) governs the first
+slice. It selects a current operational workflow cap, unset by default,
+queue-only overflow bounded by the existing workspace queue limit, and durable
+acceptance-order tickets with ordered start transitions. Already committed
+reservations are grandfathered when a cap is enabled or lowered. Workspace
+limits remain authoritative; no second scheduler is introduced.
+
+The interaction question above is resolved by preserving ADR056: trigger pause
+does **not** pause already accepted backlog. Cancellation/deadline terminal
+processing remains deliverable even at full capacity. Skip overflow, per-trigger
+defaults and separate queue-length settings in the broader recommendations below
+are deferred, not part of this first slice. No enabled placeholder controls ship.
+
+The manager owns this plan and ADR review; the implementation chat owns code and
+verification. Implementation starts only after the decision is recorded, with a
+lock-order and mixed-version rollout check before enforcement changes.
 
 ## User-configurable settings
 
@@ -106,8 +125,9 @@ This context informs the outcome, not Pertexo's implementation.
 
 ## Delivery tracker
 
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
+- [x] First-slice baseline reconciled against current code and accepted decisions.
+- [x] First-slice product choices resolved; ADR058 accepted. Broader skip and
+  independent queue-setting choices remain deferred.
 - [ ] Contracts and concurrency model reviewed.
 - [ ] Backend behavior implemented and independently verified where needed.
 - [ ] Frontend behavior implemented and independently verified where needed.
@@ -115,4 +135,11 @@ This context informs the outcome, not Pertexo's implementation.
 - [ ] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
-Evidence log: none for this new plan.
+Evidence log:
+
+- 2026-10-01: manager reviewed the F29 proposal against ADR012/056, current
+  reservation and coordinator capacity paths, and dispatcher ordering. Outbox
+  `available_at,id` ordering does not establish acceptance FIFO; reservations
+  consume active capacity. ADR058 records queue-only scope, ordered promotion,
+  control-path liveness, authorization and rollout proof obligations. No code,
+  race-test, browser, CI or release completion is claimed by this planning entry.
