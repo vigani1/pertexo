@@ -1,7 +1,7 @@
 # F05 — Workflow duplicate, safe import and export
 
-Status: same-workspace duplication first slice implemented and locally qualified
-under ADR060; independent review and release qualification pending.
+Status: same-workspace duplication first slice independently reviewed, merged
+and qualified under ADR060 through PR142; broader F05 is not complete.
 Import/export remain proposed.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New cross-stack authoring slice. Relative size: **M–L**, not a calendar estimate.
@@ -28,7 +28,19 @@ Implementation and verification anchors:
 
 Local acceptance uses enabled real PostgreSQL, authenticated HTTP and the
 browser/API/worker journey; source availability alone is not verification.
-Independent review and hosted exact-head/natural-main checks remain release gates.
+Independent standards/spec reviews closed all findings on reviewed head
+`a766f585bdfe86cace8747b85818173a51629629`. [PR142](https://github.com/vigani1/pertexo/pull/142)
+merged on 2026-10-01 at 15:06:01 UTC as main
+`5f78e1552c55fede6f04264f8be4197296629e9c`.
+All 14 reviewed-head checks passed, including
+[CI 36878945569](https://github.com/vigani1/pertexo/actions/runs/36878945569) and
+[CodeQL 36878945724](https://github.com/vigani1/pertexo/actions/runs/36878945724).
+Natural merged-main [CI 36881611828](https://github.com/vigani1/pertexo/actions/runs/36881611828)
+and [CodeQL 36881611922](https://github.com/vigani1/pertexo/actions/runs/36881611922)
+also passed on that exact main SHA. The main CI step **Run and validate the real
+workflow duplication browser journey** and its report upload both succeeded.
+This closes first-slice implementation qualification, not production activation
+or the rest of F05.
 
 ## Dependencies and planning gate
 
@@ -76,14 +88,15 @@ controls backed by invented responses.
 
 Whole-workflow duplication preserves every nested graph reference and creates an
 independent workflow; unknown/non-placeable definitions and cross-tenant
-references are rejected before writes. Exact command retries create one draft;
-publish/run remain explicit. Later import/export requires a separately resolved
+references are rejected before writes. Retained exact command receipts recover
+the original destination; publish/run remain explicit. Later import/export requires a separately resolved
 manifest, secret handling and destination-reference contract.
 
 ## First-slice implementation contract
 
 ADR060 is authoritative for identity, source selection, admission, transaction
-ordering, replay and operational defaults. Current baseline is merged main
+ordering, replay and operational defaults. The implementation starting baseline
+was merged main
 `0f54e31dcbb18abaf3cbe88b27edfaa3e877e8b1`. Existing owners include
 `workflow-authoring-drafts.ts`, `workflow-authoring-version-restore.ts`, the
 workflow-model graph/parser and the web workflows/editor features. Existing
@@ -160,16 +173,20 @@ Make blueprints export workflow structure and require users to reconnect account
 Research checked 2026-09-28; product editions and availability can change.
 This context informs the outcome, not Pertexo's implementation or billing policy.
 
-## Delivery tracker
+## First-slice delivery tracker
+
+These criteria apply only to same-workspace Duplicate workflow. Import/export,
+templates and cross-workspace copy remain unimplemented; production activation
+remains unauthorized. Completing this tracker does not complete broader F05.
 
 - [x] First-slice baseline reconciled against current authoring/model owners.
 - [x] First-slice identity and command decisions accepted in ADR060; broader portability deferred.
-- [ ] Contracts and failure/security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
+- [x] Contracts and failure/security model reviewed.
+- [x] Backend behavior implemented and independently verified where needed.
+- [x] Frontend behavior implemented and independently verified where needed.
 - [x] Real integrated acceptance evidence recorded.
 - [x] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+- [x] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log: 2026-10-01 user approved preserving graph-local IDs in whole-workflow
 copies. Manager confirmed policy-v1 accepts dynamic `nodeOutputs` lookup and
@@ -180,8 +197,16 @@ cases) checks pass. The enabled live browser/API/database/worker journey passes:
 saved-draft and chosen-version copies preserve the nested graph and dynamic
 expressions, three independent workflow/version/run identities produce their own
 outputs, and a copy-only edit leaves its source and sibling unchanged. Normal
-fixture teardown and strict zero-skip reports pass. Local qualification includes
-the full repository check, 90 browser journeys, 831 web tests, all 821 PostgreSQL
+fixture teardown and strict zero-skip reports pass. Original local qualification
+on frozen `06ca64c1` includes the full repository check, 90 browser journeys,
+831 web tests, all 821 PostgreSQL
 integration tests across 109 files, and 24 source-bound coverage cohorts with zero
-unreviewed risk branches. Independent review and hosted release checks remain
-pending; this does not complete import/export or authorize production activation.
+unreviewed risk branches. Review repairs at `219aeb58` and final reviewed
+`a766f585` retain exact uncertain commands, distinguish authoritative mutation
+rejection from authority-read outages, and recover a known accepted destination
+without another POST. On `a766f585`, 849 web tests and 90 browser journeys pass;
+coverage binds 24 cohorts with zero unreviewed risk branches. The manager also
+reran all 26 focused duplication tests successfully. Earlier service-backed
+local evidence remains bound to `06ca64c1`, not claimed as a local rerun on the
+repaired head. Hosted exact-head and natural-main evidence above completes this
+first slice; it does not complete import/export or authorize production activation.

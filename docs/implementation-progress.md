@@ -39,19 +39,29 @@ The user approved a fresh workflow identity with preserved internal graph IDs
 on 2026-10-01. [ADR060](./adr/060-workflow-duplication-identity.md) and the
 [F05 first-slice plan](./feature-plans/05-workflow-portability.md) define the
 atomic command, source selection, authority, replay and verification contract
-against merged main `0f54e31d`. This is a saved draft/chosen-version copy into
-an independent unpublished draft, not import/export or automatic activation.
+against starting merged main `0f54e31d`. This is a saved draft/chosen-version copy
+into an independent unpublished draft, not import/export or automatic activation.
 
 - [x] Reconcile the existing authoring/model baseline and resolve graph identity.
 - [x] Record the accepted first-slice decision before implementation.
 - [x] Implement atomic persistence, contracts/API and the browser command.
 - [x] Prove isolation, races/replay and enabled live browser/backend acceptance.
-- [ ] Complete independent reviews and green exact-head/natural-main release.
+- [x] Complete independent reviews and green exact-head/natural-main release.
 
-Implementation is present in the owned `feat/workflow-duplication` checkout;
-whole-source local qualification has passed; independent review and release
-qualification remain pending. Evidence
-includes 25 enabled PostgreSQL cases (atomic rollback, source/catalog/membership
+The first slice is independently reviewed, merged through
+[PR142](https://github.com/vigani1/pertexo/pull/142) and qualified on natural main
+`5f78e1552c55fede6f04264f8be4197296629e9c` (merged 2026-10-01 at 15:06:01 UTC).
+Both review axes closed all findings on `a766f585bdfe86cace8747b85818173a51629629`;
+all 14 exact-head checks passed, including
+[CI 36878945569](https://github.com/vigani1/pertexo/actions/runs/36878945569) and
+[CodeQL 36878945724](https://github.com/vigani1/pertexo/actions/runs/36878945724).
+Natural merged-main [CI 36881611828](https://github.com/vigani1/pertexo/actions/runs/36881611828)
+and [CodeQL 36881611922](https://github.com/vigani1/pertexo/actions/runs/36881611922)
+also passed on that exact main SHA. Main CI's real workflow duplication browser
+journey validation and report upload succeeded.
+
+Original local evidence on frozen `06ca64c1` includes 25 enabled PostgreSQL cases
+(atomic rollback, source/catalog/membership
 races, replay, defaults, ACL/readiness drift, populated 0128→0129 upgrade,
 legal hold and workspace erasure), all 113 enabled ordinary API integration
 cases, 142 contract tests, and 831 web unit tests. The enabled real-browser
@@ -61,9 +71,16 @@ Parallel/Merge, dynamic expression outputs isolated by run, and copy-only edits.
 It verifies two atomic receipts/audits and normal fixture teardown. The full
 repository check and 90 browser journeys pass; all 821 PostgreSQL integration
 tests across 109 files pass without skips. Coverage binds 24 cohorts to the frozen
-source and records zero unreviewed risk branches. No production effect is
-authorized. These local results do not close independent review or
-exact-head/natural-main release gates. F12, F29 and F30 remain qualified; their
+source and records zero unreviewed risk branches. Final reviewed `a766f585`
+adds safe uncertain/stale/accepted-result recovery; its 849 web tests, 90 browser
+journeys and 24 source-bound coverage cohorts pass with zero unreviewed risk
+branches. The manager independently reran 26 focused duplication tests. Earlier
+service-backed local results remain bound to `06ca64c1`; hosted qualification
+of the repaired head and natural main is recorded separately above.
+Only the same-workspace Duplicate first slice is complete. Import/export,
+templates and cross-workspace copy remain unimplemented. No production effect
+is authorized, and finite receipt retention and migration-0129 rollout/rollback
+limits in the F05 plan still apply. F12, F29 and F30 remain qualified; their
 completed work is not reopened by this slice.
 
 ### F30 — connection health first slice
