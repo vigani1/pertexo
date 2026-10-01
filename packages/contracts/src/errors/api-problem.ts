@@ -3,7 +3,10 @@ import {
   WORKFLOW_PORTABILITY_PROBLEM_CODES,
   WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
 } from './workflow-portability-problems.js';
-import { workflowInputCaseProblems } from './workflow-input-case-problems.js';
+import {
+  checkedStartProblems,
+  workflowInputCaseProblems,
+} from './workflow-input-case-problems.js';
 
 export const API_PROBLEM_CODES = [
   'auth.unauthenticated',
@@ -348,12 +351,7 @@ const apiProblemDetails = {
     severity: 'warn',
     exposeDetail: true,
   },
-  'workflow.published_version_conflict': {
-    status: 409,
-    title: 'Published workflow version changed',
-    severity: 'info',
-    exposeDetail: true,
-  },
+  ...checkedStartProblems,
   'workflow.not_published': {
     status: 409,
     title: 'Workflow not published',

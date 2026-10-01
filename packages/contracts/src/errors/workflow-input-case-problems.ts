@@ -18,3 +18,12 @@ export const workflowInputCaseProblems = {
     exposeDetail: true,
   },
 } as const;
+
+export const checkedStartProblems = {
+  'workflow.published_version_conflict': {
+    status: 409,
+    title: 'Published workflow version changed',
+    severity: 'info',
+    exposeDetail: true,
+  },
+} as const;
