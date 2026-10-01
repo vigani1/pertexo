@@ -918,9 +918,9 @@
           "branchType": "if",
           "line": 69,
           "column": 2,
-          "sourceFingerprint": "sha256:86e401e03b054ee4bbccf71228480b817c88161ace11dfac0c1a80cdedf49afd",
+          "sourceFingerprint": "sha256:b8d1510133a814c46db03daf5d37e64cebf180e528a9f677343c9f97a49b5eb4",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary."
+          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 adds capacity schemas below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
         },
         {
           "branchId": "1",
@@ -928,9 +928,9 @@
           "branchType": "if",
           "line": 72,
           "column": 2,
-          "sourceFingerprint": "sha256:86e401e03b054ee4bbccf71228480b817c88161ace11dfac0c1a80cdedf49afd",
+          "sourceFingerprint": "sha256:b8d1510133a814c46db03daf5d37e64cebf180e528a9f677343c9f97a49b5eb4",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary."
+          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 adds capacity schemas below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
         },
         {
           "branchId": "3",
