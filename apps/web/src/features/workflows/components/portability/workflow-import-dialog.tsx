@@ -55,6 +55,9 @@ export function WorkflowImportDialog({
   const [error, setError] = useState<string>();
   const [reading, setReading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [fileGeneration, setFileGeneration] = useState(0);
+  const resetBusy = useRef(false);
   const intent = useRef(0);
   const commandClear = useRef<() => void>(() => undefined);
   const validation = useFieldValidation<'name' | 'file'>();
@@ -67,6 +70,8 @@ export function WorkflowImportDialog({
     setError(undefined);
     setReading(false);
     setPreviewing(false);
+    setResetting(false);
+    setFileGeneration((previous) => previous + 1);
     commandClear.current();
   }, []);
   const lifetime = usePortabilityLifetime(
@@ -94,6 +99,35 @@ export function WorkflowImportDialog({
           binding.nodeId === slot.nodeId && binding.slot === slot.slot,
       ),
     ) ?? false;
+  async function startAnother() {
+    if (
+      command.state.kind !== 'confirmed' ||
+      lifetime.denied ||
+      resetBusy.current
+    )
+      return;
+    resetBusy.current = true;
+    setResetting(true);
+    const request = lifetime.begin();
+    try {
+      if (!(await lifetime.verify(request.signal, true)) || !request.current())
+        return;
+      clear();
+      validation.reset();
+    } catch (failure) {
+      if (request.current() && !lifetime.accessFailure(failure))
+        setError(
+          describeCommandError(
+            failure,
+            'checking access before starting another import',
+          ),
+        );
+    } finally {
+      request.done();
+      resetBusy.current = false;
+      if (request.current()) setResetting(false);
+    }
+  }
   function invalidate() {
     intent.current += 1;
     setPreview(undefined);
@@ -198,6 +232,7 @@ export function WorkflowImportDialog({
                 >
                   {(control) => (
                     <Input
+                      key={fileGeneration}
                       {...control}
                       ref={validation.register('file')}
                       type="file"
@@ -296,15 +331,25 @@ export function WorkflowImportDialog({
             {command.state.kind === 'confirmed' &&
             command.state.workflowId !== undefined &&
             !lifetime.denied ? (
-              <Button
-                variant="primary"
-                onClick={() => {
-                  if (command.state.workflowId !== undefined)
-                    onCreated(command.state.workflowId);
-                }}
-              >
-                Open imported workflow
-              </Button>
+              <>
+                <ProgressButton
+                  variant="outline"
+                  pending={resetting}
+                  pendingLabel="Checking access…"
+                  onClick={() => void startAnother()}
+                >
+                  Start another import
+                </ProgressButton>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    if (command.state.workflowId !== undefined)
+                      onCreated(command.state.workflowId);
+                  }}
+                >
+                  Open imported workflow
+                </Button>
+              </>
             ) : (
               <ProgressButton
                 variant="primary"

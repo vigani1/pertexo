@@ -343,3 +343,17 @@ test boundary without weakening authority retirement. Late-result tests await
 settlement after authority, session and workspace departure. React Doctor stays
 at changed-source 89/full-app 78 with unchanged advisory counts. These checks
 do not relabel the earlier service-backed acceptance as a repaired-head rerun.
+
+The manager accepted `169b776`'s two original fixes after independently rerunning
+17 focused tests, then identified a confirmed-state usability regression:
+Close/reopen could recover the known destination but not deliberately import
+another file without leaving the route. The narrow follow-up adds Start another
+import only for a definitively confirmed, currently authorized session. Fresh
+authority verification precedes clearing private setup, validation, native file
+input and the confirmed attempt; reset sends no POST. A new key is allocated only
+on the next explicit submit. Sending/uncertain/denied have no reset path; a
+verification outage preserves the known destination, and access loss fences a
+late verification. Six new parent-mounted regressions plus existing scenarios
+pass 23 focused tests. Web build/typecheck/lint, unchanged React Doctor changed
+score 89, and the focused Chromium browser journey pass. Prior 866-test/full
+qualification remains bound to `169b776`/earlier sources, not this narrow rerun.

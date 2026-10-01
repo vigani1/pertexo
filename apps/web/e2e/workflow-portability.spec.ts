@@ -74,6 +74,7 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
   page,
 }) => {
   await addCsrfCookie(context);
+  await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
   const remote = remoteDraft({ ...graph, settings: { ...graph.settings } });
   await installEditorRoutes(page, remote, {
     accessibleWorkspace: {
@@ -84,6 +85,13 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
   await page.route(
     `**/v1/workspaces/${workspaceId}/run-statistics?**`,
     (route) => route.fulfill({ json: fixtureStatistics() }),
+  );
+  await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/failure-notification-destinations`,
+    (route) => route.fulfill({ json: { items: [] } }),
   );
   const exports: { body: unknown; etag: string | undefined }[] = [];
   await page.route(
@@ -298,5 +306,58 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
     importing.getByRole('button', { name: 'Open imported workflow' }),
   ).toBeEnabled();
   expect(attempts).toHaveLength(2);
+  await expect(importing).toHaveCSS('opacity', '1');
+  await importing
+    .getByRole('button', { name: 'Start another import' })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: 'test-results/workflow-portability-confirmed.png',
+    animations: 'disabled',
+  });
+  await importing.getByRole('button', { name: 'Start another import' }).click();
+  await expect(importing.getByLabel('New workflow name')).toBeEnabled();
+  await expect(importing.getByLabel('New workflow name')).toHaveValue('');
+  await expect(importing.getByLabel('Workflow JSON file')).toHaveValue('');
+  await expect(importing.getByLabel('Complete imported graph')).toHaveCount(0);
+  await expect(
+    importing.getByRole('button', { name: 'Import unpublished draft' }),
+  ).toBeDisabled();
+  expect(attempts).toHaveLength(2);
+  await importing.getByLabel('Workflow JSON file').setInputFiles({
+    name: 'second.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(manifest)),
+  });
+  await expect(importing.getByLabel('Complete imported graph')).toBeVisible();
+  await importing
+    .getByLabel('New workflow name')
+    .fill('Deliberate second draft');
+  await expect(binding).toBeEnabled();
+  await expect(binding).toContainText('Choose a connection');
+  await binding.focus();
+  await page.keyboard.press('Enter');
+  await page
+    .getByRole('option', { name: 'Destination Slack', exact: true })
+    .click();
+  await importing.getByRole('button', { name: 'Preview import' }).click();
+  await expect(
+    importing.getByText(/Compatible with this workspace/u),
+  ).toBeVisible();
+  expect(attempts).toHaveLength(2);
+  await importing
+    .getByRole('button', { name: 'Import unpublished draft' })
+    .click();
+  await expect(
+    importing.getByRole('button', { name: 'Open imported workflow' }),
+  ).toBeEnabled();
+  expect(attempts).toHaveLength(3);
+  expect(attempts[2]?.key).toBeTruthy();
+  expect(attempts[2]?.key).not.toBe(attempts[0]?.key);
+  expect(attempts[2]?.body).toEqual({
+    manifest,
+    bindings: [{ nodeId: 'sender', slot: 'slack_bot_token', connectionId }],
+    name: 'Deliberate second draft',
+    expectedCompatibilityFingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
+  });
   await importing.getByRole('button', { name: 'Close', exact: true }).click();
 });
