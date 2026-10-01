@@ -1,5 +1,7 @@
 import './server-only.js';
 
+import { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
+
 import { isDeepStrictEqual } from 'node:util';
 import {
   computeCompatibilitySelectionFingerprint,
@@ -58,6 +60,9 @@ export function platformPortableDefinitionPolicy(releaseInput: unknown) {
   return Object.freeze({
     fingerprint: release.fingerprint,
     definitions: Object.freeze(definitions),
+    // Distinct input/config validation seam; F05 validateConfig remains config-only.
+    validateTemplateSetup: (manifest: unknown, origin: unknown): boolean =>
+      validateRegisteredCuratedTemplateSetup(release, manifest, origin),
     selectionFingerprint: (selected: readonly DefinitionIdentity[]) =>
       computeCompatibilitySelectionFingerprint(release, selected),
   });

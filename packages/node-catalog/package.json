@@ -29,6 +29,7 @@
   "dependencies": {
     "@pertexo/integrations": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
-    "@pertexo/nodes-core": "workspace:*"
+    "@pertexo/nodes-core": "workspace:*",
+    "@pertexo/workflow-model": "workspace:*"
   }
 }
