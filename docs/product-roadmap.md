@@ -47,8 +47,9 @@ competitor has ever offered. Later items are decision-gated options.
   [notifications plan](workspace-notifications-plan.md) is the detailed F03
   plan under accepted [ADR055](adr/055-workspace-inbox-failure-threads.md).
   CONTEXT.md remains outside the scoped delivery changes.
-- No runtime tests were executed for this planning pass. Current-code presence,
-  historical verification and new acceptance requirements are distinct.
+- The initial roadmap planning inventory did not execute runtime qualification.
+  Later feature-specific proofs are recorded in their plans. Current-code
+  presence, historical verification and new acceptance requirements are distinct.
 - Original intermittent account-link behavior remains an explicit qualification
   limitation, not “fixed” by a green run or by this roadmap.
 
@@ -191,7 +192,7 @@ only after its gate is resolved.
 | [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | Delivered: ADR055 database (PR118), worker (PR119), API (PR120) and web (PR123) slices merged; local acceptance recorded; producer on |
 | [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs and artifact lifecycle | Backend foundation exists; consumer contract + frontend missing | L | Proposed |
 | [F05](feature-plans/05-workflow-portability.md) | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Same-workspace Duplicate merged through PR142 and qualified on natural main `5f78e155`; portable import/export implemented and locally qualified at `5ada95ea` under ADR062; independent review/upstream integration open; templates unimplemented; production activation unauthorized |
-| [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Proposed |
+| [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | ADR063/contract accepted after primary/independent review; implementation authorized, owned qualification/release open |
 | [F07](feature-plans/07-workflow-organization.md) | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Proposed |
 | [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | Proposed |
 | [F09](feature-plans/09-failure-paths-and-recovery.md) | Workflow-authored failure paths and explicit recovery UX | Existing recovery foundation + new graph behavior | XL | Proposed |

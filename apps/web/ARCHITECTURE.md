@@ -3708,26 +3708,31 @@ them.
 #### N5. Optional curated workflow templates
 
 **Proposed bounded scope:** a chooser inside workflow creation, not a
-marketplace, public publishing system or separate management console. Confirm
-actual template examples before implementation; this is not required to finish
-N1–N4.
+marketplace, public publishing system or separate management console. F06's
+audience, three examples in the supported profile and binding-before-creation
+policy and ADR063/contract are accepted after primary and independent review.
+Implementation is authorized; chooser/writers remain off until owned integration
+proof, and migration allocation follows the manager's combined F02/F05 base.
+This is not required to finish N1–N4.
 
 - Define a versioned safe manifest and catalog compatibility check. A template
   contains supported node types/versions, graph/configuration and presentation,
   never credentials, workspace IDs, historical runs or legacy backend payloads.
 - Establish import/create semantics in contracts before exposing a chooser:
-  validate through normal authoring rules, allocate new workflow/node identities
-  and remap every edge/reference consistently. Required connections remain
-  explicitly unconfigured; never copy another workspace's connection IDs.
-- Prefer repository-owned reviewed examples initially. Use existing create/save
-  commands if they support safe recovery; otherwise define the minimum atomic or
-  resumable command rather than leaving silent orphan drafts after partial
-  import.
+  follow accepted ADR060/062 and F05's atomic import command. Allocate a new
+  outer workflow identity, preserving graph-local IDs, edges, mappings and
+  dynamic expression text; do not implement a reference remapper. Assets contain
+  no destination connections; F05 creation requires explicit valid bindings for
+  all required slots, never another workspace's connection IDs. The F06 plan
+  records approved setup/product choices and accepted persistent provenance
+  contract, including strict held-traffic readiness-compatible rollback.
+- Prefer repository-owned reviewed examples initially. Reuse F05's recovered
+  atomic import command, not a second importer or partial create/save sequence.
 - `features/workflows/components/templates/` owns chooser presentation; the
   owning authoring module owns instantiation/validation. Publish/run remain
   explicit later user actions, not import side effects.
 - Acceptance: incompatible/unknown catalog entry rejected clearly; graph and
-  references remapped; no secret/cross-tenant leakage; duplicate-click and lost
+  references preserved; no secret/cross-tenant leakage; duplicate-click and lost
   response recovery; resulting draft opens, validates and can be configured.
 
 #### N6. Optional non-billing usage reporting
