@@ -10,6 +10,29 @@ external production evidence listed under Phase 7.
 
 ## Current qualification
 
+### F02 — run-input cases and version-checked manual start
+
+The manager accepted the product owner's version-checked explicit real-start
+direction on 2026-10-01. [ADR061](./adr/061-workflow-input-cases-and-checked-manual-start.md)
+and the [F02 first-slice plan](./feature-plans/02-workflow-test-workspace.md#first-slice-run-input-cases-and-checked-real-start)
+record shared version-contextual cases, detached loaded intent, legacy omitted-field
+compatibility, accepted-result precedence, serialized manual keys, committed
+24-hour stale rejections, retained-byte quotas and lifecycle/rollout gates.
+
+- [x] Inspect merged main `5f78e155` and resolve the first-slice product direction.
+- [x] Record the accepted design and amended implementation/acceptance plan.
+- [ ] Obtain manager review of this planning commit before implementation.
+- [ ] Implement and qualify contracts, current authority, storage and admission.
+- [ ] Prove real persistence/race/expiry/hold/purge and pure-node browser behavior.
+- [ ] Complete independent reviews, scoped release and natural-main evidence.
+
+Evidence is read-only source inspection and a planning record, not executable
+qualification. No F02 schema, contracts, API, UI or execution behavior has been
+implemented or enabled. The owned `feat/workflow-input-cases` branch is separate
+from the live connection-health checkout; planning requires no builds, services,
+local database changes or external effects. Preview pins, recorded samples and
+regression assertions remain deferred; existing backend phases stay unchanged.
+
 ### F05 — same-workspace workflow duplication
 
 The user approved a fresh workflow identity with preserved internal graph IDs
@@ -369,6 +392,7 @@ cleanup; the service-backed qualification above remains explicitly pre-cleanup.
 | Phase 5 — orchestration slice | Complete | ADRs 008, 017–022; branching, parallelism, retry/wait, notification, and recovery matrix |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014, 023–026; provider, webhook, schedule, retained-history, and rollout evidence |
 | Phase 7 — production operations | **In progress** | Repository implementation is qualified locally; external deployment, provider, load, recovery, telemetry, and pager evidence remains open |
+| F02 — run-input cases / checked manual start | Design accepted; planning only | ADR061 and first-slice plan; implementation authorization, executable evidence and release remain open |
 | F29 — queue-only workflow concurrency | Qualified | ADR058 queue-only slice, independent reviews, PR138 exact-head and natural main CI/CodeQL; skip overflow deferred |
 | F30 — first Slack connection-health slice | Qualified | ADR059 narrow Slack slice; independent reviews, PR139/140 exact-head checks and natural main CI/CodeQL on `adaa26df`; production mode off |
 
