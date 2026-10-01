@@ -359,21 +359,23 @@ export function WorkflowListPage({
           }}
         />
       )}
-      {importing ? (
-        <WorkflowImportDialog
-          key={`${user.id}:${workspace.id}`}
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          onClose={() => {
-            setImporting(false);
-          }}
-          onCreated={(id) => {
-            setImporting(false);
-            onCreated(id);
-          }}
-        />
-      ) : null}
+      <WorkflowImportDialog
+        key={`${user.id}:${workspace.id}`}
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        open={importing}
+        onReopen={() => {
+          setImporting(true);
+        }}
+        onClose={() => {
+          setImporting(false);
+        }}
+        onCreated={(id) => {
+          setImporting(false);
+          onCreated(id);
+        }}
+      />
     </div>
   );
 }

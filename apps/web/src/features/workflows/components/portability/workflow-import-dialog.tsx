@@ -23,7 +23,8 @@ import { workflowNameError } from '../../model/workflow-rename';
 import { readPortableWorkflowFile } from '../../model/workflow-portability';
 import { previewWorkflowImport } from '../../workflow-portability.api';
 import { usePortabilityLifetime } from './use-portability-lifetime';
-import { useWorkflowImportCommand } from './use-workflow-import-command';
+import { useWorkflowImportCommand } from '../../workflow-portability.mutations';
+import { WorkflowImportLeaveGuard } from './workflow-import-leave-guard';
 import {
   WorkflowImportConnections,
   WorkflowImportCompatibility,
@@ -36,12 +37,16 @@ export function WorkflowImportDialog({
   workspace,
   onClose,
   onCreated,
+  open = true,
+  onReopen,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   onClose: () => void;
   onCreated: (workflowId: string) => void;
+  open?: boolean;
+  onReopen?: () => void;
 }>) {
   const [manifest, setManifest] = useState<WorkflowPortableManifest>();
   const [name, setName] = useState('');
@@ -154,183 +159,194 @@ export function WorkflowImportDialog({
     }
   }
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
-        <DialogTitle>Import workflow</DialogTitle>
-        <DialogDescription>
-          {lifetime.denied
-            ? 'Access changed. The file, preview and retained command have been cleared.'
-            : `Create an independent, unpublished draft in “${workspace.name}”. Publishing and running are separate actions.`}
-        </DialogDescription>
-        {lifetime.denied ? null : (
-          <div className="mt-5 flex flex-col gap-4">
-            <Notice tone="warning">
-              Workflow files are untrusted. Review all configuration and
-              expressions before importing. Imported steps can cause real
-              effects when you later publish, preview or run them. This check
-              does not execute steps or promise that the workflow is safe.
-            </Notice>
-            <FieldGroup>
-              <LabelledField
-                id="portable-workflow-file"
-                label="Workflow JSON file"
-                error={validation.error('file')}
-              >
-                {(control) => (
-                  <Input
-                    {...control}
-                    ref={validation.register('file')}
-                    type="file"
-                    accept=".json,application/json"
-                    disabled={locked}
-                    onChange={(event) =>
-                      void chooseFile(event.target.files?.[0])
-                    }
+    <>
+      <WorkflowImportLeaveGuard
+        workspaceId={workspace.id}
+        unresolved={
+          !lifetime.denied &&
+          (command.state.kind === 'sending' ||
+            command.state.kind === 'uncertain')
+        }
+        onReopen={() => onReopen?.()}
+      />
+      <Dialog
+        open={open}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+          <DialogTitle>Import workflow</DialogTitle>
+          <DialogDescription>
+            {lifetime.denied
+              ? 'Access changed. The file, preview and retained command have been cleared.'
+              : `Create an independent, unpublished draft in “${workspace.name}”. Publishing and running are separate actions.`}
+          </DialogDescription>
+          {lifetime.denied ? null : (
+            <div className="mt-5 flex flex-col gap-4">
+              <Notice tone="warning">
+                Workflow files are untrusted. Review all configuration and
+                expressions before importing. Imported steps can cause real
+                effects when you later publish, preview or run them. This check
+                does not execute steps or promise that the workflow is safe.
+              </Notice>
+              <FieldGroup>
+                <LabelledField
+                  id="portable-workflow-file"
+                  label="Workflow JSON file"
+                  error={validation.error('file')}
+                >
+                  {(control) => (
+                    <Input
+                      {...control}
+                      ref={validation.register('file')}
+                      type="file"
+                      accept=".json,application/json"
+                      disabled={locked}
+                      onChange={(event) =>
+                        void chooseFile(event.target.files?.[0])
+                      }
+                    />
+                  )}
+                </LabelledField>
+                <LabelledField
+                  id="portable-workflow-name"
+                  label="New workflow name"
+                  error={validation.error('name')}
+                >
+                  {(control) => (
+                    <Input
+                      {...control}
+                      ref={validation.register('name')}
+                      value={name}
+                      maxLength={128}
+                      disabled={locked}
+                      autoComplete="off"
+                      onChange={(event) => {
+                        invalidate();
+                        setName(event.target.value);
+                        validation.change(
+                          'name',
+                          workflowNameError(event.target.value),
+                        );
+                      }}
+                    />
+                  )}
+                </LabelledField>
+              </FieldGroup>
+              {reading ? <p role="status">Reading workflow file…</p> : null}
+              {manifest === undefined ? null : (
+                <>
+                  <PortableGraphReview
+                    graph={manifest.graph}
+                    label="Complete imported graph"
                   />
-                )}
-              </LabelledField>
-              <LabelledField
-                id="portable-workflow-name"
-                label="New workflow name"
-                error={validation.error('name')}
-              >
-                {(control) => (
-                  <Input
-                    {...control}
-                    ref={validation.register('name')}
-                    value={name}
-                    maxLength={128}
+                  <WorkflowImportConnections
+                    apiClient={apiClient}
+                    userId={userId}
+                    workspace={workspace}
+                    slots={manifest.connectionSlots}
+                    bindings={bindings}
                     disabled={locked}
-                    autoComplete="off"
-                    onChange={(event) => {
+                    onChange={(next) => {
                       invalidate();
-                      setName(event.target.value);
-                      validation.change(
-                        'name',
-                        workflowNameError(event.target.value),
-                      );
+                      setBindings(next);
                     }}
                   />
-                )}
-              </LabelledField>
-            </FieldGroup>
-            {reading ? <p role="status">Reading workflow file…</p> : null}
-            {manifest === undefined ? null : (
-              <>
-                <PortableGraphReview
-                  graph={manifest.graph}
-                  label="Complete imported graph"
-                />
-                <WorkflowImportConnections
-                  apiClient={apiClient}
-                  userId={userId}
-                  workspace={workspace}
-                  slots={manifest.connectionSlots}
-                  bindings={bindings}
-                  disabled={locked}
-                  onChange={(next) => {
-                    invalidate();
-                    setBindings(next);
-                  }}
-                />
-              </>
-            )}
-            {preview === undefined ? null : (
-              <WorkflowImportCompatibility preview={preview} />
+                </>
+              )}
+              {preview === undefined ? null : (
+                <WorkflowImportCompatibility preview={preview} />
+              )}
+            </div>
+          )}
+          {(command.state.error ?? error) === undefined ? null : (
+            <Notice
+              tone={
+                command.state.kind === 'uncertain' ? 'warning' : 'destructive'
+              }
+              className="mt-4"
+            >
+              {command.state.error ?? error}
+            </Notice>
+          )}
+          {command.state.kind === 'confirmed' && !lifetime.denied ? (
+            <Notice tone="success" className="mt-4">
+              The independent workflow draft was created.
+            </Notice>
+          ) : null}
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <Button variant="ghost" onClick={onClose}>
+              {command.state.kind === 'uncertain' ||
+              command.state.kind === 'confirmed'
+                ? 'Close'
+                : 'Cancel'}
+            </Button>
+            {!locked ? (
+              <ProgressButton
+                variant="outline"
+                pending={previewing}
+                pendingLabel="Checking…"
+                disabled={!complete || reading}
+                onClick={() => void checkPreview()}
+              >
+                Preview import
+              </ProgressButton>
+            ) : null}
+            {command.state.kind === 'confirmed' &&
+            command.state.workflowId !== undefined &&
+            !lifetime.denied ? (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  if (command.state.workflowId !== undefined)
+                    onCreated(command.state.workflowId);
+                }}
+              >
+                Open imported workflow
+              </Button>
+            ) : (
+              <ProgressButton
+                variant="primary"
+                pending={command.state.kind === 'sending'}
+                pendingLabel="Importing…"
+                disabled={
+                  lifetime.denied ||
+                  (command.state.kind !== 'uncertain' &&
+                    (preview?.compatible !== true ||
+                      preview.truncated ||
+                      !complete ||
+                      workflowNameError(name) !== undefined ||
+                      previewing))
+                }
+                onClick={() => {
+                  if (command.state.kind === 'uncertain') command.retry();
+                  else if (
+                    manifest !== undefined &&
+                    preview?.compatible === true &&
+                    !preview.truncated &&
+                    complete &&
+                    validation.submit({ name: workflowNameError(name) })
+                  ) {
+                    command.start({
+                      manifest,
+                      bindings,
+                      name,
+                      expectedCompatibilityFingerprint:
+                        preview.compatibilityFingerprint,
+                    });
+                    setPreview(undefined);
+                  }
+                }}
+              >
+                {command.state.kind === 'uncertain'
+                  ? 'Retry exact import'
+                  : 'Import unpublished draft'}
+              </ProgressButton>
             )}
           </div>
-        )}
-        {(command.state.error ?? error) === undefined ? null : (
-          <Notice
-            tone={
-              command.state.kind === 'uncertain' ? 'warning' : 'destructive'
-            }
-            className="mt-4"
-          >
-            {command.state.error ?? error}
-          </Notice>
-        )}
-        {command.state.kind === 'confirmed' && !lifetime.denied ? (
-          <Notice tone="success" className="mt-4">
-            The independent workflow draft was created.
-          </Notice>
-        ) : null}
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            {command.state.kind === 'uncertain' ||
-            command.state.kind === 'confirmed'
-              ? 'Close'
-              : 'Cancel'}
-          </Button>
-          {!locked ? (
-            <ProgressButton
-              variant="outline"
-              pending={previewing}
-              pendingLabel="Checking…"
-              disabled={!complete || reading}
-              onClick={() => void checkPreview()}
-            >
-              Preview import
-            </ProgressButton>
-          ) : null}
-          {command.state.kind === 'confirmed' &&
-          command.state.workflowId !== undefined &&
-          !lifetime.denied ? (
-            <Button
-              variant="primary"
-              onClick={() => {
-                if (command.state.workflowId !== undefined)
-                  onCreated(command.state.workflowId);
-              }}
-            >
-              Open imported workflow
-            </Button>
-          ) : (
-            <ProgressButton
-              variant="primary"
-              pending={command.state.kind === 'sending'}
-              pendingLabel="Importing…"
-              disabled={
-                lifetime.denied ||
-                (command.state.kind !== 'uncertain' &&
-                  (preview?.compatible !== true ||
-                    preview.truncated ||
-                    !complete ||
-                    workflowNameError(name) !== undefined ||
-                    previewing))
-              }
-              onClick={() => {
-                if (command.state.kind === 'uncertain') command.retry();
-                else if (
-                  manifest !== undefined &&
-                  preview?.compatible === true &&
-                  !preview.truncated &&
-                  complete &&
-                  validation.submit({ name: workflowNameError(name) })
-                ) {
-                  command.start({
-                    manifest,
-                    bindings,
-                    name,
-                    expectedCompatibilityFingerprint:
-                      preview.compatibilityFingerprint,
-                  });
-                  setPreview(undefined);
-                }
-              }}
-            >
-              {command.state.kind === 'uncertain'
-                ? 'Retry exact import'
-                : 'Import unpublished draft'}
-            </ProgressButton>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

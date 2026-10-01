@@ -7,9 +7,9 @@ import {
 } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
-import { importWorkflow } from '../../workflow-portability.api';
-import { workflowKeys } from '../../workflows.queries';
-import type { usePortabilityLifetime } from './use-portability-lifetime';
+import { importWorkflow } from './workflow-portability.api';
+import { workflowKeys } from './workflows.queries';
+import type { usePortabilityLifetime } from './components/portability/use-portability-lifetime';
 
 interface Attempt {
   body: WorkflowImportRequest;

@@ -278,8 +278,8 @@ weakened. Broad database qualification discovered two stale migration support
 suffixes, corrected at `60fd2619`; the original failed report is retained.
 These are pre-freeze evidence, not a claim of final-head or hosted qualification.
 
-Final local qualification is bound to implementation head `5ada95ea`, followed
-only by this evidence/tracker documentation update. `pnpm check` and
+Pre-review local qualification is bound to implementation head `5ada95ea`,
+followed by documentation candidate `a0d69f57`. `pnpm check` and
 `pnpm test:coverage` pass on unchanged, clean source. Coverage provenance binds
 24 cohorts to
 `sha256:49c26dc5db2c6466e2d5a918aa21d374f65eadd964239956131dc695dfa002ba`;
@@ -309,3 +309,37 @@ size/control-flow advisories remain review notes. No rule suppression, test or
 performance threshold relaxation, hook bypass, push, hosted-CI or merge claim is
 made. Independent implementation review and the `0130`/`0131` plus `0132` combined
 upstream migration history remain open; production activation is unauthorized.
+
+### Independent-review repair (2026-10-02)
+
+The independent Spec review found that dialog dismissal unmounted the scoped
+import command, discarding its frozen request/key after an uncertain response.
+Three actual-page regressions reproduced lost-response Close/reopen, dismissal
+while a POST is held, and hidden authority loss followed by a late acceptance.
+The repair keeps the keyed import session mounted while its presentation closes;
+reopening exposes the same unresolved/confirmed command without an automatic
+POST. Same-workspace route departure is protected while sending/uncertain;
+session/workspace departure and authority loss remain allowed and late results
+are fenced. Browser closing/reloading warns but cannot durably retain memory.
+
+The independent Standards review also required the command hook with cache
+effects to live in the feature mutation module. It now belongs to
+`workflow-portability.mutations.ts`; view lifetime and departure presentation
+remain separate. Neither repair changes backend persistence, F05 wire contracts,
+graph identity policy or migration history, nor requires a new ADR.
+
+The broad `5ada95ea`/`a0d69f57` receipt above remains historical qualification,
+not an exact-source rerun claim for this repair. Repair-specific checks and the
+manager's final inspection must close before push/release; combined migrations,
+hosted checks and natural-main verification remain independently open.
+
+Repair-local verification passes 17 focused portability/recovery tests and all
+866 web unit tests across 115 files, plus web typecheck/lint/build, repository
+ownership/dependency and complexity checks. The focused Chromium mock browser
+journey verifies held-request dismissal, exact recovery, same-workspace departure
+protection and confirmed reopen without another POST. Its initially missing
+statistics mock returned 401; a contract-valid scoped fixture corrected the
+test boundary without weakening authority retirement. Late-result tests await
+settlement after authority, session and workspace departure. React Doctor stays
+at changed-source 89/full-app 78 with unchanged advisory counts. These checks
+do not relabel the earlier service-backed acceptance as a repaired-head rerun.

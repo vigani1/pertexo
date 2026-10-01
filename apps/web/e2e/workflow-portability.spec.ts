@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { portableGraphDigest } from '@pertexo/contracts/schemas/workflow-portability';
 import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { fixtureStatistics } from '../test/support/run-fixtures';
 import {
   addCsrfCookie,
   currentEtag,
@@ -80,6 +81,10 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
       capabilities: [...workspace.capabilities, 'workflow:create'],
     },
   });
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/run-statistics?**`,
+    (route) => route.fulfill({ json: fixtureStatistics() }),
+  );
   const exports: { body: unknown; etag: string | undefined }[] = [];
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/export`,
@@ -157,6 +162,10 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
     },
   );
   const attempts: { body: unknown; key: string | undefined }[] = [];
+  let releaseImport!: () => void;
+  const importGate = new Promise<void>((resolve) => {
+    releaseImport = resolve;
+  });
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/import`,
     async (route) => {
@@ -164,8 +173,10 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
         body: route.request().postDataJSON() as unknown,
         key: route.request().headers()['idempotency-key'],
       });
-      if (attempts.length === 1) await route.abort('failed');
-      else
+      if (attempts.length === 1) {
+        await importGate;
+        await route.abort('failed');
+      } else
         await route.fulfill({
           status: 201,
           json: { workflowId: destinationId },
@@ -231,10 +242,43 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
   await importing
     .getByRole('button', { name: 'Import unpublished draft' })
     .click();
+  await expect.poll(() => attempts.length).toBe(1);
+  await importing.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(importing).toHaveCount(0);
+  await page.getByRole('button', { name: 'Import workflow…' }).click();
+  await expect(
+    importing.getByRole('button', { name: 'Importing…' }),
+  ).toBeDisabled();
+  expect(attempts).toHaveLength(1);
+  await importing.getByRole('button', { name: 'Cancel', exact: true }).click();
+  releaseImport();
+  await page.getByRole('button', { name: 'Import workflow…' }).click();
   await expect(
     importing.getByRole('button', { name: 'Retry exact import' }),
   ).toBeEnabled();
   await expect(importing.getByLabel('New workflow name')).toBeDisabled();
+  await importing.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(importing).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page
+    .getByRole('navigation', { name: 'Workspace' })
+    .getByRole('link', { name: 'Home', exact: true })
+    .click();
+  const guard = page.getByRole('dialog', {
+    name: 'Resolve the import before leaving',
+  });
+  await expect(guard).toBeVisible();
+  await expect(guard).toHaveCSS('opacity', '1');
+  await expect(page).toHaveURL(`/w/${workspaceId}/workflows`);
+  expect(attempts).toHaveLength(1);
+  await page.screenshot({
+    path: 'test-results/workflow-portability-recovery.png',
+    animations: 'disabled',
+  });
+  await guard.getByRole('button', { name: 'Reopen import' }).click();
+  await expect(
+    importing.getByRole('button', { name: 'Retry exact import' }),
+  ).toBeEnabled();
   await importing.getByRole('button', { name: 'Retry exact import' }).click();
   await expect(
     importing.getByRole('button', { name: 'Open imported workflow' }),
@@ -249,4 +293,10 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
   });
   await importing.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(importing).toHaveCount(0);
+  await page.getByRole('button', { name: 'Import workflow…' }).click();
+  await expect(
+    importing.getByRole('button', { name: 'Open imported workflow' }),
+  ).toBeEnabled();
+  expect(attempts).toHaveLength(2);
+  await importing.getByRole('button', { name: 'Close', exact: true }).click();
 });
