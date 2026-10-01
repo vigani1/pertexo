@@ -4,6 +4,7 @@ import {
   StartWorkflowRunUseCase,
   ReplayWorkflowRunUseCase,
   WorkflowRunDataController,
+  UsageCapacityController,
   WorkflowRunsController,
   WorkflowRunsModule,
   type WorkflowRunsDependencies,
@@ -21,6 +22,7 @@ const dependencies = {
     stepHealth: () => Promise.resolve(undefined),
     stepRuns: () => Promise.resolve(undefined),
     statistics: () => Promise.reject(new Error('not exercised')),
+    usageCapacity: () => Promise.reject(new Error('not exercised')),
     cancel: () => Promise.reject(new Error('not exercised')),
   },
   authorization: { findAccess: () => Promise.resolve(undefined) },
@@ -51,6 +53,7 @@ describe('workflow runs Nest module', () => {
     expect(dynamic.controllers).toEqual([
       WorkflowRunsController,
       WorkflowRunDataController,
+      UsageCapacityController,
     ]);
   });
 });

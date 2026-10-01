@@ -10,6 +10,7 @@ import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.j
 import { ApiLifecycleModule } from '../platform/health/drain-state.js';
 import { WorkflowRunsController } from './controllers.js';
 import {
+  UsageCapacityArtifactReadGuard,
   WorkflowRunCancelGuard,
   WorkflowRunReplayGuard,
   WorkflowRunReadGuard,
@@ -28,6 +29,8 @@ import {
   ListWorkflowStepRunsUseCase,
 } from './run-data-use-cases.js';
 import { GetWorkflowRunStatisticsUseCase } from './statistics-use-case.js';
+import { GetUsageCapacityUseCase } from './usage-capacity-use-case.js';
+import { UsageCapacityController } from './usage-capacity-controller.js';
 import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
 import {
   CancelWorkflowRunUseCase,
@@ -64,6 +67,14 @@ export class WorkflowRunsModule {
           dependencies.visibilityMetrics ?? createSseVisibilityMetrics(),
       },
       WorkflowRunReadGuard,
+      UsageCapacityArtifactReadGuard,
+      {
+        provide: GetUsageCapacityUseCase,
+        useValue: new GetUsageCapacityUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
       WorkflowRunStartGuard,
       WorkflowRunReplayGuard,
       WorkflowRunCancelGuard,
@@ -156,7 +167,11 @@ export class WorkflowRunsModule {
     return {
       module: WorkflowRunsModule,
       imports: [ApiLifecycleModule, identityModule],
-      controllers: [WorkflowRunsController, WorkflowRunDataController],
+      controllers: [
+        WorkflowRunsController,
+        WorkflowRunDataController,
+        UsageCapacityController,
+      ],
       providers,
       exports: [
         StartWorkflowRunUseCase,
@@ -164,6 +179,7 @@ export class WorkflowRunsModule {
         GetWorkflowRunUseCase,
         ListWorkflowRunsUseCase,
         GetWorkflowRunStatisticsUseCase,
+        GetUsageCapacityUseCase,
         GetWorkflowRunInputUseCase,
         GetWorkflowNodeRunOutputUseCase,
         GetWorkflowNodeRunInputUseCase,

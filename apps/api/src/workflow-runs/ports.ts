@@ -1,3 +1,4 @@
+import type { UsageCapacityResponse } from '@pertexo/contracts/workflow-runs';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,
@@ -194,6 +195,9 @@ export type CancelWorkflowRunCommand = Readonly<{
 }>;
 
 export interface WorkflowRunPersistence {
+  usageCapacity(
+    input: Readonly<{ workspaceId: string; signal?: AbortSignal }>,
+  ): Promise<UsageCapacityResponse>;
   start(input: StartWorkflowRunCommand): Promise<
     Readonly<{
       run: WorkflowRunRecord;

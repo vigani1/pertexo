@@ -407,7 +407,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0125_workflow_auto_pause_controls.sql',
+        migrationHead: '0126_workspace_usage_capacity.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -415,7 +415,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0125_workflow_auto_pause_controls.sql',
+        migrationHead: '0126_workspace_usage_capacity.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

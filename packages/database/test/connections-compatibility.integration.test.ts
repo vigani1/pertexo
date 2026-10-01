@@ -747,7 +747,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0125_workflow_auto_pause_controls.sql',
+        migrationHead: '0126_workspace_usage_capacity.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -946,7 +946,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0125_workflow_auto_pause_controls.sql',
+        migrationHead: '0126_workspace_usage_capacity.sql',
       });
     } finally {
       await pool.end();

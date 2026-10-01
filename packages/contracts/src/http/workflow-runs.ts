@@ -198,6 +198,54 @@ export const workflowRunStatisticsQuerySchema = z
 const workflowRunCountSchema = z.number().int().nonnegative();
 const workflowRunStatisticsTimestampSchema = z.iso.datetime({ precision: 6 });
 
+/** Exact PostgreSQL bigint bytes; never rounded through a JSON number. */
+const capacityBytesSchema = z.string().regex(/^(?:0|[1-9][0-9]{0,18})$/u);
+const capacityCountSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(Number.MAX_SAFE_INTEGER);
+
+/** ADR057: operational capacity is separate from retained run activity. */
+export const usageCapacityResponseSchema = z
+  .object({
+    asOf: workflowRunStatisticsTimestampSchema,
+    execution: z
+      .object({
+        activeRuns: capacityCountSchema,
+        reservedActiveSlots: capacityCountSchema,
+        activeCapacityConsumed: capacityCountSchema,
+        queuedRuns: capacityCountSchema,
+        policy: z
+          .object({
+            state: z.enum([
+              'active',
+              'suspended',
+              'not_yet_effective',
+              'expired',
+              'unavailable',
+            ]),
+            version: z.number().int().positive().nullable(),
+            activeRunLimit: z.number().int().min(1).max(10_000).nullable(),
+            queuedRunLimit: z.number().int().min(1).max(100_000).nullable(),
+          })
+          .strict(),
+      })
+      .strict(),
+    artifacts: z
+      .object({
+        chargedBytes: capacityBytesSchema,
+        byteLimit: capacityBytesSchema,
+        chargedCount: capacityCountSchema,
+        artifactCountLimit: capacityCountSchema,
+        source: z.enum(['stored', 'default']),
+      })
+      .strict(),
+  })
+  .strict();
+
+export type UsageCapacityResponse = z.infer<typeof usageCapacityResponseSchema>;
+
 /** One exact count per run status. */
 export const workflowRunStatusCountsSchema = z
   .object({

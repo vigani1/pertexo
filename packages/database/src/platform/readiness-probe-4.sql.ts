@@ -214,6 +214,28 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
         and to_regclass('app.workspace_execution_entitlements') is not null
         and to_regclass('app.workspace_execution_admission_counters') is not null
         and to_regclass('app.workflow_run_active_admissions') is not null
+        and exists (select 1 from pg_index index_record
+          join pg_class index_relation on index_relation.oid=index_record.indexrelid
+          join pg_attribute attribute on attribute.attrelid=index_record.indrelid
+            and attribute.attname='workspace_id' and not attribute.attisdropped
+          where index_record.indexrelid=to_regclass('app.workflow_run_active_admissions_workspace_idx')
+            and index_record.indrelid=to_regclass('app.workflow_run_active_admissions')
+            and index_record.indisvalid and index_record.indisready
+            and index_record.indnatts=1 and index_record.indkey[0]=attribute.attnum
+            and index_record.indpred is null and index_record.indexprs is null
+            and index_relation.relam=(select oid from pg_am where amname='btree'))
+        and exists (select 1 from pg_proc reader
+          where reader.oid=to_regprocedure('app.workspace_reserved_active_slot_count(uuid)')
+            and reader.prosecdef and reader.provolatile='s'
+            and reader.prorettype='integer'::regtype
+            and md5(reader.prosrc)='6ed33604664c79cbc928094e4ada3202'
+            and pg_get_userbyid(reader.proowner)=$1
+            and reader.proconfig=array['search_path=pg_catalog, app, pg_temp','row_security=on']::text[]
+            and has_function_privilege($3,reader.oid,'EXECUTE')
+            and not exists (select 1 from aclexplode(coalesce(reader.proacl,acldefault('f',reader.proowner))) privilege
+              where privilege.privilege_type='EXECUTE' and privilege.grantee not in
+                (reader.proowner,(select oid from pg_roles where rolname=$3))))
+        and not has_table_privilege($3,'app.workflow_run_active_admissions','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
         and (select relrowsecurity and relforcerowsecurity from pg_class
              where oid=to_regclass('app.workspace_execution_entitlement_versions'))
         and (select relrowsecurity and relforcerowsecurity from pg_class

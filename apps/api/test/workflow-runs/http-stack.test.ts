@@ -14,6 +14,8 @@ import {
   createApiPlatformFixture,
   createStubApiWorkflowRuntime,
 } from '../support/api-platform.fixture.js';
+import { usageCapacitySnapshot } from '../support/usage-capacity.fixture.js';
+import type { WorkspaceStatus } from '../../src/workspaces/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -28,6 +30,7 @@ const { config, database, logger, rateLimitConsumer, telemetry } =
 
 function identityRuntime(
   role: 'builder' | 'owner' | 'viewer' = 'owner',
+  workspaceStatus: WorkspaceStatus = 'active',
 ): ApiIdentityRuntime {
   const dependencies: IdentityWorkspaceDependencies = {
     config: {
@@ -79,7 +82,7 @@ function identityRuntime(
                 workspaceId,
                 role,
                 membershipStatus: 'active' as const,
-                workspaceStatus: 'active' as const,
+                workspaceStatus,
               }
             : undefined,
         ),
@@ -94,6 +97,7 @@ function persistenceFixture() {
   const get = vi.fn<WorkflowRunPersistence['get']>();
   const list = vi.fn<WorkflowRunPersistence['list']>();
   const statistics = vi.fn<WorkflowRunPersistence['statistics']>();
+  const usageCapacity = vi.fn<WorkflowRunPersistence['usageCapacity']>();
   const cancel = vi.fn<WorkflowRunPersistence['cancel']>();
   const readInput = vi.fn<WorkflowRunPersistence['readInput']>();
   const readNodeRunOutput =
@@ -108,6 +112,7 @@ function persistenceFixture() {
       get,
       list,
       statistics,
+      usageCapacity,
       cancel,
       readInput,
       readNodeRunOutput,
@@ -120,6 +125,7 @@ function persistenceFixture() {
     get,
     list,
     statistics,
+    usageCapacity,
     cancel,
     readInput,
     readNodeRunOutput,
@@ -141,8 +147,11 @@ const mutationHeaders = {
 describe('workflow runs real Nest HTTP stack', () => {
   let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
 
-  async function start(role: 'builder' | 'owner' | 'viewer' = 'owner') {
-    const identity = identityRuntime(role);
+  async function start(
+    role: 'builder' | 'owner' | 'viewer' = 'owner',
+    workspaceStatus: WorkspaceStatus = 'active',
+  ) {
+    const identity = identityRuntime(role, workspaceStatus);
     const fixture = persistenceFixture();
     const baseRuntime = createStubApiWorkflowRuntime(
       identity.dependencies.authorization,
@@ -318,6 +327,54 @@ describe('workflow runs real Nest HTTP stack', () => {
       includeWorkflowName: true,
     });
   });
+
+  it('reads exact operational capacity as a viewer with no-store and session isolation', async () => {
+    const { application, fixture } = await start('viewer');
+    fixture.usageCapacity.mockResolvedValue(usageCapacitySnapshot());
+    const unauthenticated = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/usage-capacity`,
+    });
+    expect(unauthenticated.statusCode).toBe(401);
+    const hidden = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${runId}/usage-capacity`,
+      headers: authHeaders,
+    });
+    expect(hidden.statusCode).toBe(404);
+    expect(hidden.json()).toMatchObject({ code: 'resource.not_found' });
+    expect(fixture.usageCapacity).not.toHaveBeenCalled();
+    const response = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/usage-capacity`,
+      headers: authHeaders,
+    });
+    expect(response.statusCode, response.payload).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.json()).toEqual(usageCapacitySnapshot());
+    expect(fixture.usageCapacity).toHaveBeenCalledTimes(1);
+    expect(fixture.usageCapacity.mock.calls[0]?.[0].workspaceId).toBe(
+      workspaceId,
+    );
+    expect(fixture.usageCapacity.mock.calls[0]?.[0].signal).toBeInstanceOf(
+      AbortSignal,
+    );
+  });
+
+  it.each(['suspended', 'pending_deletion', 'deleted'] as const)(
+    'denies capacity without persistence for a %s workspace',
+    async (status) => {
+      const { application, fixture } = await start('viewer', status);
+      const response = await application.inject({
+        method: 'GET',
+        url: `/v1/workspaces/${workspaceId}/usage-capacity`,
+        headers: authHeaders,
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ code: 'resource.not_found' });
+      expect(fixture.usageCapacity).not.toHaveBeenCalled();
+    },
+  );
 
   it('maps workflow domain failures to exact public status and problem bodies', async () => {
     const { application, fixture } = await start();

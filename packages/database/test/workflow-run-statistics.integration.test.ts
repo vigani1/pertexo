@@ -6,6 +6,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkflowRunDatabase } from '../src/execution/runs/workflow-run-api.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { checkDatabaseReadiness } from '../src/platform/readiness.js';
+import { WorkspaceAccessDeniedError } from '../src/tenant-access/identity-workspace-errors.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import {
@@ -199,6 +201,349 @@ afterAll(async () => {
   });
   if (failures.length > 0)
     throw new AggregateError(failures, 'Run statistics cleanup failed');
+});
+
+describe('ADR 057 current capacity authority', () => {
+  it('the scalar read inherits the bounded statement timeout', async () => {
+    const blocker = await ownerPool.connect();
+    try {
+      await blocker.query('begin');
+      await blocker.query('set local role pertexo_owner');
+      await blocker.query(
+        'lock table app.workflow_run_active_admissions in access exclusive mode',
+      );
+      await expect(
+        runs.usageCapacity({ workspaceId: busyWorkspace }),
+      ).rejects.toMatchObject({ cause: { code: '57014' } });
+    } finally {
+      await blocker.query('rollback');
+      blocker.release();
+    }
+  });
+  it.each(['suspended', 'pending_deletion'])(
+    'does not return a snapshot after workspace becomes %s',
+    async (status) => {
+      await inWorkspace(
+        'owner',
+        busyWorkspace,
+        `update app.workspaces set status=$2::varchar,
+      deletion_requested_at=case when $2='pending_deletion' then now() else null end,
+      deletion_requested_by=case when $2='pending_deletion' then $3::uuid else null end,
+      deletion_reason=case when $2='pending_deletion' then 'Capacity test' else null end,
+      purge_after=case when $2='pending_deletion' then now()+interval '30 days' else null end
+      where id=$1`,
+        [busyWorkspace, status, person],
+      );
+      await expect(
+        runs.usageCapacity({ workspaceId: busyWorkspace }),
+      ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
+    },
+  );
+  it('does not return lazy defaults for a missing workspace', async () => {
+    await expect(
+      runs.usageCapacity({ workspaceId: randomUUID() }),
+    ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
+  });
+  it('reports provisioned execution and lazy artifact defaults', async () => {
+    const result = await runs.usageCapacity({ workspaceId: busyWorkspace });
+    expect(result.execution).toEqual({
+      activeRuns: 0,
+      reservedActiveSlots: 0,
+      activeCapacityConsumed: 0,
+      queuedRuns: 0,
+      policy: {
+        state: 'active',
+        version: 1,
+        activeRunLimit: 5,
+        queuedRunLimit: 100,
+      },
+    });
+    expect(result.artifacts).toEqual({
+      chargedBytes: '0',
+      byteLimit: '1073741824',
+      chargedCount: 0,
+      artifactCountLimit: 1000,
+      source: 'default',
+    });
+    expect(result.asOf).toMatch(/\.\d{6}Z$/u);
+    await expect(
+      checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
+    ).resolves.toMatchObject({
+      migrationHead: '0126_workspace_usage_capacity.sql',
+    });
+    const grants = await runtimePool.query(`select
+      has_function_privilege('pertexo_api','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as api,
+      has_function_privilege('pertexo_worker','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as worker,
+      has_function_privilege('pertexo_dispatcher','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as dispatcher,
+      has_function_privilege('pertexo_operator','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as operator`);
+    expect(grants.rows).toEqual([
+      { api: true, worker: false, dispatcher: false, operator: false },
+    ]);
+  });
+
+  it('counts active reservations without double counting queued runs or other tenants', async () => {
+    await addRuns(busyWorkspace, intake, 'running', 1, '2 hours');
+    await addRuns(busyWorkspace, intake, 'waiting', 1, '2 hours');
+    await addRuns(busyWorkspace, intake, 'queued', 2, '2 hours');
+    await addRuns(quietWorkspace, elsewhere, 'running', 1, '2 hours');
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      `with selected as (
+      select id from app.workflow_runs where workspace_id=$1 and status='queued' limit 1
+    ), event as (
+      insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum)
+      select gen_random_uuid(),$1,'advance-workflow-run',1,'workflow-run',id,'{}'::jsonb,repeat('a',64) from selected returning id,aggregate_id
+    ) insert into app.workflow_run_active_admissions(workspace_id,workflow_run_id,outbox_event_id)
+      select $1,aggregate_id,id from event`,
+      [busyWorkspace],
+    );
+    const result = await runs.usageCapacity({ workspaceId: busyWorkspace });
+    expect(result.execution).toMatchObject({
+      activeRuns: 2,
+      reservedActiveSlots: 1,
+      activeCapacityConsumed: 3,
+      queuedRuns: 2,
+    });
+    const counter = await inWorkspace(
+      'api',
+      busyWorkspace,
+      'select active_runs from app.workspace_execution_admission_counters where workspace_id=$1',
+      [busyWorkspace],
+    );
+    expect(counter.rows[0]?.active_runs).toBe(2);
+    await expect(
+      inWorkspace(
+        'api',
+        busyWorkspace,
+        'select * from app.workflow_run_active_admissions',
+      ),
+    ).rejects.toThrow(/permission denied/u);
+    await expect(
+      inWorkspace(
+        'api',
+        busyWorkspace,
+        'select app.workspace_reserved_active_slot_count($1)',
+        [quietWorkspace],
+      ),
+    ).rejects.toThrow('workspace context mismatch');
+    await expect(
+      runtimePool.query('select app.workspace_reserved_active_slot_count($1)', [
+        busyWorkspace,
+      ]),
+    ).rejects.toThrow('workspace context mismatch');
+  });
+
+  it.each([
+    ['suspended', 'suspended', '-infinity', null],
+    ['not_yet_effective', 'active', 'infinity', null],
+    ['expired', 'active', '-infinity', '2000-01-01'],
+  ])(
+    'reports configured %s policy without inventing effective limits',
+    async (state, status, effectiveAt, expiresAt) => {
+      await inWorkspace(
+        'owner',
+        busyWorkspace,
+        `insert into app.workspace_execution_entitlement_versions
+      (workspace_id,version,status,active_run_limit,queued_run_limit,effective_at,expires_at)
+      values($1,2,$2,7,120,$3::timestamptz,$4::timestamptz)`,
+        [busyWorkspace, status, effectiveAt, expiresAt],
+      );
+      await inWorkspace(
+        'owner',
+        busyWorkspace,
+        'update app.workspace_execution_entitlements set current_version=2 where workspace_id=$1',
+        [busyWorkspace],
+      );
+      expect(
+        (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution
+          .policy,
+      ).toEqual({ state, version: 2, activeRunLimit: 7, queuedRunLimit: 120 });
+    },
+  );
+
+  it('reports missing counter authority unavailable, then missing pointer with nullable limits', async () => {
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      'delete from app.workspace_execution_admission_counters where workspace_id=$1',
+      [busyWorkspace],
+    );
+    expect(
+      (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution
+        .policy,
+    ).toEqual({
+      state: 'unavailable',
+      version: 1,
+      activeRunLimit: 5,
+      queuedRunLimit: 100,
+    });
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      'delete from app.workspace_execution_entitlements where workspace_id=$1',
+      [busyWorkspace],
+    );
+    expect(
+      (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution
+        .policy,
+    ).toEqual({
+      state: 'unavailable',
+      version: null,
+      activeRunLimit: null,
+      queuedRunLimit: null,
+    });
+  });
+
+  it('charges pending, available and deleting artifacts until completed deletion; zero limits remain zero', async () => {
+    const artifact = randomUUID();
+    await inWorkspace(
+      'api',
+      busyWorkspace,
+      `insert into app.artifacts(id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,status,expires_at)
+      values($2::uuid,$1::uuid,'user-upload','workspaces/'||$1::uuid::text||'/artifacts/'||$2::uuid::text,'text/plain',123,repeat('a',64),'pending',now()+interval '1 hour')`,
+      [busyWorkspace, artifact],
+    );
+    for (const state of ['pending', 'available', 'deleting']) {
+      if (state !== 'pending')
+        await inWorkspace(
+          'api',
+          busyWorkspace,
+          'update app.artifacts set status=$3,finalized_at=coalesce(finalized_at,now()) where workspace_id=$1 and id=$2',
+          [busyWorkspace, artifact, state],
+        );
+      expect(
+        (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts,
+      ).toMatchObject({
+        chargedBytes: '123',
+        chargedCount: 1,
+        source: 'stored',
+      });
+    }
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      'update app.workspace_artifact_capacity set byte_limit=0,artifact_count_limit=0 where workspace_id=$1',
+      [busyWorkspace],
+    );
+    expect(
+      (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts,
+    ).toEqual({
+      chargedBytes: '123',
+      byteLimit: '0',
+      chargedCount: 1,
+      artifactCountLimit: 0,
+      source: 'stored',
+    });
+    await inWorkspace(
+      'api',
+      busyWorkspace,
+      "update app.artifacts set status='deleted',deleted_at=now() where workspace_id=$1 and id=$2",
+      [busyWorkspace, artifact],
+    );
+    expect(
+      (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts
+        .chargedBytes,
+    ).toBe('0');
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      'update app.workspace_artifact_capacity set byte_limit=9223372036854775807 where workspace_id=$1',
+      [busyWorkspace],
+    );
+    expect(
+      (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts
+        .byteLimit,
+    ).toBe('9223372036854775807');
+  });
+
+  it.each(['scope bypass', 'wrong count'])(
+    'startup rejects reader body drift: %s',
+    async (variant) => {
+      const source = await inWorkspace<{ definition: string }>(
+        'owner',
+        busyWorkspace,
+        'select pg_get_functiondef($1::regprocedure) as definition',
+        ['app.workspace_reserved_active_slot_count(uuid)'],
+      );
+      const original = source.rows[0]?.definition;
+      if (original === undefined)
+        throw new Error('Reservation reader definition is unavailable');
+      const changed =
+        variant === 'scope bypass'
+          ? original.replace(
+              /IF p_workspace_id IS NULL OR[\s\S]*?THEN/u,
+              'IF false THEN',
+            )
+          : original.replace('count(*)::integer', '(count(*) + 1)::integer');
+      expect(changed).not.toBe(original);
+      try {
+        await inWorkspace('owner', busyWorkspace, changed);
+        if (variant === 'scope bypass') {
+          expect(
+            (
+              await inWorkspace(
+                'api',
+                busyWorkspace,
+                'select app.workspace_reserved_active_slot_count($1) as count',
+                [quietWorkspace],
+              )
+            ).rows,
+          ).toEqual([{ count: 0 }]);
+        } else {
+          expect(
+            (
+              await inWorkspace(
+                'api',
+                busyWorkspace,
+                'select app.workspace_reserved_active_slot_count($1) as count',
+                [busyWorkspace],
+              )
+            ).rows,
+          ).toEqual([{ count: 1 }]);
+        }
+        await expect(
+          checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
+        ).rejects.toThrow(/admission/u);
+      } finally {
+        await inWorkspace('owner', busyWorkspace, original);
+      }
+      await expect(
+        checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
+      ).resolves.toMatchObject({
+        migrationHead: '0126_workspace_usage_capacity.sql',
+      });
+    },
+  );
+
+  it('readiness rejects a missing reservation index or broadened scalar grant', async () => {
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      'drop index app.workflow_run_active_admissions_workspace_idx',
+    );
+    await expect(
+      checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
+    ).rejects.toThrow(/admission/u);
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      'create index workflow_run_active_admissions_workspace_idx on app.workflow_run_active_admissions(workspace_id)',
+    );
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      'grant execute on function app.workspace_reserved_active_slot_count(uuid) to public',
+    );
+    await expect(
+      checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
+    ).rejects.toThrow(/admission/u);
+    await inWorkspace(
+      'owner',
+      busyWorkspace,
+      'revoke execute on function app.workspace_reserved_active_slot_count(uuid) from public',
+    );
+  });
 });
 
 const zero = {
@@ -448,6 +793,79 @@ describe('run statistics query-plan budget', () => {
       ),
     );
   }
+
+  it('bounds reservation row work to the installed workspace, not other tenants', async () => {
+    await inWorkspace(
+      'owner',
+      quietWorkspace,
+      `insert into app.workspace_execution_entitlement_versions
+      (workspace_id,version,status,active_run_limit,queued_run_limit,effective_at)
+      values($1,2,'active',1000,1000,'-infinity')`,
+      [quietWorkspace],
+    );
+    await inWorkspace(
+      'owner',
+      quietWorkspace,
+      'update app.workspace_execution_entitlements set current_version=2 where workspace_id=$1',
+      [quietWorkspace],
+    );
+    await addRuns(quietWorkspace, elsewhere, 'queued', 900, '2 hours');
+    await addRuns(busyWorkspace, intake, 'queued', 1, '2 hours');
+    for (const workspace of [quietWorkspace, busyWorkspace]) {
+      await inWorkspace(
+        'owner',
+        workspace,
+        `with event as (
+        insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum)
+        select gen_random_uuid(),$1,'advance-workflow-run',1,'workflow-run',id,'{}'::jsonb,repeat('a',64)
+          from app.workflow_runs where workspace_id=$1 and status='queued' returning id,aggregate_id
+      ) insert into app.workflow_run_active_admissions(workspace_id,workflow_run_id,outbox_event_id)
+        select $1,aggregate_id,id from event`,
+        [workspace],
+      );
+    }
+    const superuser = new Pool({
+      connectionString: statisticsDatabase.databaseUrl(superuserUrl),
+      max: 1,
+    });
+    try {
+      await superuser.query(
+        'vacuum (analyze) app.workflow_run_active_admissions',
+      );
+    } finally {
+      await superuser.end();
+    }
+    // Explain the scalar's SELECT as its owning role: PL/pgSQL statements are
+    // otherwise opaque to outer EXPLAIN. This is the exact indexed predicate.
+    const plan = explainDocument(
+      await inWorkspace(
+        'owner',
+        busyWorkspace,
+        'explain (analyze,buffers,settings,format json) select count(*)::integer from app.workflow_run_active_admissions where workspace_id=$1',
+        [busyWorkspace],
+        (client) => client.query("set local statement_timeout='2s'"),
+      ),
+    );
+    expect(plan.Settings?.enable_seqscan).not.toBe('off');
+    expect(explainWork(plan.Plan).nodeTypes).not.toContain('Seq Scan');
+    expect(indexScans(plan.Plan)).toMatchObject([
+      {
+        index: 'workflow_run_active_admissions_workspace_idx',
+        nodeType: 'Index Only Scan',
+        rows: 1,
+        heapFetches: 0,
+      },
+    ]);
+    expect(explainWork(plan.Plan).rejectedRowInstances).toBe(0);
+    expect(explainWork(plan.Plan).summedNodeRowWork).toBeLessThanOrEqual(3);
+    expect(
+      (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution,
+    ).toMatchObject({
+      queuedRuns: 1,
+      reservedActiveSlots: 1,
+      activeCapacityConsumed: 1,
+    });
+  }, 30_000);
 
   it('reads only the window through index-only scans', async () => {
     await seedHistory();

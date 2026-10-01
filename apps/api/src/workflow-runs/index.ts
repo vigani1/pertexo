@@ -1,6 +1,8 @@
 export type * from './ports.js';
 export * from './use-cases.js';
 export * from './statistics-use-case.js';
+export * from './usage-capacity-use-case.js';
+export * from './usage-capacity-controller.js';
 export * from './controllers.js';
 export * from './run-data-controller.js';
 export * from './run-data-use-cases.js';

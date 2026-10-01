@@ -60,7 +60,8 @@ Capacity is one repeatable-read, read-only RLS-scoped transaction with a
 counter/capacity rows by workspace key, plus indexed nonterminal run counts and
 indexed reservation counts. Existing counters do not include reservations and
 must not be presented alone as consumed active capacity. Add only the missing
-reservation workspace index and a scoped scalar read function: API runtime gets
+reservation workspace index and a scoped scalar read function, with its reviewed
+body, owner, grants and search path checked at startup: API runtime gets
 the count of its installed workspace, not direct reservation-row access or any
 mutation authority. No locks for admission, queue I/O, object-store I/O,
 historical scan, speculative rollup or persistent reporting state is added.
@@ -89,6 +90,9 @@ cross-tenant, permission/state, exact limits, reservation, charging, query-plan
 and integrated browser evidence before claiming the first slice complete.
 Rollback hides reporting and removes readers without changing existing
 enforcement or writers; the additive read function/index may safely remain.
+The existing exact migration-head startup gate still applies: a rollback reader
+build must retain head 0126 compatibility rather than redeploy an older image
+that expects head 0125. This is not a new promise of mixed-head rolling startup.
 There is no production rollout authorization here. F12 warnings, trends,
 timezone settings, quota editing and billing remain deferred and the full F12
 tracker must not imply their completion.
