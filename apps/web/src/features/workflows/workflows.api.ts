@@ -2,6 +2,9 @@ import {
   strongEtagSchema,
   workflowCreateRequestSchema,
   workflowCreateResponseSchema,
+  workflowDuplicateRequestSchema,
+  workflowDuplicateResponseSchema,
+  workflowRevisionConflictProblemSchema,
   workflowDraftResponseSchema,
   workflowLifecycleConflictProblemSchema,
   workflowLifecycleRequestSchema,
@@ -12,6 +15,7 @@ import {
   workflowRenameResponseSchema,
   workflowSummaryResponseSchema,
   type WorkflowCreateResponse,
+  type WorkflowDuplicateRequest,
   type WorkflowGraphContract,
   type WorkflowLifecycleResponse,
   type WorkflowListResponse,
@@ -23,6 +27,60 @@ import type { ApiClient } from '@/lib/api/client';
 
 function workflowPath(workspaceId: string, workflowId: string): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}`;
+}
+
+export type WorkflowDuplicateAttempt = Readonly<{
+  body: WorkflowDuplicateRequest;
+  idempotencyKey: string;
+  etag?: string;
+}>;
+
+/** Reads only the authoritative saved source, never the editor graph. */
+export async function getWorkflowDuplicateDraft(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  signal: AbortSignal,
+): Promise<Readonly<{ revision: number; etag: string }>> {
+  return apiClient.request({
+    path: `${workflowPath(workspaceId, workflowId)}/draft`,
+    signal,
+    response: {
+      kind: 'json',
+      decode: (value, metadata) => ({
+        revision: workflowDraftResponseSchema.parse(value).revision,
+        etag: strongEtagSchema.parse(metadata.header('etag')),
+      }),
+    },
+  });
+}
+
+export function duplicateWorkflow(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  attempt: WorkflowDuplicateAttempt,
+  signal: AbortSignal,
+) {
+  const body = workflowDuplicateRequestSchema.parse(attempt.body);
+  return apiClient.request({
+    path: `${workflowPath(workspaceId, workflowId)}/duplicate`,
+    method: 'POST',
+    body,
+    signal,
+    headers: {
+      'Idempotency-Key': attempt.idempotencyKey,
+      ...(body.source.kind === 'draft'
+        ? { 'If-Match': strongEtagSchema.parse(attempt.etag) }
+        : {}),
+    },
+    decodeProblem: (value) =>
+      workflowRevisionConflictProblemSchema.parse(value),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowDuplicateResponseSchema.parse(value),
+    },
+  });
 }
 
 export function getWorkflowsPage(

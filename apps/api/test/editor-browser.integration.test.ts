@@ -55,6 +55,10 @@ import {
   verifyReceiptRecoveryEvidence,
   verifyRunRecoveryEvidence,
 } from './support/editor-browser-recovery-evidence.js';
+import {
+  workflowDuplicationEvidenceSchema,
+  verifyWorkflowDuplicationEvidence,
+} from './support/workflow-duplication-browser-evidence.js';
 
 const enabled = process.env.EDITOR_BROWSER_INTEGRATION === 'true';
 const scenario = z
@@ -66,6 +70,7 @@ const scenario = z
     'readonly',
     'schedule',
     'webhook-controlled-http',
+    'duplication',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -120,6 +125,8 @@ const browserEvidenceSchema = z.strictObject({
   finalDraftRevision: z.number().int().positive(),
 });
 let evidence: z.infer<typeof browserEvidenceSchema> | undefined;
+let duplicationEvidence:
+  z.infer<typeof workflowDuplicationEvidenceSchema> | undefined;
 let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
 let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
 let expressionEvidence:
@@ -614,6 +621,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           url.pathname === '/evidence/receipts' ||
           url.pathname === '/evidence/run-recovery' ||
           url.pathname === '/evidence/expression-admission' ||
+          url.pathname === '/evidence/duplication' ||
           url.pathname === '/evidence/readonly' ||
           url.pathname === '/evidence/schedule')
       ) {
@@ -643,6 +651,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             )
               expressionEvidence =
                 expressionAdmissionEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/evidence/duplication' &&
+              scenario === 'duplication'
+            )
+              duplicationEvidence =
+                workflowDuplicationEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/readonly' &&
               scenario === 'readonly'
@@ -754,19 +768,21 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'nested-conflict'
-              ? 'editor-execution.spec.ts'
-              : scenario === 'receipts'
-                ? 'editor-receipts.spec.ts'
-                : scenario === 'run-recovery'
-                  ? 'editor-run-recovery.spec.ts'
-                  : scenario === 'expression-admission'
-                    ? 'editor-expression-admission.spec.ts'
-                    : scenario === 'readonly'
-                      ? 'editor-readonly.spec.ts'
-                      : scenario === 'schedule'
-                        ? 'editor-schedule.spec.ts'
-                        : 'editor-webhook-controlled-http.spec.ts',
+            scenario === 'duplication'
+              ? 'workflow-duplication.spec.ts'
+              : scenario === 'nested-conflict'
+                ? 'editor-execution.spec.ts'
+                : scenario === 'receipts'
+                  ? 'editor-receipts.spec.ts'
+                  : scenario === 'run-recovery'
+                    ? 'editor-run-recovery.spec.ts'
+                    : scenario === 'expression-admission'
+                      ? 'editor-expression-admission.spec.ts'
+                      : scenario === 'readonly'
+                        ? 'editor-readonly.spec.ts'
+                        : scenario === 'schedule'
+                          ? 'editor-schedule.spec.ts'
+                          : 'editor-webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -786,6 +802,18 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'duplication') {
+      if (duplicationEvidence === undefined)
+        throw new Error('Workflow duplication evidence missing');
+      await verifyWorkflowDuplicationEvidence(
+        api.database(),
+        duplicationEvidence,
+      );
+      process.stdout.write(
+        `Live browser workflow duplication evidence ${JSON.stringify(duplicationEvidence)}\n`,
+      );
+      return;
+    }
     if (scenario === 'webhook-controlled-http') {
       if (httpControl === undefined || httpEffects === undefined)
         throw new Error('Owned HTTP control/effect evidence missing');

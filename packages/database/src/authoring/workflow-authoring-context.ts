@@ -30,5 +30,6 @@ export type WorkflowAuthoringWriteContext = Readonly<{
     workspaceId: string,
     actorId: string,
     operation: (client: PoolClient) => Promise<T>,
+    signal?: AbortSignal,
   ): Promise<T>;
 }>;

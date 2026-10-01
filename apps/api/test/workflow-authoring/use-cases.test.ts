@@ -123,6 +123,7 @@ function authorization(
 function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
   return {
     restoreWorkflowVersion: vi.fn().mockResolvedValue(draft({ revision: 2 })),
+    duplicateWorkflow: vi.fn().mockResolvedValue({ workflowId }),
     transitionWorkflowLifecycle: vi
       .fn()
       .mockResolvedValue({ workflow: workflow(), replayed: false }),

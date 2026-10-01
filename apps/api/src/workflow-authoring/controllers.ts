@@ -26,6 +26,8 @@ import {
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from './rename-use-case.js';
+import { DuplicateWorkflowUseCase } from './duplicate-use-case.js';
+import { workflowDuplicateRequestSchema } from '@pertexo/contracts/workflow-authoring';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import { workflowVersionRestoreParamsSchema } from '@pertexo/contracts/workflow-authoring';
 import { throwWorkflowApplicationError } from './errors.js';
@@ -75,6 +77,7 @@ export class WorkflowAuthoringController {
     private readonly transitionLifecycle: TransitionWorkflowLifecycleUseCase,
     private readonly restoreWorkflowVersion: RestoreWorkflowVersionUseCase,
     private readonly renameWorkflow: RenameWorkflowUseCase,
+    private readonly duplicateWorkflow: DuplicateWorkflowUseCase,
   ) {}
 
   @Get()
@@ -324,6 +327,48 @@ export class WorkflowAuthoringController {
         requestHeaderValue(request.headers, 'idempotency-key'),
       ),
     });
+  }
+
+  @Post(':workflowId/duplicate')
+  @RateLimit('ordinary_mutation')
+  @HttpCode(201)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowReadGuard,
+    WorkflowCreateGuard,
+    CsrfProtectionGuard,
+  )
+  public async duplicate(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: WorkflowResponse,
+  ) {
+    const route = workflowParams(params);
+    const input = workflowDuplicateRequestSchema.parse(body);
+    const representationTag =
+      input.source.kind === 'draft'
+        ? parseStrongIfMatch(requestHeaderValue(request.headers, 'if-match'))
+        : undefined;
+    const context = requestContext(request, route.workspaceId);
+    const result = await withRequestOperationSignal(request, (signal) =>
+      this.duplicateWorkflow.execute({
+        ...context,
+        routeWorkspaceId: route.workspaceId,
+        workflowId: route.workflowId,
+        request: input,
+        idempotencyKey: parseIdempotencyKey(
+          requestHeaderValue(request.headers, 'idempotency-key'),
+        ),
+        ...(representationTag === undefined ? {} : { representationTag }),
+        signal,
+      }),
+    );
+    response.header(
+      'Location',
+      `/v1/workspaces/${route.workspaceId}/workflows/${result.workflowId}`,
+    );
+    return result;
   }
 
   private lifecycleCommand(

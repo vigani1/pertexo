@@ -14,6 +14,7 @@ import type { WorkflowAuthoringTelemetry } from './telemetry.js';
 export type WorkflowAuthoringPersistence = Pick<
   WorkflowAuthoringDatabase,
   | 'createWorkflow'
+  | 'duplicateWorkflow'
   | 'listWorkflows'
   | 'getWorkflow'
   | 'getDraft'

@@ -64,6 +64,9 @@ function request(
 }
 
 function makeController() {
+  const duplicateWorkflow = {
+    execute: vi.fn().mockResolvedValue({ workflowId }),
+  };
   const listWorkflows = {
     execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
   };
@@ -120,8 +123,10 @@ function makeController() {
       transitionLifecycle as never,
       restoreVersion as never,
       renameWorkflow as never,
+      duplicateWorkflow as never,
     ),
     transitionLifecycle,
+    duplicateWorkflow,
     renameWorkflow,
     restoreVersion,
     createWorkflow,
@@ -135,6 +140,67 @@ function makeController() {
 }
 
 describe('workflow authoring controller public seam', () => {
+  it('duplicates only a selected saved source and forwards lifetime with a safe destination Location', async () => {
+    const { controller, duplicateWorkflow } = makeController();
+    const header = vi.fn();
+    const payload = { name: 'Copy', source: { kind: 'draft' } };
+    await expect(
+      controller.duplicate(
+        request({ 'if-match': tag, 'idempotency-key': 'copy-once' }),
+        { workspaceId, workflowId },
+        payload,
+        { header },
+      ),
+    ).resolves.toEqual({ workflowId });
+    expect(duplicateWorkflow.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: payload,
+        representationTag: tag,
+        idempotencyKey: 'copy-once',
+        signal: expect.any(AbortSignal) as unknown,
+      }),
+    );
+    expect(header).toHaveBeenCalledWith(
+      'Location',
+      `/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+    );
+    await controller.duplicate(
+      request({ 'idempotency-key': 'version-copy' }),
+      { workspaceId, workflowId },
+      { name: 'Version', source: { kind: 'version', versionId: version.id } },
+      { header },
+    );
+    expect(duplicateWorkflow.execute.mock.calls[1]?.[0]).not.toHaveProperty(
+      'representationTag',
+    );
+  });
+
+  it('rejects absent/malformed draft tags and client graph payloads before duplication', async () => {
+    const { controller, duplicateWorkflow } = makeController();
+    const payload = { name: 'Copy', source: { kind: 'draft' } };
+    for (const headers of [
+      { 'idempotency-key': 'copy' },
+      { 'idempotency-key': 'copy', 'if-match': '*' },
+    ]) {
+      await expect(
+        controller.duplicate(
+          request(headers),
+          { workspaceId, workflowId },
+          payload,
+          { header: vi.fn() },
+        ),
+      ).rejects.toThrow();
+    }
+    await expect(
+      controller.duplicate(
+        request({ 'idempotency-key': 'copy', 'if-match': tag }),
+        { workspaceId, workflowId },
+        { ...payload, graph: body.graph },
+        { header: vi.fn() },
+      ),
+    ).rejects.toThrow();
+    expect(duplicateWorkflow.execute).not.toHaveBeenCalled();
+  });
   it('returns the checked snapshot tag and forwards the request signal for validate and publish', async () => {
     const { controller, validateDraft, publishWorkflow } = makeController();
     const header = vi.fn();

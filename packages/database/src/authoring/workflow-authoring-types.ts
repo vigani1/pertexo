@@ -7,6 +7,10 @@ import type {
 } from '@pertexo/workflow-model/graph';
 
 export type WorkflowAuthoringTestHooks = Readonly<{
+  /** Integration-only synchronization/fault seam; omitted in runtime composition. */
+  afterDuplicateStep?: (
+    step: 'claim' | 'source' | 'workflow' | 'draft' | 'audit' | 'idempotency',
+  ) => Promise<void>;
   /** Integration-test synchronization seam after the durable release lock. */
   afterCompatibilityReleaseLock?: () => Promise<void>;
   /** Integration-test synchronization seam; runtime composition must omit it. */

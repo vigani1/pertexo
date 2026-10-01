@@ -94,6 +94,7 @@ const MIGRATIONS_AFTER_0045 = [
   '0126_workspace_usage_capacity.sql',
   '0127_workflow_concurrency.sql',
   '0128_connection_health.sql',
+  '0129_workflow_duplication.sql',
 ] as const;
 
 export class MemoryLedger implements ControlLedger {

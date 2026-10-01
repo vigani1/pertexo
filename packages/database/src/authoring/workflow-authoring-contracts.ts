@@ -29,6 +29,21 @@ export type CreateWorkflowResult = Readonly<{
   workflow: WorkflowRecord;
   draft: WorkflowDraftRecord;
 }>;
+export type DuplicateWorkflowInput = Readonly<{
+  workspaceId: string;
+  workflowId: string;
+  actorId: string;
+  name: string;
+  source:
+    | Readonly<{ kind: 'draft' }>
+    | Readonly<{ kind: 'version'; versionId: string }>;
+  representationTag?: string;
+  idempotencyKey: string;
+  requestId?: string;
+  traceId?: string;
+  signal?: AbortSignal;
+}>;
+export type DuplicateWorkflowResult = Readonly<{ workflowId: string }>;
 export type SaveWorkflowDraftInput = Readonly<{
   workspaceId: string;
   workflowId: string;
@@ -134,6 +149,9 @@ export type WorkflowAuthoringDatabase = Readonly<{
     input: ResolvePreviewReplayInput & Readonly<{ workspaceId: string }>,
   ): Promise<PreviewReplayRecord | null>;
   createWorkflow(input: CreateWorkflowInput): Promise<CreateWorkflowResult>;
+  duplicateWorkflow(
+    input: DuplicateWorkflowInput,
+  ): Promise<DuplicateWorkflowResult>;
   listWorkflows(input: ListWorkflowsInput): Promise<WorkflowPage>;
   getWorkflow(
     workspaceId: string,

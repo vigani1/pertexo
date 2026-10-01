@@ -5,7 +5,11 @@ import type {
 } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
+import {
+  WorkflowDuplicateDialog,
+  canDuplicateWorkflow,
+} from '@/features/workflows/duplicate.public';
 import { GitCompareArrowsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -127,6 +131,7 @@ function VersionList({
   onCompare,
   onPreview,
   onRestore,
+  onDuplicate,
 }: Readonly<{
   items: readonly Version[];
   liveVersionId: string | null;
@@ -135,6 +140,7 @@ function VersionList({
   onCompare: () => void;
   onPreview: (version: Version) => void;
   onRestore: (version: Version) => void;
+  onDuplicate: ((version: Version) => void) | undefined;
 }>) {
   return (
     <>
@@ -157,6 +163,7 @@ function VersionList({
         canRestore={canRestore}
         onPreview={onPreview}
         onRestore={onRestore}
+        onDuplicate={onDuplicate}
       />
     </>
   );
@@ -181,6 +188,9 @@ export function WorkflowVersionsPage({
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
   const overlays = useVersionOverlays();
+  const [duplicating, setDuplicating] = useState<Version>();
+  const navigate = useNavigate();
+  const workflow = visibleSettingsData(summary);
   const canRestore = workspace.capabilities.includes('workflow:update');
   const items = visibleSettingsData(versions)?.items;
   const liveVersionId = summary.data?.publishedVersionId ?? null;
@@ -217,6 +227,12 @@ export function WorkflowVersionsPage({
             onCompare={overlays.compare}
             onPreview={overlays.preview}
             onRestore={overlays.restore}
+            onDuplicate={
+              workflow !== undefined &&
+              canDuplicateWorkflow(workspace, workflow)
+                ? setDuplicating
+                : undefined
+            }
           />
         )}
       </SettingsSection>
@@ -245,6 +261,28 @@ export function WorkflowVersionsPage({
           workflowId={workflowId}
           version={overlays.restoring}
           onClose={overlays.closeRestore}
+        />
+      )}
+      {duplicating === undefined || workflow === undefined ? null : (
+        <WorkflowDuplicateDialog
+          key={`${user.id}:${workspace.id}:${workflowId}:${duplicating.id}`}
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflow={workflow}
+          source={{ kind: 'version', versionId: duplicating.id }}
+          versionNumber={duplicating.versionNumber}
+          allowed={items !== undefined}
+          onClose={() => {
+            setDuplicating(undefined);
+          }}
+          onCreated={(destinationId) => {
+            setDuplicating(undefined);
+            void navigate({
+              to: '/w/$workspaceId/workflows/$workflowId',
+              params: { workspaceId: workspace.id, workflowId: destinationId },
+            });
+          }}
         />
       )}
     </>

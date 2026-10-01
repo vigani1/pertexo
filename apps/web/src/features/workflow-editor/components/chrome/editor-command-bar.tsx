@@ -44,6 +44,12 @@ export function EditorCommandBar({
   commands: ReactNode;
 }>) {
   const graph = useEditorStore((state) => state.graph);
+  const duplicateBlocked = useEditorStore(
+    (state) =>
+      state.saveStatus !== 'clean' ||
+      state.inspectorScratch ||
+      state.conflict !== null,
+  );
   const moreRef = useRef<HTMLButtonElement>(null);
   return (
     <WorkflowHubBar
@@ -53,6 +59,7 @@ export function EditorCommandBar({
       workflowId={workflowId}
       workflow={workflow}
       activeTab="build"
+      duplicateBlocked={duplicateBlocked}
       glyph={
         <PatternGlyph
           graph={graph}

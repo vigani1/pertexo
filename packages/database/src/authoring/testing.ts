@@ -9,6 +9,8 @@ export {
 export type {
   CreateWorkflowInput,
   CreateWorkflowResult,
+  DuplicateWorkflowInput,
+  DuplicateWorkflowResult,
   ListWorkflowVersionsInput,
   ListWorkflowsInput,
   PublishWorkflowInput,

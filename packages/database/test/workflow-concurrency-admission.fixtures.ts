@@ -306,6 +306,7 @@ export async function proveLegacyConcurrencyUpgrade() {
     expect(await migrateDatabase(config)).toEqual([
       '0127_workflow_concurrency.sql',
       '0128_connection_health.sql',
+      '0129_workflow_duplication.sql',
     ]);
     expect(await migrateDatabase(config)).toEqual([]);
     const tickets = await owner.query<{ id: string; ticket: string }>(
@@ -325,7 +326,7 @@ export async function proveLegacyConcurrencyUpgrade() {
     await expect(
       checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
     ).resolves.toMatchObject({
-      migrationHead: '0128_connection_health.sql',
+      migrationHead: '0129_workflow_duplication.sql',
     });
     await proveConcurrencyReadinessTamper(owner, api, worker, dispatcher);
   } finally {

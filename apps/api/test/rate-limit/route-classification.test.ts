@@ -89,6 +89,7 @@ const routes: readonly (readonly [
   [WorkflowAuthoringController, 'archive', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'restore', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'rename', 'ordinary_mutation'],
+  [WorkflowAuthoringController, 'duplicate', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'versions', 'authenticated_read'],
   [WorkflowRunsController, 'startRun', 'run_admission'],
   [WorkflowRunsController, 'replayRun', 'run_admission'],

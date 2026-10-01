@@ -27,6 +27,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
 import { cn } from '@/lib/utils';
 import { canRenameWorkflow } from '../../model/workflow-rename';
+import { canDuplicateWorkflow } from '../../model/workflow-duplicate';
 import {
   ROW_REVEAL_CLASS,
   type WorkflowRowActions,
@@ -139,6 +140,13 @@ export function WorkflowRowMenu({
           Settings
         </DropdownMenuLinkItem>
         <DropdownMenuSeparator />
+        {canDuplicateWorkflow(workspace, workflow) &&
+        actions.onDuplicate !== undefined ? (
+          <DropdownMenuItem onClick={() => actions.onDuplicate?.(workflow)}>
+            <CopyIcon aria-hidden="true" />
+            Duplicate workflow…
+          </DropdownMenuItem>
+        ) : null}
         {canRenameWorkflow(workspace, workflow) ? (
           <DropdownMenuItem
             onClick={() => {

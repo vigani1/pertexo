@@ -1,6 +1,7 @@
 export const WORKFLOW_AUTHORING_OPERATION = Object.freeze({
   list: 'workflow.list',
   create: 'workflow.create',
+  duplicate: 'workflow.duplicate',
   draftGet: 'workflow.draft.get',
   draftSave: 'workflow.draft.save',
   validate: 'workflow.validate',
