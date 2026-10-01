@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+
 import {
   createApiApplication,
   type ApiApplicationDependencies,
@@ -22,10 +25,14 @@ export async function createBetterAuthFixtureApplication(
       )
     : undefined;
   await scheduleRuntime?.checkReadiness();
+  const rateLimitConsumer =
+    dependencies.rateLimitConsumer ??
+    fixtureRateLimiter(config.redisUrl, owner);
   const application = owner.acquire(
     'API application',
     await createApiApplication(config, {
       ...dependencies,
+      rateLimitConsumer,
       ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
     }),
     (app) => app.close(),
@@ -34,4 +41,26 @@ export async function createBetterAuthFixtureApplication(
   // Before that point, fixture cleanup still owns partial acquisition/readiness.
   if (scheduleRuntime !== undefined) owner.transfer(scheduleRuntime);
   return application;
+}
+
+function fixtureRateLimiter(redisUrl: string, owner: FixtureResourceOwner) {
+  const namespace = randomUUID();
+  const runtime = owner.acquire(
+    'fixture rate limiter',
+    new RedisRateLimitRuntime(redisUrl),
+    (limiter) => limiter.close(),
+  );
+  return {
+    consume: (decision: Parameters<RedisRateLimitRuntime['consume']>[0]) =>
+      runtime.consume({
+        ...decision,
+        // Separate fixture applications share Redis and browser origins.
+        // Scope counter identities once per application, retaining the real
+        // limits, windows, atomic Redis enforcement and fail-closed behavior.
+        dimensions: decision.dimensions.map((dimension) => ({
+          ...dimension,
+          identifier: `${namespace}:${dimension.identifier}`,
+        })),
+      }),
+  };
 }

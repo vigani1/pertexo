@@ -115,8 +115,8 @@ function databaseCleanupFailure(error: unknown): DatabaseCleanupFailure {
 
 /**
  * Creates and migrates a disposable database, boots the API on it and drops
- * the database afterwards. Each request gets its own client address, like
- * real users, so rate windows never couple the tests.
+ * the database afterwards. Requests use distinct client addresses; the
+ * application fixture scopes real Redis rate-limit counters per instance.
  */
 export function useBetterAuthRealApi(
   suite: string,
