@@ -207,6 +207,8 @@ export {
 } from './authoring/workflow-authoring.js';
 export type {
   WorkflowAuthoringDatabase,
+  DuplicateWorkflowInput,
+  DuplicateWorkflowResult,
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,

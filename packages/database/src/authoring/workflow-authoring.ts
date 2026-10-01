@@ -17,6 +17,7 @@ import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
 import { createWorkflowVersionRestoreStore } from './workflow-authoring-version-restore.js';
+import { createWorkflowDuplicationStore } from './workflow-authoring-duplication.js';
 import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import { createWorkflowAuthoringLifecycleStore } from './workflow-authoring-lifecycle.js';
 import { createWorkflowAuthoringRenameStore } from './workflow-authoring-rename.js';
@@ -84,6 +85,8 @@ export class WorkflowDefinitionPlacementError extends Error {
 export type {
   CreateWorkflowInput,
   CreateWorkflowResult,
+  DuplicateWorkflowInput,
+  DuplicateWorkflowResult,
   ListWorkflowsInput,
   ListWorkflowVersionsInput,
   PublishWorkflowInput,
@@ -300,6 +303,7 @@ export function createWorkflowAuthoringDatabase(
     ...createPreviewStore(pool),
     ...createWorkflowAuthoringDraftStore(authoringContext),
     ...createWorkflowVersionRestoreStore(authoringContext),
+    ...createWorkflowDuplicationStore(authoringContext),
     ...createWorkflowAuthoringReadStore({
       requireReader: requireWorkspaceReader,
       selectDefinitionCatalog: async (client) =>

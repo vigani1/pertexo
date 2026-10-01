@@ -43,6 +43,7 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.audit_connection_secret_access(uuid,uuid,uuid,text,text,text,text)` | `62ddece0876f51039e5825ac914246d3` | definer, `pg_catalog, app`, `row_security=on`, worker-only | `0128_connection_health.sql` |
 | `app.apply_workspace_deletion_side_effects()` | `908becdc3d5fbf1ec9a1a855c97c75bf` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, internal trigger | `0128_connection_health.sql` |
 | `app.reject_retention_batch_direct_mutation()` | `bd7d508fdf10cf97eb33467e8bd00f37` | invoker, `pg_catalog, pg_temp`, internal trigger | `0128_connection_health.sql` |
+| `app.create_workflow_duplicate_draft(uuid,uuid,uuid,uuid,character varying,integer,jsonb,character,character,text,uuid)` | `b70f29f6408a6ef018b23b10f45fb443` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0129_workflow_duplication.sql` |
 
 The executable inventory is split between
 `packages/database/src/platform/readiness.ts` (compatibility-release functions)
@@ -77,6 +78,18 @@ Follow [Connection health enforcement](connection-health-enforcement.md) for
 lock order, mode-preserving backlog handling, and fail-closed mixed-version
 deployment. Restore-before-serve uses the same migration-head compatibility
 boundary; restoring evidence does not authorize enabling enforcement.
+
+The atomic same-workspace duplication creator (ADR060) is checked by
+`packages/database/src/platform/readiness-workflow-duplication.sql.ts` in the
+startup compatibility probe. Its exact body, owner, security configuration and
+API-only execution ACL are pinned. Migration 0129 is additive: apply it before
+serving the new API; no existing creation function, runtime INSERT privilege or
+receipt lifecycle is replaced. The exact migration-head contract does not admit
+0128 images against 0129: hold serving traffic closed until all serving and
+restore images accept 0129. This is not a zero-downtime mixed-head rollout.
+Application rollback requires an image qualified against 0129; it may leave the
+capability installed. Do not remove it while a supported image uses it, or rewrite
+migration history to admit an older image.
 
 ## Synchronized update procedure
 

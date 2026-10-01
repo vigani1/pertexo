@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CreateWorkflowUseCase,
+  DuplicateWorkflowUseCase,
   RenameWorkflowUseCase,
   WorkflowAuthoringController,
   WorkflowAuthoringModule,
@@ -13,6 +14,7 @@ import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/concurr
 const dependencies = {
   persistence: {
     restoreWorkflowVersion: () => Promise.reject(new Error('not used')),
+    duplicateWorkflow: () => Promise.reject(new Error('not used')),
     transitionWorkflowLifecycle: () =>
       Promise.reject(new Error('not exercised')),
     renameWorkflow: () => Promise.reject(new Error('not exercised')),
@@ -64,9 +66,11 @@ describe('workflow authoring Nest module', () => {
       expect.arrayContaining([
         expect.objectContaining({ provide: CreateWorkflowUseCase }),
         expect.objectContaining({ provide: RenameWorkflowUseCase }),
+        expect.objectContaining({ provide: DuplicateWorkflowUseCase }),
       ]),
     );
     expect(dynamic.exports).toContain(RenameWorkflowUseCase);
+    expect(dynamic.exports).toContain(DuplicateWorkflowUseCase);
     expect(dynamic.controllers).toContain(WorkflowAuthoringController);
     expect(providers).toEqual(
       expect.arrayContaining([

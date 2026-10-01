@@ -81,6 +81,7 @@ const EXACT_RISK_COHORT_FILES = Object.freeze({
     'apps/api/src/webhooks/delivery-log.ts',
     'apps/api/src/webhooks/ingress.ts',
     'apps/api/src/webhooks/ingress-responses.ts',
+    'apps/api/src/workflow-authoring/duplicate-use-case.ts',
     'apps/api/src/workflow-authoring/lifecycle-use-case.ts',
     'apps/api/src/workflow-authoring/module.ts',
     'apps/api/src/workflow-authoring/preconditions.ts',

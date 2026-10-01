@@ -66,6 +66,25 @@ export const workflowCreateRequestSchema = z
   .object({ name: workflowNameSchema })
   .strict();
 
+export const workflowDuplicateSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('draft') }).strict(),
+  z
+    .object({ kind: z.literal('version'), versionId: workflowIdentifierSchema })
+    .strict(),
+]);
+export const workflowDuplicateRequestSchema = z
+  .object({ name: workflowNameSchema, source: workflowDuplicateSourceSchema })
+  .strict();
+export const workflowDuplicateResponseSchema = z
+  .object({ workflowId: workflowIdentifierSchema })
+  .strict();
+export type WorkflowDuplicateRequest = z.output<
+  typeof workflowDuplicateRequestSchema
+>;
+export type WorkflowDuplicateResponse = z.output<
+  typeof workflowDuplicateResponseSchema
+>;
+
 export { workflowActivationStatusSchema, workflowLifecycleStatusSchema };
 export const workflowCompatibilityIssueSchema = z
   .object({

@@ -17,7 +17,7 @@ describe('retained migration history fixture', () => {
       .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/u.test(name))
       .sort();
     expect(expected).toEqual(current.slice(current.indexOf(expected[0] ?? '')));
-    expect(expected.at(-1)).toBe('0128_connection_health.sql');
+    expect(expected.at(-1)).toBe('0129_workflow_duplication.sql');
   });
 
   it('returns an exact suffix and rejects a missing start', async () => {
@@ -64,6 +64,7 @@ describe('retained migration history fixture', () => {
       '0126_workspace_usage_capacity.sql',
       '0127_workflow_concurrency.sql',
       '0128_connection_health.sql',
+      '0129_workflow_duplication.sql',
     ]);
     await expect(
       expectedMigrationHistoryFrom('9999_missing.sql'),

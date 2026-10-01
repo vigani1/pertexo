@@ -110,7 +110,9 @@ async function assertDriftRejected(statement: string, restore: string) {
     await ownerSql(restore);
     await expect(
       checkDatabaseReadiness(api, readinessOptions),
-    ).resolves.toMatchObject({ migrationHead: '0128_connection_health.sql' });
+    ).resolves.toMatchObject({
+      migrationHead: '0129_workflow_duplication.sql',
+    });
   }
 }
 
@@ -168,6 +170,7 @@ describe('connection health migration and runtime boundary', () => {
   it('upgrades exact 0127 retained metadata and lets an unversioned in-flight claim finish without changing health', async () => {
     await expect(upgrade.upgrade()).resolves.toEqual([
       '0128_connection_health.sql',
+      '0129_workflow_duplication.sql',
     ]);
     const retained = await upgrade.asOwner((client) =>
       client.query(

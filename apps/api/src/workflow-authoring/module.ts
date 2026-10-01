@@ -22,6 +22,7 @@ import {
 import { WorkflowAuthoringController } from './controllers.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from './rename-use-case.js';
+import { DuplicateWorkflowUseCase } from './duplicate-use-case.js';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
@@ -45,6 +46,14 @@ export class WorkflowAuthoringModule {
     const telemetry =
       dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY;
     const providers: Provider[] = [
+      {
+        provide: DuplicateWorkflowUseCase,
+        useValue: new DuplicateWorkflowUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+          telemetry,
+        ),
+      },
       ...(dependencies.concurrencyPersistence === undefined
         ? []
         : [
@@ -180,6 +189,7 @@ export class WorkflowAuthoringModule {
       ],
       providers,
       exports: [
+        DuplicateWorkflowUseCase,
         RestoreWorkflowVersionUseCase,
         TransitionWorkflowLifecycleUseCase,
         RenameWorkflowUseCase,

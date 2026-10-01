@@ -11,6 +11,8 @@ import {
   workflowCompatibilityReportSchema,
   workflowCreateRequestSchema,
   workflowCreateResponseSchema,
+  workflowDuplicateRequestSchema,
+  workflowDuplicateResponseSchema,
   workflowDraftResponseSchema,
   workflowDraftSaveRequestSchema,
   workflowListResponseSchema,
@@ -51,6 +53,16 @@ function contractSchemas(target: 'client' | 'openapi') {
     projectContractSchema(name, schema, io, target);
   return Object.freeze({
     ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
+    WorkflowDuplicateRequest: project(
+      'WorkflowDuplicateRequest',
+      workflowDuplicateRequestSchema,
+      'input',
+    ),
+    WorkflowDuplicateResponse: project(
+      'WorkflowDuplicateResponse',
+      workflowDuplicateResponseSchema,
+      'output',
+    ),
     WorkflowVersionRestoreRequest: project(
       'WorkflowVersionRestoreRequest',
       workflowVersionRestoreRequestSchema,
@@ -197,6 +209,48 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     version: '1.0.0',
   },
   paths: {
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/duplicate': {
+      post: {
+        operationId: 'duplicateWorkflow',
+        description:
+          'Create an independent unpublished workflow from the saved draft or the exact retained version. Draft source requires a single strong If-Match; version source does not. Exact authorized retries return the original destination.',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          ...workflowParameters,
+          csrfParameter,
+          idempotencyParameter,
+          {
+            ...etagParameter,
+            required: false,
+            description:
+              'Required only for source.kind=draft; binds the saved source representation.',
+          },
+        ],
+        requestBody: jsonRequest('WorkflowDuplicateRequest'),
+        responses: {
+          '201': jsonResponseWithHeaders(
+            'Workflow duplicated',
+            'WorkflowDuplicateResponse',
+            {
+              Location: {
+                description: 'Authorized destination workflow path',
+                required: true,
+                schema: { type: 'string' },
+              },
+            },
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '409': responseReference('Conflict'),
+          '412': responseReference('PreconditionFailed'),
+          '422': responseReference('UnprocessableEntity'),
+          '428': responseReference('PreconditionRequired'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionId}/restore':
       {
         post: {

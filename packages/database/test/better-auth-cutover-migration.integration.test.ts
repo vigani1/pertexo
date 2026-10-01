@@ -112,6 +112,7 @@ describe('Better Auth cutover migration rehearsal', () => {
         '0126_workspace_usage_capacity.sql',
         '0127_workflow_concurrency.sql',
         '0128_connection_health.sql',
+        '0129_workflow_duplication.sql',
       ]);
 
       const verifier = new Pool({
