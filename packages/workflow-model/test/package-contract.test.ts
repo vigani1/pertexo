@@ -98,6 +98,11 @@ describe('workflow-model package contract', () => {
       default: './dist/graph-contract.js',
     });
     expect(json.browser[graphContract.default]).toBeUndefined();
+    expect(json.exports['./portability-contract']).toEqual({
+      types: './dist/portability-contract.d.ts',
+      default: './dist/portability-contract.js',
+    });
+    expect(json.browser['./dist/portability-contract.js']).toBeUndefined();
     expect(
       await readFile(
         new URL('../src/graph-contract.ts', import.meta.url),
@@ -110,6 +115,7 @@ describe('workflow-model package contract', () => {
         name === './assert-never' ||
         name === './failure-notification' ||
         name === './graph-contract' ||
+        name === './portability-contract' ||
         name === './json-path' ||
         name === './lifecycle' ||
         name === './observation-window'

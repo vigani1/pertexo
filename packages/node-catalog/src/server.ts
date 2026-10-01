@@ -1,5 +1,7 @@
 import './server-only.js';
 
+export { platformPortableDefinitionPolicy } from './portable-definition-policy.js';
+
 import {
   HTTP_REQUEST_DEFINITION_REGISTRATION,
   SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
