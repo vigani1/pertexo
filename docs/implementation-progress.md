@@ -21,17 +21,68 @@ compatibility, accepted-result precedence, serialized manual keys, committed
 
 - [x] Inspect merged main `5f78e155` and resolve the first-slice product direction.
 - [x] Record the accepted design and amended implementation/acceptance plan.
-- [ ] Obtain manager review of this planning commit before implementation.
-- [ ] Implement and qualify contracts, current authority, storage and admission.
-- [ ] Prove real persistence/race/expiry/hold/purge and pure-node browser behavior.
+- [x] Obtain manager review of planning commit `05002263` and implementation
+      authorization on 2026-10-01; both independent planning reviews had no findings.
+- [x] Implement contracts, current authority, storage and checked admission.
+- [x] Prove focused real persistence/race/expiry/hold/purge and pure-node browser behavior.
+- [x] Complete frozen-source repository checks and coverage qualification.
 - [ ] Complete independent reviews, scoped release and natural-main evidence.
 
-Evidence is read-only source inspection and a planning record, not executable
-qualification. No F02 schema, contracts, API, UI or execution behavior has been
-implemented or enabled. The owned `feat/workflow-input-cases` branch is separate
-from the live connection-health checkout; planning requires no builds, services,
-local database changes or external effects. Preview pins, recorded samples and
-regression assertions remain deferred; existing backend phases stay unchanged.
+Implementation is locally qualified; manager release review, hosted CI, merge and
+natural-main evidence remain open. Backend commit `82f3618b` and UI/browser commit
+`b555f994` record the reviewable first-slice implementation.
+Migration 0130 owns shared immutable-version case metadata, retained payload
+revisions and 24-hour mutation receipts; 0131 owns serialized manual identities,
+terminal stale receipts and the all-manual-writer fence. Both case changes and
+new checked starts default off. Disabling them preserves exact success/negative
+recovery and ordinary omitted-field admission on compatible writers.
+
+Focused evidence on 2026-10-01: real PostgreSQL case tests 17/17 and checked
+manual-start tests 31/31 pass; real authenticated HTTP tests 4/4 and the owned
+browser/API/worker journey 1/1 pass without skips. The latter proves detached
+input, stale v1/v2 rejection, actual accepted-response loss, v3 republication and
+exact recovery of the one successful v2 pure-node run, including an actual
+390px-wide retry with visible recovery controls. Contract and API tests
+prove omitted-field hash bytes, strict bounds/CAS and safe Unicode-name rejection.
+Independent scoped reviews found and repaired unsupported Unicode names, a NULL
+cleanup limit that could remove the batch bound, an asynchronous publication-review
+display race and Enter in a case-name editor implicitly submitting the real-run
+form, plus publication review clearing a stale loaded-case boundary. A changed
+context now requires deliberately loading a distinct current-version case;
+review or creation alone cannot adopt the stale copied input. Contract, real
+HTTP/SQL and component regressions retain these boundaries;
+the final browser journey passes after the UI repairs. The manual SQL review had
+no findings. Serialized repository coverage passes all 24 TypeScript cohorts at
+`sha256:4149d6361b6263f797ab2de6d32f24386ad7f1f1e3a1d78a852a6304d5561e8d`,
+with zero unreviewed and 388 unchanged reviewed risk branches. Full PostgreSQL
+integration coverage passes 850/850 across 110 files without skips.
+
+Earlier concurrent attempts remain recorded: bounded compiled-worker/UI-loading
+waits failed under competing full suites, and one cancellation-fixture connection
+count raced an independently started telemetry pool. The latter now uses an
+owned monitor-disabled runtime, preserving the same zero-checkout assertion.
+No timeout, assertion, coverage threshold or risk exception was weakened.
+The complete repository check passes with
+`pnpm_config_workspace_concurrency=1 pnpm check`, including web 860/860, API
+1854/1854, database unit 891/891 and worker 903/903. Installed-browser probes pass
+7/7. The full mock-browser suite passes 90/90 across Chromium and Firefox/WebKit
+smoke lanes with one worker and retries disabled. The React Doctor result is
+93/100 with one remaining run-dialog control-flow maintainability warning, not
+a suppressed diagnostic or observed behavior failure.
+
+Source-bound qualification evidence is preserved outside the checkout at
+`/Users/vigan/.codex/evidence/pertexo-f02-2026-10-01/`: the package-serialized
+repository check, serialized repository coverage, PostgreSQL integration coverage
+JSON/log, strict case HTTP/browser gate JSON, full mock-browser JSON/log and three
+inspected desktop/mobile PNGs. Browser proof uses the final stale-case/Enter
+barriers and verifies actual accepted-response loss followed by exact v2 recovery
+after v3 publication; it is not a mocked admission result. Owned disposable
+fixtures are cleaned up independently of the preserved live user work.
+
+The owned `feat/workflow-input-cases` branch and disposable PostgreSQL/Redis
+services are separate from live user work. No production enablement, provider
+execution or push is authorized. Preview pins, recorded samples and regression
+assertions remain deferred; existing backend phases stay unchanged.
 
 ### F05 — same-workspace workflow duplication
 
@@ -409,7 +460,7 @@ cleanup; the service-backed qualification above remains explicitly pre-cleanup.
 | Phase 5 — orchestration slice | Complete | ADRs 008, 017–022; branching, parallelism, retry/wait, notification, and recovery matrix |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014, 023–026; provider, webhook, schedule, retained-history, and rollout evidence |
 | Phase 7 — production operations | **In progress** | Repository implementation is qualified locally; external deployment, provider, load, recovery, telemetry, and pager evidence remains open |
-| F02 — run-input cases / checked manual start | Design accepted; planning only | ADR061 and first-slice plan; implementation authorization, executable evidence and release remain open |
+| F02 — run-input cases / checked manual start | Implemented and locally qualified; release open | ADR061 first slice, source-bound database/HTTP/browser and repository gates; manager release, hosted CI and natural-main evidence remain open |
 | F29 — queue-only workflow concurrency | Qualified | ADR058 queue-only slice, independent reviews, PR138 exact-head and natural main CI/CodeQL; skip overflow deferred |
 | F30 — first Slack connection-health slice | Qualified | ADR059 narrow Slack slice; independent reviews, PR139/140 exact-head checks and natural main CI/CodeQL on `adaa26df`; production mode off |
 

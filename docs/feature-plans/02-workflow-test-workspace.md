@@ -1,7 +1,8 @@
 # F02 — Saved test cases, pinned samples and workflow regression runs
 
-Status: first-slice design accepted under ADR061; planning record awaiting manager
-review before implementation. Later slices remain proposed.
+Status: first-slice design accepted under ADR061; manager-approved planning commit
+`05002263`, first-slice implementation locally qualified at `b555f994`.
+Later slices remain proposed; production enablement and release remain open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New product over existing previews. Relative size: **L**, not a calendar estimate.
 
@@ -75,7 +76,9 @@ controls backed by invented responses.
 The product owner selected version-checked explicit manual execution; the manager
 accepted this amended design on 2026-10-01. Baseline inspection is merged main
 `5f78e1552c55fede6f04264f8be4197296629e9c`, not fresh executable qualification.
-This planning record authorizes no code implementation or production effects.
+Manager review of planning commit `05002263` separately authorized implementation;
+both independent planning reviews had no findings. Production effects remain
+unauthorized.
 
 - Cases are shared workspace/workflow authoring assets, bound to an exact retained
   immutable version ID/checksum. Create only against an authorized retained
@@ -228,17 +231,29 @@ rollout, provider traffic, paid provisioning or user-service changes are authori
 
 - [x] Reconcile current owners and manual admission against merged `5f78e155`.
 - [x] Resolve and record manager-accepted choices in ADR061.
-- [ ] Review the planning commit and separately authorize implementation.
-- [ ] Implement storage/contracts/API and checked/negative manual admission.
-- [ ] Implement case management and frozen explicit-run frontend.
-- [ ] Qualify real migration, races, quotas, authority, retention and erasure.
-- [ ] Qualify real pure-node browser/backend journey and rollout/rollback gates.
+- [x] Review planning commit `05002263` and separately authorize implementation.
+- [x] Implement storage/contracts/API and checked/negative manual admission.
+- [x] Implement case management and frozen explicit-run frontend.
+- [x] Qualify real migration, races, quotas, authority, retention and erasure.
+- [x] Qualify real pure-node browser/backend journey and rollout/rollback gates.
 - [ ] Complete independent review, CI, merge and natural-main evidence.
 
-Planning evidence: source inspection on 2026-10-01 identifies existing early
-accepted lookup, late unique acceptance claim, publication row locking and
-24-hour receipt defaults. The plan/ADR are not executable evidence. No F02 code,
-schema, API/UI behavior or production enablement is delivered by this record.
+Executable focused evidence on 2026-10-01: case PostgreSQL 17/17, checked-start
+PostgreSQL 31/31, authenticated case HTTP 4/4 and real browser/API/worker 1/1 pass
+without skips. The browser gate owns ordinary signup, case CRUD, detached input,
+stale rejection and exact response-loss recovery after distinct republications,
+with one successful pure-node run and an actual 390px-wide frozen-command retry.
+New case API paths and extracted request hashes have 100% branch coverage in their
+focused cohorts. Serialized repository coverage passes 24 TypeScript cohorts
+with zero unreviewed risk branches; full PostgreSQL integration coverage passes
+850/850 across 110 files without skips. Unsupported names, NULL cleanup bounds,
+publication-review display races, stale-case review/clear escapes and implicit
+Enter-key real starts have regression proofs. The complete repository check
+passes with package concurrency one; web unit tests pass 860/860, browser probes
+7/7 and full mock-browser tests 90/90 with one worker and retries disabled.
+Implementation commits are `82f3618b` (backend) and `b555f994` (UI/browser).
+Manager release review, hosted CI, merge and natural-main evidence remain open.
+No production enablement or provider execution is claimed.
 
 ## Acceptance evidence
 
@@ -279,7 +294,8 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 - [ ] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
-Evidence log: first-slice planning/source inspection recorded above; no executable
-F02 qualification yet. Existing foundations are not completion of this increment.
+Evidence log: first-slice implementation and frozen-source local qualification
+recorded above; release remains open. Existing foundations
+are not completion of this increment.
 The first two checked rows apply only to slice 1, not unresolved pins/regression.
 Mark genuinely inapplicable rows with a reason rather than fabricating work.
