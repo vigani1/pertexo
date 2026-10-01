@@ -4,7 +4,10 @@ import {
   ImportWorkflowUseCase,
   PreviewWorkflowImportUseCase,
 } from '../../src/workflow-authoring/portability-use-cases.js';
-import { createActorContext } from '../../src/workspaces/index.js';
+import {
+  authorizeWorkspace,
+  createActorContext,
+} from '../../src/workspaces/index.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -21,6 +24,46 @@ const manifest = {
   },
   connectionSlots: [],
 };
+const boundManifest = {
+  ...manifest,
+  graph: {
+    ...manifest.graph,
+    nodes: [
+      {
+        id: workflowId,
+        definition: { key: 'http.request', version: 1 },
+        configVersion: 1,
+        config: {
+          method: 'GET',
+          url: 'https://example.test/reviewed',
+          headers: {},
+          timeoutMillis: 1000,
+          maxRedirects: 0,
+          maxResponseBytes: 1024,
+          inlineResponseBytes: 1024,
+        },
+        inputMappings: {},
+        connectionRefs: {},
+        position: { x: 0, y: 0 },
+      },
+    ],
+  },
+  requirements: {
+    ...manifest.requirements,
+    definitions: [{ key: 'http.request', version: 1, configVersion: 1 }],
+  },
+  connectionSlots: [
+    {
+      nodeId: workflowId,
+      slot: 'http_headers',
+      providerKey: 'http',
+      authType: 'http_headers',
+    },
+  ],
+};
+const bindings = [
+  { nodeId: workflowId, slot: 'http_headers', connectionId: actorId },
+];
 const context = {
   actor: createActorContext({
     actorId,
@@ -61,6 +104,74 @@ function fixture(role: 'owner' | 'builder' | 'operator' | 'viewer' = 'owner') {
   };
 }
 describe('workflow portability application authority and exact commands', () => {
+  it.each(['workflow:create', 'workflow:read'] as const)(
+    'reuses only an issued matching %s guard proof and freshly authorizes bindings',
+    async (capability) => {
+      const f = fixture('builder');
+      const actor = createActorContext({
+        ...context.actor,
+        traceId: 'portable-trace',
+      });
+      const authorizedWorkspace = await authorizeWorkspace({
+        actor,
+        routeWorkspaceId: workspaceId,
+        capability,
+        access: f.authorization,
+        disclosure: 'not_found',
+      });
+      f.authorization.findAccess.mockClear();
+      await f.preview.execute({
+        ...context,
+        actor,
+        authorizedWorkspace,
+        request: { manifest: boundManifest, bindings },
+      });
+      expect(f.authorization.findAccess).toHaveBeenCalledTimes(
+        capability === 'workflow:create' ? 1 : 2,
+      );
+      expect(f.persistence.previewWorkflowImport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          traceId: 'portable-trace',
+          manifest: boundManifest,
+          bindings,
+        }),
+      );
+    },
+  );
+  it.each(['preview', 'import'] as const)(
+    'denies %s before persistence when binding connection-read authority is lost',
+    async (operation) => {
+      const f = fixture('builder');
+      f.authorization.findAccess.mockResolvedValueOnce({
+        actorId,
+        workspaceId,
+        role: 'builder',
+        membershipStatus: 'active',
+        workspaceStatus: 'active',
+      });
+      f.authorization.findAccess.mockResolvedValueOnce(undefined);
+      const input = {
+        ...context,
+        idempotencyKey: 'binding-authority',
+        request: {
+          manifest: boundManifest,
+          bindings,
+          ...(operation === 'import'
+            ? {
+                name: 'Imported',
+                expectedCompatibilityFingerprint: fingerprint,
+              }
+            : {}),
+        },
+      };
+      await expect(f[operation].execute(input)).rejects.toMatchObject({
+        code: 'resource.not_found',
+      });
+      expect(f.authorization.findAccess).toHaveBeenCalledTimes(2);
+      expect(f.persistence.previewWorkflowImport).not.toHaveBeenCalled();
+      expect(f.persistence.importWorkflow).not.toHaveBeenCalled();
+    },
+  );
   it.each(['viewer', 'operator', 'builder', 'owner'] as const)(
     'permits reviewed export with read authority for %s',
     async (role) => {

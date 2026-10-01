@@ -4,6 +4,22 @@ import { registerWorkflowPortabilityJsonParser } from '../../src/workflow-author
 
 const url = '/v1/workspaces/workspace/workflows/import/preview';
 describe('route-local portability raw JSON boundary', () => {
+  it('keeps unregistered POST routes in ordinary parsing without portability response headers', async () => {
+    const adapter = new FastifyAdapter();
+    registerWorkflowPortabilityJsonParser(adapter);
+    try {
+      const response = await adapter.getInstance().inject({
+        method: 'POST',
+        url: '/unregistered',
+        headers: { 'content-type': 'application/json' },
+        payload: '{"value":1,"value":2}',
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.headers['cache-control']).toBeUndefined();
+    } finally {
+      await adapter.close();
+    }
+  });
   it('rejects raw duplicate keys, deep bodies and prototype keys before the handler without reflecting values', async () => {
     const adapter = new FastifyAdapter();
     registerWorkflowPortabilityJsonParser(adapter);

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { nodeTestingClientContract } from '../src/node-testing.js';
 import { projectContractSchema } from '../src/schema-projection.js';
 import { workflowAuthoringClientContract } from '../src/workflow-authoring.js';
+import { workflowPortabilityClientContract } from '../src/workflow-portability.js';
 
 function references(value: unknown, output: string[] = []): readonly string[] {
   if (value === null || typeof value !== 'object') return output;
@@ -30,6 +31,28 @@ function resolves(document: unknown, reference: string): boolean {
 }
 
 describe('contract schema projection', () => {
+  it('retains portable manifest structural graph bounds and explicit runtime marker', () => {
+    const manifest = workflowPortabilityClientContract.schemas
+      .WorkflowPortableManifest as {
+      properties?: { graph?: Record<string, unknown> };
+    };
+    expect(manifest).toMatchObject({
+      type: 'object',
+      'x-pertexo-runtime-bounds': true,
+    });
+    expect(manifest.properties?.graph).toMatchObject({
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        nodes: { type: 'array', maxItems: 1_000 },
+        edges: { type: 'array', maxItems: 4_000 },
+        settings: { type: 'object' },
+      },
+    });
+    const document = { schemas: workflowPortabilityClientContract.schemas };
+    for (const reference of references(document))
+      expect(resolves(document, reference), reference).toBe(true);
+  });
   it('keeps nested bounded-JSON definition ownership resolvable', () => {
     const document = {
       schemas: {

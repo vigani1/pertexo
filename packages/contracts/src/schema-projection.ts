@@ -125,10 +125,6 @@ export function projectContractSchema(
             target: 'draft-2020-12',
             reused: 'inline',
             unrepresentable: 'any',
-            override: ({ zodSchema: nested, jsonSchema: projected }) => {
-              if (nested === (workflowGraphSchema as unknown as typeof nested))
-                replaceWorkflowGraph(projected);
-            },
           }),
         );
         jsonSchema['x-pertexo-runtime-bounds'] = true;
