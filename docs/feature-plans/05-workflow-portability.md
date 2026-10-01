@@ -2,7 +2,8 @@
 
 Status: same-workspace duplication first slice independently reviewed, merged
 and qualified under ADR060 through PR142; broader F05 is not complete.
-Import/export remain proposed.
+Import/export is decision-ready under proposed ADR062; consequential
+implementation awaits manager review. No portable runtime is implemented.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New cross-stack authoring slice. Relative size: **M–L**, not a calendar estimate.
 
@@ -43,6 +44,13 @@ This closes first-slice implementation qualification, not production activation
 or the rest of F05.
 
 ## Dependencies and planning gate
+
+The next slice is specified in proposed
+[ADR062](../adr/062-portable-workflow-authoring.md). It reconciles current main
+`228a692dda5f67e7256be88ff496c8810ddc36f9` without depending on PR144's pending
+input-case release. Review must accept or narrow explicit literal-content
+export: current generic JSON configuration does not provide automatic secret
+classification. Recommendations in ADR062 are not accepted decisions yet.
 
 01; manifest format chosen before 06. No dependency on file uploads.
 
