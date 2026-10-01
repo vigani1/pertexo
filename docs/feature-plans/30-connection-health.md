@@ -300,3 +300,17 @@ Owned fixture services/data were cleaned up; production remains off. Backend
 and frontend implementation are locally verified, but their combined tracker
 items above remain open until independent review. Contracts/security review,
 scoped PR checks/merge and natural postmerge qualification remain open.
+
+PR139's `06917f74` recovery/integration CI found an older shared HTTP-worker
+fixture restoring a rotated secret without the required revision protocol.
+Test-only repair `7abbc106` advances revision and resets current health evidence
+on fixture restoration while excluding revoked rows. Its isolated regression
+also proves idempotent restoration and absorbing revocation. The same four
+recovery files pass 22 cases and the full enabled worker integration cohort
+passes 47 cases with strict zero-skip validation. Downstream API integration
+passes 109 cases with unchanged CI exclusions; API SSE and worker transport
+service-loss recovery each pass one enabled case, all strict zero-skip.
+No production source,
+migration, guard, budget or CI exclusion changed. Downstream results and owned
+cleanup are recorded separately under the local receipt's `ci-recovery/`
+directory; repaired-head hosted CI and manager inspection remain open.

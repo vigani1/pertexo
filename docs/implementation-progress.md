@@ -82,6 +82,24 @@ only the HTTP proof's bounded test ceiling accommodates actual lease expiry.
 Production mode remains `off`; no provider traffic outside owned fixtures is
 authorized.
 
+[PR139](https://github.com/vigani1/pertexo/pull/139) remains unmerged. Its
+`06917f74` CI recovery and integration lanes exposed the same older HTTP-worker
+fixture reset failure after a legitimate email credential rotation: restoration
+omitted the revision-aware protocol. Repair `7abbc106` changes test fixtures only,
+advances revision and clears current-credential health on version restoration,
+and leaves revoked rows unchanged. A separate connection regression proves
+restoration is idempotent and cannot roll back a revoked current version. The
+same four recovery files pass 22 cases; full enabled worker integration passes
+22 files / 47 cases, both strict zero-skip. Worker units (903 cases), full build,
+worker lint/typecheck, complexity, duplication and CI routing pass. Production
+source and its qualified coverage fingerprint are unchanged. The downstream
+API integration cohort passes 21 files / 109 cases with the unchanged CI
+exclusions; API SSE reconstruction and worker transport service-loss recovery
+each pass one enabled case. All reports pass strict zero-skip validation.
+Owned fixture services/data were removed after zero-client/database/proof-key
+checks. Final results are recorded in the CI-repair receipt; hosted repaired-head
+CI and manager inspection remain required before any push or merge.
+
 ### F29 — queue-only workflow concurrency
 
 The ADR058 queue-only first slice is qualified. Independent specification and
