@@ -1,8 +1,5 @@
 import { isApiError } from '@/lib/api/api-error';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+import { describeCommandError } from '@/lib/api/api-error-copy';
 
 export type DuplicateState = Readonly<{
   kind:
@@ -21,8 +18,9 @@ export type DuplicateState = Readonly<{
 export function duplicateFailureState(
   error: unknown,
   current: DuplicateState,
+  retainCommand: boolean,
 ): DuplicateState {
-  if (isUncertainOutcome(error))
+  if (retainCommand)
     return {
       ...current,
       kind: 'uncertain',

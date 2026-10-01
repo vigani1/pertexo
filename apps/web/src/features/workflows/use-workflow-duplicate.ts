@@ -158,8 +158,12 @@ export function useWorkflowDuplicate({
     const controller = new AbortController();
     request.current = controller;
     setState((current) => ({ ...current, kind: 'sending', error: undefined }));
+    // Recovery stays unresolved across authority reads and definitive retry failures.
+    let mayHaveCreated = state.kind === 'uncertain';
+    let submitting = false;
     try {
       if (!(await verify(controller.signal)) || owner.current !== token) return;
+      submitting = true;
       const result = await duplicateWorkflow(
         apiClient,
         workspaceId,
@@ -167,6 +171,7 @@ export function useWorkflowDuplicate({
         command,
         controller.signal,
       );
+      mayHaveCreated = true;
       if (
         owner.current !== token ||
         !(await verify(controller.signal)) ||
@@ -185,8 +190,10 @@ export function useWorkflowDuplicate({
         retire();
         return;
       }
-      attempt.current = isUncertainOutcome(error) ? command : undefined;
-      setState((current) => duplicateFailureState(error, current));
+      const retain =
+        mayHaveCreated || (submitting && isUncertainOutcome(error));
+      attempt.current = retain ? command : undefined;
+      setState((current) => duplicateFailureState(error, current, retain));
     } finally {
       busy.current = false;
     }
