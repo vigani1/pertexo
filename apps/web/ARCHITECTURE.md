@@ -820,7 +820,11 @@ Run starts the workflow's currently published active version, resolved and
 pinned atomically by the backend. ADR 061 adds optional
 `expectedPublishedVersionId` as a checked-publication precondition, not an
 arbitrary version selector. The editor's Run actions open explicit real-effect
-confirmation and capture that version with input/deadline/key. A typed
+confirmation and capture that version with input/deadline/key. A typed case-list
+rollout-unavailable response instead allows deliberately confirmed ordinary
+unchecked starts; pending or other failed reads cannot imply that availability.
+Loaded cases and previously submitted checked commands cannot downgrade, and
+frozen recovery always uses its original intent. A typed
 `workflow.published_version_conflict` means no new run started; read and review
 the current publication deliberately before confirming a new command. Never
 automatically rewrite a case's version or a retained command. Exact uncertain
@@ -845,7 +849,7 @@ uncertain changes retain original body/tag/key and block replacement. The
 default-off compatible-writer gate returns a truthful unavailable state; command
 unavailability retains recovery identity because it cannot prove a previous
 command was not accepted. Synthetic input warnings do not imply automatic
-redaction. Only an explicit checked real start executes a workflow. Never
+redaction. Only an explicitly confirmed real start executes a workflow. Never
 represent “Save”, “Publish”, “Run”, “Test execute” or “Cancel run” as
 interchangeable actions. After a step test finishes, the bar under the canvas
 (`chrome/test-result-bar.tsx`) sums it up from the preview and the graph only:

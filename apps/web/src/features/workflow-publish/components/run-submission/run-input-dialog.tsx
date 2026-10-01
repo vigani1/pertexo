@@ -5,6 +5,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
   InputCasesPanel,
+  useInputCasesAvailability,
   type LoadedInputCase,
 } from '@/features/workflows/input-cases.public';
 import type { ApiClient } from '@/lib/api/client';
@@ -14,13 +15,11 @@ import type { RunIntent } from '@/features/workflow-runs/commands.public';
 import { useRunInput } from '@/features/workflow-runs/run-input.public';
 import { DeadlineField } from '@/components/ui/deadline-field';
 
-function publicationUnavailable(
-  workflow: WorkflowSummary | undefined,
-  expectedVersion: string | undefined,
-) {
+function publicationUnavailable(workflow: WorkflowSummary | undefined) {
   return (
     workflow !== undefined &&
-    (expectedVersion === undefined || workflow.lifecycleStatus !== 'active')
+    (workflow.publishedVersionId === null ||
+      workflow.lifecycleStatus !== 'active')
   );
 }
 
@@ -131,6 +130,18 @@ export function RunInputDialog({
   const [caseLocked, setCaseLocked] = useState(false);
   const [caseEditing, setCaseEditing] = useState(false);
   const [caseAccessLost, setCaseAccessLost] = useState(false);
+  const checkedAvailable = useInputCasesAvailability(
+    caseScope === undefined
+      ? undefined
+      : {
+          apiClient: caseScope.apiClient,
+          userId: caseScope.userId,
+          workspaceId: caseScope.workspace.id,
+          workflowId: caseScope.workflow.id,
+        },
+    open,
+  );
+  const [submittedVersion, setSubmittedVersion] = useState<string>();
   const review = usePublicationReview(
     onReviewPublication,
     caseScope?.workflow.publishedVersionId,
@@ -142,12 +153,21 @@ export function RunInputDialog({
     setCaseAccessLost(true);
     setLoaded(undefined);
   }, []);
-  const expectedVersion =
-    recoveryIntent?.expectedPublishedVersionId ??
-    loaded?.workflowVersionId ??
-    review.target ??
-    caseScope?.workflow.publishedVersionId ??
-    undefined;
+  // Never infer a new version for a frozen retry, including unchecked retries.
+  // Rollout-unavailable only permits an ordinary, deliberately unchecked intent;
+  // loaded or reviewed checked context is never silently downgraded.
+  const checkedVersion =
+    loaded?.workflowVersionId ?? review.target ?? submittedVersion;
+  const expectedVersion = retryAvailable
+    ? recoveryIntent?.expectedPublishedVersionId
+    : (checkedVersion ??
+      (checkedAvailable === true
+        ? (caseScope?.workflow.publishedVersionId ?? undefined)
+        : undefined));
+  const rolloutBlocked =
+    caseScope !== undefined &&
+    (checkedAvailable === undefined ||
+      (!checkedAvailable && checkedVersion !== undefined));
   const staleCase =
     loaded !== undefined &&
     loaded.workflowVersionId !== caseScope?.workflow.publishedVersionId;
@@ -162,17 +182,19 @@ export function RunInputDialog({
       caseEditing ||
       publicationConflict ||
       reviewing ||
-      reviewMismatch
+      reviewMismatch ||
+      rolloutBlocked
     )
       return;
+    if (intent === undefined) return;
+    setSubmittedVersion(expectedVersion);
     if (
-      intent !== undefined &&
-      (await onStartNew({
+      await onStartNew({
         ...intent,
         ...(expectedVersion === undefined
           ? {}
           : { expectedPublishedVersionId: expectedVersion }),
-      }))
+      })
     )
       onOpenChange(false);
   }
@@ -193,7 +215,7 @@ export function RunInputDialog({
       title="Run with input"
       description={
         retryAvailable
-          ? 'Retry sends the original input, deadline and published version within 24 hours of the first attempt. A replacement run is blocked until this outcome is resolved.'
+          ? 'Retry sends the original input, deadline and version precondition (if any) within 24 hours of the first attempt. A replacement run is blocked until this outcome is resolved.'
           : 'This starts a real workflow run, not a test. It can send messages, make requests and create other external effects. Confirm the input and published version before starting.'
       }
       confirmLabel={
@@ -211,7 +233,8 @@ export function RunInputDialog({
         reviewMismatch ||
         (!retryAvailable &&
           (staleCase ||
-            publicationUnavailable(caseScope?.workflow, expectedVersion)))
+            rolloutBlocked ||
+            publicationUnavailable(caseScope?.workflow)))
       }
       error={review.error ?? error}
       errorTone={retryAvailable ? 'warning' : 'destructive'}
@@ -223,6 +246,14 @@ export function RunInputDialog({
         stale={staleCase}
         recovering={retryAvailable}
       />
+      {!retryAvailable && checkedAvailable === false ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Checked starts aren’t enabled in this installation. An ordinary run
+          uses the publication current when the server accepts it, without a
+          version precondition. Loaded cases and previously submitted checked
+          commands remain blocked while this gate is off.
+        </p>
+      ) : null}
       {staleCase && review.ready && !retryAvailable ? (
         <p role="status" className="text-sm text-muted-foreground">
           Reviewed current publication ·{' '}
