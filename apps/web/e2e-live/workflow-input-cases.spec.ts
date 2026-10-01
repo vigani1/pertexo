@@ -52,8 +52,8 @@ async function setCaseRollout(
 }
 
 async function openWorkflowList(page: Page) {
-  // SPA navigation preserves the Query cache: rollback must replace a prior
-  // authorized success, not merely start from a new document's empty cache.
+  // SPA navigation preserves the browser session and app lifetime. The feature
+  // still owns case-query eviction when its panel closes.
   const editorBack = page.getByRole('link', {
     name: 'Back to workflows',
     exact: true,
