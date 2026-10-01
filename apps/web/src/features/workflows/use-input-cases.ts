@@ -71,6 +71,14 @@ function useCaseOwner(
     Readonly<{ command: InputCaseCommand; until: number }> | undefined
   >(undefined);
   const previousWrite = useRef(canWrite);
+  const retire = useCallback(() => {
+    ownerRef.current = undefined;
+    controllerRef.current?.abort();
+    controllerRef.current = undefined;
+    retainedRef.current = undefined;
+    onRetire();
+    evictCases(cache, inputCasesKey(userId, workspaceId, workflowId));
+  }, [cache, userId, workspaceId, workflowId, onRetire]);
   useEffect(() => {
     const token = Symbol('input-cases');
     ownerRef.current = token;
@@ -78,12 +86,6 @@ function useCaseOwner(
     function disposeRequest() {
       controllerRef.current?.abort();
       retainedRef.current = undefined;
-    }
-    function retire() {
-      ownerRef.current = undefined;
-      disposeRequest();
-      onRetire();
-      evictCases(cache, key);
     }
     if (previousWrite.current && !canWrite) retire();
     previousWrite.current = canWrite;
@@ -105,8 +107,8 @@ function useCaseOwner(
       disposeRequest();
       evictCases(cache, key);
     };
-  }, [api, userId, workspaceId, workflowId, cache, canWrite, onRetire]);
-  return { ownerRef, controllerRef, retainedRef };
+  }, [api, userId, workspaceId, workflowId, cache, canWrite, retire]);
+  return { ownerRef, controllerRef, retainedRef, retire };
 }
 
 /** Metadata in Query, opened payload and exact command only in this owner. */
@@ -131,10 +133,12 @@ export function useInputCases(
   const onRetire = useCallback(() => {
     setSelected(undefined);
     setUncertain(false);
+    setConflict(false);
+    setUnavailable(false);
     setAccessLost(true);
     setPending(false);
   }, []);
-  const { ownerRef, controllerRef, retainedRef } = useCaseOwner(
+  const { ownerRef, controllerRef, retainedRef, retire } = useCaseOwner(
     api,
     cache,
     userId,
@@ -168,10 +172,7 @@ export function useInputCases(
       if (ownerRef.current === token)
         setError(describeCommandError(cause, 'opening the input case'));
       if (denied(cause) && ownerRef.current === token) {
-        ownerRef.current = undefined;
-        setSelected(undefined);
-        setAccessLost(true);
-        evictCases(cache, inputCasesKey(userId, workspaceId, workflowId));
+        retire();
       }
       return undefined;
     } finally {
@@ -214,12 +215,7 @@ export function useInputCases(
         workspace?.status !== 'active' ||
         !workspace.capabilities.includes('workflow:update')
       ) {
-        retainedRef.current = undefined;
-        setUncertain(false);
-        setSelected(undefined);
-        setAccessLost(true);
-        ownerRef.current = undefined;
-        evictCases(cache, inputCasesKey(userId, workspaceId, workflowId));
+        retire();
         return false;
       }
       retainedRef.current = attempt;
@@ -230,6 +226,7 @@ export function useInputCases(
       setUncertain(false);
       setSelected(undefined);
       setConflict(false);
+      setUnavailable(false);
       await cache.invalidateQueries({
         queryKey: inputCasesKey(userId, workspaceId, workflowId),
       });
@@ -242,12 +239,7 @@ export function useInputCases(
         if (!unknown) retainedRef.current = undefined;
       }
       if (denied(cause)) {
-        retainedRef.current = undefined;
-        setSelected(undefined);
-        setUncertain(false);
-        setAccessLost(true);
-        ownerRef.current = undefined;
-        evictCases(cache, inputCasesKey(userId, workspaceId, workflowId));
+        retire();
       }
       const code = isApiError(cause) ? cause.problem?.code : undefined;
       setConflict(code === 'workflow.input_case_revision_conflict');

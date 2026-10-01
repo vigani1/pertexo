@@ -100,6 +100,9 @@ describe('shared workflow input cases', () => {
       expect(writes).toHaveLength(2);
     });
     expect(writes[1]).toEqual(writes[0]);
+    expect(
+      await screen.findByRole('button', { name: 'New input case' }),
+    ).toBeEnabled();
   });
 
   it('does not load a held payload after its component owner is disposed', async () => {
