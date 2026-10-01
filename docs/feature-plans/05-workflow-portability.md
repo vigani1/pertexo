@@ -5,8 +5,9 @@ and qualified under ADR060 through PR142; broader F05 is not complete.
 Import/export is approved and implemented under accepted
 ADR062. Format, persistence, authenticated HTTP and rendered UI are implemented
 in the dedicated portability worktree. Frozen-source local qualification passes
-at `5ada95ea`; independent implementation review, combined upstream migration
-qualification and hosted integration remain open.
+at `5ada95ea`; later frontend repairs are independently reviewed at `ba997c39`.
+Combined upstream migration qualification passes on tree `af76b53e`, recorded
+as normal integration commit `780a1542`. Hosted integration remains open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New cross-stack authoring slice. Relative size: **M–L**, not a calendar estimate.
 
@@ -249,7 +250,7 @@ Qualification is separate from the earlier duplication evidence above.
       owned-fixture teardown recorded on the final implementation source.
 - [x] Repository/static checks and source-bound coverage qualified on the exact
       implementation candidate.
-- [ ] Independent standards/spec implementation reviews and combined upstream
+- [x] Independent standards/spec implementation reviews and combined upstream
       migration history qualification closed on the integration candidate.
 - [ ] Required reviewed-head checks, merge and natural-main result inspected.
 

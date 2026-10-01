@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-10-01
+Last updated: 2026-10-02
 
 This is the mutable delivery tracker for
 [`workflow-platform-backend-plan.md`](./workflow-platform-backend-plan.md).
@@ -28,10 +28,13 @@ compatibility, accepted-result precedence, serialized manual keys, committed
 - [x] Complete frozen-source repository checks and coverage qualification.
 - [x] Repair manager-release rollout and denied-case retirement blockers with
       focused component and real-browser regressions.
-- [ ] Complete independent reviews, scoped release and natural-main evidence.
+- [x] Complete independent reviews and combined F02/F05 migration qualification.
+- [ ] Complete scoped release and natural-main evidence.
 
-Implementation is locally qualified; manager release review, hosted CI, merge and
-natural-main evidence remain open. Backend commit `82f3618b` and UI/browser commit
+Implementation is locally qualified and independently reviewed. Pure F02
+[PR144](https://github.com/vigani1/pertexo/pull/144) at `085fa974` passed all 14
+hosted checks; the combined integration still requires its own hosted checks,
+an authorized merge method and natural-main evidence. Backend commit `82f3618b` and UI/browser commit
 `b555f994` record the reviewable first-slice implementation.
 Migration 0130 owns shared immutable-version case metadata, retained payload
 revisions and 24-hour mutation receipts; 0131 owns serialized manual identities,
@@ -114,8 +117,8 @@ Manager re-review, hosted CI, scoped release and inspected natural-main remain
 open. The experimental CI runtime prototype was neither published nor triggered.
 
 The owned `feat/workflow-input-cases` branch and disposable PostgreSQL/Redis
-services are separate from live user work. No production enablement, provider
-execution or push is authorized. Preview pins, recorded samples and regression
+services are separate from live user work. No production enablement or provider
+execution is authorized. Preview pins, recorded samples and regression
 assertions remain deferred; existing backend phases stay unchanged.
 
 ### F05 — same-workspace workflow duplication
@@ -162,11 +165,36 @@ journeys and 24 source-bound coverage cohorts pass with zero unreviewed risk
 branches. The manager independently reran 26 focused duplication tests. Earlier
 service-backed local results remain bound to `06ca64c1`; hosted qualification
 of the repaired head and natural main is recorded separately above.
-Only the same-workspace Duplicate first slice is complete. Import/export,
-templates and cross-workspace copy remain unimplemented. No production effect
-is authorized, and finite receipt retention and migration-0129 rollout/rollback
-limits in the F05 plan still apply. F12, F29 and F30 remain qualified; their
-completed work is not reopened by this slice.
+Only the same-workspace Duplicate first slice has completed hosted release.
+Import/export is implemented under ADR062 and independently reviewed at
+`ba997c39`; its broad local evidence remains bound to `5ada95ea`, with later
+frontend repair evidence recorded separately in the F05 plan. Templates and
+cross-workspace copy are outside this released slice. No production effect is
+authorized. F12, F29 and F30 remain qualified; their completed work is not reopened.
+
+The combined F02/F05 integration is recorded as normal merge commit
+`780a1542bb6d0a69a4747b6728e464e3bae61af4`, with parents `ba997c39` and
+`085fa974` and qualified tree `af76b53ea6f62356c2ea6246e5c2f85ff314485d`.
+Both integration review axes retained the feature registrations, contracts,
+UI/CI gates and ordered 0130/0131/0132 history with exact head 0132.
+
+- [x] Qualify 104 feature/authority cases and 56 migration/readiness/RLS cases
+      on the exact combined tree, with strict validators and zero skips.
+- [x] Verify owned PostgreSQL/Redis fixture cleanup and unchanged other services.
+- [ ] Qualify the combined reviewed commit through hosted CI, authorized merge
+      and inspected natural-main checks.
+
+The source-bound receipt is preserved at
+`/Users/vigan/.codex/evidence/pertexo-f05-2026-10-02/combined-migrations/qualification-receipt.md`.
+The 31 run-API tests are included in the 104 cohort, so distinct final-tree
+coverage is 160 tests. Another 25 ordinary-authoring tests passed on the earlier
+resolved tree; only two expected-head test strings changed afterward, and those
+results are carried forward rather than relabeled as reruns. Initial stale-head
+failures and two unchanged five-second duplication-upgrade timeouts remain
+retained. The unchanged isolated test and full 56-case cohort subsequently
+passed; resource contention is supported but not conclusively established, and
+freedom from timing flakes is not claimed. Both new writer gates remain off;
+serving and restore images must qualify against combined head 0132.
 
 ### F30 — connection health first slice
 
@@ -494,7 +522,8 @@ cleanup; the service-backed qualification above remains explicitly pre-cleanup.
 | Phase 5 — orchestration slice | Complete | ADRs 008, 017–022; branching, parallelism, retry/wait, notification, and recovery matrix |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014, 023–026; provider, webhook, schedule, retained-history, and rollout evidence |
 | Phase 7 — production operations | **In progress** | Repository implementation is qualified locally; external deployment, provider, load, recovery, telemetry, and pager evidence remains open |
-| F02 — run-input cases / checked manual start | Implemented and locally qualified; release open | ADR061 first slice, source-bound database/HTTP/browser and repository gates; manager release, hosted CI and natural-main evidence remain open |
+| F02 — run-input cases / checked manual start | Independently reviewed; combined release open | ADR061 first slice, pure PR144 hosted checks pass; combined tree `af76b53e` has 160 distinct real-database tests and verified cleanup; combined hosted CI, merge and natural-main remain open |
+| F05 — portable workflow authoring | Independently reviewed; combined release open | ADR062 import/export, historical broad local evidence plus repair evidence; combined qualification at `780a1542`; hosted release and production activation remain open |
 | F29 — queue-only workflow concurrency | Qualified | ADR058 queue-only slice, independent reviews, PR138 exact-head and natural main CI/CodeQL; skip overflow deferred |
 | F30 — first Slack connection-health slice | Qualified | ADR059 narrow Slack slice; independent reviews, PR139/140 exact-head checks and natural main CI/CodeQL on `adaa26df`; production mode off |
 

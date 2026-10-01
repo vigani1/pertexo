@@ -236,7 +236,8 @@ rollout, provider traffic, paid provisioning or user-service changes are authori
 - [x] Implement case management and frozen explicit-run frontend.
 - [x] Qualify real migration, races, quotas, authority, retention and erasure.
 - [x] Qualify real pure-node browser/backend journey and rollout/rollback gates.
-- [ ] Complete independent review, CI, merge and natural-main evidence.
+- [x] Complete independent review and combined migration qualification.
+- [ ] Complete combined hosted CI, authorized merge and natural-main evidence.
 
 Executable focused evidence on 2026-10-01: case PostgreSQL 17/17, checked-start
 PostgreSQL 31/31, authenticated case HTTP 4/4 and real browser/API/worker 1/1 pass
@@ -252,7 +253,14 @@ Enter-key real starts have regression proofs. The complete repository check
 passes with package concurrency one; web unit tests pass 860/860, browser probes
 7/7 and full mock-browser tests 90/90 with one worker and retries disabled.
 Implementation commits are `82f3618b` (backend) and `b555f994` (UI/browser).
-Manager release review, hosted CI, merge and natural-main evidence remain open.
+Subsequent independent review closed the release blockers. Pure F02 PR144 at
+`085fa974` passed all 14 hosted checks. Combined F02/F05 qualification is recorded
+at normal integration commit `780a1542` (tree `af76b53e`): 104 feature/authority
+and 56 migration/readiness/RLS tests pass with strict validators and verified
+owned-fixture cleanup. Retained five-second upgrade timeout failures and the
+later unchanged passing runs are documented in the implementation progress
+record; timing-flake freedom is not claimed. Combined hosted CI, an authorized
+merge method and natural-main evidence remain open.
 No production enablement or provider execution is claimed.
 
 ## Acceptance evidence
