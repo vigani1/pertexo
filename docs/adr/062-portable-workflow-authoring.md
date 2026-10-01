@@ -1,10 +1,10 @@
 # ADR 062: Portable authoring graphs with explicit destination connections
 
-- **Status:** proposed; decision-ready, not implementation authorization
+- **Status:** accepted; implementation authorized, production activation unauthorized
 - **Date:** 2026-10-01
 - **Baseline:** fetched main `228a692dda5f67e7256be88ff496c8810ddc36f9`
 
-## Proposed decision
+## Decision
 
 F05's next usable slice exports a reviewed saved draft or explicitly selected
 retained version as a bounded Pertexo authoring manifest, then imports it into a
@@ -15,7 +15,10 @@ envelopes, operational state or source resource metadata. Literal content is
 not intrinsically non-secret: require explicit content review and refuse known
 credential-bearing shapes rather than silently exporting or rewriting them.
 
-This ADR awaits manager review before consequential format or persistence code.
+The manager accepted reviewed literal-content export and authorized the cohesive
+vertical slice on 2026-10-01, after independent Standards/Spec reviews reported
+zero findings on `228a692d...d8ddc152`. No further product choice is pending.
+Implementation and qualification remain separate from this decision.
 ADR061 is reserved by the concurrent input-case delivery; this is the next free
 number after that reviewed decision, despite its absence from this main baseline.
 
@@ -75,10 +78,9 @@ False positives require an authoring change, not a bypass or silent deletion.
 Do not scan/rewrite expression strings or pretend this catches private values
 under innocuous keys. Explicit literal-content review is still mandatory.
 
-This is the security/product approval point: accept deliberately reviewed
-literal-content export with fail-closed known credential checks, or narrow the
-first slice further. An assertion that all arbitrary literals are automatically
-safe is not an available choice. No secret-store access is needed for export.
+The accepted security/product tradeoff permits deliberately reviewed literal
+content with fail-closed known credential checks. It does not assert that all
+arbitrary literals are automatically safe. No secret-store access is needed.
 
 ## Manifest v1 and identity
 
@@ -152,7 +154,7 @@ change returns explicit conflict and requires another preview/confirmation.
 
 ## HTTP and atomic import
 
-Proposed existing authoring routes: POST workflow `/:workflowId/export` with
+Existing authoring routes: POST workflow `/:workflowId/export` with
 source/reviewed digest (draft If-Match); POST workspace `/workflows/import/preview`
 with manifest and chosen bindings; POST `/workflows/import` with name, exact
 manifest/bindings and expected catalog fingerprint. All POSTs require session/
@@ -200,6 +202,49 @@ opened without another POST. Session/workspace/authority loss clears sensitive
 state, aborts reads and fences late results; conflicts retain editable intent.
 
 ## Capacity, retention and rollout
+
+### Ordered locks and race winners
+
+Portability transactions enter normal tenant context, then explicitly acquire
+`app.lock_workspace_run_admission(workspace)` (workspace SHARE), actor user SHARE,
+and actor membership SHARE in separate statements, before checking active status
+and role. Never use a joined authority SELECT to establish lock order. This is
+workspace-first like connection management and existing-member commands
+(`identity-workspace-member-command.ts` takes workspace UPDATE, sorted users,
+then memberships). Membership/lifecycle/deletion writers that win the workspace
+lock first invalidate later commands; admitted commands finish before those
+writers can change authority. No connection, claim or catalog lock precedes the
+workspace lock.
+
+| Operation | Ordered locks after authority | Race winner / outcome |
+| --- | --- | --- |
+| Export draft | Source workflow SHARE → draft SHARE → serving catalog SHARE | Save winning draft UPDATE makes old tag/digest fail; export winning SHARE yields exactly reviewed content. Lifecycle winning workflow UPDATE makes source unavailable. Publication follows workflow before draft; shared catalog locks do not invert its order. |
+| Export version | Source workflow SHARE → selected immutable version SHARE → serving catalog SHARE | No source substitution; workspace purge waits for admission workspace SHARE, immutable source remains scoped. |
+| Import new | Exact actor-scoped receipt UPDATE → writer gate SHARE → catalog-current SHARE → destination connections SHARE in sorted ID order → create destination/draft/audit → complete receipt | First same-key transaction commits one result; different input conflicts. Gate/catalog writer winning first rejects stale/off admission. Connection revoke/rotate/health UPDATE winning first makes new binding fail if unusable; import winning SHARE commits its explicit binding before later health change. |
+| Import replay | Exact actor-scoped receipt UPDATE → original destination SHARE | Return accepted identity before gate/catalog/binding checks. Missing destination fails closed; authority loss never replays. |
+| Preview | Catalog-current SHARE → destination connections SHARE in sorted ID order | Snapshot is advisory; create repeats checks and binds displayed fingerprint. No claim, workflow, audit or upload write. |
+
+Connection management acquires workspace admission before authority and
+connection UPDATE; health consumption acquires workspace admission before inbox/
+observation/connection UPDATE. Portability never locks those inbox/observation
+rows. Catalog activation only locks catalog authority and does not acquire a
+tenant/connection lock afterward. Writer-gate changes must likewise take only
+the gate row, not acquire a workspace after it. Use connection SHARE, not KEY
+SHARE: non-key health/status updates must conflict.
+
+The transient receipt reaper selects only expired completed records with
+`FOR UPDATE SKIP LOCKED`, excluding legal-held workspaces; it never waits for an
+import's locked claim, then acquires a tenant resource. A reaped receipt starts
+a new command; a still-retained exact receipt discovers its original result.
+Workspace purge locks its job/step and workspace before tenant rows; the import
+workspace SHARE blocks purge admission, so claim/destination locks cannot form
+a reverse edge. Legal-hold projection uses its existing advisory/workspace
+protocol; portability takes no hold/advisory lock and never destroys data.
+Membership removal immediately fences replay; receipts retain only actor scope,
+hashes and destination identity under existing terminal retention/legal-hold
+policy, not raw authoring data. Workspace erasure already includes the generic
+idempotency table; new actor-only import scope needs no source-resource cleanup
+or extra tenant table. Prove these claims with enabled race/retention/purge tests.
 
 No new commercial or workflow-count quota is introduced. Reuse existing
 authenticated transport/rate admission and server graph/file limits; successful
