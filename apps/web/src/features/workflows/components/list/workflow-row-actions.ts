@@ -7,6 +7,7 @@ export const ROW_REVEAL_CLASS =
 /** What a row can do; the list owns the dialogs and the run command. */
 export type WorkflowRowActions = Readonly<{
   onRename: (workflow: WorkflowSummary) => void;
+  onDuplicate?: (workflow: WorkflowSummary) => void;
   onLifecycle: (workflow: WorkflowSummary) => void;
   onRun: (workflow: WorkflowSummary) => void;
   /** The workflow whose run is starting, if any. */

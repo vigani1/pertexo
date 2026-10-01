@@ -1,7 +1,8 @@
 # F05 — Workflow duplicate, safe import and export
 
-Status: same-workspace duplication first slice authorized under ADR060;
-implementation and qualification pending. Import/export remain proposed.
+Status: same-workspace duplication first slice implemented and locally qualified
+under ADR060; independent review and release qualification pending.
+Import/export remain proposed.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New cross-stack authoring slice. Relative size: **M–L**, not a calendar estimate.
 
@@ -11,17 +12,23 @@ Move or reuse workflow structure safely, without copying secrets, workspace IDs 
 
 ## Current implementation and evidence
 
-Immutable workflow versions and draft validation exist. Node duplication exists in editor tests; that is not complete workflow-level portable import/export.
+Whole-workflow duplication now copies an authoritative saved draft or explicitly
+chosen immutable version into an independent unpublished revision-1 draft.
+Canvas node duplication remains a separate operation. Portable import/export is
+not implemented by this slice.
 
-Inspected anchors (paths may move during the concurrent structural cleanup):
+Implementation and verification anchors:
 
 - [apps/api/src/workflow-authoring](../../apps/api/src/workflow-authoring)
+- [packages/database/src/authoring/workflow-authoring-duplication.ts](../../packages/database/src/authoring/workflow-authoring-duplication.ts)
+- [apps/web/src/features/workflows/components/workflow-duplicate-dialog.tsx](../../apps/web/src/features/workflows/components/workflow-duplicate-dialog.tsx)
+- [apps/web/e2e-live/workflow-duplication.spec.ts](../../apps/web/e2e-live/workflow-duplication.spec.ts)
 - [apps/web/test/features/workflow-editor/workflow-editor-body-model.test.ts](../../apps/web/test/features/workflow-editor/workflow-editor-body-model.test.ts)
 - [packages/workflow-model/src/graph-contract.ts](../../packages/workflow-model/src/graph-contract.ts)
 
-“Not established” means no complete product was found in this targeted inventory,
-not proof of absence from every file. Recheck these anchors before implementation.
-Code availability is not a fresh end-to-end verification claim.
+Local acceptance uses enabled real PostgreSQL, authenticated HTTP and the
+browser/API/worker journey; source availability alone is not verification.
+Independent review and hosted exact-head/natural-main checks remain release gates.
 
 ## Dependencies and planning gate
 
@@ -134,6 +141,18 @@ No production rollout, paid provisioning or real external calls are authorized b
 this plan. New persistent behavior requires additive reader/writer rollout and
 retention/membership-deletion handling before enablement.
 
+For this first slice, apply additive migration 0129 before admitting serving and
+restore images qualified against that exact head. Existing 0128 images fail the
+startup boundary, so hold traffic closed during this migration-head cutover;
+there is no claimed mixed-head overlap. See the [function readiness
+inventory](../operations/database-function-readiness.md). Disable the duplication
+writer to roll back product exposure without deleting copies or rewriting graph
+IDs. An application rollback image must still accept 0129. Copies never publish
+or activate automatically. Exact replay depends on current authority and retained
+source/destination visibility; the existing 24-hour receipt reaper (subject to
+legal hold) is not a forever-deduplication guarantee. Real tests prove expiry,
+membership fencing and bounded workspace erasure of source-scoped receipts.
+
 ## Competitor context
 
 Make blueprints export workflow structure and require users to reconnect accounts after import. Adopt safe rebinding rather than provider-credential copying. Sources: [Make blueprints](https://help.make.com/blueprints).
@@ -148,11 +167,21 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 - [ ] Contracts and failure/security model reviewed.
 - [ ] Backend behavior implemented and independently verified where needed.
 - [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
+- [x] Real integrated acceptance evidence recorded.
+- [x] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log: 2026-10-01 user approved preserving graph-local IDs in whole-workflow
 copies. Manager confirmed policy-v1 accepts dynamic `nodeOutputs` lookup and
-recorded ADR060 before implementation. No implementation or live acceptance
-evidence yet; the remaining checklist stays open.
+recorded ADR060 before implementation. The owned slice now implements strict
+contracts/API, atomic source-scoped persistence and rendered duplication actions.
+Focused enabled PostgreSQL (25 cases) and all ordinary API integration (113
+cases) checks pass. The enabled live browser/API/database/worker journey passes:
+saved-draft and chosen-version copies preserve the nested graph and dynamic
+expressions, three independent workflow/version/run identities produce their own
+outputs, and a copy-only edit leaves its source and sibling unchanged. Normal
+fixture teardown and strict zero-skip reports pass. Local qualification includes
+the full repository check, 90 browser journeys, 831 web tests, all 821 PostgreSQL
+integration tests across 109 files, and 24 source-bound coverage cohorts with zero
+unreviewed risk branches. Independent review and hosted release checks remain
+pending; this does not complete import/export or authorize production activation.

@@ -46,22 +46,25 @@ const input = {
 };
 
 describe('workflow duplication application seam', () => {
-  it('validates create guard proof without using it as a different read-capability proof', async () => {
-    const { useCase, duplicateWorkflow, access } = fixture();
-    const authorizedWorkspace = await authorizeWorkspace({
-      actor: input.actor,
-      routeWorkspaceId: workspaceId,
-      capability: 'workflow:create',
-      access,
-      disclosure: 'not_found',
-    });
-    access.findAccess.mockClear();
-    await expect(
-      useCase.execute({ ...input, authorizedWorkspace }),
-    ).resolves.toEqual({ workflowId: destinationId });
-    expect(access.findAccess).toHaveBeenCalledTimes(1);
-    expect(duplicateWorkflow).toHaveBeenCalledTimes(1);
-  });
+  it.each(['workflow:read', 'workflow:create'] as const)(
+    'reuses only the matching %s guard proof and freshly authorizes the other capability',
+    async (capability) => {
+      const { useCase, duplicateWorkflow, access } = fixture();
+      const authorizedWorkspace = await authorizeWorkspace({
+        actor: input.actor,
+        routeWorkspaceId: workspaceId,
+        capability,
+        access,
+        disclosure: 'not_found',
+      });
+      access.findAccess.mockClear();
+      await expect(
+        useCase.execute({ ...input, authorizedWorkspace }),
+      ).resolves.toEqual({ workflowId: destinationId });
+      expect(access.findAccess).toHaveBeenCalledTimes(1);
+      expect(duplicateWorkflow).toHaveBeenCalledTimes(1);
+    },
+  );
   it('normalizes only the name and forwards exact selector/tag/key and cancellation to the atomic command', async () => {
     const { useCase, duplicateWorkflow } = fixture('builder');
     const signal = new AbortController().signal;

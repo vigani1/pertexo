@@ -21,13 +21,27 @@ an independent unpublished draft, not import/export or automatic activation.
 
 - [x] Reconcile the existing authoring/model baseline and resolve graph identity.
 - [x] Record the accepted first-slice decision before implementation.
-- [ ] Implement atomic persistence, contracts/API and the browser command.
-- [ ] Prove isolation, races/replay and enabled live browser/backend acceptance.
+- [x] Implement atomic persistence, contracts/API and the browser command.
+- [x] Prove isolation, races/replay and enabled live browser/backend acceptance.
 - [ ] Complete independent reviews and green exact-head/natural-main release.
 
-Evidence currently consists of source inspection and the accepted decision,
-not implemented behavior or new runtime qualification. F12, F29 and F30 remain
-qualified; their completed work is not reopened by this slice.
+Implementation is present in the owned `feat/workflow-duplication` checkout;
+whole-source local qualification has passed; independent review and release
+qualification remain pending. Evidence
+includes 25 enabled PostgreSQL cases (atomic rollback, source/catalog/membership
+races, replay, defaults, ACL/readiness drift, populated 0128→0129 upgrade,
+legal hold and workspace erasure), all 113 enabled ordinary API integration
+cases, 142 contract tests, and 831 web unit tests. The enabled real-browser
+duplication gate passes one journey with ordinary signup, saved-draft and chosen
+version copies, three independent publications/runs, nested For Each and
+Parallel/Merge, dynamic expression outputs isolated by run, and copy-only edits.
+It verifies two atomic receipts/audits and normal fixture teardown. The full
+repository check and 90 browser journeys pass; all 821 PostgreSQL integration
+tests across 109 files pass without skips. Coverage binds 24 cohorts to the frozen
+source and records zero unreviewed risk branches. No production effect is
+authorized. These local results do not close independent review or
+exact-head/natural-main release gates. F12, F29 and F30 remain qualified; their
+completed work is not reopened by this slice.
 
 ### F30 — connection health first slice
 

@@ -162,6 +162,75 @@ const connectionHealthBrowserGate = Object.freeze({
   prerequisites: ['pnpm --filter @pertexo/worker... build'],
 });
 
+const duplicationBrowserGate = Object.freeze({
+  file: 'test/editor-browser.integration.test.ts',
+  flag: 'EDITOR_BROWSER_INTEGRATION',
+  report: 'artifacts/workflow-duplication-browser-gates.json',
+  title: 'Workflow duplication browser integration gate',
+  env: {
+    EDITOR_BROWSER_CASE: 'duplication',
+    EDITOR_BROWSER_OWNED_FIXTURE: 'true',
+  },
+  prerequisites: ['pnpm --filter @pertexo/worker... build'],
+});
+
+test('owns enabled duplication browser evidence and keeps duplication HTTP/database tests in ordinary CI', async () => {
+  const workflow = await currentWorkflow();
+  assertRequiredLiveBrowserGate(workflow, duplicationBrowserGate);
+  const browser = workflow.jobs.browser.steps.find(
+    (step) => step.env?.EDITOR_BROWSER_CASE === 'duplication',
+  );
+  assert.ok(
+    browser.run.includes('export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn'),
+  );
+  assert.ok(browser.run.includes('docker inspect --format'));
+  const integration = workflow.jobs.integration.steps.find((step) =>
+    step.run?.includes('artifacts/api-gates.json'),
+  );
+  assert.ok(
+    !integration.run.includes(
+      '--exclude test/workflow-authoring/duplicate.integration.test.ts',
+    ),
+  );
+  assert.equal(workflow.env.API_IDENTITY_INTEGRATION, 'true');
+});
+
+test('rejects disabled, differently selected or zero-minimum duplication browser evidence', async () => {
+  for (const mutate of [
+    (step) => {
+      step.if = 'false';
+    },
+    (step) => {
+      step['continue-on-error'] = true;
+    },
+    (step) => {
+      step.env.EDITOR_BROWSER_CASE = 'nested-conflict';
+    },
+    (step) => {
+      step.env.EDITOR_BROWSER_INTEGRATION = 'false';
+    },
+    (step) => {
+      step.env.EDITOR_BROWSER_OWNED_FIXTURE = 'false';
+    },
+    (step) => {
+      step.run = step.run.replace(
+        "'Workflow duplication browser integration gate' 1",
+        "'Workflow duplication browser integration gate' 0",
+      );
+    },
+  ]) {
+    const workflow = await currentWorkflow();
+    mutate(
+      workflow.jobs.browser.steps.find(
+        (step) => step.env?.EDITOR_BROWSER_CASE !== undefined,
+      ),
+    );
+    assert.throws(() =>
+      assertRequiredLiveBrowserGate(workflow, duplicationBrowserGate),
+    );
+  }
+});
+
 test('routes connection health through one enabled strict API/worker/browser proof and keeps real HTTP in ordinary integration', async () => {
   const workflow = await currentWorkflow();
   assertRequiredLiveBrowserGate(workflow, connectionHealthBrowserGate);

@@ -23,6 +23,7 @@ import {
 import { WorkflowListResults } from './components/list/workflow-list-results';
 import { WorkflowListError } from './components/list/workflow-list-states';
 import { WorkflowRenameDialog } from './components/workflow-rename-dialog';
+import { WorkflowDuplicateDialog } from './components/workflow-duplicate-dialog';
 import { WorkflowRowsSkeleton } from './components/list/workflow-rows';
 import {
   lifecycleIntentFor,
@@ -196,6 +197,7 @@ export function WorkflowListPage({
   const [startChoice, setStartChoice] = useState<StartChoice>('blank');
   const [lifecycle, setLifecycle] = useState<LifecycleTarget>();
   const [renaming, setRenaming] = useState<WorkflowSummary>();
+  const [duplicating, setDuplicating] = useState<WorkflowSummary>();
   const runner = useRunWorkflow({
     apiClient,
     userId: user.id,
@@ -271,6 +273,7 @@ export function WorkflowListPage({
           onSearchChange={onSearchChange}
           actions={{
             onRename: setRenaming,
+            onDuplicate: setDuplicating,
             onLifecycle: (workflow) => {
               setLifecycle({ workflow, intent: lifecycleIntentFor(workflow) });
             },
@@ -308,6 +311,23 @@ export function WorkflowListPage({
           setLifecycle(undefined);
         }}
       />
+      {duplicating === undefined ? null : (
+        <WorkflowDuplicateDialog
+          key={`${user.id}:${workspace.id}:${duplicating.id}`}
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflow={duplicating}
+          source={{ kind: 'draft' }}
+          onClose={() => {
+            setDuplicating(undefined);
+          }}
+          onCreated={(workflowId) => {
+            setDuplicating(undefined);
+            onCreated(workflowId);
+          }}
+        />
+      )}
     </div>
   );
 }

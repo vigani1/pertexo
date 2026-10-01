@@ -10,6 +10,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { describeWorkflowState } from '../model/workflow-state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
+import { WorkflowDuplicateAction } from './workflow-duplicate-dialog';
 
 export type WorkflowHubTab =
   'build' | 'runs' | 'triggers' | 'versions' | 'settings';
@@ -80,6 +81,7 @@ export function WorkflowHubBar({
   glyph,
   detail,
   actions,
+  duplicateBlocked = false,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -90,6 +92,7 @@ export function WorkflowHubBar({
   glyph?: ReactNode;
   detail?: ReactNode;
   actions?: ReactNode;
+  duplicateBlocked?: boolean;
 }>) {
   const state =
     workflow === undefined ? undefined : describeWorkflowState(workflow);
@@ -170,11 +173,18 @@ export function WorkflowHubBar({
           </Link>
         ))}
       </nav>
-      {actions === undefined ? null : (
-        <div className="flex items-center gap-1.5 xl:justify-self-end">
-          {actions}
-        </div>
-      )}
+      <div className="flex items-center gap-1.5 xl:justify-self-end">
+        {workflow === undefined ? null : (
+          <WorkflowDuplicateAction
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            workflow={workflow}
+            blocked={duplicateBlocked}
+          />
+        )}
+        {actions}
+      </div>
     </header>
   );
 }

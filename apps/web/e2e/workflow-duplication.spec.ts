@@ -1,0 +1,95 @@
+import { expect, test } from '@playwright/test';
+import {
+  addCsrfCookie,
+  currentEtag,
+  editorUrl,
+  installEditorRoutes,
+  remoteDraft,
+  workflowId,
+  workspace,
+  workspaceId,
+} from './workflow-editor-support';
+
+test('keeps an uncertain workflow copy exact and keyboard-bounded until explicit retry', async ({
+  context,
+  page,
+}) => {
+  const remote = remoteDraft();
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remote, {
+    accessibleWorkspace: {
+      ...workspace,
+      capabilities: [...workspace.capabilities, 'workflow:create'],
+    },
+  });
+  const destination = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${destination}**`,
+    (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: 'application/problem+json',
+        json: {
+          type: 'urn:pertexo:problem:workflow.not_found',
+          title: 'Workflow unavailable',
+          status: 404,
+          code: 'workflow.not_found',
+          requestId: 'fixture-destination',
+        },
+      }),
+  );
+  const attempts: {
+    body: unknown;
+    key: string | undefined;
+    tag: string | undefined;
+  }[] = [];
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/duplicate`,
+    async (route) => {
+      const request = route.request();
+      attempts.push({
+        body: request.postDataJSON() as unknown,
+        key: request.headers()['idempotency-key'],
+        tag: request.headers()['if-match'],
+      });
+      if (attempts.length === 1) await route.abort('failed');
+      else
+        await route.fulfill({ status: 201, json: { workflowId: destination } });
+    },
+  );
+  await page.goto(editorUrl);
+  await page.getByRole('button', { name: 'Duplicate…', exact: true }).click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Duplicate workflow',
+    exact: true,
+  });
+  await expect(
+    dialog.getByText(/Source: saved draft revision 1/u),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await dialog.getByLabel('Copy name').fill('An independent copy');
+  const bounds = await dialog.boundingBox();
+  expect(bounds?.x).toBeGreaterThanOrEqual(0);
+  expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: '/tmp/pertexo-f05-duplicate-mobile.png' });
+  await dialog
+    .getByRole('button', { name: 'Duplicate workflow', exact: true })
+    .click();
+  await expect(
+    dialog.getByRole('button', { name: 'Retry exact copy' }),
+  ).toBeEnabled();
+  await expect(dialog.getByLabel('Copy name')).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(editorUrl);
+  await dialog.getByRole('button', { name: 'Retry exact copy' }).click();
+  await expect(page).toHaveURL(`/w/${workspaceId}/workflows/${destination}`);
+  expect(attempts).toHaveLength(2);
+  expect(attempts[1]).toEqual(attempts[0]);
+  expect(attempts[0]?.tag).toBe(currentEtag(remote));
+  expect(attempts[0]?.body).toEqual({
+    name: 'An independent copy',
+    source: { kind: 'draft' },
+  });
+});

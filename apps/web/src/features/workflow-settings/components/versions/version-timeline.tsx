@@ -17,6 +17,7 @@ export function VersionTimeline({
   canRestore,
   onPreview,
   onRestore,
+  onDuplicate,
 }: Readonly<{
   versions: readonly WorkflowVersionResponse[];
   liveVersionId: string | null;
@@ -24,6 +25,7 @@ export function VersionTimeline({
   canRestore: boolean;
   onPreview: (version: WorkflowVersionResponse) => void;
   onRestore: (version: WorkflowVersionResponse) => void;
+  onDuplicate?: ((version: WorkflowVersionResponse) => void) | undefined;
 }>) {
   return (
     <ol
@@ -75,6 +77,19 @@ export function VersionTimeline({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
+                {onDuplicate === undefined ? null : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Duplicate ${label}`}
+                    onClick={() => {
+                      onDuplicate(version);
+                    }}
+                  >
+                    Duplicate version
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
