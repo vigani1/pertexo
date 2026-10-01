@@ -257,20 +257,6 @@
         },
         {
           "files": [
-            "apps/api/src/connections/connection-testing.ts",
-            "apps/api/src/connections/connection-testing.ts"
-          ],
-          "classification": "intentional-scenario-local",
-          "reason": "Slack and Resend outcome mappings keep their exhaustive provider result unions explicit because rejection semantics and result types differ.",
-          "clones": [
-            {
-              "hash": "a06266996ec85100f0dac1716cf714545143e986467b0e58103a3513e7837b01",
-              "maxLines": 23
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/api/src/connections/use-cases.ts",
             "apps/api/src/connections/use-cases.ts"
           ],

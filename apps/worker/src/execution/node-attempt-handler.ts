@@ -29,6 +29,9 @@ import {
 } from './node-attempt-execution-environment.js';
 export { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error.js';
 import { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error.js';
+import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
+import { connectionHealthCompletionFields } from './connection-health-completion.js';
+import { completionResult } from './node-attempt-completion-result.js';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -74,6 +77,7 @@ export interface NodeAttemptHandler {
 }
 
 export type NodeAttemptHandlerDependencies = Readonly<{
+  connectionRunHealthMode?: ConnectionRunHealthMode;
   engine: NodeAttemptExecutionEngine;
   heartbeatIntervalMillis: number;
   leaseDurationSeconds: number;
@@ -92,9 +96,11 @@ async function completeControlOutcome(
   delivery: AttemptDelivery,
   signal: AbortSignal,
   dispatched: boolean,
+  environment?: NodeExecutionEnvironment,
 ): Promise<NodeAttemptHandlerResult> {
   const outcomeUnknown = lease.sideEffectClass !== 'safe' && dispatched;
   const completed = await dependencies.runStore.complete({
+    ...connectionHealthCompletionFields(dependencies, environment),
     lease,
     outcome: {
       status: outcomeUnknown ? 'outcome_unknown' : reason,
@@ -110,24 +116,6 @@ async function completeControlOutcome(
     signal,
   });
   return completionResult(dependencies, lease, completed.kind);
-}
-
-async function completionResult(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  kind: 'committed' | 'duplicate',
-): Promise<NodeAttemptHandlerResult> {
-  if (kind === 'committed' && dependencies.notifications !== undefined) {
-    try {
-      await dependencies.notifications.resync({
-        workspaceId: lease.workspaceId,
-        runId: lease.runId,
-      });
-    } catch {
-      // PostgreSQL is authoritative; a later hint or reconnect backfills.
-    }
-  }
-  return Object.freeze({ kind });
 }
 
 type HeartbeatFailure =
@@ -254,6 +242,7 @@ async function executePreparedNodeAttempt(
     if (interruption !== undefined) return interruption;
     if (error instanceof NodeExecutorFailure) {
       const completed = await dependencies.runStore.complete({
+        ...connectionHealthCompletionFields(dependencies, environment),
         lease,
         outcome: {
           status: 'executor_failure',
@@ -272,6 +261,7 @@ async function executePreparedNodeAttempt(
       error.code === 'attempt_invalid'
     ) {
       const completed = await dependencies.runStore.complete({
+        ...connectionHealthCompletionFields(dependencies, environment),
         lease,
         outcome: {
           status: 'failed',
@@ -300,6 +290,7 @@ async function executePreparedNodeAttempt(
     outcome,
     traceContext,
     contextSignal,
+    environment,
   );
 }
 
@@ -320,6 +311,7 @@ async function resolveHeartbeatInterruption(
       delivery,
       contextSignal,
       hasProviderDispatchUncertainty(lease, environment.wasDispatched()),
+      environment,
     );
   const heartbeatFailure = heartbeat.failure();
   if (!heartbeatFailure.failed) return undefined;
@@ -337,9 +329,11 @@ async function persistPreparedOutcome(
   outcome: NodeAttemptOutcome,
   traceContext: Readonly<{ traceparent?: string }>,
   contextSignal: AbortSignal,
+  environment: NodeExecutionEnvironment,
 ): Promise<NodeAttemptHandlerResult> {
   try {
     const completed = await dependencies.runStore.complete({
+      ...connectionHealthCompletionFields(dependencies, environment),
       lease,
       outcome:
         prepared.suspensionDurationSeconds === undefined
@@ -356,6 +350,7 @@ async function persistPreparedOutcome(
   } catch (error: unknown) {
     if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
     const completed = await dependencies.runStore.complete({
+      ...connectionHealthCompletionFields(dependencies, environment),
       lease,
       outcome: {
         status: 'failed',
@@ -461,6 +456,8 @@ export function createNodeAttemptHandler(
           lease: claimed.lease,
           registry: dependencies.registry,
           runStore: dependencies.runStore,
+          connectionRunHealthMode:
+            dependencies.connectionRunHealthMode ?? 'off',
           ...(dependencies.runtimeCapabilities === undefined
             ? {}
             : { runtimeCapabilities: dependencies.runtimeCapabilities }),

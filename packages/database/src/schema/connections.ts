@@ -1,5 +1,6 @@
 import {
   foreignKey,
+  bigint,
   index,
   jsonb,
   smallint,
@@ -32,6 +33,20 @@ export const connections = appSchema.table(
       mode: 'date',
     }),
     lastErrorCode: varchar('last_error_code', { length: 128 }),
+    healthRevision: bigint('health_revision', { mode: 'bigint' })
+      .notNull()
+      .default(1n),
+    lastRunObservedAt: timestamp('last_run_observed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    lastHealthTransitionAt: timestamp('last_health_transition_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    lastHealthTransitionSource: varchar('last_health_transition_source', {
+      length: 16,
+    }),
     createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

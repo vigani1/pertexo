@@ -3,9 +3,9 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import { useEffect, type ComponentProps } from 'react';
 import {
   PageHeader,
   PageHeaderActions,
@@ -23,12 +23,16 @@ import {
 } from '@/components/ui/empty';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { isNotFound, readFailureReason } from '@/lib/api/api-error-copy';
+import { readFailureReason } from '@/lib/api/api-error-copy';
 import { AddConnectionSheet } from './components/add-connection/add-connection-sheet';
 import { ConnectionCollection } from './components/connection-collection';
 import { ConnectionDetailSheet } from './components/detail/connection-detail-sheet';
 import { ProviderSockets } from './components/provider-sockets';
-import { connectionsInfiniteQueryOptions } from './connections.queries';
+import {
+  connectionKeys,
+  connectionsInfiniteQueryOptions,
+} from './connections.queries';
+import { connectionAccessLost } from './connection-access';
 import type { ConnectionsSearch } from './model/connections-search';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
@@ -136,31 +140,58 @@ function ConnectionsBody({
  * connection still works. Lenses (add, detail) and the revoked view are URL
  * state owned by the route.
  */
-export function ConnectionsPage({
-  apiClient,
-  user,
-  workspace,
-  search,
-  onSearchChange,
-}: Readonly<{
+type ConnectionsPageProps = Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   search: ConnectionsSearch;
   onSearchChange: (next: ConnectionsSearch) => void;
-}>) {
+}>;
+
+export function ConnectionsPage(props: ConnectionsPageProps) {
+  return (
+    <ConnectionsSession
+      key={`${props.user.id}:${props.workspace.id}:${props.workspace.status}:${props.workspace.capabilities.join(',')}`}
+      {...props}
+    />
+  );
+}
+
+function ConnectionsSession({
+  apiClient,
+  user,
+  workspace,
+  search,
+  onSearchChange,
+}: ConnectionsPageProps) {
   const canRead = workspace.capabilities.includes('connection:read');
   const canTest = workspace.capabilities.includes('connection:use');
   const canManage = workspace.capabilities.includes('connection:manage');
+  const canReadUsage = workspace.capabilities.includes('workflow:read');
+  const cache = useQueryClient();
+  useEffect(() => {
+    const queryKey = connectionKeys.scope(user.id, workspace.id);
+    if (!canRead || workspace.status !== 'active') {
+      void cache.cancelQueries({ queryKey }).then(() => {
+        cache.removeQueries({ queryKey });
+      });
+    } else if (!canReadUsage) {
+      const predicate = (query: { queryKey: readonly unknown[] }) =>
+        query.queryKey.at(-2) === 'usage';
+      void cache.cancelQueries({ queryKey, predicate }).then(() => {
+        cache.removeQueries({ queryKey, predicate });
+      });
+    }
+  }, [cache, canRead, canReadUsage, user.id, workspace.id, workspace.status]);
   const connections = useInfiniteQuery({
     ...connectionsInfiniteQueryOptions(apiClient, user.id, workspace.id),
-    enabled: canRead,
+    enabled: canRead && workspace.status === 'active',
   });
   const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const items = connections.data?.pages.flatMap((page) => page.items) ?? [];
   const counts = countByStatus(items);
 
-  if (!canRead)
+  if (!canRead || workspace.status !== 'active')
     return (
       <UnavailablePage
         heading="Connections"
@@ -172,7 +203,7 @@ export function ConnectionsPage({
         )}
       />
     );
-  if (connections.isError && isNotFound(connections.error))
+  if (connections.isError && connectionAccessLost(connections.error))
     return (
       <UnavailablePage
         heading="Connections"
@@ -238,7 +269,7 @@ export function ConnectionsPage({
         scope={scope}
         connectionId={search.connection}
         placeholder={items.find((item) => item.id === search.connection)}
-        permissions={{ canTest, canManage }}
+        permissions={{ canTest, canManage, canReadUsage }}
         onClose={() => {
           onSearchChange(withoutLens);
         }}

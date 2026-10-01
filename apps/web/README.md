@@ -186,6 +186,20 @@ artifacts are the current production callers.
 
 ## Next implementation
 
+The existing Connections detail lens also presents ADR 059 health evidence:
+Unknown, Healthy, Needs reauthorization and Revoked, with separate
+explicit-test, run-observation and transition timestamps. Automatic run coverage
+is limited to Slack Send message when enabled. Its Used by section pages
+retained published versions (including historical and archived references), not
+drafts, through the authorized usage endpoint. Workflow alert-destination
+settings link to this same lens. Scope-denied reads cancel earlier requests and
+forget cached metadata; credential commands fence old reads before applying
+their returned snapshot. Connection regressions include held-response access
+fences, explicit recovery, rotation and permission-aware usage. The mocked
+browser journey is distinct from `e2e-live/connection-health.spec.ts`, which
+requires the owned API/worker fixture and controls only external Slack
+transport.
+
 The staged frontend baseline, connection-management increments, explicit run
 replay, workspace run history, notification-destination management, authorized
 member list and workspace lifecycle settings slices in the architecture plan are

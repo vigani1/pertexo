@@ -126,6 +126,7 @@ async function composeNodeAttemptRuntime(
   factories: NodeAttemptRuntimeProviderFactories,
 ): Promise<NodeAttemptRuntime | undefined> {
   return factories.createRuntime({
+    connectionRunHealthMode: config.connectionRunHealthMode,
     ...(config.artifactStore === undefined
       ? {}
       : { artifactStore: config.artifactStore }),

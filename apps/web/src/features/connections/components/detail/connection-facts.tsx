@@ -33,8 +33,8 @@ function IdentifierFact({
   );
 }
 
-function testedWhen(value: string | null): string {
-  return value === null
+function testedWhen(value: string | null | undefined): string {
+  return value == null
     ? 'Never'
     : `${formatRelativeTime(value)} · ${formatDateTime(value)}`;
 }
@@ -59,9 +59,32 @@ export function ConnectionFacts({
         <Fact term="Last healthy">
           {testedWhen(connection.health.lastHealthyAt)}
         </Fact>
+        <Fact term="Last run observed">
+          {testedWhen(connection.health.lastRunObservedAt)}
+        </Fact>
+        <Fact term="Health changed">
+          {testedWhen(connection.health.lastHealthTransitionAt)}
+          {connection.health.lastHealthTransitionSource == null ? null : (
+            <span className="block text-xs text-muted-foreground">
+              {
+                {
+                  run: 'From a workflow run',
+                  test: 'From an explicit test',
+                  rotation: 'Credential replaced',
+                  revoke: 'Connection revoked',
+                }[connection.health.lastHealthTransitionSource]
+              }
+            </span>
+          )}
+        </Fact>
         <Fact term="Added">{formatDateTime(connection.createdAt)}</Fact>
         <Fact term="Updated">{formatDateTime(connection.updatedAt)}</Fact>
       </dl>
+      <p className="text-xs text-muted-foreground">
+        Automatic run health covers Slack Send message only, when enabled. Other
+        services use explicit tests. A failed test is not a service-outage
+        report.
+      </p>
       <details className="group/details text-sm">
         <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-subtle-foreground outline-none select-none hover:text-foreground focus-visible:text-foreground [&::-webkit-details-marker]:hidden">
           <ChevronRightIcon

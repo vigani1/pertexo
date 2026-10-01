@@ -46,6 +46,7 @@ export type {
   NodeArtifactReference,
   NodeArtifactRuntime,
   NodeConnectionRuntime,
+  NodeConnectionHealthObservation,
   NodeDefinitionRegistration,
   NodeExecutionInvocation,
   NodeExecutionKind,

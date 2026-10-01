@@ -283,6 +283,12 @@ export const connectionResponseSchema = z
         lastTestedAt: z.iso.datetime().nullable(),
         lastHealthyAt: z.iso.datetime().nullable(),
         lastErrorCode: z.string().min(1).max(128).nullable(),
+        lastRunObservedAt: z.iso.datetime().nullable().optional(),
+        lastHealthTransitionAt: z.iso.datetime().nullable().optional(),
+        lastHealthTransitionSource: z
+          .enum(['run', 'test', 'rotation', 'revoke'])
+          .nullable()
+          .optional(),
       })
       .strict()
       .readonly(),
@@ -307,6 +313,32 @@ export const connectionListResponseSchema = z
   })
   .strict()
   .readonly();
+
+export const connectionUsageItemSchema = z
+  .object({
+    workflowId: z.uuid(),
+    workflowName: z.string().min(1).max(128),
+    workflowLifecycleStatus: z.enum(['active', 'archived']),
+    workflowVersionId: z.uuid(),
+    versionNumber: z.number().int().positive(),
+    isCurrentPublication: z.boolean(),
+    operationKeys: z.array(z.string().min(1).max(128)),
+  })
+  .strict()
+  .readonly();
+
+export const connectionUsageResponseSchema = z
+  .object({
+    items: z.array(connectionUsageItemSchema).max(100),
+    nextCursor: connectionCursorSchema.nullable(),
+  })
+  .strict()
+  .readonly();
+
+export type ConnectionUsageItem = z.output<typeof connectionUsageItemSchema>;
+export type ConnectionUsageResponse = z.output<
+  typeof connectionUsageResponseSchema
+>;
 
 export const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
   z

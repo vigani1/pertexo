@@ -747,7 +747,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0127_workflow_concurrency.sql',
+        migrationHead: '0128_connection_health.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -946,7 +946,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0127_workflow_concurrency.sql',
+        migrationHead: '0128_connection_health.sql',
       });
     } finally {
       await pool.end();

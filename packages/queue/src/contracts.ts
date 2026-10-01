@@ -112,6 +112,14 @@ const DeliverWorkspaceInvitationJobSchema = z
   })
   .strict();
 
+export const ApplyConnectionHealthObservationJobSchema = z
+  .object({ ...commonJobShape, observationId: z.uuid() })
+  .strict();
+
+export type ApplyConnectionHealthObservationJob = z.infer<
+  typeof ApplyConnectionHealthObservationJobSchema
+>;
+
 export type AdvanceWorkflowRunJob = z.infer<typeof AdvanceWorkflowRunJobSchema>;
 export type ExecuteNodeAttemptJob = z.infer<typeof ExecuteNodeAttemptJobSchema>;
 export type ExecutePreviewAttemptJob = z.infer<
@@ -150,6 +158,7 @@ export interface QueueJobDataByName {
   [JOB_NAME.expireArtifacts]: ExpireArtifactsJob;
   [JOB_NAME.deliverRunFailureNotification]: DeliverRunFailureNotificationJob;
   [JOB_NAME.deliverWorkspaceInvitation]: DeliverWorkspaceInvitationJob;
+  [JOB_NAME.applyConnectionHealthObservation]: ApplyConnectionHealthObservationJob;
 }
 
 export type QueueJob = {
@@ -169,6 +178,7 @@ export const ACTIVE_QUEUE_JOB_NAMES = Object.freeze([
   JOB_NAME.reconcileWorkflowTriggers,
   JOB_NAME.deliverRunFailureNotification,
   JOB_NAME.deliverWorkspaceInvitation,
+  JOB_NAME.applyConnectionHealthObservation,
 ] as const satisfies readonly JobName[]);
 
 export type ActiveQueueJobName = (typeof ACTIVE_QUEUE_JOB_NAMES)[number];
@@ -225,6 +235,10 @@ const QUEUE_JOB_COMPATIBILITY_REGISTRY = Object.freeze({
   [JOB_NAME.deliverWorkspaceInvitation]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.deliverWorkspaceInvitation],
     schema: DeliverWorkspaceInvitationJobSchema,
+  },
+  [JOB_NAME.applyConnectionHealthObservation]: {
+    queueName: QUEUE_FOR_JOB[JOB_NAME.applyConnectionHealthObservation],
+    schema: ApplyConnectionHealthObservationJobSchema,
   },
 } as const);
 

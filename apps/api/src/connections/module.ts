@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { ConnectionsController } from './controllers.js';
+import {
+  ConnectionUsageController,
+  ListConnectionUsageUseCase,
+} from './connection-usage.js';
 import { FailureNotificationDestinationsController } from './failure-notification-destinations.controller.js';
 import { FailureNotificationDestinationUseCases } from './failure-notification-destinations.js';
 import {
@@ -114,11 +118,23 @@ export class ConnectionsModule {
           telemetry,
         ),
       });
+    if (dependencies.usagePersistence !== undefined)
+      providers.push({
+        provide: ListConnectionUsageUseCase,
+        useValue: new ListConnectionUsageUseCase(
+          dependencies.usagePersistence,
+          dependencies.authorization,
+          telemetry,
+        ),
+      });
     return {
       module: ConnectionsModule,
       imports: [identityModule],
       controllers: [
         ConnectionsController,
+        ...(dependencies.usagePersistence === undefined
+          ? []
+          : [ConnectionUsageController]),
         ...(dependencies.destinationPersistence === undefined
           ? []
           : [FailureNotificationDestinationsController]),

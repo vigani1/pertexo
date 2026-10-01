@@ -8,15 +8,19 @@ import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 import {
   NodeDispatchEvidenceError,
   type NodeExecutionRuntime,
+  type NodeConnectionHealthObservation,
 } from '@pertexo/node-sdk/server';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import { nodeExecutionOptionalFields } from './node-execution-runtime-fields.js';
 import { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error.js';
+import { createConnectionHealthCapture } from './connection-health-capture.js';
+import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
 
 export type NodeExecutionEnvironment = Readonly<{
   registry: NodeExecutionRegistry;
   runtime: NodeExecutionRuntime;
   wasDispatched(): boolean;
+  connectionHealthObservation(): NodeConnectionHealthObservation | undefined;
 }>;
 
 export function createNodeExecutionEnvironment(
@@ -26,10 +30,15 @@ export function createNodeExecutionEnvironment(
     registry: NodeExecutionRegistry;
     runStore: NodeAttemptRunStore;
     runtimeCapabilities?: NodeExecutionCapabilityFactories;
+    connectionRunHealthMode?: ConnectionRunHealthMode;
   }>,
 ): NodeExecutionEnvironment {
   const { executionSignal, lease, registry: sourceRegistry, runStore } = input;
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
+  const healthCapture = createConnectionHealthCapture(
+    (input.connectionRunHealthMode ?? 'off') !== 'off',
+    () => dispatchState === 'marked',
+  );
   const capabilityContext = Object.freeze({
     workspaceId: lease.workspaceId,
     runId: lease.runId,
@@ -53,6 +62,7 @@ export function createNodeExecutionEnvironment(
     invocationKey: lease.invocationKey,
     sideEffectClass: lease.sideEffectClass,
     ...nodeExecutionOptionalFields(lease, connections, artifacts),
+    observeConnectionHealth: healthCapture.observe,
     beforeDispatch: async (
       dispatchInput?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
     ): Promise<void> => {
@@ -107,5 +117,6 @@ export function createNodeExecutionEnvironment(
     registry,
     runtime,
     wasDispatched: () => dispatchState === 'marked',
+    connectionHealthObservation: healthCapture.read,
   });
 }

@@ -27,7 +27,8 @@
     "workspaces": {
       ".": {
         "entry": [
-          "infrastructure/testing/editor-browser-envelope-keys.d.mts"
+          "infrastructure/testing/editor-browser-envelope-keys.d.mts",
+          "infrastructure/testing/connection-health-slack-transport.d.mts"
         ]
       },
       "apps/web": {

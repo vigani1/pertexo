@@ -14,6 +14,7 @@ import {
 import type { createOperatorRunReplayHandler } from '../execution/operator-run-replay-runtime.js';
 import type { FailureNotificationHandler } from '../execution/failure-notification-handler.js';
 import type { WorkspaceInvitationDeliveryHandler } from '../execution/workspace-invitation-delivery.js';
+import type { createConnectionHealthObservationHandler } from '../execution/connection-health-runtime.js';
 
 export type MaintenanceHandlers = Readonly<{
   failureNotification?: FailureNotificationHandler;
@@ -21,6 +22,9 @@ export type MaintenanceHandlers = Readonly<{
   replay?: ReturnType<typeof createOperatorRunReplayHandler>;
   unknownOutcome?: ReturnType<typeof createUnknownOutcomeReconciliationHandler>;
   workspaceInvitation?: WorkspaceInvitationDeliveryHandler;
+  connectionHealth?: ReturnType<
+    typeof createConnectionHealthObservationHandler
+  >;
 }>;
 
 export function maintenanceDeliveryHandler(
@@ -28,6 +32,13 @@ export function maintenanceDeliveryHandler(
 ): QueueConsumerOptions['handler'] {
   return async (delivery, context): Promise<void> => {
     switch (delivery.name) {
+      case JOB_NAME.applyConnectionHealthObservation:
+        if (handlers.connectionHealth === undefined)
+          throw new InvalidQueueDeliveryError(
+            'Connection health application is not enabled',
+          );
+        await handlers.connectionHealth.handle(delivery, context);
+        return;
       case JOB_NAME.reconcilePreviewAttempt:
         if (handlers.reconciliation === undefined)
           throw new InvalidQueueDeliveryError(

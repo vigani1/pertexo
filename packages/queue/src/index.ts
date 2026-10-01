@@ -3,6 +3,7 @@ import './server-only.js';
 export {
   ACTIVE_QUEUE_JOB_NAMES,
   AdvanceWorkflowRunJobSchema,
+  ApplyConnectionHealthObservationJobSchema,
   ExecuteNodeAttemptJobSchema,
   ExecutePreviewAttemptJobSchema,
   ExpireArtifactsJobSchema,
@@ -22,6 +23,7 @@ export {
 export type {
   ActiveQueueJobName,
   AdvanceWorkflowRunJob,
+  ApplyConnectionHealthObservationJob,
   ExecuteNodeAttemptJob,
   ExecutePreviewAttemptJob,
   ExpireArtifactsJob,

@@ -127,6 +127,22 @@ export async function markNodeAttemptDispatched(
       const dispatchedAt = result.rows[0]?.dispatch_marked_at;
       if (dispatchedAt === undefined)
         throw new NodeAttemptReconciliationRequiredError();
+      if (
+        input.connectionFence?.expectedProviderKey === 'slack' &&
+        input.connectionFence.expectedAuthType === 'slack_bot_token'
+      ) {
+        await client.query(
+          'select app.bind_node_attempt_connection_dispatch($1,$2,$3,$4,$5,$6)',
+          [
+            input.lease.workspaceId,
+            input.lease.attemptId,
+            input.lease.workerId,
+            input.lease.fenceToken,
+            input.connectionFence.connectionId,
+            input.connectionFence.secretVersionId,
+          ],
+        );
+      }
       return Object.freeze({ dispatchedAt: new Date(dispatchedAt) });
     },
   );

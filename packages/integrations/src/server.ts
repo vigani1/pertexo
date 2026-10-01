@@ -63,6 +63,7 @@ export {
   HTTP_SIDE_EFFECT_CLASS,
 } from './http/outcome-policy.js';
 export { createSlackClient, SLACK_API_ENDPOINTS } from './slack/client.js';
+export { classifySlackConnectionHealth } from './slack/connection-health.js';
 export type {
   SlackApiResult,
   SlackChannelLookupResult,

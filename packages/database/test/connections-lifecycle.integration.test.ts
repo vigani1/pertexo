@@ -19,6 +19,7 @@ import {
   registerCurrentConnectionsFixture,
   sealed,
   workspaceA,
+  workerBaseUrl,
 } from './support/connections.integration.support.js';
 
 const connections = registerCurrentConnectionsFixture();
@@ -467,6 +468,9 @@ describe('connection lifecycle persistence', () => {
     try {
       client = await pool.connect();
       await client.query('begin');
+      await client.query(
+        "select set_config('app.connection_health_protocol','1',true)",
+      );
       await client.query("select set_config('app.workspace_id', $1, true)", [
         workspaceA,
       ]);
@@ -552,32 +556,29 @@ describe('connection lifecycle persistence', () => {
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
   });
 
-  it('records bounded health truth and reauthorization state through worker grants', async () => {
+  it('rejects legacy unfenced worker health and event writes', async () => {
     const input = createInput();
     await connections.api.createConnection(input);
-    const healthy = await connections.worker.recordConnectionHealth({
-      workspaceId: workspaceA,
-      connectionId: input.connectionId,
-      actorKind: 'worker',
-      actorId: 'worker-connection-test',
-      result: { ok: true },
-    });
-    expect(healthy.lastHealthyAt).toBeInstanceOf(Date);
-    expect(healthy.lastErrorCode).toBeNull();
-    const failed = await connections.worker.recordConnectionHealth({
-      workspaceId: workspaceA,
-      connectionId: input.connectionId,
-      actorKind: 'worker',
-      actorId: 'worker-connection-test',
-      result: {
-        ok: false,
-        errorCode: 'connection.credential_rejected',
-        reauthorizationRequired: true,
-      },
-    });
-    expect(failed).toMatchObject({
-      status: 'reauthorization_required',
-      lastErrorCode: 'connection.credential_rejected',
-    });
+    const worker = new Pool({ connectionString: databaseUrl(workerBaseUrl) });
+    try {
+      await worker.query("select set_config('app.workspace_id',$1,false)", [
+        workspaceA,
+      ]);
+      await expect(
+        worker.query(
+          "update app.connections set status='reauthorization_required' where id=$1",
+          [input.connectionId],
+        ),
+      ).rejects.toSatisfy(pgCode('42501'));
+      await expect(
+        worker.query(
+          `insert into app.connection_events(id,workspace_id,connection_id,event_type,actor_kind,actor_id,metadata)
+        values($1,$2,$3,'connection.reauthorization_required','worker','legacy','{}')`,
+          [randomUUID(), workspaceA, input.connectionId],
+        ),
+      ).rejects.toSatisfy(pgCode('42501'));
+    } finally {
+      await worker.end();
+    }
   });
 });

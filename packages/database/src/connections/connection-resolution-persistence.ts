@@ -1,5 +1,3 @@
-import { generatePersistedId } from '../platform/persisted-id.js';
-
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import {
@@ -66,8 +64,7 @@ export function createConnectionResolutionPersistence(
              where connection.workspace_id = $1 and connection.id = $2
                and connection.provider_key = $3
                and connection.status = 'active'
-               and workspace.status = 'active'
-             for share of connection`,
+               and workspace.status = 'active'`,
             [workspaceId, connectionId, expectedProviderKey],
           );
           const row = result.rows[0];
@@ -79,19 +76,30 @@ export function createConnectionResolutionPersistence(
           const secretVersionId = uuidSchema.parse(row.secret_id);
           if (secretVersionId !== connection.currentSecretVersionId)
             throw new Error('Connection secret pointer is corrupt');
-          await client.query(
-            `insert into app.connection_events
-               (id, workspace_id, connection_id, event_type, actor_kind,
-                actor_id, trace_id, metadata)
-             values ($1, $2, $3, 'connection.credential_accessed', 'worker',
-                     $4, $5, $6::jsonb)`,
+          const fence = await client.query<{ current: boolean }>(
+            'select app.connection_dispatch_fence_current($1,$2,$3,$4,$5) current',
             [
-              generatePersistedId(),
               workspaceId,
               connectionId,
+              connection.providerKey,
+              connection.authType,
+              secretVersionId,
+            ],
+          );
+          if (fence.rows[0]?.current !== true)
+            throw new ConnectionUnavailableError(
+              'Connection changed before credential resolution',
+            );
+          await client.query(
+            `select app.audit_connection_secret_access($1,$2,$3,$4,$5,$6,$7)`,
+            [
+              workspaceId,
+              connectionId,
+              secretVersionId,
               workerId,
+              null,
               traceId,
-              JSON.stringify({ purpose, secretVersionId }),
+              purpose,
             ],
           );
           return Object.freeze({

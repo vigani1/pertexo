@@ -10,8 +10,10 @@ import type { FailureNotificationHandler } from '../execution/failure-notificati
 import type { MaintenanceRuntime } from './runtime.js';
 import type { PreviewReconciliationStore } from '../execution/preview-reconciliation-runtime.js';
 import type { UnknownOutcomeReconciliationStore } from '../execution/unknown-outcome-reconciliation-runtime.js';
+import type { ConnectionHealthObservationStore } from '../execution/connection-health-runtime.js';
 
 export type MaintenanceOwnedStores = Readonly<{
+  connectionHealthStore?: ConnectionHealthObservationStore | undefined;
   reconciliationStore?:
     | (PreviewReconciliationStore & {
         close?: () => Promise<void>;
@@ -72,6 +74,10 @@ export function createMaintenanceLifecycle(
       if (closed) throw new Error('Maintenance runtime is closed');
       if (latestRecoveryFailed)
         throw new Error('Failure notification recovery latest scan failed');
+      await composition.stores.connectionHealthStore?.checkReadiness?.();
+      // Close can begin while readiness is awaiting database I/O.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (closed) throw new Error('Maintenance runtime is closed');
     },
     whenIdle: async (): Promise<void> => {
       await rawActivity;
@@ -179,6 +185,7 @@ export async function closeMaintenanceDependencies(
   timeoutMillis?: number,
 ): Promise<readonly unknown[]> {
   const operations = [
+    () => dependencies.connectionHealthStore?.close?.(),
     () => dependencies.reconciliationStore?.close?.(),
     () => dependencies.unknownOutcomeStore?.close?.(),
     () => dependencies.runReplayStore?.close(),

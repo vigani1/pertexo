@@ -57,6 +57,9 @@ export async function completeNodeAttempt(
       input.lease.workspaceId,
       input.signal,
       async (client) => {
+        await client.query('select app.lock_workspace_run_admission($1)', [
+          input.lease.workspaceId,
+        ]);
         await validateDelivery(client, {
           workspaceId: input.lease.workspaceId,
           runId: input.lease.runId,

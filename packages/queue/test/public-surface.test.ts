@@ -7,6 +7,7 @@ describe('public package surface', () => {
     expect(Object.keys(queue).sort()).toEqual([
       'ACTIVE_QUEUE_JOB_NAMES',
       'AdvanceWorkflowRunJobSchema',
+      'ApplyConnectionHealthObservationJobSchema',
       'BullMqQueueConsumer',
       'BullMqQueueProducer',
       'DeliverRunFailureNotificationJobSchema',

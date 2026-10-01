@@ -69,8 +69,18 @@ function connection(
   };
 }
 
-function identityHandlers(currentWorkspace: unknown = workspace) {
+function identityHandlers(
+  currentWorkspace: unknown = workspace,
+  emptyUsage = true,
+) {
   return [
+    ...(emptyUsage
+      ? [
+          http.get(`${base}/${connectionId}/usage`, () =>
+            HttpResponse.json({ items: [], nextCursor: null }),
+          ),
+        ]
+      : []),
     http.get('http://pertexo.test/v1/users/me', () => HttpResponse.json(user)),
     http.get('http://pertexo.test/v1/workspaces', () =>
       HttpResponse.json({ items: [currentWorkspace], nextCursor: null }),
@@ -117,6 +127,135 @@ function lens() {
 }
 
 describe('connections page', () => {
+  it('shows run rejection, explicit recovery and bounded historical/archived usage pages in the same detail lens', async () => {
+    const reads: URL[] = [];
+    let current = connection('Primary Slack', {
+      status: 'reauthorization_required',
+      health: {
+        lastTestedAt: null,
+        lastHealthyAt: null,
+        lastErrorCode: 'connection.slack_token_expired',
+        lastRunObservedAt: '2026-09-15T11:00:00.000Z',
+        lastHealthTransitionAt: '2026-09-15T11:00:00.000Z',
+        lastHealthTransitionSource: 'run',
+      },
+    });
+    const row = {
+      workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      workflowName: 'Incident workflow',
+      workflowLifecycleStatus: 'active',
+      workflowVersionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      versionNumber: 2,
+      isCurrentPublication: true,
+      operationKeys: ['slack.send_message'],
+    };
+    mockServer.use(
+      ...identityHandlers(workspace, false),
+      listOf(() => [current]),
+      detailOf(() => current),
+      http.get(`${base}/${connectionId}/usage`, ({ request }) => {
+        const url = new URL(request.url);
+        reads.push(url);
+        return HttpResponse.json(
+          url.searchParams.has('after')
+            ? {
+                items: [
+                  {
+                    ...row,
+                    workflowVersionId: '11111111-1111-4111-8111-111111111111',
+                    versionNumber: 1,
+                    isCurrentPublication: false,
+                    workflowLifecycleStatus: 'archived',
+                  },
+                ],
+                nextCursor: null,
+              }
+            : { items: [row], nextCursor: 'older-page' },
+        );
+      }),
+      http.post(`${base}/${connectionId}/test`, () => {
+        current = connection('Primary Slack', {
+          health: {
+            lastTestedAt: '2026-09-15T12:00:00.000Z',
+            lastHealthyAt: '2026-09-15T12:00:00.000Z',
+            lastErrorCode: null,
+            lastRunObservedAt: '2026-09-15T11:00:00.000Z',
+            lastHealthTransitionAt: '2026-09-15T12:00:00.000Z',
+            lastHealthTransitionSource: 'test',
+          },
+        });
+        return testedOk(current);
+      }),
+    );
+    renderApp(`/w/${workspaceId}/connections?connection=${connectionId}`);
+    expect(
+      await screen.findByRole('heading', { name: 'Primary Slack' }),
+    ).toBeVisible();
+    expect(lens().getByText('Needs reauthorization')).toBeVisible();
+    expect(
+      lens().getByText('run credential rejected · Slack token expired'),
+    ).toBeVisible();
+    expect(
+      lens().getByText('Last tested').nextElementSibling,
+    ).toHaveTextContent('Never');
+    expect(lens().getByText('From a workflow run')).toBeVisible();
+    expect(
+      await lens().findByText(/Version 2 · Current publication/u),
+    ).toBeVisible();
+    await userEvent
+      .setup()
+      .click(lens().getByRole('button', { name: 'Load more' }));
+    expect(
+      await lens().findByText(
+        /Version 1 · Historical version · Archived workflow/u,
+      ),
+    ).toBeVisible();
+    expect(
+      reads.map((url) => [
+        url.searchParams.get('limit'),
+        url.searchParams.get('after'),
+      ]),
+    ).toEqual([
+      ['50', null],
+      ['50', 'older-page'],
+    ]);
+    await userEvent.setup().click(lens().getByRole('button', { name: 'Test' }));
+    await userEvent
+      .setup()
+      .click(lens().getByRole('button', { name: 'Test connection' }));
+    expect(await lens().findByText('Healthy')).toBeVisible();
+    await userEvent
+      .setup()
+      .click(lens().getByRole('button', { name: 'Back to details' }));
+    expect(lens().getByText('From an explicit test')).toBeVisible();
+  });
+
+  it('suppresses used-by reads without workflow-read authority while retaining authorized connection actions', async () => {
+    let usageReads = 0;
+    mockServer.use(
+      ...identityHandlers({
+        ...workspace,
+        capabilities: ['workspace:read', 'connection:read', 'connection:use'],
+      }),
+      listOf(() => [connection('Primary Slack')]),
+      detailOf(() => connection('Primary Slack')),
+      http.get(`${base}/${connectionId}/usage`, () => {
+        usageReads += 1;
+        return HttpResponse.json({ items: [], nextCursor: null });
+      }),
+    );
+    renderApp(`/w/${workspaceId}/connections?connection=${connectionId}`);
+    expect(
+      await screen.findByText(
+        'Workflow-read permission is needed to see usage.',
+      ),
+    ).toBeVisible();
+    expect(lens().getByRole('button', { name: 'Test' })).toBeVisible();
+    expect(
+      lens().queryByRole('button', { name: 'Replace credential' }),
+    ).not.toBeInTheDocument();
+    expect(usageReads).toBe(0);
+  });
   it('keeps data through a failed refresh and hides it after a nondisclosing 404', async () => {
     let response: 'ok' | 'failed' | 'unavailable' = 'ok';
     mockServer.use(
@@ -145,7 +284,7 @@ describe('connections page', () => {
     );
     const { queryClient } = renderApp(`/w/${workspaceId}/connections`);
     expect(await screen.findByText('Primary Slack')).toBeVisible();
-    expect(screen.getByText('Active')).toBeVisible();
+    expect(screen.getByText('Unknown')).toBeVisible();
     expect(screen.getByText('never tested')).toBeVisible();
 
     response = 'failed';
@@ -313,7 +452,7 @@ describe('connections page', () => {
     await event.click(lens().getByRole('button', { name: 'Done' }));
     expect(await screen.findByText('Connected Operations Slack')).toBeVisible();
     expect(
-      screen.getByRole('button', { name: /Operations Slack, Active/u }),
+      screen.getByRole('button', { name: /Operations Slack, Unknown/u }),
     ).toBeVisible();
   });
 
@@ -567,7 +706,7 @@ describe('connections page', () => {
     });
     const event = userEvent.setup();
     await event.click(
-      await screen.findByRole('button', { name: /Operations Slack, Active/u }),
+      await screen.findByRole('button', { name: /Operations Slack, Unknown/u }),
     );
     expect(router.state.location.search).toEqual({ connection: connectionId });
     await waitFor(() => {

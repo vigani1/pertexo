@@ -36,6 +36,7 @@ const productionFactories: MaintenanceProviderFactories = {
 };
 
 type MaintenanceJobSelection = Readonly<{
+  connectionHealth: boolean;
   notification: boolean;
   reconciliation: boolean;
   replay: boolean;
@@ -132,6 +133,8 @@ export async function createOwnedMaintenanceRuntime(
       });
     }
     const runtime = await factories.runtime({
+      connectionHealthApplication: jobs.connectionHealth,
+      connectionRunHealthMode: config.connectionRunHealthMode,
       database: config.database,
       ...(dependencies.databaseRuntime === undefined
         ? {}
@@ -176,6 +179,9 @@ function selectMaintenanceJobs(
   jobNames: readonly string[],
 ): MaintenanceJobSelection {
   return {
+    connectionHealth: jobNames.includes(
+      JOB_NAME.applyConnectionHealthObservation,
+    ),
     reconciliation: jobNames.includes(JOB_NAME.reconcilePreviewAttempt),
     notification: jobNames.includes(JOB_NAME.deliverRunFailureNotification),
     unknownOutcome: jobNames.includes(JOB_NAME.reconcileUnknownOutcome),
@@ -186,6 +192,7 @@ function selectMaintenanceJobs(
 
 function hasMaintenanceJobs(jobs: MaintenanceJobSelection): boolean {
   return (
+    jobs.connectionHealth ||
     jobs.reconciliation ||
     jobs.notification ||
     jobs.unknownOutcome ||

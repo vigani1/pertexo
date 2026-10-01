@@ -40,6 +40,7 @@ import {
   createNodeRegistry,
   bindRegistryRelease,
   type NodeExecutorRegistration,
+  type NodeConnectionHealthObservation,
 } from '../src/server.js';
 
 const definition: DefinitionIdentity = Object.freeze({
@@ -1209,6 +1210,40 @@ describe('node-sdk exact server registry', () => {
       NodeExecutionRuntimeRequiredError,
     );
   });
+
+  it.each([
+    { kind: 'healthy' },
+    {
+      kind: 'reauthorization_required',
+      reasonCode: 'connection.slack_token_revoked',
+    },
+  ] satisfies readonly NodeConnectionHealthObservation[])(
+    'forwards optional synchronous health capture without changing ABI 2 results %#',
+    async (observation) => {
+      const { registryFor, request, runtime } = dispatchAwareFixture();
+      const observeConnectionHealth =
+        vi.fn<(value: NodeConnectionHealthObservation) => void>();
+      const registry = registryFor(async (invocation) => {
+        await invocation.runtime?.beforeDispatch();
+        invocation.runtime?.observeConnectionHealth?.(observation);
+        return { ok: true };
+      });
+      await expect(
+        registry.execute({
+          ...request,
+          runtime: { ...runtime, observeConnectionHealth },
+        }),
+      ).resolves.toEqual({ kind: 'succeeded', output: { ok: true } });
+      expect(observeConnectionHealth).toHaveBeenCalledExactlyOnceWith(
+        observation,
+      );
+      await expect(registry.execute(request)).resolves.toEqual({
+        kind: 'succeeded',
+        output: { ok: true },
+      });
+      expect(observeConnectionHealth).toHaveBeenCalledOnce();
+    },
+  );
 
   it('rejects ABI 2 completion without a durable marker', async () => {
     const { registryFor, request } = dispatchAwareFixture();

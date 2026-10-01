@@ -11,17 +11,20 @@ export type TestPhase = 'idle' | 'running' | 'ok' | 'failed' | 'unsure';
 
 export type ConnectionStatusWord = Readonly<{
   tone: StatusTone;
-  label: 'Active' | 'Reconnect' | 'Revoked';
+  label: 'Unknown' | 'Healthy' | 'Needs reauthorization' | 'Revoked';
 }>;
 
 export function describeConnectionStatus(
   status: ConnectionResponse['status'],
+  health?: ConnectionResponse['health'],
 ): ConnectionStatusWord {
   switch (status) {
     case 'active':
-      return { tone: 'success', label: 'Active' };
+      return health?.lastHealthyAt == null
+        ? { tone: 'neutral', label: 'Unknown' }
+        : { tone: 'success', label: 'Healthy' };
     case 'reauthorization_required':
-      return { tone: 'attention', label: 'Reconnect' };
+      return { tone: 'attention', label: 'Needs reauthorization' };
     case 'revoked':
       return { tone: 'canceled', label: 'Revoked' };
   }
@@ -29,6 +32,9 @@ export function describeConnectionStatus(
 
 const FAILURE_REASONS: Readonly<Record<string, string>> = {
   'connection.credential_rejected': 'credential rejected',
+  'connection.slack_account_inactive': 'Slack account inactive',
+  'connection.slack_token_expired': 'Slack token expired',
+  'connection.slack_token_revoked': 'Slack token revoked',
   'connection.provider_rate_limited': 'rate limited',
   'connection.provider_unavailable': 'service unavailable',
   'connection.provider_rejected': 'request refused',
@@ -89,8 +95,18 @@ export function describeConnectionHealth(
     };
   if (health.lastErrorCode !== null)
     return {
-      text: `last test failed · ${describeTestFailure(connection.providerKey, health.lastErrorCode)}`,
+      text: `${health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(connection.providerKey, health.lastErrorCode)}`,
       tone: 'attention',
+    };
+  if (
+    health.lastRunObservedAt != null &&
+    health.lastHealthyAt !== null &&
+    (health.lastTestedAt === null ||
+      health.lastRunObservedAt > health.lastTestedAt)
+  )
+    return {
+      text: `healthy run ${formatElapsedTime(health.lastRunObservedAt, now)}`,
+      tone: 'quiet',
     };
   if (health.lastTestedAt === null)
     return { text: 'never tested', tone: 'quiet' };

@@ -14,18 +14,49 @@ external production evidence listed under Phase 7.
 
 The manager accepted [ADR059](./adr/059-connection-health-observations.md) and
 the [F30 plan](./feature-plans/30-connection-health.md) on 2026-10-01, based on
-reviewed F29 head `7561e822`. Implementation is underway on
-`feat/connection-health`; it is not yet implemented or qualified. Scope is Slack run-derived evidence,
+reviewed F29 head `7561e822`. The narrow slice is implemented locally on
+`feat/connection-health`; local qualification passes and independent review
+and release remain open.
+Scope is Slack run-derived evidence,
 version/revision-fenced durable application, safe manual recovery, authorized
 published-version usage, and the existing connections/settings UI. Notices and
 other automatic providers are deferred; production activation is not authorized.
 
 - [x] Reconcile baseline and record signal, ordering, recovery and usage choices.
 - [x] Accept ADR059 and the manager-owned implementation/acceptance plan.
-- [ ] Implement and review contracts, capability security and durable backend.
-- [ ] Implement and review the frontend and real integrated behavior.
-- [ ] Pass local qualification and independent reviews; merge a scoped green PR
-      and inspect natural postmerge checks.
+- [x] Implement contracts, capability security and durable backend with focused
+      real PostgreSQL proof.
+- [x] Implement the frontend and real API/worker/browser behavior.
+- [x] Pass frozen-source local qualification, including full PostgreSQL and
+      enabled HTTP/browser evidence.
+- [ ] Complete independent reviews; merge a scoped green PR and inspect natural
+      postmerge checks.
+
+Focused evidence: 23 run-health PostgreSQL cases, 16 boundary cases and two
+bounded usage cases pass. The boundary executes legal-hold/release, retention
+cascade/command cleanup, late delivery and actual tenant purge, plus exact 0127
+upgrade and ACL/readiness drift. Notification acceptance's bounded lock-and-read
+capability preserves the current secret after concurrent rotation; omitted or
+cross-workspace context yields no rows, and body/execute-grant drift fails
+startup. Interrupted publish, durable publish-mark
+failure and health-application rollback preserve accepted run/attempt snapshots.
+The real controlled-Slack HTTP and browser fixtures each pass one enabled case
+with zero skips; provider calls do not increase across the acknowledged
+worker-runtime restart. This is not an OS process-kill claim. The same-hook
+user/workspace-switch command race is covered; 812 web tests pass. The broad
+unit/build/static gate passed before the final notification capability repair;
+deployment contracts (61 cases), browser-safety probes (seven cases) and the
+non-artifact API service cohort (86 cases, zero skips) pass. Frozen-source full
+PostgreSQL integration with coverage passes 107 files / 795 cases with zero skips;
+the final-built HTTP and browser cases also pass. Final `pnpm check` and
+`pnpm test:coverage` pass: 24 source-bound cohorts, zero unreviewed risk branches
+and 388 reviewed residual branches across 211 selected files. Four reachable
+arms gained tests; two now-covered reviews were removed and one unchanged
+defensive fingerprint was refreshed, with no threshold/exclusion relaxation.
+Implementation commits, qualified-main integration and owned-service cleanup
+are still pending.
+Production mode remains `off`; no provider traffic outside owned fixtures is
+authorized.
 
 ### F29 — queue-only workflow concurrency
 
@@ -228,7 +259,7 @@ cleanup; the service-backed qualification above remains explicitly pre-cleanup.
 | Phase 5 — orchestration slice | Complete | ADRs 008, 017–022; branching, parallelism, retry/wait, notification, and recovery matrix |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014, 023–026; provider, webhook, schedule, retained-history, and rollout evidence |
 | Phase 7 — production operations | **In progress** | Repository implementation is qualified locally; external deployment, provider, load, recovery, telemetry, and pager evidence remains open |
-| F29 — queue-only workflow concurrency | **In progress** | ADR058 implementation and real PostgreSQL/HTTP/browser proofs; manager review and release qualification remain open |
+| F29 — queue-only workflow concurrency | Qualified | ADR058 queue-only slice, independent reviews, PR138 exact-head and natural main CI/CodeQL; skip overflow deferred |
 
 The 0A–0E rows subdivide the plan's single Phase 0 and do not change its
 authoritative scope. All accepted architecture decisions remain under

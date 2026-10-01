@@ -5,6 +5,7 @@ import {
   connectionResponseSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
+  connectionUsageResponseSchema,
   slackChannelLookupResponseSchema,
   type ConnectionCreateRequest,
   type ConnectionListResponse,
@@ -12,6 +13,7 @@ import {
   type ConnectionRotateSecretRequest,
   type ConnectionTestRequest,
   type ConnectionTestResponse,
+  type ConnectionUsageResponse,
   type SlackChannelLookupResponse,
 } from '@pertexo/contracts/schemas/connections';
 import type { ApiClient } from '@/lib/api/client';
@@ -34,6 +36,23 @@ const decodeConnection = {
   kind: 'json',
   decode: (value: unknown) => connectionResponseSchema.parse(value),
 } as const;
+
+export function getConnectionUsagePage(
+  apiClient: ApiClient,
+  workspaceId: string,
+  connectionId: string,
+  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
+): Promise<ConnectionUsageResponse> {
+  const query = searchParams({ limit: '50', after: input.after });
+  return apiClient.request({
+    path: `${connectionPath(workspaceId, connectionId)}/usage?${query}`,
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => connectionUsageResponseSchema.parse(value),
+    },
+  });
+}
 
 export function getConnectionsPage(
   apiClient: ApiClient,

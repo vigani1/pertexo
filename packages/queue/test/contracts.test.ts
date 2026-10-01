@@ -72,6 +72,15 @@ describe('versioned queue contracts', () => {
   it('parses every supported identifier-only job', () => {
     const jobs: readonly [string, unknown][] = [
       [
+        JOB_NAME.applyConnectionHealthObservation,
+        {
+          schemaVersion: 1,
+          workspaceId: IDS.workspaceId,
+          observationId: IDS.evidenceCommandId,
+          outboxEventId: IDS.outboxEventId,
+        },
+      ],
+      [
         JOB_NAME.deliverWorkspaceInvitation,
         {
           schemaVersion: 1,

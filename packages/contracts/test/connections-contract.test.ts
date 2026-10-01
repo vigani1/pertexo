@@ -9,6 +9,7 @@ import {
   connectionResponseSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
+  connectionUsageResponseSchema,
   httpHeaderCredentialSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
@@ -231,6 +232,46 @@ describe('connection public contracts', () => {
     );
   });
 
+  it('distinguishes run health from tests and rejects private usage fields', () => {
+    expect(
+      connectionResponseSchema.parse({
+        ...connection,
+        health: {
+          ...connection.health,
+          lastRunObservedAt: '2026-10-01T00:00:00.000Z',
+          lastHealthTransitionAt: null,
+          lastHealthTransitionSource: 'run',
+        },
+      }).health.lastTestedAt,
+    ).toBeNull();
+    const item = {
+      workflowId: connection.id,
+      workflowName: 'Published workflow',
+      workflowLifecycleStatus: 'active',
+      workflowVersionId: connection.workspaceId,
+      versionNumber: 1,
+      isCurrentPublication: true,
+      operationKeys: ['send_message'],
+    };
+    expect(
+      connectionUsageResponseSchema.parse({ items: [item], nextCursor: null })
+        .items,
+    ).toHaveLength(1);
+    for (const key of ['secretVersionId', 'credential', 'graph'])
+      expect(
+        connectionUsageResponseSchema.safeParse({
+          items: [{ ...item, [key]: 'private' }],
+          nextCursor: null,
+        }).success,
+      ).toBe(false);
+    expect(
+      connectionUsageResponseSchema.safeParse({
+        items: Array.from({ length: 101 }, () => item),
+        nextCursor: null,
+      }).success,
+    ).toBe(false);
+  });
+
   it('publishes strict secret-free responses and the intended operations', () => {
     expect(
       connectionResponseSchema.safeParse({
@@ -256,6 +297,7 @@ describe('connection public contracts', () => {
     );
     expect(Object.keys(connectionsOpenApiDocument.paths)).toEqual([
       '/v1/workspaces/{workspaceId}/connections',
+      '/v1/workspaces/{workspaceId}/connections/{connectionId}/usage',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/secret',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/test',

@@ -21,6 +21,7 @@ import {
   serializeConnectionSnapshot,
 } from './connection-persistence.js';
 import { requireConnectionManager } from './connection-authority.js';
+import { rotateConnectionHealth } from './connection-health-transitions.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
@@ -222,13 +223,11 @@ export function createConnectionSecretPersistence(
               actorId,
             ],
           );
-          const updated = await client.query<Record<string, unknown>>(
-            `update app.connections
-             set current_secret_version_id = $1, status = 'active',
-                 last_error_code = null, updated_at = transaction_timestamp()
-             where workspace_id = $2 and id = $3
-             returning *`,
-            [secretVersionId, workspaceId, connectionId],
+          const updated = await rotateConnectionHealth(
+            client,
+            workspaceId,
+            connectionId,
+            secretVersionId,
           );
           await client.query(
             `insert into app.connection_events

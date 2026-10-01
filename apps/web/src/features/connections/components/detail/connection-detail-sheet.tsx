@@ -16,6 +16,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import { describeReadError, isNotFound } from '@/lib/api/api-error-copy';
 import { cn } from '@/lib/utils';
+import { ReadFailure } from '@/components/patterns/read-failure';
+import { connectionAccessLost } from '../../connection-access';
 import type { ConnectionMutationScope } from '../../connections.mutations';
 import { connectionDetailQueryOptions } from '../../connections.queries';
 import {
@@ -32,18 +34,72 @@ import { ProviderTile } from '../provider-tile';
 import { ConnectionFacts } from './connection-facts';
 import { ReplaceCredentialForm } from './replace-credential-form';
 import { RevokeConnectionDialog } from './revoke-connection-dialog';
+import { ConnectionUsage } from './connection-usage';
 
 type Mode = 'overview' | 'test' | 'replace';
+
+function ConnectionReadState({
+  error,
+  failed,
+  retrying,
+  onRetry,
+}: Readonly<{
+  error: unknown;
+  failed: boolean;
+  retrying: boolean;
+  onRetry: () => void;
+}>) {
+  const missing = failed && isNotFound(error);
+  return (
+    <>
+      <SheetHeader>
+        <SheetTitle>
+          {missing ? 'Connection not found' : 'Connection'}
+        </SheetTitle>
+        <SheetDescription>
+          {failed ? (
+            missing ? (
+              'This connection doesn’t exist, or you don’t have access to it.'
+            ) : (
+              describeReadError(error, 'This connection')
+            )
+          ) : (
+            <span className="skeleton-wait">Loading…</span>
+          )}
+        </SheetDescription>
+      </SheetHeader>
+      <SheetBody className="flex flex-col gap-3">
+        {failed ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="self-start"
+            disabled={retrying}
+            onClick={onRetry}
+          >
+            Retry
+          </Button>
+        ) : (
+          <>
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-24" />
+          </>
+        )}
+      </SheetBody>
+    </>
+  );
+}
 
 export type ConnectionPermissions = Readonly<{
   canTest: boolean;
   canManage: boolean;
+  canReadUsage?: boolean;
 }>;
 
 function ConnectionState({
   connection,
 }: Readonly<{ connection: ConnectionResponse }>) {
-  const status = describeConnectionStatus(connection.status);
+  const status = describeConnectionStatus(connection.status, connection.health);
   const health = describeConnectionHealth(connection);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -81,7 +137,8 @@ function OverviewActions({
         <Notice tone="warning" title="This connection needs reconnecting.">
           {PROVIDERS[connection.providerKey].name} stopped accepting its{' '}
           {PROVIDERS[connection.providerKey].credential}. Replace it to get the
-          steps that use it working again.
+          steps that use it working again, or test it to check whether access
+          has been restored.
         </Notice>
       ) : null}
       <div className="flex flex-wrap gap-2">
@@ -153,9 +210,17 @@ function DetailBody({
           />
           <Separator />
           <ConnectionFacts connection={connection} />
+          <Separator />
+          <ConnectionUsage
+            scope={scope}
+            connectionId={connection.id}
+            canRead={permissions.canReadUsage ?? false}
+          />
         </>
       ) : null}
-      {mode === 'test' ? (
+      {mode === 'test' &&
+      permissions.canTest &&
+      connection.status !== 'revoked' ? (
         <>
           <ConnectionTestPanel
             provider={connection.providerKey}
@@ -175,7 +240,9 @@ function DetailBody({
           </Button>
         </>
       ) : null}
-      {mode === 'replace' ? (
+      {mode === 'replace' &&
+      permissions.canManage &&
+      connection.status !== 'revoked' ? (
         <ReplaceCredentialForm
           scope={scope}
           connection={connection}
@@ -213,7 +280,11 @@ export function ConnectionDetailSheet({
     enabled: connectionId !== undefined,
     ...(placeholder === undefined ? {} : { placeholderData: placeholder }),
   });
-  const connection = connectionId === undefined ? undefined : detail.data;
+  const connection =
+    connectionId === undefined ||
+    (detail.isError && connectionAccessLost(detail.error))
+      ? undefined
+      : detail.data;
 
   return (
     <Sheet
@@ -224,32 +295,12 @@ export function ConnectionDetailSheet({
     >
       <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
         {connection === undefined ? (
-          <>
-            <SheetHeader>
-              <SheetTitle>
-                {detail.isError && isNotFound(detail.error)
-                  ? 'Connection not found'
-                  : 'Connection'}
-              </SheetTitle>
-              <SheetDescription>
-                {detail.isError ? (
-                  isNotFound(detail.error) ? (
-                    'This connection doesn’t exist, or you don’t have access to it.'
-                  ) : (
-                    describeReadError(detail.error, 'This connection')
-                  )
-                ) : (
-                  <span className="skeleton-wait">Loading…</span>
-                )}
-              </SheetDescription>
-            </SheetHeader>
-            {detail.isError ? null : (
-              <SheetBody className="flex flex-col gap-3">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-24" />
-              </SheetBody>
-            )}
-          </>
+          <ConnectionReadState
+            error={detail.error}
+            failed={detail.isError}
+            retrying={detail.isFetching}
+            onRetry={() => void detail.refetch()}
+          />
         ) : (
           <>
             <SheetHeader className="flex-row items-center gap-3">
@@ -267,6 +318,18 @@ export function ConnectionDetailSheet({
               connection={connection}
               permissions={permissions}
             />
+            {detail.isError ? (
+              <SheetBody>
+                <ReadFailure
+                  resource="This connection"
+                  error={detail.error}
+                  showing={true}
+                  updatedAt={detail.dataUpdatedAt}
+                  retrying={detail.isRefetching}
+                  onRetry={() => void detail.refetch()}
+                />
+              </SheetBody>
+            ) : null}
           </>
         )}
       </SheetContent>

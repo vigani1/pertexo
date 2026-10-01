@@ -18,6 +18,11 @@ import {
   serializeStoredExecutionValueV1,
 } from '../stored-execution-value.js';
 
+import {
+  assertConnectionHealthReplay,
+  persistConnectionHealthObservation,
+} from './node-attempt-connection-health.js';
+
 type CompletionInput = z.output<typeof completionSchema>;
 type ExecutorOutcome = Extract<
   CompletionInput['outcome'],
@@ -120,6 +125,7 @@ async function duplicateCompletion(
   ) {
     return undefined;
   }
+  await assertConnectionHealthReplay(client, input);
   const persistedOutput =
     row.output_ref === null
       ? null
@@ -371,6 +377,7 @@ export async function applyNodeAttemptCompletion(
     throw new NodeAttemptReconciliationRequiredError();
   assertActiveLease(input, row, receipt);
   await updateAttempt(client, input, serializedOutput, fields);
+  await persistConnectionHealthObservation(client, input);
   if (fields.executorOutcome !== undefined) {
     return commitAndReceipt(client, input);
   }

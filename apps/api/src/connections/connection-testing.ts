@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { ConnectionTestOutcome } from '@pertexo/database/api';
 import {
   ConnectionSecretEncryptionError,
+  classifySlackConnectionHealth,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
 } from '@pertexo/integrations/server';
@@ -262,7 +263,17 @@ function slackTestOutcome(
         reauthorizationRequired: false,
       });
     case 'http_failure':
-      return responseOutcome(result.status);
+      return Object.freeze({
+        ok: false,
+        httpStatus: result.status,
+        reauthorizationRequired: false,
+        errorCode:
+          result.status === 429
+            ? 'connection.provider_rate_limited'
+            : result.status >= 500
+              ? 'connection.provider_unavailable'
+              : 'connection.provider_rejected',
+      });
     case 'invalid_response':
       return Object.freeze({
         ok: false,
@@ -271,19 +282,15 @@ function slackTestOutcome(
         reauthorizationRequired: false,
       });
     case 'rejected': {
-      const rejected = new Set([
-        'account_inactive',
-        'invalid_auth',
-        'not_authed',
-        'token_revoked',
-      ]);
+      const observation = classifySlackConnectionHealth(result);
+      const rejected = observation?.kind === 'reauthorization_required';
       return Object.freeze({
         ok: false,
         httpStatus: 200,
-        errorCode: rejected.has(result.error)
-          ? 'connection.credential_rejected'
+        errorCode: rejected
+          ? observation.reasonCode
           : 'connection.provider_rejected',
-        reauthorizationRequired: rejected.has(result.error),
+        reauthorizationRequired: rejected,
       });
     }
   }

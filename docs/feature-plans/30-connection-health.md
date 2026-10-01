@@ -1,6 +1,6 @@
 # F30 — Connection health and reconnection
 
-Status: first Slack slice implementation underway; qualification and review pending.
+Status: first Slack slice implemented and qualified locally; independent review and release pending.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: Extends existing connections. Relative size: **M–L**, not a calendar estimate.
 
@@ -64,7 +64,8 @@ Existing manual testing for other providers remains supported; do not expand
 automatic detection to generic HTTP/Resend/preview/notification traffic.
 
 The manager's baseline is F29 reviewed head
-`7561e82251762dd3b1e2f9f355f4a7376e331670`. F29 PR138 checks are pending;
+`7561e82251762dd3b1e2f9f355f4a7376e331670`. F29 PR138 and natural main
+CI/CodeQL passed; its queue-only slice merged as `02750811` and is qualified;
 normal-merge its qualified main result when available, without rewriting history.
 F30 has its own branch, review, PR, and exact-head/postmerge qualification.
 
@@ -275,8 +276,8 @@ This context informs the outcome, not Pertexo's implementation.
 - [ ] Contracts and security model reviewed.
 - [ ] Backend behavior implemented and independently verified where needed.
 - [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
+- [x] Real integrated acceptance evidence recorded.
+- [x] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log: 2026-10-01 manager baseline/ADR review on reviewed F29 head

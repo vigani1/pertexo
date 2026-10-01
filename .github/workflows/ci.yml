@@ -290,6 +290,24 @@ jobs:
           name: workflow-concurrency-browser-report
           path: artifacts/workflow-concurrency-browser-gates.json
           if-no-files-found: error
+      - name: Run and validate the real connection health browser journey
+        env:
+          CONNECTION_HEALTH_BROWSER_INTEGRATION: 'true'
+          CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
+        run: |
+          mkdir -p artifacts
+          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
+            test/connection-health-browser.integration.test.ts \
+            --reporter=default --reporter=json --outputFile=../../artifacts/connection-health-browser-gates.json
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
+            artifacts/connection-health-browser-gates.json 'Connection health browser integration gate' 1
+      - name: Upload connection health browser integration report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: connection-health-browser-report
+          path: artifacts/connection-health-browser-gates.json
+          if-no-files-found: error
       - name: Stop disposable live browser dependencies
         if: always()
         run: docker compose down -v --remove-orphans
@@ -434,6 +452,8 @@ jobs:
           esac
           test "$(docker compose exec -T redis redis-cli --raw --no-auth-warning -a "$REDIS_PASSWORD" ping)" = PONG
       - name: Run real PostgreSQL, Redis, and object-store integration suites
+        env:
+          CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
         run: |
           set -euo pipefail
           mkdir -p artifacts
@@ -453,6 +473,7 @@ jobs:
             --exclude test/editor-browser.integration.test.ts \
             --exclude test/usage-browser.integration.test.ts \
             --exclude test/workflow-concurrency-browser.integration.test.ts \
+            --exclude test/connection-health-browser.integration.test.ts \
             --reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json
       - name: Prove new regression tests fail under selected mutations
         run: pnpm mutation:check

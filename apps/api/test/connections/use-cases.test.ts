@@ -532,7 +532,7 @@ describe('connection testing use case', () => {
     [{ kind: 'invalid_response' }, 'connection.provider_invalid_response'],
     [
       { kind: 'rejected', error: 'invalid_auth' },
-      'connection.credential_rejected',
+      'connection.provider_rejected',
     ],
     [
       { kind: 'rejected', error: 'team_disabled' },

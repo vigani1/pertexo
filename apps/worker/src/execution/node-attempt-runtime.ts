@@ -37,6 +37,7 @@ import {
 } from '@pertexo/workflow-engine';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
+import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
 import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,
@@ -90,6 +91,7 @@ type PreviewAttemptRuntimeDependency = Readonly<{
 }>;
 
 export type NodeAttemptRuntimeOptions = Readonly<{
+  connectionRunHealthMode?: ConnectionRunHealthMode;
   artifactStore?: DualRegionArtifactStoreConfig;
   connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
   database: DatabaseConfig;
@@ -319,6 +321,7 @@ async function createProductionNodeAttemptRuntime(
   return {
     ...(capabilityRuntime === undefined ? {} : { capabilityRuntime }),
     handler: createNodeAttemptHandler({
+      connectionRunHealthMode: options.connectionRunHealthMode ?? 'off',
       engine,
       heartbeatIntervalMillis: options.heartbeatIntervalMillis,
       leaseDurationSeconds: options.leaseDurationSeconds,

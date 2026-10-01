@@ -483,7 +483,7 @@ describe('connection provider outcome projection', () => {
       {
         ok: false,
         httpStatus: 200,
-        errorCode: 'connection.credential_rejected',
+        errorCode: 'connection.slack_account_inactive',
         reauthorizationRequired: true,
       },
     ],
@@ -493,8 +493,8 @@ describe('connection provider outcome projection', () => {
       {
         ok: false,
         httpStatus: 200,
-        errorCode: 'connection.credential_rejected',
-        reauthorizationRequired: true,
+        errorCode: 'connection.provider_rejected',
+        reauthorizationRequired: false,
       },
     ],
     [
@@ -503,8 +503,8 @@ describe('connection provider outcome projection', () => {
       {
         ok: false,
         httpStatus: 200,
-        errorCode: 'connection.credential_rejected',
-        reauthorizationRequired: true,
+        errorCode: 'connection.provider_rejected',
+        reauthorizationRequired: false,
       },
     ],
     [
@@ -513,8 +513,48 @@ describe('connection provider outcome projection', () => {
       {
         ok: false,
         httpStatus: 200,
-        errorCode: 'connection.credential_rejected',
+        errorCode: 'connection.slack_token_revoked',
         reauthorizationRequired: true,
+      },
+    ],
+    [
+      'token expired',
+      { kind: 'rejected', error: 'token_expired' },
+      {
+        ok: false,
+        httpStatus: 200,
+        errorCode: 'connection.slack_token_expired',
+        reauthorizationRequired: true,
+      },
+    ],
+    [
+      'generic unauthorized',
+      { kind: 'http_failure', status: 401 },
+      {
+        ok: false,
+        httpStatus: 401,
+        errorCode: 'connection.provider_rejected',
+        reauthorizationRequired: false,
+      },
+    ],
+    [
+      'generic forbidden',
+      { kind: 'http_failure', status: 403 },
+      {
+        ok: false,
+        httpStatus: 403,
+        errorCode: 'connection.provider_rejected',
+        reauthorizationRequired: false,
+      },
+    ],
+    [
+      'generic HTTP throttle',
+      { kind: 'http_failure', status: 429 },
+      {
+        ok: false,
+        httpStatus: 429,
+        errorCode: 'connection.provider_rate_limited',
+        reauthorizationRequired: false,
       },
     ],
     [

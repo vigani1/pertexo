@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
 
+import {
+  connectionHealthSnapshotSchema,
+  deserializeConnectionHealthMetadata,
+  mapConnectionHealthMetadata,
+} from './connection-health-metadata.js';
+
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -25,7 +31,7 @@ export const identifierSchema = z
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);
 const requestIdentifierSchema = z.string().min(1).max(128);
-export const errorCodeSchema = z
+const errorCodeSchema = z
   .string()
   .min(1)
   .max(128)
@@ -96,6 +102,9 @@ export type ConnectionRecord = Readonly<{
   lastTestedAt: Date | null;
   lastHealthyAt: Date | null;
   lastErrorCode: string | null;
+  lastRunObservedAt?: Date | null;
+  lastHealthTransitionAt?: Date | null;
+  lastHealthTransitionSource?: 'run' | 'test' | 'rotation' | 'revoke' | null;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -206,21 +215,6 @@ export type AssertConnectionSecretCurrentInput = Readonly<{
   signal?: AbortSignal;
 }>;
 
-export type RecordConnectionHealthInput = RequestMetadata &
-  Readonly<{
-    workspaceId: string;
-    actorKind: 'user' | 'worker' | 'system';
-    actorId: string;
-    connectionId: string;
-    result:
-      | Readonly<{ ok: true }>
-      | Readonly<{
-          ok: false;
-          errorCode: string;
-          reauthorizationRequired?: boolean;
-        }>;
-  }>;
-
 export type ConnectionTestOutcome =
   | Readonly<{ ok: true; httpStatus: number }>
   | Readonly<{
@@ -320,9 +314,6 @@ export interface ConnectionDatabase {
   assertConnectionSecretCurrent(
     input: AssertConnectionSecretCurrentInput,
   ): Promise<void>;
-  recordConnectionHealth(
-    input: RecordConnectionHealthInput,
-  ): Promise<ConnectionRecord>;
   startConnectionTest(
     input: StartConnectionTestInput,
   ): Promise<StartConnectionTestResult>;
@@ -432,6 +423,7 @@ export function mapConnection(
       row.last_error_code === null
         ? null
         : errorCodeSchema.parse(row.last_error_code),
+    ...mapConnectionHealthMetadata(row),
     createdBy: uuidSchema.parse(row.created_by),
     createdAt: z.date().parse(row.created_at),
     updatedAt: z.date().parse(row.updated_at),
@@ -462,7 +454,15 @@ export async function withConnectionTransaction<T>(
     actorId === undefined
       ? { workspaceId }
       : { workspaceId, actorId: identifierSchema.parse(actorId) },
-    (client) => operation(client, workspaceId),
+    async (client) => {
+      await client.query(
+        "select set_config('app.connection_health_protocol','1',true)",
+      );
+      await client.query('select app.lock_workspace_run_admission($1)', [
+        workspaceId,
+      ]);
+      return operation(client, workspaceId);
+    },
     options,
   );
 }
@@ -532,6 +532,7 @@ const durableConnectionSnapshotSchema = z
     lastTestedAt: z.iso.datetime().nullable(),
     lastHealthyAt: z.iso.datetime().nullable(),
     lastErrorCode: errorCodeSchema.nullable(),
+    ...connectionHealthSnapshotSchema.shape,
     createdBy: z.uuid(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
@@ -551,6 +552,7 @@ function durableConnectionSnapshot(value: unknown): ConnectionRecord | null {
       parsed.data.lastHealthyAt === null
         ? null
         : new Date(parsed.data.lastHealthyAt),
+    ...deserializeConnectionHealthMetadata(parsed.data),
     createdAt: new Date(parsed.data.createdAt),
     updatedAt: new Date(parsed.data.updatedAt),
   });
@@ -581,6 +583,9 @@ export function serializeConnectionSnapshot(
     ...connection,
     lastTestedAt: connection.lastTestedAt?.toISOString() ?? null,
     lastHealthyAt: connection.lastHealthyAt?.toISOString() ?? null,
+    lastRunObservedAt: connection.lastRunObservedAt?.toISOString() ?? null,
+    lastHealthTransitionAt:
+      connection.lastHealthTransitionAt?.toISOString() ?? null,
     createdAt: connection.createdAt.toISOString(),
     updatedAt: connection.updatedAt.toISOString(),
   });

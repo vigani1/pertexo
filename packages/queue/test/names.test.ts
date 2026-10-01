@@ -31,6 +31,7 @@ describe('queue names', () => {
       expireArtifacts: 'expire-artifacts',
       deliverRunFailureNotification: 'deliver-run-failure-notification',
       deliverWorkspaceInvitation: 'deliver-workspace-invitation',
+      applyConnectionHealthObservation: 'apply-connection-health-observation',
     });
     expect(QUEUE_FOR_JOB).toEqual({
       [JOB_NAME.advanceWorkflowRun]: QUEUE_NAME.workflowCoordinator,
@@ -44,6 +45,7 @@ describe('queue names', () => {
       [JOB_NAME.expireArtifacts]: QUEUE_NAME.maintenance,
       [JOB_NAME.deliverRunFailureNotification]: QUEUE_NAME.maintenance,
       [JOB_NAME.deliverWorkspaceInvitation]: QUEUE_NAME.maintenance,
+      [JOB_NAME.applyConnectionHealthObservation]: QUEUE_NAME.maintenance,
     });
   });
 

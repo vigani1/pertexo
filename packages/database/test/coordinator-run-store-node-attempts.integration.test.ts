@@ -32,6 +32,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
+  workflowA,
 } from './coordinator-run-store.fixtures.js';
 
 /** The input recorded on a node run, as stored. */
@@ -53,26 +54,30 @@ async function claimDispatchAttempt(
     runInput?: unknown;
     sideEffectClass?: 'safe' | 'idempotent_with_key' | 'unsafe';
     workerId?: string;
+    workflowVersionId?: string;
   }> = {},
 ) {
+  const workflowVersionId = options.workflowVersionId ?? versionA;
   const runId = await insertRun({
+    workflowVersionId,
     inputRef: {
       schemaVersion: 1,
       kind: 'inline',
       value: options.runInput ?? { nodeId },
     },
   });
-  const invocationKey = `${versionA}|${nodeId}|b:|i:`;
+  const invocationKey = `${workflowVersionId}|${nodeId}|b:|i:`;
   const committed = await ownedDeliveryStore.commitAdvancePlan({
     workspaceId: workspaceA,
     runId,
-    workflowVersionId: versionA,
+    workflowVersionId,
     signal: new AbortController().signal,
     plan: {
       expectedRevision: 0,
       expectedNextEventSequence: 2,
       consumedThroughEventSequence: 1,
       checkpoint: checkpoint({
+        workflowVersionId,
         revision: 1,
         runStatus: 'running',
         nextEventSequence: 4,
@@ -208,6 +213,39 @@ function dispatchBinding(
   return `${providerKey}:v1:sha256:${createHash('sha256')
     .update(`${providerKey}\0${connectionId}\0${secretVersionId}`)
     .digest('hex')}`;
+}
+
+async function seedSlackDispatchPublication(connectionId: string) {
+  const versionId = randomUUID();
+  await asOwner(workspaceA, (client) =>
+    client.query(
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,
+      graph_json,checksum,executable_schema_version,executable_json,compatibility_release_epoch,published_by)
+     select $1,$2,$3,coalesce(max(version_number),0)+1,1,'{}'::jsonb,$4,2,$5::jsonb,1,$6
+     from app.workflow_versions where workspace_id=$2 and workflow_id=$3`,
+      [
+        versionId,
+        workspaceA,
+        workflowA,
+        `wf:v2:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
+        JSON.stringify({
+          schemaVersion: 2,
+          graph: {
+            nodes: [
+              {
+                id: 'dispatch-slack',
+                definition: { key: 'slack.send_message', version: 1 },
+                connectionRefs: { slack_bot_token: connectionId },
+              },
+            ],
+            edges: [],
+          },
+        }),
+        actorId,
+      ],
+    ),
+  );
+  return versionId;
 }
 
 describe('Coordinator node-attempt persistence invariants', () => {
@@ -1079,7 +1117,10 @@ describe('Coordinator node-attempt persistence invariants', () => {
         ],
       );
       await client.query(
-        `update app.connections set current_secret_version_id=$3
+        "select set_config('app.connection_health_protocol','1',true)",
+      );
+      await client.query(
+        `update app.connections set current_secret_version_id=$3,health_revision=health_revision+1
            where workspace_id=$1 and id=$2`,
         [workspaceA, connectionId, nextSecretVersionId],
       );
@@ -1092,14 +1133,16 @@ describe('Coordinator node-attempt persistence invariants', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(NodeAttemptConnectionFenceError);
-    await asOwner(workspaceA, (client) =>
-      client.query(
-        `update app.connections
-           set current_secret_version_id=$3,status='revoked'
+    await asOwner(workspaceA, async (client) => {
+      await client.query(
+        "select set_config('app.connection_health_protocol','1',true)",
+      );
+      await client.query(
+        `update app.connections set status='revoked',health_revision=health_revision+1
            where workspace_id=$1 and id=$2`,
-        [workspaceA, connectionId, secretVersionId],
-      ),
-    );
+        [workspaceA, connectionId],
+      );
+    });
     await expect(
       nodeAttemptStore.markDispatched({
         lease: claimed.lease,
@@ -1452,9 +1495,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
       { providerKey: 'http', authType: 'http_headers' },
       { providerKey: 'slack', authType: 'slack_bot_token' },
     ] as const) {
-      const lease = await claimDispatchAttempt(
-        `dispatch-${target.providerKey}`,
-      );
       const connectionId = randomUUID();
       const secretVersionId = randomUUID();
       const rotatedSecretVersionId = randomUUID();
@@ -1464,6 +1504,17 @@ describe('Coordinator node-attempt persistence invariants', () => {
         authType: target.authType,
         secretVersionId,
       });
+      const lease = await claimDispatchAttempt(
+        `dispatch-${target.providerKey}`,
+        {
+          ...(target.providerKey === 'slack'
+            ? {
+                workflowVersionId:
+                  await seedSlackDispatchPublication(connectionId),
+              }
+            : {}),
+        },
+      );
       const connectionFence = {
         connectionId,
         expectedProviderKey: target.providerKey,
@@ -1506,7 +1557,10 @@ describe('Coordinator node-attempt persistence invariants', () => {
           ],
         );
         await client.query(
-          `update app.connections set current_secret_version_id=$3
+          "select set_config('app.connection_health_protocol','1',true)",
+        );
+        await client.query(
+          `update app.connections set current_secret_version_id=$3,health_revision=health_revision+1
              where workspace_id=$1 and id=$2`,
           [workspaceA, connectionId, rotatedSecretVersionId],
         );
@@ -1542,17 +1596,19 @@ describe('Coordinator node-attempt persistence invariants', () => {
         ],
       });
 
-      await asOwner(workspaceA, (client) =>
-        client.query(
-          `update app.connections set current_secret_version_id=$3
-             where workspace_id=$1 and id=$2`,
-          [workspaceA, connectionId, secretVersionId],
-        ),
+      const rotatedFence = {
+        ...connectionFence,
+        secretVersionId: rotatedSecretVersionId,
+      };
+      const rotatedBinding = dispatchBinding(
+        target.providerKey,
+        connectionId,
+        rotatedSecretVersionId,
       );
       const dispatched = await nodeAttemptStore.markDispatched({
         lease,
-        connectionFence,
-        providerDispatchBinding,
+        connectionFence: rotatedFence,
+        providerDispatchBinding: rotatedBinding,
         signal: new AbortController().signal,
       });
       expect(dispatched.dispatchedAt).toBeInstanceOf(Date);
@@ -1570,9 +1626,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
       );
       expect(verified.rows).toHaveLength(1);
       expect(verified.rows[0]?.dispatch_marked_at).toBeInstanceOf(Date);
-      expect(verified.rows[0]?.provider_dispatch_binding).toBe(
-        providerDispatchBinding,
-      );
+      expect(verified.rows[0]?.provider_dispatch_binding).toBe(rotatedBinding);
     }
   }, 30_000);
 

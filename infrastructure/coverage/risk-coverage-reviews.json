@@ -902,9 +902,9 @@
           "branchType": "if",
           "line": 70,
           "column": 4,
-          "sourceFingerprint": "sha256:825024d7dbb0fe2089714db0e921d5063d3ffc5dc7984b49776bb0701969c42c",
+          "sourceFingerprint": "sha256:c771afe1fd3f0df5e770747bed35fa312178abf710ba363893426052c4caac67",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed transport material before it crosses the public API boundary."
+          "justification": "The unchanged UTF-8 length guard handles an undefined codePointAt(0), but primitive-string for-of iteration yields only nonempty characters, so this defensive arm cannot arise from validated transport strings. Its Istanbul span has a null end column and therefore fingerprints the whole file; additive F30 schemas changed that fallback fingerprint without changing this obligation."
         }
       ]
     },
@@ -1471,22 +1471,6 @@
       ]
     },
     {
-      "cohort": "integrations",
-      "file": "packages/integrations/src/slack/executor.ts",
-      "reviews": [
-        {
-          "branchId": "12",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 198,
-          "column": 6,
-          "sourceFingerprint": "sha256:e1982b57042730811f0b3eff6f5dcb8637db27d5880c1722cce850a0bb4886de",
-          "classification": "defensive",
-          "justification": "This residual provider boundary arm normalizes malformed request, response, retry, encryption, stream, or unknown-error material and keeps external I/O failures deterministic and fail closed."
-        }
-      ]
-    },
-    {
       "cohort": "lifecycle-command",
       "file": "apps/lifecycle-command/src/main.ts",
       "reviews": [
@@ -1693,22 +1677,6 @@
           "sourceFingerprint": "sha256:ca4578389ca8669f537a3321f50bbd53ce817b28ba6012a7795bdf6b5c7305e2",
           "classification": "unreachable",
           "justification": "The validated destination store port returns the closed Slack-or-email union, so TypeScript's assertNever default cannot be selected by a conforming adapter."
-        }
-      ]
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "reviews": [
-        {
-          "branchId": "16",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 295,
-          "column": 2,
-          "sourceFingerprint": "sha256:6aec7991dbdad70d8b88a5c6196718bb8445a165d064fda138e6e2c385a9fe51",
-          "classification": "defensive",
-          "justification": "This residual worker arm preserves signal propagation, owned-resource cleanup, readiness state ownership, durable artifact routing, interruption handling, or combined failure reporting at a lifecycle boundary."
         }
       ]
     },

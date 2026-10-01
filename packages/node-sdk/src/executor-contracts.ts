@@ -26,6 +26,17 @@ export interface NodeExecutionInvocation<Config, Input> {
 
 export type NodeSideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
 
+/** Provider-owned evidence only; dispatch persistence determines its target. */
+export type NodeConnectionHealthObservation =
+  | Readonly<{ kind: 'healthy' }>
+  | Readonly<{
+      kind: 'reauthorization_required';
+      reasonCode:
+        | 'connection.slack_account_inactive'
+        | 'connection.slack_token_expired'
+        | 'connection.slack_token_revoked';
+    }>;
+
 export type ResolvedNodeConnection = Readonly<{
   connectionId: string;
   providerKey: string;
@@ -88,6 +99,10 @@ export interface NodeExecutionRuntime {
   readonly providerDispatchUnresolved?: true;
   readonly connections?: NodeConnectionRuntime;
   readonly artifacts?: NodeArtifactRuntime;
+  /** Synchronous, nonthrowing capture only. Never performs persistence or I/O. */
+  readonly observeConnectionHealth?: (
+    observation: NodeConnectionHealthObservation,
+  ) => void;
   beforeDispatch(
     input?: Readonly<{
       connectionFence?: Readonly<{

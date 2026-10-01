@@ -2,7 +2,6 @@ import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
-import { createConnectionHealthPersistence } from './connection-health-persistence.js';
 import {
   createConnectionLookupPersistence,
   type ConnectionLookupDatabase,
@@ -10,6 +9,10 @@ import {
 import { createConnectionManagementPersistence } from './connection-management-persistence.js';
 import { createConnectionResolutionPersistence } from './connection-resolution-persistence.js';
 import { createConnectionReadPersistence } from './connection-read-persistence.js';
+import {
+  createConnectionUsagePersistence,
+  type ConnectionUsageDatabase,
+} from './connection-usage-persistence.js';
 import { createConnectionSecretPersistence } from './connection-secret-persistence.js';
 import { createConnectionTestPersistence } from './connection-test-persistence.js';
 import type {
@@ -25,6 +28,7 @@ export type ApiConnectionDatabase = ConnectionManagementDatabase &
   ConnectionReadDatabase &
   ConnectionTestDatabase &
   ConnectionLookupDatabase &
+  ConnectionUsageDatabase &
   Pick<ConnectionDatabase, 'close'>;
 
 /** Worker resolution capability plus the lifecycle operation owned by its runtime factory. */
@@ -43,6 +47,13 @@ export {
   ConnectionUnavailableError,
 } from './connection-persistence.js';
 export type { ConnectionLookupDatabase } from './connection-lookup-persistence.js';
+export type {
+  ConnectionUsageDatabase,
+  ConnectionUsageRecord,
+  ConnectionUsageCursor,
+  ConnectionUsagePage,
+  ListConnectionUsageInput,
+} from './connection-usage-persistence.js';
 export type {
   AbandonConnectionTestInput,
   AssertConnectionSecretCurrentInput,
@@ -63,7 +74,6 @@ export type {
   FindConnectionRotateReplayInput,
   ListConnectionsInput,
   MarkConnectionTestDispatchedInput,
-  RecordConnectionHealthInput,
   ReadConnectionInput,
   ResolvedConnectionSecretRecord,
   ResolveConnectionSecretInput,
@@ -78,15 +88,15 @@ export type {
 export function createConnectionDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): ConnectionDatabase & ConnectionLookupDatabase {
+): ConnectionDatabase & ConnectionLookupDatabase & ConnectionUsageDatabase {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
     ...createConnectionManagementPersistence(pool),
     ...createConnectionReadPersistence(pool),
+    ...createConnectionUsagePersistence(pool),
     ...createConnectionSecretPersistence(pool),
     ...createConnectionResolutionPersistence(pool),
-    ...createConnectionHealthPersistence(pool),
     ...createConnectionTestPersistence(pool),
     ...createConnectionLookupPersistence(pool),
     close: () => lease.close(),
@@ -101,6 +111,7 @@ export function createApiConnectionDatabase(
   return Object.freeze({
     listConnections: database.listConnections.bind(database),
     readConnection: database.readConnection.bind(database),
+    listConnectionUsage: database.listConnectionUsage.bind(database),
     createConnection: database.createConnection.bind(database),
     findConnectionCreateReplay:
       database.findConnectionCreateReplay.bind(database),
