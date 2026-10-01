@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { parse as parseYaml } from 'yaml';
@@ -51,6 +52,79 @@ jobs:
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
+
+test('routes the real Usage browser journey to an enabled browser-installed gate with strict evidence', async () => {
+  const workflow = parseYaml(
+    await readFile(
+      new URL('../../.github/workflows/ci.yml', import.meta.url),
+      'utf8',
+    ),
+  );
+  const steps = workflow.jobs.browser.steps;
+  const normalize = (command) =>
+    command
+      .replaceAll(/\\\s*\n\s*/gu, ' ')
+      .replaceAll(/\s+/gu, ' ')
+      .trim();
+  const commands = (step) =>
+    typeof step.run === 'string'
+      ? step.run
+          .replaceAll(/\\\s*\n\s*/gu, ' ')
+          .split('\n')
+          .map(normalize)
+      : [];
+  const command =
+    'pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts test/usage-browser.integration.test.ts --reporter=default --reporter=json --outputFile=../../artifacts/usage-browser-gates.json';
+  const runs = steps.filter((step) => commands(step).includes(command));
+  assert.equal(
+    runs.length,
+    1,
+    'the browser job must own the live Usage test exactly once',
+  );
+  const [run] = runs;
+  assert.equal(run.if, undefined);
+  assert.notEqual(run['continue-on-error'], true);
+  assert.equal(run.env.USAGE_BROWSER_INTEGRATION, 'true');
+  assert.ok(
+    commands(run).includes(
+      "node infrastructure/coverage/validate-vitest-gate-report.mjs artifacts/usage-browser-gates.json 'Usage browser integration gate' 1",
+    ),
+  );
+  const prerequisites = steps.slice(0, steps.indexOf(run));
+  for (const prerequisite of [
+    'pnpm --filter @pertexo/web exec playwright install --with-deps chromium firefox webkit',
+    'pnpm --filter @pertexo/api... build',
+    'docker compose up -d --wait postgres redis',
+  ]) {
+    const step = prerequisites.find(
+      (candidate) =>
+        typeof candidate.run === 'string' &&
+        normalize(candidate.run) === prerequisite,
+    );
+    assert.ok(step, `missing live browser prerequisite: ${prerequisite}`);
+    assert.equal(step.if, undefined);
+    assert.notEqual(step['continue-on-error'], true);
+  }
+  assert.equal(
+    workflow.jobs.browser.env.COMPOSE_PROJECT_NAME,
+    'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser',
+  );
+  assert.ok(
+    steps.some(
+      (step) =>
+        step.if === 'always()' &&
+        step.run === 'docker compose down -v --remove-orphans',
+    ),
+  );
+  assert.ok(
+    steps.some(
+      (step) =>
+        step.if === 'always()' &&
+        step.with?.path === 'artifacts/usage-browser-gates.json' &&
+        step.with?.['if-no-files-found'] === 'error',
+    ),
+  );
+});
 
 test('accepts the required local, ordinary-CI, and deliberate exclusion mapping', () => {
   assert.deepEqual(validateCiGatePolicy(fixture()), {

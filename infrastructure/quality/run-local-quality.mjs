@@ -136,6 +136,8 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
       'test/platform/compatibility-rollout.integration.test.ts',
       '--exclude',
       'test/editor-browser.integration.test.ts',
+      '--exclude',
+      'test/usage-browser.integration.test.ts',
       '--reporter=default',
     ],
   }),
@@ -446,8 +448,8 @@ export function assertCiLocalQualityContract(source) {
         step.if === 'always()' &&
         step.run === 'docker compose down -v --remove-orphans',
     );
-  if (cleanupCommands.length !== 3)
-    throw new Error('CI service jobs must retain three exact owned cleanups');
+  if (cleanupCommands.length !== 4)
+    throw new Error('CI service jobs must retain four exact owned cleanups');
   return Object.fromEntries(
     Object.entries(parsed.env).map(([name, value]) => [name, String(value)]),
   );
