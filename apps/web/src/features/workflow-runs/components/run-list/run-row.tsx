@@ -17,6 +17,7 @@ import { RunRowMenu } from '../run-actions/run-row-menu';
 import { RunDurationBar } from '../run-duration-bar';
 import { TriggerLabel } from '../trigger-label';
 import { RUN_ROW_LAYOUT, type RunListVariant } from './run-row-layout';
+import { RunAdmissionBlockers } from '../run-admission-blockers';
 
 /** When a run started: relative, in mono, with the exact time on hover. */
 function StartedAt({
@@ -132,6 +133,10 @@ export function RunRow({
           {failure.reason === undefined ? null : ` · ${failure.reason}`}
         </p>
       )}
+      <RunAdmissionBlockers
+        run={run}
+        className="col-span-2 row-start-4 min-w-0 text-xs text-muted-foreground md:col-start-2 md:col-end-[-1] md:row-start-2"
+      />
       <RunDurationBar
         share={share}
         tone={look.tone}

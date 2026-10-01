@@ -1914,6 +1914,33 @@ architecture discussion every time a feature is added.
 
 ## 16. Function placement and component composition
 
+### Workflow concurrency first slice (ADR 058)
+
+Workflow Settings owns the current operational concurrency policy through the
+existing schema-only authoring contract and `workflow-settings/concurrency.*`
+read/command seams. Read requires `workflow:read`; edits require
+`workflow:update` and an active workspace. Positive limits use the current
+active workspace allowance; clearing a limit remains possible without an
+entitlement. The UI exposes queue-only behavior, not deferred skip or
+queue-length controls.
+
+Commands retain the original revision, body and idempotency key after uncertain
+responses. A typed revision conflict keeps edits and refreshes current authority
+before explicit resubmission. Receipts do not replace current authorized reads.
+Denied settings and run history/detail snapshots are forgotten in Query itself,
+so later transient failures and remounted filter keys cannot resurrect them.
+Ordinary transient failures still show authorized stale data with `StaleLine`.
+
+Run history and detail render only the optional timestamped server blocker
+projection for queued production runs: workspace capacity, workflow capacity or
+an earlier accepted start. No workflow-name lookup, promised start time, new
+status or client-side admission inference is added. Settings explain that
+waiting and reserved starts occupy slots, lowering a cap preserves committed
+occupancy, trigger pause preserves accepted backlog, and start order is not
+completion or external-effect order. Real API/worker/browser acceptance and
+release evidence belong to F29's delivery tracker, not this frontend
+implementation description.
+
 ### Where does a new function go?
 
 Choose by responsibility and consumers, not merely because it is a function. All

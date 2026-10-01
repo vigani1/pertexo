@@ -33,6 +33,7 @@ import {
 import { CopyButton } from '@/components/ui/copy-button';
 import { CancelRunDialog } from '../run-actions/cancel-run-dialog';
 import { ReplayRunDialog } from '../run-actions/replay-run-dialog';
+import { RunAdmissionBlockers } from '../run-admission-blockers';
 
 function MetaFact({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -317,6 +318,10 @@ export function RunHeader({
           nowMs={nowMs}
           workspaceId={workspace.id}
           versionLabel={versionLabel}
+        />
+        <RunAdmissionBlockers
+          run={run}
+          className="mt-3 text-sm text-muted-foreground"
         />
       </div>
       <RunActions

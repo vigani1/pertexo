@@ -1,5 +1,6 @@
 import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { unpausedWorkflowSettings } from '../test/support/auto-pause-fixtures';
+import { defaultConcurrencySettings } from '../test/support/concurrency-fixtures';
 
 // Controlled HTTP fixtures shared by the workflow editor journeys.
 
@@ -113,6 +114,10 @@ export async function installEditorRoutes(
 ) {
   const accessibleWorkspace = options.accessibleWorkspace ?? workspace;
   const definitions = options.definitions ?? [definition];
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/concurrency`,
+    (route) => route.fulfill({ json: defaultConcurrencySettings }),
+  );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/auto-pause`,
     (route) => route.fulfill({ json: unpausedWorkflowSettings }),

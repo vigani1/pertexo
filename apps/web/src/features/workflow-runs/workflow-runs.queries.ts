@@ -3,11 +3,17 @@ import type {
   WorkflowRunStatisticsResponse,
   WorkflowRunStatisticsWindow,
 } from '@pertexo/contracts/schemas/workflow-runs';
-import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import {
+  infiniteQueryOptions,
+  queryOptions,
+  type QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
 import type { RunHistoryFilters } from './model/list/run-search';
 import type { RunStatus } from './model/run-status';
+import { isApiError } from '@/lib/api/api-error';
 import {
   getRunsSince,
   getWorkflowRun,
@@ -62,6 +68,30 @@ export const workflowRunKeys = {
       limit,
     ] as const,
 };
+
+/** Denials revoke snapshots durably, including inactive history filters. */
+async function forgetUnavailableRunReads(
+  client: QueryClient,
+  scope: QueryKey,
+  currentKey: QueryKey,
+  error: unknown,
+): Promise<void> {
+  if (!isApiError(error) || ![401, 403, 404, 409].includes(error.status ?? 0))
+    return;
+  const current = client
+    .getQueryCache()
+    .find({ queryKey: currentKey, exact: true });
+  await client.cancelQueries({
+    queryKey: scope,
+    predicate: (query) => query !== current,
+  });
+  client
+    .getQueryCache()
+    .findAll({ queryKey: scope })
+    .forEach((query) => {
+      query.setState({ data: undefined, dataUpdatedAt: 0 });
+    });
+}
 
 /** One bounded page per status for lists; counts come from statistics. */
 const STATUS_PAGE_SIZE = 100;
@@ -130,13 +160,25 @@ export function workflowRunsInfiniteQueryOptions(
   workspaceId: string,
   filters: RunHistoryFilters,
 ) {
+  const queryKey = workflowRunKeys.history(userId, workspaceId, filters);
   return infiniteQueryOptions({
-    queryKey: workflowRunKeys.history(userId, workspaceId, filters),
-    queryFn: ({ pageParam, signal }) =>
-      getWorkflowRunsPage(apiClient, workspaceId, filters, {
-        ...(pageParam === null ? {} : { after: pageParam }),
-        signal,
-      }),
+    queryKey,
+    queryFn: async ({ pageParam, signal, client }) => {
+      try {
+        return await getWorkflowRunsPage(apiClient, workspaceId, filters, {
+          ...(pageParam === null ? {} : { after: pageParam }),
+          signal,
+        });
+      } catch (error: unknown) {
+        await forgetUnavailableRunReads(
+          client,
+          [...workflowRunKeys.scope(userId, workspaceId), 'history'],
+          queryKey,
+          error,
+        );
+        throw error;
+      }
+    },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -330,10 +372,17 @@ export function workflowRunQueryOptions(
   workspaceId: string,
   runId: string,
 ) {
+  const queryKey = workflowRunKeys.detail(userId, workspaceId, runId);
   return queryOptions({
-    queryKey: workflowRunKeys.detail(userId, workspaceId, runId),
-    queryFn: ({ signal }) =>
-      getWorkflowRun(apiClient, workspaceId, runId, signal),
+    queryKey,
+    queryFn: async ({ signal, client }) => {
+      try {
+        return await getWorkflowRun(apiClient, workspaceId, runId, signal);
+      } catch (error: unknown) {
+        await forgetUnavailableRunReads(client, queryKey, queryKey, error);
+        throw error;
+      }
+    },
     staleTime: 0,
   });
 }

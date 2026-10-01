@@ -14,6 +14,11 @@ retained run activity, with independent snapshots and exact server-window
 drilldowns (ADR 057). It does not introduce billing, an operation meter,
 warnings, quota editing or calendar reporting.
 
+ADR 058's first workflow concurrency slice adds a current queue-only cap to
+workflow Settings and timestamped queued-run blocker explanations. It preserves
+workspace limits and explains grandfathered active/reserved runs. Skip overflow,
+per-trigger defaults and independent workflow queue limits remain deferred.
+
 For the proposed implementation direction, read
 [Frontend architecture and implementation plan](ARCHITECTURE.md). It covers
 folder ownership, API/shared types, Router/Query/Zustand communication, forms,
