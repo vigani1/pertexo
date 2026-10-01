@@ -4,6 +4,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import { workflowRunIdentifierSchema } from '@pertexo/contracts/schemas/workflow-runs';
 import {
   BellIcon,
+  GaugeIcon,
   HomeIcon,
   LayoutGridIcon,
   LogOutIcon,
@@ -44,6 +45,22 @@ export function WorkspaceCommandPalette({
   });
 
   const places: CommandItem[] = [
+    ...(can('run:read')
+      ? [
+          {
+            id: 'usage',
+            label: 'Usage',
+            keywords: 'capacity retained activity limits',
+            icon: <GaugeIcon />,
+            onSelect: () =>
+              void navigate({
+                to: '/w/$workspaceId/settings/usage',
+                params: { workspaceId },
+                search: { window: '24h' },
+              }),
+          },
+        ]
+      : []),
     {
       id: 'home',
       label: 'Home',

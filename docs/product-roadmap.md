@@ -197,7 +197,7 @@ only after its gate is resolved.
 | [F09](feature-plans/09-failure-paths-and-recovery.md) | Workflow-authored failure paths and explicit recovery UX | Existing recovery foundation + new graph behavior | XL | Proposed |
 | [F10](feature-plans/10-human-approvals.md) | Durable human approvals and resume decisions | New cross-stack durable interaction | XL | Proposed |
 | [F11](feature-plans/11-forms-and-resume-input.md) | Hosted forms and structured human input | New trigger/frontend product | L–XL | Proposed |
-| [F12](feature-plans/12-usage-and-insights.md) | Usage, limits and workflow insights without billing | Backend projection + frontend reporting | L | Proposed |
+| [F12](feature-plans/12-usage-and-insights.md) | Usage, limits and workflow insights without billing | Backend projection + frontend reporting | L | First capacity/activity slice locally verified; review/CI pending; warnings/trends deferred |
 | [F13](feature-plans/13-configuration-and-variables.md) | Workspace variables and reusable non-secret configuration | New version-aware configuration | L | Proposed |
 | [F14](feature-plans/14-data-tables.md) | Workflow-owned lookup tables and durable records | New optional storage product | XL | Proposed |
 | [F15](feature-plans/15-synchronous-webhook-responses.md) | Bounded synchronous webhook responses | New opt-in trigger mode | XL | Proposed |

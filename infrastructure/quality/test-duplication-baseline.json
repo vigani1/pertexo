@@ -400,15 +400,15 @@
             "apps/api/test/workflow-runs/http-stack.test.ts"
           ],
           "classification": "false-positive",
-          "reason": "Connection and workflow HTTP stack tests each own an authenticated identity runtime; common session and complete persistence-contract plumbing supports different route modules and authorization assertions.",
+          "reason": "Connection and workflow HTTP stack tests each own an authenticated identity runtime; common session and complete persistence-contract plumbing supports different route modules and authorization assertions. ADR057 workspace-state coverage changes the workflow fixture signature and matched fragment boundaries, not this scenario-local plumbing.",
           "clones": [
             {
-              "hash": "b832ca02c90e7f90579066d1603da362282eac911aa3bfb97b7f821abd7f5edf",
+              "hash": "fd67afba66727b1c6599b10440bafea746463b5cbf57de2d1d510f36c81e819d",
               "maxLines": 26
             },
             {
-              "hash": "42be92cb0ca585cbd505b2437c09387d8533c20b7193f7f9b239b4e877d552d3",
-              "maxLines": 37
+              "hash": "116660aaeb533a93a9b8898d76e33832b8a2c8cad6047dc4c3766cebcf76f6e8",
+              "maxLines": 28
             }
           ]
         },

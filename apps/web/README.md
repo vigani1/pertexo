@@ -8,7 +8,11 @@ the Loom, bounded recent-activity Overview, the bounded workflow editor with
 conflict-safe draft persistence, validation, node preview, typed visual input
 mappings, exact-version publishing, run start, live run detail and
 contract-backed workflow settings/operations, including automatic trigger-pause
-rules, owner-managed workspace defaults and explicit Resume controls.
+rules, owner-managed workspace defaults and explicit Resume controls. The first
+read-only Usage slice separates current execution/artifact capacity from ADR 044
+retained run activity, with independent snapshots and exact server-window
+drilldowns (ADR 057). It does not introduce billing, an operation meter,
+warnings, quota editing or calendar reporting.
 
 For the proposed implementation direction, read
 [Frontend architecture and implementation plan](ARCHITECTURE.md). It covers
@@ -94,6 +98,7 @@ wiring remains deployment-owned.
 | `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.                                            |
 | `src/features/workflow-settings/`     | Versions and compare, lifecycle, published triggers and the current failure-alert choice.                                         |
 | `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                                                      |
+| `src/features/usage/`                 | Read-only current capacity and separate bounded retained activity; no billing or quota editor.                                    |
 | `src/components/ui/`                  | Weft primitives on Base UI: field and validation timing, notice, status, copy, progress button.                                   |
 | `src/components/patterns/`            | Shared compositions: confirm dialog, inline rename, stale line, load more, Core orb, page header, settings section, how it works. |
 | `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors, CSRF cookie adapter and cursor paging.                                    |
@@ -174,7 +179,8 @@ gates recorded in the plan. Workspace creation UI, display-name editing, the
 bounded Overview and visual input mappings are implemented. The selected N1–N3
 and M1 slices now require their planned integrated review. Artifact input upload
 remains gated on a supported artifact-valued node/input contract and its browser
-proof; templates and non-billing usage remain optional decision-gated slices.
+proof; templates and additional non-billing usage insights remain optional
+decision-gated slices beyond the read-only ADR 057 capacity/activity page.
 Payments and billing are outside current scope. Add future surfaces only from
 concrete product demand and existing contracts, following the
 [delivery gates](ARCHITECTURE.md#14-delivery-sequence-and-acceptance-gates) and

@@ -44,6 +44,7 @@ import {
   workspaceMembersInfiniteQueryOptions,
 } from '@/features/workspaces/queries.public';
 import { pageTitle } from './page-title';
+import { parseUsageSearch } from '@/features/usage/usage-search.public';
 import {
   findWorkspace,
   authoringPrefetches,
@@ -428,6 +429,17 @@ export const workspaceSettingsRoute = createRoute({
     () => import('./workspace-settings-route'),
     'WorkspaceSettingsRoute',
   ),
+});
+
+export const usageRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings/usage',
+  staticData: { crumb: 'Usage' },
+  validateSearch: parseUsageSearch,
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Usage', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(() => import('./usage-route'), 'UsageRoute'),
 });
 
 export const workspaceAccountRoute = createRoute({
