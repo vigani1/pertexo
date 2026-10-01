@@ -286,6 +286,16 @@ Evidence log: 2026-10-01 manager baseline/ADR review on reviewed F29 head
 Local qualification passes full repository checks, 795 real PostgreSQL cases,
 86 non-artifact API service cases, the enabled controlled-Slack HTTP/browser
 fixtures, and 24 source-bound coverage cohorts with zero unreviewed risk debt.
+Review repairs `ef5c955d` and `72a32b2f` preserve held replacement credentials,
+retained commands and retry identity on ordinary/idempotency 409s, while retaining
+actual denial clearing. The enabled HTTP proof now abandons a real dispatcher
+publication claim without publish/acknowledgment/release, recreates the runtime,
+and waits for the unchanged 30-second lease to expire naturally. One receipt and
+transition, unchanged accepted run/attempt snapshots and no provider resend are
+asserted. This is an abandoned-ownership proof, not an OS process-kill claim.
+The browser regression remains enabled; 822 web unit and 89 browser cases pass.
+Fresh PostgreSQL coverage repeats all 795 cases with zero skips, and the repaired
+source retains 24 coverage cohorts with zero unreviewed risk debt.
 Owned fixture services/data were cleaned up; production remains off. Backend
 and frontend implementation are locally verified, but their combined tracker
 items above remain open until independent review. Contracts/security review,

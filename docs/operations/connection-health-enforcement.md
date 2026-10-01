@@ -105,7 +105,12 @@ provider bodies. The private source-owned tables are registered as raw SQL.
 Focused real PostgreSQL races, completion reconciliation, durable redelivery,
 ACL/readiness, retention and bounded usage proofs pass. The isolated Slack
 API/worker/HTTP/browser fixture passes with an acknowledged worker-runtime
-restart; this is not an OS process-kill proof. Frozen-source broad qualification
+restart. Its HTTP proof also abandons a real dispatcher's durable health-publication
+claim before the event returns to the publication owner, with no publish,
+acknowledgment or release. The unchanged 30-second lease remains authoritative
+across runtime recreation and expires naturally before recovery. Exactly one
+receipt/transition, unchanged accepted run/attempt state and no provider resend
+are asserted. This is not an OS process-kill proof. Frozen-source broad qualification
 passes; independent review/release remain open in the implementation tracker. Local
 enforce mode is permitted only for owned fixtures; production activation is not
 authorized.

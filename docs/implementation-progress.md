@@ -29,6 +29,8 @@ other automatic providers are deferred; production activation is not authorized.
 - [x] Implement the frontend and real API/worker/browser behavior.
 - [x] Pass frozen-source local qualification, including full PostgreSQL and
       enabled HTTP/browser evidence.
+- [x] Repair the reviewed ordinary-command conflict eviction and prove real
+      abandoned publication ownership recovery after natural lease expiry.
 - [ ] Complete independent reviews; merge a scoped green PR and inspect natural
       postmerge checks.
 
@@ -42,9 +44,17 @@ startup. Interrupted publish, durable publish-mark
 failure and health-application rollback preserve accepted run/attempt snapshots.
 The real controlled-Slack HTTP and browser fixtures each pass one enabled case
 with zero skips; provider calls do not increase across the acknowledged
-worker-runtime restart. This is not an OS process-kill claim. The same-hook
-user/workspace-switch command race is covered; 812 web tests pass. Deployment
-contracts (61 cases), browser-safety probes (seven cases) and the
+worker-runtime restart. The repaired HTTP proof additionally abandons a real
+dispatcher owner's durable health-publication claim before returning the event:
+no publish, acknowledgment or release occurs. The token remains unexpired across
+runtime recreation, then the unchanged 30-second lease expires naturally before
+publication/application. Exactly one completed receipt and transition result;
+the accepted run/attempt snapshots and one provider call remain unchanged. This
+is not an OS process-kill claim. The same-hook user/workspace-switch command race
+and held replacement ordinary/idempotency 409s are covered; 822 web tests pass.
+Conflicts preserve the typed credential, retained command, retry key and feedback;
+actual access loss still clears scoped caches. All 89 web browser cases pass.
+Deployment contracts (61 cases), browser-safety probes (seven cases) and the
 non-artifact API service cohort (86 cases, zero skips) pass. Frozen-source full
 PostgreSQL integration with coverage passes 107 files / 795 cases with zero skips;
 the final-built HTTP and browser cases also pass. Final `pnpm check` and
@@ -56,12 +66,19 @@ Implementation commit `e5a44165` is integrated with qualified main `02750811`
 through normal merge `f03191d3`, without rewriting history. The merge tree is
 identical to the qualified implementation tree; CI routing, schema ownership,
 documentation and coverage provenance passed again. Source fingerprint:
-`sha256:89c0e304e2ff16b2aa73420feccfdb07fb4aaf7d8dcb0c405ef60ca223e6fa32`.
+`sha256:b3586f5eee9b970ba85b7e2e120b37d708812ba109747c65e32397dcee1dd276`.
 The owned `pertexo-connection-health-20261001` PostgreSQL/Redis containers,
 network and two volumes were removed after all database clients closed and
 fixture Redis DB13 was empty. Evidence remains outside the checkout under
 `/Users/vigan/.codex/evidence/pertexo-f30-2026-10-01/`. No push was performed;
-43 unrelated primary-checkout changes were preserved.
+43 unrelated primary-checkout changes were preserved. Review repairs are
+`ef5c955d` (command conflicts) and `72a32b2f` (abandoned ownership proof).
+Fresh repair evidence is retained in the receipt's `repair/` directory; the
+original qualification receipt remains historical. The isolated
+`pertexo-connection-health-repair-20261001` project was also removed after zero
+clients, disposable databases and Redis DB13 keys/ownership were verified.
+Production lease budgets, coverage thresholds and CI owners remain unchanged;
+only the HTTP proof's bounded test ceiling accommodates actual lease expiry.
 Production mode remains `off`; no provider traffic outside owned fixtures is
 authorized.
 
