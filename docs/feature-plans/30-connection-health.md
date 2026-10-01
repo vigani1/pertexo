@@ -281,6 +281,12 @@ This context informs the outcome, not Pertexo's implementation.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log: 2026-10-01 manager baseline/ADR review on reviewed F29 head
-`7561e82251762dd3b1e2f9f355f4a7376e331670`; no F30 implementation or runtime
-qualification claimed yet. Contracts/security, code, integration and release
-remain open and require independent review.
+`7561e82251762dd3b1e2f9f355f4a7376e331670`. The first slice is implemented in
+`e5a44165` and integrated with qualified main by normal merge `f03191d3`.
+Local qualification passes full repository checks, 795 real PostgreSQL cases,
+86 non-artifact API service cases, the enabled controlled-Slack HTTP/browser
+fixtures, and 24 source-bound coverage cohorts with zero unreviewed risk debt.
+Owned fixture services/data were cleaned up; production remains off. Backend
+and frontend implementation are locally verified, but their combined tracker
+items above remain open until independent review. Contracts/security review,
+scoped PR checks/merge and natural postmerge qualification remain open.

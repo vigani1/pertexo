@@ -43,9 +43,8 @@ failure and health-application rollback preserve accepted run/attempt snapshots.
 The real controlled-Slack HTTP and browser fixtures each pass one enabled case
 with zero skips; provider calls do not increase across the acknowledged
 worker-runtime restart. This is not an OS process-kill claim. The same-hook
-user/workspace-switch command race is covered; 812 web tests pass. The broad
-unit/build/static gate passed before the final notification capability repair;
-deployment contracts (61 cases), browser-safety probes (seven cases) and the
+user/workspace-switch command race is covered; 812 web tests pass. Deployment
+contracts (61 cases), browser-safety probes (seven cases) and the
 non-artifact API service cohort (86 cases, zero skips) pass. Frozen-source full
 PostgreSQL integration with coverage passes 107 files / 795 cases with zero skips;
 the final-built HTTP and browser cases also pass. Final `pnpm check` and
@@ -53,8 +52,16 @@ the final-built HTTP and browser cases also pass. Final `pnpm check` and
 and 388 reviewed residual branches across 211 selected files. Four reachable
 arms gained tests; two now-covered reviews were removed and one unchanged
 defensive fingerprint was refreshed, with no threshold/exclusion relaxation.
-Implementation commits, qualified-main integration and owned-service cleanup
-are still pending.
+Implementation commit `e5a44165` is integrated with qualified main `02750811`
+through normal merge `f03191d3`, without rewriting history. The merge tree is
+identical to the qualified implementation tree; CI routing, schema ownership,
+documentation and coverage provenance passed again. Source fingerprint:
+`sha256:89c0e304e2ff16b2aa73420feccfdb07fb4aaf7d8dcb0c405ef60ca223e6fa32`.
+The owned `pertexo-connection-health-20261001` PostgreSQL/Redis containers,
+network and two volumes were removed after all database clients closed and
+fixture Redis DB13 was empty. Evidence remains outside the checkout under
+`/Users/vigan/.codex/evidence/pertexo-f30-2026-10-01/`. No push was performed;
+43 unrelated primary-checkout changes were preserved.
 Production mode remains `off`; no provider traffic outside owned fixtures is
 authorized.
 
@@ -260,6 +267,7 @@ cleanup; the service-backed qualification above remains explicitly pre-cleanup.
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014, 023–026; provider, webhook, schedule, retained-history, and rollout evidence |
 | Phase 7 — production operations | **In progress** | Repository implementation is qualified locally; external deployment, provider, load, recovery, telemetry, and pager evidence remains open |
 | F29 — queue-only workflow concurrency | Qualified | ADR058 queue-only slice, independent reviews, PR138 exact-head and natural main CI/CodeQL; skip overflow deferred |
+| F30 — first Slack connection-health slice | Locally qualified; review/release open | Version/revision-fenced durable health, manual recovery and usage/UI; 795 PostgreSQL cases, enabled HTTP/browser, 24 source-bound coverage cohorts |
 
 The 0A–0E rows subdivide the plan's single Phase 0 and do not change its
 authoritative scope. All accepted architecture decisions remain under
