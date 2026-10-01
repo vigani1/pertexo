@@ -548,26 +548,35 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
  * queues, and run identities remain scenario-local; audit assertions use
  * per-scenario baselines because the immutable connection history is retained.
  */
-export async function resetProviderScenarioIsolation(): Promise<void> {
+export async function resetProviderScenarioIsolation(
+  seeds: readonly Readonly<{
+    connectionId: string;
+    secretVersionId: string;
+  }>[] = [
+    { connectionId, secretVersionId },
+    { connectionId: slackConnectionId, secretVersionId: slackSecretVersionId },
+    { connectionId: emailConnectionId, secretVersionId: emailSecretVersionId },
+  ],
+): Promise<void> {
   await withOwner(async (client) => {
     await client.query(
-      `update app.connections
-          set current_secret_version_id=case id
-                when $2::uuid then $3::uuid
-                when $4::uuid then $5::uuid
-                when $6::uuid then $7::uuid
-              end,
-              updated_at=clock_timestamp()
-        where workspace_id=$1 and id=any($8::uuid[])`,
+      "select set_config('app.connection_health_protocol','1',true)",
+    );
+    await client.query(
+      `update app.connections connection
+          set current_secret_version_id=seed.secret_version_id,
+              status='active',health_revision=health_revision+1,
+              last_tested_at=null,last_healthy_at=null,last_error_code=null,
+              last_run_observed_at=null,last_health_transition_at=clock_timestamp(),
+              last_health_transition_source='rotation',updated_at=clock_timestamp()
+         from unnest($2::uuid[],$3::uuid[]) seed(connection_id,secret_version_id)
+        where connection.workspace_id=$1 and connection.id=seed.connection_id
+          and connection.status<>'revoked'
+          and connection.current_secret_version_id is distinct from seed.secret_version_id`,
       [
         workspaceId,
-        connectionId,
-        secretVersionId,
-        slackConnectionId,
-        slackSecretVersionId,
-        emailConnectionId,
-        emailSecretVersionId,
-        [connectionId, slackConnectionId, emailConnectionId],
+        seeds.map((seed) => seed.connectionId),
+        seeds.map((seed) => seed.secretVersionId),
       ],
     );
   });
