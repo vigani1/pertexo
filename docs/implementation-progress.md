@@ -10,18 +10,108 @@ external production evidence listed under Phase 7.
 
 ## Current qualification
 
+### F30 — connection health first slice
+
+The manager accepted [ADR059](./adr/059-connection-health-observations.md) and
+the [F30 plan](./feature-plans/30-connection-health.md) on 2026-10-01, based on
+reviewed F29 head `7561e822`. The narrow slice is implemented locally on
+`feat/connection-health`; local qualification passes and independent review
+and release remain open.
+Scope is Slack run-derived evidence,
+version/revision-fenced durable application, safe manual recovery, authorized
+published-version usage, and the existing connections/settings UI. Notices and
+other automatic providers are deferred; production activation is not authorized.
+
+- [x] Reconcile baseline and record signal, ordering, recovery and usage choices.
+- [x] Accept ADR059 and the manager-owned implementation/acceptance plan.
+- [x] Implement contracts, capability security and durable backend with focused
+      real PostgreSQL proof.
+- [x] Implement the frontend and real API/worker/browser behavior.
+- [x] Pass frozen-source local qualification, including full PostgreSQL and
+      enabled HTTP/browser evidence.
+- [x] Repair the reviewed ordinary-command conflict eviction and prove real
+      abandoned publication ownership recovery after natural lease expiry.
+- [ ] Complete independent reviews; merge a scoped green PR and inspect natural
+      postmerge checks.
+
+Focused evidence: 23 run-health PostgreSQL cases, 16 boundary cases and two
+bounded usage cases pass. The boundary executes legal-hold/release, retention
+cascade/command cleanup, late delivery and actual tenant purge, plus exact 0127
+upgrade and ACL/readiness drift. Notification acceptance's bounded lock-and-read
+capability preserves the current secret after concurrent rotation; omitted or
+cross-workspace context yields no rows, and body/execute-grant drift fails
+startup. Interrupted publish, durable publish-mark
+failure and health-application rollback preserve accepted run/attempt snapshots.
+The real controlled-Slack HTTP and browser fixtures each pass one enabled case
+with zero skips; provider calls do not increase across the acknowledged
+worker-runtime restart. The repaired HTTP proof additionally abandons a real
+dispatcher owner's durable health-publication claim before returning the event:
+no publish, acknowledgment or release occurs. The token remains unexpired across
+runtime recreation, then the unchanged 30-second lease expires naturally before
+publication/application. Exactly one completed receipt and transition result;
+the accepted run/attempt snapshots and one provider call remain unchanged. This
+is not an OS process-kill claim. The same-hook user/workspace-switch command race
+and held replacement ordinary/idempotency 409s are covered; 822 web tests pass.
+Conflicts preserve the typed credential, retained command, retry key and feedback;
+actual access loss still clears scoped caches. All 89 web browser cases pass.
+Deployment contracts (61 cases), browser-safety probes (seven cases) and the
+non-artifact API service cohort (86 cases, zero skips) pass. Frozen-source full
+PostgreSQL integration with coverage passes 107 files / 795 cases with zero skips;
+the final-built HTTP and browser cases also pass. Final `pnpm check` and
+`pnpm test:coverage` pass: 24 source-bound cohorts, zero unreviewed risk branches
+and 388 reviewed residual branches across 211 selected files. Four reachable
+arms gained tests; two now-covered reviews were removed and one unchanged
+defensive fingerprint was refreshed, with no threshold/exclusion relaxation.
+Implementation commit `e5a44165` is integrated with qualified main `02750811`
+through normal merge `f03191d3`, without rewriting history. The merge tree is
+identical to the qualified implementation tree; CI routing, schema ownership,
+documentation and coverage provenance passed again. Source fingerprint:
+`sha256:b3586f5eee9b970ba85b7e2e120b37d708812ba109747c65e32397dcee1dd276`.
+The owned `pertexo-connection-health-20261001` PostgreSQL/Redis containers,
+network and two volumes were removed after all database clients closed and
+fixture Redis DB13 was empty. Evidence remains outside the checkout under
+`/Users/vigan/.codex/evidence/pertexo-f30-2026-10-01/`. No push was performed;
+43 unrelated primary-checkout changes were preserved. Review repairs are
+`ef5c955d` (command conflicts) and `72a32b2f` (abandoned ownership proof).
+Fresh repair evidence is retained in the receipt's `repair/` directory; the
+original qualification receipt remains historical. The isolated
+`pertexo-connection-health-repair-20261001` project was also removed after zero
+clients, disposable databases and Redis DB13 keys/ownership were verified.
+Production lease budgets, coverage thresholds and CI owners remain unchanged;
+only the HTTP proof's bounded test ceiling accommodates actual lease expiry.
+Production mode remains `off`; no provider traffic outside owned fixtures is
+authorized.
+
+[PR139](https://github.com/vigani1/pertexo/pull/139) remains unmerged. Its
+`06917f74` CI recovery and integration lanes exposed the same older HTTP-worker
+fixture reset failure after a legitimate email credential rotation: restoration
+omitted the revision-aware protocol. Repair `7abbc106` changes test fixtures only,
+advances revision and clears current-credential health on version restoration,
+and leaves revoked rows unchanged. A separate connection regression proves
+restoration is idempotent and cannot roll back a revoked current version. The
+same four recovery files pass 22 cases; full enabled worker integration passes
+22 files / 47 cases, both strict zero-skip. Worker units (903 cases), full build,
+worker lint/typecheck, complexity, duplication and CI routing pass. Production
+source and its qualified coverage fingerprint are unchanged. The downstream
+API integration cohort passes 21 files / 109 cases with the unchanged CI
+exclusions; API SSE reconstruction and worker transport service-loss recovery
+each pass one enabled case. All reports pass strict zero-skip validation.
+Owned fixture services/data were removed after zero-client/database/proof-key
+checks. Final results are recorded in the CI-repair receipt; hosted repaired-head
+CI and manager inspection remain required before any push or merge.
+
 ### F29 — queue-only workflow concurrency
 
-The ADR058 first slice is implemented locally on `feat/workflow-concurrency`.
-Independent manager review identified three correctness fixes; their focused
-regressions and final local qualification pass, with independent rereview still
-required.
-F29 scoped PR checks/merge and natural postmerge qualification remain open.
+The ADR058 queue-only first slice is qualified. Independent specification and
+standards reviews closed the correctness and CI-ownership findings; final
+rereviews reported no remaining findings. [PR138](https://github.com/vigani1/pertexo/pull/138)
+merged reviewed head `7561e822` as `02750811c0bbb8545042f96f9f6f53784c9ff5d2`
+on 2026-10-01. Required exact-head checks and natural postmerge CI/CodeQL passed.
 This does not close Phase 7 or supersede the
 historical qualification fingerprints below. F12 PR137 is merged as `23cc5b45`;
 the release owner has confirmed natural main CI and CodeQL success on that
 commit, closing the first read-only capacity/activity slice's qualification.
-This satisfies the F12 dependency, not F29's own review or release requirements.
+This satisfies the F12 dependency independently of F29's completed qualification.
 
 - [x] Current workflow cap, durable acceptance tickets, workspace-authoritative
       admission, ordered starts, and grandfathered reservations implemented.
@@ -57,14 +147,14 @@ This satisfies the F12 dependency, not F29's own review or release requirements.
       `pnpm deployment:check` (60 assertions) passed locally.
 - [x] Lock order, mixed-version fail-closed enforcement, and rollback documented
       in [the enforcement note](./operations/workflow-concurrency-enforcement.md).
-- [ ] Independent manager review and complete release qualification.
+- [x] Independent manager review and complete first-slice release qualification.
 - [x] Close the reviewed active-insert serialization race, preserve committed
       reservations during FIFO deferral, and cancel stale reads before
       denied-write cache eviction; focused RED/GREEN proofs recorded below.
 - [x] Requalify the repaired tree locally with repository checks, coverage,
       full PostgreSQL, real HTTP/browser, browser probes and deployment checks.
-- [ ] Complete independent rereview of the repaired implementation.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+- [x] Complete independent rereview of the repaired implementation.
+- [x] Scoped PR merged with required checks; natural postmerge result inspected.
 
 The PostgreSQL receipt proof exercises bounded maintenance reaping and verifies
 both new tables in the authoritative tenant purge function; it does not claim
@@ -133,8 +223,8 @@ was a local setup omission, not masked by exclusions or test changes. Likewise,
 an unchanged benchmark SIGINT process-startup timeout passed in isolation and
 in the full `pnpm check` rerun with its original deadline. Generated JSON reports
 were preserved outside the checkout, not committed. Required independent
-rereview and F29 release/PR checks remain open; F12 natural main qualification is
-now complete by the release-owner receipt above.
+rereview and F29 release/PR checks subsequently closed by the release-owner
+receipt below; F12 natural main qualification is independently complete.
 
 Heavy qualification suites were serialized after concurrent runs hit unchanged
 workflow-engine and coordinator-observation test timeouts. Isolated observation
@@ -145,7 +235,20 @@ Both the original and follow-up task-owned PostgreSQL/Redis projects were remove
 after qualification;
 their disposable fixture data was discarded. Everyday services and the 43
 uncommitted paths in the primary checkout were left untouched. The F29 branch
-has not been pushed and has no configured upstream.
+was subsequently pushed and tracks `origin/feat/workflow-concurrency`.
+
+The release owner's 2026-10-01 receipt confirms exact-head
+[CI36810146630](https://github.com/vigani1/pertexo/actions/runs/36810146630) and
+[CodeQL36810146584](https://github.com/vigani1/pertexo/actions/runs/36810146584)
+passed before PR138 merged. Natural main
+[CI36811514908](https://github.com/vigani1/pertexo/actions/runs/36811514908) and
+[CodeQL36811514931](https://github.com/vigani1/pertexo/actions/runs/36811514931)
+both succeeded on exact merge head `02750811c0bbb8545042f96f9f6f53784c9ff5d2`.
+The main-push dependency-review skip is expected; applicable quality,
+integration, browser, coverage, recovery, compatibility, deployment-security
+and production-image checks passed. Queue-only qualification is complete;
+skip overflow remains deferred and Phase 7 remains open. No production
+deployment or activation is claimed.
 
 ### Historical backend qualification
 
@@ -198,7 +301,8 @@ cleanup; the service-backed qualification above remains explicitly pre-cleanup.
 | Phase 5 — orchestration slice | Complete | ADRs 008, 017–022; branching, parallelism, retry/wait, notification, and recovery matrix |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014, 023–026; provider, webhook, schedule, retained-history, and rollout evidence |
 | Phase 7 — production operations | **In progress** | Repository implementation is qualified locally; external deployment, provider, load, recovery, telemetry, and pager evidence remains open |
-| F29 — queue-only workflow concurrency | **In progress** | ADR058 implementation and real PostgreSQL/HTTP/browser proofs; manager review and release qualification remain open |
+| F29 — queue-only workflow concurrency | Qualified | ADR058 queue-only slice, independent reviews, PR138 exact-head and natural main CI/CodeQL; skip overflow deferred |
+| F30 — first Slack connection-health slice | Locally qualified; review/release open | Version/revision-fenced durable health, manual recovery and usage/UI; 795 PostgreSQL cases, enabled HTTP/browser, 24 source-bound coverage cohorts |
 
 The 0A–0E rows subdivide the plan's single Phase 0 and do not change its
 authoritative scope. All accepted architecture decisions remain under

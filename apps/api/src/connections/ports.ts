@@ -3,6 +3,7 @@ import type {
   ConnectionManagementDatabase,
   ConnectionReadDatabase,
   ConnectionTestDatabase,
+  ConnectionUsageDatabase,
   FailureNotificationDestinationDatabase,
 } from '@pertexo/database/api';
 import type {
@@ -58,4 +59,5 @@ export type ConnectionDependencies = Readonly<{
   emailClient?: ConnectionEmailClient;
   telemetry?: ConnectionTelemetry;
   destinationPersistence?: FailureNotificationDestinationDatabase;
+  usagePersistence?: ConnectionUsageDatabase;
 }>;

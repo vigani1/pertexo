@@ -1,6 +1,8 @@
+import { READINESS_CONNECTION_HEALTH_SQL } from './readiness-connection-health.sql.js';
+
 export const READINESS_CONNECTIONS_PREVIEW_SQL = `
       (
-        (select count(*) = 13 from pg_attribute
+        (select count(*) = 17 from pg_attribute
          where attrelid = to_regclass('app.connections')
            and attnum > 0 and not attisdropped)
         and (select count(*) = 11 from pg_attribute
@@ -88,13 +90,13 @@ export const READINESS_CONNECTIONS_PREVIEW_SQL = `
         and case when current_user = $2 then
           has_table_privilege(current_user, 'app.connections', 'SELECT')
           and not has_table_privilege(current_user, 'app.connections', 'INSERT')
-          and has_column_privilege(current_user, 'app.connections', 'status', 'UPDATE')
-          and has_column_privilege(current_user, 'app.connections', 'last_tested_at', 'UPDATE')
+          and not has_column_privilege(current_user, 'app.connections', 'status', 'UPDATE')
+          and not has_column_privilege(current_user, 'app.connections', 'last_tested_at', 'UPDATE')
           and not has_column_privilege(current_user, 'app.connections', 'current_secret_version_id', 'UPDATE')
           and has_table_privilege(current_user, 'app.connection_secret_versions', 'SELECT')
           and not has_table_privilege(current_user, 'app.connection_secret_versions', 'INSERT')
           and not has_table_privilege(current_user, 'app.connection_secret_versions', 'UPDATE')
-          and has_table_privilege(current_user, 'app.connection_events', 'INSERT')
+          and not has_table_privilege(current_user, 'app.connection_events', 'INSERT')
           and not has_table_privilege(current_user, 'app.connection_events', 'SELECT')
           and not has_table_privilege(current_user, 'app.connection_events', 'UPDATE')
         when exists (
@@ -123,6 +125,7 @@ export const READINESS_CONNECTIONS_PREVIEW_SQL = `
           and not has_table_privilege(current_user, 'app.connection_events', 'INSERT')
           and not has_table_privilege(current_user, 'app.connection_events', 'UPDATE')
         end
+        and ${READINESS_CONNECTION_HEALTH_SQL}
       ) as phase4_connections_compatible,
       (
         (select count(*) = 5 from pg_attribute

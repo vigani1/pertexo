@@ -1,4 +1,5 @@
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import type { ChannelNames } from '@/features/failure-notifications/channel-names.public';
@@ -6,6 +7,23 @@ import {
   channelNameNote,
   describeDestination,
 } from '../../model/destination-label';
+
+function ConnectionHealthLink({
+  workspaceId,
+  connectionId,
+}: Readonly<{ workspaceId: string | undefined; connectionId: string }>) {
+  if (workspaceId === undefined) return null;
+  return (
+    <Link
+      to="/w/$workspaceId/connections"
+      params={{ workspaceId }}
+      search={{ connection: connectionId }}
+      className="self-start rounded-sm text-xs text-action underline-offset-4 hover:underline focus-ring"
+    >
+      View connection health
+    </Link>
+  );
+}
 
 /**
  * The workflow's current failure-alert choice in words, with the Slack
@@ -17,10 +35,12 @@ export function CurrentAlertDestination({
   destination,
   connectionNames,
   channelNames,
+  workspaceId,
 }: Readonly<{
   destination: FailureNotificationDestinationResponse | null;
   connectionNames: ReadonlyMap<string, string>;
   channelNames: ChannelNames;
+  workspaceId?: string;
 }>) {
   if (destination === null)
     return (
@@ -33,10 +53,16 @@ export function CurrentAlertDestination({
   const note = channelNameNote(destination, channelNames);
   if (destination.status === 'disabled')
     return (
-      <Notice tone="warning" title={`Failures go to: ${label}`}>
-        That destination is turned off, so nothing is sent. Choose another
-        destination below, or turn it back on in Alerts.
-      </Notice>
+      <div className="flex flex-col gap-1">
+        <Notice tone="warning" title={`Failures go to: ${label}`}>
+          That destination is turned off, so nothing is sent. Choose another
+          destination below, or turn it back on in Alerts.
+        </Notice>
+        <ConnectionHealthLink
+          workspaceId={workspaceId}
+          connectionId={destination.config.connectionId}
+        />
+      </div>
     );
   return (
     <div className="flex flex-col gap-1">
@@ -48,6 +74,10 @@ export function CurrentAlertDestination({
       {note === undefined ? null : (
         <p className="text-xs text-muted-foreground">{note}</p>
       )}
+      <ConnectionHealthLink
+        workspaceId={workspaceId}
+        connectionId={destination.config.connectionId}
+      />
     </div>
   );
 }

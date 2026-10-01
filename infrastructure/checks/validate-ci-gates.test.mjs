@@ -153,6 +153,67 @@ const concurrencyBrowserGate = Object.freeze({
   },
   prerequisites: ['pnpm --filter @pertexo/worker... build'],
 });
+const connectionHealthBrowserGate = Object.freeze({
+  file: 'test/connection-health-browser.integration.test.ts',
+  flag: 'CONNECTION_HEALTH_BROWSER_INTEGRATION',
+  report: 'artifacts/connection-health-browser-gates.json',
+  title: 'Connection health browser integration gate',
+  env: { CONNECTION_HEALTH_COMPOSE_PROJECT: '${{ env.COMPOSE_PROJECT_NAME }}' },
+  prerequisites: ['pnpm --filter @pertexo/worker... build'],
+});
+
+test('routes connection health through one enabled strict API/worker/browser proof and keeps real HTTP in ordinary integration', async () => {
+  const workflow = await currentWorkflow();
+  assertRequiredLiveBrowserGate(workflow, connectionHealthBrowserGate);
+  const step = workflow.jobs.integration.steps.find((candidate) =>
+    candidate.run?.includes('artifacts/api-gates.json'),
+  );
+  assert.equal(
+    step.env.CONNECTION_HEALTH_COMPOSE_PROJECT,
+    '${{ env.COMPOSE_PROJECT_NAME }}',
+  );
+  assert.ok(
+    !step.run.includes(
+      '--exclude test/connection-health-http.integration.test.ts',
+    ),
+  );
+});
+
+test('rejects optional or unfenced connection health browser evidence', async () => {
+  for (const mutate of [
+    (step) => {
+      step.if = 'false';
+    },
+    (step) => {
+      step['continue-on-error'] = true;
+    },
+    (step) => {
+      step.env.CONNECTION_HEALTH_BROWSER_INTEGRATION = 'false';
+    },
+    (step) => {
+      delete step.env.CONNECTION_HEALTH_COMPOSE_PROJECT;
+    },
+    (step) => {
+      step.env.CONNECTION_HEALTH_COMPOSE_PROJECT = 'pertexo';
+    },
+    (step) => {
+      step.run = step.run.replace(
+        "'Connection health browser integration gate' 1",
+        "'Connection health browser integration gate' 0",
+      );
+    },
+  ]) {
+    const workflow = await currentWorkflow();
+    const step = workflow.jobs.browser.steps.find(
+      (candidate) =>
+        candidate.env?.CONNECTION_HEALTH_BROWSER_INTEGRATION !== undefined,
+    );
+    mutate(step);
+    assert.throws(() =>
+      assertRequiredLiveBrowserGate(workflow, connectionHealthBrowserGate),
+    );
+  }
+});
 
 test('routes the real Usage browser journey to an enabled browser-installed gate with strict evidence', async () => {
   assertRequiredLiveBrowserGate(await currentWorkflow(), usageBrowserGate);

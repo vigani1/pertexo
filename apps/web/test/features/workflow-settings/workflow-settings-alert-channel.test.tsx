@@ -100,6 +100,12 @@ describe('Slack channel names in failure alerts', { timeout: 30_000 }, () => {
     expect(now.parentElement).toHaveTextContent(
       'Failures go to#ops-alerts via Ops bot',
     );
+    expect(
+      within(alerts).getByRole('link', { name: 'View connection health' }),
+    ).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/connections?connection=${connectionId}`,
+    );
     await event.click(
       within(alerts).getByRole('combobox', { name: 'Send failure alerts to' }),
     );

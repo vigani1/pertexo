@@ -3,7 +3,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query';
-import { useCallback, useEffect, useId, useMemo } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 import type {
   ConnectionCreateRequest,
   ConnectionResponse,
@@ -18,6 +18,10 @@ import {
   type ConnectionCredential,
 } from './connections.api';
 import { connectionKeys } from './connections.queries';
+import {
+  connectionCommandAccessLost,
+  forgetDeniedConnections,
+} from './connection-access';
 
 export type ConnectionMutationScope = Readonly<{
   apiClient: ApiClient;
@@ -72,17 +76,58 @@ async function storeConnection(
   queryClient: QueryClient,
   scope: ConnectionMutationScope,
   connection: ConnectionResponse,
+  isCurrent: () => boolean,
 ) {
+  await queryClient.cancelQueries({
+    queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
+  });
+  if (!isCurrent()) return;
   queryClient.setQueryData(
     connectionKeys.detail(scope.userId, scope.workspaceId, connection.id),
     connection,
   );
   await queryClient.invalidateQueries({
     queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
-    predicate: (query) =>
-      query.queryKey.at(-1) !== connection.id ||
-      query.queryKey.at(-2) !== 'detail',
   });
+}
+
+function useConnectionResultScope(scope: ConnectionMutationScope) {
+  const owners = useRef(new Set<object>());
+  const generation = useMemo(
+    () => ({ userId: scope.userId, workspaceId: scope.workspaceId }),
+    [scope.userId, scope.workspaceId],
+  );
+  useEffect(() => {
+    const active = owners.current;
+    active.add(generation);
+    return () => {
+      active.delete(generation);
+    };
+  }, [generation]);
+  const isCurrent = () => owners.current.has(generation);
+  const queryClient = useQueryClient();
+  return {
+    invalidate: () =>
+      isCurrent()
+        ? queryClient.invalidateQueries({
+            queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
+          })
+        : Promise.resolve(),
+    store: (connection: ConnectionResponse) =>
+      isCurrent()
+        ? storeConnection(queryClient, scope, connection, isCurrent)
+        : Promise.resolve(),
+    denied: (error: unknown) => {
+      if (!isCurrent() || !connectionCommandAccessLost(error))
+        return Promise.resolve();
+      return forgetDeniedConnections(
+        queryClient,
+        connectionKeys.scope(scope.userId, scope.workspaceId),
+        ['connection-command'],
+        error,
+      );
+    },
+  };
 }
 
 /**
@@ -94,6 +139,7 @@ function useSecretConnectionMutation<Command, Result>(
   operation: 'create' | 'rotate',
   execute: (command: Command) => Promise<Result>,
   onSettledResult: (result: Result) => Promise<void>,
+  onError: (error: unknown) => Promise<void>,
 ) {
   const queryClient = useQueryClient();
   const ownerId = useId();
@@ -107,7 +153,9 @@ function useSecretConnectionMutation<Command, Result>(
   const mutation = useMutation({
     mutationKey,
     mutationFn: execute,
-    onSuccess: onSettledResult,
+    onMutate: () => ({ onSettledResult, onError }),
+    onSuccess: (result, _command, owner) => owner.onSettledResult(result),
+    onError: (error, _command, owner) => owner?.onError(error),
   });
   const reset = mutation.reset;
   const clearSensitiveState = useCallback(() => {
@@ -124,46 +172,50 @@ function useSecretConnectionMutation<Command, Result>(
 }
 
 export function useCreateConnectionMutation(scope: ConnectionMutationScope) {
-  const queryClient = useQueryClient();
+  const resultScope = useConnectionResultScope(scope);
   return useSecretConnectionMutation(
     scope,
     'create',
     (command: CreateConnectionCommand) =>
       createConnection(scope.apiClient, scope.workspaceId, command),
-    (connection) => storeConnection(queryClient, scope, connection),
+    resultScope.store,
+    resultScope.denied,
   );
 }
 
 export function useRotateConnectionMutation(scope: ConnectionMutationScope) {
-  const queryClient = useQueryClient();
+  const resultScope = useConnectionResultScope(scope);
   return useSecretConnectionMutation(
     scope,
     'rotate',
     (command: RotateConnectionCommand) =>
       rotateConnectionSecret(scope.apiClient, scope.workspaceId, command),
-    (connection) => storeConnection(queryClient, scope, connection),
+    resultScope.store,
+    resultScope.denied,
   );
 }
 
 export function useTestConnectionMutation(scope: ConnectionMutationScope) {
-  const queryClient = useQueryClient();
+  const resultScope = useConnectionResultScope(scope);
   return useMutation({
     mutationFn: (command: TestConnectionCommand) =>
       testConnection(scope.apiClient, scope.workspaceId, command),
-    onSuccess: (result) =>
-      storeConnection(queryClient, scope, result.connection),
+    onMutate: () => resultScope,
+    onSuccess: (result, _command, owner) => owner.store(result.connection),
+    onError: (error, _command, owner) => owner?.denied(error),
   });
 }
 
 export function useRevokeConnectionMutation(scope: ConnectionMutationScope) {
-  const queryClient = useQueryClient();
+  const resultScope = useConnectionResultScope(scope);
   return useMutation({
     mutationFn: (connectionId: string) =>
       revokeConnection(scope.apiClient, scope.workspaceId, connectionId),
-    onSuccess: (connection) => storeConnection(queryClient, scope, connection),
-    onError: () =>
-      queryClient.invalidateQueries({
-        queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
-      }),
+    onMutate: () => resultScope,
+    onSuccess: (result, _command, owner) => owner.store(result),
+    onError: async (error, _command, owner) => {
+      await owner?.denied(error);
+      await owner?.invalidate();
+    },
   });
 }

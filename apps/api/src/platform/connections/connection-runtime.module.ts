@@ -116,6 +116,7 @@ export async function createApiConnectionRuntime(
       dependencies: Object.freeze({
         persistence: database,
         destinationPersistence: destinationDatabase,
+        usagePersistence: database,
         authorization: identityRuntime.dependencies.authorization,
         encryption,
         httpClient,

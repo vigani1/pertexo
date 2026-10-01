@@ -252,7 +252,7 @@ test('creates a connection and exposes its safe identity to the editor picker', 
   await expect(lens.getByText('Slack accepted the token.')).toBeVisible();
   await lens.getByRole('button', { name: 'Done' }).click();
   await expect(
-    page.getByRole('button', { name: /Incident Slack, Active/u }),
+    page.getByRole('button', { name: /Incident Slack, Unknown/u }),
   ).toBeVisible();
   await expect(page.getByText(botToken)).toHaveCount(0);
 
@@ -267,13 +267,14 @@ test('creates a connection and exposes its safe identity to the editor picker', 
   ).toHaveCount(1);
 });
 
-test('tests, rotates and revokes a connection without exposing credentials', async ({
+test('recovers run-rejected health, pages published usage, rotates to unknown and revokes without exposing credentials', async ({
   context,
   page,
 }) => {
   const nextToken = 'xoxb-1234567890-browser-rotated';
   let currentSecretVersionId = secretVersionId;
-  let status: 'active' | 'revoked' = 'active';
+  let status: 'active' | 'revoked' | 'reauthorization_required' =
+    'reauthorization_required';
   let lastTestedAt: string | null = null;
   const currentConnection = () => ({
     id: connectionId,
@@ -286,7 +287,18 @@ test('tests, rotates and revokes a connection without exposing credentials', asy
     health: {
       lastTestedAt,
       lastHealthyAt: lastTestedAt,
-      lastErrorCode: null,
+      lastErrorCode:
+        status === 'reauthorization_required'
+          ? 'connection.slack_token_revoked'
+          : null,
+      lastRunObservedAt: timestamp,
+      lastHealthTransitionAt: timestamp,
+      lastHealthTransitionSource:
+        currentSecretVersionId !== secretVersionId
+          ? 'rotation'
+          : lastTestedAt === null
+            ? 'run'
+            : 'test',
     },
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -305,12 +317,39 @@ test('tests, rotates and revokes a connection without exposing credentials', asy
     }),
   );
   await page.route(
+    `**/v1/workspaces/${workspaceId}/connections/${connectionId}/usage?**`,
+    (route) => {
+      const url = new URL(route.request().url());
+      expect(url.searchParams.get('limit')).toBe('50');
+      const historical = url.searchParams.has('after');
+      return route.fulfill({
+        json: {
+          items: [
+            {
+              workflowId,
+              workflowName: 'Incident workflow',
+              workflowLifecycleStatus: historical ? 'archived' : 'active',
+              workflowVersionId: historical
+                ? '11111111-1111-4111-8111-111111111111'
+                : '22222222-2222-4222-8222-222222222222',
+              versionNumber: historical ? 1 : 2,
+              isCurrentPublication: !historical,
+              operationKeys: ['slack.send_message'],
+            },
+          ],
+          nextCursor: historical ? null : 'older-page',
+        },
+      });
+    },
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/connections/${connectionId}/test`,
     async (route) => {
       expect(route.request().headers()['x-csrf-token']).toBe(csrfToken);
       expect(route.request().headers()['idempotency-key']).toBeTruthy();
       expect(route.request().postDataJSON()).toEqual({ providerKey: 'slack' });
       lastTestedAt = '2026-09-15T11:00:00.000Z';
+      status = 'active';
       await route.fulfill({
         json: {
           connection: currentConnection(),
@@ -333,6 +372,7 @@ test('tests, rotates and revokes a connection without exposing credentials', asy
         },
       });
       currentSecretVersionId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+      lastTestedAt = null;
       await route.fulfill({ json: currentConnection() });
     },
   );
@@ -351,12 +391,36 @@ test('tests, rotates and revokes a connection without exposing credentials', asy
   );
 
   await page.goto(`/w/${workspaceId}/connections`);
-  await page.getByRole('button', { name: /Incident Slack, Active/u }).click();
+  await page
+    .getByRole('button', { name: /Incident Slack, Needs reauthorization/u })
+    .focus();
+  await page.keyboard.press('Enter');
   const lens = page.locator('[data-slot="sheet-content"]');
+  await expect(
+    lens.getByText('run credential rejected · Slack token revoked'),
+  ).toBeVisible();
+  await expect(
+    lens.getByText('Last tested').locator('xpath=following-sibling::dd[1]'),
+  ).toHaveText('Never');
+  await expect(lens.getByText('Version 2 · Current publication')).toBeVisible();
+  await lens.getByRole('button', { name: 'Load more' }).click();
+  await expect(
+    lens.getByText('Version 1 · Historical version · Archived workflow'),
+  ).toBeVisible();
+  await page.screenshot({ path: '/tmp/pertexo-connection-health-desktop.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(lens).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({ path: '/tmp/pertexo-connection-health-mobile.png' });
   await lens.getByRole('button', { name: 'Test' }).click();
   await lens.getByRole('button', { name: 'Test connection' }).click();
   await expect(lens.getByText('Slack accepted the token.')).toBeVisible();
   await lens.getByRole('button', { name: 'Back to details' }).click();
+  await expect(lens.getByText('Healthy', { exact: true })).toBeVisible();
   await lens.getByRole('button', { name: 'Replace credential' }).click();
   await lens.getByLabel('Slack bot token').fill(nextToken);
   await lens.getByRole('button', { name: 'Replace credential' }).click();
@@ -364,6 +428,7 @@ test('tests, rotates and revokes a connection without exposing credentials', asy
     page.getByText('Replaced the bot token for Incident Slack'),
   ).toBeVisible();
   await expect(page.getByText(nextToken)).toHaveCount(0);
+  await expect(lens.getByText('Unknown', { exact: true })).toBeVisible();
   await lens.getByRole('button', { name: 'Revoke' }).click();
   await page.getByRole('button', { name: 'Revoke connection' }).click();
   await expect(page.getByText('Revoked Incident Slack')).toBeVisible();

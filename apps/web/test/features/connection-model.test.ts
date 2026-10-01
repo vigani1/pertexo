@@ -30,14 +30,50 @@ function health(
 }
 
 describe('connection health in words', () => {
+  it('labels run evidence without claiming that an explicit test occurred', () => {
+    const connection = {
+      providerKey: 'slack' as const,
+      status: 'reauthorization_required' as const,
+      updatedAt: '2026-09-24T10:00:00.000Z',
+      health: {
+        ...health(),
+        lastRunObservedAt: '2026-09-24T10:00:00.000Z',
+        lastHealthTransitionSource: 'run' as const,
+        lastErrorCode: 'connection.slack_token_revoked',
+      },
+    };
+    expect(describeConnectionHealth(connection, now).text).toBe(
+      'run credential rejected · Slack token revoked',
+    );
+    expect(
+      describeConnectionStatus(
+        'active',
+        health({ lastHealthyAt: '2026-09-24T10:00:00.000Z' }),
+      ),
+    ).toEqual({ tone: 'success', label: 'Healthy' });
+    expect(
+      describeConnectionHealth(
+        {
+          ...connection,
+          status: 'active',
+          health: {
+            ...connection.health,
+            lastErrorCode: null,
+            lastHealthyAt: '2026-09-24T10:00:00.000Z',
+          },
+        },
+        now,
+      ).text,
+    ).toMatch(/^healthy run /u);
+  });
   it('maps every status to one word and tone', () => {
     expect(describeConnectionStatus('active')).toEqual({
-      tone: 'success',
-      label: 'Active',
+      tone: 'neutral',
+      label: 'Unknown',
     });
     expect(describeConnectionStatus('reauthorization_required')).toEqual({
       tone: 'attention',
-      label: 'Reconnect',
+      label: 'Needs reauthorization',
     });
     expect(describeConnectionStatus('revoked')).toEqual({
       tone: 'canceled',

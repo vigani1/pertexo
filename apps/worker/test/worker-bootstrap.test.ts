@@ -90,6 +90,7 @@ const workerConfig = {
     workerRuntimeRole: 'pertexo_worker',
   },
   nodeEnv: 'test' as const,
+  connectionRunHealthMode: 'off' as const,
   nodeCompatibilityCohort: 'core' as const,
   logLevel: 'debug' as const,
   observability: {

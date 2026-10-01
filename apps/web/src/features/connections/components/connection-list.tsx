@@ -17,14 +17,14 @@ function ConnectionRow({
   connection: ConnectionResponse;
   onOpen: (connectionId: string) => void;
 }>) {
-  const status = describeConnectionStatus(connection.status);
+  const status = describeConnectionStatus(connection.status, connection.health);
   const health = describeConnectionHealth(connection);
   return (
     <li className="border-t border-border first:border-t-0">
       <button
         type="button"
         aria-label={`${connection.name}, ${status.label}, ${health.text}`}
-        className="group/row grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1 rounded-md px-2 py-3 text-left outline-none transition-colors hover:bg-card focus-ring sm:grid-cols-[auto_minmax(0,1fr)_7.5rem_minmax(0,13rem)_6rem_auto]"
+        className="group/row grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1 rounded-md px-2 py-3 text-left outline-none transition-colors hover:bg-card focus-ring sm:grid-cols-[auto_minmax(0,1fr)_10rem_minmax(0,13rem)_6rem_auto]"
         onClick={() => {
           onOpen(connection.id);
         }}

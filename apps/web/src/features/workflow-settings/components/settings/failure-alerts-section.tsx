@@ -249,6 +249,9 @@ export function FailureAlertsSection({
               destination={choices.current.destination}
               connectionNames={choices.connectionNames}
               channelNames={choices.channelNames}
+              {...(workspace.capabilities.includes('connection:read')
+                ? { workspaceId: workspace.id }
+                : {})}
             />
           )}
           <SettingsQueryState

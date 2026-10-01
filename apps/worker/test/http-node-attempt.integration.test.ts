@@ -422,6 +422,117 @@ beforeEach(async () => {
 });
 
 describeIntegration('active HTTP node attempt', () => {
+  it('restores fixture secret versions with a fresh revision and never changes revoked connections', async () => {
+    if (connectionDatabase === undefined || fixtureEncryption === undefined)
+      throw new Error('Connection fixture missing');
+    const encryption = fixtureEncryption;
+    const isolatedConnectionId = randomUUID();
+    const seededVersion = randomUUID();
+    const nextVersion = randomUUID();
+    const seal = async (secretVersionId: string) => {
+      const plaintext = new TextEncoder().encode(
+        JSON.stringify({
+          schemaVersion: 1,
+          type: 'http_headers',
+          headers: { authorization: plaintextSecret },
+        }),
+      );
+      try {
+        return await encryption.seal(plaintext, {
+          workspaceId,
+          connectionId: isolatedConnectionId,
+          secretVersionId,
+        });
+      } finally {
+        plaintext.fill(0);
+      }
+    };
+    await connectionDatabase.createConnection({
+      workspaceId,
+      actorId,
+      connectionId: isolatedConnectionId,
+      secretVersionId: seededVersion,
+      providerKey: 'http',
+      authType: 'http_headers',
+      name: 'Isolated reset proof',
+      sealed: await seal(seededVersion),
+      idempotencyKey: randomUUID(),
+      requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+    });
+    await connectionDatabase.rotateConnectionSecret({
+      workspaceId,
+      actorId,
+      connectionId: isolatedConnectionId,
+      secretVersionId: nextVersion,
+      expectedCurrentSecretVersionId: seededVersion,
+      expectedAuthType: 'http_headers',
+      sealed: await seal(nextVersion),
+      idempotencyKey: randomUUID(),
+      requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+    });
+    const read = async () =>
+      (
+        await withOwner((client) =>
+          client.query<{
+            current_secret_version_id: string;
+            health_revision: string;
+            status: string;
+            last_tested_at: Date | null;
+            last_healthy_at: Date | null;
+            last_run_observed_at: Date | null;
+            last_error_code: string | null;
+            last_health_transition_source: string | null;
+          }>(
+            `select current_secret_version_id,health_revision::text,status,last_tested_at,
+      last_healthy_at,last_run_observed_at,last_error_code,last_health_transition_source
+      from app.connections where workspace_id=$1 and id=$2`,
+            [workspaceId, isolatedConnectionId],
+          ),
+        )
+      ).rows[0];
+    const rotated = await read();
+    if (rotated === undefined) throw new Error('Rotated fixture missing');
+    const seeds = [
+      { connectionId: isolatedConnectionId, secretVersionId: seededVersion },
+    ];
+    await resetProviderScenarioIsolation(seeds);
+    const restored = await read();
+    expect(restored).toEqual({
+      current_secret_version_id: seededVersion,
+      health_revision: String(BigInt(rotated.health_revision) + 1n),
+      status: 'active',
+      last_tested_at: null,
+      last_healthy_at: null,
+      last_run_observed_at: null,
+      last_error_code: null,
+      last_health_transition_source: 'rotation',
+    });
+    await resetProviderScenarioIsolation(seeds);
+    expect(await read()).toEqual(restored);
+    const revokedVersion = randomUUID();
+    await connectionDatabase.rotateConnectionSecret({
+      workspaceId,
+      actorId,
+      connectionId: isolatedConnectionId,
+      secretVersionId: revokedVersion,
+      expectedCurrentSecretVersionId: seededVersion,
+      expectedAuthType: 'http_headers',
+      sealed: await seal(revokedVersion),
+      idempotencyKey: randomUUID(),
+      requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+    });
+    await connectionDatabase.revokeConnection({
+      workspaceId,
+      actorId,
+      connectionId: isolatedConnectionId,
+    });
+    const revoked = await read();
+    expect(revoked?.status).toBe('revoked');
+    expect(revoked?.current_secret_version_id).toBe(revokedVersion);
+    await resetProviderScenarioIsolation(seeds);
+    expect(await read()).toEqual(revoked);
+  });
+
   it('commits artifact, attempt truth, audit, bounded telemetry, and inert exact redelivery without leaking credentials', async () => {
     const encryption = fixtureEncryption;
     if (encryption === undefined)

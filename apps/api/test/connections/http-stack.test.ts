@@ -2,7 +2,10 @@ import type {
   ConnectionRecord,
   FailureNotificationDestinationDatabase,
 } from '@pertexo/database/testing';
-import { FailureNotificationDestinationError } from '@pertexo/database/api';
+import {
+  ConnectionNotFoundError,
+  FailureNotificationDestinationError,
+} from '@pertexo/database/api';
 import { connectionResponseSchema } from '@pertexo/contracts/connections';
 import {
   ConnectionSecretEncryptionError,
@@ -223,6 +226,11 @@ function connectionRuntime(
       };
     },
   );
+  const listConnectionUsage = vi.fn<
+    NonNullable<
+      ConnectionDependencies['usagePersistence']
+    >['listConnectionUsage']
+  >(() => Promise.resolve({ items: [] }));
   const runtime: ApiConnectionRuntime = Object.freeze({
     dependencies: {
       authorization,
@@ -320,6 +328,7 @@ function connectionRuntime(
           Promise.reject(new Error('not used')),
       },
       destinationPersistence,
+      usagePersistence: { listConnectionUsage },
     },
     close: () => Promise.resolve(),
   });
@@ -333,6 +342,7 @@ function connectionRuntime(
     getDestination,
     listDestinations,
     getWorkflowPolicy,
+    listConnectionUsage,
   };
 }
 
@@ -707,6 +717,92 @@ describe('connections real Nest HTTP stack', () => {
     expect(response.json()).toMatchObject({ code: 'provider.unavailable' });
     expect(response.payload).not.toContain('raw-kms-credential');
     expect(response.payload).not.toContain(credentialValue);
+  });
+
+  it('exposes bounded published usage to viewers without CSRF or credential fields', async () => {
+    const { application, connection } = await start('viewer');
+    const connectionId = '11111111-1111-4111-8111-111111111111';
+    const workflowVersionId = '22222222-2222-4222-8222-222222222222';
+    connection.listConnectionUsage.mockResolvedValueOnce({
+      items: [
+        {
+          workflowId: '33333333-3333-4333-8333-333333333333',
+          workflowName: 'Historical sender',
+          workflowLifecycleStatus: 'archived',
+          workflowVersionId,
+          versionNumber: 2,
+          isCurrentPublication: false,
+          operationKeys: ['send_message'],
+        },
+      ],
+      nextCursor: { workflowVersionId },
+    });
+    const response = await application.inject({
+      method: 'GET',
+      url: `${connectionUrl}/${connectionId}/usage?limit=1`,
+      headers: { cookie: authenticatedHeaders.cookie },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [
+        {
+          workflowLifecycleStatus: 'archived',
+          versionNumber: 2,
+          isCurrentPublication: false,
+        },
+      ],
+    });
+    expect(connection.listConnectionUsage).toHaveBeenCalledExactlyOnceWith({
+      workspaceId,
+      actorId,
+      connectionId,
+      limit: 1,
+    });
+    expect(response.payload).not.toMatch(
+      /secretVersion|credential|graph_json/iu,
+    );
+    const cursor = response.json<{ nextCursor: string }>().nextCursor;
+    const swapped = await application.inject({
+      method: 'GET',
+      url: `${connectionUrl}/${workflowVersionId}/usage?after=${cursor}`,
+      headers: { cookie: authenticatedHeaders.cookie },
+    });
+    expect(swapped.statusCode).toBe(400);
+    expect(connection.listConnectionUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps usage nondisclosing across authentication, workspace and database authority failures', async () => {
+    const { application, connection } = await start();
+    const connectionId = '11111111-1111-4111-8111-111111111111';
+    const unauthenticated = await application.inject({
+      method: 'GET',
+      url: `${connectionUrl}/${connectionId}/usage`,
+    });
+    expect(unauthenticated.statusCode).toBe(401);
+    const foreign = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${connectionId}/connections/${connectionId}/usage`,
+      headers: { cookie: authenticatedHeaders.cookie },
+    });
+    expect(foreign.statusCode).toBe(404);
+    expect(connection.listConnectionUsage).not.toHaveBeenCalled();
+    connection.listConnectionUsage.mockRejectedValueOnce(
+      new ConnectionNotFoundError('internal private usage'),
+    );
+    const revoked = await application.inject({
+      method: 'GET',
+      url: `${connectionUrl}/${connectionId}/usage`,
+      headers: { cookie: authenticatedHeaders.cookie },
+    });
+    expect(revoked.statusCode).toBe(404);
+    expect(revoked.payload).not.toContain('internal private usage');
+    const unbounded = await application.inject({
+      method: 'GET',
+      url: `${connectionUrl}/${connectionId}/usage?limit=101`,
+      headers: { cookie: authenticatedHeaders.cookie },
+    });
+    expect(unbounded.statusCode).toBe(400);
+    expect(connection.listConnectionUsage).toHaveBeenCalledTimes(1);
   });
 
   it('does not serialize raw provider failure causes', async () => {

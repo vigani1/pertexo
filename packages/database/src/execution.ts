@@ -54,6 +54,8 @@ export type {
   DatabaseRuntimeOptions,
 } from './platform/database-runtime.js';
 export { createWorkspaceDatabase } from './database.js';
+export { applyConnectionHealthObservation } from './execution/transport/connection-health-application.js';
+export type { ConnectionHealthApplicationResult } from './execution/transport/connection-health-application.js';
 export type { WorkspaceDatabase } from './database.js';
 export { generatePersistedId } from './platform/persisted-id.js';
 export { createDeadlineWakeupScanner } from './execution/coordinator/deadline-wakeup-scanner.js';

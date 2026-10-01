@@ -64,6 +64,7 @@ describe('parseWorkerConfig', () => {
         REDIS_URL: 'redis://:secret@localhost:6379/0',
       }),
     ).toEqual({
+      connectionRunHealthMode: 'off',
       coordinator: {
         dueWakeupBatchSize: 25,
         dueWakeupPollIntervalMillis: 250,

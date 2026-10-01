@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0127_workflow_concurrency.sql",
+  "transactionalThrough": "0128_connection_health.sql",
   "migrations": {}
 }

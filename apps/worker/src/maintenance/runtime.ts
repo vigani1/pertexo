@@ -1,4 +1,9 @@
 import { operatorRunReplayFactories } from '../execution/operator-run-replay-runtime.js';
+import {
+  connectionHealthObservationFactories,
+  type ConnectionHealthObservationStore,
+} from '../execution/connection-health-runtime.js';
+import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -45,6 +50,7 @@ export interface MaintenanceRuntime {
 }
 
 export type MaintenanceRuntimeFactories = Readonly<{
+  connectionHealth: typeof connectionHealthObservationFactories;
   consumer: typeof createQueueConsumer;
   notifications: Readonly<{
     handler: typeof failureNotificationFactories.handler;
@@ -66,6 +72,7 @@ export type MaintenanceRuntimeFactories = Readonly<{
 }>;
 
 const productionFactories: MaintenanceRuntimeFactories = {
+  connectionHealth: connectionHealthObservationFactories,
   consumer: createQueueConsumer,
   notifications: failureNotificationFactories,
   preview: previewReconciliationFactories,
@@ -75,6 +82,8 @@ const productionFactories: MaintenanceRuntimeFactories = {
 };
 
 type MaintenanceOptions = Readonly<{
+  connectionHealthApplication?: boolean;
+  connectionRunHealthMode?: ConnectionRunHealthMode;
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
   backgroundTaskShutdownTimeoutMillis?: number;
@@ -92,6 +101,7 @@ type MaintenanceOptions = Readonly<{
 }>;
 
 type MaintenanceDependencies = Readonly<{
+  connectionHealthStore?: ConnectionHealthObservationStore;
   consumerFactory?: typeof createQueueConsumer;
   reconciliationStore?: PreviewReconciliationStore & {
     close?: () => Promise<void>;
@@ -181,9 +191,17 @@ async function composeMaintenanceRuntime(
     | (UnknownOutcomeReconciliationStore & { close?: () => Promise<void> })
     | undefined;
   let runReplayStore: OperatorRunReplayStore | undefined;
+  let connectionHealthStore: ConnectionHealthObservationStore | undefined;
   let failureNotification: FailureNotificationHandler | undefined;
   let consumer: QueueConsumer | undefined;
   try {
+    if (options.connectionHealthApplication === true)
+      connectionHealthStore =
+        dependencies.connectionHealthStore ??
+        factories.connectionHealth.store(
+          options.database,
+          options.databaseRuntime,
+        );
     if (options.previewReconciliation !== false)
       reconciliationStore =
         dependencies.reconciliationStore ??
@@ -223,6 +241,14 @@ async function composeMaintenanceRuntime(
         retryDelaySeconds: bounds.failureNotificationRetryDelaySeconds,
       });
     const handlers: MaintenanceHandlers = {
+      ...(connectionHealthStore === undefined
+        ? {}
+        : {
+            connectionHealth: factories.connectionHealth.handler(
+              connectionHealthStore,
+              options.connectionRunHealthMode ?? 'off',
+            ),
+          }),
       ...(reconciliationStore === undefined
         ? {}
         : {
@@ -259,6 +285,7 @@ async function composeMaintenanceRuntime(
         unknownOutcomeStore,
         runReplayStore,
         failureNotificationStore,
+        connectionHealthStore,
       },
       bounds.backgroundTaskShutdownTimeoutMillis,
     );
@@ -274,6 +301,7 @@ async function composeMaintenanceRuntime(
     consumer,
     ...(failureNotification === undefined ? {} : { failureNotification }),
     stores: {
+      ...(connectionHealthStore === undefined ? {} : { connectionHealthStore }),
       ...(reconciliationStore === undefined ? {} : { reconciliationStore }),
       ...(failureNotificationStore === undefined
         ? {}

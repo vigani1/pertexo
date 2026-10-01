@@ -1731,6 +1731,34 @@ value. Commit only when separately authorized under root Git instructions.
 
 ### Post-baseline frontend slice evidence
 
+- ADR 059 connection health extends the existing list/detail owner rather than
+  introducing a second settings model. Active credentials without positive
+  evidence display Unknown; positive evidence displays Healthy. Definitive Slack
+  run rejection displays Needs reauthorization with a safe reason and run
+  provenance, never an explicit-test timestamp. The detail lens separates Last
+  tested, Last healthy, Last run observed and Health changed. Explicit Test
+  remains available for reauthorization-required credentials; revoked
+  credentials block Test and replacement. Slack Send message is the only
+  automatic run-health coverage, and only when backend observation is enabled.
+- Connection usage reads are authorized, cursor-paged retained published
+  versions (`limit=50`), not draft graph scans. Each version identifies current
+  versus historical publication and archived workflows. Workflow-read loss
+  removes usage without inventing a connection-read restriction. Connection
+  reads refresh every 30 seconds only while their visible query is mounted;
+  hidden-tab polling is disabled. Denial cancels sibling reads and clears the
+  scoped snapshots so even a held noncooperative GET cannot restore them.
+  Returned command snapshots first cancel outstanding reads, and disposed
+  identity/workspace/permission owners cannot apply late mutation results.
+- F30 web verification: 110 unit/component files with 810 tests pass, including
+  nine held-read/access/command-fence cases; production build/typecheck and
+  zero-warning lint pass; all three connection Chromium mock-boundary journeys
+  pass. Desktop/mobile screenshots are inspected. The live connection-health
+  browser spec drives the owned API/worker fixture, including stale observations
+  after explicit Test and rotation, but its runtime proof is recorded separately
+  by the checkpoint owner. Changed-scope React Doctor reports one false-positive
+  invalidation warning for the secret-command helper: its delegated success
+  callback cancels, stores and invalidates the scoped connection cache.
+
 - Connections now cover Slack creation, provider testing, exact-precondition
   secret rotation and generic revocation without exposing stored credentials.
   Run detail exposes an explicit replay dialog that submits the displayed

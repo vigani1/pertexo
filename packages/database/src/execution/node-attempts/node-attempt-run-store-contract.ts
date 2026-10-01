@@ -236,8 +236,26 @@ const traceparentSchema = z
   .string()
   .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
   .optional();
+export const connectionHealthObservationSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('healthy') }).strict(),
+  z
+    .object({
+      kind: z.literal('reauthorization_required'),
+      reasonCode: z.enum([
+        'connection.slack_account_inactive',
+        'connection.slack_token_expired',
+        'connection.slack_token_revoked',
+      ]),
+    })
+    .strict(),
+]);
 export const completionSchema = ownedLeaseSchema
-  .extend({ outcome: completionOutcomeSchema, traceparent: traceparentSchema })
+  .extend({
+    outcome: completionOutcomeSchema,
+    traceparent: traceparentSchema,
+    connectionHealthObservation: connectionHealthObservationSchema.optional(),
+    connectionRunHealthMode: z.enum(['off', 'observe', 'enforce']).optional(),
+  })
   .strict();
 
 export type NodeAttemptClaimResult =
@@ -332,6 +350,10 @@ export interface NodeAttemptRunStore {
     input: Readonly<{
       lease: NodeAttemptLease;
       outcome: NodeAttemptCompletion;
+      connectionHealthObservation?: z.output<
+        typeof connectionHealthObservationSchema
+      >;
+      connectionRunHealthMode?: 'off' | 'observe' | 'enforce';
       traceparent?: string;
       signal: AbortSignal;
     }>,

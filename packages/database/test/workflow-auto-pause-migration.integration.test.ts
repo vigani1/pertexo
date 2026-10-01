@@ -115,6 +115,7 @@ describe('auto pause controls prior-head migration and readiness', () => {
       expect(await migrateDatabase(config)).toEqual([
         '0126_workspace_usage_capacity.sql',
         '0127_workflow_concurrency.sql',
+        '0128_connection_health.sql',
       ]);
       expect(await migrateDatabase(config)).toEqual([]);
       expect(
@@ -143,7 +144,7 @@ describe('auto pause controls prior-head migration and readiness', () => {
       await expect(
         checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
       ).resolves.toMatchObject({
-        migrationHead: '0127_workflow_concurrency.sql',
+        migrationHead: '0128_connection_health.sql',
       });
       await expect(fold.checkReadiness()).resolves.toBeUndefined();
       const foldSignature =

@@ -1,5 +1,19 @@
 [
   {
+    "name": "node_attempt_connection_dispatches",
+    "owner": "owner_role",
+    "accessRoles": ["worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Immutable attempt-owned dispatch identity is inserted only by the lease and published-slot validating function and cascades with attempt retention."
+  },
+  {
+    "name": "connection_health_observations",
+    "owner": "owner_role",
+    "accessRoles": ["worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Accepted completion evidence and application markers are owned by narrow execution functions, with no direct runtime mutation grants."
+  },
+  {
     "name": "workspace_member_departure_command_receipts",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role"],

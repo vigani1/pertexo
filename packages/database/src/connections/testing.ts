@@ -36,7 +36,6 @@ export type {
   FindConnectionCreateReplayInput,
   FindConnectionRotateReplayInput,
   ListConnectionsInput,
-  RecordConnectionHealthInput,
   ReadConnectionInput,
   ResolveConnectionSecretInput,
   ResolveConnectionTestSecretInput,

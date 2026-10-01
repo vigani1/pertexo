@@ -20,6 +20,7 @@ import {
   connectionRotateSecretRequestSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
+  connectionUsageResponseSchema,
   slackChannelLookupChannelIdsSchema,
   slackChannelLookupResponseSchema,
 } from './http/connections.js';
@@ -42,6 +43,7 @@ const schemas = Object.freeze({
   ConnectionCreateRequest: jsonSchema(connectionCreateRequestSchema, 'input'),
   ConnectionListResponse: jsonSchema(connectionListResponseSchema, 'output'),
   ConnectionResponse: jsonSchema(connectionResponseSchema, 'output'),
+  ConnectionUsageResponse: jsonSchema(connectionUsageResponseSchema, 'output'),
   ConnectionRotateSecretRequest: jsonSchema(
     connectionRotateSecretRequestSchema,
     'input',
@@ -160,6 +162,31 @@ export const connectionsOpenApiDocument = Object.freeze({
           '403': responseReference('Forbidden'),
           '409': responseReference('Conflict'),
           '503': responseReference('ServiceUnavailable'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/connections/{connectionId}/usage': {
+      get: {
+        operationId: 'listConnectionUsage',
+        description:
+          'Retained published workflow versions using this connection. Requires connection:read and workflow:read in an active workspace.',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          connectionParameter,
+          queryParameter('limit', connectionPageLimitSchema),
+          queryParameter('after', connectionCursorSchema),
+        ],
+        responses: {
+          '200': jsonResponse(
+            'Published connection usage',
+            'ConnectionUsageResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
           '500': responseReference('Unexpected'),
         },
       },

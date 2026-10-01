@@ -13,6 +13,7 @@ export function connectionTestClaim(
   dispatchToken: string,
   state: 'claimed' | 'dispatched',
   secretVersionId?: string,
+  healthRevision?: string,
 ) {
   const base = {
     schemaVersion: 1 as const,
@@ -23,6 +24,14 @@ export function connectionTestClaim(
     ...base,
     state,
     secretVersionId: uuidSchema.parse(secretVersionId),
+    ...(healthRevision === undefined
+      ? {}
+      : {
+          healthRevision: z
+            .string()
+            .regex(/^[1-9][0-9]*$/u)
+            .parse(healthRevision),
+        }),
   });
 }
 
@@ -41,6 +50,10 @@ export const connectionTestClaimSchema = z.discriminatedUnion('state', [
       dispatchToken: z.uuid(),
       // Optional only for already-persisted version-1 in-flight claims.
       secretVersionId: z.uuid().optional(),
+      healthRevision: z
+        .string()
+        .regex(/^[1-9][0-9]*$/u)
+        .optional(),
     })
     .strict(),
 ]);

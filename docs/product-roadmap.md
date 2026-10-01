@@ -214,8 +214,8 @@ only after its gate is resolved.
 | [F26](feature-plans/26-workflow-auto-pause.md) | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Design accepted (ADR056); implementation next |
 | [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
 | [F28](feature-plans/28-single-sign-on-and-provisioning.md) | Single sign-on (SAML/OIDC) and SCIM user provisioning | Extends the session authority for organizations | L–XL | Proposed |
-| [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Proposed |
-| [F30](feature-plans/30-connection-health.md) | Connection health from real failures, used-by and reconnection | Extends existing connections | M–L | Proposed |
+| [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Queue-only first slice qualified; skip overflow deferred |
+| [F30](feature-plans/30-connection-health.md) | Connection health from real failures, used-by and reconnection | Extends existing connections | M–L | First Slack slice implemented and qualified locally; independent review/release pending |
 
 ## Shared implementation rules
 

@@ -84,6 +84,7 @@ const expectedSuffix = [
   '0125_workflow_auto_pause_controls.sql',
   '0126_workspace_usage_capacity.sql',
   '0127_workflow_concurrency.sql',
+  '0128_connection_health.sql',
 ] as const;
 
 interface FunctionMetadata {

@@ -122,6 +122,7 @@ describe('@pertexo/database package contract', () => {
         'createConnection',
         'findConnectionCreateReplay',
         'findConnectionRotateReplay',
+        'listConnectionUsage',
         'listConnections',
         'markConnectionTestDispatched',
         'readConnection',

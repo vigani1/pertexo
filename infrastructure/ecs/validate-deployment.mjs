@@ -415,6 +415,13 @@ export function validateDeploymentContracts({
     )
       throw new Error(`${name} has an invalid environment`);
     assertDisjointInjectionNames(name, workload);
+    if (
+      name === 'worker' &&
+      !['off', 'observe', 'enforce'].includes(
+        workload.environment.CONNECTION_RUN_HEALTH_MODE,
+      )
+    )
+      throw new Error('worker requires a valid CONNECTION_RUN_HEALTH_MODE');
     const environmentNames = Object.keys(workload.environment);
     const leaked = environmentNames.filter((key) =>
       credentialPattern.test(key),

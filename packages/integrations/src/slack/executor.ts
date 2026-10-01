@@ -16,6 +16,7 @@ import {
   safeNumberProperty,
 } from '../http/unknown-error.js';
 import type { SlackApiResult, SlackClient } from './client.js';
+import { classifySlackConnectionHealth } from './connection-health.js';
 import {
   SLACK_BOT_TOKEN_CONNECTION_SLOT,
   SLACK_SEND_MESSAGE_DEFINITION,
@@ -259,13 +260,22 @@ async function execute(
       }
       throw failure('outcome_unknown', 'network', true);
     }
-    if (result.kind !== 'succeeded') classifyResult(result);
+    if (result.kind !== 'succeeded') {
+      const observation = classifySlackConnectionHealth(result);
+      if (observation !== undefined)
+        runtime.observeConnectionHealth?.(observation);
+      classifyResult(result);
+    }
     if (result.channelId !== input.channelId)
       throw failure('outcome_unknown', 'provider', true);
-    return slackSendMessageOutputSchema.parse({
+    const output = slackSendMessageOutputSchema.parse({
       channelId: result.channelId,
       messageTs: result.messageTs,
     });
+    const observation = classifySlackConnectionHealth(result);
+    if (observation !== undefined)
+      runtime.observeConnectionHealth?.(observation);
+    return output;
   });
 }
 

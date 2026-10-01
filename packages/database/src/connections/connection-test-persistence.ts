@@ -27,6 +27,7 @@ import {
 } from './connection-test-claim.js';
 import { requireConnectionUser } from './connection-authority.js';
 import { markConnectionTestDispatched } from './connection-test-dispatch.js';
+import { applyCurrentConnectionTestHealth } from './connection-health-transitions.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
@@ -188,7 +189,7 @@ export function createConnectionTestPersistence(
           );
           if (
             connection?.providerKey !== expectedProviderKey ||
-            connection.status !== CONNECTION_STATUS.active
+            connection.status === CONNECTION_STATUS.revoked
           )
             throw new ConnectionUnavailableError(
               'Connection is not available for testing',
@@ -248,7 +249,7 @@ export function createConnectionTestPersistence(
               and secret.id = connection.current_secret_version_id
              where connection.workspace_id = $1 and connection.id = $2
                and connection.provider_key = $3
-               and connection.status = 'active'
+               and connection.status <> 'revoked'
              for share of connection`,
             [workspaceId, connectionId, expectedProviderKey],
           );
@@ -346,7 +347,6 @@ export function createConnectionTestPersistence(
           if (current === null)
             throw new ConnectionNotFoundError('Connection is not visible');
 
-          let connection = current;
           const currentSecretWasTested =
             current.currentSecretVersionId === secretVersionId;
           const classification = classifyConnectionTestCompletion(
@@ -355,29 +355,17 @@ export function createConnectionTestPersistence(
             secretVersionId,
             currentSecretWasTested,
           );
-          if (classification.healthUpdateAllowed) {
-            const updated = await client.query<Record<string, unknown>>(
-              `update app.connections
-               set status = $1,
-                   last_tested_at = transaction_timestamp(),
-                   last_healthy_at = case when $2 then transaction_timestamp()
-                                          else last_healthy_at end,
-                   last_error_code = $3,
-                   updated_at = transaction_timestamp()
-               where workspace_id = $4 and id = $5 returning *`,
-              [
-                classification.nextStatus,
-                outcome.ok,
-                classification.lastErrorCode,
-                workspaceId,
-                connectionId,
-              ],
-            );
-            const row = updated.rows[0];
-            if (row === undefined)
-              throw new Error('Connection test health update returned no row');
-            connection = mapConnection(row);
-          }
+          const connection = await applyCurrentConnectionTestHealth(client, {
+            current,
+            secretVersionId,
+            healthRevision:
+              claimState.state === 'dispatched'
+                ? claimState.healthRevision
+                : undefined,
+            outcome,
+            actorId,
+            ...metadata,
+          });
           await client.query(
             `insert into app.connection_events
                (id, workspace_id, connection_id, event_type, actor_kind,
@@ -387,7 +375,9 @@ export function createConnectionTestPersistence(
               generatePersistedId(),
               workspaceId,
               connectionId,
-              classification.eventType,
+              outcome.ok
+                ? CONNECTION_EVENT_TYPE.testSucceeded
+                : CONNECTION_EVENT_TYPE.testFailed,
               actorId,
               metadata.requestId,
               metadata.traceId,

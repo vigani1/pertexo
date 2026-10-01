@@ -20,7 +20,7 @@ import {
   type InvitationDeliveryConfig,
 } from './invitation-delivery-config.js';
 import * as autoPause from './workflow-auto-pause-config.js';
-
+import * as connectionHealth from './connection-run-health-config.js';
 const workerEnvironments = [
   'development',
   'test',
@@ -422,6 +422,7 @@ export type WorkerConfig = Readonly<
     invitationDelivery?: InvitationDeliveryConfig;
     authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
     workflowAutoPause: autoPause.WorkflowAutoPauseConfig;
+    connectionRunHealthMode: connectionHealth.ConnectionRunHealthMode;
     coordinator: { workflowTriggerOutcomesEnabled: boolean };
   }
 >;
@@ -546,6 +547,7 @@ export function parseWorkerConfig(
       );
     return Object.freeze({
       ...result.data,
+      ...connectionHealth.parseConnectionRunHealthConfig(environment),
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),
       ...(artifactStore === undefined ? {} : { artifactStore }),
       ...(invitationDelivery === undefined ? {} : { invitationDelivery }),

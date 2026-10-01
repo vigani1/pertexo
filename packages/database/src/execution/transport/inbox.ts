@@ -17,7 +17,10 @@ const inboxMessageSchema = z
   .strict();
 
 export type InboxMessage = Readonly<z.input<typeof inboxMessageSchema>>;
-export type InboxConsumeOptions = Readonly<{ signal?: AbortSignal }>;
+export type InboxConsumeOptions = Readonly<{
+  signal?: AbortSignal;
+  lockWorkspace?: boolean;
+}>;
 export type InboxConsumeResult<T> =
   | Readonly<{ status: 'processed'; value: T }>
   | Readonly<{ status: 'duplicate' }>;
@@ -49,6 +52,10 @@ export async function consumeInboxMessage<T>(
   const result = await database.withWorkspace(
     workspaceId,
     async (transaction) => {
+      if (options.lockWorkspace === true)
+        await transaction.db.execute(
+          sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
+        );
       const inserted = await transaction.db
         .insert(inboxReceipts)
         .values({

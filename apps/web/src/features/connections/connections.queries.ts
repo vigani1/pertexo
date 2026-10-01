@@ -1,9 +1,11 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { isNotFound } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
+import { forgetDeniedConnections } from './connection-access';
 import {
   getAllConnections,
   getConnection,
+  getConnectionUsagePage,
   getConnectionsPage,
   getSlackChannelNames,
 } from './connections.api';
@@ -21,6 +23,12 @@ export const connectionKeys = {
     [
       ...connectionKeys.scope(userId, workspaceId),
       'detail',
+      connectionId,
+    ] as const,
+  usage: (userId: string, workspaceId: string, connectionId: string) =>
+    [
+      ...connectionKeys.scope(userId, workspaceId),
+      'usage',
       connectionId,
     ] as const,
   slackChannels: (
@@ -74,15 +82,29 @@ export function connectionsInfiniteQueryOptions(
   userId: string,
   workspaceId: string,
 ) {
+  const queryKey = connectionKeys.list(userId, workspaceId);
   return infiniteQueryOptions({
-    queryKey: connectionKeys.list(userId, workspaceId),
-    queryFn: ({ pageParam, signal }) =>
-      getConnectionsPage(apiClient, workspaceId, {
-        ...(pageParam === null ? {} : { after: pageParam }),
-        signal,
-      }),
+    queryKey,
+    queryFn: async ({ pageParam, signal, client }) => {
+      try {
+        return await getConnectionsPage(apiClient, workspaceId, {
+          ...(pageParam === null ? {} : { after: pageParam }),
+          signal,
+        });
+      } catch (error: unknown) {
+        await forgetDeniedConnections(
+          client,
+          connectionKeys.scope(userId, workspaceId),
+          queryKey,
+          error,
+        );
+        throw error;
+      }
+    },
     initialPageParam: initialConnectionPageParam,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -91,9 +113,22 @@ export function connectionDiscoveryQueryOptions(
   userId: string,
   workspaceId: string,
 ) {
+  const queryKey = connectionKeys.discovery(userId, workspaceId);
   return queryOptions({
-    queryKey: connectionKeys.discovery(userId, workspaceId),
-    queryFn: ({ signal }) => getAllConnections(apiClient, workspaceId, signal),
+    queryKey,
+    queryFn: async ({ signal, client }) => {
+      try {
+        return await getAllConnections(apiClient, workspaceId, signal);
+      } catch (error: unknown) {
+        await forgetDeniedConnections(
+          client,
+          connectionKeys.scope(userId, workspaceId),
+          queryKey,
+          error,
+        );
+        throw error;
+      }
+    },
     staleTime: 30_000,
   });
 }
@@ -111,10 +146,16 @@ export function editorConnectionsQueryOptions(
 ) {
   return queryOptions({
     queryKey: connectionKeys.editor(userId, workspaceId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, client }) => {
       try {
         return await getAllConnections(apiClient, workspaceId, signal);
       } catch (error) {
+        await forgetDeniedConnections(
+          client,
+          connectionKeys.scope(userId, workspaceId),
+          connectionKeys.editor(userId, workspaceId),
+          error,
+        );
         if (isNotFound(error)) return null;
         throw error;
       }
@@ -129,9 +170,61 @@ export function connectionDetailQueryOptions(
   workspaceId: string,
   connectionId: string,
 ) {
+  const queryKey = connectionKeys.detail(userId, workspaceId, connectionId);
   return queryOptions({
-    queryKey: connectionKeys.detail(userId, workspaceId, connectionId),
-    queryFn: ({ signal }) =>
-      getConnection(apiClient, workspaceId, connectionId, signal),
+    queryKey,
+    queryFn: async ({ signal, client }) => {
+      try {
+        return await getConnection(
+          apiClient,
+          workspaceId,
+          connectionId,
+          signal,
+        );
+      } catch (error: unknown) {
+        await forgetDeniedConnections(
+          client,
+          connectionKeys.scope(userId, workspaceId),
+          queryKey,
+          error,
+        );
+        throw error;
+      }
+    },
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+}
+
+export function connectionUsageQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  connectionId: string,
+) {
+  const queryKey = connectionKeys.usage(userId, workspaceId, connectionId);
+  return infiniteQueryOptions({
+    queryKey,
+    queryFn: async ({ pageParam, signal, client }) => {
+      try {
+        return await getConnectionUsagePage(
+          apiClient,
+          workspaceId,
+          connectionId,
+          {
+            ...(pageParam === null ? {} : { after: pageParam }),
+            signal,
+          },
+        );
+      } catch (error: unknown) {
+        // Workflow-read loss denies usage, not otherwise authorized connection metadata.
+        await forgetDeniedConnections(client, queryKey, queryKey, error);
+        throw error;
+      }
+    },
+    initialPageParam: initialConnectionPageParam,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }

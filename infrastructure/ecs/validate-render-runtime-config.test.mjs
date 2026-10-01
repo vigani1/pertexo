@@ -73,6 +73,7 @@ const parserScript = String.raw`
       'pertexo/authentication-mail/config-proof',
     ) === 'shared-key-proof';
     result.enabledJobNames = config.outboxDispatcher.enabledJobNames;
+    result.connectionRunHealthMode = config.connectionRunHealthMode;
     result.hasConnectionEncryption = config.connectionEncryption !== undefined;
     result.hasArtifactStore = config.artifactStore !== undefined;
   }
@@ -248,6 +249,12 @@ test('rendered API and worker definitions satisfy their public production parser
         await readFile(resolve(temporaryRoot, `${name}.json`), 'utf8'),
       );
     }
+    assert.deepEqual(
+      tasks.worker.containerDefinitions[0].environment.filter(
+        ({ name }) => name === 'CONNECTION_RUN_HEALTH_MODE',
+      ),
+      [{ name: 'CONNECTION_RUN_HEALTH_MODE', value: 'off' }],
+    );
 
     for (const cohort of productionCohorts) {
       const apiConfig = await parseRole(
@@ -286,6 +293,7 @@ test('rendered API and worker definitions satisfy their public production parser
       );
       assert.equal(workerConfig.cohort, cohort);
       assert.deepEqual(workerConfig.enabledJobNames, activeQueueJobNames);
+      assert.equal(workerConfig.connectionRunHealthMode, 'off');
       assert.equal(workerConfig.serviceVersion, 'release-2026-09-06');
       assert.equal(workerConfig.hasAuthenticationMailDelivery, true);
       assert.equal(workerConfig.authenticationMailKeyVersion, 'auth-mail-v1');

@@ -22,6 +22,7 @@ import {
   serializeConnectionSnapshot,
 } from './connection-persistence.js';
 import { requireConnectionManager } from './connection-authority.js';
+import { revokeConnectionHealth } from './connection-health-transitions.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
@@ -292,11 +293,10 @@ export function createConnectionManagementPersistence(
             throw new ConnectionNotFoundError('Connection is not visible');
           if (connection.status === CONNECTION_STATUS.revoked)
             return connection;
-          const updated = await client.query<Record<string, unknown>>(
-            `update app.connections
-             set status = 'revoked', updated_at = transaction_timestamp()
-             where workspace_id = $1 and id = $2 returning *`,
-            [workspaceId, connectionId],
+          const updated = await revokeConnectionHealth(
+            client,
+            workspaceId,
+            connectionId,
           );
           await client.query(
             `insert into app.connection_events

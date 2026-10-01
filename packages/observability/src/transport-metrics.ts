@@ -73,6 +73,10 @@ export type TransportJob =
   | {
       readonly jobName: 'deliver-workspace-invitation';
       readonly queueName: 'maintenance';
+    }
+  | {
+      readonly jobName: 'apply-connection-health-observation';
+      readonly queueName: 'maintenance';
     };
 
 export type TransportPublishMeasurement = TransportJob &

@@ -51,6 +51,7 @@ function runtime(clientResult: SlackApiResult | Error | undefined) {
     invocationKey: 'slack-node',
     sideEffectClass: 'unsafe',
     beforeDispatch,
+    observeConnectionHealth: vi.fn(),
     connections: {
       assertCurrent,
       resolve: () =>
@@ -86,6 +87,71 @@ function invocation(value: NodeExecutionRuntime) {
 }
 
 describe('slack.send_message@1', () => {
+  it.each([
+    [
+      'account_inactive',
+      'connection.slack_account_inactive',
+      'failed',
+      'authentication',
+      false,
+    ],
+    [
+      'token_revoked',
+      'connection.slack_token_revoked',
+      'failed',
+      'authentication',
+      false,
+    ],
+    [
+      'token_expired',
+      'connection.slack_token_expired',
+      'outcome_unknown',
+      'provider',
+      true,
+    ],
+  ] as const)(
+    'captures %s without changing the provider outcome',
+    async (error, reasonCode, kind, errorKind, possiblyDispatched) => {
+      const state = runtime({ kind: 'rejected', error });
+      await expect(
+        createSlackSendMessageExecutorRegistration({
+          client: { sendMessage: state.sendMessage },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject({ kind, errorKind, possiblyDispatched });
+      expect(
+        state.value.observeConnectionHealth,
+      ).toHaveBeenCalledExactlyOnceWith({
+        kind: 'reauthorization_required',
+        reasonCode,
+      });
+      expect(state.secret.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
+  it.each([
+    { kind: 'rejected', error: 'invalid_auth' },
+    { kind: 'rejected', error: 'not_authed' },
+    { kind: 'rejected', error: 'missing_scope' },
+    { kind: 'http_failure', status: 401 },
+    { kind: 'http_failure', status: 403 },
+    { kind: 'rate_limited', retryAfterMillis: 1_000 },
+    { kind: 'invalid_response' },
+    { kind: 'succeeded', channelId: 'COTHER', messageTs: '1724412345.000100' },
+    { kind: 'succeeded', channelId: 'C123ABC', messageTs: 'malformed' },
+    new Error('transport failed'),
+  ] as const)(
+    'does not capture ambiguous or invalid result %#',
+    async (result) => {
+      const state = runtime(result);
+      await expect(
+        createSlackSendMessageExecutorRegistration({
+          client: { sendMessage: state.sendMessage },
+        }).execute(invocation(state.value)),
+      ).rejects.toThrow();
+      expect(state.value.observeConnectionHealth).not.toHaveBeenCalled();
+    },
+  );
+
   it('publishes the exact browser-safe unsafe ABI 2 contract and strict bounds', () => {
     expect(SLACK_SEND_MESSAGE_MANIFEST).toMatchObject({
       definition: { key: 'slack.send_message', version: 1 },
@@ -130,6 +196,9 @@ describe('slack.send_message@1', () => {
       expect.objectContaining({ secretVersionId }),
     );
     expect(state.beforeDispatch).toHaveBeenCalledOnce();
+    expect(state.value.observeConnectionHealth).toHaveBeenCalledExactlyOnceWith(
+      { kind: 'healthy' },
+    );
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
   });
 
@@ -245,6 +314,7 @@ describe('slack.send_message@1', () => {
           client: { sendMessage: state.sendMessage },
         }).execute(invocation(state.value)),
       ).rejects.toMatchObject(expected);
+      expect(state.value.observeConnectionHealth).not.toHaveBeenCalled();
     },
   );
 
@@ -562,6 +632,8 @@ describe('slack.send_message@1', () => {
       errorKind: 'timeout',
       possiblyDispatched: true,
     });
+    expect(definite.value.observeConnectionHealth).not.toHaveBeenCalled();
+    expect(ambiguous.value.observeConnectionHealth).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -720,6 +792,35 @@ describe('slack.send_message@1', () => {
     expect(limited.sendMessage).not.toHaveBeenCalled();
   });
 
+  it('keeps a throttle with unreadable retry metadata a provider retry without dispatch or health evidence', async () => {
+    const limited = runtime(undefined);
+    const error = new ProviderExecutionRateLimitError(7);
+    Object.defineProperty(error, 'retryAfterSeconds', {
+      get: () => {
+        throw new Error('unreadable provider metadata');
+      },
+    });
+    limited.value = Object.freeze({
+      ...limited.value,
+      connections: {
+        assertCurrent: limited.assertCurrent,
+        resolve: () => Promise.reject(error),
+      },
+    });
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: limited.sendMessage },
+      }).execute(invocation(limited.value)),
+    ).rejects.toMatchObject({
+      kind: 'retry',
+      errorKind: 'provider',
+      possiblyDispatched: false,
+    });
+    expect(limited.sendMessage).not.toHaveBeenCalled();
+    expect(limited.beforeDispatch).not.toHaveBeenCalled();
+    expect(limited.value.observeConnectionHealth).not.toHaveBeenCalled();
+  });
+
   it('rejects a mismatched resolved Slack credential before provider dispatch', async () => {
     const mismatched = runtime(undefined);
     mismatched.value = Object.freeze({
@@ -779,6 +880,7 @@ describe('slack.send_message@1', () => {
         }).execute(invocation(state.value)),
       ).rejects.toMatchObject({ kind, errorKind, possiblyDispatched: false });
       expect(state.beforeDispatch).not.toHaveBeenCalled();
+      expect(state.value.observeConnectionHealth).not.toHaveBeenCalled();
     },
   );
 

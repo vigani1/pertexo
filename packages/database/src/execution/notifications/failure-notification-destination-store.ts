@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model/failure-notification';
 
 import { FailureNotificationStateError } from './failure-notification-errors.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   auditFailureNotification,
   failureNotificationIdentitySchema,
@@ -86,18 +85,15 @@ export function createFailureNotificationDestinationStore(
             row.connection_secret_version_id,
           );
           await client.query(
-            `insert into app.connection_events
-             (id,workspace_id,connection_id,event_type,actor_kind,actor_id,metadata)
-           values ($1,$2,$3,'connection.credential_accessed','worker',$4,$5::jsonb)`,
+            `select app.audit_connection_secret_access($1,$2,$3,$4,$5,$6,$7)`,
             [
-              generatePersistedId(),
               workspaceId,
               connectionId,
+              secretVersionId,
               workerId,
-              JSON.stringify({
-                purpose: 'failure_notification.deliver',
-                secretVersionId,
-              }),
+              null,
+              null,
+              'failure_notification.deliver',
             ],
           );
           const resolved = {

@@ -1,6 +1,6 @@
 # F29 — Per-workflow concurrency controls
 
-Status: first queue-only slice implemented locally; review and release pending.
+Status: first queue-only slice qualified and merged; skip overflow deferred.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: Extends run admission. Relative size: **M–L**, not a calendar estimate.
 
@@ -18,7 +18,8 @@ A schedule's misfire policy decides whether late occurrences run
 ([ADR 049](../adr/049-skip-misfire-on-time-window.md)). The local ADR058 slice
 adds a current, optional per-workflow cap across published versions, queue-only
 overflow, durable acceptance tickets, settings commands/UI, and timestamped
-queued-run blockers. It is not yet a merged or released capability.
+queued-run blockers. This first slice is qualified and merged in PR138; skip
+overflow and independent queue settings remain deferred.
 
 Inspected anchors (paths may move):
 
@@ -129,14 +130,25 @@ This context informs the outcome, not Pertexo's implementation.
 - [x] First-slice baseline reconciled against current code and accepted decisions.
 - [x] First-slice product choices resolved; ADR058 accepted. Broader skip and
   independent queue-setting choices remain deferred.
-- [ ] Contracts and concurrency model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
+- [x] Contracts and concurrency model reviewed.
+- [x] Backend behavior implemented and independently verified where needed.
+- [x] Frontend behavior implemented and independently verified where needed.
 - [x] Real integrated acceptance evidence recorded.
 - [x] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+- [x] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log:
+
+- 2026-10-01: independent specification and standards rereviews closed all
+  findings. [PR138](https://github.com/vigani1/pertexo/pull/138) merged exact
+  reviewed head `7561e822` as `02750811c0bbb8545042f96f9f6f53784c9ff5d2`.
+  Exact-head [CI36810146630](https://github.com/vigani1/pertexo/actions/runs/36810146630)
+  and [CodeQL36810146584](https://github.com/vigani1/pertexo/actions/runs/36810146584)
+  passed. Natural postmerge [CI36811514908](https://github.com/vigani1/pertexo/actions/runs/36811514908)
+  and [CodeQL36811514931](https://github.com/vigani1/pertexo/actions/runs/36811514931)
+  succeeded on that exact merge head. The main-push dependency-review skip is
+  expected. First-slice qualification is complete; Phase 7 remains open and no
+  production deployment or activation is claimed.
 
 - 2026-10-01: local implementation has 22 real PostgreSQL concurrency proofs,
   a final full database suite of 103 files / 741 tests, three real HTTP cases,

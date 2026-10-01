@@ -59,6 +59,10 @@ export function toResponse(record: ConnectionRecord): ConnectionResponse {
       lastTestedAt: record.lastTestedAt?.toISOString() ?? null,
       lastHealthyAt: record.lastHealthyAt?.toISOString() ?? null,
       lastErrorCode: record.lastErrorCode,
+      lastRunObservedAt: record.lastRunObservedAt?.toISOString() ?? null,
+      lastHealthTransitionAt:
+        record.lastHealthTransitionAt?.toISOString() ?? null,
+      lastHealthTransitionSource: record.lastHealthTransitionSource ?? null,
     },
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),

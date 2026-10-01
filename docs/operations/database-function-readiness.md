@@ -34,6 +34,15 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid)` | `8ff6b3bf9c4140076f4a16b80f0949a3` | definer, `pg_catalog, app`, `row_security=on`, worker-only | `0127_workflow_concurrency.sql` |
 | `app.workflow_run_active_admission_eligible(uuid,uuid,uuid)` | `9aa4c431740581a37d4873d0e49cc567` | definer, `pg_catalog, app`, `row_security=on`, dispatcher-only | `0127_workflow_concurrency.sql` |
 | `app.reserve_workflow_run_active_admission(uuid,uuid,uuid)` | `e11cf9af2c42e62f995138c7483fe162` | definer, `pg_catalog, app`, `row_security=on`, dispatcher-only | `0127_workflow_concurrency.sql` |
+| `app.lock_notification_connection(uuid,uuid)` | `a12fd79c0d2753ff214e864732ed1ca3` | definer, `pg_catalog, app`, `row_security=on`, API/worker-only | `0128_connection_health.sql` |
+| `app.enforce_connection_health_protocol()` | `4b36377613e407ba046e8c9c8f9ee824` | invoker, `pg_catalog, app`, internal trigger | `0128_connection_health.sql` |
+| `app.cleanup_connection_health_command()` | `3356eaa54a79e4c96e55d258621c6fea` | definer, `pg_catalog, app`, `row_security=on`, internal trigger | `0128_connection_health.sql` |
+| `app.bind_node_attempt_connection_dispatch(uuid,uuid,text,bigint,uuid,uuid)` | `a63cdd2cf7a8e9c967b992f9df28ed30` | definer, `pg_catalog, app`, `row_security=on`, worker-only | `0128_connection_health.sql` |
+| `app.record_node_attempt_connection_health(uuid,uuid,text,bigint,text,text,text,uuid,uuid)` | `abded4cdf7da724dce322df3801262c5` | definer, `pg_catalog, app`, `row_security=on`, worker-only | `0128_connection_health.sql` |
+| `app.apply_connection_health_observation(uuid,uuid,text,uuid,text)` | `2a15128a645b16ac211456c880d2cfd2` | definer, `pg_catalog, app`, `row_security=on`, worker-only | `0128_connection_health.sql` |
+| `app.audit_connection_secret_access(uuid,uuid,uuid,text,text,text,text)` | `62ddece0876f51039e5825ac914246d3` | definer, `pg_catalog, app`, `row_security=on`, worker-only | `0128_connection_health.sql` |
+| `app.apply_workspace_deletion_side_effects()` | `908becdc3d5fbf1ec9a1a855c97c75bf` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, internal trigger | `0128_connection_health.sql` |
+| `app.reject_retention_batch_direct_mutation()` | `bd7d508fdf10cf97eb33467e8bd00f37` | invoker, `pg_catalog, pg_temp`, internal trigger | `0128_connection_health.sql` |
 
 The executable inventory is split between
 `packages/database/src/platform/readiness.ts` (compatibility-release functions)
@@ -58,6 +67,16 @@ the seven bodies above, security configuration, runtime execution ACLs, private
 policy/receipt RLS and ACLs, ticket/reservation columns, private ticket sequence,
 and exact scoped active/order index shapes. Follow the lock and rollout contract
 in [Workflow concurrency enforcement](workflow-concurrency-enforcement.md).
+
+The connection-health boundary (ADR059) is checked by
+`packages/database/src/platform/readiness-connection-health.sql.ts`, included in
+the API/worker compatibility probe. It pins the eight bodies above, exact
+execution grants, private evidence tables and column grants, forced tenant RLS,
+source-cascade constraints, command cleanup, and transition/revision constraints.
+Follow [Connection health enforcement](connection-health-enforcement.md) for
+lock order, mode-preserving backlog handling, and fail-closed mixed-version
+deployment. Restore-before-serve uses the same migration-head compatibility
+boundary; restoring evidence does not authorize enabling enforcement.
 
 ## Synchronized update procedure
 

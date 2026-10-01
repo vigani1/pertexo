@@ -64,11 +64,21 @@ export async function markConnectionTestDispatched(
         true,
       );
       if (
-        connection?.status !== CONNECTION_STATUS.active ||
+        connection === null ||
+        connection.status === CONNECTION_STATUS.revoked ||
         connection.currentSecretVersionId !== secretVersionId
       )
         throw new ConnectionUnavailableError(
           'Connection changed before test dispatch',
+        );
+      const revision = await client.query<{ health_revision: string }>(
+        'select health_revision::text from app.connections where workspace_id=$1 and id=$2',
+        [workspaceId, connectionId],
+      );
+      const healthRevision = revision.rows[0]?.health_revision;
+      if (healthRevision === undefined)
+        throw new ConnectionUnavailableError(
+          'Connection health revision is unavailable',
         );
       const marked = await client.query(
         `update app.idempotency_records
@@ -80,7 +90,12 @@ export async function markConnectionTestDispatched(
            and result_ref->>'state' = 'claimed'`,
         [
           JSON.stringify(
-            connectionTestClaim(dispatchToken, 'dispatched', secretVersionId),
+            connectionTestClaim(
+              dispatchToken,
+              'dispatched',
+              secretVersionId,
+              healthRevision,
+            ),
           ),
           workspaceId,
           scope,

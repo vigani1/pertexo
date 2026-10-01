@@ -26,6 +26,28 @@ test('accepts the repository deployment contracts through the pure seam', () => 
   assert.doesNotThrow(() => validateDeploymentContracts(inputs()));
 });
 
+test('validates the reviewed worker health mode without enabling the repository deployment', () => {
+  assert.equal(
+    loaded.manifest.workloads.worker.environment.CONNECTION_RUN_HEALTH_MODE,
+    'off',
+  );
+  for (const mode of ['off', 'observe', 'enforce']) {
+    const value = inputs();
+    value.manifest.workloads.worker.environment.CONNECTION_RUN_HEALTH_MODE =
+      mode;
+    assert.doesNotThrow(() => validateDeploymentContracts(value));
+  }
+  for (const mode of [undefined, '', 'enabled', 'ENFORCE', true]) {
+    const value = inputs();
+    value.manifest.workloads.worker.environment.CONNECTION_RUN_HEALTH_MODE =
+      mode;
+    assert.throws(
+      () => validateDeploymentContracts(value),
+      /valid CONNECTION_RUN_HEALTH_MODE/u,
+    );
+  }
+});
+
 test('rejects duplicate, omitted, and unknown autoscaling signals', () => {
   for (const mutate of [
     (value) => {

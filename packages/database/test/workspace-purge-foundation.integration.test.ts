@@ -887,7 +887,10 @@ describe('workspace purge foundation', () => {
           [secretId, workspaceId, connectionId, userId],
         );
       await owner.query(
-        'update app.connections set current_secret_version_id=$2 where id=$1',
+        "select set_config('app.connection_health_protocol','1',true)",
+      );
+      await owner.query(
+        "update app.connections set current_secret_version_id=$2,health_revision=health_revision+1,last_health_transition_at=clock_timestamp(),last_health_transition_source='rotation' where id=$1",
         [connectionId, currentSecretId],
       );
       await owner.query(
