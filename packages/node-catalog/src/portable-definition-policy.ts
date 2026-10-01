@@ -18,7 +18,7 @@ const CONNECTION_SLOT_POLICIES: Readonly<
   resend_api_key: { providerKey: 'email', authType: 'resend_api_key' },
 } as const);
 
-/** Registered config/credential policy, without loading any executor or secret store. */
+/** Registered config/credential policy, without invoking an executor or secret store. */
 export function platformPortableDefinitionPolicy(releaseInput: unknown) {
   const release = parseSupportedPlatformRelease(releaseInput);
   const definitions = release.definitions
@@ -42,7 +42,16 @@ export function platformPortableDefinitionPolicy(releaseInput: unknown) {
         slots: Object.freeze(slots),
         validateConfig: (config: unknown): boolean => {
           const result = registration.configSchema.safeParse(config);
-          return result.success && isDeepStrictEqual(result.data, config);
+          // Graph admission uses null-prototype records; registered schemas can
+          // return ordinary records. Compare their data, not that representation
+          // difference, while still refusing defaults, trimming or other changes.
+          return (
+            result.success &&
+            isDeepStrictEqual(
+              structuredClone(result.data),
+              structuredClone(config),
+            )
+          );
         },
       });
     });

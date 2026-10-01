@@ -24,6 +24,15 @@ describe('registered portable definition policy', () => {
       inlineResponseBytes: 512,
     };
     expect(http?.validateConfig(config)).toBe(true);
+    const admittedConfig: Record<string, unknown> = Object.assign(
+      Object.create(null) as Record<string, unknown>,
+      config,
+      { headers: Object.create(null) as Record<string, unknown> },
+    );
+    expect(http?.validateConfig(admittedConfig)).toBe(true);
+    expect(
+      http?.validateConfig({ ...admittedConfig, url: ` ${config.url} ` }),
+    ).toBe(false);
     expect(
       http?.validateConfig({
         ...config,
