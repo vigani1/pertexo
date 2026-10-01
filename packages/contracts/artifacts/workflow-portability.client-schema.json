@@ -76,6 +76,7 @@
             "workflow.portability_compatibility_conflict",
             "workflow.portability_review_conflict",
             "workflow.portability_invalid",
+            "workflow.template_origin_unavailable",
             "workflow.validation_unavailable",
             "workflow.not_published",
             "workflow.activation_failed",
@@ -1398,6 +1399,37 @@
             ],
             "additionalProperties": false
           }
+        },
+        "templateOrigin": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "type": "number",
+              "const": 1
+            },
+            "templateId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "templateVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "baseManifestDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "templateId",
+            "templateVersion",
+            "baseManifestDigest"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -2023,6 +2055,37 @@
             ],
             "additionalProperties": false
           }
+        },
+        "templateOrigin": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "type": "number",
+              "const": 1
+            },
+            "templateId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "templateVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "baseManifestDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "templateId",
+            "templateVersion",
+            "baseManifestDigest"
+          ],
+          "additionalProperties": false
         },
         "name": {
           "type": "string",

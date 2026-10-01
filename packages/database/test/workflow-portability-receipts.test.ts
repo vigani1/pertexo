@@ -12,6 +12,74 @@ import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import { workflowImportCommandIdentity } from '../src/authoring/workflow-portability-receipts.js';
 
 describe('portable import receipt identity boundary', () => {
+  it('preserves absent-origin command bytes and includes exact origin in identity', () => {
+    const body = {
+      manifest: {
+        format: 'pertexo.workflow' as const,
+        formatVersion: 1 as const,
+        graph: {
+          schemaVersion: 1 as const,
+          nodes: [],
+          edges: [],
+          settings: {},
+        },
+        requirements: {
+          definitions: [],
+          selectionFingerprint: `node-select:v1:sha256:${'a'.repeat(64)}`,
+        },
+        connectionSlots: [],
+      },
+      bindings: [],
+      name: 'Example',
+      expectedCompatibilityFingerprint: `node-compat:v1:sha256:${'b'.repeat(64)}`,
+    };
+    const scope = {
+      workspaceId: randomUUID(),
+      actorId: randomUUID(),
+      idempotencyKey: randomUUID(),
+    };
+    const old = workflowImportCommandIdentity({ ...scope, ...body });
+    expect(old.command).toBe(canonicalWorkflowPortableJson(body));
+    expect(old.requestHash).toBe(
+      createHash('sha256')
+        .update(canonicalWorkflowPortableJson(body))
+        .digest('hex'),
+    );
+    const origin = {
+      schemaVersion: 1 as const,
+      templateId: 'example',
+      templateVersion: 1,
+      baseManifestDigest: 'c'.repeat(64),
+    };
+    const direct = workflowImportCommandIdentity({
+      ...scope,
+      ...body,
+      templateOrigin: origin,
+    });
+    expect(direct.command).toBe(
+      canonicalWorkflowPortableJson({ ...body, templateOrigin: origin }),
+    );
+    expect(direct.requestHash).not.toBe(old.requestHash);
+    for (const changed of [
+      { ...origin, templateVersion: 2 },
+      { ...origin, baseManifestDigest: 'd'.repeat(64) },
+    ])
+      expect(
+        workflowImportCommandIdentity({
+          ...scope,
+          ...body,
+          templateOrigin: changed,
+        }).requestHash,
+      ).not.toBe(direct.requestHash);
+    expect(
+      workflowImportCommandIdentity({
+        ...scope,
+        actorId: randomUUID(),
+        ...body,
+        templateOrigin: origin,
+      }),
+    ).toEqual(direct);
+  });
   it('admits the exact public 2MiB boundary without duplicating internal actor/workspace bytes', () => {
     const fingerprint = `node-compat:v1:sha256:${'1'.repeat(64)}`;
     const catalog: WorkflowPortabilityCatalog = {

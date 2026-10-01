@@ -13,6 +13,7 @@ import type {
 import type { GraphValidationResult } from '@pertexo/workflow-model/graph';
 import type { WorkflowAutoPauseDatabase } from './workflow-auto-pause.js';
 import type { WorkflowConcurrencyDatabase } from './workflow-concurrency.js';
+import type { WorkflowTemplateOriginRequest } from '@pertexo/workflow-model/curated-templates';
 import type {
   WorkflowPortableManifest,
   PortableConnectionBinding,
@@ -37,6 +38,7 @@ export type PreviewWorkflowImportInput = Readonly<{
   actorId: string;
   manifest: WorkflowPortableManifest;
   bindings: readonly PortableConnectionBinding[];
+  templateOrigin?: WorkflowTemplateOriginRequest;
   requestId?: string;
   traceId?: string;
   signal?: AbortSignal;

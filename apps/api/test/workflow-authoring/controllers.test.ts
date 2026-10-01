@@ -130,6 +130,7 @@ function makeController() {
     renameWorkflow,
     restoreVersion,
     createWorkflow,
+    getWorkflow,
     getDraft,
     saveDraft,
     publishWorkflow,
@@ -140,6 +141,46 @@ function makeController() {
 }
 
 describe('workflow authoring controller public seam', () => {
+  it('uses the exact opt-in origin projection with no-store while preserving default GET', async () => {
+    const { controller, getWorkflow } = makeController();
+    const header = vi.fn();
+    await expect(
+      controller.get(request(), { workspaceId, workflowId }, {}, { header }),
+    ).resolves.toEqual({ workflow });
+    expect(getWorkflow.execute.mock.lastCall?.[0]).not.toHaveProperty(
+      'include',
+    );
+    expect(header).not.toHaveBeenCalled();
+    await controller.get(
+      request(),
+      { workspaceId, workflowId },
+      { include: 'templateOrigin' },
+      { header },
+    );
+    expect(getWorkflow.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({ include: 'templateOrigin' }),
+    );
+    expect(header).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+  });
+
+  it.each([
+    { include: 'origin' },
+    { include: ['templateOrigin', 'templateOrigin'] },
+    { include: 'templateOrigin', extra: true },
+    { extra: true },
+  ])(
+    'rejects malformed projection query %j before persistence',
+    async (query) => {
+      const { controller, getWorkflow } = makeController();
+      await expect(
+        controller.get(request(), { workspaceId, workflowId }, query, {
+          header: vi.fn(),
+        }),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+      expect(getWorkflow.execute).not.toHaveBeenCalled();
+    },
+  );
+
   it('duplicates only a selected saved source and forwards lifetime with a safe destination Location', async () => {
     const { controller, duplicateWorkflow } = makeController();
     const header = vi.fn();

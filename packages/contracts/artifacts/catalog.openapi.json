@@ -157,6 +157,7 @@
               "workflow.portability_compatibility_conflict",
               "workflow.portability_review_conflict",
               "workflow.portability_invalid",
+              "workflow.template_origin_unavailable",
               "workflow.validation_unavailable",
               "workflow.not_published",
               "workflow.activation_failed",

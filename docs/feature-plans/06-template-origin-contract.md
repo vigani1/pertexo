@@ -21,7 +21,7 @@ manager reconciliation of combined F02/F05 release history.
 
 ## Exact additive wire changes
 
-| Surface | Proposed behavior | Old F05 compatibility |
+| Surface | Accepted behavior | Old F05 compatibility |
 | --- | --- | --- |
 | Import preview | Optional strict `templateOrigin` alongside manifest/bindings; descriptor/delta findings use bounded sanitized issues. Successful preview means only advisory current compatibility, not execution safety. | Absence uses unchanged request/response, limits and policy. |
 | Import create | Same optional origin plus existing name/fingerprint; unchanged CSRF/idempotency headers, 2 MiB total raw request ceiling and `{workflowId}`/201 Location response. | No origin means byte-identical canonical command/hash and result shape. No `null`, extra fields or format V2. |

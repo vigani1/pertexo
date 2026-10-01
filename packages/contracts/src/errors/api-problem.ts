@@ -44,6 +44,7 @@ export const API_PROBLEM_CODES = [
   'workspace.auto_pause_settings_conflict',
   'workflow.invalid',
   ...WORKFLOW_PORTABILITY_PROBLEM_CODES,
+  'workflow.template_origin_unavailable',
   'workflow.validation_unavailable',
   'workflow.not_published',
   'workflow.activation_failed',
@@ -336,6 +337,12 @@ const apiProblemDetails = {
     exposeDetail: true,
   },
   ...WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
+  'workflow.template_origin_unavailable': {
+    status: 503,
+    title: 'Historical template origin unavailable',
+    severity: 'warn',
+    exposeDetail: true,
+  },
   'workflow.validation_unavailable': {
     status: 503,
     title: 'Workflow validation unavailable',

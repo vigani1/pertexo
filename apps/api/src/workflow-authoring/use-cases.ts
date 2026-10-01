@@ -49,6 +49,11 @@ import {
   type WorkflowValidationResult,
 } from './serializers.js';
 import { createDraftRepresentationTag } from './etag.js';
+import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts/workflow-authoring';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../platform/http/index.js';
 
 export type ListWorkflowsInput = WorkflowApplicationInput &
   Readonly<{
@@ -128,16 +133,41 @@ export type WorkflowListResult = Readonly<{
 
 export class GetWorkflowUseCase {
   public constructor(
-    private readonly persistence: AuthoringPersistence<'getWorkflow'>,
+    private readonly persistence: AuthoringPersistence<
+      'getWorkflow' | 'getWorkflowWithTemplateOrigin'
+    >,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
-  public execute(input: WorkflowResourceInput) {
+  public execute(
+    input: WorkflowResourceInput & Readonly<{ include?: 'templateOrigin' }>,
+  ) {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.list,
       async () => {
         await authorize(input, ACTIVE_WORKFLOW_CAPABILITY, this.authorization);
+        if (input.include === 'templateOrigin') {
+          if (this.persistence.getWorkflowWithTemplateOrigin === undefined)
+            return throwApplicationError(
+              applicationError('workflow.template_origin_unavailable', {
+                safeDetail:
+                  'Historical template origin is temporarily unavailable.',
+              }),
+            );
+          const projection =
+            await this.persistence.getWorkflowWithTemplateOrigin(
+              input.routeWorkspaceId,
+              input.workflowId,
+              input.actor.actorId,
+            );
+          if (projection === null)
+            throw new WorkflowNotFoundError('Workflow is not visible');
+          return workflowTemplateOriginProjectionResponseSchema.parse({
+            workflow: serializeWorkflowSummary(projection.workflow).workflow,
+            templateOrigin: projection.templateOrigin,
+          });
+        }
         const workflow = await this.persistence.getWorkflow(
           input.routeWorkspaceId,
           input.workflowId,

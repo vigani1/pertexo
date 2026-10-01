@@ -199,7 +199,7 @@ held-traffic compatible-reader rollback require implementation and owned proof.
    bindings, default-core rejection and immutable descriptor compatibility.
 3. Deliver chooser and guided setup on the existing recovered import command;
    independently editable, unpublished draft with no execution side effects.
-   If approved, provenance ships atomically with its readers/rollback tests.
+   Provenance ships atomically with its readers/rollback tests.
 4. Qualify the controlled integrated journeys below and record exact source,
    serving profile, fixture ownership and limitations before release review.
 

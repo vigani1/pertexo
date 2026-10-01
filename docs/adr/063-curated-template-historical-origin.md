@@ -208,7 +208,7 @@ string can lie; graph annotations couple user edits to metadata and pollute V1
 exports. Adding fields to all strict summaries breaks old clients. Attaching
 origin in a second write produces partial/orphan attribution after lost response.
 
-The proposed descriptor relation and SQL guard add migration/readiness and
+The descriptor relation and SQL guard add migration/readiness and
 retained compatibility obligations. Primary/independent design review is complete;
 implementation and qualification tests remain required. Three complete normal-admission prototype
 proofs are separately recorded; controlled live qualification remains required.
