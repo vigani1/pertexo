@@ -18,8 +18,10 @@ import {
   type ConnectionCredential,
 } from './connections.api';
 import { connectionKeys } from './connections.queries';
-import { forgetDeniedConnections } from './connection-access';
-import { isApiError } from '@/lib/api/api-error';
+import {
+  connectionCommandAccessLost,
+  forgetDeniedConnections,
+} from './connection-access';
 
 export type ConnectionMutationScope = Readonly<{
   apiClient: ApiClient;
@@ -116,12 +118,7 @@ function useConnectionResultScope(scope: ConnectionMutationScope) {
         ? storeConnection(queryClient, scope, connection, isCurrent)
         : Promise.resolve(),
     denied: (error: unknown) => {
-      // Credential rejection is not a session/connection-read denial.
-      if (
-        !isCurrent() ||
-        (isApiError(error) &&
-          error.problem?.code === 'connection.reauthorization_required')
-      )
+      if (!isCurrent() || !connectionCommandAccessLost(error))
         return Promise.resolve();
       return forgetDeniedConnections(
         queryClient,

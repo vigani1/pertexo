@@ -5,6 +5,17 @@ export function connectionAccessLost(error: unknown): boolean {
   return isApiError(error) && [401, 403, 404, 409].includes(error.status ?? 0);
 }
 
+/** Command conflicts do not revoke the caller's connection-read access. */
+export function connectionCommandAccessLost(error: unknown): boolean {
+  if (!isApiError(error)) return false;
+  if (error.problem?.code === 'connection.reauthorization_required')
+    return false;
+  return (
+    [401, 403, 404].includes(error.status ?? 0) ||
+    (error.status === 409 && error.problem?.code === 'workspace.conflict')
+  );
+}
+
 /** A rejecting read stays alive; canceled sibling reads cannot restore its data. */
 export async function forgetDeniedConnections(
   client: QueryClient,

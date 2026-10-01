@@ -786,6 +786,101 @@ describe('connections page', () => {
     expect(mutationVariables(queryClient)).not.toContain(nextToken);
   });
 
+  it.each([
+    [
+      'connection.conflict',
+      'Someone replaced this credential meanwhile. Close this and start again from the latest version.',
+    ],
+    [
+      'request.idempotency_conflict',
+      'This request was already used with different details. Start again.',
+    ],
+  ] as const)(
+    'keeps the submitted replacement credential and retry identity after %s',
+    async (code, feedback) => {
+      const nextToken = 'xoxb-1234567890-conflict-retained';
+      const keys: string[] = [];
+      const bodies: unknown[] = [];
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      mockServer.use(
+        ...identityHandlers(),
+        listOf(() => [connection('Operations Slack')]),
+        detailOf(() => connection('Operations Slack')),
+        http.put(`${base}/${connectionId}/secret`, async ({ request }) => {
+          keys.push(request.headers.get('idempotency-key') ?? '');
+          bodies.push(await request.json());
+          if (keys.length === 1) {
+            await held;
+            return HttpResponse.json(
+              {
+                type: `urn:pertexo:problem:${code}`,
+                title: 'Conflict',
+                status: 409,
+                code,
+                requestId: 'replace-credential-conflict',
+              },
+              {
+                status: 409,
+                headers: { 'content-type': 'application/problem+json' },
+              },
+            );
+          }
+          return HttpResponse.json(
+            connection('Operations Slack', {
+              secretVersionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+            }),
+          );
+        }),
+      );
+      const { queryClient } = renderApp(
+        `/w/${workspaceId}/connections?connection=${connectionId}`,
+        { strict: true },
+      );
+      const event = userEvent.setup();
+      await event.click(
+        await screen.findByRole('button', { name: 'Replace credential' }),
+      );
+      const tokenInput = lens().getByLabelText('Slack bot token');
+      await event.type(tokenInput, nextToken);
+      await event.click(
+        lens().getByRole('button', { name: 'Replace credential' }),
+      );
+      await waitFor(() => {
+        expect(keys).toHaveLength(1);
+      });
+      expect(tokenInput).toBeDisabled();
+      expect(tokenInput).toHaveValue(nextToken);
+      expect(mutationVariables(queryClient)).toContain(nextToken);
+      release();
+      expect(await lens().findByText(feedback)).toBeVisible();
+      expect(tokenInput).toBeEnabled();
+      expect(tokenInput).toHaveValue(nextToken);
+      expect(mutationVariables(queryClient)).toContain(nextToken);
+      await event.click(
+        lens().getByRole('button', { name: 'Replace credential' }),
+      );
+      expect(
+        await screen.findByText('Replaced the bot token for Operations Slack'),
+      ).toBeVisible();
+      expect(keys).toHaveLength(2);
+      expect(keys[0]).not.toBe('');
+      expect(keys[1]).toBe(keys[0]);
+      expect(bodies[1]).toEqual(bodies[0]);
+      expect(bodies[0]).toEqual({
+        expectedSecretVersionId: secretVersionId,
+        credential: {
+          schemaVersion: 1,
+          type: 'slack_bot_token',
+          botToken: nextToken,
+        },
+      });
+      expect(mutationVariables(queryClient)).not.toContain(nextToken);
+    },
+  );
+
   it('revokes from the detail lens after confirmation and files it under Revoked', async () => {
     let revoked = false;
     let commands = 0;

@@ -60,6 +60,60 @@ function tested() {
 }
 
 describe('connection command response fences', () => {
+  it.each([
+    [401, 'auth.unauthenticated', true],
+    [403, 'auth.forbidden', true],
+    [404, 'resource.not_found', true],
+    [409, 'workspace.conflict', true],
+    [401, 'connection.reauthorization_required', false],
+    [409, 'connection.conflict', false],
+    [409, 'request.idempotency_conflict', false],
+    [409, 'connection.revoked', false],
+  ] as const)(
+    'classifies command %s %s without confusing conflict with read denial',
+    async (status, code, lost) => {
+      const client = new QueryClient();
+      const key = connectionKeys.detail(userId, workspaceId, connectionId);
+      const usageKey = connectionKeys.usage(userId, workspaceId, connectionId);
+      client.setQueryData(key, connection);
+      client.setQueryData(usageKey, { items: [], nextCursor: null });
+      const apiClient = createApiClient({
+        readCsrfToken: () => 'connection-command-csrf-123456789012345678901234',
+        fetch: () =>
+          Promise.resolve(
+            Response.json(
+              {
+                type: `urn:pertexo:problem:${code}`,
+                title: 'Command refused',
+                status,
+                code,
+                requestId: 'connection-command-classification',
+              },
+              {
+                status,
+                headers: { 'content-type': 'application/problem+json' },
+              },
+            ),
+          ),
+      });
+      const hook = renderHook(
+        () => useTestConnectionMutation({ apiClient, userId, workspaceId }),
+        { wrapper: wrapper(client) },
+      );
+      await act(async () => {
+        await expect(
+          hook.result.current.mutateAsync(command),
+        ).rejects.toBeDefined();
+      });
+      expect(client.getQueryData(key)).toEqual(lost ? undefined : connection);
+      expect(client.getQueryData(usageKey)).toEqual(
+        lost ? undefined : { items: [], nextCursor: null },
+      );
+      hook.unmount();
+      client.clear();
+    },
+  );
+
   it.each(['user', 'workspace'] as const)(
     'a held Test cannot store or invalidate after the same hook changes %s scope',
     async (changed) => {
