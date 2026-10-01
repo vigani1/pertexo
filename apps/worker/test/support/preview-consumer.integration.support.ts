@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { acceptManualFixtureRun } from './manual-start.fixture.js';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -10,7 +11,7 @@ import { createRedisTestNamespace } from './redis-test-namespace.js';
 import { runWithCleanup } from './test-operation.js';
 
 import {
-  acceptWorkflowRun,
+  type acceptWorkflowRun,
   acceptPreviewRun,
   createCompatibilityReleaseMaintenance,
   createCompatibilityReleaseReadinessProbe,
@@ -652,11 +653,12 @@ export async function acceptWorkflowDelivery(
     apiPool,
     { workspaceId },
     (client) =>
-      acceptWorkflowRun(
+      acceptManualFixtureRun(
         {
           db: drizzle(client, { schema: databaseSchema }),
           workspaceId: parseWorkspaceId(workspaceId),
         },
+        actorUserId,
         acceptance,
       ),
   );
