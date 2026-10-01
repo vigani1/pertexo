@@ -67,6 +67,11 @@ import {
   type WorkflowRunStatisticsDatabaseInput,
   type WorkflowRunStatisticsRecord,
 } from './workflow-run-statistics.js';
+import {
+  readWorkspaceUsageCapacity,
+  type WorkspaceUsageCapacityInput,
+  type WorkspaceUsageCapacityRecord,
+} from './workspace-usage-capacity.js';
 
 export {
   WorkflowRunNotExecutableError,
@@ -160,6 +165,9 @@ export type CancelWorkflowRunInput = Readonly<
   z.input<typeof cancelInputSchema>
 >;
 export interface WorkflowRunDatabase {
+  usageCapacity(
+    input: WorkspaceUsageCapacityInput,
+  ): Promise<WorkspaceUsageCapacityRecord>;
   start(input: StartPublishedWorkflowRunInput): Promise<
     Readonly<{
       run: WorkflowRunRecord;
@@ -255,6 +263,8 @@ export function createWorkflowRunDatabase(
       readWorkflowStepRuns(pool, input),
     statistics: (input: WorkflowRunStatisticsDatabaseInput) =>
       readWorkflowRunStatistics(pool, input),
+    usageCapacity: (input: WorkspaceUsageCapacityInput) =>
+      readWorkspaceUsageCapacity(pool, input),
     cancel: async (input: CancelWorkflowRunInput) => {
       const parsed = cancelInputSchema.parse(input);
       return withWorkspaceTransaction(

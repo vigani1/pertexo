@@ -143,6 +143,7 @@ export function WorkspaceMobileBar({
                   key={destination.to}
                   to={destination.to}
                   params={{ workspaceId: workspace.id }}
+                  activeOptions={{ exact: destination.exact ?? false }}
                   onClick={() => {
                     setMoreOpen(false);
                   }}

@@ -36,6 +36,7 @@ const persistence = {
   get: () => Promise.resolve(undefined),
   list: () => Promise.resolve({ items: [] }),
   statistics: () => Promise.reject(new Error('not exercised')),
+  usageCapacity: () => Promise.reject(new Error('not exercised')),
   cancel: () => Promise.reject(new Error('not exercised')),
   readInput: () => Promise.resolve(undefined),
   readNodeRunOutput: () => Promise.resolve(undefined),

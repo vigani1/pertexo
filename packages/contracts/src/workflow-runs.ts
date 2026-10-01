@@ -31,6 +31,7 @@ import {
   workflowRunStartResponseSchema,
   workflowRunStatisticsBreakdownSchema,
   workflowRunStatisticsResponseSchema,
+  usageCapacityResponseSchema,
   workflowRunStatisticsWindowSchema,
   workflowRunSummarySchema,
   workflowRunReadSummarySchema,
@@ -46,6 +47,7 @@ import {
 export * from './http/workflow-runs.js';
 
 const schemas = Object.freeze({
+  UsageCapacityResponse: jsonSchema(usageCapacityResponseSchema, 'output'),
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WorkflowRunStartRequest: jsonSchema(workflowRunStartRequestSchema, 'input'),
   WorkflowRunReplayRequest: jsonSchema(workflowRunReplayRequestSchema, 'input'),
@@ -153,6 +155,24 @@ export const workflowRunsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Workflow Runs API', version: '1.0.0' },
   paths: {
+    '/v1/workspaces/{workspaceId}/usage-capacity': {
+      get: {
+        operationId: 'getWorkspaceUsageCapacity',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter],
+        responses: {
+          '200': jsonResponse(
+            'Current operational capacity; not billing',
+            'UsageCapacityResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
     '/v1/workspaces/{workspaceId}/runs': {
       get: {
         operationId: 'listWorkflowRuns',

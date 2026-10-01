@@ -94,8 +94,26 @@ describe('auto pause controls prior-head migration and readiness', () => {
         values($1,$2,$3,$4,true,clock_timestamp())`,
         [randomUUID(), workspaceId, workflowId, runId],
       );
-      expect(await migrateDatabase(config)).toEqual([
+      await copyMigrationsBefore(priorDirectory, '0126_');
+      expect(await migrateDatabase(config, priorDirectory)).toEqual([
         '0125_workflow_auto_pause_controls.sql',
+      ]);
+      expect(
+        (
+          await owner.query(`select
+        (select name from pertexo_internal.schema_migrations order by name desc limit 1) as head,
+        to_regprocedure('app.workspace_reserved_active_slot_count(uuid)') as reader,
+        to_regclass('app.workflow_run_active_admissions_workspace_idx') as reservation_index`)
+        ).rows,
+      ).toEqual([
+        {
+          head: '0125_workflow_auto_pause_controls.sql',
+          reader: null,
+          reservation_index: null,
+        },
+      ]);
+      expect(await migrateDatabase(config)).toEqual([
+        '0126_workspace_usage_capacity.sql',
       ]);
       expect(await migrateDatabase(config)).toEqual([]);
       expect(
@@ -124,7 +142,7 @@ describe('auto pause controls prior-head migration and readiness', () => {
       await expect(
         checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
       ).resolves.toMatchObject({
-        migrationHead: '0125_workflow_auto_pause_controls.sql',
+        migrationHead: '0126_workspace_usage_capacity.sql',
       });
       await expect(fold.checkReadiness()).resolves.toBeUndefined();
       const foldSignature =

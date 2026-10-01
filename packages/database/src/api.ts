@@ -208,6 +208,10 @@ export {
 } from './execution/runs/workflow-run-api.js';
 export type { WorkflowRunDatabase } from './execution/runs/workflow-run-api.js';
 export type {
+  WorkspaceUsageCapacityInput,
+  WorkspaceUsageCapacityRecord,
+} from './execution/runs/workspace-usage-capacity.js';
+export type {
   WorkflowRunData,
   WorkflowRunFailedStep,
 } from './execution/runs/workflow-run-data.js';

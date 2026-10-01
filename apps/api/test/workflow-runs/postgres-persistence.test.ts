@@ -24,6 +24,7 @@ import {
   createInitialWorkflowCheckpoint,
 } from '../../src/executions/index.js';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
+import { usageCapacitySnapshot } from '../support/usage-capacity.fixture.js';
 import {
   WorkflowRunIdempotencyConflictError,
   WorkflowRunNotCancelableError,
@@ -36,6 +37,7 @@ import {
   RegionalWriteAdmissionPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
+  WorkspaceAccessDeniedError,
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   parseDatabaseConfig,
@@ -379,6 +381,7 @@ function databaseWith(
   overrides: Partial<WorkflowRunDatabase> = {},
 ): WorkflowRunDatabase {
   return {
+    usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
     start: vi.fn<WorkflowRunDatabase['start']>().mockResolvedValue({
       run: run(),
       replayed: false,
@@ -461,6 +464,43 @@ async function invokePersistence(
 }
 
 describe('PostgreSQL workflow run persistence adapter', () => {
+  it('forwards capacity reads and cancellation without changing exact values', async () => {
+    const usageCapacity = vi
+      .fn<WorkflowRunDatabase['usageCapacity']>()
+      .mockResolvedValue(usageCapacitySnapshot());
+    const adapter = createPostgresWorkflowRunPersistence(
+      adapterConfig,
+      databaseWith({ usageCapacity }),
+    );
+    const signal = new AbortController().signal;
+    await expect(
+      adapter.persistence.usageCapacity({ workspaceId, signal }),
+    ).resolves.toEqual(usageCapacitySnapshot());
+    expect(usageCapacity).toHaveBeenCalledExactlyOnceWith({
+      workspaceId,
+      signal,
+    });
+    const failure = new Error('unknown persistence failure');
+    usageCapacity.mockRejectedValue(failure);
+    await expect(
+      adapter.persistence.usageCapacity({ workspaceId }),
+    ).rejects.toBe(failure);
+  });
+  it('does not disclose capacity when workspace access is lost at the snapshot', async () => {
+    const usageCapacity = vi
+      .fn<WorkflowRunDatabase['usageCapacity']>()
+      .mockRejectedValue(
+        new WorkspaceAccessDeniedError('private lifecycle reason'),
+      );
+    const adapter = createPostgresWorkflowRunPersistence(
+      adapterConfig,
+      databaseWith({ usageCapacity }),
+    );
+    await expect(
+      adapter.persistence.usageCapacity({ workspaceId }),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+  });
+
   it.each(['start', 'replay', 'get', 'cancel'] as const)(
     'maps database run-not-found from %s to the public not-found error',
     async (operation) => {
@@ -681,6 +721,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         .fn<WorkflowRunDatabase['list']>()
         .mockResolvedValue({ items: [] }),
       statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
+      usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
       readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
@@ -725,6 +766,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         .fn<WorkflowRunDatabase['list']>()
         .mockResolvedValue({ items: [] }),
       statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
+      usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
       readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
@@ -1075,6 +1117,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         .fn<WorkflowRunDatabase['list']>()
         .mockResolvedValue({ items: [] }),
       statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
+      usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
         run: run(),
         alreadyRequested: false,

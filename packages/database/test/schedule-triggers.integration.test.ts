@@ -571,7 +571,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     await expect(
       checkDatabaseReadiness(schedule.worker),
     ).resolves.toMatchObject({
-      migrationHead: '0125_workflow_auto_pause_controls.sql',
+      migrationHead: '0126_workspace_usage_capacity.sql',
       role: 'pertexo_worker',
     });
     const crashed = await schedule.worker.query<{ trigger_id: string }>(

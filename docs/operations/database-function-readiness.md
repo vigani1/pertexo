@@ -25,6 +25,7 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.fold_workflow_trigger_outcomes(integer,boolean)` | `54c69650fa9bbf8c2580e0e86659e894` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, worker-only | `0125_workflow_auto_pause_controls.sql` |
 | `app.workflow_auto_pause_control(uuid,uuid,uuid,text,jsonb,text,text,text,text)` | `2ce8ab04731f24bd9292bdc7cf9e4079` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, API-only | `0125_workflow_auto_pause_controls.sql` |
 | `app.schedule_claim_workflow_paused(uuid,uuid,timestamptz)` | `7f7b9cf2e74f7e45644cd0fe3d37b205` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, API/worker-only | `0125_workflow_auto_pause_controls.sql` |
+| `app.workspace_reserved_active_slot_count(uuid)` | `6ed33604664c79cbc928094e4ada3202` | definer, stable, `pg_catalog, app, pg_temp`, `row_security=on`, API-only | `0126_workspace_usage_capacity.sql` |
 
 The executable inventory is split between
 `packages/database/src/platform/readiness.ts` (compatibility-release functions)
@@ -35,6 +36,10 @@ the trigger pause fold (ADR 056) in
 `packages/database/src/execution/trigger-pause/trigger-pause-readiness.ts`,
 which the worker checks at startup. The operational pause command is checked by
 `packages/database/src/platform/readiness-probe-auto-pause.sql.ts`.
+The scoped workspace reservation-count reader (ADR 057) is checked by
+`packages/database/src/platform/readiness-probe-4.sql.ts`, including its exact
+tenant guard/count body, ownership, security configuration, API-only execution
+grant, lack of API reservation-row privileges, and workspace index.
 This table is an operator aid and must
 change in the same commit whenever an owning inventory changes.
 

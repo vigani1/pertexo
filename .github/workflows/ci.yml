@@ -224,6 +224,9 @@ jobs:
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME:
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -246,6 +249,30 @@ jobs:
         run: pnpm test:browser-probes
       - name: Run authenticated browser journeys
         run: pnpm --filter @pertexo/web test:e2e
+      - name: Build dependencies for the real Usage journey
+        run: pnpm --filter @pertexo/api... build
+      - name: Start disposable Usage browser dependencies
+        run: docker compose up -d --wait postgres redis
+      - name: Run and validate the real Usage browser journey
+        env:
+          USAGE_BROWSER_INTEGRATION: 'true'
+        run: |
+          mkdir -p artifacts
+          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
+            test/usage-browser.integration.test.ts \
+            --reporter=default --reporter=json --outputFile=../../artifacts/usage-browser-gates.json
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
+            artifacts/usage-browser-gates.json 'Usage browser integration gate' 1
+      - name: Upload Usage browser integration report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: usage-browser-report
+          path: artifacts/usage-browser-gates.json
+          if-no-files-found: error
+      - name: Stop disposable Usage browser dependencies
+        if: always()
+        run: docker compose down -v --remove-orphans
       - name: Upload browser traces
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -404,6 +431,7 @@ jobs:
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             --exclude test/platform/compatibility-rollout.integration.test.ts \
             --exclude test/editor-browser.integration.test.ts \
+            --exclude test/usage-browser.integration.test.ts \
             --reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json
       - name: Prove new regression tests fail under selected mutations
         run: pnpm mutation:check

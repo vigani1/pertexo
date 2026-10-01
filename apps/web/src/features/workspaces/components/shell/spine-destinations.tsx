@@ -3,6 +3,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import type { LinkProps } from '@tanstack/react-router';
 import {
   BellIcon,
+  GaugeIcon,
   InboxIcon,
   PlugIcon,
   SlidersHorizontalIcon,
@@ -22,6 +23,7 @@ export type SpineDestination = Readonly<{
     | '/w/$workspaceId/team'
     | '/w/$workspaceId/alerts'
     | '/w/$workspaceId/settings'
+    | '/w/$workspaceId/settings/usage'
   >;
   label: string;
   icon: ReactNode;
@@ -74,6 +76,12 @@ export function spineDestinations(
       icon: <PlugIcon />,
     });
   const administration: SpineDestination[] = [];
+  if (can('run:read'))
+    administration.push({
+      to: '/w/$workspaceId/settings/usage',
+      label: 'Usage',
+      icon: <GaugeIcon />,
+    });
   if (can('member:read'))
     administration.push({
       to: '/w/$workspaceId/team',
@@ -90,6 +98,7 @@ export function spineDestinations(
     to: '/w/$workspaceId/settings',
     label: 'Settings',
     icon: <SlidersHorizontalIcon />,
+    exact: true,
   });
   return { primary, workspace: administration };
 }

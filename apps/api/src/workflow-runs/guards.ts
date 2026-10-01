@@ -6,6 +6,17 @@ import { RequestContextStore } from '../platform/http/index.js';
 import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
 
 @Injectable()
+export class UsageCapacityArtifactReadGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(WORKFLOW_RUN_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('artifact:read', authorization, contexts, 'not_found', ['active']);
+  }
+}
+
+@Injectable()
 export class WorkflowRunReadGuard extends WorkspaceCapabilityGuard {
   public constructor(
     @Inject(WORKFLOW_RUN_AUTHORIZATION)

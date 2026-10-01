@@ -2130,15 +2130,16 @@ deployed, or verified against a live identity provider.
 
 Remaining work is explicitly separate from completed review fixes:
 
-| Remaining scope                             | Gate / next action                                                                                                             |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Workspace invitations                       | Implemented bounded slice; complete the controlled provider/full-stack and production sender environment gates recorded below. |
-| Workspace creation and display-name editing | N1 and N2 implemented; detailed delivery evidence and environment limitations are recorded below.                              |
-| Overview                                    | N3 recent lists plus exact ADR 044 run statistics implemented; trends, rates and usage stay excluded.                          |
-| Visual node input mapping                   | M1 is implemented; focused delivery evidence and remaining live-integration limits are recorded below.                         |
-| Browser artifact uploads / asset browser    | Real-browser signing, CORS, checksum and finalization evidence; listing contract for a browser.                                |
-| Templates, usage and billing                | Product scope and contracts; not part of the delivered baseline.                                                               |
-| Release integration verification            | Live OIDC/backend browser journey, production proxy/deployment verification, and Firefox/WebKit coverage remain outstanding.   |
+| Remaining scope                             | Gate / next action                                                                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace invitations                       | Implemented bounded slice; complete the controlled provider/full-stack and production sender environment gates recorded below.  |
+| Workspace creation and display-name editing | N1 and N2 implemented; detailed delivery evidence and environment limitations are recorded below.                               |
+| Overview                                    | N3 recent lists plus exact ADR 044 run statistics implemented; trends/rates stay excluded and Usage is a separate ADR 057 page. |
+| Visual node input mapping                   | M1 is implemented; focused delivery evidence and remaining live-integration limits are recorded below.                          |
+| Browser artifact uploads / asset browser    | Real-browser signing, CORS, checksum and finalization evidence; listing contract for a browser.                                 |
+| Usage                                       | ADR 057 read-only capacity/activity first slice implemented; trends, warnings, quota editing and billing remain deferred.       |
+| Templates and billing                       | Product scope and contracts; not part of the delivered baseline.                                                                |
+| Release integration verification            | Live OIDC/backend browser journey, production proxy/deployment verification, and Firefox/WebKit coverage remain outstanding.    |
 
 Existing-member role management is complete within the evidence and limitations
 recorded below. Workspace invitations now follow the bounded design and ADR 038;
@@ -3341,21 +3342,23 @@ mutations invalidate only the affected workspace-scoped queries. Confirm
 required migrations/configuration are deployable before marking the page ready.
 Mocks and frontend success states alone are not backend completion evidence.
 
-Deferred templates, usage and billing below need their own selected scope and
-contracts before backend work; this checklist does not authorize building them.
+Deferred templates, further usage insights and billing below need their own
+selected scope and contracts before backend work. ADR 057 is the accepted scope
+for the implemented first Usage slice; this checklist authorizes no expansion.
 
 ### Remaining non-payment delivery plan
 
-**Delivery update (2026-09-21):** N1, N2 and N3 are implemented in the working
-tree with the evidence recorded below. The remaining entries are planned slices,
-not delivered features. Billing, payments, subscriptions, invoices, checkout and
-payment-provider integration are explicitly outside this work. Implement one
-slice at a time; do not create all folders or expand the node runtime while
-completing pages. N4 remains gated on a concrete supported artifact-valued
-node/input use case. N5 remains gated on approved template examples and import
-semantics. N6 remains gated on the product's usage units, purpose, period,
-coverage and read policy. N5 and N6 are optional product increments, not release
-prerequisites.
+**Delivery update (2026-10-01):** N1, N2 and N3, plus the accepted ADR 057 first
+N6 slice, are implemented in the working tree with the scope recorded below.
+Remaining increments are planned slices, not delivered features. Billing,
+payments, subscriptions, invoices, checkout and payment-provider integration are
+explicitly outside this work. Implement one slice at a time; do not create all
+folders or expand the node runtime while completing pages. N4 remains gated on a
+concrete supported artifact-valued node/input use case. N5 remains gated on
+approved template examples and import semantics. N6's capacity and
+retained-activity units, fixed windows, coverage and read policy are settled by
+ADR 057; further reporting remains decision-gated. N5 and further N6 increments
+are optional product increments, not release prerequisites.
 
 #### Common implementation contract
 
@@ -3674,25 +3677,34 @@ N1–N4.
 
 #### N6. Optional non-billing usage reporting
 
-**Decision-gated, not implementation-authorized:** usage is not payment work.
-Before building this page, select measurement units and purpose (for example
-retained execution counts or storage consumption), period/timezone, retention
-coverage, refresh delay and read capability. Do not invent quotas or pricing.
+**First slice implemented (ADR 057):** the read-only Usage page separates
+current execution/artifact capacity from existing ADR 044 retained run activity.
+Current capacity uses the active workspace's run/artifact-read intersection;
+activity retains the existing run-read state and workflow-name disclosure rules.
+No broadened permission, operation/attempt/preview meter or billing is added.
 
-- Specify each counter's authoritative source, treatment of retries/canceled
-  runs, period boundaries and unknown/partial retention coverage. If no durable
-  source exists, explicitly defer that counter rather than estimating it from
-  paginated UI data or relabelling Prometheus infrastructure metrics.
-- Define a bounded workspace-scoped read contract with period, measured-through
-  time and coverage semantics. Use scoped SQL first; introduce a durable rollup
-  only after measured need and an accepted architectural decision, including
-  backfill/reconciliation and late-arrival semantics.
-- A future `features/usage/` page owns filters and read-only presentation; URL
-  owns reporting period, Query owns results. Render stale/unavailable separately
-  from zero. No upgrade buttons, invoices, checkout or payment SDKs.
-- Acceptance: exact period boundaries, retry counting, retention/late data,
-  permission/tenant isolation, bounded query performance and browser period
-  navigation. Product choices above must be resolved before a coding prompt.
+- Capacity reads current runs plus dispatcher reservations, effective current
+  acceptance policy, and charged artifact capacity in a bounded repeatable-read
+  snapshot. Pending/available/deleting artifacts remain charged until physical
+  deletion. Exact byte strings, stored zero limits, writer defaults and
+  unavailable/inactive entitlements remain distinct.
+- Activity counts retained runs created in server-defined `1h`/`6h`/`24h`/`7d`
+  windows by current status; retries remain in their run and replay creates a
+  new run. At most 50 workflow groups are returned with honest truncation.
+  Deleted history is not reconstructed; no paginated-browser aggregation or
+  speculative durable rollup is introduced.
+- `features/usage/` owns read-only presentation and scoped Query options; URL
+  owns the fixed activity window. Both snapshots have separate `asOf`, errors
+  and Refresh controls, and visible-only 30-second polling. Transient failures
+  preserve stale results; access/state loss hides forbidden cached data.
+  Drilldowns preserve both exact server window bounds and status/workflow
+  filters.
+- Verification covers exact representation/bounds, retries/retention semantics,
+  permission/state/tenant isolation, bounded query plans, mocked browser
+  navigation and the isolated real browser/backend journey. See the F12 tracker
+  for concrete evidence and rollout status, not an implied production release.
+- Trends, warnings, timezone/calendar reporting, quota editing, billing and any
+  new meter remain deferred pending explicit product/source/retention decisions.
 
 #### Node editor status and a separate authoring increment
 
@@ -4204,17 +4216,26 @@ implement deferred product scope merely to obtain a higher audit score.
 
 ### Deferred product pages
 
+ADR 057's first Usage slice is now implemented at `B/settings/usage`: read-only
+current execution/artifact capacity, independently refreshed ADR 044 retained
+run activity, and drilldowns using the exact server window bounds. Capacity
+requires both run/artifact read in an active workspace; activity keeps the
+existing run-read state rules and workflow-name permissions. Exact bytes,
+reservations, charged pending/deleting artifacts, default capacity and inactive
+acceptance policies are explicit. Broader insights below remain deferred.
+
 | Candidate                  | Proposed entry                                                | Purpose                                                                         | Activation gate                                                                                                                                                                |
 | -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Templates                  | `B/templates` or workflow-create chooser                      | Start from curated compatible workflow examples                                 | Concrete onboarding demand; catalog/version compatibility and import/create semantics; never embed credentials or copy another backend's templates.                            |
-| Usage                      | `B/settings/usage`                                            | Actual consumption, limits and reporting periods                                | Agreed measurement units, aggregation API, authorization and product limits. Do not equate infrastructure metrics with billable usage.                                         |
+| Further usage insights     | `B/settings/usage`                                            | Additional trends, warnings or reporting periods beyond ADR 057                 | Explicit metric/retention/product decisions and bounded authoritative API. No billing, operation meter, quota editing or calendar reset is implied by the first slice.         |
 | Billing                    | Account/organization settings; route depends on billing owner | Subscription, invoices and payment management if Pertexo is sold as a service   | Explicit commercial model, billing scope/provider and contracts. Not required for a self-hosted/internal release.                                                              |
 | Shared resource management | Feature-owned workspace settings sections                     | Notification destinations and any genuinely reusable webhook/artifact resources | Actual independent resource ownership and discovery/management APIs. Keep current workflow-bound triggers in workflow settings; do not invent a Make-style data store product. |
 
-Templates, usage and billing are recorded so they are not forgotten, but remain
-deferred rather than required for parity with larger automation products. Editor
-usability, supported integrations and reliable execution inspection remain
-important even after the navigation inventory is complete.
+Templates, further usage insights and billing are recorded so they are not
+forgotten, but remain deferred rather than required for parity with larger
+automation products. Editor usability, supported integrations and reliable
+execution inspection remain important even after the navigation inventory is
+complete.
 
 ### How the screens work together
 

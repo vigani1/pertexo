@@ -18,7 +18,7 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD = '0125_workflow_auto_pause_controls.sql';
+export const EXPECTED_MIGRATION_HEAD = '0126_workspace_usage_capacity.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

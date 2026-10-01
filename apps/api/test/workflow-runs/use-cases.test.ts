@@ -102,6 +102,7 @@ function persistence() {
       get,
       list,
       statistics,
+      usageCapacity: vi.fn<WorkflowRunPersistence['usageCapacity']>(),
       cancel,
       readInput,
       readNodeRunOutput,

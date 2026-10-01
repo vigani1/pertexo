@@ -4,6 +4,7 @@ import {
   RegionalWriteAdmissionPausedError,
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
+  WorkspaceAccessDeniedError,
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   createWorkflowRunDatabase,
@@ -71,6 +72,17 @@ export function createPostgresWorkflowRunPersistence(
       runtime,
     );
   const persistence: WorkflowRunPersistence = Object.freeze({
+    usageCapacity: async (
+      input: Parameters<WorkflowRunPersistence['usageCapacity']>[0],
+    ) => {
+      try {
+        return await database.usageCapacity(input);
+      } catch (error: unknown) {
+        if (error instanceof WorkspaceAccessDeniedError)
+          return throwWorkflowRunError(applicationError('resource.not_found'));
+        return mapPersistenceError(error);
+      }
+    },
     start: (input: StartWorkflowRunCommand) =>
       executeAcceptance(database, input, releaseSupport, notifications),
     replay: (input: ReplayWorkflowRunCommand) =>
