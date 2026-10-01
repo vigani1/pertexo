@@ -36,9 +36,9 @@ export async function dropDisconnectedDatabase(
     options.timeoutMs ?? DISCONNECT_TIMEOUT_MS,
     'disconnect timeout',
   );
-  const queryTimeoutMs = positiveMillis(
-    options.queryTimeoutMs ?? QUERY_TIMEOUT_MS,
-    'query timeout',
+  const queryTimeoutMs = Math.min(
+    QUERY_TIMEOUT_MS,
+    positiveMillis(options.queryTimeoutMs ?? QUERY_TIMEOUT_MS, 'query timeout'),
   );
   const deadline = now() + timeoutMs;
   let remainingConnections: number | undefined;
@@ -50,7 +50,8 @@ export async function dropDisconnectedDatabase(
           where datname=$1 and pid<>pg_backend_pid()`,
         values: [databaseName],
       },
-      Math.min(queryTimeoutMs, Math.max(1, deadline - now())),
+      remainingBudget('connection_probe', queryTimeoutMs),
+      'connection_probe',
     );
     const row = result.rows[0];
     const observed =
@@ -66,12 +67,15 @@ export async function dropDisconnectedDatabase(
     remainingConnections = observed;
     if (remainingConnections === 0) {
       await options.beforeDrop?.();
+      // DROP waits for a forced checkpoint; reuse the total cleanup budget,
+      // not the shorter cap intended for connection polling.
       await boundedQuery(
         admin,
         {
           text: `drop database if exists ${quoteIdentifier(databaseName)}`,
         },
-        Math.min(queryTimeoutMs, Math.max(1, deadline - now())),
+        remainingBudget('drop', timeoutMs),
+        'drop',
       );
       return;
     }
@@ -79,18 +83,31 @@ export async function dropDisconnectedDatabase(
     await boundedQuery(
       admin,
       { text: 'select pg_sleep(0.02)' },
-      Math.min(queryTimeoutMs, Math.max(1, deadline - now())),
+      remainingBudget('poll_wait', queryTimeoutMs),
+      'poll_wait',
     );
   }
   throw new Error(
     `Disposable database still has ${String(remainingConnections ?? 'unknown')} active connection(s) after ${String(timeoutMs)}ms: ${databaseName}`,
   );
+
+  function remainingBudget(stage: CleanupStage, cap: number): number {
+    const remaining = deadline - now();
+    if (remaining <= 0)
+      throw new Error(
+        `Disposable database ${stage} deadline expired before dispatch`,
+      );
+    return Math.min(cap, remaining);
+  }
 }
+
+type CleanupStage = 'connection_probe' | 'poll_wait' | 'drop';
 
 async function boundedQuery(
   client: DisposableDatabaseQueryClient,
   query: Readonly<{ text: string; values?: unknown[] }>,
   timeoutMs: number,
+  stage: CleanupStage,
 ): Promise<Readonly<{ rows: unknown[] }>> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const queryPromise = client.query({
@@ -101,7 +118,9 @@ async function boundedQuery(
   const timeoutPromise = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => {
       reject(
-        new Error(`Disposable database query exceeded ${String(timeoutMs)}ms`),
+        new Error(
+          `Disposable database ${stage} query exceeded ${String(timeoutMs)}ms`,
+        ),
       );
     }, timeoutMs);
   });

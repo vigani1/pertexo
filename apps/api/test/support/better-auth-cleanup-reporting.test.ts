@@ -114,6 +114,26 @@ describe('actual Better Auth fixture cleanup reporting', () => {
   });
 
   it.each([
+    [
+      'Disposable database connection_probe query exceeded 1000ms',
+      'database_connection_probe_deadline',
+    ],
+    [
+      'Disposable database poll_wait query exceeded 1000ms',
+      'database_poll_wait_deadline',
+    ],
+    [
+      'Disposable database drop query exceeded 9000ms',
+      'database_drop_deadline',
+    ],
+    [
+      'Disposable database drop deadline expired before dispatch',
+      'database_drop_deadline',
+    ],
+    [
+      'Disposable database drop query exceeded 9000ms: private endpoint',
+      'database_cleanup_failure',
+    ],
     ['Disposable database query exceeded 1000ms', 'database_query_deadline'],
     ['Query read timeout', 'database_query_read_timeout'],
     ['Unknown credential-bearing failure', 'database_cleanup_failure'],
