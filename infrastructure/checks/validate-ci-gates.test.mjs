@@ -173,6 +173,72 @@ const duplicationBrowserGate = Object.freeze({
   },
   prerequisites: ['pnpm --filter @pertexo/worker... build'],
 });
+const inputCasesBrowserGate = Object.freeze({
+  file: 'test/editor-browser.integration.test.ts',
+  flag: 'EDITOR_BROWSER_INTEGRATION',
+  report: 'artifacts/workflow-input-cases-browser-gates.json',
+  title: 'Workflow input cases browser integration gate',
+  env: {
+    EDITOR_BROWSER_CASE: 'input-cases',
+    EDITOR_BROWSER_OWNED_FIXTURE: 'true',
+  },
+  prerequisites: ['pnpm --filter @pertexo/worker... build'],
+});
+test('owns enabled input case browser evidence and retains real HTTP in ordinary CI', async () => {
+  const workflow = await currentWorkflow();
+  assertRequiredLiveBrowserGate(workflow, inputCasesBrowserGate);
+  const browser = workflow.jobs.browser.steps.find(
+    (step) => step.env?.EDITOR_BROWSER_CASE === 'input-cases',
+  );
+  assert.ok(
+    browser.run.includes('export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn'),
+  );
+  assert.ok(browser.run.includes('docker inspect --format'));
+  const integration = workflow.jobs.integration.steps.find((step) =>
+    step.run?.includes('artifacts/api-gates.json'),
+  );
+  assert.ok(
+    !integration.run.includes(
+      '--exclude test/workflow-authoring/input-cases.integration.test.ts',
+    ),
+  );
+  assert.equal(workflow.env.API_IDENTITY_INTEGRATION, 'true');
+});
+test('rejects disabled, substituted and zero-minimum input case browser evidence', async () => {
+  for (const mutate of [
+    (step) => {
+      step.if = 'false';
+    },
+    (step) => {
+      step['continue-on-error'] = true;
+    },
+    (step) => {
+      step.env.EDITOR_BROWSER_CASE = 'duplication';
+    },
+    (step) => {
+      step.env.EDITOR_BROWSER_INTEGRATION = 'false';
+    },
+    (step) => {
+      step.env.EDITOR_BROWSER_OWNED_FIXTURE = 'false';
+    },
+    (step) => {
+      step.run = step.run.replace(
+        "'Workflow input cases browser integration gate' 1",
+        "'Workflow input cases browser integration gate' 0",
+      );
+    },
+  ]) {
+    const workflow = await currentWorkflow();
+    mutate(
+      workflow.jobs.browser.steps.find(
+        (step) => step.env?.EDITOR_BROWSER_CASE === 'input-cases',
+      ),
+    );
+    assert.throws(() =>
+      assertRequiredLiveBrowserGate(workflow, inputCasesBrowserGate),
+    );
+  }
+});
 
 const portabilityBrowserGate = Object.freeze({
   ...duplicationBrowserGate,

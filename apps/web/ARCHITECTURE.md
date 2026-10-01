@@ -817,13 +817,40 @@ unpublished. Restore-version first resolves dirty state, then conditionally
 changes the draft only.
 
 Run starts the workflow's currently published active version, resolved and
-pinned atomically by the backend; the current start body accepts input/deadline,
-not a draft or arbitrary version selector. Another publisher can change that
-pointer between this tab's publish and run requests. Do not promise to run the
-exact version displayed before submission; that guarantee needs an explicit
-version selection/precondition contract. Show the actual workflowVersionId from
-the accepted run response. Explicit replay has its own version/input contract.
-Never represent “Save”, “Publish”, “Run”, “Test execute” or “Cancel run” as
+pinned atomically by the backend. ADR 061 adds optional
+`expectedPublishedVersionId` as a checked-publication precondition, not an
+arbitrary version selector. The editor's Run actions open explicit real-effect
+confirmation and capture that version with input/deadline/key. A typed case-list
+rollout-unavailable response instead allows deliberately confirmed ordinary
+unchecked starts; pending or other failed reads cannot imply that availability.
+Loaded cases and previously submitted checked commands cannot downgrade, and
+frozen recovery always uses its original intent. A typed
+`workflow.published_version_conflict` means no new run started; read and review
+the current publication deliberately before confirming a new command. Never
+automatically rewrite a case's version or a retained command. Exact uncertain
+retries keep all original values, block replacement starts and stop at the
+original 24-hour recovery window. A previously accepted command can replay its
+accepted run even after another publication; retain its ID if fresh opening
+identity cannot be confirmed, then open it explicitly without another POST. Show
+the actual workflowVersionId from the accepted response. Legacy omission still
+means current-at-admission; explicit replay has its own contract.
+
+Named input cases remain owned by `workflows`, with one shared browser/editor in
+the workflow hub and run-input dialog, not a test executor or new route.
+Metadata pages alone live in scoped Query caches; opened payloads, detached
+loaded copies and conditional command bodies stay in their local owner. Reads
+validate the body's opaque representation tag against the response ETag. Owner
+disposal, read denial or lost edit authority aborts held reads, fences late
+results and evicts scoped metadata. CRUD requires fresh identity and
+`workflow:update`; case loading uses `workflow:read` independently from
+`run:start`. Editing/deleting a saved case never rewrites the already loaded run
+intent. Conflict preserves typed edits until an explicit current-case read;
+uncertain changes retain original body/tag/key and block replacement. The
+default-off compatible-writer gate returns a truthful unavailable state; command
+unavailability retains recovery identity because it cannot prove a previous
+command was not accepted. Synthetic input warnings do not imply automatic
+redaction. Only an explicitly confirmed real start executes a workflow. Never
+represent “Save”, “Publish”, “Run”, “Test execute” or “Cancel run” as
 interchangeable actions. After a step test finishes, the bar under the canvas
 (`chrome/test-result-bar.tsx`) sums it up from the preview and the graph only:
 its status, the path into the step (`model/test-path.ts`), its duration and, for

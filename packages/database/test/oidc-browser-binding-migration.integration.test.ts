@@ -136,6 +136,8 @@ describe('OIDC browser binding prior-head migration', () => {
         '0127_workflow_concurrency.sql',
         '0128_connection_health.sql',
         '0129_workflow_duplication.sql',
+        '0130_workflow_input_cases.sql',
+        '0131_checked_manual_start.sql',
         '0132_workflow_portability.sql',
       ]);
 

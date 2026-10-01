@@ -594,6 +594,11 @@ export async function seedCoordinatorWorkflowFixtures(
     ],
   );
   await query(
+    `insert into app.workspace_memberships (workspace_id,user_id,role,status)
+       values ($1,$2,'owner','active')`,
+    [identities.workspaceId, identities.actorId],
+  );
+  await query(
     `insert into app.workflows (id, workspace_id, name, created_by)
        values ($1, $2, 'Coordinator proof', $3)`,
     [

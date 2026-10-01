@@ -27,6 +27,13 @@ export async function reapTransientData(
   options: ParsedRetentionDatabaseOptions,
   signal?: AbortSignal,
 ): Promise<TransientDataReapResult> {
+  // Own short transaction: destruction coordination must precede workspace or
+  // receipt locks, not run after the generic reaper in the same transaction.
+  await inRetentionTransaction(pool, options, signal, async (client) => {
+    await client.query('select * from app.reap_workflow_input_cases($1)', [
+      Math.min(options.pageSize, 100),
+    ]);
+  });
   return inRetentionTransaction(pool, options, signal, async (client) => {
     const result = await client.query<{
       idempotency_records_deleted: number;

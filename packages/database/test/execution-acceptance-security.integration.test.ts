@@ -57,7 +57,7 @@ describe('workflow run persistence security and compatibility', () => {
           workspaceId: workspaceA,
           workflowId,
           workflowVersionId,
-          triggerType: 'manual',
+          triggerType: 'api',
           status: 'queued',
         });
       }),
@@ -82,7 +82,7 @@ describe('workflow run persistence security and compatibility', () => {
             insert into app.workflow_runs (
               id, workspace_id, workflow_id, workflow_version_id,
               trigger_type, status
-            ) values ($1, $2, $3, $4, 'manual', $5)
+            ) values ($1, $2, $3, $4, 'api', $5)
           `,
           [randomUUID(), workspaceA, workflowId, workflowVersionId, status],
         );
@@ -95,7 +95,7 @@ describe('workflow run persistence security and compatibility', () => {
             insert into app.workflow_runs (
               id, workspace_id, workflow_id, workflow_version_id,
               trigger_type, status
-            ) values ($1, $2, $3, $4, 'manual', 'cancelled')
+            ) values ($1, $2, $3, $4, 'api', 'cancelled')
           `,
           [randomUUID(), workspaceA, workflowId, workflowVersionId],
         ),

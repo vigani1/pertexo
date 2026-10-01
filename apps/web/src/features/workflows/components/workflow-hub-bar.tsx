@@ -14,6 +14,7 @@ import { WorkflowDuplicateAction } from './workflow-duplicate-dialog';
 import { WorkflowExportAction } from './portability/workflow-export-dialog';
 import { WorkflowTemplateOrigin } from './templates/workflow-template-origin';
 import { workflowTemplateOriginPresentationEnabled } from '../workflow-origin.queries';
+import { InputCasesAction } from './input-cases/input-cases-action';
 
 export type WorkflowHubTab =
   'build' | 'runs' | 'triggers' | 'versions' | 'settings';
@@ -192,6 +193,15 @@ export function WorkflowHubBar({
             workspace={workspace}
             workflow={workflow}
             blocked={duplicateBlocked}
+          />
+        )}
+        {workflow === undefined ? null : (
+          <InputCasesAction
+            key={`${userId}:${workspace.id}:${workflowId}`}
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            workflow={workflow}
           />
         )}
         {workflow === undefined ? null : (

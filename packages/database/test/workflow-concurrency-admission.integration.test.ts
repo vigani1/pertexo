@@ -531,7 +531,7 @@ describe('current workflow concurrency and ordered production admission', () => 
                 sql`select set_config('app.workflow_concurrency_protocol','1',true)`,
               );
             await db.execute(sql`insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
-            values(${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},'manual','running')`);
+            values(${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},'api','running')`);
           }),
         ).rejects.toSatisfy(hasPostgresCode(protocol ? 'PTC02' : 'PTC01'));
       }
@@ -715,9 +715,12 @@ describe('current workflow concurrency and ordered production admission', () => 
         );
         const purge = (
           await client.query<{ definition: string }>(
-            "select pg_get_functiondef('app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)'::regprocedure) definition",
+            "select pg_get_functiondef('app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)'::regprocedure)||pg_get_functiondef('app.execute_workspace_tenant_rows_page_before_input_cases(uuid,uuid,bigint,integer,bigint,character)'::regprocedure) definition",
           )
         ).rows[0]?.definition;
+        expect(purge).toContain(
+          'RETURN QUERY SELECT * FROM app.execute_workspace_tenant_rows_page_before_input_cases',
+        );
         expect(purge).toContain("'workflow_concurrency_policies'");
         expect(purge).toContain("'workflow_concurrency_command_receipts'");
       });

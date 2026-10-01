@@ -1351,6 +1351,9 @@
               "workflow.concurrency_revision_conflict",
               "workflow.concurrency_limit_exceeded",
               "workflow.concurrency_limit_unavailable",
+              "workflow.input_case_revision_conflict",
+              "workflow.input_case_limit_exceeded",
+              "workflow.input_cases_unavailable",
               "workspace.auto_pause_settings_conflict",
               "workflow.invalid",
               "workflow.portability_unavailable",
@@ -1359,6 +1362,7 @@
               "workflow.portability_invalid",
               "workflow.template_origin_unavailable",
               "workflow.validation_unavailable",
+              "workflow.published_version_conflict",
               "workflow.not_published",
               "workflow.activation_failed",
               "run.not_cancelable",
@@ -1432,6 +1436,11 @@
         "type": "object",
         "properties": {
           "input": {},
+          "expectedPublishedVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
           "deadlineAt": {
             "type": "string",
             "format": "date-time",

@@ -1,6 +1,7 @@
 import type {
   DatabaseConfig,
   WorkflowAuthoringDatabase,
+  WorkflowInputCaseDatabase,
   WorkspaceDatabase,
 } from '@pertexo/database/api';
 import type { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
@@ -76,6 +77,80 @@ function notifications(
 }
 
 describe('API workflow runtime ownership', () => {
+  it('uses an explicitly owned case factory for an injected authoring adapter', async () => {
+    const caseClose = vi.fn().mockResolvedValue(undefined);
+    const cases = { close: caseClose } as unknown as WorkflowInputCaseDatabase;
+    const factory = vi.fn(() => cases);
+    const runtime = await createApiWorkflowRuntime(
+      databaseConfig,
+      identityRuntime,
+      'redis://unused',
+      {
+        authoring: {
+          database: authoringDatabase(() => Promise.resolve()),
+          inputCasePersistenceFactory: factory,
+          telemetry,
+        },
+        persistence: { runs: persistence },
+        streaming: { streamer },
+      },
+    );
+    expect(factory).toHaveBeenCalledWith(databaseConfig, {});
+    expect(runtime.dependencies.inputCasePersistence).toBe(cases);
+    await runtime.close();
+    expect(caseClose).toHaveBeenCalledOnce();
+  });
+  it('owns explicitly injected case persistence and closes it once even on shutdown failure', async () => {
+    const caseClose = vi.fn().mockRejectedValue(new Error('case close failed'));
+    const close = vi.fn().mockResolvedValue(undefined);
+    const cases = { close: caseClose } as unknown as WorkflowInputCaseDatabase;
+    const runtime = await createApiWorkflowRuntime(
+      databaseConfig,
+      identityRuntime,
+      'redis://unused',
+      {
+        authoring: {
+          database: authoringDatabase(close),
+          inputCasePersistence: cases,
+          telemetry,
+        },
+        persistence: { runs: persistence },
+        streaming: { streamer },
+      },
+    );
+    expect(runtime.dependencies.inputCasePersistence).toBe(cases);
+    const shuttingDown = runtime.close();
+    expect(runtime.close()).toBe(shuttingDown);
+    await expect(shuttingDown).rejects.toBeInstanceOf(AggregateError);
+    expect(caseClose).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
+  });
+  it('cleans up case persistence after later runtime construction fails', async () => {
+    const caseClose = vi.fn().mockResolvedValue(undefined);
+    const cases = { close: caseClose } as unknown as WorkflowInputCaseDatabase;
+    await expect(
+      createApiWorkflowRuntime(
+        databaseConfig,
+        identityRuntime,
+        'redis://unused',
+        {
+          authoring: {
+            database: authoringDatabase(() => Promise.resolve()),
+            inputCasePersistence: cases,
+            telemetry,
+          },
+          persistence: {
+            runsFactory: () => {
+              throw new Error('runs failed');
+            },
+            notifications: notifications(() => Promise.resolve()),
+          },
+          streaming: { streamer },
+        },
+      ),
+    ).rejects.toThrow('runs failed');
+    expect(caseClose).toHaveBeenCalledOnce();
+  });
   it('drains one shared authoring owner before database disposal even when worker disposal fails', async () => {
     let rejectDrain: (reason: unknown) => void = () => {
       throw new Error('drain not initialized');

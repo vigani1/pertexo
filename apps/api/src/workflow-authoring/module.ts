@@ -36,6 +36,8 @@ import { WORKFLOW_AUTHORING_AUTHORIZATION } from './tokens.js';
 import { WorkflowAutoPauseUseCase } from './auto-pause-use-case.js';
 import { WorkflowConcurrencyUseCase } from './concurrency-use-case.js';
 import { WorkflowConcurrencyController } from './concurrency-controller.js';
+import { WorkflowInputCasesController } from './input-case-controller.js';
+import { WorkflowInputCasesUseCase } from './input-case-use-case.js';
 import {
   WorkflowAutoPauseController,
   WorkspaceAutoPauseController,
@@ -67,6 +69,17 @@ export class WorkflowAuthoringModule {
               telemetry,
             ),
           }))),
+      ...(dependencies.inputCasePersistence === undefined
+        ? []
+        : [
+            {
+              provide: WorkflowInputCasesUseCase,
+              useValue: new WorkflowInputCasesUseCase(
+                dependencies.inputCasePersistence,
+                dependencies.authorization,
+              ),
+            },
+          ]),
       {
         provide: DuplicateWorkflowUseCase,
         useValue: new DuplicateWorkflowUseCase(
@@ -204,6 +217,9 @@ export class WorkflowAuthoringModule {
         ...(dependencies.portabilityPersistence === undefined
           ? []
           : [WorkflowPortabilityController]),
+        ...(dependencies.inputCasePersistence === undefined
+          ? []
+          : [WorkflowInputCasesController]),
         ...(dependencies.concurrencyPersistence === undefined
           ? []
           : [WorkflowConcurrencyController]),

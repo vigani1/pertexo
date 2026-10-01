@@ -3,7 +3,8 @@ import type {
   WorkflowGraphContract,
   WorkflowSummary,
 } from '@pertexo/contracts/schemas/workflow-authoring';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { IssuesChip } from './components/validation/issues-chip';
@@ -139,6 +140,7 @@ export function WorkflowCommandActions({
   const [publishOpen, setPublishOpen] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
   const [stamp, setStamp] = useState<PublicationReceipt>();
+  const queryClient = useQueryClient();
   const { publication, runSubmission } = commandSession;
   const receipt = publication.publicationReceipt;
   const { everPublished, summary, versionLabel, ...preview } =
@@ -165,9 +167,8 @@ export function WorkflowCommandActions({
     onPublished(result.receipt);
   }
 
-  async function runNow() {
-    const accepted = await runSubmission.startNew({ value: {} });
-    if (!accepted) setRunOpen(true);
+  function runNow() {
+    setRunOpen(true);
   }
 
   return (
@@ -183,7 +184,10 @@ export function WorkflowCommandActions({
           published={workflow === undefined || everPublished}
           pending={runSubmission.pending}
           acceptedRunPending={runSubmission.acceptedRunId !== undefined}
-          onRunNow={() => void runNow()}
+          unresolvedRun={runSubmission.retryAvailable}
+          onRunNow={() => {
+            runNow();
+          }}
           onRunWithInput={() => {
             setRunOpen(true);
           }}
@@ -218,13 +222,34 @@ export function WorkflowCommandActions({
         onFix={onFix}
       />
       <RunInputDialog
+        key={`${userId}:${workspace.id}:${workflowId}`}
         open={runOpen}
         pending={runSubmission.pending}
         error={runSubmission.error}
         retryAvailable={runSubmission.retryAvailable}
+        recoveryIntent={runSubmission.recoveryIntent}
+        publicationConflict={runSubmission.publicationConflict}
+        onReviewPublication={async () => {
+          const reviewed = await queryClient.query({
+            ...workflowSummaryQueryOptions(
+              apiClient,
+              userId,
+              workspace.id,
+              workflowId,
+            ),
+            staleTime: 0,
+          });
+          if (reviewed.publishedVersionId === null)
+            throw new Error('No published version is available to review.');
+          runSubmission.clearPublicationConflict();
+          return reviewed.publishedVersionId;
+        }}
         onOpenChange={setRunOpen}
         onRetry={runSubmission.retry}
         onStartNew={runSubmission.startNew}
+        {...(workflow === undefined
+          ? {}
+          : { caseScope: { apiClient, userId, workspace, workflow } })}
       />
       {stamp === undefined ? null : (
         <PublishedStamp
@@ -236,7 +261,7 @@ export function WorkflowCommandActions({
           canRun={canRun}
           onRunNow={() => {
             setStamp(undefined);
-            void runNow();
+            runNow();
           }}
           onDismiss={() => {
             setStamp(undefined);

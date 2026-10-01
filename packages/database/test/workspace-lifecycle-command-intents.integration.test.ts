@@ -231,8 +231,8 @@ beforeAll(async () => {
   await apiWorkspaceQuery(
     `insert into app.workflow_runs(id,workspace_id,workflow_id,
        workflow_version_id,trigger_type,status,started_at)
-     values($1,$3,$4,$5,'manual','queued',null),
-           ($2,$3,$4,$5,'manual','running',clock_timestamp())`,
+     values($1,$3,$4,$5,'api','queued',null),
+           ($2,$3,$4,$5,'api','running',clock_timestamp())`,
     [queuedRunId, runningRunId, workspaceId, workflowId, workflowVersionId],
   );
   await apiWorkspaceQuery(

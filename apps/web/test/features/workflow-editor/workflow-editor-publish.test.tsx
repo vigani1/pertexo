@@ -97,6 +97,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
           etag: request.headers.get('if-match'),
           key: request.headers.get('idempotency-key'),
         });
+        mockServer.use(workflowSummaryHandler('Test workflow', versionId));
         return HttpResponse.json({
           version: versionBody(versionId, savedGraph),
           reused: false,
@@ -132,6 +133,9 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     await event.click(screen.getByRole('button', { name: 'Run' }));
     await event.click(
       await screen.findByRole('menuitem', { name: 'Run published version' }),
+    );
+    await event.click(
+      await screen.findByRole('button', { name: 'Start published version' }),
     );
     await waitFor(() => {
       expect(app.router.state.location.pathname).toBe(

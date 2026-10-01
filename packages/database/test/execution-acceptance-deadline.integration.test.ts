@@ -14,6 +14,7 @@ import {
   workerDatabase,
   workspaceA,
   workspaceCreatorId,
+  lockManualFixtureStart,
 } from './execution-acceptance.fixtures.js';
 
 installExecutionAcceptanceFixture();
@@ -82,14 +83,23 @@ describe('published workflow duration at run acceptance', () => {
       const input = { ...acceptanceInput(), triggerType };
       const database =
         triggerType === 'schedule' ? workerDatabase : apiDatabase;
-      const first = await database.withWorkspace(workspaceA, (transaction) =>
-        acceptWorkflowRun(transaction, input),
+      const first = await database.withWorkspace(
+        workspaceA,
+        async (transaction) => {
+          if (triggerType === 'manual')
+            await lockManualFixtureStart(transaction);
+          return acceptWorkflowRun(transaction, input);
+        },
       );
       const expected = new Date(first.acceptedAt.getTime() + 5_000);
       expect(await persistedDeadline(first.runId)).toEqual(expected);
       const duplicate = await database.withWorkspace(
         workspaceA,
-        (transaction) => acceptWorkflowRun(transaction, input),
+        async (transaction) => {
+          if (triggerType === 'manual')
+            await lockManualFixtureStart(transaction);
+          return acceptWorkflowRun(transaction, input);
+        },
       );
       expect(duplicate).toMatchObject({ runId: first.runId, duplicate: true });
       expect(await persistedDeadline(first.runId)).toEqual(expected);

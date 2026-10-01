@@ -19,6 +19,21 @@ workflow Settings and timestamped queued-run blocker explanations. It preserves
 workspace limits and explains grandfathered active/reserved runs. Skip overflow,
 per-trigger defaults and independent workflow queue limits remain deferred.
 
+ADR 061's first input-case slice uses the existing workflow hub and Run with
+input dialog. Named synthetic JSON cases stay bound to their original published
+version; loading makes a detached copy and never executes anything. Case edits
+require `workflow:update`, loading requires `workflow:read`, and starting still
+requires `run:start`. Starts explicitly confirm real effects. When enabled, they
+send the checked published-version precondition; the existing case-list endpoint
+reports that gate. When it reports rollout unavailable, ordinary Run actions
+remain deliberately confirmable without a version precondition, using the
+publication current at acceptance. Loaded cases and previously submitted checked
+commands never downgrade. Unconfirmed starts keep the original input, deadline,
+version and key; exact recovery ends after 24 hours, and does not silently
+permit a replacement run. Case controls require the backend's default-off
+compatible-writer gate; unavailable installations show that limit without
+claiming prior case commands were not accepted.
+
 For the proposed implementation direction, read
 [Frontend architecture and implementation plan](ARCHITECTURE.md). It covers
 folder ownership, API/shared types, Router/Query/Zustand communication, forms,

@@ -120,6 +120,8 @@ describe('additive workflow duplication migration', () => {
       ).toEqual(draft);
       expect(await migrateDatabase(config)).toEqual([
         '0129_workflow_duplication.sql',
+        '0130_workflow_input_cases.sql',
+        '0131_checked_manual_start.sql',
         '0132_workflow_portability.sql',
       ]);
       expect(await migrateDatabase(config)).toEqual([]);

@@ -87,6 +87,7 @@ export const workflowRunCreatedAtSchema =
 export const workflowRunStartRequestSchema = z
   .object({
     input: z.unknown().optional(),
+    expectedPublishedVersionId: z.uuid().optional(),
     deadlineAt: z.iso.datetime({ offset: true }).optional(),
   })
   .strict();

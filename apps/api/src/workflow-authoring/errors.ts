@@ -1,5 +1,8 @@
 import {
   WorkflowIdempotencyConflictError,
+  WorkflowInputCaseRevisionConflictError,
+  WorkflowInputCaseLimitError,
+  WorkflowInputCaseUnavailableError,
   WorkflowConcurrencyRevisionConflictError,
   WorkflowConcurrencyLimitUnavailableError,
   WorkflowConcurrencyLimitExceededError,
@@ -105,6 +108,21 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
     });
   if (error instanceof WorkflowNotFoundError)
     return applicationError('resource.not_found');
+  if (error instanceof WorkflowInputCaseRevisionConflictError)
+    return applicationError('workflow.input_case_revision_conflict', {
+      safeDetail:
+        'The case representation has changed; reload it before confirming a new command.',
+    });
+  if (error instanceof WorkflowInputCaseLimitError)
+    return applicationError('workflow.input_case_limit_exceeded', {
+      safeDetail:
+        'The run-input case count or retained storage limit has been reached. Deleted payloads under legal hold still count toward storage.',
+    });
+  if (error instanceof WorkflowInputCaseUnavailableError)
+    return applicationError('workflow.input_cases_unavailable', {
+      safeDetail:
+        'Run-input cases are not enabled or are temporarily unavailable. Retain any uncertain command for explicit recovery.',
+    });
   if (error instanceof WorkflowConcurrencyRevisionConflictError)
     return applicationError('workflow.concurrency_revision_conflict', {
       safeDetail:
@@ -221,4 +239,14 @@ function validationUnavailable(): ApplicationError {
 
 export function throwWorkflowApplicationError(error: unknown): never {
   return throwApplicationError(mapWorkflowAuthoringError(error));
+}
+
+export function throwWorkflowInputCaseApplicationError(error: unknown): never {
+  if (error instanceof z.ZodError)
+    return throwApplicationError(
+      applicationError('request.invalid', {
+        safeDetail: 'The run-input case request is invalid.',
+      }),
+    );
+  return throwWorkflowApplicationError(error);
 }

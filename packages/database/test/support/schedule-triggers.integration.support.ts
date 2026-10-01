@@ -300,7 +300,7 @@ export function createScheduleTriggerTestEnvironment(
           operation: 'workflow.run.accept',
           requestHash: 'c'.repeat(64),
           scope: `operator-source:${workflowId}`,
-          triggerType: 'manual',
+          triggerType: 'api',
           workflowId,
           workflowVersionId: versionId,
         }),

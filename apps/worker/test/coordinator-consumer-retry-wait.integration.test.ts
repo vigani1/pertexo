@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import {
   createDeadlineWakeupScanner,
@@ -129,6 +129,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
            id,workspace_id,workflow_id,workflow_version_id,trigger_type,status
          ) values ($1,$2,$3,$4,'manual','waiting')`,
       [runId, workspaceId, workflowId, workflowVersionId],
+      { workflowId, keyHash: createHash('sha256').update(runId).digest('hex') },
     );
     await apiQuery(
       `insert into app.run_events

@@ -13,6 +13,13 @@ import {
 } from '../../compatibility/compatibility-release.js';
 import { readWorkflowRunAcceptanceReplay } from './execution-acceptance.js';
 import {
+  assertCheckedManualStartEnabled,
+  lockManualStartCommand,
+  readManualStartRejection,
+  recordManualStartRejection,
+  type ManualStartRejection,
+} from './manual-start-command.js';
+import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../transport/outbox.js';
@@ -28,6 +35,7 @@ import { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
 import {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
+  WorkflowPublishedVersionConflictError,
 } from './workflow-run-errors.js';
 import {
   acceptWorkflowRunWithAudit,
@@ -77,6 +85,7 @@ export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
+  WorkflowPublishedVersionConflictError,
 } from './workflow-run-errors.js';
 export type { WorkflowRunRecord } from './workflow-run-persistence-support.js';
 export type {
@@ -105,6 +114,7 @@ const startInputSchema = z
     requestHash: digestSchema,
     scope: z.string().regex(/^workflow:[0-9a-f-]{36}:manual$/u),
     input: z.unknown().optional(),
+    expectedPublishedVersionId: z.uuid().optional(),
     deadlineAt: z.date().optional(),
     requestId: requestIdentifierSchema.optional(),
     traceId: requestIdentifierSchema.optional(),
@@ -226,13 +236,19 @@ export function createWorkflowRunDatabase(
   return Object.freeze({
     start: async (input: StartPublishedWorkflowRunInput) => {
       const parsed = startInputSchema.parse(input);
-      return withWorkspaceTransaction(
+      const result = await withWorkspaceTransaction(
         pool,
         parsed.workspaceId,
         async (transaction) =>
           startInTransaction(transaction, parsed, compatibilityReleases),
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
+      if ('kind' in result)
+        throw new WorkflowPublishedVersionConflictError(
+          result.expectedPublishedVersionId,
+          result.observedPublishedVersionId,
+        );
+      return result;
     },
     replay: async (input: ReplayPublishedWorkflowRunInput) => {
       const parsed = replayInputSchema.parse(input);
@@ -282,7 +298,10 @@ async function startInTransaction(
   transaction: WorkspaceTransaction,
   input: z.output<typeof startInputSchema>,
   compatibilityReleases: CompatibilityReleaseExpectationSet,
-): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>> {
+): Promise<
+  Readonly<{ run: WorkflowRunRecord; replayed: boolean }> | ManualStartRejection
+> {
+  await lockManualStartCommand(transaction, input);
   const identity = {
     keyHash: input.idempotencyKeyHash,
     operation: 'workflow.run.accept' as const,
@@ -295,6 +314,10 @@ async function startInTransaction(
     if (run === undefined) throw new WorkflowRunNotFoundError();
     return Object.freeze({ run, replayed: true });
   }
+  const rejection = await readManualStartRejection(transaction, input);
+  if (rejection !== null) return rejection;
+  if (input.expectedPublishedVersionId !== undefined)
+    await assertCheckedManualStartEnabled(transaction);
 
   const currentCompatibilityRelease = await lockExpectedCompatibilityReleaseSet(
     transaction.db,
@@ -305,6 +328,17 @@ async function startInTransaction(
     transaction,
     input.workflowId,
   );
+  if (
+    input.expectedPublishedVersionId !== undefined &&
+    input.expectedPublishedVersionId !== projection.id
+  ) {
+    return recordManualStartRejection(
+      transaction,
+      input,
+      input.expectedPublishedVersionId,
+      projection.id,
+    );
+  }
   const initial = input.checkpointFactory(
     projection,
     currentCompatibilityRelease,
