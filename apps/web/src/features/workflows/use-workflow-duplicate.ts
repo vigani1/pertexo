@@ -2,10 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { WorkflowDuplicateRequest } from '@pertexo/contracts/schemas/workflow-authoring';
 import { subscribeSessionChanges } from '@/features/auth/session-sync.public';
-import {
-  describeCommandError,
-  isUncertainOutcome,
-} from '@/lib/api/api-error-copy';
+import { describeCommandError } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   duplicateWorkflow,
@@ -15,6 +12,7 @@ import {
 import { workflowKeys } from './workflows.queries';
 import {
   duplicateFailureState,
+  type DuplicatePhase,
   type DuplicateState,
 } from './model/workflow-duplicate-state';
 import {
@@ -22,6 +20,21 @@ import {
   observeDuplicateAccessLoss,
   verifyDuplicateAuthority,
 } from './workflow-duplicate-authority';
+
+type DuplicateAttempt = WorkflowDuplicateAttempt & {
+  result?: Readonly<{ workflowId: string }>;
+};
+
+type WorkflowDuplicateOptions = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  source: WorkflowDuplicateRequest['source'];
+  allowed: boolean;
+  onCreated: (workflowId: string) => void;
+  onAccessLost: () => void;
+}>;
 
 /** One ephemeral, exact command; no mutation cache/offline replay or client graph. */
 export function useWorkflowDuplicate({
@@ -33,21 +46,12 @@ export function useWorkflowDuplicate({
   allowed,
   onCreated,
   onAccessLost,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  workflowId: string;
-  source: WorkflowDuplicateRequest['source'];
-  allowed: boolean;
-  onCreated: (workflowId: string) => void;
-  onAccessLost: () => void;
-}>) {
+}: WorkflowDuplicateOptions) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<DuplicateState>({ kind: 'loading' });
   const owner = useRef<symbol | undefined>(undefined);
   const request = useRef<AbortController | undefined>(undefined);
-  const attempt = useRef<WorkflowDuplicateAttempt | undefined>(undefined);
+  const attempt = useRef<DuplicateAttempt | undefined>(undefined);
   const busy = useRef(false);
   const kind = source.kind;
   const versionId = source.kind === 'version' ? source.versionId : undefined;
@@ -119,9 +123,12 @@ export function useWorkflowDuplicate({
     const token = Symbol('workflow-duplicate');
     owner.current = token;
     attempt.current = undefined;
-    if (!allowed) retire();
-    else if (kind === 'draft') void loadDraft(token);
-    else setState({ kind: 'ready' });
+    queueMicrotask(() => {
+      if (owner.current !== token) return;
+      if (!allowed) retire();
+      else if (kind === 'draft') void loadDraft(token);
+      else setState({ kind: 'ready' });
+    });
     const unsubscribe = subscribeSessionChanges(retire);
     const unsubscribeCache = observeDuplicateAccessLoss(
       queryClient,
@@ -151,27 +158,29 @@ export function useWorkflowDuplicate({
     queryClient,
   ]);
 
-  async function send(command: WorkflowDuplicateAttempt) {
+  async function send(command: DuplicateAttempt) {
     const token = owner.current;
     if (busy.current || token === undefined || !allowed) return;
     busy.current = true;
     const controller = new AbortController();
     request.current = controller;
     setState((current) => ({ ...current, kind: 'sending', error: undefined }));
-    // Recovery stays unresolved across authority reads and definitive retry failures.
-    let mayHaveCreated = state.kind === 'uncertain';
-    let submitting = false;
+    let phase: DuplicatePhase =
+      command.result === undefined ? 'authority' : 'accepted';
     try {
       if (!(await verify(controller.signal)) || owner.current !== token) return;
-      submitting = true;
-      const result = await duplicateWorkflow(
-        apiClient,
-        workspaceId,
-        workflowId,
-        command,
-        controller.signal,
-      );
-      mayHaveCreated = true;
+      phase = command.result === undefined ? 'mutation' : 'accepted';
+      const result =
+        command.result ??
+        (await duplicateWorkflow(
+          apiClient,
+          workspaceId,
+          workflowId,
+          command,
+          controller.signal,
+        ));
+      command.result = result;
+      phase = 'accepted';
       if (
         owner.current !== token ||
         !(await verify(controller.signal)) ||
@@ -190,10 +199,9 @@ export function useWorkflowDuplicate({
         retire();
         return;
       }
-      const retain =
-        mayHaveCreated || (submitting && isUncertainOutcome(error));
-      attempt.current = retain ? command : undefined;
-      setState((current) => duplicateFailureState(error, current, retain));
+      const next = duplicateFailureState(error, state, phase);
+      attempt.current = next.kind === 'uncertain' ? command : undefined;
+      setState(next);
     } finally {
       busy.current = false;
     }
@@ -208,7 +216,7 @@ export function useWorkflowDuplicate({
     },
     start: (name: string) => {
       if (state.kind !== 'ready') return;
-      const command: WorkflowDuplicateAttempt = {
+      const command: DuplicateAttempt = {
         body: { name, source },
         idempotencyKey: crypto.randomUUID(),
         ...(state.draft === undefined ? {} : { etag: state.draft.etag }),

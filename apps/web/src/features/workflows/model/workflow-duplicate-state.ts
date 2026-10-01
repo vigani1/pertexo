@@ -1,5 +1,10 @@
 import { isApiError } from '@/lib/api/api-error';
-import { describeCommandError } from '@/lib/api/api-error-copy';
+import {
+  describeCommandError,
+  isUncertainOutcome,
+} from '@/lib/api/api-error-copy';
+
+export type DuplicatePhase = 'authority' | 'mutation' | 'accepted';
 
 export type DuplicateState = Readonly<{
   kind:
@@ -18,21 +23,33 @@ export type DuplicateState = Readonly<{
 export function duplicateFailureState(
   error: unknown,
   current: DuplicateState,
-  retainCommand: boolean,
+  phase: DuplicatePhase,
 ): DuplicateState {
+  const rejected =
+    phase === 'mutation' &&
+    isApiError(error) &&
+    error.kind === 'problem' &&
+    [400, 409, 412, 422, 428].includes(error.status ?? 0);
+  const stale = rejected && isApiError(error) && error.status === 412;
+  const retainCommand =
+    phase === 'accepted' ||
+    (!rejected &&
+      (current.kind === 'uncertain' ||
+        (phase === 'mutation' && isUncertainOutcome(error))));
   if (retainCommand)
     return {
       ...current,
       kind: 'uncertain',
       error:
-        'We couldn’t confirm whether the copy was created. Retry the exact command safely; it won’t create a second copy.',
+        phase === 'accepted'
+          ? 'The copy was created, but access couldn’t be reverified. Retry to verify access and open that existing copy.'
+          : 'We couldn’t confirm whether the copy was created. Retry the exact command to recover it. Recovery is limited by receipt retention; check existing workflows before making a new copy.',
     };
-  const stale = isApiError(error) && error.status === 412;
   return {
     ...current,
     kind: stale ? 'stale' : 'ready',
     error: stale
-      ? 'The saved source changed. Read the current saved draft, then confirm a new copy explicitly.'
+      ? 'The saved source changed. This retry did not create a copy; an older copy may still exist if its receipt expired. Check existing workflows, read the current saved draft, then confirm a new copy explicitly.'
       : describeCommandError(error, 'duplicating this workflow'),
   };
 }

@@ -130,7 +130,9 @@ test('keeps a workflow copy exact through retry and postflight outages until ver
   identityUnavailable = false;
   await dialog.getByRole('button', { name: 'Retry exact copy' }).click();
   await expect(page).toHaveURL(`/w/${workspaceId}/workflows/${destination}`);
-  expect(attempts).toHaveLength(4);
+  // The accepted destination is remembered; recovery rechecks authority without
+  // another POST, so receipt expiry cannot create a second copy here.
+  expect(attempts).toHaveLength(3);
   for (const attempt of attempts) expect(attempt).toEqual(attempts[0]);
   expect(attempts[0]?.tag).toBe(currentEtag(remote));
   expect(attempts[0]?.body).toEqual({
