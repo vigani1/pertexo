@@ -59,6 +59,10 @@ import {
   workflowDuplicationEvidenceSchema,
   verifyWorkflowDuplicationEvidence,
 } from './support/workflow-duplication-browser-evidence.js';
+import {
+  workflowInputCasesEvidenceSchema,
+  verifyWorkflowInputCasesEvidence,
+} from './support/workflow-input-cases-browser-evidence.js';
 
 const enabled = process.env.EDITOR_BROWSER_INTEGRATION === 'true';
 const scenario = z
@@ -71,6 +75,7 @@ const scenario = z
     'schedule',
     'webhook-controlled-http',
     'duplication',
+    'input-cases',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -127,6 +132,8 @@ const browserEvidenceSchema = z.strictObject({
 let evidence: z.infer<typeof browserEvidenceSchema> | undefined;
 let duplicationEvidence:
   z.infer<typeof workflowDuplicationEvidenceSchema> | undefined;
+let inputCasesEvidence:
+  z.infer<typeof workflowInputCasesEvidenceSchema> | undefined;
 let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
 let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
 let expressionEvidence:
@@ -374,6 +381,19 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       otlpHeaders: {},
     }),
     afterMigration: async (databaseUrl) => {
+      if (scenario === 'input-cases') {
+        const inspector = new Pool({
+          connectionString: databaseUrl(process.env.DATABASE_ADMIN_URL ?? ''),
+        });
+        try {
+          // Only the already ownership-attested, freshly migrated UUID database.
+          await inspector.query(
+            'update app.workflow_input_case_rollout set enabled=true where singleton',
+          );
+        } finally {
+          await inspector.end();
+        }
+      }
       if (scenario === 'schedule' || scenario === 'webhook-controlled-http') {
         const inspector = new Pool({
           connectionString: databaseUrl(process.env.DATABASE_ADMIN_URL ?? ''),
@@ -622,6 +642,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           url.pathname === '/evidence/run-recovery' ||
           url.pathname === '/evidence/expression-admission' ||
           url.pathname === '/evidence/duplication' ||
+          url.pathname === '/input-cases-evidence' ||
           url.pathname === '/evidence/readonly' ||
           url.pathname === '/evidence/schedule')
       ) {
@@ -657,6 +678,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             )
               duplicationEvidence =
                 workflowDuplicationEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/input-cases-evidence' &&
+              scenario === 'input-cases'
+            )
+              inputCasesEvidence =
+                workflowInputCasesEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/readonly' &&
               scenario === 'readonly'
@@ -768,21 +795,23 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'duplication'
-              ? 'workflow-duplication.spec.ts'
-              : scenario === 'nested-conflict'
-                ? 'editor-execution.spec.ts'
-                : scenario === 'receipts'
-                  ? 'editor-receipts.spec.ts'
-                  : scenario === 'run-recovery'
-                    ? 'editor-run-recovery.spec.ts'
-                    : scenario === 'expression-admission'
-                      ? 'editor-expression-admission.spec.ts'
-                      : scenario === 'readonly'
-                        ? 'editor-readonly.spec.ts'
-                        : scenario === 'schedule'
-                          ? 'editor-schedule.spec.ts'
-                          : 'editor-webhook-controlled-http.spec.ts',
+            scenario === 'input-cases'
+              ? 'workflow-input-cases.spec.ts'
+              : scenario === 'duplication'
+                ? 'workflow-duplication.spec.ts'
+                : scenario === 'nested-conflict'
+                  ? 'editor-execution.spec.ts'
+                  : scenario === 'receipts'
+                    ? 'editor-receipts.spec.ts'
+                    : scenario === 'run-recovery'
+                      ? 'editor-run-recovery.spec.ts'
+                      : scenario === 'expression-admission'
+                        ? 'editor-expression-admission.spec.ts'
+                        : scenario === 'readonly'
+                          ? 'editor-readonly.spec.ts'
+                          : scenario === 'schedule'
+                            ? 'editor-schedule.spec.ts'
+                            : 'editor-webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -802,6 +831,18 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'input-cases') {
+      if (inputCasesEvidence === undefined)
+        throw new Error('Workflow input cases evidence missing');
+      await verifyWorkflowInputCasesEvidence(
+        api.database(),
+        inputCasesEvidence,
+      );
+      process.stdout.write(
+        `Live browser workflow input cases verified identities ${JSON.stringify(inputCasesEvidence)}\n`,
+      );
+      return;
+    }
     if (scenario === 'duplication') {
       if (duplicationEvidence === undefined)
         throw new Error('Workflow duplication evidence missing');

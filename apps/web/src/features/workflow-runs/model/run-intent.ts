@@ -1,7 +1,11 @@
 import { canonicalizeJson } from '@/lib/canonical-json';
 
 /** What a new run starts with: its input and an optional deadline. */
-export type RunIntent = Readonly<{ value: unknown; deadlineAt?: string }>;
+export type RunIntent = Readonly<{
+  value: unknown;
+  deadlineAt?: string;
+  expectedPublishedVersionId?: string;
+}>;
 
 export type RunInputField = 'input' | 'deadline';
 
@@ -34,5 +38,8 @@ export function normalizeRunIntent(intent: RunIntent): string {
   return canonicalizeJson({
     deadlineAt: intent.deadlineAt ?? null,
     value: intent.value,
+    ...(intent.expectedPublishedVersionId === undefined
+      ? {}
+      : { expectedPublishedVersionId: intent.expectedPublishedVersionId }),
   });
 }

@@ -102,6 +102,116 @@ describe('workflow publication recovery', () => {
 });
 
 describe('workflow run submission recovery', () => {
+  it('freezes value, deadline, version and key and rejects replacement while uncertain', async () => {
+    const requests: ApiJsonRequest<unknown>[] = [];
+    const apiClient = apiClientFor((request) => {
+      requests.push(request);
+      return Promise.reject(
+        new ApiError({ kind: 'network', message: 'lost response' }),
+      );
+    });
+    const hook = renderHook(() =>
+      useWorkflowRunSubmission({
+        apiClient,
+        workspaceId,
+        workflowId,
+        verifyIdentity: vi.fn().mockResolvedValue(undefined),
+        isSessionPaused: () => false,
+        ensureSaved: vi.fn().mockResolvedValue(undefined),
+        onRunAccepted: vi.fn(),
+      }),
+    );
+    const input = { proof: 'original' };
+    await act(() =>
+      hook.result.current.startNew({
+        value: input,
+        deadlineAt: '2026-10-02T12:00:00.000Z',
+        expectedPublishedVersionId: versionId,
+      }),
+    );
+    input.proof = 'changed after dispatch';
+    await act(() =>
+      hook.result.current.startNew({
+        value: {},
+        expectedPublishedVersionId: workflowId,
+      }),
+    );
+    expect(requests).toHaveLength(1);
+    await act(() => hook.result.current.retry());
+    expect(requests[1]?.body).toEqual(requests[0]?.body);
+    expect(requests[1]?.headers).toEqual(requests[0]?.headers);
+    expect(requests[1]?.body).toEqual({
+      input: { proof: 'original' },
+      deadlineAt: '2026-10-02T12:00:00.000Z',
+      expectedPublishedVersionId: versionId,
+    });
+  });
+
+  it('stops exact retries at the original 24-hour window without silently permitting replacement', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+    try {
+      const dispatch = vi.fn(() =>
+        Promise.reject(
+          new ApiError({ kind: 'timeout', message: 'lost response' }),
+        ),
+      );
+      const apiClient = apiClientFor(dispatch);
+      const hook = renderHook(() =>
+        useWorkflowRunSubmission({
+          apiClient,
+          workspaceId,
+          workflowId,
+          verifyIdentity: vi.fn().mockResolvedValue(undefined),
+          isSessionPaused: () => false,
+          ensureSaved: vi.fn().mockResolvedValue(undefined),
+          onRunAccepted: vi.fn(),
+        }),
+      );
+      await act(() => hook.result.current.startNew({ value: {} }));
+      clock.mockReturnValue(1_000 + 86_400_000);
+      await act(() => hook.result.current.retry());
+      await act(() =>
+        hook.result.current.startNew({ value: { replacement: true } }),
+      );
+      expect(dispatch).toHaveBeenCalledOnce();
+      expect(hook.result.current.error).toContain(
+        '24-hour recovery window has ended',
+      );
+      expect(hook.result.current.retryAvailable).toBe(true);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('keeps the accepted ID when fresh opening authority cannot be confirmed and never resubmits it', async () => {
+    const dispatch = vi.fn(() => Promise.resolve(acceptedRun()));
+    const apiClient = apiClientFor(dispatch);
+    const verifyIdentity = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('identity temporarily unavailable'))
+      .mockResolvedValue(undefined);
+    const onRunAccepted = vi.fn();
+    const hook = renderHook(() =>
+      useWorkflowRunSubmission({
+        apiClient,
+        workspaceId,
+        workflowId,
+        verifyIdentity,
+        isSessionPaused: () => false,
+        ensureSaved: vi.fn().mockResolvedValue(undefined),
+        onRunAccepted,
+      }),
+    );
+    await act(() => hook.result.current.startNew({ value: {} }));
+    expect(hook.result.current.acceptedRunId).toBe(runId);
+    expect(onRunAccepted).not.toHaveBeenCalled();
+    await act(() => hook.result.current.retry());
+    await act(() => hook.result.current.openAcceptedRun());
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(onRunAccepted).toHaveBeenCalledWith(runId);
+  });
+
   it('retries the exact accepted run intent without another save barrier', async () => {
     const requests: ApiJsonRequest<unknown>[] = [];
     let calls = 0;
@@ -161,7 +271,7 @@ describe('workflow run submission recovery', () => {
     expect(requests[1]?.headers).toEqual(requests[0]?.headers);
     expect(requests[1]?.body).toEqual(requests[0]?.body);
     expect(saveBarrier).toHaveBeenCalledOnce();
-    expect(verifyIdentity).toHaveBeenCalledTimes(4);
+    expect(verifyIdentity).toHaveBeenCalledTimes(5);
     expect(onRunAccepted).toHaveBeenCalledWith(runId);
   });
 
