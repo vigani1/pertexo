@@ -14,11 +14,13 @@ external production evidence listed under Phase 7.
 
 The ADR058 first slice is implemented locally on `feat/workflow-concurrency`.
 Independent manager review identified three correctness fixes; their focused
-regressions now pass, with final rerun and independent rereview still required.
+regressions and final local qualification pass, with independent rereview still
+required.
 Scoped PR checks/merge and natural postmerge qualification remain open.
 This does not close Phase 7 or supersede the
-historical qualification fingerprints below. F12 must be qualified on merged
-main before F29 release.
+historical qualification fingerprints below. F12 PR137 is merged as `23cc5b45`,
+but release-owner qualification of natural main CI remains pending and must pass
+before F29 release.
 
 - [x] Current workflow cap, durable acceptance tickets, workspace-authoritative
       admission, ordered starts, and grandfathered reservations implemented.
@@ -28,26 +30,28 @@ main before F29 release.
       cases; 878 database unit tests. Coverage includes reverse starts, shared
       workspace capacity, settings/acceptance races, control-path delivery,
       legacy upgrade, role boundaries, and readiness drift rejection.
-- [x] Final full PostgreSQL suite: 103 files / 741 tests passed. The privileged
+- [x] Repaired full PostgreSQL suite: 104 files / 753 tests passed. The privileged
       trigger-disabled terminal-history seed allocates mandatory tickets
       explicitly; its normal-planner budgets remain unchanged.
 - [x] Real HTTP proof: three authorization, command, replay, and policy cases.
-- [x] Enabled non-artifact API service cohort after the F12 repair merge:
-      20 files / 87 tests passed. Artifact-transfer and three opt-in browser
-      suites (25 tests) were skipped in that cohort; F29's live browser proof
-      below was executed separately, not inferred from a skipped suite.
+- [x] Repaired enabled non-artifact API service cohort: 19 files / 86 tests
+      passed, zero skips under strict JSON validation. Artifact-transfer,
+      compatibility rollout and the editor/Usage/concurrency browser files were
+      explicitly excluded; F29's live browser proof below ran separately.
 - [x] Real API/worker/browser proof: cap 1 leaves the second run queued with no
       node execution; an acknowledged worker-runtime restart preserves state;
       browser removal releases the second run with ordered start timestamps.
-- [x] Pre-review head `b67fc180` passed `pnpm check`: full build, typecheck, lint, contracts, architecture,
-      complexity, duplication and unit suites passed (API 1,745, worker 868,
-      database 878, web 792 tests). Changed React Doctor score: 100/100.
-- [x] Pre-review head `b67fc180` passed `pnpm test:coverage`: 24 cohorts bound to source fingerprint
-      `sha256:198aa04d84d05ffc8c94893acc070ff10e50930640ab59d7b546829c04a82581`;
+- [x] Repaired head `9bda9ee8` passed `pnpm check`: full build, typecheck, lint,
+      contracts, architecture, complexity, duplication and unit suites passed
+      (API 1,790, worker 868, database 878, web 798 tests).
+      Changed React Doctor score: 100/100.
+- [x] Repaired tree passed `pnpm test:coverage`: 24 cohorts bound to source
+      fingerprint
+      `sha256:7d10d5483a39527bae8ca485fb738fad60461e6c18ad1cae80eb22cb9fe64a44`;
       zero unreviewed / 390 reviewed residual branches across 210 selected
-      files and 8,075 coverable lines. Only two unchanged timestamp-guard
-      reviews were re-pinned for whole-file instrumentation fingerprints;
-      no exclusion or budget was broadened.
+      files and 8,075 coverable lines. No review, exclusion or budget changed
+      during the repair qualification. The pre-review witness was
+      `sha256:198aa04d84d05ffc8c94893acc070ff10e50930640ab59d7b546829c04a82581`.
 - [x] `pnpm test:browser-probes` (seven assertions) and
       `pnpm deployment:check` (60 assertions) passed locally.
 - [x] Lock order, mixed-version fail-closed enforcement, and rollback documented
@@ -56,7 +60,9 @@ main before F29 release.
 - [x] Close the reviewed active-insert serialization race, preserve committed
       reservations during FIFO deferral, and cancel stale reads before
       denied-write cache eviction; focused RED/GREEN proofs recorded below.
-- [ ] Requalify the repaired head and complete independent rereview.
+- [x] Requalify the repaired tree locally with repository checks, coverage,
+      full PostgreSQL, real HTTP/browser, browser probes and deployment checks.
+- [ ] Complete independent rereview of the repaired implementation.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
 The PostgreSQL receipt proof exercises bounded maintenance reaping and verifies
@@ -79,9 +85,10 @@ one live test; the unchanged strict JSON validator accepted it with zero skips.
 Ownership unit tests cover 45 accepted and rejected configurations. CI routing
 and local-quality contracts pass; this is not a hosted CI completion claim and
 does not change the manager's fixed-point core implementation review.
-The CI proof project is temporarily retained for the authorized review-fix
-verification; its finished browser/worker lifetimes are closed and Redis DB11
-is empty. No everyday service was adopted.
+The exact task-owned Compose CI proof project was retained through repair
+verification, then removed with its two disposable volumes after checking zero
+fixture databases, zero base clients and empty Redis DB11. Its browser/worker
+lifetimes had closed. No everyday service was adopted.
 
 The review fixes were reproduced before implementation. Eight real PostgreSQL
 API/worker × running/waiting × marked/unmarked INSERT races observed the writer
@@ -103,12 +110,34 @@ failure and fresh authorized recovery; changed React Doctor remains 100/100.
 The new reservation helper is worker-only and readiness pins its body and exact
 ACL; the trigger fingerprint now includes its serialized second policy check.
 
+Database repair commit `9bda9ee8` passed the full PostgreSQL suite and repository
+checks. The repaired real HTTP proof passed 3/3 and the CI-environment live
+API/worker/browser proof passed 1/1, both with zero skips under strict JSON
+validation. Normal merge `7953fd6a` incorporates PR137's main merge `23cc5b45`;
+the merged tree is exactly identical to its first parent `9bda9ee8`. Conflicts
+retained the already-merged F12 behavior and reviewed F29 migration/CI additions;
+one automatic duplicate type import was removed. CI gate tests and API typecheck
+also passed after resolution. Natural main CI/CodeQL remain manager-owned and
+pending, not inferred from these local results.
+
+Final repair qualification passed `pnpm test:coverage` (24 source-bound cohorts,
+zero unreviewed residual branches), seven browser probes and 60 deployment
+assertions. The enabled non-artifact API cohort passed all 86 cases after the
+normal migration bootstrap of this task's previously empty owned base database.
+The earlier broader API attempt failed on missing `app.auth_identities`; this
+was a local setup omission, not masked by exclusions or test changes. Likewise,
+an unchanged benchmark SIGINT process-startup timeout passed in isolation and
+in the full `pnpm check` rerun with its original deadline. Generated JSON reports
+were preserved outside the checkout, not committed. Required independent
+rereview, F12 natural main qualification and F29 release/PR checks remain open.
+
 Heavy qualification suites were serialized after concurrent runs hit unchanged
 workflow-engine and coordinator-observation test timeouts. Isolated observation
 tests and the final full database suite passed with their original budgets;
 no production code, timeout, or gate was changed to hide those failures.
 
-Task-owned PostgreSQL and Redis containers were removed after qualification;
+Both the original and follow-up task-owned PostgreSQL/Redis projects were removed
+after qualification;
 their disposable fixture data was discarded. Everyday services and the 43
 uncommitted paths in the primary checkout were left untouched. The F29 branch
 has not been pushed and has no configured upstream.
