@@ -16,7 +16,7 @@ policy row or introduce a workflow hot counter.
 | Acceptance | Existing compatibility/workflow publication locks; workspace and entitlement shared locks; workspace admission counter; new run/checkpoint/outbox |
 | Settings | Workspace, actor/membership and workflow shared locks; command receipt; workspace admission counter; policy row; audit/receipt result |
 | Dispatcher grant | Existing fair cursor and candidate outbox; workspace and candidate run `KEY SHARE SKIP LOCKED`; workspace admission counter; reservation insertion |
-| Coordinator commit | Workspace shared lock; run and checkpoint `NO KEY UPDATE`; workspace admission counter for admission/status changes; reservation release; receipt/outbox |
+| Coordinator commit | Workspace shared lock; run and checkpoint `NO KEY UPDATE`; workspace admission counter for admission/status changes; reservation release, or replacement outbox and reservation rebind on deferral; receipt |
 | Cancellation/deadline marking | Cancellation takes workspace shared lock before run exclusive lock and its workspace-bound audit; deadline marking owns only the run and unbound control outbox; neither takes the admission counter |
 | Reservation recovery | Existing due reservation `UPDATE SKIP LOCKED`; plain run/outbox reads; new recovery outbox and reservation binding update; no admission counter or exclusive run lock |
 
@@ -49,6 +49,15 @@ are explicitly order-exempt when a cap is enabled. Lowering never revokes a
 committed reservation. Cancellation/deadline controls remain dispatchable without
 a new slot and cannot authorize node execution.
 
+FIFO capacity deferral completes the consumed receipt only after rebinding any
+matching committed reservation to the replacement outbox in the same transaction.
+The worker-only, tenant-bound helper validates the queued run and both authoritative
+delivery identities. It changes only the outbox binding and clears the recovery
+timer; slot identity, creation time, recovery count, ticket and order exemption
+remain unchanged. A stale delivery cannot steal a newer recovery binding. Receipt
+completion then releases only the old binding, while actual starts and terminal
+commits retain their existing release behavior.
+
 ## Executable compatibility boundary
 
 The additive migration must be installed before readers or writers. Exact schema
@@ -58,6 +67,11 @@ New dispatcher and coordinator write transactions install the transaction-local
 run transition trigger require that marker whenever a non-null workflow policy
 could admit new active work. Old already-running writers fail closed; a UI flag
 or startup-only check is not the enforcement boundary.
+
+Direct active INSERTs check configured caps both before and after acquiring the
+workspace counter. The second check observes a cap committed while an INSERT
+waited on a settings transaction; an absent marker rejects with `PTC01`, and a
+marked direct INSERT rejects with `PTC02` because capped work must enter the queue.
 
 A missing marker on a coordinator capacity check raises before taking the counter
 instead of being treated as ordinary deferral. This rolls back the old run lock

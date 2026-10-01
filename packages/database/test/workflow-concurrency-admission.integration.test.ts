@@ -408,14 +408,18 @@ describe('current workflow concurrency and ordered production admission', () => 
           ('enforce_workflow_run_admission','workflow_concurrency_admissible',
            'workflow_run_active_capacity_available','workflow_run_active_admission_eligible',
            'reserve_workflow_run_active_admission','workflow_concurrency_control',
-           'workflow_run_admission_blockers') order by proname`,
+           'workflow_run_admission_blockers','rebind_workflow_run_active_admission') order by proname`,
           )
         ).rows,
     );
     expect(fingerprints).toEqual([
       {
         name: 'enforce_workflow_run_admission',
-        hash: 'e4137b01595acc041826eb374aa5188a',
+        hash: '4a178a6940d2a28eb9afde6f5227fbaf',
+      },
+      {
+        name: 'rebind_workflow_run_active_admission',
+        hash: '8ff6b3bf9c4140076f4a16b80f0949a3',
       },
       {
         name: 'reserve_workflow_run_active_admission',

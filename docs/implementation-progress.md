@@ -12,10 +12,11 @@ external production evidence listed under Phase 7.
 
 ### F29 — queue-only workflow concurrency
 
-The ADR058 first slice is implemented locally on `feat/workflow-concurrency`;
-independent manager review identified three required correctness fixes, still
-open alongside scoped PR checks/merge and natural postmerge
-qualification remain open. This does not close Phase 7 or supersede the
+The ADR058 first slice is implemented locally on `feat/workflow-concurrency`.
+Independent manager review identified three correctness fixes; their focused
+regressions now pass, with final rerun and independent rereview still required.
+Scoped PR checks/merge and natural postmerge qualification remain open.
+This does not close Phase 7 or supersede the
 historical qualification fingerprints below. F12 must be qualified on merged
 main before F29 release.
 
@@ -38,10 +39,10 @@ main before F29 release.
 - [x] Real API/worker/browser proof: cap 1 leaves the second run queued with no
       node execution; an acknowledged worker-runtime restart preserves state;
       browser removal releases the second run with ordered start timestamps.
-- [x] `pnpm check`: full build, typecheck, lint, contracts, architecture,
+- [x] Pre-review head `b67fc180` passed `pnpm check`: full build, typecheck, lint, contracts, architecture,
       complexity, duplication and unit suites passed (API 1,745, worker 868,
       database 878, web 792 tests). Changed React Doctor score: 100/100.
-- [x] `pnpm test:coverage`: 24 cohorts bound to source fingerprint
+- [x] Pre-review head `b67fc180` passed `pnpm test:coverage`: 24 cohorts bound to source fingerprint
       `sha256:198aa04d84d05ffc8c94893acc070ff10e50930640ab59d7b546829c04a82581`;
       zero unreviewed / 390 reviewed residual branches across 210 selected
       files and 8,075 coverable lines. Only two unchanged timestamp-guard
@@ -52,9 +53,10 @@ main before F29 release.
 - [x] Lock order, mixed-version fail-closed enforcement, and rollback documented
       in [the enforcement note](./operations/workflow-concurrency-enforcement.md).
 - [ ] Independent manager review and complete release qualification.
-- [ ] Close the reviewed active-insert serialization race, preserve committed
+- [x] Close the reviewed active-insert serialization race, preserve committed
       reservations during FIFO deferral, and cancel stale reads before
-      denied-write cache eviction; record their regression proofs.
+      denied-write cache eviction; focused RED/GREEN proofs recorded below.
+- [ ] Requalify the repaired head and complete independent rereview.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
 The PostgreSQL receipt proof exercises bounded maintenance reaping and verifies
@@ -80,6 +82,26 @@ does not change the manager's fixed-point core implementation review.
 The CI proof project is temporarily retained for the authorized review-fix
 verification; its finished browser/worker lifetimes are closed and Redis DB11
 is empty. No everyday service was adopted.
+
+The review fixes were reproduced before implementation. Eight real PostgreSQL
+API/worker × running/waiting × marked/unmarked INSERT races observed the writer
+blocked by the authenticated settings transaction, then incorrectly committed
+after the cap. The post-counter policy check now rejects all eight with the
+expected `PTC01`/`PTC02`. A real coordinator-store test reproduced B's lost slot
+when cap 2 reservations were lowered to 1 and B arrived before A. The repaired
+path preserves and rebinds B's reservation through deferral, duplicate delivery
+and store restart; A then B start using their committed slots, without a third
+grant. Twelve new regressions (the nine original failures plus worker/context,
+binding and real-recovery boundaries), the existing 22 concurrency cases and
+19 coordinator scheduling cases pass: 51 assertions. Readiness mutation tests
+reject helper body and execution-ACL drift for API, worker and dispatcher.
+
+Frontend commit `2a8d89f0` cancels the exact protected settings read before cache
+eviction. All 21 settings tests pass, including held GET + denied PUT
+401/403/404 with real HTTP and cancellation-ignoring reads, remount/network
+failure and fresh authorized recovery; changed React Doctor remains 100/100.
+The new reservation helper is worker-only and readiness pins its body and exact
+ACL; the trigger fingerprint now includes its serialized second policy check.
 
 Heavy qualification suites were serialized after concurrent runs hit unchanged
 workflow-engine and coordinator-observation test timeouts. Isolated observation

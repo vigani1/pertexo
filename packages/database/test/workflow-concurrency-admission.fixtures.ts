@@ -389,27 +389,37 @@ async function proveConcurrencyReadinessTamper(
   worker: Pool,
   dispatcher: Pool,
 ) {
-  const row = (
-    await owner.query<{ definition: string }>(
-      "select pg_get_functiondef('app.workflow_concurrency_admissible(uuid,uuid,boolean)'::regprocedure) definition",
-    )
-  ).rows[0];
-  if (row === undefined)
-    throw new Error('Missing concurrency function definition');
-  const modified = row.definition.replace(
-    'BEGIN\n',
-    'BEGIN\n  -- readiness body fingerprint mutation\n',
-  );
-  if (modified === row.definition)
-    throw new Error('Missing function mutation seam');
-  await owner.query(modified);
-  try {
-    await assertConcurrencyReadiness(api, worker, dispatcher, false);
-  } finally {
-    await owner.query(row.definition);
+  for (const signature of [
+    'app.workflow_concurrency_admissible(uuid,uuid,boolean)',
+    'app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid)',
+  ]) {
+    const row = (
+      await owner.query<{ definition: string }>(
+        'select pg_get_functiondef($1::regprocedure) definition',
+        [signature],
+      )
+    ).rows[0];
+    if (row === undefined)
+      throw new Error('Missing concurrency function definition');
+    const modified = row.definition.replace(
+      'BEGIN\n',
+      'BEGIN\n  -- readiness body fingerprint mutation\n',
+    );
+    if (modified === row.definition)
+      throw new Error('Missing function mutation seam');
+    await owner.query(modified);
+    try {
+      await assertConcurrencyReadiness(api, worker, dispatcher, false);
+    } finally {
+      await owner.query(row.definition);
+    }
+    await assertConcurrencyReadiness(api, worker, dispatcher, true);
   }
-  await assertConcurrencyReadiness(api, worker, dispatcher, true);
   for (const [modify, restore] of [
+    [
+      'grant execute on function app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid) to pertexo_api',
+      'revoke execute on function app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid) from pertexo_api',
+    ],
     [
       'grant select on app.workflow_concurrency_policies to pertexo_api',
       'revoke select on app.workflow_concurrency_policies from pertexo_api',

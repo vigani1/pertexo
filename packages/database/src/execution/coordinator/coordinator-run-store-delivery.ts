@@ -180,6 +180,17 @@ export async function deferCoordinatorForActiveCapacity(
       canonicalOutboxPayloadChecksum(payload),
     ],
   );
+  // Preserve the committed slot across FIFO deferral. Completing the old
+  // receipt may release only its old binding, never the replacement delivery.
+  await client.query(
+    `select app.rebind_workflow_run_active_admission($1,$2,$3,$4)`,
+    [
+      input.workspaceId,
+      input.runId,
+      input.delivery.outboxEventId,
+      outboxEventId,
+    ],
+  );
   await completeCoordinatorReceipt(client, input.workspaceId, input.delivery);
   return Object.freeze({ kind: 'deferred', revision: input.revision });
 }

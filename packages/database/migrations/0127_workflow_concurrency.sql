@@ -144,7 +144,17 @@ BEGIN
   v_marker:='  SELECT count(*) FILTER(WHERE status=''queued'')::integer,';
   v_matches:=(length(v_definition)-length(replace(v_definition,v_marker,'')))/length(v_marker);
   IF v_matches<>1 THEN RAISE EXCEPTION 'admission count shape incompatible'; END IF;
-  v_definition:=replace(v_definition,v_marker,'  IF TG_OP=''INSERT'' THEN
+  v_definition:=replace(v_definition,v_marker,'  -- Re-read the policy after the workspace counter serializes settings writes.
+  -- The early guard cannot see a cap committed while this INSERT waits.
+  IF TG_OP=''INSERT'' AND NEW.status IN (''running'',''waiting'')
+     AND EXISTS(SELECT 1 FROM app.workflow_concurrency_policies WHERE workspace_id=NEW.workspace_id
+       AND workflow_id=NEW.workflow_id AND active_run_limit IS NOT NULL) THEN
+    IF current_setting(''app.workflow_concurrency_protocol'',true) IS DISTINCT FROM ''1'' THEN
+      RAISE EXCEPTION ''workflow concurrency protocol required'' USING ERRCODE=''PTC01'';
+    END IF;
+    RAISE EXCEPTION ''capped production runs must enter the durable queue'' USING ERRCODE=''PTC02'';
+  END IF;
+  IF TG_OP=''INSERT'' THEN
     NEW.admission_ticket:=nextval(''app.workflow_run_admission_ticket_seq'');
   END IF;
 '||v_marker);
@@ -157,6 +167,45 @@ BEGIN
   END IF;
 '||v_marker);
 END $$;
+
+-- FIFO deferral changes transport identity, not the already committed slot.
+-- Recovery uses the same reservation-row serialization and never locks a run.
+CREATE OR REPLACE FUNCTION app.rebind_workflow_run_active_admission(
+  p_workspace_id uuid,p_workflow_run_id uuid,p_old_outbox_event_id uuid,p_new_outbox_event_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app SET row_security=on AS $$
+BEGIN
+  IF nullif(current_setting('app.workspace_id',true),'')::uuid IS DISTINCT FROM p_workspace_id THEN
+    RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
+  END IF;
+  IF p_old_outbox_event_id=p_new_outbox_event_id THEN RETURN false; END IF;
+  IF NOT EXISTS(SELECT 1 FROM app.workflow_runs run
+    WHERE run.workspace_id=p_workspace_id AND run.id=p_workflow_run_id AND run.status='queued')
+    OR NOT EXISTS(SELECT 1 FROM app.outbox_events old_event,app.outbox_events new_event
+      WHERE old_event.workspace_id=p_workspace_id AND old_event.id=p_old_outbox_event_id
+        AND new_event.workspace_id=p_workspace_id AND new_event.id=p_new_outbox_event_id
+        AND old_event.aggregate_id=p_workflow_run_id AND new_event.aggregate_id=p_workflow_run_id
+        AND old_event.aggregate_type='workflow-run' AND new_event.aggregate_type='workflow-run'
+        AND old_event.job_name='advance-workflow-run' AND new_event.job_name='advance-workflow-run'
+        AND old_event.schema_version=1 AND new_event.schema_version=1
+        AND old_event.payload->>'workspaceId'=p_workspace_id::text
+        AND new_event.payload->>'workspaceId'=p_workspace_id::text
+        AND old_event.payload->>'runId'=p_workflow_run_id::text
+        AND new_event.payload->>'runId'=p_workflow_run_id::text
+        AND old_event.payload->>'outboxEventId'=p_old_outbox_event_id::text
+        AND new_event.payload->>'outboxEventId'=p_new_outbox_event_id::text
+        AND new_event.published_at IS NULL AND new_event.failed_at IS NULL) THEN RETURN false;
+  END IF;
+  UPDATE app.workflow_run_active_admissions SET outbox_event_id=p_new_outbox_event_id,recover_after=NULL
+    WHERE workspace_id=p_workspace_id AND workflow_run_id=p_workflow_run_id
+      AND outbox_event_id=p_old_outbox_event_id;
+  RETURN FOUND;
+END $$;
+ALTER FUNCTION app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid) OWNER TO {{owner_role}};
+REVOKE ALL ON FUNCTION app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid) FROM PUBLIC,
+  {{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}},
+  {{operator_role}},{{lifecycle_command_role}};
+GRANT EXECUTE ON FUNCTION app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid) TO {{worker_runtime_role}};
 
 CREATE OR REPLACE FUNCTION app.workflow_run_active_capacity_available(
   p_workspace_id uuid,p_entitlement_version integer,p_workflow_run_id uuid)
