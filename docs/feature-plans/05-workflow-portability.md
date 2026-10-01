@@ -3,13 +3,19 @@
 Status: same-workspace duplication first slice independently reviewed, merged
 and qualified under ADR060 through PR142; broader F05 is not complete.
 Import/export is approved and implementation is in progress under accepted
-ADR062. No portable runtime is qualified yet.
+ADR062. Format, persistence, authenticated HTTP and rendered UI are implemented
+in the dedicated portability worktree. The integrated browser journey passes on
+the evolving candidate; frozen-source qualification and independent
+implementation review remain open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New cross-stack authoring slice. Relative size: **M–L**, not a calendar estimate.
 
 ## Outcome
 
-Move or reuse workflow structure safely, without copying secrets, workspace IDs or historical executions.
+Move or reuse reviewed workflow structure without secret-store reads, source
+resource metadata or historical executions. Authored literal strings can contain
+private content and are deliberately preserved; export is not arbitrary-secret
+redaction.
 
 ## Current implementation and evidence
 
@@ -186,7 +192,7 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 ## First-slice delivery tracker
 
 These criteria apply only to same-workspace Duplicate workflow. Import/export,
-templates and cross-workspace copy remain unimplemented; production activation
+templates and portable import/export are outside this first-slice tracker; production activation
 remains unauthorized. Completing this tracker does not complete broader F05.
 
 - [x] First-slice baseline reconciled against current authoring/model owners.
@@ -220,3 +226,52 @@ reran all 26 focused duplication tests successfully. Earlier service-backed
 local evidence remains bound to `06ca64c1`, not claimed as a local rerun on the
 repaired head. Hosted exact-head and natural-main evidence above completes this
 first slice; it does not complete import/export or authorize production activation.
+
+## Portable import/export delivery tracker
+
+Accepted [ADR062](../adr/062-portable-workflow-authoring.md) is the contract for
+this slice, based on main `228a692dda5f67e7256be88ff496c8810ddc36f9`.
+Qualification is separate from the earlier duplication evidence above.
+
+- [x] Literal-content review policy, manifest V1, explicit slot bindings,
+      compatibility CAS, authority and lock ordering accepted before code.
+- [x] Browser-safe bounded JSON/manifest contract and server-only registered
+      configuration policy implemented; model/catalog focused and full suites pass.
+- [x] Atomic default-off persistence and authenticated HTTP implemented; initial
+      enabled real PostgreSQL and HTTP probes pass.
+- [x] Saved-draft and selected-version export plus explicit import preview,
+      rebinding and ephemeral manual recovery controls implemented.
+- [x] Ordinary HTTP/database integration and a strict, owned real-browser CI
+      lane assigned without optional flags or zero-minimum reports.
+- [ ] Connection/catalog/authority races and receipt hold/expiry/purge evidence
+      closed on the final implementation source.
+- [ ] Enabled two-workspace browser/API/database/worker acceptance and safe
+      owned-fixture teardown recorded on the final implementation source.
+- [ ] Repository/static checks, source-bound coverage and independent standards
+      and spec reviews closed on the exact candidate.
+- [ ] Required reviewed-head checks, merge and natural-main result inspected.
+
+Implementation evidence so far: `c83e21a0` adds the bounded format and registered
+policy. The full model suite passes 192 tests and the catalog suite 79; their
+coverage exceeds unchanged thresholds. The initial authenticated HTTP probe
+passes three cases, including route-specific byte rejection and reader behavior
+with the writer gate disabled. Those evolving-worktree probes are not final-head
+qualification. Production activation, templates, dependency bundles, competitor
+formats, automatic publishing/running and arbitrary-secret redaction remain
+unauthorized or out of scope.
+
+Backend behavior is committed at `46958e93`; UI, explicit rebinding and its
+required CI browser owner at `fe4a7ec8`. Focused real PostgreSQL evidence passes
+38 tests, hardened authenticated HTTP three tests, and final frontend unit
+evidence 858 tests. The real two-workspace browser/API/database/worker journey
+passes on the evolving UI candidate: both saved-draft and selected-version
+downloads preserve reviewed structure, explicit binding uses only the chosen
+destination account, a destination-only edit leaves its source unchanged,
+core-only import is explicitly published and executes successfully, and
+membership loss clears sensitive client state. The download issue was isolated
+to prototype-sensitive registered-config equality and repaired with a red/green
+regression at `457180e4`. A delayed-query keyboard regression distinguishes
+connection discovery from selection; no eligibility or security checks were
+weakened. Broad database qualification discovered two stale migration support
+suffixes, corrected at `60fd2619`; the original failed report is retained.
+These are pre-freeze evidence, not a claim of final-head or hosted qualification.
