@@ -151,3 +151,11 @@ Evidence log:
   An earlier benchmark process-startup timeout passed both in isolation and in
   the subsequent serial gate run; no timeout budgets were changed. No push, PR,
   merge or postmerge CI is claimed.
+- 2026-10-01: recorded implementation commits `3abde4ae` (backend/contract)
+  and `6ce2637e` (page/integrated evidence), following ADR commit `5af88e02`.
+  Normal merge `87ec4177` incorporates main cleanup fix `1af50311` without
+  rewriting history. After that local merge, the API dependency build, 47
+  focused cleanup/Usage tests and both real capacity/browser integration tests
+  passed. The two owned temporary services were closed after confirming no
+  fixture databases remained. This is local integration, not a feature PR merge
+  or postmerge CI result; manager review still precedes any push/PR.
