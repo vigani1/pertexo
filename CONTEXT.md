@@ -5,6 +5,14 @@ versions while preserving operational history.
 
 ## Language
 
+**Connection health**: Evidence that a workflow connection's current credential
+is usable or requires reauthorization. A failed operation is not necessarily an
+unhealthy connection. _Avoid_: Provider availability, run status
+
+**Connection usage**: The retained published workflow versions that reference a
+workflow connection, including historical publications. _Avoid_: Draft usage,
+current-workflow count
+
 **Workflow lifecycle**: Whether a workflow is active or archived. Archiving
 pauses new admission, not the history or progress of runs that already exist.
 _Avoid_: Run status, activation health

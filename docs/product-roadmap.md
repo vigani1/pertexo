@@ -215,7 +215,7 @@ only after its gate is resolved.
 | [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
 | [F28](feature-plans/28-single-sign-on-and-provisioning.md) | Single sign-on (SAML/OIDC) and SCIM user provisioning | Extends the session authority for organizations | L–XL | Proposed |
 | [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Proposed |
-| [F30](feature-plans/30-connection-health.md) | Connection health from real failures, used-by and reconnection | Extends existing connections | M–L | Proposed |
+| [F30](feature-plans/30-connection-health.md) | Connection health from real failures, used-by and reconnection | Extends existing connections | M–L | First Slack slice design accepted (ADR059); implementation next |
 
 ## Shared implementation rules
 

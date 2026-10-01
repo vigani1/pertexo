@@ -10,6 +10,23 @@ external production evidence listed under Phase 7.
 
 ## Current qualification
 
+### F30 — connection health first slice
+
+The manager accepted [ADR059](./adr/059-connection-health-observations.md) and
+the [F30 plan](./feature-plans/30-connection-health.md) on 2026-10-01, based on
+reviewed F29 head `7561e822`. This is an implementation-ready design, not an
+implemented or qualified capability. Scope is Slack run-derived evidence,
+version/revision-fenced durable application, safe manual recovery, authorized
+published-version usage, and the existing connections/settings UI. Notices and
+other automatic providers are deferred; production activation is not authorized.
+
+- [x] Reconcile baseline and record signal, ordering, recovery and usage choices.
+- [x] Accept ADR059 and the manager-owned implementation/acceptance plan.
+- [ ] Implement and review contracts, capability security and durable backend.
+- [ ] Implement and review the frontend and real integrated behavior.
+- [ ] Pass local qualification and independent reviews; merge a scoped green PR
+      and inspect natural postmerge checks.
+
 ### F29 — queue-only workflow concurrency
 
 The ADR058 first slice is implemented locally on `feat/workflow-concurrency`.
