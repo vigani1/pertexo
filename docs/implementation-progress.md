@@ -10,6 +10,25 @@ external production evidence listed under Phase 7.
 
 ## Current qualification
 
+### F05 — same-workspace workflow duplication
+
+The user approved a fresh workflow identity with preserved internal graph IDs
+on 2026-10-01. [ADR060](./adr/060-workflow-duplication-identity.md) and the
+[F05 first-slice plan](./feature-plans/05-workflow-portability.md) define the
+atomic command, source selection, authority, replay and verification contract
+against merged main `0f54e31d`. This is a saved draft/chosen-version copy into
+an independent unpublished draft, not import/export or automatic activation.
+
+- [x] Reconcile the existing authoring/model baseline and resolve graph identity.
+- [x] Record the accepted first-slice decision before implementation.
+- [ ] Implement atomic persistence, contracts/API and the browser command.
+- [ ] Prove isolation, races/replay and enabled live browser/backend acceptance.
+- [ ] Complete independent reviews and green exact-head/natural-main release.
+
+Evidence currently consists of source inspection and the accepted decision,
+not implemented behavior or new runtime qualification. F12, F29 and F30 remain
+qualified; their completed work is not reopened by this slice.
+
 ### F30 — connection health first slice
 
 The manager accepted [ADR059](./adr/059-connection-health-observations.md) and
