@@ -9,6 +9,7 @@ import {
   appendRunEvent,
   createIdentityWorkspaceDatabase,
   createWorkspaceDatabase,
+  lockManualStartCommand,
   parseDatabaseConfig,
   type WorkspaceDatabase,
 } from '@pertexo/database/testing';
@@ -206,11 +207,13 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
 
   it('reconnects after Redis loss and reconstructs durable events exactly once', async () => {
     const workspaceId = randomUUID();
+    const actorId = randomUUID();
     const identityDatabase = createIdentityWorkspaceDatabase(
       databaseConfig(apiUrl ?? ''),
     );
     try {
       const owner = await identityDatabase.createUser({
+        id: actorId,
         email: `sse-resilience-${workspaceId}@example.test`,
         displayName: 'SSE resilience fixture owner',
       });
@@ -224,24 +227,38 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
       await identityDatabase.close();
     }
     const engineVersion = 'phase0e-sse-resilience-v1';
+    const workflowId = randomUUID();
     const workflowVersionId = randomUUID();
+    const scope = `workflow:${workflowId}:manual`;
+    const keyHash = createHash('sha256').update(randomUUID()).digest('hex');
+    const requestHash = createHash('sha256').update(randomUUID()).digest('hex');
     const accepted = await apiDatabase.withWorkspace(
       workspaceId,
-      async (transaction) =>
-        acceptWorkflowRun(transaction, {
+      async (transaction) => {
+        // Even low-level stream fixtures are real manual writers: lock current
+        // actor authority and this exact command identity before acceptance.
+        await lockManualStartCommand(transaction, {
+          actorId,
+          workflowId,
+          scope,
+          idempotencyKeyHash: keyHash,
+          requestHash,
+        });
+        return acceptWorkflowRun(transaction, {
           engineVersion,
           initialCheckpoint: initialCheckpoint(
             engineVersion,
             workflowVersionId,
           ),
-          keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
+          keyHash,
           operation: 'workflow.run.accept',
-          requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
-          scope: `sse-resilience:${workspaceId}`,
+          requestHash,
+          scope,
           triggerType: 'manual',
-          workflowId: randomUUID(),
+          workflowId,
           workflowVersionId,
-        }),
+        });
+      },
     );
     const runId = accepted.runId;
     const abort = new AbortController();

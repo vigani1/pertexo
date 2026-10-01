@@ -1,3 +1,4 @@
+export { lockManualStartCommand } from './runs/manual-start-command.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
