@@ -918,9 +918,9 @@
           "branchType": "if",
           "line": 69,
           "column": 2,
-          "sourceFingerprint": "sha256:b8d1510133a814c46db03daf5d37e64cebf180e528a9f677343c9f97a49b5eb4",
+          "sourceFingerprint": "sha256:1de9503b11d879d8b4924025c55fd6c025868038cdaaa9b32e296b836665b2f1",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 adds capacity schemas below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
+          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 capacity and ADR058 blocker schemas are below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
         },
         {
           "branchId": "1",
@@ -928,9 +928,9 @@
           "branchType": "if",
           "line": 72,
           "column": 2,
-          "sourceFingerprint": "sha256:b8d1510133a814c46db03daf5d37e64cebf180e528a9f677343c9f97a49b5eb4",
+          "sourceFingerprint": "sha256:1de9503b11d879d8b4924025c55fd6c025868038cdaaa9b32e296b836665b2f1",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 adds capacity schemas below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
+          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 capacity and ADR058 blocker schemas are below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
         },
         {
           "branchId": "3",

@@ -1,6 +1,7 @@
 # F12 — Usage, limits and workflow insights without billing
 
-Status: first read-only capacity/activity slice implemented and locally verified; review/CI pending;
+Status: first read-only capacity/activity slice complete, merged in PR137 with
+required checks and release-owner natural main qualification passed;
 warnings and trends remain deferred. This document does not authorize production rollout.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Backend projection + frontend reporting. Relative size: **L**, not a calendar estimate.
@@ -112,10 +113,24 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 - [x] First-slice frontend behavior implemented and independently verified.
 - [x] First-slice real integrated acceptance evidence recorded.
 - [x] First-slice rollout/rollback and limitations documented in ADR057.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+- [x] First-slice scoped PR137 merged with required exact-head checks passed.
+- [x] Natural postmerge main qualification inspected and passed by the release owner.
 
 Evidence log:
 
+- 2026-10-01: the release owner confirmed natural main
+  [CI run 36806860550](https://github.com/vigani1/pertexo/actions/runs/36806860550)
+  and [CodeQL run 36806860572](https://github.com/vigani1/pertexo/actions/runs/36806860572)
+  both concluded `SUCCESS` on merged commit `23cc5b45`, and recorded the manager
+  receipt. This closes the first read-only capacity/activity slice's postmerge
+  qualification, not the deferred warnings/trends product or production rollout.
+- 2026-10-01: the release owner reported all exact-head CI checks passed and
+  [PR137](https://github.com/vigani1/pertexo/pull/137) merged at 02:39:28 UTC as
+  `23cc5b452f647788dad704f5f0b3114330122712`; fetch confirmed that commit on
+  `origin/main`. Natural main CI `36806860550` and CodeQL `36806860572` were
+  queued at that point; the subsequent release-owner success receipt above
+  supersedes that pending status. This merge receipt alone did not establish
+  main qualification, production rollout, or the deferred warnings/trends product.
 - 2026-10-01: [ADR057](../adr/057-workspace-usage-capacity-and-retained-activity.md)
   records the selected metric dictionary, conservative existing-capability
   intersection, fixed-window activity, exact byte representation and bounded
@@ -127,8 +142,8 @@ Evidence log:
   acceptance claim.
 - Existing foundations above are not completion of this increment. Warnings,
   trends, operation/attempt meters, timezone/reset settings, entitlement editing
-  and billing are explicitly deferred. The first slice remains unmerged until
-  verified evidence and review/CI are recorded.
+  and billing are explicitly deferred. At that inventory point the first slice
+  remained unmerged; the later PR137 evidence above supersedes that status.
 - 2026-10-01: local first-slice evidence: contracts 135 tests; API focused
   authorization/persistence tests 94; database unit suite 878 tests plus 64
   focused readiness/reader tests after the final body pin; isolated PostgreSQL

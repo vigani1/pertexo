@@ -12,6 +12,7 @@ import type {
 } from './workflow-authoring-records.js';
 import type { GraphValidationResult } from '@pertexo/workflow-model/graph';
 import type { WorkflowAutoPauseDatabase } from './workflow-auto-pause.js';
+import type { WorkflowConcurrencyDatabase } from './workflow-concurrency.js';
 
 export type CreateWorkflowInput = Readonly<{
   id?: string;
@@ -171,4 +172,5 @@ export type WorkflowAuthoringDatabase = Readonly<{
   renameWorkflow(input: RenameWorkflowInput): Promise<RenameWorkflowResult>;
   close(): Promise<void>;
   readonly autoPause?: WorkflowAutoPauseDatabase;
+  readonly concurrency?: WorkflowConcurrencyDatabase;
 }>;

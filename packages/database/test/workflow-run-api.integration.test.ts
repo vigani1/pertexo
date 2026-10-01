@@ -577,6 +577,8 @@ describe('workflow run API persistence', () => {
     // This test measures read plans, not run admission. Seed terminal history
     // with the disposable database admin so the per-row admission recount does
     // not consume the test's fixed 15-second budget before EXPLAIN runs.
+    // The disabled trigger normally allocates mandatory admission tickets, so
+    // only this privileged historical seed uses the private sequence directly.
     const fixtureAdmin = new Pool({
       connectionString: disposableDatabase.databaseUrl(adminUrl),
       max: 1,
@@ -594,10 +596,12 @@ describe('workflow run API persistence', () => {
         await seedClient.query(
           `insert into app.workflow_runs
          (id, workspace_id, workflow_id, workflow_version_id,
-          trigger_type, status, execution_entitlement_version, created_at, updated_at)
+          trigger_type, status, execution_entitlement_version, admission_ticket,
+          created_at, updated_at)
        select gen_random_uuid(), $1, workflow.id, version.id, 'manual',
               case when run_number % 2 = 0 then 'failed' else 'succeeded' end,
               1,
+              nextval('app.workflow_run_admission_ticket_seq'),
               '2026-09-01T00:00:00Z'::timestamptz
                 + ((row_number() over ())::text || ' milliseconds')::interval,
               '2026-09-01T00:00:00Z'::timestamptz

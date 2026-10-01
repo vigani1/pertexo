@@ -202,6 +202,7 @@ async function resetExecutionFixture(): Promise<void> {
         app.workspace_purge_steps,
         app.workspace_purge_jobs,
         app.idempotency_records,
+        app.workflow_concurrency_command_receipts,
         app.run_events,
         app.run_checkpoints,
         app.workflow_runs,

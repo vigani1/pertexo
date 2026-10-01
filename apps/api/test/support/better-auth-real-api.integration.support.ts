@@ -306,7 +306,7 @@ export function useBetterAuthRealApi(
   });
 
   function send(
-    method: 'GET' | 'POST' | 'PATCH',
+    method: 'GET' | 'POST' | 'PATCH' | 'PUT',
     url: string,
     input: SendInput = {},
   ): Promise<Reply> {

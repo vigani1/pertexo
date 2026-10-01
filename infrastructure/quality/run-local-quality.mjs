@@ -138,6 +138,8 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
       'test/editor-browser.integration.test.ts',
       '--exclude',
       'test/usage-browser.integration.test.ts',
+      '--exclude',
+      'test/workflow-concurrency-browser.integration.test.ts',
       '--reporter=default',
     ],
   }),

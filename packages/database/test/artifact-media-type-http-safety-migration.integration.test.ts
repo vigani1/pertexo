@@ -156,6 +156,7 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
         '0124_workflow_trigger_pause.sql',
         '0125_workflow_auto_pause_controls.sql',
         '0126_workspace_usage_capacity.sql',
+        '0127_workflow_concurrency.sql',
       ]);
 
       await owner.query('begin');

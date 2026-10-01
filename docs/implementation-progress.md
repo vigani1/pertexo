@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-14
+Last updated: 2026-10-01
 
 This is the mutable delivery tracker for
 [`workflow-platform-backend-plan.md`](./workflow-platform-backend-plan.md).
@@ -9,6 +9,145 @@ vertical-slice criteria have passed. Local checks never substitute for the
 external production evidence listed under Phase 7.
 
 ## Current qualification
+
+### F29 — queue-only workflow concurrency
+
+The ADR058 first slice is implemented locally on `feat/workflow-concurrency`.
+Independent manager review identified three correctness fixes; their focused
+regressions and final local qualification pass, with independent rereview still
+required.
+F29 scoped PR checks/merge and natural postmerge qualification remain open.
+This does not close Phase 7 or supersede the
+historical qualification fingerprints below. F12 PR137 is merged as `23cc5b45`;
+the release owner has confirmed natural main CI and CodeQL success on that
+commit, closing the first read-only capacity/activity slice's qualification.
+This satisfies the F12 dependency, not F29's own review or release requirements.
+
+- [x] Current workflow cap, durable acceptance tickets, workspace-authoritative
+      admission, ordered starts, and grandfathered reservations implemented.
+- [x] Authorized CAS/idempotent settings commands and timestamped queued-run
+      blockers implemented with settings/history UI.
+- [x] Real PostgreSQL proof: 22 concurrency cases plus 18 existing regression
+      cases; 878 database unit tests. Coverage includes reverse starts, shared
+      workspace capacity, settings/acceptance races, control-path delivery,
+      legacy upgrade, role boundaries, and readiness drift rejection.
+- [x] Repaired full PostgreSQL suite: 104 files / 753 tests passed. The privileged
+      trigger-disabled terminal-history seed allocates mandatory tickets
+      explicitly; its normal-planner budgets remain unchanged.
+- [x] Real HTTP proof: three authorization, command, replay, and policy cases.
+- [x] Repaired enabled non-artifact API service cohort: 19 files / 86 tests
+      passed, zero skips under strict JSON validation. Artifact-transfer,
+      compatibility rollout and the editor/Usage/concurrency browser files were
+      explicitly excluded; F29's live browser proof below ran separately.
+- [x] Real API/worker/browser proof: cap 1 leaves the second run queued with no
+      node execution; an acknowledged worker-runtime restart preserves state;
+      browser removal releases the second run with ordered start timestamps.
+- [x] Repaired head `9bda9ee8` passed `pnpm check`: full build, typecheck, lint,
+      contracts, architecture, complexity, duplication and unit suites passed
+      (API 1,790, worker 868, database 878, web 798 tests).
+      Changed React Doctor score: 100/100.
+- [x] Repaired tree passed `pnpm test:coverage`: 24 cohorts bound to source
+      fingerprint
+      `sha256:7d10d5483a39527bae8ca485fb738fad60461e6c18ad1cae80eb22cb9fe64a44`;
+      zero unreviewed / 390 reviewed residual branches across 210 selected
+      files and 8,075 coverable lines. No review, exclusion or budget changed
+      during the repair qualification. The pre-review witness was
+      `sha256:198aa04d84d05ffc8c94893acc070ff10e50930640ab59d7b546829c04a82581`.
+- [x] `pnpm test:browser-probes` (seven assertions) and
+      `pnpm deployment:check` (60 assertions) passed locally.
+- [x] Lock order, mixed-version fail-closed enforcement, and rollback documented
+      in [the enforcement note](./operations/workflow-concurrency-enforcement.md).
+- [ ] Independent manager review and complete release qualification.
+- [x] Close the reviewed active-insert serialization race, preserve committed
+      reservations during FIFO deferral, and cancel stale reads before
+      denied-write cache eviction; focused RED/GREEN proofs recorded below.
+- [x] Requalify the repaired tree locally with repository checks, coverage,
+      full PostgreSQL, real HTTP/browser, browser probes and deployment checks.
+- [ ] Complete independent rereview of the repaired implementation.
+- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+
+The PostgreSQL receipt proof exercises bounded maintenance reaping and verifies
+both new tables in the authoritative tenant purge function; it does not claim
+an executed tenant-row purge. The live restart is a worker-runtime lifetime
+restart, not an operating-system process kill. Skip overflow and independent
+queue configuration remain deferred. No production deployment or activation
+was performed.
+
+Implementation commits: `c02f0ce4` (database/contracts/API) and `36392cdb`
+(settings/history UI and integrated proof). Normal merge `a3f0af4c` incorporates
+the manager-reviewed F12 qualification repairs; it is not a release or postmerge
+main qualification claim.
+
+The CI-routing follow-up normally merged F12's reviewed browser-owner fix
+`80621acb` in `f1b4cb4`, then gives the concurrency fixture its own required
+browser-installed CI step and ordinary/local cohort exclusion. Local execution
+with the CI environment and an attested task-owned Compose project passed
+one live test; the unchanged strict JSON validator accepted it with zero skips.
+Ownership unit tests cover 45 accepted and rejected configurations. CI routing
+and local-quality contracts pass; this is not a hosted CI completion claim and
+does not change the manager's fixed-point core implementation review.
+The exact task-owned Compose CI proof project was retained through repair
+verification, then removed with its two disposable volumes after checking zero
+fixture databases, zero base clients and empty Redis DB11. Its browser/worker
+lifetimes had closed. No everyday service was adopted.
+
+The review fixes were reproduced before implementation. Eight real PostgreSQL
+API/worker × running/waiting × marked/unmarked INSERT races observed the writer
+blocked by the authenticated settings transaction, then incorrectly committed
+after the cap. The post-counter policy check now rejects all eight with the
+expected `PTC01`/`PTC02`. A real coordinator-store test reproduced B's lost slot
+when cap 2 reservations were lowered to 1 and B arrived before A. The repaired
+path preserves and rebinds B's reservation through deferral, duplicate delivery
+and store restart; A then B start using their committed slots, without a third
+grant. Twelve new regressions (the nine original failures plus worker/context,
+binding and real-recovery boundaries), the existing 22 concurrency cases and
+19 coordinator scheduling cases pass: 51 assertions. Readiness mutation tests
+reject helper body and execution-ACL drift for API, worker and dispatcher.
+
+Frontend commit `2a8d89f0` cancels the exact protected settings read before cache
+eviction. All 21 settings tests pass, including held GET + denied PUT
+401/403/404 with real HTTP and cancellation-ignoring reads, remount/network
+failure and fresh authorized recovery; changed React Doctor remains 100/100.
+The new reservation helper is worker-only and readiness pins its body and exact
+ACL; the trigger fingerprint now includes its serialized second policy check.
+
+Database repair commit `9bda9ee8` passed the full PostgreSQL suite and repository
+checks. The repaired real HTTP proof passed 3/3 and the CI-environment live
+API/worker/browser proof passed 1/1, both with zero skips under strict JSON
+validation. Normal merge `7953fd6a` incorporates PR137's main merge `23cc5b45`;
+the merged tree is exactly identical to its first parent `9bda9ee8`. Conflicts
+retained the already-merged F12 behavior and reviewed F29 migration/CI additions;
+one automatic duplicate type import was removed. CI gate tests and API typecheck
+also passed after resolution. The subsequent manager receipt confirms natural
+main CI `36806860550` and CodeQL `36806860572` both concluded `SUCCESS` on
+`23cc5b45`; see the [F12 evidence log](./feature-plans/12-usage-and-insights.md#delivery-tracker).
+These hosted F12 results are not inferred from local qualification and do not
+establish F29 hosted CI or release approval. F12 warnings/trends remain deferred.
+
+Final repair qualification passed `pnpm test:coverage` (24 source-bound cohorts,
+zero unreviewed residual branches), seven browser probes and 60 deployment
+assertions. The enabled non-artifact API cohort passed all 86 cases after the
+normal migration bootstrap of this task's previously empty owned base database.
+The earlier broader API attempt failed on missing `app.auth_identities`; this
+was a local setup omission, not masked by exclusions or test changes. Likewise,
+an unchanged benchmark SIGINT process-startup timeout passed in isolation and
+in the full `pnpm check` rerun with its original deadline. Generated JSON reports
+were preserved outside the checkout, not committed. Required independent
+rereview and F29 release/PR checks remain open; F12 natural main qualification is
+now complete by the release-owner receipt above.
+
+Heavy qualification suites were serialized after concurrent runs hit unchanged
+workflow-engine and coordinator-observation test timeouts. Isolated observation
+tests and the final full database suite passed with their original budgets;
+no production code, timeout, or gate was changed to hide those failures.
+
+Both the original and follow-up task-owned PostgreSQL/Redis projects were removed
+after qualification;
+their disposable fixture data was discarded. Everyday services and the 43
+uncommitted paths in the primary checkout were left untouched. The F29 branch
+has not been pushed and has no configured upstream.
+
+### Historical backend qualification
 
 The backend fixes are recorded in commit `f0484564`. The final SSE
 public-projection correction keeps the original validation error, starts the
@@ -59,6 +198,7 @@ cleanup; the service-backed qualification above remains explicitly pre-cleanup.
 | Phase 5 — orchestration slice | Complete | ADRs 008, 017–022; branching, parallelism, retry/wait, notification, and recovery matrix |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014, 023–026; provider, webhook, schedule, retained-history, and rollout evidence |
 | Phase 7 — production operations | **In progress** | Repository implementation is qualified locally; external deployment, provider, load, recovery, telemetry, and pager evidence remains open |
+| F29 — queue-only workflow concurrency | **In progress** | ADR058 implementation and real PostgreSQL/HTTP/browser proofs; manager review and release qualification remain open |
 
 The 0A–0E rows subdivide the plan's single Phase 0 and do not change its
 authoritative scope. All accepted architecture decisions remain under

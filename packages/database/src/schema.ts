@@ -23,6 +23,10 @@ import {
 } from './schema/foundation.js';
 import { rlsProbeRecords } from './schema/rls-probe.js';
 import {
+  workflowConcurrencyPolicies,
+  workflowConcurrencyCommandReceipts,
+} from './schema/workflow-concurrency.js';
+import {
   workspaceControlLedgerProjection,
   workspaceLegalHolds,
   retentionControlAuditFacts,
@@ -147,6 +151,8 @@ export {
 } from './schema/compatibility.js';
 
 export const databaseSchema = {
+  workflowConcurrencyPolicies,
+  workflowConcurrencyCommandReceipts,
   artifactLinks,
   artifacts,
   workspaceArtifactCapacity,

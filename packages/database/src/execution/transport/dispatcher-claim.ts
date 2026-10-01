@@ -47,6 +47,9 @@ export async function claimOutboxBatch(
     await client.query('begin');
     transactionState = 'open';
     await client.query(
+      "select set_config('app.workflow_concurrency_protocol','1',true)",
+    );
+    await client.query(
       `select app.recover_due_workflow_run_active_admissions(100)`,
     );
     const result = await client.query<Record<string, unknown>>(

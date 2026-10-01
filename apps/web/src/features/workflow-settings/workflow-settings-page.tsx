@@ -11,6 +11,7 @@ import { LifecycleSection } from './components/settings/lifecycle-section';
 import { RunDurationSection } from './components/settings/run-duration-section';
 import { AutoPauseSection } from './components/settings/auto-pause-section';
 import { StepHealthSection } from './components/settings/step-health-section';
+import { ConcurrencySection } from './components/settings/concurrency-section';
 import { visibleSettingsData } from './model/settings-query';
 
 type SettingsPageProps = Readonly<{
@@ -67,6 +68,12 @@ function SettingsSession({
         userId={user.id}
         workspace={workspace}
         workflow={visibleSettingsData(summary)}
+      />
+      <ConcurrencySection
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        workflowId={workflowId}
       />
       <StepHealthSection
         apiClient={apiClient}

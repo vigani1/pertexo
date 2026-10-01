@@ -92,6 +92,7 @@ const MIGRATIONS_AFTER_0045 = [
   '0124_workflow_trigger_pause.sql',
   '0125_workflow_auto_pause_controls.sql',
   '0126_workspace_usage_capacity.sql',
+  '0127_workflow_concurrency.sql',
 ] as const;
 
 export class MemoryLedger implements ControlLedger {

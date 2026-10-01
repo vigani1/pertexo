@@ -190,6 +190,9 @@ export async function createApiWorkflowRuntime(
     return Object.freeze({
       dependencies: Object.freeze({
         persistence: database,
+        ...(database.concurrency === undefined
+          ? {}
+          : { concurrencyPersistence: database.concurrency }),
         ...(database.autoPause === undefined
           ? {}
           : { autoPausePersistence: database.autoPause }),

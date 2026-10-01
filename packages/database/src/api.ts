@@ -1,5 +1,14 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
 export {
+  WorkflowConcurrencyRevisionConflictError,
+  WorkflowConcurrencyLimitUnavailableError,
+  WorkflowConcurrencyLimitExceededError,
+} from './authoring/workflow-concurrency.js';
+export type {
+  WorkflowConcurrencyDatabase,
+  WorkflowConcurrencySettings,
+} from './authoring/workflow-concurrency.js';
+export {
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,

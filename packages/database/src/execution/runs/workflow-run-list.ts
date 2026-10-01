@@ -132,6 +132,7 @@ async function listWorkflowRunsInTransaction(
       run.started_at, run.completed_at, run.deadline_at,
       run.cancel_requested_at, workflow.name as workflow_name,
       run.replay_source_run_id,
+      app.workflow_run_admission_blockers(run.workspace_id,run.id) as admission_blockers,
       to_char(
         run.created_at at time zone 'UTC',
         'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
@@ -166,6 +167,7 @@ async function listWorkflowRunsInTransaction(
         trigger_type, created_at, updated_at, started_at, completed_at,
         deadline_at, cancel_requested_at, null::text as workflow_name,
         replay_source_run_id,
+        app.workflow_run_admission_blockers(workspace_id,id) as admission_blockers,
         to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
       from app.workflow_runs
       where workspace_id = ${transaction.workspaceId}

@@ -67,6 +67,9 @@
             "workflow.name_conflict",
             "workflow.pause_conflict",
             "workflow.auto_pause_settings_conflict",
+            "workflow.concurrency_revision_conflict",
+            "workflow.concurrency_limit_exceeded",
+            "workflow.concurrency_limit_unavailable",
             "workspace.auto_pause_settings_conflict",
             "workflow.invalid",
             "workflow.validation_unavailable",
@@ -1151,6 +1154,345 @@
         "code",
         "requestId",
         "currentRevision"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowConcurrencySettings": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "asOf": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{6}(?:Z))$"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "workspaceActiveRunLimit": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "workspacePolicyState": {
+          "type": "string",
+          "enum": [
+            "active",
+            "suspended",
+            "not_yet_effective",
+            "expired",
+            "unavailable"
+          ]
+        },
+        "overflow": {
+          "type": "string",
+          "const": "queue"
+        }
+      },
+      "required": [
+        "asOf",
+        "limit",
+        "revision",
+        "workspaceActiveRunLimit",
+        "workspacePolicyState",
+        "overflow"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowConcurrencySettingsRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "limit",
+        "expectedRevision"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowConcurrencyCommandResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "settings": {
+          "type": "object",
+          "properties": {
+            "asOf": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{6}(?:Z))$"
+            },
+            "limit": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "workspaceActiveRunLimit": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "workspacePolicyState": {
+              "type": "string",
+              "enum": [
+                "active",
+                "suspended",
+                "not_yet_effective",
+                "expired",
+                "unavailable"
+              ]
+            },
+            "overflow": {
+              "type": "string",
+              "const": "queue"
+            }
+          },
+          "required": [
+            "asOf",
+            "limit",
+            "revision",
+            "workspaceActiveRunLimit",
+            "workspacePolicyState",
+            "overflow"
+          ],
+          "additionalProperties": false
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "settings",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowConcurrencyRevisionConflictProblem": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "status": {
+          "type": "number",
+          "const": 409
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "instance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "code": {
+          "type": "string",
+          "const": "workflow.concurrency_revision_conflict"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "errors": {
+          "readOnly": true,
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "maxLength": 1024
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "path",
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "currentRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "status",
+        "code",
+        "requestId",
+        "currentRevision"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowConcurrencyLimitExceededProblem": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "status": {
+          "type": "number",
+          "const": 409
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "instance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "code": {
+          "type": "string",
+          "const": "workflow.concurrency_limit_exceeded"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "errors": {
+          "readOnly": true,
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "maxLength": 1024
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "path",
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "maximum": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "status",
+        "code",
+        "requestId",
+        "maximum"
       ],
       "additionalProperties": false
     },

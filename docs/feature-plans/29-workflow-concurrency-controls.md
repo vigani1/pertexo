@@ -1,6 +1,6 @@
 # F29 — Per-workflow concurrency controls
 
-Status: proposed plan; not implementation-authorized by this document.
+Status: first queue-only slice implemented locally; review and release pending.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: Extends run admission. Relative size: **M–L**, not a calendar estimate.
 
@@ -15,9 +15,10 @@ themselves and webhook bursts no longer race on the same records.
 Runs are admitted against workspace-wide queued and active limits with fair
 backpressure ([ADR 012](../adr/012-fair-admission-backpressure-entitlements.md)).
 A schedule's misfire policy decides whether late occurrences run
-([ADR 049](../adr/049-skip-misfire-on-time-window.md)). There is no limit per
-workflow, so a slow scheduled workflow can start a second run while the first
-is still working.
+([ADR 049](../adr/049-skip-misfire-on-time-window.md)). The local ADR058 slice
+adds a current, optional per-workflow cap across published versions, queue-only
+overflow, durable acceptance tickets, settings commands/UI, and timestamped
+queued-run blockers. It is not yet a merged or released capability.
 
 Inspected anchors (paths may move):
 
@@ -39,6 +40,25 @@ Resolve in an ADR before code:
   workspace limits, without a hot row per workflow on every run.
 - **Interactions**: replay and manual runs, cancellation freeing a slot,
   deadlines while queued, and F26 pausing a queued backlog.
+
+### Reviewed first-slice resolution
+
+[ADR058](../adr/058-workflow-concurrency-queue-admission.md) governs the first
+slice. It selects a current operational workflow cap, unset by default,
+queue-only overflow bounded by the existing workspace queue limit, and durable
+acceptance-order tickets with ordered start transitions. Already committed
+reservations are grandfathered when a cap is enabled or lowered. Workspace
+limits remain authoritative; no second scheduler is introduced.
+
+The interaction question above is resolved by preserving ADR056: trigger pause
+does **not** pause already accepted backlog. Cancellation/deadline terminal
+processing remains deliverable even at full capacity. Skip overflow, per-trigger
+defaults and separate queue-length settings in the broader recommendations below
+are deferred, not part of this first slice. No enabled placeholder controls ship.
+
+The manager owns this plan and ADR review; the implementation chat owns code and
+verification. Implementation starts only after the decision is recorded, with a
+lock-order and mixed-version rollout check before enforcement changes.
 
 ## User-configurable settings
 
@@ -106,13 +126,31 @@ This context informs the outcome, not Pertexo's implementation.
 
 ## Delivery tracker
 
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
+- [x] First-slice baseline reconciled against current code and accepted decisions.
+- [x] First-slice product choices resolved; ADR058 accepted. Broader skip and
+  independent queue-setting choices remain deferred.
 - [ ] Contracts and concurrency model reviewed.
 - [ ] Backend behavior implemented and independently verified where needed.
 - [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
+- [x] Real integrated acceptance evidence recorded.
+- [x] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
-Evidence log: none for this new plan.
+Evidence log:
+
+- 2026-10-01: local implementation has 22 real PostgreSQL concurrency proofs,
+  a final full database suite of 103 files / 741 tests, three real HTTP cases,
+  and a real API/worker/browser cap-setting, queued-blocker, runtime-restart, and removal
+  proof. Ordered starts do not promise completion or external-effect ordering.
+  Receipt reaping is executed; tenant-purge inventory is verified without
+  claiming actual purge execution. [The enforcement note](../operations/workflow-concurrency-enforcement.md)
+  records lock order, readiness/role boundaries, old-writer rejection, quiesced
+  rollout and rollback. Manager implementation review, full release gates,
+  scoped merge, and natural postmerge checks remain open. See the
+  [delivery tracker](../implementation-progress.md#f29--queue-only-workflow-concurrency).
+- 2026-10-01: manager reviewed the F29 proposal against ADR012/056, current
+  reservation and coordinator capacity paths, and dispatcher ordering. Outbox
+  `available_at,id` ordering does not establish acceptance FIFO; reservations
+  consume active capacity. ADR058 records queue-only scope, ordered promotion,
+  control-path liveness, authorization and rollout proof obligations. No code,
+  race-test, browser, CI or release completion is claimed by this planning entry.

@@ -53,13 +53,16 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-test('routes the real Usage browser journey to an enabled browser-installed gate with strict evidence', async () => {
-  const workflow = parseYaml(
+async function currentWorkflow() {
+  return parseYaml(
     await readFile(
       new URL('../../.github/workflows/ci.yml', import.meta.url),
       'utf8',
     ),
   );
+}
+
+function assertRequiredLiveBrowserGate(workflow, gate) {
   const steps = workflow.jobs.browser.steps;
   const normalize = (command) =>
     command
@@ -73,21 +76,22 @@ test('routes the real Usage browser journey to an enabled browser-installed gate
           .split('\n')
           .map(normalize)
       : [];
-  const command =
-    'pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts test/usage-browser.integration.test.ts --reporter=default --reporter=json --outputFile=../../artifacts/usage-browser-gates.json';
+  const command = `pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts ${gate.file} --reporter=default --reporter=json --outputFile=../../${gate.report}`;
   const runs = steps.filter((step) => commands(step).includes(command));
   assert.equal(
     runs.length,
     1,
-    'the browser job must own the live Usage test exactly once',
+    'the browser job must own the live test exactly once',
   );
   const [run] = runs;
   assert.equal(run.if, undefined);
   assert.notEqual(run['continue-on-error'], true);
-  assert.equal(run.env.USAGE_BROWSER_INTEGRATION, 'true');
+  assert.equal(run.env[gate.flag], 'true');
+  for (const [key, value] of Object.entries(gate.env ?? {}))
+    assert.equal(run.env[key], value);
   assert.ok(
     commands(run).includes(
-      "node infrastructure/coverage/validate-vitest-gate-report.mjs artifacts/usage-browser-gates.json 'Usage browser integration gate' 1",
+      `node infrastructure/coverage/validate-vitest-gate-report.mjs ${gate.report} '${gate.title}' 1`,
     ),
   );
   const prerequisites = steps.slice(0, steps.indexOf(run));
@@ -95,6 +99,7 @@ test('routes the real Usage browser journey to an enabled browser-installed gate
     'pnpm --filter @pertexo/web exec playwright install --with-deps chromium firefox webkit',
     'pnpm --filter @pertexo/api... build',
     'docker compose up -d --wait postgres redis',
+    ...(gate.prerequisites ?? []),
   ]) {
     const step = prerequisites.find(
       (candidate) =>
@@ -110,20 +115,150 @@ test('routes the real Usage browser journey to an enabled browser-installed gate
     'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser',
   );
   assert.ok(
-    steps.some(
-      (step) =>
-        step.if === 'always()' &&
-        step.run === 'docker compose down -v --remove-orphans',
-    ),
+    steps
+      .slice(steps.indexOf(run) + 1)
+      .some(
+        (step) =>
+          step.if === 'always()' &&
+          step['continue-on-error'] !== true &&
+          step.run === 'docker compose down -v --remove-orphans',
+      ),
   );
   assert.ok(
-    steps.some(
-      (step) =>
-        step.if === 'always()' &&
-        step.with?.path === 'artifacts/usage-browser-gates.json' &&
-        step.with?.['if-no-files-found'] === 'error',
-    ),
+    steps
+      .slice(steps.indexOf(run) + 1)
+      .some(
+        (step) =>
+          step.if === 'always()' &&
+          step['continue-on-error'] !== true &&
+          step.with?.path === gate.report &&
+          step.with?.['if-no-files-found'] === 'error',
+      ),
   );
+}
+
+const usageBrowserGate = Object.freeze({
+  file: 'test/usage-browser.integration.test.ts',
+  flag: 'USAGE_BROWSER_INTEGRATION',
+  report: 'artifacts/usage-browser-gates.json',
+  title: 'Usage browser integration gate',
+});
+const concurrencyBrowserGate = Object.freeze({
+  file: 'test/workflow-concurrency-browser.integration.test.ts',
+  flag: 'WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION',
+  report: 'artifacts/workflow-concurrency-browser-gates.json',
+  title: 'Workflow concurrency browser integration gate',
+  env: {
+    WORKFLOW_CONCURRENCY_COMPOSE_PROJECT: '${{ env.COMPOSE_PROJECT_NAME }}',
+  },
+  prerequisites: ['pnpm --filter @pertexo/worker... build'],
+});
+
+test('routes the real Usage browser journey to an enabled browser-installed gate with strict evidence', async () => {
+  assertRequiredLiveBrowserGate(await currentWorkflow(), usageBrowserGate);
+});
+
+test('routes the real concurrency browser journey to an enabled API/worker/browser gate with strict evidence', async () => {
+  const workflow = await currentWorkflow();
+  assertRequiredLiveBrowserGate(workflow, concurrencyBrowserGate);
+  assert.equal(workflow.env.API_IDENTITY_INTEGRATION, 'true');
+  for (const name of [
+    'DATABASE_ADMIN_URL',
+    'DATABASE_MIGRATION_URL',
+    'DATABASE_API_URL',
+    'DATABASE_WORKER_URL',
+    'DATABASE_DISPATCHER_URL',
+    'DATABASE_MAINTENANCE_URL',
+    'DATABASE_LIFECYCLE_COMMAND_URL',
+    'DATABASE_OPERATOR_URL',
+    'REDIS_URL',
+  ]) {
+    const url = new URL(workflow.env[name]);
+    assert.equal(url.hostname, '127.0.0.1');
+    assert.equal(url.protocol, name === 'REDIS_URL' ? 'redis:' : 'postgresql:');
+    assert.equal(
+      url.port,
+      name === 'REDIS_URL'
+        ? workflow.env.REDIS_PORT
+        : workflow.env.POSTGRES_PORT,
+    );
+  }
+});
+
+test('rejects missing, optional or incorrectly owned concurrency browser proof routes', async () => {
+  const original = await currentWorkflow();
+  const runStep = (workflow) =>
+    workflow.jobs.browser.steps.find(
+      (step) =>
+        step.env?.WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION !== undefined,
+    );
+  const buildStep = (workflow) =>
+    workflow.jobs.browser.steps.find(
+      (step) => step.run === 'pnpm --filter @pertexo/worker... build',
+    );
+  for (const mutate of [
+    (workflow) => {
+      runStep(workflow).if = 'false';
+    },
+    (workflow) => {
+      runStep(workflow)['continue-on-error'] = true;
+    },
+    (workflow) => {
+      runStep(workflow).env.WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION = 'false';
+    },
+    (workflow) => {
+      delete runStep(workflow).env.WORKFLOW_CONCURRENCY_COMPOSE_PROJECT;
+    },
+    (workflow) => {
+      runStep(workflow).env.WORKFLOW_CONCURRENCY_COMPOSE_PROJECT = 'pertexo';
+    },
+    (workflow) => {
+      buildStep(workflow).if = 'false';
+    },
+    (workflow) => {
+      buildStep(workflow)['continue-on-error'] = true;
+    },
+    (workflow) => {
+      const steps = workflow.jobs.browser.steps;
+      steps.push(...steps.splice(steps.indexOf(buildStep(workflow)), 1));
+    },
+    (workflow) => {
+      runStep(workflow).run = runStep(workflow)
+        .run.split('\n')
+        .filter(
+          (line) =>
+            !line.includes('validate-vitest-gate-report') &&
+            !line.includes("'Workflow concurrency browser integration gate'"),
+        )
+        .join('\n');
+    },
+    (workflow) => {
+      workflow.jobs.browser.steps.find(
+        (step) => step.with?.path === concurrencyBrowserGate.report,
+      ).with['if-no-files-found'] = 'ignore';
+    },
+    (workflow) => {
+      workflow.jobs.browser.steps.find(
+        (step) => step.run === 'docker compose down -v --remove-orphans',
+      ).if = 'success()';
+    },
+    (workflow) => {
+      workflow.jobs.browser.steps.find(
+        (step) => step.run === 'docker compose down -v --remove-orphans',
+      )['continue-on-error'] = true;
+    },
+    (workflow) => {
+      workflow.jobs.browser.steps.find(
+        (step) => step.with?.path === concurrencyBrowserGate.report,
+      )['continue-on-error'] = true;
+    },
+  ]) {
+    const workflow = clone(original);
+    mutate(workflow);
+    assert.throws(() =>
+      assertRequiredLiveBrowserGate(workflow, concurrencyBrowserGate),
+    );
+  }
 });
 
 test('accepts the required local, ordinary-CI, and deliberate exclusion mapping', () => {

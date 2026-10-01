@@ -123,7 +123,7 @@ export async function lockCoordinatorCommitState(
          on checkpoint.workspace_id = run.workspace_id
         and checkpoint.workflow_run_id = run.id
        where run.workspace_id = $1 and run.id = $2
-       for update of run, checkpoint`,
+       for no key update of run, checkpoint`,
     [workspaceId, runId],
   );
   const row = locked.rows[0];

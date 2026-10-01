@@ -7,6 +7,8 @@ import {
   type WorkflowAuthoringDependencies,
 } from '../../src/workflow-authoring/index.js';
 import { WORKFLOW_AUTHORING_AUTHORIZATION } from '../../src/workflow-authoring/tokens.js';
+import { WorkflowConcurrencyController } from '../../src/workflow-authoring/concurrency-controller.js';
+import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/concurrency-use-case.js';
 
 const dependencies = {
   persistence: {
@@ -31,6 +33,28 @@ const dependencies = {
 class FakeIdentityModule {}
 
 describe('workflow authoring Nest module', () => {
+  it('registers concurrency controls only when the owned persistence is composed', () => {
+    const unavailable = WorkflowAuthoringModule.register(dependencies, {
+      module: FakeIdentityModule,
+    });
+    expect(unavailable.controllers).not.toContain(
+      WorkflowConcurrencyController,
+    );
+    const dynamic = WorkflowAuthoringModule.register(
+      {
+        ...dependencies,
+        concurrencyPersistence: {
+          readSettings: () => Promise.reject(new Error('not exercised')),
+          updateSettings: () => Promise.reject(new Error('not exercised')),
+        },
+      },
+      { module: FakeIdentityModule },
+    );
+    expect(dynamic.controllers).toContain(WorkflowConcurrencyController);
+    expect(dynamic.providers).toContainEqual(
+      expect.objectContaining({ provide: WorkflowConcurrencyUseCase }),
+    );
+  });
   it('registers the creation use case and authoring controller', () => {
     const dynamic = WorkflowAuthoringModule.register(dependencies, {
       module: FakeIdentityModule,

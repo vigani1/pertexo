@@ -42,6 +42,11 @@ export const workflowRuns = appSchema.table(
       'failure_notification_connection_secret_version_id',
     ),
     executionEntitlementVersion: integer('execution_entitlement_version'),
+    // Assigned by the admission trigger under the workspace counter, never by
+    // an application/default sequence call before that serialization lock.
+    admissionTicket: bigint('admission_ticket', { mode: 'bigint' })
+      .notNull()
+      .default(sql`null`),
     status: varchar('status', { length: 32 }).notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
     deadlineWakeupAt: timestamp('deadline_wakeup_at', {
@@ -88,6 +93,12 @@ export const workflowRuns = appSchema.table(
       table.createdAt,
       table.id,
     ),
+    index('workflow_runs_queued_admission_order_idx')
+      .on(table.workspaceId, table.workflowId, table.admissionTicket, table.id)
+      .where(sql`${table.status} = 'queued'`),
+    index('workflow_runs_workflow_active_idx')
+      .on(table.workspaceId, table.workflowId, table.id)
+      .where(sql`${table.status} in ('running','waiting')`),
     index('workflow_runs_workspace_created_idx').on(
       table.workspaceId,
       table.createdAt,

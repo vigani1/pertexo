@@ -1,3 +1,5 @@
+import { READINESS_WORKFLOW_CONCURRENCY_SQL } from './readiness-workflow-concurrency.sql.js';
+
 export const READINESS_TRIGGERS_MIGRATION_SQL = `
       (
         exists (
@@ -211,6 +213,7 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
       ) as failure_notification_compatible,
       (
         to_regclass('app.workspace_execution_entitlement_versions') is not null
+        and ${READINESS_WORKFLOW_CONCURRENCY_SQL}
         and to_regclass('app.workspace_execution_entitlements') is not null
         and to_regclass('app.workspace_execution_admission_counters') is not null
         and to_regclass('app.workflow_run_active_admissions') is not null
