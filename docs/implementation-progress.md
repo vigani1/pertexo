@@ -26,6 +26,8 @@ compatibility, accepted-result precedence, serialized manual keys, committed
 - [x] Implement contracts, current authority, storage and checked admission.
 - [x] Prove focused real persistence/race/expiry/hold/purge and pure-node browser behavior.
 - [x] Complete frozen-source repository checks and coverage qualification.
+- [x] Repair manager-release rollout and denied-case retirement blockers with
+      focused component and real-browser regressions.
 - [ ] Complete independent reviews, scoped release and natural-main evidence.
 
 Implementation is locally qualified; manager release review, hosted CI, merge and
@@ -78,6 +80,38 @@ inspected desktop/mobile PNGs. Browser proof uses the final stale-case/Enter
 barriers and verifies actual accepted-response loss followed by exact v2 recovery
 after v3 publication; it is not a mocked admission result. Owned disposable
 fixtures are cleaned up independently of the preserved live user work.
+
+Manager whole-branch release review subsequently found two blockers. Fix
+`ea94c399` makes denied reads, denied mutations and lost mutation authority use
+one retirement transition that clears pending/retained state, fences late results
+and keeps sensitive input hidden while allowing dismissal. Fix `c2dacbbe` uses
+the existing input-case list endpoint's gate: deliberately confirmed ordinary
+Run actions omit the version precondition when rollout is unavailable; pending
+or other failed reads cannot imply that mode. Loaded cases and previously
+submitted checked commands never downgrade, and frozen checked or unchecked
+recovery retains the original intent. No new discovery endpoint or rollout
+enablement was introduced.
+
+Post-review qualification passes 20 focused component tests, all 872 web unit
+tests, build/typecheck/lint and the 90-test mocked browser suite with no skips,
+unexpected results or flaky retries. The extended authentic browser/API/worker
+journey passes and verifies four distinct successful ordinary pure-node runs
+(both Run menu actions under default-off and rollback), plus the original exact
+checked accepted-run recovery after rollback. Case-query metadata still retires
+with its owner; SPA navigation preserves the browser/session lifetime, not an
+evicted case snapshot. Mounted-query true-to-unavailable behavior is covered by
+the component regressions. Fixture navigation, initial API-publication snapshot
+and hydration/locator failures remain retained separately; no timeout or assertion
+was weakened. Doctor reports only the existing run-dialog complexity advisory;
+the current focused scan disables scoring and does not establish a new score.
+
+The original broad repository/coverage and 850-test PostgreSQL evidence above
+binds candidate `8af0190d`; it was preserved, not rerun or relabeled for these
+frontend repairs. The source-bound post-review receipt and new exact-source
+browser evidence are recorded separately at
+`/Users/vigan/.codex/evidence/pertexo-f02-2026-10-01/release-blocker-qualification-receipt.md`.
+Manager re-review, hosted CI, scoped release and inspected natural-main remain
+open. The experimental CI runtime prototype was neither published nor triggered.
 
 The owned `feat/workflow-input-cases` branch and disposable PostgreSQL/Redis
 services are separate from live user work. No production enablement, provider

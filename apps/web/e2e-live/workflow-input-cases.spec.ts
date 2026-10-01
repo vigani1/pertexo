@@ -58,19 +58,16 @@ async function openWorkflowList(page: Page) {
     name: 'Back to workflows',
     exact: true,
   });
-  if ((await editorBack.count()) > 0) {
-    await editorBack.click();
-    return;
-  }
-  await page
+  const workspaceWorkflows = page
     .getByRole('navigation', { name: 'Workspace', exact: true })
-    .getByRole('link', { name: 'Workflows', exact: true })
-    .click();
+    .getByRole('link', { name: 'Workflows', exact: true });
+  await editorBack.or(workspaceWorkflows).first().click();
 }
 
 async function openOrdinaryWorkflow(page: Page) {
   await openWorkflowList(page);
   await page
+    .getByRole('region', { name: 'Workspace workflows', exact: true })
     .getByRole('link', { name: 'Ordinary rollout runs', exact: true })
     .click();
 }
@@ -226,6 +223,7 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
     ordinaryPath,
     'Unchecked input proof',
   );
+  await page.reload();
   const ordinaryRunIds = await ordinaryMenuStarts(
     page,
     workspaceId,
@@ -260,6 +258,7 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
     .click();
   await openWorkflowList(page);
   await page
+    .getByRole('region', { name: 'Workspace workflows', exact: true })
     .getByRole('link', { name: 'Input cases sender', exact: true })
     .click();
   await page.getByRole('button', { name: 'Input cases', exact: true }).click();
