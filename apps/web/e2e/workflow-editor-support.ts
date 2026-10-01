@@ -139,6 +139,10 @@ export async function installEditorRoutes(
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );
   await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/input-cases?**`,
+    (route) => route.fulfill({ json: { items: [] } }),
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
     (route) =>
       route.fulfill({

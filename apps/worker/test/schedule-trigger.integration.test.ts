@@ -707,12 +707,23 @@ describeIntegration('direct Schedule worker integration gate', () => {
       [workspaceId],
     );
     const quotaOccupantRunId = randomUUID();
+    const occupiedRun = await apiQuery<{ workflow_id: string }>(
+      'select workflow_id from app.workflow_runs where id=$1',
+      [firstOccurrence.workflow_run_id],
+    );
+    const occupiedWorkflowId = occupiedRun.rows[0]?.workflow_id;
+    if (occupiedWorkflowId === undefined)
+      throw new Error('Quota fixture workflow missing');
     await apiQuery(
       `insert into app.workflow_runs
          (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
        select $2,workspace_id,workflow_id,workflow_version_id,'manual','queued'
          from app.workflow_runs where id=$1`,
       [firstOccurrence.workflow_run_id, quotaOccupantRunId],
+      {
+        workflowId: occupiedWorkflowId,
+        keyHash: createHash('sha256').update(quotaOccupantRunId).digest('hex'),
+      },
     );
     const crashedClaim = await ownerQuery(
       'select * from app.claim_due_trigger_schedules($1,1,30)',

@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
-  acceptWorkflowRun,
   createCoordinatorRunStore,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
@@ -20,6 +19,7 @@ import { expect } from 'vitest';
 
 import { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
 import { coordinatorFixture } from '../coordinator-consumer.fixtures.js';
+import { acceptManualFixtureRun } from './manual-start.fixture.js';
 import {
   seedSerialForEachWorkflow,
   seedStructuredForEachWorkflow,
@@ -216,7 +216,7 @@ async function acceptFixtureRun(
   return coordinatorFixture.apiDatabase.withWorkspace(
     workspaceId,
     (transaction) =>
-      acceptWorkflowRun(transaction, {
+      acceptManualFixtureRun(transaction, actorId, {
         engineVersion,
         initialCheckpoint:
           input.iterationBudget === 0
@@ -226,7 +226,7 @@ async function acceptFixtureRun(
         operation: 'workflow.run.accept',
         runInput: input.workflowId === workflowId ? { name: 'Ada' } : {},
         requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
-        scope: `coordinator:${input.workflowId}`,
+        scope: `workflow:${input.workflowId}:manual`,
         triggerType: 'manual',
         workflowId: input.workflowId,
         workflowVersionId: input.workflowVersionId,

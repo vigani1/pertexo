@@ -45,6 +45,7 @@ export function useWorkflowCommandSession({
   });
   const runSubmission = useWorkflowRunSubmission({
     apiClient,
+    userId,
     workspaceId,
     workflowId,
     verifyIdentity,

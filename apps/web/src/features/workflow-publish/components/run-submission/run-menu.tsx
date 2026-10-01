@@ -23,6 +23,7 @@ export function RunMenu({
   published,
   pending,
   acceptedRunPending,
+  unresolvedRun = false,
   onRunNow,
   onRunWithInput,
   onOpenAcceptedRun,
@@ -31,10 +32,23 @@ export function RunMenu({
   pending: boolean;
   /** A run was accepted while the editor was paused; open it explicitly. */
   acceptedRunPending: boolean;
+  unresolvedRun?: boolean;
   onRunNow: () => void;
   onRunWithInput: () => void;
   onOpenAcceptedRun: () => void;
 }>) {
+  if (unresolvedRun)
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        onClick={onRunWithInput}
+      >
+        Recover unconfirmed run
+      </Button>
+    );
   if (acceptedRunPending)
     return (
       <Button

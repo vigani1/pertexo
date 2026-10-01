@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workflowInputCaseProblems } from './workflow-input-case-problems.js';
 
 export const API_PROBLEM_CODES = [
   'auth.unauthenticated',
@@ -37,9 +38,13 @@ export const API_PROBLEM_CODES = [
   'workflow.concurrency_revision_conflict',
   'workflow.concurrency_limit_exceeded',
   'workflow.concurrency_limit_unavailable',
+  'workflow.input_case_revision_conflict',
+  'workflow.input_case_limit_exceeded',
+  'workflow.input_cases_unavailable',
   'workspace.auto_pause_settings_conflict',
   'workflow.invalid',
   'workflow.validation_unavailable',
+  'workflow.published_version_conflict',
   'workflow.not_published',
   'workflow.activation_failed',
   'run.not_cancelable',
@@ -318,6 +323,7 @@ const apiProblemDetails = {
     severity: 'warn',
     exposeDetail: true,
   },
+  ...workflowInputCaseProblems,
   'workspace.auto_pause_settings_conflict': {
     status: 409,
     title: 'Workspace auto-pause settings conflict',
@@ -334,6 +340,12 @@ const apiProblemDetails = {
     status: 503,
     title: 'Workflow validation unavailable',
     severity: 'warn',
+    exposeDetail: true,
+  },
+  'workflow.published_version_conflict': {
+    status: 409,
+    title: 'Published workflow version changed',
+    severity: 'info',
     exposeDetail: true,
   },
   'workflow.not_published': {

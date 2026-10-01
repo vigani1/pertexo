@@ -333,6 +333,31 @@ jobs:
           name: workflow-duplication-browser-report
           path: artifacts/workflow-duplication-browser-gates.json
           if-no-files-found: error
+      - name: Run and validate the real workflow input cases browser journey
+        env:
+          EDITOR_BROWSER_INTEGRATION: 'true'
+          EDITOR_BROWSER_CASE: input-cases
+          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
+        run: |
+          mkdir -p artifacts
+          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
+          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
+          export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
+            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
+            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
+            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
+          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
+            test/editor-browser.integration.test.ts \
+            --reporter=default --reporter=json --outputFile=../../artifacts/workflow-input-cases-browser-gates.json
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
+            artifacts/workflow-input-cases-browser-gates.json 'Workflow input cases browser integration gate' 1
+      - name: Upload workflow input cases browser integration report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: workflow-input-cases-browser-report
+          path: artifacts/workflow-input-cases-browser-gates.json
+          if-no-files-found: error
       - name: Stop disposable live browser dependencies
         if: always()
         run: docker compose down -v --remove-orphans

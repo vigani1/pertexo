@@ -18,6 +18,10 @@ import {
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
 } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  WorkflowManualStartUnavailableError,
+  WorkflowPublishedVersionConflictError,
+} from '@pertexo/database/api';
 
 import {
   API_ENGINE_VERSION,
@@ -499,6 +503,25 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     await expect(
       adapter.persistence.usageCapacity({ workspaceId }),
     ).rejects.toMatchObject({ code: 'resource.not_found' });
+  });
+
+  it.each([
+    [
+      new WorkflowManualStartUnavailableError(),
+      'workflow.input_cases_unavailable',
+    ],
+    [
+      new WorkflowPublishedVersionConflictError(workflowVersionId, runId),
+      'workflow.published_version_conflict',
+    ],
+  ])('maps checked admission error safely', async (failure, code) => {
+    const adapter = createPostgresWorkflowRunPersistence(
+      adapterConfig,
+      databaseWith({ start: vi.fn().mockRejectedValue(failure) }),
+    );
+    await expect(invokePersistence(adapter, 'start')).rejects.toMatchObject({
+      code,
+    });
   });
 
   it.each(['start', 'replay', 'get', 'cancel'] as const)(
