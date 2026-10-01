@@ -7,8 +7,10 @@ import { useConnectionHealthFixture } from './support/connection-health.fixture.
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'real connection health and authorized usage HTTP',
   () => {
-    const fixture = useConnectionHealthFixture('connection_health_http');
-    it('pages retained publications, delivers run health through worker restart, and denies unauthorized reads', async () => {
+    const fixture = useConnectionHealthFixture('connection_health_http', {
+      abandonPublicationBeforeRestart: true,
+    });
+    it('pages usage, recovers an abandoned health publication after real lease expiry and runtime restart, and denies unauthorized reads', async () => {
       const { workspaceId, connectionId, browser } = await fixture.seed();
       const route = `/v1/workspaces/${workspaceId}/connections/${connectionId}/usage`;
       const first = await fixture.api.send('GET', `${route}?limit=1`, {
@@ -66,7 +68,11 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         (await fixture.api.send('GET', `${route}?limit=101`, { browser }))
           .statusCode,
       ).toBe(400);
-      await fixture.commandFor('/reject-run');
+      expect(await fixture.commandFor('/reject-run')).toEqual({
+        restarted: true,
+        abandonedPublicationRecovered: true,
+        providerCalls: 1,
+      });
       const connection = await fixture.readConnection();
       expect(connection.status).toBe('reauthorization_required');
       expect(connection.health.lastRunObservedAt).not.toBeNull();
@@ -77,6 +83,6 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         (await fixture.api.send('GET', route, { browser })).statusCode,
       ).toBe(404);
       expect(fixture.providerCalls).toBe(1);
-    }, 60000);
+    }, 90000);
   },
 );

@@ -55,10 +55,82 @@ function phase(child: ChildProcess, expected: string) {
   });
 }
 
+const abandonedClaimSchema = z
+  .object({
+    phase: z.literal('health-publication-abandoned'),
+    requestId: z.uuid(),
+    success: z.literal(true),
+    outboxEventId: z.uuid(),
+    leaseToken: z.uuid(),
+    leaseOwner: z.string().regex(/^health-abandoned-[0-9a-f-]{36}$/u),
+    leaseExpiresAt: z.iso.datetime(),
+    publishCalls: z.literal(0),
+    releaseCalls: z.literal(0),
+    markCalls: z.literal(0),
+  })
+  .strict();
+function abandonPublication(child: ChildProcess, signal: AbortSignal) {
+  const requestId = randomUUID();
+  return new Promise<z.infer<typeof abandonedClaimSchema>>(
+    (resolve, reject) => {
+      let settled = false;
+      const finish = (
+        error?: Error,
+        claim?: z.infer<typeof abandonedClaimSchema>,
+      ) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        child.off('message', message);
+        child.off('error', failed);
+        child.off('exit', failed);
+        signal.removeEventListener('abort', failed);
+        if (error !== undefined) reject(error);
+        else if (claim !== undefined) resolve(claim);
+      };
+      const failed = () => {
+        finish(new Error('Owned health abandonment channel failed'));
+      };
+      const message = (value: unknown) => {
+        const envelope = z
+          .object({
+            phase: z.literal('health-publication-abandoned'),
+            requestId: z.literal(requestId),
+          })
+          .safeParse(value);
+        if (!envelope.success) return;
+        const parsed = abandonedClaimSchema.safeParse(value);
+        if (parsed.success) finish(undefined, parsed.data);
+        else finish(new Error('Owned health abandonment failed'));
+      };
+      const timer = setTimeout(failed, 15_000);
+      child.on('message', message);
+      child.on('error', failed);
+      child.on('exit', failed);
+      signal.addEventListener('abort', failed, { once: true });
+      if (signal.aborted || !child.connected) {
+        failed();
+        return;
+      }
+      try {
+        child.send(
+          { phase: 'abandon-health-publication', requestId },
+          (error) => {
+            if (error !== null) failed();
+          },
+        );
+      } catch {
+        failed();
+      }
+    },
+  );
+}
+
 export function useConnectionHealthFixture(
   suite: string,
   options: Readonly<{
     webOrigin?: string;
+    abandonPublicationBeforeRestart?: boolean;
     beforeClose?: () => Promise<void>;
     browserLifetime?: (path: string, instanceId: string) => void;
   }> = {},
@@ -338,8 +410,9 @@ export function useConnectionHealthFixture(
   async function wait<T>(
     read: () => Promise<T>,
     matches: (value: T) => boolean,
+    timeoutMillis = 20000,
   ) {
-    const deadline = Date.now() + 20000;
+    const deadline = Date.now() + timeoutMillis;
     for (;;) {
       scope.signal.throwIfAborted();
       const value = await read();
@@ -421,18 +494,110 @@ export function useConnectionHealthFixture(
         );
       expect(evidence.rows[0]?.count).toBe(1);
       const callsBeforeRestart = sends;
+      const accepted = async () =>
+        (
+          await api.database().query<{ run: unknown; attempts: unknown }>(
+            `select row_to_json(run) run,(select json_agg(attempt order by attempt.id)
+        from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+        where attempt.workspace_id=$1 and node.workflow_run_id=run.id) attempts
+        from app.workflow_runs run where run.workspace_id=$1 and run.id=$2`,
+            [workspaceId, runId],
+          )
+        ).rows;
+      const before = await accepted();
+      const claim =
+        options.abandonPublicationBeforeRestart === true
+          ? await abandonPublication(worker, scope.signal)
+          : undefined;
+      const assertAbandoned = async () => {
+        if (claim === undefined) return;
+        const result = await api.database().query<{
+          lease_token: string;
+          lease_owner: string;
+          future: boolean;
+          publish_attempts: number;
+          pending: boolean;
+          observation_pending: boolean;
+        }>(
+          `select event.lease_token,event.lease_owner,event.lease_expires_at>clock_timestamp() future,
+          event.publish_attempts,event.published_at is null and event.failed_at is null pending,
+          observation.applied_at is null observation_pending
+          from app.outbox_events event join app.connection_health_observations observation
+          on observation.workspace_id=event.workspace_id and observation.id::text=event.payload->>'observationId'
+          join app.node_attempts attempt on attempt.workspace_id=observation.workspace_id and attempt.id=observation.attempt_id
+          join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+          where event.workspace_id=$1 and event.id=$2 and node.workflow_run_id=$3`,
+          [workspaceId, claim.outboxEventId, runId],
+        );
+        expect(result.rows).toEqual([
+          {
+            lease_token: claim.leaseToken,
+            lease_owner: claim.leaseOwner,
+            future: true,
+            publish_attempts: 1,
+            pending: true,
+            observation_pending: true,
+          },
+        ]);
+        expect((await readConnection()).status).toBe('active');
+        expect(sends).toBe(callsBeforeRestart);
+      };
+      await assertAbandoned();
       commandStage = 'restart-before-health-delivery';
       await restartEditorBrowserWorker(
         worker as Parameters<typeof restartEditorBrowserWorker>[0],
         randomUUID(),
         scope.signal,
       );
+      await assertAbandoned();
       await wait(
         readConnection,
         (connection) => connection.status === 'reauthorization_required',
+        claim === undefined ? 20000 : 45000,
       );
+      if (claim !== undefined) {
+        const recovered = await api.database().query<{
+          published_after_expiry: boolean;
+          publish_attempts: number;
+          unleased: boolean;
+          applied: boolean;
+          receipts: number;
+          transitions: number;
+        }>(
+          `select event.published_at >= $3::timestamptz published_after_expiry,event.publish_attempts,
+          event.lease_token is null and event.lease_owner is null unleased,observation.applied_at is not null applied,
+          (select count(*)::int from app.inbox_receipts where workspace_id=$1 and consumer_name='connection-health-worker'
+          and message_id=event.id and completed_at is not null) receipts,
+          (select count(*)::int from app.connection_events where workspace_id=$1 and connection_id=$4
+          and event_type='connection.reauthorization_required' and metadata->>'source'='run') transitions
+          from app.outbox_events event join app.connection_health_observations observation
+          on observation.workspace_id=event.workspace_id and observation.id::text=event.payload->>'observationId'
+          where event.workspace_id=$1 and event.id=$2`,
+          [
+            workspaceId,
+            claim.outboxEventId,
+            claim.leaseExpiresAt,
+            connectionId,
+          ],
+        );
+        expect(recovered.rows).toEqual([
+          {
+            published_after_expiry: true,
+            publish_attempts: 2,
+            unleased: true,
+            applied: true,
+            receipts: 1,
+            transitions: 1,
+          },
+        ]);
+        expect(await accepted()).toEqual(before);
+      }
       expect(sends).toBe(callsBeforeRestart);
-      return { restarted: true, providerCalls: sends };
+      return {
+        restarted: true,
+        abandonedPublicationRecovered: claim !== undefined,
+        providerCalls: sends,
+      };
     }
     if (path === '/hold-and-reject') {
       nextResponse = 'hold';
