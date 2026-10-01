@@ -51,13 +51,25 @@ async function setCaseRollout(
   expect(response.status()).toBe(204);
 }
 
-async function openOrdinaryWorkflow(page: Page) {
+async function openWorkflowList(page: Page) {
   // SPA navigation preserves the Query cache: rollback must replace a prior
   // authorized success, not merely start from a new document's empty cache.
+  const editorBack = page.getByRole('link', {
+    name: 'Back to workflows',
+    exact: true,
+  });
+  if ((await editorBack.count()) > 0) {
+    await editorBack.click();
+    return;
+  }
   await page
     .getByRole('navigation', { name: 'Workspace', exact: true })
     .getByRole('link', { name: 'Workflows', exact: true })
     .click();
+}
+
+async function openOrdinaryWorkflow(page: Page) {
+  await openWorkflowList(page);
   await page
     .getByRole('link', { name: 'Ordinary rollout runs', exact: true })
     .click();
@@ -246,10 +258,7 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
   await warmedDialog
     .getByRole('button', { name: 'Cancel', exact: true })
     .click();
-  await page
-    .getByRole('navigation', { name: 'Workspace', exact: true })
-    .getByRole('link', { name: 'Workflows', exact: true })
-    .click();
+  await openWorkflowList(page);
   await page
     .getByRole('link', { name: 'Input cases sender', exact: true })
     .click();
