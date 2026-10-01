@@ -79,6 +79,10 @@ test('ordinary API integration selection excludes opt-in browser and rollout own
   assert.equal(selected.has('test/editor-browser.integration.test.ts'), false);
   assert.equal(selected.has('test/usage-browser.integration.test.ts'), false);
   assert.equal(
+    selected.has('test/workflow-concurrency-browser.integration.test.ts'),
+    false,
+  );
+  assert.equal(
     selected.has('test/platform/compatibility-rollout.integration.test.ts'),
     false,
   );

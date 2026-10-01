@@ -251,7 +251,9 @@ jobs:
         run: pnpm --filter @pertexo/web test:e2e
       - name: Build dependencies for the real Usage journey
         run: pnpm --filter @pertexo/api... build
-      - name: Start disposable Usage browser dependencies
+      - name: Build worker dependencies for the real concurrency journey
+        run: pnpm --filter @pertexo/worker... build
+      - name: Start disposable live browser dependencies
         run: docker compose up -d --wait postgres redis
       - name: Run and validate the real Usage browser journey
         env:
@@ -270,7 +272,25 @@ jobs:
           name: usage-browser-report
           path: artifacts/usage-browser-gates.json
           if-no-files-found: error
-      - name: Stop disposable Usage browser dependencies
+      - name: Run and validate the real workflow concurrency browser journey
+        env:
+          WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION: 'true'
+          WORKFLOW_CONCURRENCY_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
+        run: |
+          mkdir -p artifacts
+          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
+            test/workflow-concurrency-browser.integration.test.ts \
+            --reporter=default --reporter=json --outputFile=../../artifacts/workflow-concurrency-browser-gates.json
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
+            artifacts/workflow-concurrency-browser-gates.json 'Workflow concurrency browser integration gate' 1
+      - name: Upload workflow concurrency browser integration report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: workflow-concurrency-browser-report
+          path: artifacts/workflow-concurrency-browser-gates.json
+          if-no-files-found: error
+      - name: Stop disposable live browser dependencies
         if: always()
         run: docker compose down -v --remove-orphans
       - name: Upload browser traces
@@ -432,6 +452,7 @@ jobs:
             --exclude test/platform/compatibility-rollout.integration.test.ts \
             --exclude test/editor-browser.integration.test.ts \
             --exclude test/usage-browser.integration.test.ts \
+            --exclude test/workflow-concurrency-browser.integration.test.ts \
             --reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json
       - name: Prove new regression tests fail under selected mutations
         run: pnpm mutation:check

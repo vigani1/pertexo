@@ -84,3 +84,32 @@ reservation recovery/restart and query plans; migration/old-writer/readiness
 checks; current-policy/CAS/idempotency/tenant authorization checks; and a real
 API/worker/browser proof that a cap of one prevents overlap and removal restores
 workspace-controlled starts. Mocked UI tests are not the runtime proof.
+
+## Required browser CI owner
+
+The [browser job](../../.github/workflows/ci.yml) explicitly runs
+`test/workflow-concurrency-browser.integration.test.ts` with
+`WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true`. It builds the API and worker
+dependency closures after installing browsers, starts PostgreSQL/Redis in its
+unique Compose project, validates the JSON report with the existing strict
+Vitest gate validator (at least one passing test, zero skipped/pending/todo),
+uploads the report, and always tears down its owned services. Ordinary API CI
+and the mirrored local-quality cohort exclude this opt-in file; discovery with
+the flag disabled is not acceptance evidence.
+
+The fixture requires all eight explicit database role URLs and `REDIS_URL`,
+with loopback endpoints matching explicit `POSTGRES_PORT`/`REDIS_PORT`. Its
+`WORKFLOW_CONCURRENCY_COMPOSE_PROJECT` must equal `COMPOSE_PROJECT_NAME` and name
+the exact CI browser project, or a bounded task-local
+`pertexo-concurrency-browser-...` project. Before acquisition, database drop,
+and Redis cleanup approval, read-only Docker attestation verifies one exact
+container per service, running state, project/service labels, and a single
+matching loopback binding. A missing or mismatched ownership selector fails
+closed. The original exact local-container attestation remains available when
+no Compose project is configured; neither mode adopts everyday services.
+
+Run the exact fixture after `pnpm --filter @pertexo/api... build` and
+`pnpm --filter @pertexo/worker... build`, with Chromium installed and
+`API_IDENTITY_INTEGRATION=true`. Use the same explicit ownership selector and
+role/port configuration for the fixture and for the project's lifecycle.
+Only the owner that created that isolated project may run its cleanup.

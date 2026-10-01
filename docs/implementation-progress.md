@@ -13,7 +13,8 @@ external production evidence listed under Phase 7.
 ### F29 — queue-only workflow concurrency
 
 The ADR058 first slice is implemented locally on `feat/workflow-concurrency`;
-independent manager review, scoped PR checks/merge, and natural postmerge
+independent manager review identified three required correctness fixes, still
+open alongside scoped PR checks/merge and natural postmerge
 qualification remain open. This does not close Phase 7 or supersede the
 historical qualification fingerprints below. F12 must be qualified on merged
 main before F29 release.
@@ -51,6 +52,9 @@ main before F29 release.
 - [x] Lock order, mixed-version fail-closed enforcement, and rollback documented
       in [the enforcement note](./operations/workflow-concurrency-enforcement.md).
 - [ ] Independent manager review and complete release qualification.
+- [ ] Close the reviewed active-insert serialization race, preserve committed
+      reservations during FIFO deferral, and cancel stale reads before
+      denied-write cache eviction; record their regression proofs.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
 The PostgreSQL receipt proof exercises bounded maintenance reaping and verifies
@@ -64,6 +68,18 @@ Implementation commits: `c02f0ce4` (database/contracts/API) and `36392cdb`
 (settings/history UI and integrated proof). Normal merge `a3f0af4c` incorporates
 the manager-reviewed F12 qualification repairs; it is not a release or postmerge
 main qualification claim.
+
+The CI-routing follow-up normally merged F12's reviewed browser-owner fix
+`80621acb` in `f1b4cb4`, then gives the concurrency fixture its own required
+browser-installed CI step and ordinary/local cohort exclusion. Local execution
+with the CI environment and an attested task-owned Compose project passed
+one live test; the unchanged strict JSON validator accepted it with zero skips.
+Ownership unit tests cover 45 accepted and rejected configurations. CI routing
+and local-quality contracts pass; this is not a hosted CI completion claim and
+does not change the manager's fixed-point core implementation review.
+The CI proof project is temporarily retained for the authorized review-fix
+verification; its finished browser/worker lifetimes are closed and Redis DB11
+is empty. No everyday service was adopted.
 
 Heavy qualification suites were serialized after concurrent runs hit unchanged
 workflow-engine and coordinator-observation test timeouts. Isolated observation
