@@ -107,7 +107,7 @@ async function acceptRun(): Promise<string> {
       operation: 'workflow.run.accept',
       requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
       scope: `manual:${randomUUID()}`,
-      triggerType: 'manual',
+      triggerType: 'api',
       workflowId: randomUUID(),
       workflowVersionId,
     });

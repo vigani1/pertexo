@@ -174,6 +174,8 @@ describe('workspace maintenance-rerun purge upgrade', () => {
       '0127_workflow_concurrency.sql',
       '0128_connection_health.sql',
       '0129_workflow_duplication.sql',
+      '0130_workflow_input_cases.sql',
+      '0131_checked_manual_start.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 
@@ -208,10 +210,13 @@ describe('workspace maintenance-rerun purge upgrade', () => {
       const functionBody = await owner.query<{ body: string }>(
         `select pg_get_functiondef(
           'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)'::regprocedure
-        ) body`,
+        )||pg_get_functiondef('app.execute_workspace_tenant_rows_page_before_input_cases(uuid,uuid,bigint,integer,bigint,character)'::regprocedure) body`,
       );
       expect(functionBody.rows[0]?.body).toContain(
         'operator_maintenance_rerun_requests',
+      );
+      expect(functionBody.rows[0]?.body).toContain(
+        'RETURN QUERY SELECT * FROM app.execute_workspace_tenant_rows_page_before_input_cases',
       );
       await owner.query('commit');
     } catch (error: unknown) {

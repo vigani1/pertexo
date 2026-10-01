@@ -10,6 +10,8 @@ import {
 import { WORKFLOW_AUTHORING_AUTHORIZATION } from '../../src/workflow-authoring/tokens.js';
 import { WorkflowConcurrencyController } from '../../src/workflow-authoring/concurrency-controller.js';
 import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/concurrency-use-case.js';
+import { WorkflowInputCasesController } from '../../src/workflow-authoring/input-case-controller.js';
+import { WorkflowInputCasesUseCase } from '../../src/workflow-authoring/input-case-use-case.js';
 
 const dependencies = {
   persistence: {
@@ -35,6 +37,32 @@ const dependencies = {
 class FakeIdentityModule {}
 
 describe('workflow authoring Nest module', () => {
+  it('registers owned input case commands without expanding existing authoring persistence', () => {
+    expect(
+      WorkflowAuthoringModule.register(dependencies, {
+        module: FakeIdentityModule,
+      }).controllers,
+    ).not.toContain(WorkflowInputCasesController);
+    const unused = () => Promise.reject(new Error('not exercised'));
+    const dynamic = WorkflowAuthoringModule.register(
+      {
+        ...dependencies,
+        inputCasePersistence: {
+          listCases: unused,
+          getCase: unused,
+          createCase: unused,
+          updateCase: unused,
+          deleteCase: unused,
+          close: () => Promise.resolve(),
+        },
+      },
+      { module: FakeIdentityModule },
+    );
+    expect(dynamic.controllers).toContain(WorkflowInputCasesController);
+    expect(dynamic.providers).toContainEqual(
+      expect.objectContaining({ provide: WorkflowInputCasesUseCase }),
+    );
+  });
   it('registers concurrency controls only when the owned persistence is composed', () => {
     const unavailable = WorkflowAuthoringModule.register(dependencies, {
       module: FakeIdentityModule,

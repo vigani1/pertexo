@@ -1,4 +1,5 @@
 import { READINESS_ARTIFACT_CAPACITY_SQL } from './readiness-artifact-capacity.sql.js';
+import { READINESS_MANUAL_START_SQL } from './readiness-manual-start.sql.js';
 
 export const READINESS_EXECUTION_SQL = `
       (
@@ -14,6 +15,7 @@ export const READINESS_EXECUTION_SQL = `
             and conname = 'workflow_versions_executable_bounded'
             and pg_get_constraintdef(oid) = 'CHECK (((executable_json IS NULL) OR (octet_length((executable_json)::text) <= 1048576)))'
         )
+        and ${READINESS_MANUAL_START_SQL}
       ) as phase3_schema_compatible,
       exists (
         select 1 from pg_policy policy

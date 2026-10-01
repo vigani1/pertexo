@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -418,6 +419,35 @@ describe('workflow run application seams', () => {
     expect(reordered.requestHash).toBe(canonical.requestHash);
     expect(metadataOnly.requestHash).toBe(canonical.requestHash);
     expect(reordered.idempotencyKeyHash).toBe(canonical.idempotencyKeyHash);
+  });
+
+  it('preserves legacy start hash bytes and binds only explicit publication expectations', async () => {
+    const legacy = await startCommand({ input: { a: 1 } });
+    const expectedHash = createHash('sha256')
+      .update(
+        JSON.stringify({
+          actorId,
+          domain: 'pertexo.workflow-run.start-request',
+          input: { a: 1 },
+          version: 1,
+          workflowId,
+          workspaceId,
+        }),
+      )
+      .digest('hex');
+    expect(legacy.requestHash).toBe(expectedHash);
+    expect(legacy).not.toHaveProperty('expectedPublishedVersionId');
+    const checked = await startCommand({
+      input: { a: 1 },
+      expectedPublishedVersionId: workflowVersionId,
+    });
+    expect(checked.expectedPublishedVersionId).toBe(workflowVersionId);
+    expect(checked.requestHash).not.toBe(legacy.requestHash);
+    const changed = await startCommand({
+      input: { a: 1 },
+      expectedPublishedVersionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    });
+    expect(changed.requestHash).not.toBe(checked.requestHash);
   });
 
   it('separates every start hash authority field and absent input from null', async () => {

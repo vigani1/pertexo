@@ -1,0 +1,827 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  createWorkflowInputCaseDatabase,
+  WorkflowInputCaseLimitError,
+  WorkflowInputCaseRevisionConflictError,
+  WorkflowInputCaseUnavailableError,
+} from '../src/authoring/workflow-input-cases.js';
+import {
+  WorkflowIdempotencyConflictError,
+  WorkflowNotFoundError,
+} from '../src/authoring/workflow-authoring-errors.js';
+import { withWorkspaceDestructiveOperationLock } from '../src/lifecycle/retention-transaction.js';
+import {
+  actorId,
+  workspaceId,
+  apiUrl,
+  apiPool,
+  workerPool,
+  dispatcherPool,
+  authoring,
+  currentRepresentationTag,
+  emptyGraph,
+  executeAsOwner,
+  queryAsOwner,
+  randomUUID,
+  parseDatabaseConfig,
+  checkDatabaseReadiness,
+  identity,
+  ownerPool,
+  waitForPostgresLock,
+  withApplicationName,
+  otherActorId,
+  Pool,
+  migrationUrl,
+} from './support/workflow-authoring.integration.support.js';
+
+let database: ReturnType<typeof createWorkflowInputCaseDatabase>;
+beforeAll(() => {
+  database = createWorkflowInputCaseDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+  );
+});
+afterAll(async () => {
+  await database.close();
+});
+async function fixture(selectedWorkspaceId = workspaceId) {
+  const created = await authoring.createWorkflow({
+    actorId,
+    workspaceId: selectedWorkspaceId,
+    emptyGraph,
+    name: 'Input cases',
+    idempotencyKey: randomUUID(),
+  });
+  const workflowId = created.workflowId;
+  const publication = await authoring.publishWorkflow({
+    actorId,
+    workspaceId: selectedWorkspaceId,
+    workflowId,
+    representationTag: await currentRepresentationTag(
+      authoring,
+      selectedWorkspaceId,
+      workflowId,
+      actorId,
+    ),
+    idempotencyKey: randomUUID(),
+    requestHash: '0'.repeat(64),
+  });
+  return {
+    actorId,
+    workspaceId: selectedWorkspaceId,
+    workflowId,
+    workflowVersionId: publication.version.id,
+  };
+}
+async function enable() {
+  await executeAsOwner(
+    'update app.workflow_input_case_rollout set enabled=true where singleton',
+  );
+}
+async function reap() {
+  return queryAsOwner<{
+    payloads_deleted: number;
+    receipts_deleted: number;
+    cases_deleted: number;
+  }>('select * from app.reap_workflow_input_cases(100)');
+}
+describe('bounded version-contextual run-input cases', () => {
+  it.each([null, 0, 101])(
+    'rejects an invalid cleanup page limit: %s',
+    async (limit) => {
+      await expect(
+        queryAsOwner('select * from app.reap_workflow_input_cases($1)', [
+          limit,
+        ]),
+      ).rejects.toMatchObject({ code: '22023' });
+    },
+  );
+
+  it('qualifies new forced RLS/grants readiness and rejects a widened case policy', async () => {
+    await checkDatabaseReadiness(apiPool);
+    await executeAsOwner(
+      'alter policy workflow_input_cases_tenant on app.workflow_input_cases using(true) with check(true)',
+    );
+    try {
+      await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
+        'Workflow authoring schema is incompatible',
+      );
+    } finally {
+      await executeAsOwner(
+        `alter policy workflow_input_cases_tenant on app.workflow_input_cases using(workspace_id::text=nullif(current_setting('app.workspace_id',true),'')) with check(workspace_id::text=nullif(current_setting('app.workspace_id',true),''))`,
+      );
+    }
+  });
+  it('fails closed until additive reader and all-writer gate is enabled', async () => {
+    const scope = await fixture();
+    await expect(
+      database.listCases({ ...scope, limit: 10 }),
+    ).rejects.toBeInstanceOf(WorkflowInputCaseUnavailableError);
+    await enable();
+    expect((await database.listCases({ ...scope, limit: 10 })).items).toEqual(
+      [],
+    );
+  });
+  it('lists metadata only, gets detached canonical input and replays identifiers without names or JSON in receipts/audits', async () => {
+    await enable();
+    const scope = await fixture();
+    const command = {
+      ...scope,
+      name: '  Synthetic input  ',
+      input: { b: 2, a: 1 },
+      idempotencyKey: randomUUID(),
+    };
+    const created = await database.createCase(command);
+    expect(await database.createCase(command)).toEqual({
+      ...created,
+      replayed: true,
+    });
+    const list = await database.listCases({ ...scope, limit: 1 });
+    expect(list.items[0]).toMatchObject({
+      id: created.caseId,
+      name: 'Synthetic input',
+      workflowVersionId: scope.workflowVersionId,
+      revision: 1,
+    });
+    expect(list.items[0]).not.toHaveProperty('input');
+    expect(
+      (await database.getCase({ ...scope, caseId: created.caseId })).case.input,
+    ).toEqual({ a: 1, b: 2 });
+    const facts = await queryAsOwner<{ receipt: unknown; metadata: unknown }>(
+      `select to_jsonb(r) receipt,a.metadata from app.workflow_input_case_receipts r join app.audit_events a on a.target_id=r.case_id where r.case_id=$1`,
+      [created.caseId],
+    );
+    expect(JSON.stringify(facts)).not.toContain('Synthetic input');
+    expect(JSON.stringify(facts)).not.toContain('"input"');
+    await expect(
+      database.createCase({ ...command, input: { changed: true } }),
+    ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+    const duplicated = await authoring.duplicateWorkflow({
+      workspaceId: scope.workspaceId,
+      workflowId: scope.workflowId,
+      actorId: scope.actorId,
+      name: 'Independent workflow copy',
+      source: { kind: 'version', versionId: scope.workflowVersionId },
+      idempotencyKey: randomUUID(),
+    });
+    expect(
+      (
+        await database.listCases({
+          ...scope,
+          workflowId: duplicated.workflowId,
+          limit: 10,
+        })
+      ).items,
+    ).toEqual([]);
+  });
+  it('serializes duplicate creation and strong CAS, exact retries precede stale revision, deletion never resurrects', async () => {
+    const scope = await fixture();
+    const command = {
+      ...scope,
+      name: 'Fixture',
+      input: null,
+      idempotencyKey: randomUUID(),
+    };
+    const pair = await Promise.all([
+      database.createCase(command),
+      database.createCase(command),
+    ]);
+    expect(new Set(pair.map((item) => item.caseId)).size).toBe(1);
+    expect(pair.filter((item) => item.replayed)).toHaveLength(1);
+    const caseId = pair[0].caseId;
+    const edit = {
+      ...scope,
+      caseId,
+      expectedRevision: 1,
+      name: 'Edited',
+      input: [1, 2],
+      idempotencyKey: randomUUID(),
+    };
+    expect((await database.updateCase(edit)).revision).toBe(2);
+    expect(await database.updateCase(edit)).toEqual({
+      caseId,
+      revision: 2,
+      replayed: true,
+    });
+    await expect(
+      database.updateCase({ ...edit, idempotencyKey: randomUUID() }),
+    ).rejects.toBeInstanceOf(WorkflowInputCaseRevisionConflictError);
+    const deletion = {
+      ...scope,
+      caseId,
+      expectedRevision: 2,
+      idempotencyKey: randomUUID(),
+    };
+    expect((await database.deleteCase(deletion)).revision).toBe(3);
+    await expect(database.getCase({ ...scope, caseId })).rejects.toBeInstanceOf(
+      WorkflowNotFoundError,
+    );
+    expect(await database.deleteCase(deletion)).toEqual({
+      caseId,
+      revision: 3,
+      replayed: true,
+    });
+    expect(await database.createCase(command)).toEqual({
+      caseId,
+      revision: 1,
+      replayed: true,
+    });
+    await expect(database.getCase({ ...scope, caseId })).rejects.toBeInstanceOf(
+      WorkflowNotFoundError,
+    );
+  });
+  it('makes concurrent active-count admission atomic and deletion only releases counts, not retained bytes', async () => {
+    const scope = await fixture();
+    const created = await Promise.all(
+      Array.from({ length: 19 }, (_, index) =>
+        database.createCase({
+          ...scope,
+          name: `Fixture ${String(index)}`,
+          input: null,
+          idempotencyKey: randomUUID(),
+        }),
+      ),
+    );
+    const outcomes = await Promise.allSettled(
+      [0, 1].map((index) =>
+        database.createCase({
+          ...scope,
+          name: `Race ${String(index)}`,
+          input: null,
+          idempotencyKey: randomUUID(),
+        }),
+      ),
+    );
+    expect(outcomes.filter((item) => item.status === 'fulfilled')).toHaveLength(
+      1,
+    );
+    expect(
+      outcomes.find((item) => item.status === 'rejected')?.reason as unknown,
+    ).toBeInstanceOf(WorkflowInputCaseLimitError);
+    const retainedBefore = await queryAsOwner<{ bytes: string }>(
+      'select sum(canonical_bytes) bytes from app.workflow_input_case_payloads where workspace_id=$1',
+      [workspaceId],
+    );
+    const firstCreated = created[0];
+    if (!firstCreated) throw new Error('Expected created case');
+    await database.deleteCase({
+      ...scope,
+      caseId: firstCreated.caseId,
+      expectedRevision: 1,
+      idempotencyKey: randomUUID(),
+    });
+    await database.createCase({
+      ...scope,
+      name: 'New active slot',
+      input: null,
+      idempotencyKey: randomUUID(),
+    });
+    const retainedAfter = await queryAsOwner<{ bytes: string }>(
+      'select sum(canonical_bytes) bytes from app.workflow_input_case_payloads where workspace_id=$1',
+      [workspaceId],
+    );
+    expect(Number(retainedAfter[0]?.bytes)).toBe(
+      Number(retainedBefore[0]?.bytes) + 4,
+    );
+  });
+  it('retains replacement bytes until bounded physical cleanup and charges update churn', async () => {
+    const scope = await fixture();
+    const created = await database.createCase({
+      ...scope,
+      name: 'Churn',
+      input: 'x'.repeat(65000),
+      idempotencyKey: randomUUID(),
+    });
+    let revision = 1;
+    let denied = false;
+    for (let index = 0; index < 70; index += 1) {
+      try {
+        const result = await database.updateCase({
+          ...scope,
+          caseId: created.caseId,
+          expectedRevision: revision,
+          name: 'Churn',
+          input: 'x'.repeat(65000),
+          idempotencyKey: randomUUID(),
+        });
+        revision = result.revision;
+      } catch (error: unknown) {
+        expect(error).toBeInstanceOf(WorkflowInputCaseLimitError);
+        denied = true;
+        break;
+      }
+    }
+    expect(denied).toBe(true);
+    const result = (await reap())[0];
+    if (!result) throw new Error('Expected cleanup result');
+    expect(
+      result.payloads_deleted + result.receipts_deleted + result.cases_deleted,
+    ).toBeLessThanOrEqual(100);
+    const remaining = await queryAsOwner<{ count: string }>(
+      'select count(*) from app.workflow_input_case_payloads where workspace_id=$1 and case_id=$2',
+      [workspaceId, created.caseId],
+    );
+    expect(Number(remaining[0]?.count)).toBeGreaterThan(1);
+    expect(
+      (await database.getCase({ ...scope, caseId: created.caseId })).case
+        .revision,
+    ).toBe(revision);
+  });
+  it('rejects bounds, cycles and PostgreSQL-invalid unicode before any persistence', async () => {
+    const scope = await fixture();
+    for (const input of [
+      'x'.repeat(65535),
+      Array.from({ length: 10001 }, () => 0),
+      '\u0000',
+      '\ud800',
+    ]) {
+      await expect(
+        database.createCase({
+          ...scope,
+          name: 'Invalid',
+          input,
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toBeInstanceOf(TypeError);
+    }
+    const value: Record<string, unknown> = {};
+    value.self = value;
+    await expect(
+      database.createCase({
+        ...scope,
+        name: 'Invalid',
+        input: value,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toBeInstanceOf(TypeError);
+    let deep: unknown = null;
+    for (let index = 0; index < 65; index += 1) deep = [deep];
+    await expect(
+      database.createCase({
+        ...scope,
+        name: 'Invalid',
+        input: deep,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+  it('forces tenant RLS and denies worker/dispatcher case access and API physical erasure', async () => {
+    const scope = await fixture();
+    const created = await database.createCase({
+      ...scope,
+      name: 'Protocol fence',
+      input: null,
+      idempotencyKey: randomUUID(),
+    });
+    const client = await apiPool.connect();
+    try {
+      await client.query('begin');
+      await client.query(
+        "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
+        [workspaceId, actorId],
+      );
+      await expect(
+        client.query(
+          'update app.workflow_input_cases set revision=revision+1 where id=$1',
+          [created.caseId],
+        ),
+      ).rejects.toMatchObject({ code: '55000' });
+    } finally {
+      await client.query('rollback');
+      client.release();
+    }
+    expect(
+      (await apiPool.query('select * from app.workflow_input_cases')).rows,
+    ).toEqual([]);
+    await expect(
+      workerPool.query('select * from app.workflow_input_cases'),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      dispatcherPool.query('select * from app.workflow_input_case_payloads'),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      apiPool.query('delete from app.workflow_input_cases'),
+    ).rejects.toMatchObject({ code: '42501' });
+  });
+  it('rechecks current authority even for retained exact receipts', async () => {
+    const scope = await fixture();
+    const command = {
+      ...scope,
+      name: 'Current authority',
+      input: null,
+      idempotencyKey: randomUUID(),
+    };
+    await database.createCase(command);
+    await queryAsOwner(
+      "update app.workspace_memberships set status='suspended' where workspace_id=$1 and user_id=$2",
+      [workspaceId, actorId],
+      workspaceId,
+    );
+    try {
+      await expect(database.createCase(command)).rejects.toBeInstanceOf(
+        WorkflowNotFoundError,
+      );
+      await expect(
+        database.listCases({ ...scope, limit: 10 }),
+      ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    } finally {
+      await queryAsOwner(
+        "update app.workspace_memberships set status='active' where workspace_id=$1 and user_id=$2",
+        [workspaceId, actorId],
+        workspaceId,
+      );
+    }
+    expect((await database.createCase(command)).replayed).toBe(true);
+  });
+  it('locks workspace before membership and rejects a revocation that wins admission', async () => {
+    const scope = await fixture();
+    const appName = `case-revocation-${randomUUID()}`;
+    const contender = createWorkflowInputCaseDatabase(
+      parseDatabaseConfig({
+        connectionString: withApplicationName(apiUrl, appName),
+        max: 1,
+      }),
+    );
+    const blocker = await ownerPool.connect();
+    let attempt: Promise<unknown> | undefined;
+    try {
+      await blocker.query('begin');
+      await blocker.query('set local role pertexo_owner');
+      await blocker.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      await blocker.query(
+        'select id from app.workspaces where id=$1 for update',
+        [workspaceId],
+      );
+      attempt = contender.createCase({
+        ...scope,
+        name: 'Raced revocation',
+        input: null,
+        idempotencyKey: randomUUID(),
+      });
+      void attempt.catch(() => undefined);
+      await waitForPostgresLock(appName);
+      await blocker.query(
+        "update app.workspace_memberships set status='suspended' where workspace_id=$1 and user_id=$2",
+        [workspaceId, actorId],
+      );
+      await blocker.query('commit');
+      await expect(attempt).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    } finally {
+      await blocker.query('rollback');
+      blocker.release();
+      await Promise.allSettled(attempt ? [attempt] : []);
+      await contender.close();
+      await queryAsOwner(
+        "update app.workspace_memberships set status='active' where workspace_id=$1 and user_id=$2",
+        [workspaceId, actorId],
+        workspaceId,
+      );
+    }
+  });
+  // This proof deliberately commits 200 independent commands through the real
+  // authority, receipt and quota transactions; coverage instrumentation adds
+  // fixture cost. Keep a bounded test budget, not a production timeout change.
+  it('enforces the workspace active-count cap independently of workflow and byte quotas', async () => {
+    const id = randomUUID();
+    const own = await identity.createWorkspaceWithOwner({
+      id,
+      name: 'Workspace case quota',
+      slug: `case-quota-${id}`,
+      ownerUserId: actorId,
+      idempotencyKey: randomUUID(),
+    });
+    for (let index = 0; index < 10; index += 1) {
+      const scope = await fixture(own.id);
+      await Promise.all(
+        Array.from({ length: 20 }, (_, item) =>
+          database.createCase({
+            ...scope,
+            name: `Case ${String(item)}`,
+            input: null,
+            idempotencyKey: randomUUID(),
+          }),
+        ),
+      );
+    }
+    const scope = await fixture(own.id);
+    await expect(
+      database.createCase({
+        ...scope,
+        name: 'Over workspace cap',
+        input: null,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ kind: 'workspace_count' });
+  }, 20_000);
+  it('preserves deleted and replaced payload charges under legal hold, then reaps terminal receipts for finite key reuse', async () => {
+    const scope = await fixture();
+    const key = randomUUID();
+    const command = {
+      ...scope,
+      name: 'Held fixture',
+      input: null,
+      idempotencyKey: key,
+    };
+    const created = await database.createCase(command);
+    const holdId = randomUUID();
+    await executeAsOwner(
+      `insert into app.workflow_manual_start_rejections(workspace_id,workflow_id,scope,key_hash,request_hash,expected_version_id,observed_version_id,created_at,expires_at) values($1,$2,$3,$4,$5,$6,$7,clock_timestamp()-interval '2 days',clock_timestamp()-interval '1 day')`,
+      [
+        workspaceId,
+        scope.workflowId,
+        `workflow:${scope.workflowId}:manual`,
+        'c'.repeat(64),
+        'd'.repeat(64),
+        randomUUID(),
+        scope.workflowVersionId,
+      ],
+    );
+    await executeAsOwner(
+      `select app.project_workspace_legal_hold($1,1,$2,'legal_hold_placed',$3,$4,$5,'test-operator','test-authority','preserve owned fixture',clock_timestamp())`,
+      [workspaceId, randomUUID(), holdId, '0'.repeat(64), 'a'.repeat(64)],
+    );
+    await database.deleteCase({
+      ...scope,
+      caseId: created.caseId,
+      expectedRevision: 1,
+      idempotencyKey: randomUUID(),
+    });
+    await executeAsOwner(
+      "update app.workflow_input_case_receipts set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day' where workspace_id=$1",
+      [workspaceId],
+    );
+    expect((await reap())[0]).toEqual({
+      payloads_deleted: 0,
+      receipts_deleted: 0,
+      cases_deleted: 0,
+    });
+    expect(
+      (
+        await queryAsOwner<{ count: number }>(
+          'select app.prune_manual_start_rejections(100) count',
+        )
+      )[0]?.count,
+    ).toBe(0);
+    expect((await database.createCase(command)).caseId).toBe(created.caseId);
+    await executeAsOwner(
+      `select app.project_workspace_legal_hold($1,2,$2,'legal_hold_released',$3,$4,$5,'test-operator','test-authority','release owned fixture',clock_timestamp())`,
+      [workspaceId, randomUUID(), holdId, 'a'.repeat(64), 'b'.repeat(64)],
+    );
+    expect(
+      (
+        await queryAsOwner<{ count: number }>(
+          'select app.prune_manual_start_rejections(100) count',
+        )
+      )[0]?.count,
+    ).toBe(1);
+    for (let index = 0; index < 20; index += 1) {
+      const page = (await reap())[0];
+      if (!page) throw new Error('Expected cleanup result');
+      if (
+        page.payloads_deleted + page.receipts_deleted + page.cases_deleted ===
+        0
+      )
+        break;
+    }
+    const next = await database.createCase(command);
+    expect(next.caseId).not.toBe(created.caseId);
+    expect(next.replayed).toBe(false);
+  });
+  it('purges case receipts and bounded payload pages before versions, including unexpired manual rejection receipts', async () => {
+    const id = randomUUID();
+    const ownWorkspace = await identity.createWorkspaceWithOwner({
+      id,
+      name: 'Owned case purge',
+      slug: `case-purge-${id}`,
+      ownerUserId: actorId,
+      idempotencyKey: randomUUID(),
+    });
+    const scope = await fixture(ownWorkspace.id);
+    const created = await database.createCase({
+      ...scope,
+      name: 'Purge fixture',
+      input: 'x'.repeat(65000),
+      idempotencyKey: randomUUID(),
+    });
+    for (let revision = 1; revision < 20; revision += 1)
+      await database.updateCase({
+        ...scope,
+        caseId: created.caseId,
+        expectedRevision: revision,
+        name: 'Purge fixture',
+        input: 'x'.repeat(65000),
+        idempotencyKey: randomUUID(),
+      });
+    await executeAsOwner(
+      `insert into app.workflow_manual_start_rejections(workspace_id,workflow_id,scope,key_hash,request_hash,expected_version_id,observed_version_id) values($1,$2,$3,$4,$5,$6,$7)`,
+      [
+        scope.workspaceId,
+        scope.workflowId,
+        `workflow:${scope.workflowId}:manual`,
+        'e'.repeat(64),
+        'f'.repeat(64),
+        randomUUID(),
+        scope.workflowVersionId,
+      ],
+    );
+    await queryAsOwner(
+      `select app.project_workspace_deletion($1,1,$2,'deletion_requested',$1,$3,$4,$5,null,'Owned purge test',clock_timestamp()-interval '31 days')`,
+      [
+        scope.workspaceId,
+        randomUUID(),
+        '0'.repeat(64),
+        'c'.repeat(64),
+        actorId,
+      ],
+      scope.workspaceId,
+    );
+    const claim = (
+      await queryAsOwner<{
+        job_id: string;
+        lease_token: string;
+        lease_fence: string;
+      }>(
+        `select * from app.prepare_workspace_purge_job($1,1,$2,'test-purge',interval '1 minute')`,
+        [scope.workspaceId, 'c'.repeat(64)],
+        scope.workspaceId,
+      )
+    )[0];
+    if (!claim) throw new Error('Expected purge claim');
+    await queryAsOwner(
+      'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
+      [
+        claim.job_id,
+        claim.lease_token,
+        claim.lease_fence,
+        'c'.repeat(64),
+        'd'.repeat(64),
+      ],
+      scope.workspaceId,
+    );
+    const objectClaim = (
+      await queryAsOwner<{ lease_token: string; lease_fence: string }>(
+        `select * from app.claim_workspace_purge_step($1,2,$2,'test-purge',interval '1 minute')`,
+        [claim.job_id, 'd'.repeat(64)],
+        scope.workspaceId,
+      )
+    )[0];
+    if (!objectClaim) throw new Error('Expected object purge claim');
+    await queryAsOwner(
+      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,2,$4)',
+      [
+        claim.job_id,
+        objectClaim.lease_token,
+        objectClaim.lease_fence,
+        'd'.repeat(64),
+      ],
+      scope.workspaceId,
+    );
+    const surfaces: string[] = [];
+    let completed = false;
+    const coordinationPool = new Pool({
+      connectionString: migrationUrl,
+      max: 2,
+    });
+    try {
+      await withWorkspaceDestructiveOperationLock(
+        coordinationPool,
+        scope.workspaceId,
+        undefined,
+        async () => {
+          for (let page = 0; page < 80; page += 1) {
+            const step = (
+              await queryAsOwner<{ lease_token: string; lease_fence: string }>(
+                `select * from app.claim_workspace_purge_step($1,2,$2,'test-purge',interval '1 minute')`,
+                [claim.job_id, 'd'.repeat(64)],
+                scope.workspaceId,
+              )
+            )[0];
+            if (!step) throw new Error('Expected tenant purge claim');
+            const before = await queryAsOwner<{ bytes: string }>(
+              'select coalesce(sum(canonical_bytes),0) bytes from app.workflow_input_case_payloads where workspace_id=$1',
+              [scope.workspaceId],
+            );
+            const result = (
+              await queryAsOwner<{
+                surface: string;
+                affected_count: number;
+                completed: boolean;
+              }>(
+                'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,100,2,$4)',
+                [
+                  claim.job_id,
+                  step.lease_token,
+                  step.lease_fence,
+                  'd'.repeat(64),
+                ],
+                scope.workspaceId,
+              )
+            )[0];
+            if (!result) throw new Error('Expected tenant purge result');
+            const after = await queryAsOwner<{ bytes: string }>(
+              'select coalesce(sum(canonical_bytes),0) bytes from app.workflow_input_case_payloads where workspace_id=$1',
+              [scope.workspaceId],
+            );
+            expect(
+              Number(before[0]?.bytes) - Number(after[0]?.bytes),
+            ).toBeLessThanOrEqual(1048576);
+            surfaces.push(result.surface);
+            if (result.completed) {
+              completed = true;
+              break;
+            }
+          }
+        },
+      );
+    } finally {
+      await coordinationPool.end();
+    }
+    expect(completed).toBe(true);
+    expect(
+      surfaces.filter((value) => value === 'workflow_input_case_payloads'),
+    ).toHaveLength(2);
+    expect(surfaces.indexOf('workflow_input_cases')).toBeLessThan(
+      surfaces.indexOf('workflow_versions'),
+    );
+    const rows = await queryAsOwner<{
+      cases: string;
+      receipts: string;
+      negative: string;
+      versions: string;
+    }>(
+      `select (select count(*) from app.workflow_input_cases where workspace_id=$1) cases,(select count(*) from app.workflow_input_case_receipts where workspace_id=$1) receipts,(select count(*) from app.workflow_manual_start_rejections where workspace_id=$1) negative,(select count(*) from app.workflow_versions where workspace_id=$1) versions`,
+      [scope.workspaceId],
+      scope.workspaceId,
+    );
+    expect(rows[0]).toEqual({
+      cases: '0',
+      receipts: '0',
+      negative: '0',
+      versions: '0',
+    });
+  });
+  it('allows viewer/operator reads but independently denies authoring, and keeps archived cases inspect-only', async () => {
+    const scope = await fixture();
+    const command = {
+      ...scope,
+      name: 'Role-scoped case',
+      input: null,
+      idempotencyKey: randomUUID(),
+    };
+    const created = await database.createCase(command);
+    await queryAsOwner(
+      "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'viewer','active')",
+      [workspaceId, otherActorId],
+      workspaceId,
+    );
+    for (const role of ['viewer', 'operator']) {
+      await queryAsOwner(
+        'update app.workspace_memberships set role=$3 where workspace_id=$1 and user_id=$2',
+        [workspaceId, otherActorId, role],
+        workspaceId,
+      );
+      expect(
+        (
+          await database.getCase({
+            ...scope,
+            actorId: otherActorId,
+            caseId: created.caseId,
+          })
+        ).case.name,
+      ).toBe('Role-scoped case');
+      await expect(
+        database.createCase({
+          ...command,
+          actorId: otherActorId,
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    }
+    await authoring.transitionWorkflowLifecycle({
+      ...scope,
+      command: 'archive',
+      expectedLifecycleRevision: 1,
+      idempotencyKey: randomUUID(),
+    });
+    expect(
+      (await database.getCase({ ...scope, caseId: created.caseId })).case.name,
+    ).toBe('Role-scoped case');
+    await expect(
+      database.createCase({ ...command, idempotencyKey: randomUUID() }),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    expect((await database.createCase(command)).replayed).toBe(true);
+    const restarted = createWorkflowInputCaseDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
+    );
+    try {
+      expect(await restarted.createCase(command)).toEqual({
+        caseId: created.caseId,
+        revision: 1,
+        replayed: true,
+      });
+    } finally {
+      await restarted.close();
+    }
+  });
+});

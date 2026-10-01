@@ -44,6 +44,13 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.apply_workspace_deletion_side_effects()` | `908becdc3d5fbf1ec9a1a855c97c75bf` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, internal trigger | `0128_connection_health.sql` |
 | `app.reject_retention_batch_direct_mutation()` | `bd7d508fdf10cf97eb33467e8bd00f37` | invoker, `pg_catalog, pg_temp`, internal trigger | `0128_connection_health.sql` |
 | `app.create_workflow_duplicate_draft(uuid,uuid,uuid,uuid,character varying,integer,jsonb,character,character,text,uuid)` | `b70f29f6408a6ef018b23b10f45fb443` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0129_workflow_duplication.sql` |
+| `app.guard_workflow_input_case_write()` | `a3108e59e200d8e251cf39c056f41dd9` | definer, `pg_catalog, pg_temp`, `row_security=on`, internal trigger | `0130_workflow_input_cases.sql` |
+| `app.reap_workflow_input_cases(integer)` | `f5a5951bcb6a7d913dac66dc15702e25` | definer, `pg_catalog, pg_temp`, `row_security=on`, maintenance-only | `0130_workflow_input_cases.sql` |
+| `app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)` | `348588ea384effc589d6c8c74686aa58` | definer, `pg_catalog, pg_temp`, `row_security=on`, maintenance/operator-only | `0130_workflow_input_cases.sql` |
+| `app.lock_manual_workflow_run_start(uuid,uuid,text,text)` | `e70f076dbfffbb8a79b4534b49bdc138` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0131_checked_manual_start.sql` |
+| `app.enforce_manual_start_writer()` | `a24d51f06dfe43548064394c9bf03ca9` | invoker, `pg_catalog, pg_temp`, internal trigger | `0131_checked_manual_start.sql` |
+| `app.assert_workflow_input_cases_enabled()` | `f537940438bedfc091e8a19b64c01689` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0131_checked_manual_start.sql` |
+| `app.prune_manual_start_rejections(integer)` | `490686b5af7560b8c7d0a6f526762fe2` | definer, `pg_catalog, pg_temp`, `row_security=on`, maintenance-only | `0131_checked_manual_start.sql` |
 
 The executable inventory is split between
 `packages/database/src/platform/readiness.ts` (compatibility-release functions)
@@ -90,6 +97,30 @@ restore images accept 0129. This is not a zero-downtime mixed-head rollout.
 Application rollback requires an image qualified against 0129; it may leave the
 capability installed. Do not remove it while a supported image uses it, or rewrite
 migration history to admit an older image.
+
+The ADR061 case and checked-start boundary is checked by
+`packages/database/src/platform/readiness-workflow-input-cases.sql.ts` and
+`packages/database/src/platform/readiness-manual-start.sql.ts`. Migration 0130
+installs bounded case storage and lifecycle functions; 0131 installs the shared
+manual-command lock, rejection receipts, and all-manual-writer insertion fence.
+The rollout row defaults to disabled. Migration-head readiness requires 0131
+for all serving and restore images, and the insertion fence rejects predecessor
+manual writers even when cases are disabled. Keep serving closed while applying
+both migrations and replacing incompatible images. Only an operator may enable
+cases after qualifying the complete deployment; this repository's isolated
+fixtures do not authorize production enablement. Rollback uses an image qualified
+against 0131 with cases disabled, not an older migration head. Preserve retained
+receipts and held payloads; do not rewrite migration history.
+
+Case cleanup acquires the destruction lock before workspace authority and quota
+locks. Workspace purge retains the existing coordinator's dedicated-client
+session destruction lock; its transaction must not reacquire that same lock on a
+second client. Both paths recheck workspace legal holds before deleting data.
+
+Case writers set the transaction-local writer marker only after current
+authority, command-key, workflow and quota locks. The case trigger rejects a
+markerless direct write before waiting for those locks, including raw UPDATE
+paths that have already acquired the case row lock.
 
 ## Synchronized update procedure
 

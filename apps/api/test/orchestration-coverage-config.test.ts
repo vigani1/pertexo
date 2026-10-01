@@ -12,7 +12,7 @@ describe('API orchestration coverage inventory', () => {
     expect(config.test?.coverage?.include).toEqual([
       'src/application-error-mappers.ts',
       'src/connections/{connection-testing,slack-channel-lookup}.ts',
-      'src/workflow-runs/{sse-authorization-lifetime,statistics-use-case,use-cases}.ts',
+      'src/workflow-runs/{request-hashes,sse-authorization-lifetime,statistics-use-case,use-cases}.ts',
     ]);
     expect(config.test?.coverage?.thresholds).toEqual({
       branches: 92,
@@ -30,7 +30,7 @@ describe('API orchestration coverage inventory', () => {
       'src/identity-workspace/{module,persistence-capabilities,use-cases}.ts',
       'src/platform/identity/{better-auth-composition,identity-runtime.module,oidc-runtime}.ts',
       'src/webhooks/{delivery-log,ingress,ingress-responses}.ts',
-      'src/workflow-authoring/{duplicate-use-case,lifecycle-use-case,module,preconditions,rename-use-case,restore-version-use-case,use-cases}.ts',
+      'src/workflow-authoring/{duplicate-use-case,input-case-controller,input-case-cursor,input-case-use-case,lifecycle-use-case,module,preconditions,rename-use-case,restore-version-use-case,use-cases}.ts',
     ]);
     expect(priorityConfig.test?.coverage?.thresholds).toEqual({
       branches: 82,

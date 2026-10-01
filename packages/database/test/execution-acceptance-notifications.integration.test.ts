@@ -15,6 +15,7 @@ import {
   expectAcceptanceRecordCounts,
   hasPostgresCode,
   insertDirectPinnedRun,
+  lockManualFixtureStart,
   installExecutionAcceptanceFixture,
   migrationUrl,
   setFixtureStatus,
@@ -147,7 +148,7 @@ describe('workflow run notification pinning', () => {
             failure_notification_destination_id
           ) values (
             ${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},
-            'manual','queued',${valid.destinationId}
+            'api','queued',${valid.destinationId}
           )
         `),
       ),
@@ -352,8 +353,15 @@ describe('workflow run notification pinning', () => {
       await owner.end();
     }
 
-    const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
-      acceptWorkflowRun(transaction, acceptanceInput()),
+    const first = await apiDatabase.withWorkspace(
+      workspaceA,
+      async (transaction) => {
+        await lockManualFixtureStart(transaction);
+        return acceptWorkflowRun(transaction, {
+          ...acceptanceInput(),
+          triggerType: 'manual',
+        });
+      },
     );
     const nextSecretVersionId = randomUUID();
     await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
@@ -388,9 +396,13 @@ describe('workflow run notification pinning', () => {
     });
 
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        acceptWorkflowRun(transaction, acceptanceInput()),
-      ),
+      apiDatabase.withWorkspace(workspaceA, async (transaction) => {
+        await lockManualFixtureStart(transaction);
+        return acceptWorkflowRun(transaction, {
+          ...acceptanceInput(),
+          triggerType: 'manual',
+        });
+      }),
     ).resolves.toEqual({ ...first, duplicate: true });
     const pins = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
       db.execute<{
