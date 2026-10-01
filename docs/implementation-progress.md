@@ -16,11 +16,12 @@ The ADR058 first slice is implemented locally on `feat/workflow-concurrency`.
 Independent manager review identified three correctness fixes; their focused
 regressions and final local qualification pass, with independent rereview still
 required.
-Scoped PR checks/merge and natural postmerge qualification remain open.
+F29 scoped PR checks/merge and natural postmerge qualification remain open.
 This does not close Phase 7 or supersede the
-historical qualification fingerprints below. F12 PR137 is merged as `23cc5b45`,
-but release-owner qualification of natural main CI remains pending and must pass
-before F29 release.
+historical qualification fingerprints below. F12 PR137 is merged as `23cc5b45`;
+the release owner has confirmed natural main CI and CodeQL success on that
+commit, closing the first read-only capacity/activity slice's qualification.
+This satisfies the F12 dependency, not F29's own review or release requirements.
 
 - [x] Current workflow cap, durable acceptance tickets, workspace-authoritative
       admission, ordered starts, and grandfathered reservations implemented.
@@ -117,8 +118,11 @@ validation. Normal merge `7953fd6a` incorporates PR137's main merge `23cc5b45`;
 the merged tree is exactly identical to its first parent `9bda9ee8`. Conflicts
 retained the already-merged F12 behavior and reviewed F29 migration/CI additions;
 one automatic duplicate type import was removed. CI gate tests and API typecheck
-also passed after resolution. Natural main CI/CodeQL remain manager-owned and
-pending, not inferred from these local results.
+also passed after resolution. The subsequent manager receipt confirms natural
+main CI `36806860550` and CodeQL `36806860572` both concluded `SUCCESS` on
+`23cc5b45`; see the [F12 evidence log](./feature-plans/12-usage-and-insights.md#delivery-tracker).
+These hosted F12 results are not inferred from local qualification and do not
+establish F29 hosted CI or release approval. F12 warnings/trends remain deferred.
 
 Final repair qualification passed `pnpm test:coverage` (24 source-bound cohorts,
 zero unreviewed residual branches), seven browser probes and 60 deployment
@@ -129,7 +133,8 @@ was a local setup omission, not masked by exclusions or test changes. Likewise,
 an unchanged benchmark SIGINT process-startup timeout passed in isolation and
 in the full `pnpm check` rerun with its original deadline. Generated JSON reports
 were preserved outside the checkout, not committed. Required independent
-rereview, F12 natural main qualification and F29 release/PR checks remain open.
+rereview and F29 release/PR checks remain open; F12 natural main qualification is
+now complete by the release-owner receipt above.
 
 Heavy qualification suites were serialized after concurrent runs hit unchanged
 workflow-engine and coordinator-observation test timeouts. Isolated observation
