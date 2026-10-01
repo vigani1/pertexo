@@ -1,6 +1,7 @@
 import type {
   WorkflowAuthoringDatabase,
   WorkflowAutoPauseDatabase,
+  WorkflowConcurrencyDatabase,
 } from '@pertexo/database/api';
 import type {
   ActorContext,
@@ -28,6 +29,7 @@ export type WorkflowAuthoringPersistence = Pick<
 export type WorkflowAuthoringDependencies = Readonly<{
   persistence: WorkflowAuthoringPersistence;
   autoPausePersistence?: WorkflowAutoPauseDatabase;
+  concurrencyPersistence?: WorkflowConcurrencyDatabase;
   authorization: WorkspaceAuthorizationSource;
   telemetry?: WorkflowAuthoringTelemetry;
 }>;

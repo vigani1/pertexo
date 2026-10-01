@@ -21,6 +21,7 @@ import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context
 import { createWorkflowAuthoringLifecycleStore } from './workflow-authoring-lifecycle.js';
 import { createWorkflowAuthoringRenameStore } from './workflow-authoring-rename.js';
 import { createWorkflowAutoPauseStore } from './workflow-auto-pause.js';
+import { createWorkflowConcurrencyStore } from './workflow-concurrency.js';
 export type {
   WorkflowDraftRecord,
   WorkflowRecord,
@@ -295,6 +296,7 @@ export function createWorkflowAuthoringDatabase(
   });
   return Object.freeze({
     autoPause: createWorkflowAutoPauseStore(transact),
+    concurrency: createWorkflowConcurrencyStore(transact),
     ...createPreviewStore(pool),
     ...createWorkflowAuthoringDraftStore(authoringContext),
     ...createWorkflowVersionRestoreStore(authoringContext),

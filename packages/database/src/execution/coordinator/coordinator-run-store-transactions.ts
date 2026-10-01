@@ -29,5 +29,20 @@ export function withCoordinatorWriteClient<T>(
   operation: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   assertCoordinatorNotAborted(signal);
-  return withTenantScopedClient(pool, { workspaceId }, operation, { signal });
+  return withTenantScopedClient(
+    pool,
+    { workspaceId },
+    async (client) => {
+      await client.query(
+        "select set_config('app.workflow_concurrency_protocol','1',true)",
+      );
+      // Lifecycle/purge holds workspace before run rows. Acquire the shared
+      // workspace lock before any coordinator run/checkpoint lock or FK write.
+      await client.query('select app.lock_workspace_run_admission($1)', [
+        workspaceId,
+      ]);
+      return operation(client);
+    },
+    { signal },
+  );
 }

@@ -1,5 +1,9 @@
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
+  workflowConcurrencyContractPaths,
+  workflowConcurrencyContractSchemas,
+} from './workflow-concurrency-contract.js';
+import {
   workflowAutoPauseContractPaths,
   workflowAutoPauseContractSchemas,
 } from './workflow-auto-pause-contract.js';
@@ -54,6 +58,7 @@ function contractSchemas(target: 'client' | 'openapi') {
     ),
     ...workflowRevisionCommandSchemas(project),
     ...workflowAutoPauseContractSchemas(project),
+    ...workflowConcurrencyContractSchemas(project),
     WorkflowRevisionConflictProblem: project(
       'WorkflowRevisionConflictProblem',
       workflowRevisionConflictProblemSchema,
@@ -384,6 +389,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
       },
     },
     ...workflowAutoPauseContractPaths,
+    ...workflowConcurrencyContractPaths,
   },
   components: authenticatedComponents(openApiSchemas, problemResponses),
 });

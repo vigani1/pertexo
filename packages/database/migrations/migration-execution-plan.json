@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0126_workspace_usage_capacity.sql",
+  "transactionalThrough": "0127_workflow_concurrency.sql",
   "migrations": {}
 }

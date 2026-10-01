@@ -1,5 +1,8 @@
 import {
   WorkflowIdempotencyConflictError,
+  WorkflowConcurrencyRevisionConflictError,
+  WorkflowConcurrencyLimitUnavailableError,
+  WorkflowConcurrencyLimitExceededError,
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
@@ -78,6 +81,23 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
     });
   if (error instanceof WorkflowNotFoundError)
     return applicationError('resource.not_found');
+  if (error instanceof WorkflowConcurrencyRevisionConflictError)
+    return applicationError('workflow.concurrency_revision_conflict', {
+      safeDetail:
+        'The concurrency setting has changed; reload it before retrying.',
+      details: { currentRevision: error.currentRevision },
+    });
+  if (error instanceof WorkflowConcurrencyLimitUnavailableError)
+    return applicationError('workflow.concurrency_limit_unavailable', {
+      safeDetail:
+        'A concurrency cap requires an active workspace execution entitlement. Reload the current policy before retrying.',
+    });
+  if (error instanceof WorkflowConcurrencyLimitExceededError)
+    return applicationError('workflow.concurrency_limit_exceeded', {
+      safeDetail:
+        'The concurrency cap exceeds the current workspace active-run limit. Reload the current policy before retrying.',
+      details: { maximum: error.maximum },
+    });
   if (error instanceof WorkflowPauseRevisionConflictError)
     return applicationError('workflow.pause_conflict', {
       safeDetail: 'The workflow pause has changed; reload it before retrying.',

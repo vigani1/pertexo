@@ -3,6 +3,8 @@ import type { ArgumentsHost } from '@nestjs/common';
 import { apiProblemSchema } from '@pertexo/contracts/errors';
 import {
   workflowPauseConflictProblemSchema,
+  workflowConcurrencyRevisionConflictProblemSchema,
+  workflowConcurrencyLimitExceededProblemSchema,
   workflowAutoPauseSettingsConflictProblemSchema,
   workspaceAutoPauseSettingsConflictProblemSchema,
 } from '@pertexo/contracts/workflow-authoring';
@@ -152,6 +154,20 @@ describe('RFC 9457 problem details filter', () => {
     },
   );
   const autoPauseConflicts = [
+    {
+      code: 'workflow.concurrency_revision_conflict',
+      field: 'currentRevision',
+      value: 7,
+      schema: workflowConcurrencyRevisionConflictProblemSchema,
+      invalid: [undefined, 0, -1, 1.5, '2', 2_147_483_648],
+    },
+    {
+      code: 'workflow.concurrency_limit_exceeded',
+      field: 'maximum',
+      value: 4,
+      schema: workflowConcurrencyLimitExceededProblemSchema,
+      invalid: [undefined, 0, -1, 1.5, '2', 10_001],
+    },
     {
       code: 'workflow.pause_conflict',
       field: 'currentPauseRevision',

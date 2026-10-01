@@ -27,6 +27,8 @@ import type { WorkflowAuthoringDependencies } from './ports.js';
 import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
 import { WORKFLOW_AUTHORING_AUTHORIZATION } from './tokens.js';
 import { WorkflowAutoPauseUseCase } from './auto-pause-use-case.js';
+import { WorkflowConcurrencyUseCase } from './concurrency-use-case.js';
+import { WorkflowConcurrencyController } from './concurrency-controller.js';
 import {
   WorkflowAutoPauseController,
   WorkspaceAutoPauseController,
@@ -43,6 +45,17 @@ export class WorkflowAuthoringModule {
     const telemetry =
       dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY;
     const providers: Provider[] = [
+      ...(dependencies.concurrencyPersistence === undefined
+        ? []
+        : [
+            {
+              provide: WorkflowConcurrencyUseCase,
+              useValue: new WorkflowConcurrencyUseCase(
+                dependencies.concurrencyPersistence,
+                dependencies.authorization,
+              ),
+            },
+          ]),
       ...(dependencies.autoPausePersistence === undefined
         ? []
         : [
@@ -158,6 +171,9 @@ export class WorkflowAuthoringModule {
       imports: [identityModule],
       controllers: [
         WorkflowAuthoringController,
+        ...(dependencies.concurrencyPersistence === undefined
+          ? []
+          : [WorkflowConcurrencyController]),
         ...(dependencies.autoPausePersistence === undefined
           ? []
           : [WorkflowAutoPauseController, WorkspaceAutoPauseController]),

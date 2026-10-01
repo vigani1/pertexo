@@ -1,4 +1,7 @@
-import type { UsageCapacityResponse } from '@pertexo/contracts/workflow-runs';
+import type {
+  UsageCapacityResponse,
+  WorkflowRunAdmissionBlockers,
+} from '@pertexo/contracts/workflow-runs';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,
@@ -28,7 +31,11 @@ export type WorkflowRunRecord = Readonly<{
 }>;
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
-  Readonly<{ workflowName?: string | null; replaySourceRunId?: string | null }>;
+  Readonly<{
+    workflowName?: string | null;
+    replaySourceRunId?: string | null;
+    admissionBlockers?: WorkflowRunAdmissionBlockers;
+  }>;
 
 /** The step that explains an unsuccessful listed run (ADR 050). */
 type WorkflowRunFailedStepRecord = Readonly<{

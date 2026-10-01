@@ -122,11 +122,24 @@ export const workflowRunSummarySchema = z
   })
   .strict();
 
+export const workflowRunAdmissionBlockersSchema = z
+  .object({
+    asOf: z.iso.datetime({ precision: 6 }),
+    reasons: z
+      .array(
+        z.enum(['workspace_capacity', 'workflow_capacity', 'workflow_order']),
+      )
+      .max(3)
+      .readonly(),
+  })
+  .strict();
+
 export const workflowRunReadSummarySchema = workflowRunSummarySchema
   .extend({
     workflowName: workflowNameSchema.nullable().optional(),
     /** The run a replay was started from (ADR 050). */
     replaySourceRunId: workflowRunIdentifierSchema.nullable().optional(),
+    admissionBlockers: workflowRunAdmissionBlockersSchema.optional(),
   })
   .strict();
 
@@ -409,6 +422,9 @@ export const lastRunEventIdHeaderSchema = z
   .regex(/^(?:0|[1-9][0-9]{0,14})$/u);
 
 export type WorkflowRunSummary = z.output<typeof workflowRunSummarySchema>;
+export type WorkflowRunAdmissionBlockers = z.output<
+  typeof workflowRunAdmissionBlockersSchema
+>;
 export type WorkflowRunReadSummary = z.output<
   typeof workflowRunReadSummarySchema
 >;

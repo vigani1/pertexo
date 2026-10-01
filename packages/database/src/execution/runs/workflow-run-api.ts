@@ -382,6 +382,11 @@ async function cancelInTransaction(
     eventSequence: number | null;
   }>
 > {
+  // The cancellation audit references workspace. Lifecycle/purge owns that
+  // row before runs, so take its shared lock before the exclusive run lock.
+  await transaction.db.execute(
+    sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
+  );
   const cancellation = await requestWorkflowRunCancellation(transaction, {
     actor: input.actorId,
     runId: input.runId,

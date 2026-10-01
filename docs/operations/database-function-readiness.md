@@ -26,6 +26,13 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.workflow_auto_pause_control(uuid,uuid,uuid,text,jsonb,text,text,text,text)` | `2ce8ab04731f24bd9292bdc7cf9e4079` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, API-only | `0125_workflow_auto_pause_controls.sql` |
 | `app.schedule_claim_workflow_paused(uuid,uuid,timestamptz)` | `7f7b9cf2e74f7e45644cd0fe3d37b205` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, API/worker-only | `0125_workflow_auto_pause_controls.sql` |
 | `app.workspace_reserved_active_slot_count(uuid)` | `6ed33604664c79cbc928094e4ada3202` | definer, stable, `pg_catalog, app, pg_temp`, `row_security=on`, API-only | `0126_workspace_usage_capacity.sql` |
+| `app.enforce_workflow_run_admission()` | `e4137b01595acc041826eb374aa5188a` | definer, `pg_catalog, app`, `row_security=on`, internal trigger | `0127_workflow_concurrency.sql` |
+| `app.workflow_concurrency_admissible(uuid,uuid,boolean)` | `3c541c79eb4d3849b58d8c76a2c5fade` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, internal | `0127_workflow_concurrency.sql` |
+| `app.workflow_concurrency_control(uuid,uuid,uuid,text,jsonb,text,text,text,text)` | `f37e4d9d93e59b518d37713078575eda` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, API-only | `0127_workflow_concurrency.sql` |
+| `app.workflow_run_admission_blockers(uuid,uuid)` | `f0127382f587223639b4bfb02f120ee8` | definer, stable, `pg_catalog, app, pg_temp`, `row_security=on`, API-only | `0127_workflow_concurrency.sql` |
+| `app.workflow_run_active_capacity_available(uuid,integer,uuid)` | `66e1c3ed4d6d458c4889799733c11063` | definer, `pg_catalog, app`, `row_security=on`, worker-only | `0127_workflow_concurrency.sql` |
+| `app.workflow_run_active_admission_eligible(uuid,uuid,uuid)` | `9aa4c431740581a37d4873d0e49cc567` | definer, `pg_catalog, app`, `row_security=on`, dispatcher-only | `0127_workflow_concurrency.sql` |
+| `app.reserve_workflow_run_active_admission(uuid,uuid,uuid)` | `e11cf9af2c42e62f995138c7483fe162` | definer, `pg_catalog, app`, `row_security=on`, dispatcher-only | `0127_workflow_concurrency.sql` |
 
 The executable inventory is split between
 `packages/database/src/platform/readiness.ts` (compatibility-release functions)
@@ -42,6 +49,14 @@ tenant guard/count body, ownership, security configuration, API-only execution
 grant, lack of API reservation-row privileges, and workspace index.
 This table is an operator aid and must
 change in the same commit whenever an owning inventory changes.
+
+The queue-only workflow concurrency boundary (ADR 058) is shared by API/worker
+admission startup and dispatcher startup in
+`packages/database/src/platform/readiness-workflow-concurrency.sql.ts`. It pins
+the seven bodies above, security configuration, runtime execution ACLs, private
+policy/receipt RLS and ACLs, ticket/reservation columns, private ticket sequence,
+and exact scoped active/order index shapes. Follow the lock and rollout contract
+in [Workflow concurrency enforcement](workflow-concurrency-enforcement.md).
 
 ## Synchronized update procedure
 

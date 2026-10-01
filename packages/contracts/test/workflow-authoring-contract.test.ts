@@ -114,6 +114,7 @@ describe('workflow-authoring public contracts', () => {
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/auto-pause',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/resume',
       '/v1/workspaces/{workspaceId}/auto-pause',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/concurrency',
     ]);
     expect(
       paths[

@@ -1,4 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import {
+  normalizeConcurrencyConflict,
+  projectConcurrencyConflict,
+  type ConcurrencyConflict,
+} from './concurrency-conflict.js';
 
 import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts/errors';
 import {
@@ -50,7 +55,8 @@ type ProblemDetails =
   | WorkflowRevisionConflictProblem
   | WorkflowLifecycleConflictProblem
   | WorkflowNameConflictProblem
-  | AutoPauseConflictProblem;
+  | AutoPauseConflictProblem
+  | ReturnType<typeof projectConcurrencyConflict>;
 
 export type HttpErrorLogEntry = Readonly<{
   code: ApplicationErrorCode;
@@ -92,6 +98,7 @@ type NormalizedProblem = Readonly<{
   currentLifecycleRevision?: number;
   currentNameRevision?: number;
   autoPauseConflict?: AutoPauseConflictRevision;
+  concurrencyConflict?: ConcurrencyConflict;
   cause?: unknown;
 }>;
 
@@ -217,6 +224,9 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
   }
   const autoPauseConflict = normalizeAutoPauseConflict(error);
   if (autoPauseConflict !== undefined) return { ...base, autoPauseConflict };
+  const concurrencyConflict = normalizeConcurrencyConflict(error);
+  if (concurrencyConflict !== undefined)
+    return { ...base, concurrencyConflict };
   if (error.code === 'workflow.lifecycle_conflict') {
     const parsed = workflowLifecycleRevisionSchema.safeParse(
       error.details?.currentLifecycleRevision,
@@ -388,6 +398,11 @@ function problemDetails(
   normalized: NormalizedProblem,
   baseProblem: ApiProblem,
 ): ProblemDetails {
+  if (normalized.concurrencyConflict !== undefined)
+    return projectConcurrencyConflict(
+      baseProblem,
+      normalized.concurrencyConflict,
+    );
   if (normalized.autoPauseConflict !== undefined)
     return projectAutoPauseConflict(baseProblem, normalized.autoPauseConflict);
   if (normalized.currentLifecycleRevision !== undefined)
