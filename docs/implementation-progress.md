@@ -14,8 +14,8 @@ external production evidence listed under Phase 7.
 
 The manager accepted [ADR059](./adr/059-connection-health-observations.md) and
 the [F30 plan](./feature-plans/30-connection-health.md) on 2026-10-01, based on
-reviewed F29 head `7561e822`. This is an implementation-ready design, not an
-implemented or qualified capability. Scope is Slack run-derived evidence,
+reviewed F29 head `7561e822`. Implementation is underway on
+`feat/connection-health`; it is not yet implemented or qualified. Scope is Slack run-derived evidence,
 version/revision-fenced durable application, safe manual recovery, authorized
 published-version usage, and the existing connections/settings UI. Notices and
 other automatic providers are deferred; production activation is not authorized.
@@ -29,16 +29,16 @@ other automatic providers are deferred; production activation is not authorized.
 
 ### F29 — queue-only workflow concurrency
 
-The ADR058 first slice is implemented locally on `feat/workflow-concurrency`.
-Independent manager review identified three correctness fixes; their focused
-regressions and final local qualification pass, with independent rereview still
-required.
-F29 scoped PR checks/merge and natural postmerge qualification remain open.
+The ADR058 queue-only first slice is qualified. Independent specification and
+standards reviews closed the correctness and CI-ownership findings; final
+rereviews reported no remaining findings. [PR138](https://github.com/vigani1/pertexo/pull/138)
+merged reviewed head `7561e822` as `02750811c0bbb8545042f96f9f6f53784c9ff5d2`
+on 2026-10-01. Required exact-head checks and natural postmerge CI/CodeQL passed.
 This does not close Phase 7 or supersede the
 historical qualification fingerprints below. F12 PR137 is merged as `23cc5b45`;
 the release owner has confirmed natural main CI and CodeQL success on that
 commit, closing the first read-only capacity/activity slice's qualification.
-This satisfies the F12 dependency, not F29's own review or release requirements.
+This satisfies the F12 dependency independently of F29's completed qualification.
 
 - [x] Current workflow cap, durable acceptance tickets, workspace-authoritative
       admission, ordered starts, and grandfathered reservations implemented.
@@ -74,14 +74,14 @@ This satisfies the F12 dependency, not F29's own review or release requirements.
       `pnpm deployment:check` (60 assertions) passed locally.
 - [x] Lock order, mixed-version fail-closed enforcement, and rollback documented
       in [the enforcement note](./operations/workflow-concurrency-enforcement.md).
-- [ ] Independent manager review and complete release qualification.
+- [x] Independent manager review and complete first-slice release qualification.
 - [x] Close the reviewed active-insert serialization race, preserve committed
       reservations during FIFO deferral, and cancel stale reads before
       denied-write cache eviction; focused RED/GREEN proofs recorded below.
 - [x] Requalify the repaired tree locally with repository checks, coverage,
       full PostgreSQL, real HTTP/browser, browser probes and deployment checks.
-- [ ] Complete independent rereview of the repaired implementation.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+- [x] Complete independent rereview of the repaired implementation.
+- [x] Scoped PR merged with required checks; natural postmerge result inspected.
 
 The PostgreSQL receipt proof exercises bounded maintenance reaping and verifies
 both new tables in the authoritative tenant purge function; it does not claim
@@ -150,8 +150,8 @@ was a local setup omission, not masked by exclusions or test changes. Likewise,
 an unchanged benchmark SIGINT process-startup timeout passed in isolation and
 in the full `pnpm check` rerun with its original deadline. Generated JSON reports
 were preserved outside the checkout, not committed. Required independent
-rereview and F29 release/PR checks remain open; F12 natural main qualification is
-now complete by the release-owner receipt above.
+rereview and F29 release/PR checks subsequently closed by the release-owner
+receipt below; F12 natural main qualification is independently complete.
 
 Heavy qualification suites were serialized after concurrent runs hit unchanged
 workflow-engine and coordinator-observation test timeouts. Isolated observation
@@ -162,7 +162,20 @@ Both the original and follow-up task-owned PostgreSQL/Redis projects were remove
 after qualification;
 their disposable fixture data was discarded. Everyday services and the 43
 uncommitted paths in the primary checkout were left untouched. The F29 branch
-has not been pushed and has no configured upstream.
+was subsequently pushed and tracks `origin/feat/workflow-concurrency`.
+
+The release owner's 2026-10-01 receipt confirms exact-head
+[CI36810146630](https://github.com/vigani1/pertexo/actions/runs/36810146630) and
+[CodeQL36810146584](https://github.com/vigani1/pertexo/actions/runs/36810146584)
+passed before PR138 merged. Natural main
+[CI36811514908](https://github.com/vigani1/pertexo/actions/runs/36811514908) and
+[CodeQL36811514931](https://github.com/vigani1/pertexo/actions/runs/36811514931)
+both succeeded on exact merge head `02750811c0bbb8545042f96f9f6f53784c9ff5d2`.
+The main-push dependency-review skip is expected; applicable quality,
+integration, browser, coverage, recovery, compatibility, deployment-security
+and production-image checks passed. Queue-only qualification is complete;
+skip overflow remains deferred and Phase 7 remains open. No production
+deployment or activation is claimed.
 
 ### Historical backend qualification
 

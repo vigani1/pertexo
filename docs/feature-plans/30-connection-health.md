@@ -1,6 +1,6 @@
 # F30 — Connection health and reconnection
 
-Status: first Slack slice design accepted; implementation authorized, not started.
+Status: first Slack slice implementation underway; qualification and review pending.
 Created: 2026-09-29. Parent: [product roadmap](../product-roadmap.md).
 Scope: Extends existing connections. Relative size: **M–L**, not a calendar estimate.
 
@@ -12,7 +12,7 @@ it in one place.
 
 ## Current implementation and evidence
 
-Connections record `lastTestedAt`, `lastHealthyAt` and `lastErrorCode`, and
+The accepted planning baseline was: connections record `lastTestedAt`, `lastHealthyAt` and `lastErrorCode`, and
 people can test and rotate them. Production runs do not currently report health.
 An internal bounded `findConnectionImpact` projection already indexes published
 version usage; there is no user-facing used-by endpoint. Reuse that projection.
@@ -28,7 +28,7 @@ Inspected anchors (paths may move):
 
 - [packages/contracts/src/http/connections.ts](../../packages/contracts/src/http/connections.ts)
 - [docs/adr/023-slack-send-message-provider.md](../adr/023-slack-send-message-provider.md)
-- [connection health persistence](../../packages/database/src/connections/connection-health-persistence.ts)
+- [accepted-completion health persistence](../../packages/database/src/execution/node-attempts/node-attempt-connection-health.ts)
 - [connection test persistence](../../packages/database/src/connections/connection-test-persistence.ts)
 - [published usage projection](../../packages/database/src/connections/workflow-integration-usage.ts)
 - [attempt dispatch](../../packages/database/src/execution/node-attempts/node-attempt-run-store-dispatch.ts)
