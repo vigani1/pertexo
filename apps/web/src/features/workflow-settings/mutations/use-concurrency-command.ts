@@ -82,14 +82,19 @@ export function useConcurrencyCommand(
         workflowConcurrencyRevisionConflictProblemSchema.safeParse(
           error.problemDetails,
         ).success;
-      if (isApiError(error) && [401, 403, 404].includes(error.status ?? 0))
+      if (isApiError(error) && [401, 403, 404].includes(error.status ?? 0)) {
+        const queryKey = concurrencyKey(userId, workspaceId, workflowId);
+        // Cancellation can restore pre-fetch data. Fence the old read first,
+        // then forget its snapshot; reconciliation must start a fresh read.
+        await cache.cancelQueries({ queryKey, exact: true });
         cache
           .getQueryCache()
           .find({
-            queryKey: concurrencyKey(userId, workspaceId, workflowId),
+            queryKey,
             exact: true,
           })
           ?.setState({ data: undefined, dataUpdatedAt: 0 });
+      }
       if (!uncertain) attempt.current = undefined;
       setUnconfirmed(uncertain);
       setConflict(revisionConflict);
