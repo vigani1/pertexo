@@ -159,3 +159,16 @@ Evidence log:
   passed. The two owned temporary services were closed after confirming no
   fixture databases remained. This is local integration, not a feature PR merge
   or postmerge CI result; manager review still precedes any push/PR.
+- 2026-10-01: manager review found that a transient failure after an access
+  denial could reveal the pre-denial Query snapshot again. Usage reads now
+  forget denied capacity and all scoped activity-window snapshots in Query;
+  sibling window requests are canceled before clearing to prevent cancellation
+  from restoring earlier data. Only fresh authorized success restores figures.
+  Regression coverage exercises 401/403/404/409, subsequent transient failures,
+  remounts/window changes and independent recovery, while preserving ordinary
+  transient-error stale display. Verification: 22 focused Usage tests, all 771
+  web unit tests, all 87 browser tests (81 Chromium, 3 Firefox, 3 WebKit), build,
+  typecheck, scoped lint, architecture, complexity, duplication and formatting
+  checks pass. Browser regressions include both 503 and network failures after
+  denial. This repair has not been pushed and does not claim new live-backend
+  or CI evidence.

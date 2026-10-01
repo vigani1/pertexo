@@ -22,7 +22,10 @@ async function install(
     policy?: string;
   }> = {},
 ) {
-  let denyCapacity = false;
+  let capacityStatus = 200;
+  let activityStatus = 200;
+  let capacityBytes = '9007199254740993';
+  let activityName = 'Daily intake';
   const requests: string[] = [];
   await page.route('**/v1/**', async (route) => {
     const url = new URL(route.request().url());
@@ -64,43 +67,52 @@ async function install(
         },
       });
     if (url.pathname.endsWith('/usage-capacity'))
-      return denyCapacity
-        ? route.fulfill({
-            status: 403,
-            contentType: 'application/problem+json',
-            json: {
-              type: 'about:blank',
-              title: 'Forbidden',
-              status: 403,
-              code: 'identity.forbidden',
-              requestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-            },
-          })
-        : route.fulfill({
-            json: {
-              asOf: timestamp,
-              execution: {
-                activeRuns: 1,
-                reservedActiveSlots: 1,
-                activeCapacityConsumed: 2,
-                queuedRuns: 1,
-                policy: {
-                  state: options.policy ?? 'active',
-                  version: 1,
-                  activeRunLimit: 5,
-                  queuedRunLimit: 100,
+      return capacityStatus === 0
+        ? route.abort('failed')
+        : capacityStatus !== 200
+          ? route.fulfill({
+              status: capacityStatus,
+              contentType: 'application/problem+json',
+              json: {
+                type: 'about:blank',
+                title: 'Forbidden',
+                status: capacityStatus,
+                code: 'identity.forbidden',
+                requestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+              },
+            })
+          : route.fulfill({
+              json: {
+                asOf: timestamp,
+                execution: {
+                  activeRuns: 1,
+                  reservedActiveSlots: 1,
+                  activeCapacityConsumed: 2,
+                  queuedRuns: 1,
+                  policy: {
+                    state: options.policy ?? 'active',
+                    version: 1,
+                    activeRunLimit: 5,
+                    queuedRunLimit: 100,
+                  },
+                },
+                artifacts: {
+                  chargedBytes: capacityBytes,
+                  byteLimit: '0',
+                  chargedCount: 1,
+                  artifactCountLimit: 0,
+                  source: 'stored',
                 },
               },
-              artifacts: {
-                chargedBytes: '9007199254740993',
-                byteLimit: '0',
-                chargedCount: 1,
-                artifactCountLimit: 0,
-                source: 'stored',
-              },
-            },
-          });
-    if (url.pathname.endsWith('/run-statistics'))
+            });
+    if (url.pathname.endsWith('/run-statistics')) {
+      if (
+        url.searchParams.get('breakdown') === 'workflow' &&
+        activityStatus !== 200
+      )
+        return activityStatus === 0
+          ? route.abort('failed')
+          : route.fulfill({ status: activityStatus });
       return route.fulfill({
         json: {
           asOf: timestamp,
@@ -118,7 +130,7 @@ async function install(
                   items: [
                     {
                       workflowId,
-                      workflowName: 'Daily intake',
+                      workflowName: activityName,
                       total: 4,
                       byStatus: counts,
                     },
@@ -128,6 +140,7 @@ async function install(
               : null,
         },
       });
+    }
     if (url.pathname.endsWith('/runs'))
       return route.fulfill({ json: { items: [], nextCursor: null } });
     return route.fulfill({ status: 404 });
@@ -135,7 +148,19 @@ async function install(
   return {
     requests,
     deny: () => {
-      denyCapacity = true;
+      capacityStatus = 403;
+    },
+    failCapacity: (status: number) => {
+      capacityStatus = status;
+    },
+    failActivity: (status: number) => {
+      activityStatus = status;
+    },
+    authorize: () => {
+      capacityStatus = 200;
+      activityStatus = 200;
+      capacityBytes = '42';
+      activityName = 'Fresh activity';
     },
   };
 }
@@ -180,6 +205,13 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
   await page.getByRole('button', { name: '7 days' }).focus();
   await page.keyboard.press('Space');
   await expect(page).toHaveURL(/window=7d/u);
+  await expect(page.getByRole('button', { name: '7 days' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Refresh retained run activity' }),
+  ).toBeEnabled();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -198,7 +230,7 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
 test('Usage removes denied cached capacity without hiding retained activity', async ({
   page,
 }) => {
-  const { deny } = await install(page);
+  const { deny, failCapacity, authorize } = await install(page);
   await page.goto(`/w/${workspaceId}/settings/usage`);
   await expect(
     page.getByText('9007199254740993', { exact: true }),
@@ -209,6 +241,67 @@ test('Usage removes denied cached capacity without hiding retained activity', as
     0,
   );
   await expect(page.getByText('Daily intake', { exact: true })).toBeVisible();
+  for (const status of [503, 0]) {
+    failCapacity(status);
+    await page
+      .getByRole('button', { name: 'Refresh current capacity' })
+      .click();
+    await expect(
+      page.getByText(
+        status === 0
+          ? 'Current capacity couldn’t be reached. Check your connection and try again.'
+          : 'Current capacity couldn’t be loaded. Try again.',
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText('9007199254740993', { exact: true }),
+    ).toHaveCount(0);
+  }
+  authorize();
+  await page.getByRole('button', { name: 'Refresh current capacity' }).click();
+  await expect(page.getByText('42', { exact: true })).toBeVisible();
+});
+
+test('Usage forgets denied activity across windows, transient failures and fresh recovery', async ({
+  page,
+}) => {
+  const { failActivity, authorize } = await install(page);
+  await page.goto(`/w/${workspaceId}/settings/usage`);
+  await expect(page.getByText('Daily intake', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '6 hours' }).click();
+  await expect(page).toHaveURL(/window=6h/u);
+  await expect(
+    page.getByRole('button', { name: 'Refresh retained run activity' }),
+  ).toBeEnabled();
+  failActivity(404);
+  await page
+    .getByRole('button', { name: 'Refresh retained run activity' })
+    .click();
+  await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
+  failActivity(503);
+  await page.getByRole('button', { name: '24 hours' }).click();
+  await expect(
+    page.getByText('Retained run activity couldn’t be loaded. Try again.'),
+  ).toBeVisible();
+  await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
+  failActivity(0);
+  await page
+    .getByRole('button', { name: 'Refresh retained run activity' })
+    .click();
+  await expect(
+    page.getByText(
+      'Retained run activity couldn’t be reached. Check your connection and try again.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText('9007199254740993', { exact: true }),
+  ).toBeVisible();
+  authorize();
+  await page
+    .getByRole('button', { name: 'Refresh retained run activity' })
+    .click();
+  await expect(page.getByText('Fresh activity', { exact: true })).toBeVisible();
 });
 
 test('Usage leaves capacity unread in suspended workspaces and roles without artifact access', async ({

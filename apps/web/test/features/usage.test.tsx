@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
@@ -252,31 +252,159 @@ describe('workspace Usage', () => {
     },
   );
 
-  it('preserves stale capacity on a transient failure and hides it after denial', async () => {
-    let status = 200;
-    install({
-      capacityResponse: () =>
-        status === 200
-          ? HttpResponse.json(capacity)
-          : new HttpResponse(null, { status }),
-    });
-    renderApp(path);
-    await screen.findByText('9007199254740993', {}, coldStart);
-    status = 503;
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Refresh current capacity' }),
-    );
-    await screen.findByText(/Couldn’t refresh. Showing results/u);
-    expect(screen.getByText('9007199254740993')).toBeVisible();
-    status = 403;
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Refresh current capacity' }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument(),
-    );
-    expect(screen.getByText('Daily intake')).toBeVisible();
-  });
+  it.each([401, 403, 404, 409])(
+    'forgets capacity after %s until fresh success, including remount and later failures',
+    async (denial) => {
+      let status = 200;
+      let fresh = false;
+      install({
+        capacityResponse: () =>
+          status === 200
+            ? HttpResponse.json(
+                fresh
+                  ? {
+                      ...capacity,
+                      artifacts: { ...capacity.artifacts, chargedBytes: '42' },
+                    }
+                  : capacity,
+              )
+            : new HttpResponse(null, { status }),
+      });
+      const { router } = renderApp(path);
+      await screen.findByText('9007199254740993', {}, coldStart);
+      status = 503;
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh current capacity' }),
+      );
+      await screen.findByText(/Couldn’t refresh. Showing results/u);
+      expect(screen.getByText('9007199254740993')).toBeVisible();
+      status = denial;
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh current capacity' }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument(),
+      );
+      expect(screen.getByText('Daily intake')).toBeVisible();
+      status = 503;
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh current capacity' }),
+      );
+      await screen.findByText(
+        'Current capacity couldn’t be loaded. Try again.',
+      );
+      expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument();
+      await act(() =>
+        router.navigate({
+          to: '/w/$workspaceId/settings',
+          params: { workspaceId: fixtureIds.workspace },
+        }),
+      );
+      await act(() =>
+        router.navigate({
+          to: '/w/$workspaceId/settings/usage',
+          params: { workspaceId: fixtureIds.workspace },
+          search: { window: '24h' },
+        }),
+      );
+      await screen.findByText(
+        'Current capacity couldn’t be loaded. Try again.',
+      );
+      expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument();
+      fresh = true;
+      status = 200;
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh current capacity' }),
+      );
+      expect(await screen.findByText('42')).toBeVisible();
+      expect(screen.queryByText('9007199254740993')).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([401, 403, 404, 409])(
+    'forgets every activity window after %s and recovers only with fresh success',
+    async (denial) => {
+      install();
+      let status = 200;
+      let fresh = false;
+      mockServer.use(
+        http.get(`${apiBase}/run-statistics`, ({ request }) => {
+          const query = new URL(request.url).searchParams;
+          if (query.get('breakdown') !== 'workflow')
+            return HttpResponse.json(fixtureStatistics());
+          return status === 200
+            ? HttpResponse.json(
+                fixtureStatistics({
+                  window: query.get('window') ?? '24h',
+                  workflows: [
+                    {
+                      workflowId: fixtureIds.workflow,
+                      workflowName: fresh ? 'Fresh activity' : 'Old activity',
+                      total: 8,
+                    },
+                  ],
+                }),
+              )
+            : new HttpResponse(null, { status });
+        }),
+      );
+      const { router } = renderApp(path);
+      await screen.findByText('Old activity', {}, coldStart);
+      await userEvent.click(screen.getByRole('button', { name: '6 hours' }));
+      await screen.findByText('Old activity');
+      status = 503;
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh retained run activity' }),
+      );
+      await screen.findByText(/Couldn’t refresh. Showing results/u);
+      expect(screen.getByText('Old activity')).toBeVisible();
+      status = denial;
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh retained run activity' }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByText('Old activity')).not.toBeInTheDocument(),
+      );
+      status = 503;
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh retained run activity' }),
+      );
+      await screen.findByText(
+        'Retained run activity couldn’t be loaded. Try again.',
+      );
+      expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: '24 hours' }));
+      await screen.findByText(
+        'Retained run activity couldn’t be loaded. Try again.',
+      );
+      expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
+      await act(() =>
+        router.navigate({
+          to: '/w/$workspaceId/settings',
+          params: { workspaceId: fixtureIds.workspace },
+        }),
+      );
+      await act(() =>
+        router.navigate({
+          to: '/w/$workspaceId/settings/usage',
+          params: { workspaceId: fixtureIds.workspace },
+          search: { window: '6h' },
+        }),
+      );
+      await screen.findByText(
+        'Retained run activity couldn’t be loaded. Try again.',
+      );
+      expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
+      expect(screen.getByText('9007199254740993')).toBeVisible();
+      status = 200;
+      fresh = true;
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh retained run activity' }),
+      );
+      expect(await screen.findByText('Fresh activity')).toBeVisible();
+      expect(screen.queryByText('Old activity')).not.toBeInTheDocument();
+    },
+  );
 
   it('recovers the failed capacity panel independently', async () => {
     let failing = true;

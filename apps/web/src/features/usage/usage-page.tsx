@@ -6,24 +6,16 @@ import { useQuery } from '@tanstack/react-query';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { Notice } from '@/components/ui/notice';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { loomStatisticsQueryOptions } from '@/features/workflow-runs/queries.public';
-import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import { CurrentCapacity } from './components/current-capacity';
 import { RetainedActivity } from './components/retained-activity';
 import { UsageSnapshot } from './components/usage-snapshot';
-import { usageCapacityQueryOptions } from './usage.queries';
+import {
+  usageActivityQueryOptions,
+  usageCapacityQueryOptions,
+} from './usage.queries';
+import { accessLost } from './usage-access';
 import { parseUsageSearch, type UsageSearch } from './usage-search.public';
-
-function accessLost(error: unknown): boolean {
-  return (
-    isApiError(error) &&
-    (error.status === 401 ||
-      error.status === 403 ||
-      error.status === 404 ||
-      error.status === 409)
-  );
-}
 
 const windows = {
   '1h': '1 hour',
@@ -55,14 +47,13 @@ export function UsagePage({
     enabled: canReadCapacity,
   });
   const activity = useQuery({
-    ...loomStatisticsQueryOptions(
+    ...usageActivityQueryOptions(
       apiClient,
       user.id,
       workspace.id,
       search.window,
     ),
     enabled: canReadRuns,
-    refetchIntervalInBackground: false,
   });
   // Do not retain forbidden figures on permission/state loss, even if Query has a previous snapshot.
   const capacityData =
