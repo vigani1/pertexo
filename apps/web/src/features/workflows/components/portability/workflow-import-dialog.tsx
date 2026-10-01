@@ -266,6 +266,7 @@ export function WorkflowImportDialog({
                     invalidate();
                     validation.reset();
                     setTemplate(next);
+                    setReading(false);
                     setManifest(structuredClone(next.manifest));
                     setName(next.title);
                     setBindings([]);

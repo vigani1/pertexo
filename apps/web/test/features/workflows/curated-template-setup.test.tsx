@@ -1,6 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import { useState } from 'react';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
@@ -98,6 +98,55 @@ function mount() {
 }
 
 describe('Curated template setup in the existing import session', () => {
+  it('retires a pending file read when selecting an example and ignores the late old file', async () => {
+    let release: (bytes: ArrayBuffer) => void = () => undefined;
+    const held = new Promise<ArrayBuffer>((resolve) => {
+      release = resolve;
+    });
+    const file = new File(['pending'], 'old.json', {
+      type: 'application/json',
+    });
+    vi.spyOn(file, 'arrayBuffer').mockReturnValue(held);
+    mockServer.use(
+      http.post(`${api}/workflows/import/preview`, () =>
+        HttpResponse.json({
+          manifestDigest: 'b'.repeat(64),
+          compatibilityFingerprint: fingerprint,
+          compatible: true,
+          issues: [],
+          truncated: false,
+          connectionSlots: [],
+        }),
+      ),
+    );
+    const { event } = mount();
+    await event.upload(
+      await screen.findByLabelText('Workflow JSON file'),
+      file,
+    );
+    await screen.findByText('Reading workflow file…');
+    const choose = await screen.findByRole('button', {
+      name: `Set up ${first.title}`,
+    });
+    await waitFor(() => expect(choose).toBeEnabled());
+    await event.click(choose);
+    expect(
+      screen.queryByText('Reading workflow file…'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Preview import' }),
+    ).toBeEnabled();
+    await act(async () => {
+      release(
+        new TextEncoder().encode(JSON.stringify(controlled.manifest)).buffer,
+      );
+      await held;
+    });
+    expect(screen.getByLabelText('New workflow name')).toHaveValue(first.title);
+    expect(screen.queryByLabelText('HTTPS endpoint')).not.toBeInTheDocument();
+    await event.click(screen.getByRole('button', { name: 'Preview import' }));
+    await screen.findByText(/Compatible with this workspace/u);
+  });
   it('keeps the production chooser off and rejects unavailable exact catalog pins', () => {
     expect(curatedTemplateChooserEnabled()).toBe(false);
     expect(templateUnavailableReasons(first, catalogOf([]))).toContain(
