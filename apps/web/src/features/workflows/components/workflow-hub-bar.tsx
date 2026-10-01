@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { describeWorkflowState } from '../model/workflow-state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
 import { WorkflowDuplicateAction } from './workflow-duplicate-dialog';
+import { WorkflowExportAction } from './portability/workflow-export-dialog';
 
 export type WorkflowHubTab =
   'build' | 'runs' | 'triggers' | 'versions' | 'settings';
@@ -174,6 +175,15 @@ export function WorkflowHubBar({
         ))}
       </nav>
       <div className="flex items-center gap-1.5 xl:justify-self-end">
+        {workflow === undefined ? null : (
+          <WorkflowExportAction
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            workflow={workflow}
+            blocked={duplicateBlocked}
+          />
+        )}
         {workflow === undefined ? null : (
           <WorkflowDuplicateAction
             apiClient={apiClient}

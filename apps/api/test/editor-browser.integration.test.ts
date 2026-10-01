@@ -59,6 +59,11 @@ import {
   workflowDuplicationEvidenceSchema,
   verifyWorkflowDuplicationEvidence,
 } from './support/workflow-duplication-browser-evidence.js';
+import {
+  prepareWorkflowPortabilityBrowserFixture,
+  workflowPortabilityBrowserEvidenceSchema,
+  verifyWorkflowPortabilityBrowserEvidence,
+} from './support/workflow-portability-browser-fixture.js';
 
 const enabled = process.env.EDITOR_BROWSER_INTEGRATION === 'true';
 const scenario = z
@@ -71,6 +76,7 @@ const scenario = z
     'schedule',
     'webhook-controlled-http',
     'duplication',
+    'portability',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -127,6 +133,11 @@ const browserEvidenceSchema = z.strictObject({
 let evidence: z.infer<typeof browserEvidenceSchema> | undefined;
 let duplicationEvidence:
   z.infer<typeof workflowDuplicationEvidenceSchema> | undefined;
+let portabilityFixture:
+  | Awaited<ReturnType<typeof prepareWorkflowPortabilityBrowserFixture>>
+  | undefined;
+let portabilityEvidence:
+  z.infer<typeof workflowPortabilityBrowserEvidenceSchema> | undefined;
 let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
 let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
 let expressionEvidence:
@@ -468,6 +479,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       expect(response.statusCode, `${path}: ${response.payload}`).toBe(200);
     }
     const apiOrigin = await api.listen();
+    if (scenario === 'portability')
+      portabilityFixture = await prepareWorkflowPortabilityBrowserFixture(
+        api,
+        webOrigin,
+      );
     httpControl?.setApiOrigin(apiOrigin);
     const readiness = await fetch(`${apiOrigin}/health/ready`);
     expect(readiness.status).toBe(200);
@@ -477,6 +493,28 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     const mailServer = createServer((request, response) => {
       if (httpControl?.handle(request, response) === true) return;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+      if (
+        request.method === 'GET' &&
+        url.pathname === '/workflow-portability-seed' &&
+        scenario === 'portability' &&
+        portabilityFixture !== undefined
+      ) {
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify(portabilityFixture.scope));
+        return;
+      }
+      if (
+        request.method === 'POST' &&
+        url.pathname === '/workflow-portability-deny' &&
+        scenario === 'portability' &&
+        portabilityFixture !== undefined
+      ) {
+        void portabilityFixture.deny().then(
+          () => response.writeHead(204).end(),
+          () => response.writeHead(400).end(),
+        );
+        return;
+      }
       if (
         request.method === 'POST' &&
         (url.pathname === '/browser-opened' ||
@@ -622,6 +660,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           url.pathname === '/evidence/run-recovery' ||
           url.pathname === '/evidence/expression-admission' ||
           url.pathname === '/evidence/duplication' ||
+          url.pathname === '/evidence/portability' ||
           url.pathname === '/evidence/readonly' ||
           url.pathname === '/evidence/schedule')
       ) {
@@ -633,7 +672,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         request.on('end', () => {
           try {
             const value: unknown = JSON.parse(body);
-            if (url.pathname === '/evidence' && scenario === 'nested-conflict')
+            if (
+              url.pathname === '/evidence/portability' &&
+              scenario === 'portability'
+            )
+              portabilityEvidence =
+                workflowPortabilityBrowserEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/evidence' &&
+              scenario === 'nested-conflict'
+            )
               evidence = browserEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/receipts' &&
@@ -768,21 +816,23 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'duplication'
-              ? 'workflow-duplication.spec.ts'
-              : scenario === 'nested-conflict'
-                ? 'editor-execution.spec.ts'
-                : scenario === 'receipts'
-                  ? 'editor-receipts.spec.ts'
-                  : scenario === 'run-recovery'
-                    ? 'editor-run-recovery.spec.ts'
-                    : scenario === 'expression-admission'
-                      ? 'editor-expression-admission.spec.ts'
-                      : scenario === 'readonly'
-                        ? 'editor-readonly.spec.ts'
-                        : scenario === 'schedule'
-                          ? 'editor-schedule.spec.ts'
-                          : 'editor-webhook-controlled-http.spec.ts',
+            scenario === 'portability'
+              ? 'workflow-portability.spec.ts'
+              : scenario === 'duplication'
+                ? 'workflow-duplication.spec.ts'
+                : scenario === 'nested-conflict'
+                  ? 'editor-execution.spec.ts'
+                  : scenario === 'receipts'
+                    ? 'editor-receipts.spec.ts'
+                    : scenario === 'run-recovery'
+                      ? 'editor-run-recovery.spec.ts'
+                      : scenario === 'expression-admission'
+                        ? 'editor-expression-admission.spec.ts'
+                        : scenario === 'readonly'
+                          ? 'editor-readonly.spec.ts'
+                          : scenario === 'schedule'
+                            ? 'editor-schedule.spec.ts'
+                            : 'editor-webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -802,6 +852,19 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'portability') {
+      if (portabilityFixture === undefined || portabilityEvidence === undefined)
+        throw new Error('Workflow portability evidence missing');
+      await verifyWorkflowPortabilityBrowserEvidence(
+        api.database(),
+        portabilityFixture.scope,
+        portabilityEvidence,
+      );
+      process.stdout.write(
+        `Live browser workflow portability evidence ${JSON.stringify(portabilityEvidence)}\n`,
+      );
+      return;
+    }
     if (scenario === 'duplication') {
       if (duplicationEvidence === undefined)
         throw new Error('Workflow duplication evidence missing');

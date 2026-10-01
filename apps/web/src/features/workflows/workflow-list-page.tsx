@@ -24,6 +24,9 @@ import { WorkflowListResults } from './components/list/workflow-list-results';
 import { WorkflowListError } from './components/list/workflow-list-states';
 import { WorkflowRenameDialog } from './components/workflow-rename-dialog';
 import { WorkflowDuplicateDialog } from './components/workflow-duplicate-dialog';
+import { WorkflowExportDialog } from './components/portability/workflow-export-dialog';
+import { WorkflowImportDialog } from './components/portability/workflow-import-dialog';
+import { Button } from '@/components/ui/button';
 import { WorkflowRowsSkeleton } from './components/list/workflow-rows';
 import {
   lifecycleIntentFor,
@@ -198,6 +201,8 @@ export function WorkflowListPage({
   const [lifecycle, setLifecycle] = useState<LifecycleTarget>();
   const [renaming, setRenaming] = useState<WorkflowSummary>();
   const [duplicating, setDuplicating] = useState<WorkflowSummary>();
+  const [exporting, setExporting] = useState<WorkflowSummary>();
+  const [importing, setImporting] = useState(false);
   const runner = useRunWorkflow({
     apiClient,
     userId: user.id,
@@ -228,12 +233,24 @@ export function WorkflowListPage({
         loading={workflows.isPending}
         hasMore={workflows.hasNextPage}
         actions={
-          canCreate && !list.empty ? (
-            <NewWorkflowButton
-              onClick={() => {
-                openCreate('blank');
-              }}
-            />
+          canCreate ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setImporting(true);
+                }}
+              >
+                Import workflow…
+              </Button>
+              {!list.empty ? (
+                <NewWorkflowButton
+                  onClick={() => {
+                    openCreate('blank');
+                  }}
+                />
+              ) : null}
+            </div>
           ) : undefined
         }
       />
@@ -274,6 +291,7 @@ export function WorkflowListPage({
           actions={{
             onRename: setRenaming,
             onDuplicate: setDuplicating,
+            onExport: setExporting,
             onLifecycle: (workflow) => {
               setLifecycle({ workflow, intent: lifecycleIntentFor(workflow) });
             },
@@ -328,6 +346,34 @@ export function WorkflowListPage({
           }}
         />
       )}
+      {exporting === undefined ? null : (
+        <WorkflowExportDialog
+          key={`${user.id}:${workspace.id}:${exporting.id}`}
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflow={exporting}
+          source={{ kind: 'draft' }}
+          onClose={() => {
+            setExporting(undefined);
+          }}
+        />
+      )}
+      {importing ? (
+        <WorkflowImportDialog
+          key={`${user.id}:${workspace.id}`}
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          onClose={() => {
+            setImporting(false);
+          }}
+          onCreated={(id) => {
+            setImporting(false);
+            onCreated(id);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

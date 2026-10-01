@@ -40,7 +40,7 @@ export default tseslint.config(
             },
             {
               regex:
-                '^@pertexo/(?!(?:contracts/schemas/(?:artifacts|catalog|connections|errors|failure-notifications|identity-workspace|node-testing|schedules|transport|webhooks|workflow-authoring|workflow-runs|workspace-inbox)|workflow-model/json-path)$).+',
+                '^@pertexo/(?!(?:contracts/schemas/(?:artifacts|catalog|connections|errors|failure-notifications|identity-workspace|node-testing|schedules|transport|webhooks|workflow-authoring|workflow-portability|workflow-runs|workspace-inbox)|workflow-model/json-path)$).+',
               message:
                 'Import only an explicitly reviewed browser-safe contract schema subpath.',
             },

@@ -8,6 +8,7 @@ export const ROW_REVEAL_CLASS =
 export type WorkflowRowActions = Readonly<{
   onRename: (workflow: WorkflowSummary) => void;
   onDuplicate?: (workflow: WorkflowSummary) => void;
+  onExport?: (workflow: WorkflowSummary) => void;
   onLifecycle: (workflow: WorkflowSummary) => void;
   onRun: (workflow: WorkflowSummary) => void;
   /** The workflow whose run is starting, if any. */

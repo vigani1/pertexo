@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { WorkflowExportDialog } from '@/features/workflows/portability.public';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -132,6 +133,7 @@ function VersionList({
   onPreview,
   onRestore,
   onDuplicate,
+  onExport,
 }: Readonly<{
   items: readonly Version[];
   liveVersionId: string | null;
@@ -141,6 +143,7 @@ function VersionList({
   onPreview: (version: Version) => void;
   onRestore: (version: Version) => void;
   onDuplicate: ((version: Version) => void) | undefined;
+  onExport: ((version: Version) => void) | undefined;
 }>) {
   return (
     <>
@@ -164,6 +167,7 @@ function VersionList({
         onPreview={onPreview}
         onRestore={onRestore}
         onDuplicate={onDuplicate}
+        onExport={onExport}
       />
     </>
   );
@@ -189,6 +193,7 @@ export function WorkflowVersionsPage({
   );
   const overlays = useVersionOverlays();
   const [duplicating, setDuplicating] = useState<Version>();
+  const [exporting, setExporting] = useState<Version>();
   const navigate = useNavigate();
   const workflow = visibleSettingsData(summary);
   const canRestore = workspace.capabilities.includes('workflow:update');
@@ -227,6 +232,11 @@ export function WorkflowVersionsPage({
             onCompare={overlays.compare}
             onPreview={overlays.preview}
             onRestore={overlays.restore}
+            onExport={
+              workspace.capabilities.includes('workflow:read')
+                ? setExporting
+                : undefined
+            }
             onDuplicate={
               workflow !== undefined &&
               canDuplicateWorkflow(workspace, workflow)
@@ -282,6 +292,20 @@ export function WorkflowVersionsPage({
               to: '/w/$workspaceId/workflows/$workflowId',
               params: { workspaceId: workspace.id, workflowId: destinationId },
             });
+          }}
+        />
+      )}
+      {exporting === undefined || workflow === undefined ? null : (
+        <WorkflowExportDialog
+          key={`${user.id}:${workspace.id}:${workflowId}:${exporting.id}`}
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflow={workflow}
+          source={{ kind: 'version', versionId: exporting.id }}
+          allowed={items !== undefined}
+          onClose={() => {
+            setExporting(undefined);
           }}
         />
       )}

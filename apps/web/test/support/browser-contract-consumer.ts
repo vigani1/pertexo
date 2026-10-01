@@ -7,6 +7,12 @@ import { nodeValidationResponseSchema } from '@pertexo/contracts/schemas/node-te
 import { failureNotificationDestinationListResponseSchema } from '@pertexo/contracts/schemas/failure-notifications';
 import { scheduleTriggerListResponseSchema } from '@pertexo/contracts/schemas/schedules';
 import { workflowListResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  workflowPortableManifestSchema,
+  workflowImportPreviewResponseSchema,
+  parsePortableJson,
+  portableGraphDigest,
+} from '@pertexo/contracts/schemas/workflow-portability';
 import { workflowRunResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
 import { webhookTriggerListResponseSchema } from '@pertexo/contracts/schemas/webhooks';
 import { workspaceInboxListResponseSchema } from '@pertexo/contracts/schemas/workspace-inbox';
@@ -22,6 +28,10 @@ export const browserContractConsumer = Object.freeze({
   workspaces: accessibleWorkspacesResponseSchema,
   workflows: workflowListResponseSchema,
   workflowRun: workflowRunResponseSchema,
+  workflowPortable: workflowPortableManifestSchema,
+  workflowPortablePreview: workflowImportPreviewResponseSchema,
+  parsePortableJson,
+  portableGraphDigest,
   webhooks: webhookTriggerListResponseSchema,
   workspaceInbox: workspaceInboxListResponseSchema,
 });
