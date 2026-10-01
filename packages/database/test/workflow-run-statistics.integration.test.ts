@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -768,14 +769,41 @@ describe('run statistics query-plan budget', () => {
       [busyWorkspace, workflows.map(([id]) => id)],
     );
     await addRuns(quietWorkspace, elsewhere, 'succeeded', 2_500, '30 minutes');
-    // Autovacuum keeps production visibility maps current; do it explicitly
-    // so index-only scans are measured as they run there.
+  }
+
+  async function vacuumStatisticsFixture(timeoutMillis = 5_000) {
+    // A completed VACUUM cannot make newly inserted rows all-visible while
+    // an older snapshot (including an autovacuum worker) is still alive.
+    // Drain that fixture precondition, not the measured query's result.
     const superuser = new Pool({
       connectionString: statisticsDatabase.databaseUrl(superuserUrl),
       max: 1,
     });
     try {
+      const deadline = Date.now() + timeoutMillis;
+      for (;;) {
+        const snapshots = await superuser.query<{ count: number }>(
+          `select count(*)::integer as count from pg_stat_activity
+           where datname = current_database() and pid <> pg_backend_pid()
+             and backend_xmin is not null`,
+        );
+        if (snapshots.rows[0]?.count === 0) break;
+        if (Date.now() >= deadline)
+          throw new Error('Statistics fixture still has active snapshots');
+        await delay(10);
+      }
       await superuser.query('vacuum (analyze) app.workflow_runs');
+      const visibility = await superuser.query<{
+        relpages: number;
+        relallvisible: number;
+      }>(
+        `select relpages, relallvisible from pg_class
+         where oid = 'app.workflow_runs'::regclass`,
+      );
+      expect(visibility.rows[0]?.relpages).toBeGreaterThan(0);
+      expect(visibility.rows[0]?.relallvisible).toBe(
+        visibility.rows[0]?.relpages,
+      );
     } finally {
       await superuser.end();
     }
@@ -867,8 +895,60 @@ describe('run statistics query-plan budget', () => {
     });
   }, 30_000);
 
+  it('requires snapshot readiness before vacuuming the plan fixture', async () => {
+    const reader = new Pool({
+      connectionString: statisticsDatabase.databaseUrl(superuserUrl),
+      max: 1,
+    });
+    const vacuum = new Pool({
+      connectionString: statisticsDatabase.databaseUrl(superuserUrl),
+      max: 1,
+    });
+    try {
+      await reader.query('begin isolation level repeatable read');
+      await reader.query('select pg_current_snapshot()');
+      await seedHistory();
+      // Reproduce the old setup: VACUUM succeeds, but cannot establish the
+      // all-visible precondition while the pre-insert snapshot is held.
+      await vacuum.query('vacuum (analyze) app.workflow_runs');
+      const visibility = await vacuum.query<{ relallvisible: number }>(
+        `select relallvisible from pg_class
+         where oid = 'app.workflow_runs'::regclass`,
+      );
+      expect(visibility.rows[0]?.relallvisible).toBe(0);
+      await expect(vacuumStatisticsFixture(50)).rejects.toThrow(
+        'Statistics fixture still has active snapshots',
+      );
+      await reader.query('rollback');
+      await vacuumStatisticsFixture();
+      const plan = await explainAsApi(
+        `select workflow_id, status, count(*) from app.workflow_runs
+         where workspace_id = $1
+           and created_at >= transaction_timestamp() - make_interval(hours => 1)
+           and created_at < transaction_timestamp()
+         group by workflow_id, status`,
+      );
+      expect(indexScans(plan.Plan)).toMatchObject([
+        {
+          index: 'workflow_runs_workspace_created_statistics_idx',
+          nodeType: 'Index Only Scan',
+          rows: 96,
+          heapFetches: 0,
+        },
+      ]);
+      expect(explainWork(plan.Plan).rootSharedBufferTouches).toBeLessThan(40);
+    } finally {
+      try {
+        await reader.query('rollback');
+      } finally {
+        await Promise.all([reader.end(), vacuum.end()]);
+      }
+    }
+  }, 30_000);
+
   it('reads only the window through index-only scans', async () => {
     await seedHistory();
+    await vacuumStatisticsFixture();
     const inWindow = await inWorkspace<{ count: number }>(
       'owner',
       busyWorkspace,
@@ -897,11 +977,13 @@ describe('run statistics query-plan budget', () => {
       ),
     };
 
-    for (const plan of Object.values(plans)) {
+    for (const [name, plan] of Object.entries(plans)) {
       expect(plan.Settings?.enable_seqscan).not.toBe('off');
       expect(explainWork(plan.Plan).nodeTypes).not.toContain('Seq Scan');
       for (const scan of indexScans(plan.Plan))
-        expect(scan.nodeType).toBe('Index Only Scan');
+        expect(scan.nodeType, `${name}: ${JSON.stringify(plan)}`).toBe(
+          'Index Only Scan',
+        );
     }
     expect(indexScans(plans.current.Plan).map(({ index }) => index)).toEqual([
       'workflow_runs_workspace_status_created_idx',
