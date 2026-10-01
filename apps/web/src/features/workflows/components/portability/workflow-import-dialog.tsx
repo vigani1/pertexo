@@ -30,6 +30,13 @@ import {
   WorkflowImportCompatibility,
 } from './workflow-import-review';
 import { PortableGraphReview } from './portable-graph-review';
+import { CuratedTemplateChoice } from '../templates/curated-template-choice';
+import {
+  configureTemplate,
+  setupValueError,
+  templateOrigin,
+  type CuratedTemplate,
+} from '../../model/curated-template-setup';
 
 export function WorkflowImportDialog({
   apiClient,
@@ -39,6 +46,7 @@ export function WorkflowImportDialog({
   onCreated,
   open = true,
   onReopen,
+  templatesEnabled = false,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -47,7 +55,10 @@ export function WorkflowImportDialog({
   onCreated: (workflowId: string) => void;
   open?: boolean;
   onReopen?: () => void;
+  templatesEnabled?: boolean;
 }>) {
+  const [template, setTemplate] = useState<CuratedTemplate>();
+  const [setupValues, setSetupValues] = useState<string[]>([]);
   const [manifest, setManifest] = useState<WorkflowPortableManifest>();
   const [name, setName] = useState('');
   const [bindings, setBindings] = useState<PortableConnectionBinding[]>([]);
@@ -60,10 +71,12 @@ export function WorkflowImportDialog({
   const resetBusy = useRef(false);
   const intent = useRef(0);
   const commandClear = useRef<() => void>(() => undefined);
-  const validation = useFieldValidation<'name' | 'file'>();
+  const validation = useFieldValidation<string>();
   const clear = useCallback(() => {
     intent.current += 1;
     setManifest(undefined);
+    setTemplate(undefined);
+    setSetupValues([]);
     setName('');
     setBindings([]);
     setPreview(undefined);
@@ -92,6 +105,10 @@ export function WorkflowImportDialog({
     commandClear.current = command.clear;
   }, [command.clear]);
   const locked = lifetime.denied || command.state.kind !== 'editable';
+  const configuredManifest =
+    template === undefined
+      ? manifest
+      : configureTemplate(template, setupValues);
   const complete =
     manifest?.connectionSlots.every((slot) =>
       bindings.some(
@@ -134,7 +151,10 @@ export function WorkflowImportDialog({
     setError(undefined);
   }
   async function chooseFile(file: File | undefined) {
+    if (locked) return;
     invalidate();
+    setTemplate(undefined);
+    setSetupValues([]);
     setManifest(undefined);
     setBindings([]);
     setReading(false);
@@ -157,14 +177,20 @@ export function WorkflowImportDialog({
     }
   }
   async function checkPreview() {
+    const setupErrors = Object.fromEntries(
+      template?.setupTargets.map((target, index) => [
+        `setup-${String(index)}`,
+        setupValueError(target, setupValues[index] ?? ''),
+      ]) ?? [],
+    );
     if (
-      manifest === undefined ||
       !complete ||
       locked ||
       previewing ||
-      !validation.submit({ name: workflowNameError(name) })
+      !validation.submit({ name: workflowNameError(name), ...setupErrors })
     )
       return;
+    if (configuredManifest === undefined) return;
     const epoch = intent.current;
     const request = lifetime.begin();
     setPreview(undefined);
@@ -176,7 +202,13 @@ export function WorkflowImportDialog({
       const result = await previewWorkflowImport(
         apiClient,
         workspace.id,
-        { manifest, bindings },
+        {
+          manifest: configuredManifest,
+          bindings,
+          ...(template === undefined
+            ? {}
+            : { templateOrigin: templateOrigin(template) }),
+        },
         request.signal,
       );
       if (request.current() && epoch === intent.current) setPreview(result);
@@ -224,6 +256,24 @@ export function WorkflowImportDialog({
                 effects when you later publish, preview or run them. This check
                 does not execute steps or promise that the workflow is safe.
               </Notice>
+              {templatesEnabled ? (
+                <CuratedTemplateChoice
+                  apiClient={apiClient}
+                  userId={userId}
+                  disabled={locked}
+                  onChoose={(next) => {
+                    if (locked) return;
+                    invalidate();
+                    validation.reset();
+                    setTemplate(next);
+                    setManifest(structuredClone(next.manifest));
+                    setName(next.title);
+                    setBindings([]);
+                    // Destination literals must be supplied explicitly, never reused from demo data.
+                    setSetupValues(next.setupTargets.map(() => ''));
+                  }}
+                />
+              ) : null}
               <FieldGroup>
                 <LabelledField
                   id="portable-workflow-file"
@@ -269,11 +319,59 @@ export function WorkflowImportDialog({
                   )}
                 </LabelledField>
               </FieldGroup>
+              {template === undefined ? null : (
+                <FieldGroup>
+                  {template.setupTargets.map((target, index) => (
+                    <LabelledField
+                      key={`${target.nodeId}:${target.key}`}
+                      id={`template-setup-${String(index)}`}
+                      label={
+                        target.valueKind === 'https_endpoint'
+                          ? 'HTTPS endpoint'
+                          : 'Slack channel ID'
+                      }
+                      error={validation.error(`setup-${String(index)}`)}
+                      description="Do not enter credentials or secrets."
+                    >
+                      {(control) => (
+                        <Input
+                          {...control}
+                          ref={validation.register(`setup-${String(index)}`)}
+                          value={setupValues[index] ?? ''}
+                          maxLength={
+                            target.valueKind === 'https_endpoint' ? 2048 : 128
+                          }
+                          disabled={locked}
+                          autoComplete="off"
+                          onChange={(event) => {
+                            if (locked) return;
+                            invalidate();
+                            setSetupValues((current) =>
+                              current.map((value, position) =>
+                                position === index ? event.target.value : value,
+                              ),
+                            );
+                            validation.change(
+                              `setup-${String(index)}`,
+                              setupValueError(target, event.target.value),
+                            );
+                          }}
+                        />
+                      )}
+                    </LabelledField>
+                  ))}
+                  <p className="text-sm text-muted-foreground">
+                    Historical origin records this initial template basis only.
+                    Later edits do not remain synchronized with the example or
+                    certify safety.
+                  </p>
+                </FieldGroup>
+              )}
               {reading ? <p role="status">Reading workflow file…</p> : null}
               {manifest === undefined ? null : (
                 <>
                   <PortableGraphReview
-                    graph={manifest.graph}
+                    graph={(configuredManifest ?? manifest).graph}
                     label="Complete imported graph"
                   />
                   <WorkflowImportConnections
@@ -367,14 +465,17 @@ export function WorkflowImportDialog({
                 onClick={() => {
                   if (command.state.kind === 'uncertain') command.retry();
                   else if (
-                    manifest !== undefined &&
+                    configuredManifest !== undefined &&
                     preview?.compatible === true &&
                     !preview.truncated &&
                     complete &&
                     validation.submit({ name: workflowNameError(name) })
                   ) {
                     command.start({
-                      manifest,
+                      manifest: configuredManifest,
+                      ...(template === undefined
+                        ? {}
+                        : { templateOrigin: templateOrigin(template) }),
                       bindings,
                       name,
                       expectedCompatibilityFingerprint:

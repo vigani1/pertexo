@@ -38,6 +38,27 @@ acceptance is therefore superseded, not authority to weaken F05.
 not proof of absence from every file. Recheck these anchors before implementation.
 Code availability is not a fresh end-to-end verification claim.
 
+Implementation foundation update (2026-10-02): accepted decision recorded in
+`be6d91e3`; immutable three-asset/model and separate registered input/config
+policy in `fb4a2890`; additive HTTP/API origin forwarding, scoped projection
+capability and conditional command identity in `28a54ab6`. The chooser/guided
+setup uses the existing mounted recovered import session and remains explicitly
+off. No persistent origin SQL writer/reader, inheritance or migration has yet
+been installed; the opt-in API fails unavailable without a supported reader.
+Combined F02/F05 base and migration allocation remain release-owner gates.
+
+Foundation verification: 215 model and 124 catalog unit tests; 154 contract tests
+with regenerated artifact/OpenAPI checks; 113 focused API tests and two receipt
+identity tests; 876 web unit tests and 27 focused setup/recovery tests. Relevant
+builds/typechecks, scoped lint, browser import/export checks and architecture/
+complexity ratchets pass; React Doctor changed score 89 retains the same six
+advisory identities. Fresh pure proof of the actual repository assets passes
+selected placement, authoring admission, F05 binding/reprojection and executable
+compilation for all three at epoch 38, with default-core rejection. Its bindings
+are synthetic; this does not establish database authority, execution or delivery.
+Owned HTTP/PostgreSQL/browser/worker journeys and compatible cutover tests remain
+open. The accepted feature is not complete or release-qualified.
+
 ## Dependencies and planning gate
 
 05; supported catalog and approved first examples.
