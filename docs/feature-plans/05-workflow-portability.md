@@ -2,11 +2,11 @@
 
 Status: same-workspace duplication first slice independently reviewed, merged
 and qualified under ADR060 through PR142; broader F05 is not complete.
-Import/export is approved and implementation is in progress under accepted
+Import/export is approved and implemented under accepted
 ADR062. Format, persistence, authenticated HTTP and rendered UI are implemented
-in the dedicated portability worktree. The integrated browser journey passes on
-the evolving candidate; frozen-source qualification and independent
-implementation review remain open.
+in the dedicated portability worktree. Frozen-source local qualification passes
+at `5ada95ea`; independent implementation review, combined upstream migration
+qualification and hosted integration remain open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New cross-stack authoring slice. Relative size: **M–L**, not a calendar estimate.
 
@@ -243,12 +243,14 @@ Qualification is separate from the earlier duplication evidence above.
       rebinding and ephemeral manual recovery controls implemented.
 - [x] Ordinary HTTP/database integration and a strict, owned real-browser CI
       lane assigned without optional flags or zero-minimum reports.
-- [ ] Connection/catalog/authority races and receipt hold/expiry/purge evidence
+- [x] Connection/catalog/authority races and receipt hold/expiry/purge evidence
       closed on the final implementation source.
-- [ ] Enabled two-workspace browser/API/database/worker acceptance and safe
+- [x] Enabled two-workspace browser/API/database/worker acceptance and safe
       owned-fixture teardown recorded on the final implementation source.
-- [ ] Repository/static checks, source-bound coverage and independent standards
-      and spec reviews closed on the exact candidate.
+- [x] Repository/static checks and source-bound coverage qualified on the exact
+      implementation candidate.
+- [ ] Independent standards/spec implementation reviews and combined upstream
+      migration history qualification closed on the integration candidate.
 - [ ] Required reviewed-head checks, merge and natural-main result inspected.
 
 Implementation evidence so far: `c83e21a0` adds the bounded format and registered
@@ -275,3 +277,35 @@ connection discovery from selection; no eligibility or security checks were
 weakened. Broad database qualification discovered two stale migration support
 suffixes, corrected at `60fd2619`; the original failed report is retained.
 These are pre-freeze evidence, not a claim of final-head or hosted qualification.
+
+Final local qualification is bound to implementation head `5ada95ea`, followed
+only by this evidence/tracker documentation update. `pnpm check` and
+`pnpm test:coverage` pass on unchanged, clean source. Coverage provenance binds
+24 cohorts to
+`sha256:49c26dc5db2c6466e2d5a918aa21d374f65eadd964239956131dc695dfa002ba`;
+the strict risk report has zero unreviewed branches (391 reviewed
+uncovered branches). Full database integration passes 854 cases across 111 files,
+with zero skips and unchanged thresholds; database unit coverage passes 892.
+The database source tree remains unchanged between its final `cbdfd86e` run and
+`5ada95ea`. Fresh exact-head authenticated HTTP passes three cases and the owned
+real browser journey one. All 91 ordinary mock browser cases pass across
+Chromium, Firefox and WebKit; its web source tree remains unchanged at the final
+implementation head. Final ordinary suites include 1,849 API, 903 worker and 858
+web tests. Task-owned databases and both isolated fixture projects were removed
+after exact ownership and zero-client checks; unrelated containers, user data
+and the existing API/web processes are unchanged.
+
+Qualification failures are retained, not waived. An existing mail retry fixture
+was made explicitly due after proving its host/PG submillisecond clock boundary;
+the unchanged webhook browser case passed after contention was removed. The
+coverage gate exposed reachable authority/parser test gaps and a dead nested
+schema-projection callback; `5ada95ea` adds the regressions and removes that
+callback without changing generated contracts. Three Fastify default fallbacks
+are narrowly reviewed against the pinned real framework and its eager defaults.
+React Doctor's final changed scan reports 89; its full scan remains 78, matching
+the prior comparable full scan. Loading-reset findings point inside `finally`,
+and the source/authority-dependent export effect is intentional; component
+size/control-flow advisories remain review notes. No rule suppression, test or
+performance threshold relaxation, hook bypass, push, hosted-CI or merge claim is
+made. Independent implementation review and the `0130`/`0131` plus `0132` combined
+upstream migration history remain open; production activation is unauthorized.
