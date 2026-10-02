@@ -23,6 +23,7 @@ test('proves portable contracts are browser-safe and portable policy remains ser
     '@pertexo/contracts/schemas/workflow-portability',
     '@pertexo/workflow-model/portability-contract',
     '@pertexo/workflow-model/curated-templates',
+    '@pertexo/workflow-model/callable-type-contract',
   ])
     assert.ok(
       BUILT_PACKAGE_CONSUMER_CASES.some(

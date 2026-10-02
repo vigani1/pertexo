@@ -1,6 +1,21 @@
 import './server-only.js';
 
 export {
+  CALLABLE_TYPE_LIMITS_V1,
+  callableTypeDescriptorSchemaV1,
+  callableObjectTypeDescriptorSchemaV1,
+  callableTypeJsonSchemaV1,
+  type CallableTypeDescriptorV1,
+  type CallableObjectTypeDescriptorV1,
+} from './callable-type-contract.js';
+export {
+  CALLABLE_VALUE_JSON_LIMITS_V1,
+  validateCallableValueV1,
+  type CallableValueIssueCodeV1,
+  type CallableValueValidationV1,
+} from './callable-type-validation.js';
+
+export {
   CANONICAL_JSON_MAX_DEPTH,
   InvalidJsonValueError,
   canonicalJson,

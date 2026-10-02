@@ -135,6 +135,13 @@ export const BUILT_PACKAGE_CONSUMER_CASES = Object.freeze([
   },
   {
     conditions: ['browser'],
+    packageDirectory: 'packages/workflow-model',
+    specifier: '@pertexo/workflow-model/callable-type-contract',
+    requiredExports: ['callableObjectTypeDescriptorSchemaV1'],
+    requireTypes: true,
+  },
+  {
+    conditions: ['browser'],
     expected: 'browser-rejected',
     packageDirectory: 'packages/workflow-model',
     specifier: '@pertexo/workflow-model/portability',

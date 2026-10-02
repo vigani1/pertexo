@@ -1,6 +1,6 @@
 # F08 — Reusable subworkflows with durable parent/child runs
 
-Status: accepted ADR065; implementation authorized and starting.
+Status: accepted ADR065; implementation in progress, callable type foundation verified.
 Decision preparation is authorized; primary selected strict independent occupancy
 and fail-fast child admission for the V1 proposal on 2026-10-02. The complete
 contract/ADR was accepted at `b6c2998d29408b086c289e87058f9c67d2008ff2` after
@@ -122,7 +122,17 @@ are recorded in the contract. Primary accepted ADR065 at exact `b6c2998d`, tree
 reviewers closed their design P1s with zero remaining actionable delta findings.
 Primary subsequently accepted release-qualified integrated F07 base `0b4e0810`,
 tree `27c2362ba58c9eb161335d89a6665200403d8052`, and exclusive migration0136
-allocation, authorizing full implementation. No persistent F08 schema/code,
-child execution, restart proof or live UI evidence exists at this checkpoint.
+allocation, authorizing full implementation. The browser-safe portable type
+descriptor, bounded runtime value validator and reusable inspector type field
+are implemented. On Node24.15.0/pnpm11.22.0, the model suite passes 1,433 tests
+across 19 files and the focused editor suite passes 16 tests with no skips.
+Model build, web typecheck (after building engine/catalog prerequisites), narrow
+lint/format checks, browser-condition built import and browser dependency
+traversal pass. The exact browser allowlist exposes only the descriptor contract;
+runtime validation remains behind the server model facade. Post-staging React
+Doctor is unchanged at 89/100 with 12 existing F07 advisories and no new callable
+diagnostics. This field is not yet wired into a callable workflow graph and does
+not expose a runnable placeholder. No persistent F08 schema, child execution,
+restart proof or live UI evidence exists at this checkpoint.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
