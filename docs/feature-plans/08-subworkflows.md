@@ -1,6 +1,9 @@
 # F08 — Reusable subworkflows with durable parent/child runs
 
 Status: proposed plan; not implementation-authorized by this document.
+Decision preparation is authorized; primary selected strict independent occupancy
+and fail-fast child admission for the V1 proposal on 2026-10-02. The complete
+contract/ADR still requires design review and acceptance before persistent code.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New execution capability across both stacks. Relative size: **XL**, not a calendar estimate.
 
@@ -31,6 +34,15 @@ Recommend wait-for-result only first, no recursion/cross-workspace calls. Define
 
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
+
+Current bounded decision evidence is in the
+[contract proposal](08-subworkflow-contract-proposal.md) and
+[ADR065 draft](../adr/065-durable-parent-child-workflow-calls.md), globally reserved
+but not accepted. A waiting parent retains its
+ordinary active slot. Fresh child acceptance must reserve an independent ordinary
+slot with existing FIFO/entitlement checks or fail definitely with no child;
+cap one cannot execute nested calls, and any full workspace can refuse a call.
+Do not silently implement an extra child pool or conserved-token redesign.
 
 ## Ownership and structure
 
@@ -87,7 +99,7 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 
 ## Delivery tracker
 
-- [ ] Baseline reconciled against current code and accepted decisions.
+- [x] Baseline reconciled against current code and accepted decisions.
 - [ ] Product choices resolved; necessary ADR accepted.
 - [ ] Contracts and failure/security model reviewed.
 - [ ] Backend behavior implemented and independently verified where needed.
@@ -96,6 +108,11 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 - [ ] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+Evidence log: complete plan and relevant current ADRs/contracts inspected against
+accepted F07 `e7d25e1f85342f10ae0044aadd408d88c49ea993`; exact anchors, proposal
+interfaces, capacity/authority/deadline/retention decisions and verification seams
+are recorded in the proposal. Only strict independent occupancy/fail-fast capacity
+direction is selected; no complete ADR acceptance, allocated migration, persistent
+schema/code, child execution, restart proof or live UI evidence exists yet.
+Existing foundations are not completion of F08. Mark genuinely inapplicable rows
+with a reason rather than fabricating work.

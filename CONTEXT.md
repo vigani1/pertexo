@@ -5,6 +5,16 @@ versions while preserving operational history.
 
 ## Language
 
+**Callable workflow**: A published workflow with an explicit input and result
+contract for invocation by another workflow. _Avoid_: For Each body, copied
+subgraph
+
+**Workflow call**: One invocation of a callable workflow whose caller waits for
+its result. _Avoid_: Queue redelivery, public HTTP workaround
+
+**Child run**: A separate execution created by a workflow call and linked to its
+parent run. _Avoid_: Node attempt, nested loop iteration
+
 **Workflow organization**: Shared workspace metadata that helps people discover
 and arrange workflows without changing their behavior or access. _Avoid_:
 Workflow graph, permission inheritance
