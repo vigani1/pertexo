@@ -203,5 +203,17 @@ full package lint/format, complexity and module-import checks. Database unit
 tests (1,035) and worker typecheck also pass against the engine seam. Durable SQL
 admission/settlement, physical reconciliation, worker/catalog registration,
 publication/editor wiring, retention, and all live qualification remain unfinished.
+The standalone database Checkpoint V3 codec now validates the persisted wire
+format independently of the engine, retaining the existing whole-checkpoint
+256 KiB limit and strict physical-input/child-result separation. Its V2 projection
+is validation-only and is never serialized or passed to execution. All 84 focused
+codec tests pass. The retained run-acceptance contract and canonical write sequence
+have also been extracted without changing legacy triggers, receipt replay,
+notification locking, deadlines or inline persistence; 11 orchestration regressions
+cover that seam. All 1,130 database unit tests across 138 files pass, with database
+build/typecheck, narrow lint/format, module-import and complexity checks. The new
+codec is not registered with persistence owners. Migration0136 is being assembled
+outside the executable migration directory until protected admission, writer
+fences and retention are complete; no SQL or live-service qualification is claimed.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
