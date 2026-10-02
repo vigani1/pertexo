@@ -24,6 +24,7 @@ import {
 import { workflowRunKeys } from '@/features/workflow-runs/queries.public';
 import {
   workflowKeys,
+  workflowOrganizationKeys,
   workflowSummaryQueryOptions,
 } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
@@ -189,6 +190,9 @@ function WorkflowEditorSession({
       });
     },
     onPublicationAccepted: () => {
+      void queryClient.invalidateQueries({
+        queryKey: workflowOrganizationKeys.scope(userId, workspace.id),
+      });
       void queryClient.invalidateQueries({
         queryKey: workflowKeys.scope(userId, workspace.id),
       });

@@ -10,6 +10,7 @@ import {
   type WorkflowDuplicateAttempt,
 } from './workflows.api';
 import { workflowKeys } from './workflows.queries';
+import { workflowOrganizationKeys } from './organization.queries';
 import {
   duplicateFailureState,
   type DuplicatePhase,
@@ -188,6 +189,9 @@ export function useWorkflowDuplicate({
       )
         return;
       attempt.current = undefined;
+      void queryClient.invalidateQueries({
+        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+      });
       void queryClient.invalidateQueries({
         queryKey: workflowKeys.scope(userId, workspaceId),
       });

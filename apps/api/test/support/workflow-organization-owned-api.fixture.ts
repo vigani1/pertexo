@@ -9,7 +9,13 @@ import {
 import { useBetterAuthRealApi } from './better-auth-real-api.integration.support.js';
 
 /** Separate application/counter namespace per suite; real limits remain intact. */
-export function useOrganizationOwnedApi(suite: string) {
+export function useOrganizationOwnedApi(
+  suite: string,
+  options: Readonly<{
+    publicWebOrigin?: string;
+    beforeClose?: () => Promise<void>;
+  }> = {},
+) {
   let ownership: CuratedOwnedFixture;
   beforeAll(async () => {
     for (const name of [
@@ -23,6 +29,7 @@ export function useOrganizationOwnedApi(suite: string) {
     ownership = await verifyCuratedFixtureOwnership();
   });
   const api = useBetterAuthRealApi(suite, {
+    ...options,
     databaseNamespace: 'f07_organization',
     workflowOrganization: {
       cursorSigningKey: Buffer.alloc(32, 0x7a).toString('base64'),

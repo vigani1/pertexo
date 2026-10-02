@@ -9,6 +9,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
 import { importWorkflow } from './workflow-portability.api';
 import { workflowKeys } from './workflows.queries';
+import { workflowOrganizationKeys } from './organization.queries';
 import type { usePortabilityLifetime } from './components/portability/use-portability-lifetime';
 
 interface Attempt {
@@ -64,6 +65,9 @@ export function useWorkflowImportCommand(
         !request.current()
       )
         return;
+      void queryClient.invalidateQueries({
+        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+      });
       void queryClient.invalidateQueries({
         queryKey: workflowKeys.scope(userId, workspaceId),
       });

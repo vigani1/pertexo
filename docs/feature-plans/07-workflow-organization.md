@@ -410,3 +410,37 @@ lint/format, architecture, complexity and unchanged duplication ratchets pass.
 The folder/bulk HTTP slice is locally verified, not hosted, merged, rolled out,
 process-restart-qualified or a real browser acceptance result. Whole F07 remains
 open, including the user-facing organization controls and rollout gates.
+
+Browser organization checkpoint: the workflow list now has bounded, server-side
+literal name, tag, exact-folder/unfiled and private-favorite filters with preserved
+URL state. Folder breadcrumbs, owner/admin vocabulary management, single and
+explicit ordered bulk organization, bounded selected tag cleanup, and personal
+favorites use current projections and fresh role checks. Organization query keys
+remain separate from legacy summary and portability recovery keys. Uncertain
+commands retain the full original key/body/order; retry never installs historical
+metadata. Favorite recovery is owned by the list rather than a disappearing row.
+Legacy create, rename, lifecycle, import, duplicate and publish invalidations also
+refresh organized lists.
+
+The normal browser build remains OFF. Only an explicitly attested owned loopback
+qualification build substitutes its gate; the canonical production import and
+scoped alias are aligned. Browser unit qualification passes 1,055/1,055 cases in
+131 files with no skips; web lint/typecheck/build, architecture, dependency,
+complexity and unchanged duplication checks pass. React Doctor remains 93/100
+with two existing orchestration complexity warnings and no new owned-leaf
+findings. The normal OFF build passes all 91 existing Playwright browser cases,
+including Chromium and Firefox/WebKit smoke coverage; its mocked transport is
+not live organization acceptance evidence.
+
+Separately, one real browser/API/PostgreSQL owner journey passes ordinary
+registration, mail verification, login and workspace/workflow creation, folder
+hierarchy changes and nonempty-delete conflict, tags, placement/unfiling, private
+favorite confirmation, combined filters and preserved navigation, explicitly
+ordered bulk with a deliberately lost committed response and exact full-request
+replay, and bounded cleanup. Fresh HTTP reads and privileged persisted
+corroboration verify the results. Browser lifetime barriers complete before the
+owned fixture is dropped. This first local journey used the working browser
+checkpoint; exact committed-head rerun, role/archive/privacy and partial-outcome
+browser matrices, process/OFF integration, independent whole-feature review and
+release evidence remain open. No production enablement, push or F07 completion
+is claimed.
