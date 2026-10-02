@@ -48,6 +48,8 @@ export interface ExecuteNodeAttemptInput {
   readonly runInput: unknown;
   readonly completedNodeOutputs: unknown;
   readonly coordinatorInput?: unknown;
+  /** Protected immutable snapshot supplied by the worker after lease-authorized recovery. */
+  readonly recordedWorkflowCallInput?: unknown;
   readonly registry: NodeExecutionRegistry;
   readonly signal: AbortSignal;
   readonly runtime?: NodeExecutionRuntime;
@@ -55,7 +57,8 @@ export interface ExecuteNodeAttemptInput {
   /**
    * Called once with the input the executor is about to receive, after
    * mappings resolve and before it runs (ADR 052). Recording it is the
-   * caller's concern; the callback must not throw.
+   * caller's concern. Retained diagnostic callbacks remain best-effort; a native
+   * Call's required persistence failure must escape before executor dispatch.
    */
   readonly onInputResolved?: (input: JsonValue) => Promise<void>;
 }

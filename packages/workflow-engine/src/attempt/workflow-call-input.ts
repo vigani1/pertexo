@@ -12,6 +12,27 @@ import { validateWorkflowCallInputV1 } from '../workflow-call-values.js';
 import type { ExecuteNodeAttemptInput } from './node-attempt-contract.js';
 import { normalizeBoundedEngineJson } from '../executable-workflow.js';
 
+/** Snapshot authority is the worker's SQL concern; grammar/identity stays here. */
+export function recordedCallDeclarationAttemptInput(
+  input: ExecuteNodeAttemptInput,
+  node: WorkflowExecutableNodeV2,
+): Readonly<{ value: JsonValue }> | undefined {
+  if (input.recordedWorkflowCallInput === undefined) return undefined;
+  if (
+    !isAuthenticExecutableIdentityV3(input.executable) ||
+    node.definition.key !== 'core.workflow_call' ||
+    node.definition.version !== 1
+  )
+    operationError('attempt_invalid', 'recorded input requires native Call');
+  try {
+    return {
+      value: normalizeBoundedEngineJson(input.recordedWorkflowCallInput),
+    };
+  } catch {
+    operationError('attempt_invalid', 'recorded Call input is invalid');
+  }
+}
+
 /** Validate actual mapped input before the pure declaration executor can succeed. */
 export function validateCallDeclarationAttemptInput(
   input: ExecuteNodeAttemptInput,

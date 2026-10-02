@@ -351,6 +351,59 @@ describe('public Call coordinator projection', () => {
 });
 
 describe('public Call declaration attempt validation', () => {
+  it('reuses a recorded declaration instead of changed mappings or run input', async () => {
+    const changed = buildWorkflowExecutableV3({
+      release,
+      graph: {
+        ...callGraph,
+        nodes: callGraph.nodes.map((node) =>
+          node.id === 'call'
+            ? {
+                ...node,
+                inputMappings: { name: { kind: 'literal', value: 'changed' } },
+              }
+            : node,
+        ),
+      },
+    });
+    const onInputResolved = vi.fn(async () => {});
+    const { input, execute } = attempt({
+      executable: changed,
+      runInput: { name: 'changed upstream' },
+      recordedWorkflowCallInput: { name: 'input' },
+      onInputResolved,
+    });
+    await executeNodeAttempt(input);
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ input: { name: 'input' } }),
+    );
+    expect(onInputResolved).toHaveBeenCalledExactlyOnceWith({ name: 'input' });
+  });
+
+  it('propagates required snapshot persistence failure without dispatch', async () => {
+    const failure = new Error('input transaction failed');
+    const { input, execute } = attempt({
+      onInputResolved: async () => {
+        throw failure;
+      },
+    });
+    await expect(executeNodeAttempt(input)).rejects.toBe(failure);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('does not persist a recovered input that violates the pinned contract', async () => {
+    const onInputResolved = vi.fn(async () => {});
+    const { input, execute } = attempt({
+      recordedWorkflowCallInput: { name: 42 },
+      onInputResolved,
+    });
+    await expect(executeNodeAttempt(input)).rejects.toBeInstanceOf(
+      NodeExecutorFailure,
+    );
+    expect(onInputResolved).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('rejects a terminal shortcut from the pure declaration executor', async () => {
     const { input, execute } = attempt();
     execute.mockResolvedValue({

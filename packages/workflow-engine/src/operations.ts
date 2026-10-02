@@ -61,6 +61,7 @@ import {
   type WorkflowCallableCompletionMaterial,
 } from './observation/workflow-call-completion.js';
 import {
+  recordedCallDeclarationAttemptInput,
   validateCallDeclarationAttemptInput,
   validateCallDeclarationAttemptResult,
 } from './attempt/workflow-call-input.js';
@@ -417,17 +418,21 @@ export async function executeNodeAttempt(
   assertNotAborted(input.signal);
   const { node, runInput, completedOutputs, directUpstream, structuredInputs } =
     prepareNodeAttemptInput(input);
-  const resolvedInput = await resolveMappedNodeInput(
-    isCoreMergeDefinition(node.definition)
-      ? { ...node, inputMappings: {} }
-      : node,
-    runInput,
-    completedOutputs,
-    directUpstream,
-    input.signal,
-    input.expressionEvaluator,
-    structuredInputs,
-  );
+  const recordedCallInput = recordedCallDeclarationAttemptInput(input, node);
+  const resolvedInput =
+    recordedCallInput === undefined
+      ? await resolveMappedNodeInput(
+          isCoreMergeDefinition(node.definition)
+            ? { ...node, inputMappings: {} }
+            : node,
+          runInput,
+          completedOutputs,
+          directUpstream,
+          input.signal,
+          input.expressionEvaluator,
+          structuredInputs,
+        )
+      : recordedCallInput.value;
   let executionInput = resolvedInput;
   if (isCoreMergeDefinition(node.definition)) {
     if (input.coordinatorInput === undefined)
@@ -438,14 +443,15 @@ export async function executeNodeAttempt(
       operationError('attempt_invalid', 'settled Merge input is invalid');
     }
   }
-  // Recorded before the executor runs, so failed attempts keep it (ADR 052).
-  await input.onInputResolved?.(executionInput);
-  assertNotAborted(input.signal);
   executionInput = validateCallDeclarationAttemptInput(
     input,
     node,
     executionInput,
   );
+  // Native declarations must satisfy the pinned contract before their required
+  // immutable snapshot is committed. Ordinary diagnostic recording is unchanged.
+  await input.onInputResolved?.(executionInput);
+  assertNotAborted(input.signal);
   let result: NodeExecutionResult;
   try {
     result = await input.registry.execute({
