@@ -21,6 +21,10 @@ import {
 import { validateVitestGateReport } from '../coverage/validate-vitest-gate-report.mjs';
 import { validateBenchmarkEvidence } from '../performance/compare-local-benchmark.mjs';
 import { isolatedGitEnvironment } from '../support/git-environment.mjs';
+import {
+  assertCuratedQualification,
+  validateCuratedQualificationDirectory,
+} from '../testing/curated-template-gates.mjs';
 
 export { terminateProcessTree };
 
@@ -46,6 +50,7 @@ const serviceCohorts = new Set([
   'worker-transport-resilience',
   'api-compatibility',
   'database-compatibility',
+  'curated-template-qualification',
 ]);
 
 export const LOCAL_QUALITY_COHORTS = Object.freeze([
@@ -100,6 +105,8 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
       '--config',
       'vitest.integration-coverage.config.ts',
       '--coverage',
+      '--exclude',
+      'test/workflow-template-origin-boundary.integration.test.ts',
     ],
     after: [
       ['pnpm', '--filter', '@pertexo/database', 'test:coverage'],
@@ -142,6 +149,8 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
       'test/workflow-concurrency-browser.integration.test.ts',
       '--exclude',
       'test/connection-health-browser.integration.test.ts',
+      '--exclude',
+      'test/curated-template-origin-guard.integration.test.ts',
       '--reporter=default',
     ],
   }),
@@ -218,6 +227,14 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
       '--config',
       'vitest.integration.config.ts',
       'test/oidc-browser-binding-migration.integration.test.ts',
+    ],
+  }),
+  Object.freeze({
+    id: 'curated-template-qualification',
+    internal: 'curated-template-qualification',
+    command: [
+      'node',
+      'infrastructure/testing/run-curated-template-qualification.mjs',
     ],
   }),
   Object.freeze({ id: 'deployment', command: ['pnpm', 'deployment:check'] }),
@@ -299,7 +316,8 @@ export function parseArguments(arguments_) {
       );
       if (
         definition?.internal !== undefined &&
-        definition.internal !== 'performance'
+        definition.internal !== 'performance' &&
+        definition.internal !== 'curated-template-qualification'
       )
         throw new Error(
           `The ${id} internal cohort cannot be selected directly`,
@@ -452,8 +470,8 @@ export function assertCiLocalQualityContract(source) {
         step.if === 'always()' &&
         step.run === 'docker compose down -v --remove-orphans',
     );
-  if (cleanupCommands.length !== 4)
-    throw new Error('CI service jobs must retain four exact owned cleanups');
+  if (cleanupCommands.length !== 5)
+    throw new Error('CI service jobs must retain five exact owned cleanups');
   return Object.fromEntries(
     Object.entries(parsed.env).map(([name, value]) => [name, String(value)]),
   );
@@ -513,6 +531,19 @@ export function validateQualificationManifest(manifest) {
       throw new Error(
         `Required local cohort ${cohort.id} is ${cohort.status ?? 'missing'}`,
       );
+    if (definition.internal === 'curated-template-qualification') {
+      assertCuratedQualification(cohort.ownedQualification);
+      if (
+        cohort.ownedQualification.source.started.head !== sourceStarted.head ||
+        cohort.ownedQualification.source.started.fingerprint !==
+          sourceStarted.fingerprint ||
+        cohort.reportValidated !== true ||
+        typeof cohort.evidence !== 'string'
+      )
+        throw new Error(
+          'Curated owned qualification is missing source-bound local evidence',
+        );
+    }
     const reportExpected = definition.report !== undefined;
     if (cohort.reportExpected !== reportExpected)
       throw new Error(
@@ -1272,6 +1303,53 @@ async function run() {
             ['db:migrate'],
             environment,
             path.join(outputDirectory, `${definition.id}.log`),
+          );
+        } else if (definition.internal === 'curated-template-qualification') {
+          // Only attest services created by this run; never discover/adopt an older fixture.
+          const postgres = await capture(
+            'docker',
+            composeArguments(id, 'ps', '-q', 'postgres'),
+            environment,
+          );
+          const redis = await capture(
+            'docker',
+            composeArguments(id, 'ps', '-q', 'redis'),
+            environment,
+          );
+          const ownership = JSON.stringify({
+            project: id,
+            postgres: {
+              id: postgres.stdout.trim(),
+              port: Number(environment.POSTGRES_PORT),
+            },
+            redis: {
+              id: redis.stdout.trim(),
+              port: Number(environment.REDIS_PORT),
+            },
+          });
+          const directory = path.join(
+            reportsDirectory,
+            'curated-template-qualification',
+          );
+          await execute(
+            process.execPath,
+            [...definition.command.slice(1), '--reports-directory', directory],
+            {
+              ...environment,
+              EDITOR_BROWSER_OWNED_FIXTURE: 'true',
+              EDITOR_BROWSER_OWNERSHIP_MANIFEST: ownership,
+            },
+            path.join(outputDirectory, `${definition.id}.log`),
+          );
+          record.ownedQualification =
+            await validateCuratedQualificationDirectory(
+              directory,
+              manifest.source.started,
+            );
+          record.reportValidated = true;
+          record.evidence = path.relative(
+            repositoryRoot,
+            path.join(directory, 'qualification.json'),
           );
         } else if (definition.internal === 'performance') {
           const evidencePath = path.join(

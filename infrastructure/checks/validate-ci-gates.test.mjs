@@ -41,10 +41,62 @@ jobs:
   integration:
     steps:
       - run: pnpm mutation:check
+      - run: >-
+          pnpm --filter @pertexo/api exec vitest run
+          --exclude test/platform/compatibility-rollout.integration.test.ts
+          --exclude test/editor-browser.integration.test.ts
+          --exclude test/usage-browser.integration.test.ts
+          --exclude test/workflow-concurrency-browser.integration.test.ts
+          --exclude test/connection-health-browser.integration.test.ts
+          --exclude test/curated-template-origin-guard.integration.test.ts
+          --outputFile=../../artifacts/api-gates.json
+      - run: >-
+          pnpm --filter @pertexo/database exec vitest run
+          --exclude test/workflow-template-origin-boundary.integration.test.ts
+          --outputFile=../../artifacts/database-gates.json
   browser:
     steps:
       - run: pnpm --filter @pertexo/web exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:browser-probes
+  curated-templates:
+    env:
+      COMPOSE_PROJECT_NAME: pertexo-ci-\${{ github.run_id }}-\${{ github.run_attempt }}-curated-templates
+    steps:
+      - uses: actions/checkout@test
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@test
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@test
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @pertexo/web exec playwright install --with-deps chromium
+      - run: docker compose up -d --wait postgres redis
+      - env:
+          DATABASE_ADMIN_URL: postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres
+          DATABASE_MIGRATION_URL: postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
+          DATABASE_API_URL: postgresql://pertexo_api:pertexo-local-api@127.0.0.1:5432/pertexo
+          DATABASE_WORKER_URL: postgresql://pertexo_worker:pertexo-local-worker@127.0.0.1:5432/pertexo
+          DATABASE_DISPATCHER_URL: postgresql://pertexo_dispatcher:pertexo-local-dispatcher@127.0.0.1:5432/pertexo
+          REDIS_URL: redis://:pertexo-local-redis@127.0.0.1:6379/0
+          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
+        run: |
+          test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
+          test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
+          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
+          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
+          export EDITOR_BROWSER_OWNERSHIP_MANIFEST="$postgres_id:$redis_id"
+          node infrastructure/testing/run-curated-template-qualification.mjs --reports-directory "$RUNNER_TEMP/curated-template-qualification"
+      - if: always()
+        run: docker compose down -v --remove-orphans
+      - if: always()
+        uses: actions/upload-artifact@test
+        with:
+          path: \${{ runner.temp }}/curated-template-qualification
+          if-no-files-found: error
 `);
   return { packageManifest, workflow };
 }
@@ -60,6 +112,15 @@ async function currentWorkflow() {
       'utf8',
     ),
   );
+}
+
+async function currentPolicyInput() {
+  return {
+    packageManifest: JSON.parse(
+      await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
+    ),
+    workflow: await currentWorkflow(),
+  };
 }
 
 function assertRequiredLiveBrowserGate(workflow, gate) {
@@ -616,7 +677,10 @@ test('rejects full local qualification in ordinary CI and misplaced mutation exe
   );
 
   const misplacedMutation = clone(fixture());
-  misplacedMutation.workflow.jobs.integration.steps = [];
+  misplacedMutation.workflow.jobs.integration.steps =
+    misplacedMutation.workflow.jobs.integration.steps.filter(
+      (step) => step.run !== 'pnpm mutation:check',
+    );
   misplacedMutation.workflow.jobs.quality.steps.push({
     run: 'pnpm mutation:check',
   });
@@ -729,4 +793,93 @@ test('requires the fast pre-push gate to build before validating exports', () =>
     () => validateCiGatePolicy(input),
     /prepush:fast script must build before validating built exports/u,
   );
+});
+
+test('rejects orphaned curated-template owned fixtures in ordinary CI', async () => {
+  const { packageManifest, workflow } = await currentPolicyInput();
+  delete workflow.jobs['curated-templates'];
+  assert.throws(
+    () => validateCiGatePolicy({ packageManifest, workflow }),
+    /curated-template.*owner/u,
+  );
+});
+
+test('rejects dropped, conditional, optional, or substituted curated-template qualification', async () => {
+  const original = await currentPolicyInput();
+  const qualification = (workflow) =>
+    workflow.jobs['curated-templates'].steps.find((step) =>
+      step.run?.includes('run-curated-template-qualification.mjs'),
+    );
+  for (const mutate of [
+    (workflow) => {
+      workflow.jobs['curated-templates'].steps = workflow.jobs[
+        'curated-templates'
+      ].steps.filter((step) => step !== qualification(workflow));
+    },
+    (workflow) => {
+      workflow.jobs['curated-templates'].if = 'false';
+    },
+    (workflow) => {
+      workflow.jobs['curated-templates']['continue-on-error'] = true;
+    },
+    (workflow) => {
+      qualification(workflow).if = 'false';
+    },
+    (workflow) => {
+      qualification(workflow)['continue-on-error'] = true;
+    },
+    (workflow) => {
+      qualification(workflow).run = qualification(workflow).run.replace(
+        'run-curated-template-qualification.mjs',
+        'run-another-qualification.mjs',
+      );
+    },
+  ]) {
+    const input = clone(original);
+    mutate(input.workflow);
+    assert.throws(() => validateCiGatePolicy(input), /curated-template/u);
+  }
+});
+
+test('rejects lost curated-template cleanup, artifact, and ordinary-suite routing', async () => {
+  const original = await currentPolicyInput();
+  for (const mutate of [
+    (workflow) => {
+      workflow.jobs['curated-templates'].steps = workflow.jobs[
+        'curated-templates'
+      ].steps.filter(
+        (step) => step.run !== 'docker compose down -v --remove-orphans',
+      );
+    },
+    (workflow) => {
+      workflow.jobs['curated-templates'].steps.find(
+        (step) => step.with?.name === 'curated-template-qualification',
+      ).with['if-no-files-found'] = 'ignore';
+    },
+    (workflow) => {
+      const step = workflow.jobs.integration.steps.find((candidate) =>
+        candidate.run?.includes('artifacts/api-gates.json'),
+      );
+      step.run = step.run.replace(
+        /\s*--exclude test\/curated-template-origin-guard\.integration\.test\.ts/u,
+        '',
+      );
+    },
+    (workflow) => {
+      const step = workflow.jobs.integration.steps.find((candidate) =>
+        candidate.run?.includes('artifacts/database-gates.json'),
+      );
+      step.run = step.run.replace(
+        /\s*--exclude test\/workflow-template-origin-boundary\.integration\.test\.ts/u,
+        '',
+      );
+    },
+  ]) {
+    const input = clone(original);
+    mutate(input.workflow);
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /curated-template|ordinary (?:API|database)/u,
+    );
+  }
 });

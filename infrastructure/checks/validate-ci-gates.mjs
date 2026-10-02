@@ -4,6 +4,7 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { parse as parseYaml } from 'yaml';
+import { CURATED_TEMPLATE_GATES } from '../testing/curated-template-gates.mjs';
 
 export const REQUIRED_ORDINARY_CI_GATES = Object.freeze([
   'architecture:check',
@@ -24,6 +25,26 @@ export const FAST_PRE_PUSH_SCOPED_GATES = Object.freeze([
   'test',
   'typecheck',
 ]);
+
+const CURATED_TEMPLATE_JOB = 'curated-templates';
+const CURATED_TEMPLATE_REPORTS_DIRECTORY =
+  '$RUNNER_TEMP/curated-template-qualification';
+const CURATED_TEMPLATE_UPLOAD_DIRECTORY =
+  '${{ runner.temp }}/curated-template-qualification';
+const CURATED_TEMPLATE_QUALIFICATION_COMMAND = `node infrastructure/testing/run-curated-template-qualification.mjs --reports-directory "${CURATED_TEMPLATE_REPORTS_DIRECTORY}"`;
+const CURATED_TEMPLATE_DATABASE_URLS = Object.freeze({
+  DATABASE_ADMIN_URL:
+    'postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres',
+  DATABASE_MIGRATION_URL:
+    'postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo',
+  DATABASE_API_URL:
+    'postgresql://pertexo_api:pertexo-local-api@127.0.0.1:5432/pertexo',
+  DATABASE_WORKER_URL:
+    'postgresql://pertexo_worker:pertexo-local-worker@127.0.0.1:5432/pertexo',
+  DATABASE_DISPATCHER_URL:
+    'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@127.0.0.1:5432/pertexo',
+  REDIS_URL: 'redis://:pertexo-local-redis@127.0.0.1:6379/0',
+});
 
 const SCRIPT_NAME = /^[a-z][a-z0-9:-]*$/u;
 
@@ -80,9 +101,214 @@ function requireExactlyOnce(names, required, label) {
   }
 }
 
+function normalizedShellCommand(value) {
+  return typeof value === 'string'
+    ? value
+        .replaceAll(/\\\s*\n\s*/gu, ' ')
+        .replaceAll(/\s+/gu, ' ')
+        .trim()
+    : '';
+}
+
+function requiredCuratedTemplateOwner(jobs) {
+  const gateMinimums = CURATED_TEMPLATE_GATES.map(({ id, minimumTests }) => ({
+    id,
+    minimumTests,
+  }));
+  if (
+    JSON.stringify(gateMinimums) !==
+    JSON.stringify([
+      { id: 'origin-guard', minimumTests: 2340 },
+      { id: 'origin-boundary', minimumTests: 16 },
+      { id: 'curated-browser', minimumTests: 1 },
+      { id: 'compiled-cutover', minimumTests: 10 },
+    ])
+  )
+    fail(
+      'curated-template owner must retain all four exact no-skip gate minima',
+    );
+  const job = jobs[CURATED_TEMPLATE_JOB];
+  if (job === undefined)
+    fail('curated-template fixtures require one dedicated owner');
+  if (job.if !== undefined || job['continue-on-error'] === true)
+    fail('curated-template owner must be required');
+  if (
+    job.env?.COMPOSE_PROJECT_NAME !==
+    'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-curated-templates'
+  )
+    fail('curated-template owner must use its unique Compose project');
+
+  const steps = jobSteps(jobs, CURATED_TEMPLATE_JOB);
+  const requiredStep = (predicate, message) => {
+    const matches = steps.filter(predicate);
+    if (matches.length !== 1) fail(message);
+    const [step] = matches;
+    if (step.if !== undefined || step['continue-on-error'] === true)
+      fail(`${message}; the step must be required`);
+    return step;
+  };
+  const checkout = requiredStep(
+    (step) => step.uses?.startsWith('actions/checkout@'),
+    'curated-template owner must check out source exactly once',
+  );
+  if (checkout.with?.['fetch-depth'] !== 0)
+    fail('curated-template owner requires full Git history');
+  const node = requiredStep(
+    (step) => step.uses?.startsWith('actions/setup-node@'),
+    'curated-template owner must set up Node exactly once',
+  );
+  if (node.with?.['node-version'] !== 24)
+    fail('curated-template owner must use Node 24');
+  const pnpm = requiredStep(
+    (step) => step.uses?.startsWith('pnpm/action-setup@'),
+    'curated-template owner must set up pnpm exactly once',
+  );
+  if (pnpm.with?.version !== '11.22.0')
+    fail('curated-template owner must pin pnpm 11.22.0');
+  requiredStep(
+    (step) =>
+      normalizedShellCommand(step.run) === 'pnpm install --frozen-lockfile',
+    'curated-template owner must install the frozen dependency graph exactly once',
+  );
+  requiredStep(
+    (step) => normalizedShellCommand(step.run) === 'pnpm build',
+    'curated-template owner must build the workspace exactly once',
+  );
+  const browser = requiredStep(
+    (step) =>
+      normalizedShellCommand(step.run) ===
+      'pnpm --filter @pertexo/web exec playwright install --with-deps chromium',
+    'curated-template owner must install Playwright Chromium exactly once',
+  );
+  const start = requiredStep(
+    (step) =>
+      normalizedShellCommand(step.run) ===
+      'docker compose up -d --wait postgres redis',
+    'curated-template owner must create PostgreSQL and Redis exactly once',
+  );
+  const qualification = requiredStep(
+    (step) =>
+      normalizedShellCommand(step.run).endsWith(
+        CURATED_TEMPLATE_QUALIFICATION_COMMAND,
+      ),
+    'curated-template owner must invoke the source-bound qualification command exactly once',
+  );
+  if (
+    steps.indexOf(qualification) <= steps.indexOf(browser) ||
+    steps.indexOf(qualification) <= steps.indexOf(start)
+  )
+    fail(
+      'curated-template qualification must follow browser and service setup',
+    );
+  if (qualification.env?.EDITOR_BROWSER_OWNED_FIXTURE !== 'true')
+    fail('curated-template owner must require the canonical owned fixture');
+  for (const [name, value] of Object.entries(CURATED_TEMPLATE_DATABASE_URLS))
+    if (qualification.env?.[name] !== value)
+      fail(`curated-template owner must pin explicit ${name}`);
+  const command = normalizedShellCommand(qualification.run);
+  for (const witness of [
+    'docker inspect --format',
+    'docker compose ps -q postgres',
+    'docker compose ps -q redis',
+    'EDITOR_BROWSER_OWNERSHIP_MANIFEST',
+    '127.0.0.1:$POSTGRES_PORT',
+    '127.0.0.1:$REDIS_PORT',
+    CURATED_TEMPLATE_QUALIFICATION_COMMAND,
+  ])
+    if (!command.includes(witness))
+      fail(
+        `curated-template owner is missing source or ownership witness: ${witness}`,
+      );
+
+  const cleanup = steps.filter(
+    (step) =>
+      step.if === 'always()' &&
+      step['continue-on-error'] !== true &&
+      normalizedShellCommand(step.run) ===
+        'docker compose down -v --remove-orphans',
+  );
+  if (
+    cleanup.length !== 1 ||
+    steps.indexOf(cleanup[0]) <= steps.indexOf(qualification)
+  )
+    fail('curated-template owner must retain one required post-run cleanup');
+  const upload = steps.filter(
+    (step) =>
+      step.if === 'always()' &&
+      step['continue-on-error'] !== true &&
+      step.uses?.startsWith('actions/upload-artifact@') &&
+      step.with?.path === CURATED_TEMPLATE_UPLOAD_DIRECTORY &&
+      step.with?.['if-no-files-found'] === 'error',
+  );
+  if (
+    upload.length !== 1 ||
+    steps.indexOf(upload[0]) <= steps.indexOf(qualification)
+  )
+    fail(
+      'curated-template owner must upload the complete qualification directory',
+    );
+}
+
+function requiredCuratedTemplateOrdinaryExclusions(jobs) {
+  const steps = jobSteps(jobs, 'integration');
+  const commandFor = (report) => {
+    const output = `--outputFile=../../${report}`;
+    const matches = steps
+      .map((step) => normalizedShellCommand(step.run))
+      .filter((command) => command.includes(output));
+    if (matches.length !== 1)
+      fail(`curated-template routing requires one ordinary ${report} owner`);
+    return matches[0];
+  };
+  const exclusions = (command, packageName, report) => {
+    const marker = `pnpm --filter ${packageName} exec vitest run`;
+    const output = `--outputFile=../../${report}`;
+    const end = command.indexOf(output);
+    const start = command.lastIndexOf(marker, end);
+    if (start < 0 || end < 0)
+      fail(
+        `curated-template routing cannot identify the ${packageName} command`,
+      );
+    return [
+      ...command.slice(start, end).matchAll(/--exclude\s+([^\s]+)/gu),
+    ].map((match) => match[1]);
+  };
+  const apiReport = 'artifacts/api-gates.json';
+  const api = exclusions(commandFor(apiReport), '@pertexo/api', apiReport);
+  const expectedApi = [
+    'test/platform/compatibility-rollout.integration.test.ts',
+    'test/editor-browser.integration.test.ts',
+    'test/usage-browser.integration.test.ts',
+    'test/workflow-concurrency-browser.integration.test.ts',
+    'test/connection-health-browser.integration.test.ts',
+    'test/curated-template-origin-guard.integration.test.ts',
+  ];
+  if (JSON.stringify(api) !== JSON.stringify(expectedApi))
+    fail(
+      'ordinary API integration must exclude only its dedicated opt-in owners',
+    );
+  const databaseReport = 'artifacts/database-gates.json';
+  const database = exclusions(
+    commandFor(databaseReport),
+    '@pertexo/database',
+    databaseReport,
+  );
+  if (
+    JSON.stringify(database) !==
+    JSON.stringify([
+      'test/workflow-template-origin-boundary.integration.test.ts',
+    ])
+  )
+    fail(
+      'ordinary database integration must exclude only the curated origin boundary owner',
+    );
+}
+
 export function validateCiGatePolicy({ packageManifest, workflow }) {
   const scripts = packageScripts(packageManifest);
   const jobs = workflowJobs(workflow);
+  requiredCuratedTemplateOwner(jobs);
+  requiredCuratedTemplateOrdinaryExclusions(jobs);
   for (const name of [
     'build',
     'check',
