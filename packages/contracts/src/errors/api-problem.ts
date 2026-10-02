@@ -346,12 +346,6 @@ const apiProblemDetails = {
     exposeDetail: true,
   },
   ...WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
-  'workflow.template_origin_unavailable': {
-    status: 503,
-    title: 'Historical template origin unavailable',
-    severity: 'warn',
-    exposeDetail: true,
-  },
   'workflow.validation_unavailable': {
     status: 503,
     title: 'Workflow validation unavailable',
