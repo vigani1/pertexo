@@ -363,5 +363,14 @@ including nine mocked native/retained format-selection cases, with database
 build/typecheck and narrow lint/format. This does not yet hydrate child-run artifact
 inputs or journal-owned Call result outputs, nor qualify SQL writer authority.
 
+The existing coordinator run-transition owner now returns its exact inserted
+continuation outbox identifier privately after checkpoint CAS/run transition.
+The public commit owner strips this internal identity from its result; it is not
+transport or admission authority. Five mocked-client tests cover canonical payload/
+checksum, write order, absent/terminal continuation, failed CAS and outbox failure.
+All 1,353 non-integration database tests across 145 files pass, with typecheck and
+narrow lint/format. Native V3 plan validation, admission integration and post-CAS
+seal are still not wired into this owner; these checks do not close that gate.
+
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.

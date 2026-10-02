@@ -156,6 +156,12 @@ export async function commitCoordinatorAdvancePlan(
           workflowVersionId,
           workspaceId,
         });
+        // Private transaction evidence for the native post-CAS seal must never
+        // become part of the public commit result or transport authority.
+        const {
+          continuationOutboxEventId: _continuation,
+          ...publicRunTransition
+        } = runTransition;
         await completeCoordinatorReceipt(client, workspaceId, delivery);
         assertNotAborted(input.signal);
         return Object.freeze({
@@ -173,7 +179,7 @@ export async function commitCoordinatorAdvancePlan(
               });
             }),
           ),
-          ...runTransition,
+          ...publicRunTransition,
         });
       },
     );
