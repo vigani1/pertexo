@@ -255,6 +255,14 @@ export const workflowOrganizationProjectionQuerySchema = z
     include: z.enum(['organization', 'templateOrigin,organization']),
   })
   .strict();
+/** Unified transport grammar; legacy projection validators remain unchanged. */
+export const workflowGetQuerySchema = z
+  .object({
+    include: z
+      .enum(['templateOrigin', 'organization', 'templateOrigin,organization'])
+      .optional(),
+  })
+  .strict();
 export const workflowOrganizationProjectionResponseSchema = z
   .object({
     workflow: workflowSummarySchema,

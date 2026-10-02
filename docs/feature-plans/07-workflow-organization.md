@@ -198,7 +198,7 @@ are ownership-rechecked and dropped without force. Migration installation is
 qualification only, not rollout. HTTP MAC verification, actual invitation rejoin,
 full external-ledger deletion, browser journeys and later folder/bulk slices remain
 open. Privileged fixture projections do not establish those product flows.
-The final SQL/readiness sources are pinned by SHA-256
+That database foundation's SQL/readiness sources are pinned by SHA-256
 `ff632b94a30c06c1fbb0af4bb1425bdf9f7b3fc659f7cbf978218cd22b766416` /
 `ec145e5188fc377cf9d68e73bcd0881a6c6f0f101aeaccd7a0a21250e75d1de0`.
 Reusing the established independently validated migration-history fixture removes
@@ -259,3 +259,19 @@ Source/test duplication remains 20 groups/330 lines and 10 groups/285 lines with
 the unchanged ratchets. This is not signed HTTP discovery, live routing, bulk
 transport recovery or browser proof. Unknown/foreign workflow-list tag-filter
 empty-page behavior still requires its filtered-reader implementation and tests.
+
+Endpoint contracts now describe the eight accepted tag/favorite operations,
+canonical GET includes, projected/default list union, strict bounded UUID pages
+and ordered cleanup outcomes. Seven bounded organization problem codes are
+registered with the accepted 409/503 distinction. Existing strict component
+schemas and concurrency problem descriptors remain unchanged; unrelated generated
+artifacts change only by the additive problem-code enum entries. All 217 contract
+tests/30 files, generated-artifact/OpenAPI checks, build/typecheck and 2,095 API
+unit regressions pass. The existing identity-workspace OpenAPI 2XX warning remains.
+Dependency inventory passes after replacing the obsolete two-shape private GET
+manifest with the unified four-shape contract, using equivalent named schema
+clones rather than duplicate exports, and keeping the internal catalog witness
+private. The SQL catalog expression/digest is unchanged; all 29 exact organization
+readiness tests pass again. No endpoint/controller or organization reader is
+registered by this contract checkpoint; session/CSRF, routing, actual filtered
+pagination, restart and browser proof remain open.

@@ -191,7 +191,10 @@ describe('ADR064 workflow organization public schemas', () => {
   );
 
   it('uses positive safe revisions independently of opaque favorite tokens', () => {
-    expect(workflowTagRevisionSchema).toBe(workflowOrganizationRevisionSchema);
+    for (const revision of [1, Number.MAX_SAFE_INTEGER, 0, -1, 1.5])
+      expect(workflowTagRevisionSchema.safeParse(revision)).toEqual(
+        workflowOrganizationRevisionSchema.safeParse(revision),
+      );
     for (const revision of [1, Number.MAX_SAFE_INTEGER]) {
       expect(workflowOrganizationRevisionSchema.parse(revision)).toBe(revision);
       expect(

@@ -118,6 +118,13 @@ describe('workflow-authoring public contracts', () => {
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/concurrency',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/input-cases',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/input-cases/{caseId}',
+      '/v1/workspaces/{workspaceId}/workflow-tags',
+      '/v1/workspaces/{workspaceId}/workflow-tags/cleanup/detach',
+      '/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/rename',
+      '/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/delete',
+      '/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/tags',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite',
     ]);
     expect(
       paths[

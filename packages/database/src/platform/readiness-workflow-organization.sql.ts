@@ -1,6 +1,6 @@
 // ADR064: catalog-only exact inventory. This never enables the independent writer.
 // Role OIDs are normalized to configured capability names for cross-cluster parity.
-export const WORKFLOW_ORGANIZATION_CATALOG_SQL = `
+const WORKFLOW_ORGANIZATION_CATALOG_SQL = `
 with configured_roles as (select $1::text owner_role,$2::text worker_role,$3::text api_role), relations as (
   select c.* from pg_class c join pg_namespace n on n.oid=c.relnamespace
   where n.nspname='app' and c.relname=any(array[

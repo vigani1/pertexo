@@ -24,7 +24,8 @@ export const workflowOrganizationRevisionSchema = z
   .int()
   .positive()
   .max(Number.MAX_SAFE_INTEGER);
-export const workflowTagRevisionSchema = workflowOrganizationRevisionSchema;
+export const workflowTagRevisionSchema =
+  workflowOrganizationRevisionSchema.clone();
 export const workflowTagKeySchema = z
   .string()
   .min(1)
@@ -36,6 +37,36 @@ export const workflowTagKeyInputSchema = z
   .pipe(workflowTagKeySchema);
 
 const commandIdentifierSchema = z.uuid().overwrite((id) => id.toLowerCase());
+const canonicalIdentifierSchema = z
+  .uuid()
+  .length(36)
+  .regex(/^[0-9a-f-]+(?![\s\S])/u);
+export const workflowTagWorkspaceParamsSchema = z
+  .object({ workspaceId: commandIdentifierSchema })
+  .strict();
+export const workflowTagParamsSchema = workflowTagWorkspaceParamsSchema.extend({
+  tagId: commandIdentifierSchema,
+});
+/** UUID-page continuation; authenticity, scope, purpose and expiry are server checks. */
+export const workflowOrganizationPageCursorSchema = z
+  .string()
+  .min(1)
+  .max(512)
+  .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?![\s\S])/u);
+export const workflowTagListQuerySchema = z
+  .object({
+    limit: z
+      .union([
+        z.number().int().min(1).max(100),
+        z.string().regex(/^(?:[1-9]|[1-9][0-9]|100)(?![\s\S])/u),
+      ])
+      .pipe(z.coerce.number<string | number>().int().min(1).max(100))
+      .optional(),
+    after: workflowOrganizationPageCursorSchema.optional(),
+  })
+  .strict();
+export const workflowTagAssignmentsQuerySchema =
+  workflowTagListQuerySchema.clone();
 export const workflowTagSchema = z
   .object({
     id: z.uuid(),
@@ -54,6 +85,65 @@ export const workflowTagRenameRequestSchema = z
   .strict();
 export const workflowTagDeleteRequestSchema = z
   .object({ expectedTagRevision: workflowTagRevisionSchema })
+  .strict();
+
+export const workflowTagCreateResponseSchema = z
+  .object({ tag: workflowTagSchema, replayed: z.boolean() })
+  .strict();
+export const workflowTagRenameResponseSchema =
+  workflowTagCreateResponseSchema.clone();
+export const workflowTagDeleteResponseSchema = z
+  .object({
+    tagId: canonicalIdentifierSchema,
+    deleted: z.literal(true),
+    detachedWorkflowCount: z
+      .number()
+      .int()
+      .min(0)
+      .max(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems),
+    replayed: z.boolean(),
+  })
+  .strict();
+export const workflowTagReplaceResponseSchema = z
+  .object({
+    workflowId: canonicalIdentifierSchema,
+    organizationRevision: workflowOrganizationRevisionSchema,
+    tagIds: z
+      .array(canonicalIdentifierSchema)
+      .max(WORKFLOW_ORGANIZATION_LIMITS.tagsPerWorkflow)
+      .refine((ids) => new Set(ids).size === ids.length),
+    replayed: z.boolean(),
+  })
+  .strict();
+
+function strictlyAscending(ids: readonly string[]): boolean {
+  return ids.every((id, index) => index === 0 || (ids[index - 1] ?? '') < id);
+}
+export const workflowTagListResponseSchema = z
+  .object({
+    items: z
+      .array(workflowTagSchema.extend({ id: canonicalIdentifierSchema }))
+      .max(100)
+      .refine((items) => strictlyAscending(items.map((item) => item.id))),
+    nextCursor: workflowOrganizationPageCursorSchema.nullable(),
+  })
+  .strict();
+export const workflowTagAssignmentSchema = z
+  .object({
+    workflowId: canonicalIdentifierSchema,
+    organizationRevision: workflowOrganizationRevisionSchema,
+  })
+  .strict();
+export const workflowTagAssignmentsResponseSchema = z
+  .object({
+    items: z
+      .array(workflowTagAssignmentSchema)
+      .max(100)
+      .refine((items) =>
+        strictlyAscending(items.map((item) => item.workflowId)),
+      ),
+    nextCursor: workflowOrganizationPageCursorSchema.nullable(),
+  })
   .strict();
 export const workflowTagReplaceRequestSchema = z
   .object({
@@ -83,6 +173,73 @@ export const workflowTagCleanupDetachRequestSchema = z
         (items) =>
           new Set(items.map((item) => item.workflowId)).size === items.length,
       ),
+  })
+  .strict();
+
+export const workflowTagCleanupConflictCodeSchema = z.enum([
+  'workflow.organization_revision_conflict',
+  'request.idempotency_conflict',
+  'workflow.lifecycle_conflict',
+]);
+const cleanupItemIdentity = { workflowId: canonicalIdentifierSchema };
+export const workflowTagCleanupItemOutcomeSchema = z.discriminatedUnion(
+  'status',
+  [
+    z
+      .object({
+        ...cleanupItemIdentity,
+        status: z.literal('detached'),
+        organizationRevision: workflowOrganizationRevisionSchema,
+        replayed: z.boolean(),
+      })
+      .strict(),
+    z
+      .object({ ...cleanupItemIdentity, status: z.literal('not_visible') })
+      .strict(),
+    z
+      .object({
+        ...cleanupItemIdentity,
+        status: z.literal('conflict'),
+        code: workflowTagCleanupConflictCodeSchema,
+      })
+      .strict(),
+    z
+      .object({
+        ...cleanupItemIdentity,
+        status: z.literal('unavailable'),
+        code: z.literal('workflow.organization_unavailable'),
+      })
+      .strict(),
+    z
+      .object({ ...cleanupItemIdentity, status: z.literal('outcome_unknown') })
+      .strict(),
+    z
+      .object({ ...cleanupItemIdentity, status: z.literal('forbidden') })
+      .strict(),
+    z
+      .object({ ...cleanupItemIdentity, status: z.literal('not_processed') })
+      .strict(),
+  ],
+);
+export const workflowTagCleanupDetachResponseSchema = z
+  .object({
+    items: z
+      .array(workflowTagCleanupItemOutcomeSchema)
+      .min(1)
+      .max(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems)
+      .refine(
+        (items) =>
+          new Set(items.map((item) => item.workflowId)).size === items.length,
+      )
+      .refine((items) => {
+        let authorityLost = false;
+        for (const item of items) {
+          if (authorityLost && item.status !== 'not_processed') return false;
+          if (!authorityLost && item.status === 'not_processed') return false;
+          if (item.status === 'forbidden') authorityLost = true;
+        }
+        return true;
+      }),
   })
   .strict();
 
@@ -168,4 +325,48 @@ export type WorkflowFavoriteRequest = z.output<
 >;
 export type WorkflowTagReplaceRequest = z.output<
   typeof workflowTagReplaceRequestSchema
+>;
+export type WorkflowTagWorkspaceParams = z.output<
+  typeof workflowTagWorkspaceParamsSchema
+>;
+export type WorkflowTagParams = z.output<typeof workflowTagParamsSchema>;
+export type WorkflowTagListQuery = z.output<typeof workflowTagListQuerySchema>;
+export type WorkflowTagAssignmentsQuery = z.output<
+  typeof workflowTagAssignmentsQuerySchema
+>;
+export type WorkflowTagCreateRequest = z.output<
+  typeof workflowTagCreateRequestSchema
+>;
+export type WorkflowTagRenameRequest = z.output<
+  typeof workflowTagRenameRequestSchema
+>;
+export type WorkflowTagDeleteRequest = z.output<
+  typeof workflowTagDeleteRequestSchema
+>;
+export type WorkflowTagListResponse = z.output<
+  typeof workflowTagListResponseSchema
+>;
+export type WorkflowTagAssignmentsResponse = z.output<
+  typeof workflowTagAssignmentsResponseSchema
+>;
+export type WorkflowTagCreateResponse = z.output<
+  typeof workflowTagCreateResponseSchema
+>;
+export type WorkflowTagRenameResponse = z.output<
+  typeof workflowTagRenameResponseSchema
+>;
+export type WorkflowTagDeleteResponse = z.output<
+  typeof workflowTagDeleteResponseSchema
+>;
+export type WorkflowTagReplaceResponse = z.output<
+  typeof workflowTagReplaceResponseSchema
+>;
+export type WorkflowTagCleanupDetachRequest = z.output<
+  typeof workflowTagCleanupDetachRequestSchema
+>;
+export type WorkflowTagCleanupDetachResponse = z.output<
+  typeof workflowTagCleanupDetachResponseSchema
+>;
+export type WorkflowTagCleanupItemOutcome = z.output<
+  typeof workflowTagCleanupItemOutcomeSchema
 >;

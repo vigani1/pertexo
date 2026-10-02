@@ -1,5 +1,10 @@
 import { apiProblemSchema } from './errors/api-problem.js';
-import { workflowTemplateOriginReadContract } from './workflow-template-origin-contract.js';
+import {
+  workflowOrganizationContractPaths,
+  workflowOrganizationContractSchemas,
+  workflowOrganizationGetReadContract,
+  workflowOrganizationListReadContract,
+} from './workflow-organization-contract.js';
 import {
   workflowInputCaseContractPaths,
   workflowInputCaseContractSchemas,
@@ -21,7 +26,6 @@ import {
   workflowDraftResponseSchema,
   workflowDraftSaveRequestSchema,
   workflowListResponseSchema,
-  workflowListQuerySchema,
   workflowVersionRestoreRequestSchema,
   workflowPublishResponseSchema,
   workflowRevisionConflictProblemSchema,
@@ -78,6 +82,7 @@ function contractSchemas(target: 'client' | 'openapi') {
     ...workflowAutoPauseContractSchemas(project),
     ...workflowConcurrencyContractSchemas(project),
     ...workflowInputCaseContractSchemas(project),
+    ...workflowOrganizationContractSchemas(project),
     WorkflowRevisionConflictProblem: project(
       'WorkflowRevisionConflictProblem',
       workflowRevisionConflictProblemSchema,
@@ -307,15 +312,14 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
         security: [{ cookieSession: [] }],
         parameters: [
           ...pathParameters,
-          queryParameter('limit', workflowListQuerySchema.shape.limit),
-          queryParameter('after', workflowListQuerySchema.shape.after),
-          queryParameter('order', workflowListQuerySchema.shape.order),
+          ...workflowOrganizationListReadContract.parameters,
         ],
         responses: {
-          '200': jsonResponse('Workflows', 'WorkflowListResponse'),
+          '200': workflowOrganizationListReadContract.response,
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
+          '503': problemResponse('Workflow organization unavailable'),
           '500': responseReference('Unexpected'),
         },
       },
@@ -342,14 +346,14 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
       get: {
         operationId: 'getWorkflow',
         description:
-          'Default metadata retains its strict shape. include=templateOrigin opts into historical origin; unsupported projection is unavailable, never inferred null.',
+          'Default metadata retains its strict shape. include is exactly templateOrigin, organization, or templateOrigin,organization. Unsupported projection is unavailable, never inferred null or empty.',
         security: [{ cookieSession: [] }],
         parameters: [
           ...workflowParameters,
-          workflowTemplateOriginReadContract.parameter,
+          workflowOrganizationGetReadContract.parameter,
         ],
         responses: {
-          '200': workflowTemplateOriginReadContract.response,
+          '200': workflowOrganizationGetReadContract.response,
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
@@ -465,6 +469,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     ...workflowAutoPauseContractPaths,
     ...workflowConcurrencyContractPaths,
     ...workflowInputCaseContractPaths,
+    ...workflowOrganizationContractPaths,
   },
   components: authenticatedComponents(openApiSchemas, problemResponses),
 });
