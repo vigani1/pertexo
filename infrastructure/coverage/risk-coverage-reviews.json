@@ -190,57 +190,57 @@
           "branchType": "if",
           "line": 123,
           "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "sourceFingerprint": "sha256:e20d52742b6d7d13622c4471004672beafa773996b48d18f013dfadd43eb784a",
           "classification": "defensive",
           "justification": "The public bootstrap permits either an injected workspace database or an owned database runtime; this arm creates the owned runtime only when neither injected source supplies that responsibility."
         },
         {
-          "branchId": "8",
+          "branchId": "9",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 163,
+          "line": 166,
           "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "sourceFingerprint": "sha256:e20d52742b6d7d13622c4471004672beafa773996b48d18f013dfadd43eb784a",
           "classification": "defensive",
           "justification": "Webhook ingress is composed only when both identity and webhook configuration are available; the arm is reachable through the supported production bootstrap configuration."
         },
         {
-          "branchId": "10",
+          "branchId": "11",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 177,
+          "line": 180,
           "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "sourceFingerprint": "sha256:e20d52742b6d7d13622c4471004672beafa773996b48d18f013dfadd43eb784a",
           "classification": "defensive",
           "justification": "The scheduler is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice."
         },
         {
-          "branchId": "12",
+          "branchId": "13",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 189,
+          "line": 192,
           "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "sourceFingerprint": "sha256:e20d52742b6d7d13622c4471004672beafa773996b48d18f013dfadd43eb784a",
           "classification": "defensive",
           "justification": "The notification runtime is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice that unit bootstraps replace with a supplied runtime."
         },
         {
-          "branchId": "14",
+          "branchId": "15",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 202,
+          "line": 205,
           "column": 4,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "sourceFingerprint": "sha256:e20d52742b6d7d13622c4471004672beafa773996b48d18f013dfadd43eb784a",
           "classification": "defensive",
           "justification": "Artifact handling is composed only when identity and artifact configuration are both available; the arm is a reachable optional-feature wiring choice."
         },
         {
-          "branchId": "19",
+          "branchId": "20",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 283,
+          "line": 286,
           "column": 8,
-          "sourceFingerprint": "sha256:a031fc6dc82d7a39126af039cf65d6caf120d0e9ec9e19cf399c25ba5ffee313",
+          "sourceFingerprint": "sha256:e20d52742b6d7d13622c4471004672beafa773996b48d18f013dfadd43eb784a",
           "classification": "defensive",
           "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
         }
@@ -930,17 +930,17 @@
     },
     {
       "cohort": "contracts",
-      "file": "packages/contracts/src/http/connections.ts",
+      "file": "packages/contracts/src/utf8-byte-length.ts",
       "reviews": [
         {
           "branchId": "0",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 70,
+          "line": 6,
           "column": 4,
-          "sourceFingerprint": "sha256:c771afe1fd3f0df5e770747bed35fa312178abf710ba363893426052c4caac67",
+          "sourceFingerprint": "sha256:7ccfb568105065401552e407e92c9b94d42048732686f870139c07a673d9108f",
           "classification": "defensive",
-          "justification": "The unchanged UTF-8 length guard handles an undefined codePointAt(0), but primitive-string for-of iteration yields only nonempty characters, so this defensive arm cannot arise from validated transport strings. Its Istanbul span has a null end column and therefore fingerprints the whole file; additive F30 schemas changed that fallback fingerprint without changing this obligation."
+          "justification": "This unchanged UTF-8 length guard moved from http/connections.ts to the shared browser-safe helper. Primitive-string for-of iteration yields only nonempty characters, so codePointAt(0) cannot be undefined on validated transport strings; extraction changes its source locator and fingerprint without changing the defensive obligation."
         }
       ]
     },

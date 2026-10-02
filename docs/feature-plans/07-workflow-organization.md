@@ -475,4 +475,21 @@ database/Redis/artifact cleanup; barrier failures preserve resources. The final
 run confirms zero connections, database removal and Redis DB12 empty after twelve
 owned keys are removed. Ordinary shared services stay running. Production writers
 remain disabled outside these owned fixtures. Whole-feature browser matrices,
-coverage evidence reconciliation, independent review and release remain open.
+independent review and release remain open.
+
+Coverage reconciliation now passes the complete `pnpm test:coverage` command:
+24 producer cohorts bind to candidate fingerprint
+`sha256:732f85bf2dbe9f54325695e2ce63e66d7f9f5c382c7349d8f931b845bc22a69d`.
+The strict selected-critical-module policy reports zero unreviewed branches and
+the unchanged 391 reviewed obligations. This is coverage of its 231 selected
+files, not a claim that every source file has complete coverage. Independent
+source review confirms all six existing API bootstrap/cleanup exclusions retain
+their meanings; their locators follow the additive runtime configuration lines.
+The extracted UTF-8 helper retains its defensive obligation at its new source
+location rather than deleting it. Two real-runtime composition cases cover the
+new optional organization configuration arm. Dense canonical identifier ordering
+now uses a shared ordinary comparison loop, with public-schema regression cases
+for empty/singleton and malformed arrays; both outcomes are measured rather than
+adding unreachable nullish-fallback exclusions. No thresholds or exclusion counts
+were relaxed. Producer reports, the source witness and strict risk report are
+preserved outside the checkout in the dated local F07 evidence directory.

@@ -124,12 +124,19 @@ describe('accepted folder and general-bulk public contracts', () => {
   });
 
   it('bounds ascending hierarchy inventory, root depth and exact command responses', () => {
+    for (const valid of [[], [folder]])
+      expect(
+        schemas.workflowFolderListResponseSchema.parse({ items: valid }).items,
+      ).toEqual(valid);
     expect(
       schemas.workflowFolderListResponseSchema.parse({
         items: [folder, { ...folder, id: b, parentId: a, depth: 4 }],
       }).items,
     ).toHaveLength(2);
     for (const value of [
+      { items: new Array<unknown>(1) },
+      { items: [undefined, folder] },
+      { items: [{ ...folder, id: '' }] },
       { items: [{ ...folder, depth: 5 }] },
       { items: [{ ...folder, depth: 2 }] },
       { items: [{ ...folder, parentId: b, depth: 1 }] },

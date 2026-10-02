@@ -100,6 +100,18 @@ describe('strict organization endpoint transport schemas', () => {
     }));
     expect(
       organization.workflowTagListResponseSchema.parse({
+        items: [tag],
+        nextCursor: null,
+      }).items,
+    ).toEqual([tag]);
+    expect(
+      organization.workflowTagAssignmentsResponseSchema.parse({
+        items: [assignments[0]],
+        nextCursor: null,
+      }).items,
+    ).toEqual([assignments[0]]);
+    expect(
+      organization.workflowTagListResponseSchema.parse({
         items: tags,
         nextCursor: cursor,
       }).items,
@@ -111,6 +123,9 @@ describe('strict organization endpoint transport schemas', () => {
       }).items,
     ).toHaveLength(100);
     for (const items of [
+      new Array<unknown>(1),
+      [undefined, tag],
+      [{ ...tag, id: '' }],
       [tags[1], tags[0]],
       [tags[0], tags[0]],
       [...tags, { ...tag, id: id(101) }],
@@ -124,6 +139,9 @@ describe('strict organization endpoint transport schemas', () => {
         }).success,
       ).toBe(false);
     for (const items of [
+      new Array<unknown>(1),
+      [undefined, assignments[0]],
+      [{ workflowId: '', organizationRevision: 1 }],
       [assignments[1], assignments[0]],
       [assignments[0], assignments[0]],
       [...assignments, { workflowId: id(101), organizationRevision: 1 }],

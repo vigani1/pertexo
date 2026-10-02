@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { strictlyAscendingIdentifiers } from '../workflow-organization-order.js';
 import { utf8ByteLength } from '../utf8-byte-length.js';
 
 /** ADR064 bounds are product contracts, never caller-configurable quotas. */
@@ -116,15 +117,14 @@ export const workflowTagReplaceResponseSchema = z
   })
   .strict();
 
-function strictlyAscending(ids: readonly string[]): boolean {
-  return ids.every((id, index) => index === 0 || (ids[index - 1] ?? '') < id);
-}
 export const workflowTagListResponseSchema = z
   .object({
     items: z
       .array(workflowTagSchema.extend({ id: canonicalIdentifierSchema }))
       .max(100)
-      .refine((items) => strictlyAscending(items.map((item) => item.id))),
+      .refine((items) =>
+        strictlyAscendingIdentifiers(items.map((item) => item.id)),
+      ),
     nextCursor: workflowOrganizationPageCursorSchema.nullable(),
   })
   .strict();
@@ -140,7 +140,7 @@ export const workflowTagAssignmentsResponseSchema = z
       .array(workflowTagAssignmentSchema)
       .max(100)
       .refine((items) =>
-        strictlyAscending(items.map((item) => item.workflowId)),
+        strictlyAscendingIdentifiers(items.map((item) => item.workflowId)),
       ),
     nextCursor: workflowOrganizationPageCursorSchema.nullable(),
   })

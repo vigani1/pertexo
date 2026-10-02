@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { utf8ByteLength } from '../utf8-byte-length.js';
+import { strictlyAscendingIdentifiers } from '../workflow-organization-order.js';
 import {
   workflowOrganizationRevisionSchema,
   workflowTagReplaceRequestSchema,
@@ -69,10 +70,7 @@ export const workflowFolderListResponseSchema = z
       .array(workflowFolderSchema)
       .max(WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace)
       .refine((items) =>
-        items.every(
-          (item, index) =>
-            index === 0 || (items[index - 1]?.id ?? '') < item.id,
-        ),
+        strictlyAscendingIdentifiers(items.map((item) => item.id)),
       ),
   })
   .strict();
