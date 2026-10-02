@@ -223,7 +223,7 @@ export function useWorkflowOrganizationCommand({
         retryAvailable,
         denied: false,
         error: retryAvailable
-          ? 'The outcome could not be confirmed. Retry this exact command or discard it before making changes.'
+          ? 'The outcome could not be confirmed. Retry this exact command; refreshing current state preserves its recovery identity.'
           : definitiveMessage(error),
       });
     } finally {
@@ -263,9 +263,10 @@ export function useWorkflowOrganizationCommand({
       if (attempt.current !== undefined) await send(attempt.current);
     },
     reset: () => {
-      request.current?.abort();
-      request.current = undefined;
-      attempt.current = undefined;
+      // A reread is not evidence that an outstanding command did not commit.
+      // Only a definitive result may release this owner's frozen intent.
+      if (request.current !== undefined || attempt.current !== undefined)
+        return;
       if (denied.current) retire();
       else setState(idle);
     },
@@ -330,7 +331,12 @@ function observeAuthority(
       key[1] === userId &&
       key[2] === 'accessible-workspaces';
     const identity = key[0] === 'identity' && key[1] === 'current-user';
-    const failure: unknown = event.query.state.error;
+    // An earlier scoped observer may synchronously cancel/remove this query.
+    // Preserve the event's immutable failure instead of its reverted state.
+    const failure: unknown =
+      event.action.type === 'error'
+        ? event.action.error
+        : event.query.state.error;
     if ((relatedRead || discovery || identity) && accessLost(failure)) retire();
     else if (inScope && isApiError(failure) && failure.status === 401) retire();
     if (discovery && event.query.state.status === 'success') {

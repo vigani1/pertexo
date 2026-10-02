@@ -203,6 +203,18 @@ describe('organization editing controls', () => {
     expect(
       screen.getByRole('dialog', { name: 'Personal favorite' }),
     ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Refresh current state' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Retry original request' }),
+      ).toBeEnabled(),
+    );
+    expect(captures).toHaveLength(1);
+    expect(
+      screen.queryByRole('button', { name: 'Remove favorite', exact: true }),
+    ).not.toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     expect(onClose).not.toHaveBeenCalled();
     await userEvent.click(
@@ -385,6 +397,18 @@ describe('organization editing controls', () => {
     expect(outcomes[1]).toHaveTextContent('First workflow');
     expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
     expect(onClose).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Refresh current state' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Retry original request' }),
+      ).toBeEnabled(),
+    );
+    expect(captures).toHaveLength(1);
+    expect(
+      screen.getByRole('button', { name: 'Move selected workflows' }),
+    ).toBeDisabled();
     await userEvent.click(
       screen.getByRole('button', { name: 'Retry original request' }),
     );

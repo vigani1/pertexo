@@ -535,3 +535,23 @@ witnesses sufficient for authorized automated recovery; they remain preserved.
 The positively identified stale owned preview process was disposed through the
 canonical group barrier. No unknown listener was killed, no broad database drop
 occurred, and no missing failed raw report or creation witness is fabricated.
+
+Whole-feature two-axis source review at `86e8a32a` found actionable frontend
+issues, so F07 is not accepted. The specification axis identified unknown-command
+abandonment through in-dialog refresh; the hook now refuses reset while pending
+or unresolved, and refresh retains the entire frozen key/body/selection/revisions.
+Favorite and partial-batch regressions explicitly refresh before exact retry;
+definitive recovery alone permits a new intent. Forty-one focused cases and lint
+pass. The standards axis identified ordinary read-denial cache retirement and
+binding Weft validation/confirmation/name-label violations; those corrections and
+their committed-delta review remain open. No backend/spec scope expansion or
+additional actionable backend finding was reported by either axis.
+
+The exact clean-source four-gate run at `86e8a32a` passes database 95, API 20 and
+compiled process 6, but the browser gate fails one builder combined-filter URL
+assertion (three of four cases pass). Its failed manifest and actual producer
+reports are retained, not relabeled as acceptance. Filter navigation sequencing
+and captured search state are under investigation; no timeout or guard is weakened.
+The complete coverage command on this frozen checkpoint separately passes all 24
+cohorts with zero unreviewed and the same 391 reviewed branches. Passing producer
+coverage does not cancel the review findings or the failed whole browser gate.

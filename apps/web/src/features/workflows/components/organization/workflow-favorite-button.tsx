@@ -135,7 +135,7 @@ export function WorkflowFavoriteDialog({
   }
   async function refresh() {
     if (preparingRef.current || command.pending || command.denied) return;
-    command.reset();
+    if (!command.retryAvailable) command.reset();
     setReadError(undefined);
     preparingRef.current = true;
     setPreparing(true);
@@ -193,7 +193,7 @@ export function WorkflowFavoriteDialog({
             }}
           >
             {command.retryAvailable
-              ? 'Discard recovery and refresh'
+              ? 'Refresh current state'
               : 'Refresh for a new change'}
           </Button>
         )
@@ -201,9 +201,10 @@ export function WorkflowFavoriteDialog({
     >
       <p className="text-sm leading-relaxed text-muted-foreground">
         Favorites are private to your account, including on archived workflows.
-        Exact recovery is available for 24 hours; after that, refresh current
-        state and explicitly confirm a new change. Closing or reloading this
-        page loses in-memory recovery.
+        Exact recovery is available for 24 hours, not an indefinite
+        duplicate-prevention guarantee. Refreshing current state preserves an
+        unresolved request; only a known outcome permits a fresh change.
+        Reloading this page loses in-memory recovery.
       </p>
       {command.denied || !projection.isFetching ? null : (
         <Notice>Reading current favorite…</Notice>

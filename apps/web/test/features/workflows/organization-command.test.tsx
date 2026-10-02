@@ -273,7 +273,7 @@ describe('ephemeral organization command lifetime', () => {
     );
   });
 
-  it('prevents an old completion from releasing a newer command after explicit reset', async () => {
+  it('does not reset an outstanding command or release a different intent before its known result', async () => {
     const f = setup();
     const older = deferred(),
       newer = deferred();
@@ -291,17 +291,24 @@ describe('ephemeral organization command lifetime', () => {
       f.result.current.reset();
       second = f.result.current.start({ ...single, idempotencyKey: 'new-key' });
     });
-    await waitFor(() => {
-      expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(2);
-    });
+    expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(1);
+    expect(f.result.current.pending).toBe(true);
+    expect(
+      vi.mocked(sendWorkflowOrganizationCommand).mock.calls[0]?.[2]?.aborted,
+    ).toBe(false);
     await act(async () => {
       older.resolve(receipt);
       await first;
     });
-    expect(f.result.current.pending).toBe(true);
-    expect(f.result.current.result).toBeUndefined();
-    await act(() => f.result.current.start(single));
-    expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(2);
+    expect(f.result.current.pending).toBe(false);
+    expect(f.result.current.result).toEqual(receipt);
+    act(() => {
+      f.result.current.reset();
+      second = f.result.current.start({ ...single, idempotencyKey: 'new-key' });
+    });
+    await waitFor(() => {
+      expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(2);
+    });
     await act(async () => {
       newer.resolve({ ...receipt, organizationRevision: 9 });
       await second;
@@ -337,12 +344,28 @@ describe('ephemeral organization command lifetime', () => {
     expect(getAllAccessibleWorkspaces).toHaveBeenCalledTimes(2);
   });
 
-  it('freezes and retries the entire ordered parent, blocking new edits until explicit discard', async () => {
+  it('retains the entire unresolved parent through reset and permits a new intent only after definitive recovery', async () => {
     const f = setup();
     const input = bulk();
     vi.mocked(sendWorkflowOrganizationCommand)
       .mockResolvedValueOnce(partial)
-      .mockResolvedValueOnce(partial);
+      .mockResolvedValueOnce(partial)
+      .mockResolvedValueOnce({
+        items: [
+          {
+            workflowId: secondWorkflowId,
+            status: 'updated',
+            organizationRevision: 5,
+            replayed: true,
+          },
+          {
+            workflowId,
+            status: 'updated',
+            organizationRevision: 8,
+            replayed: false,
+          },
+        ],
+      });
     await act(() => f.result.current.start(input));
     expect(f.result.current.retryAvailable).toBe(true);
     expect(f.result.current.result).toEqual(partial);
@@ -371,7 +394,19 @@ describe('ephemeral organization command lifetime', () => {
       f.result.current.reset();
     });
     await act(() => f.result.current.start(single));
-    expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(3);
+    expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(2);
+    expect(f.result.current.retryAvailable).toBe(true);
+    expect(f.result.current.result).toEqual(partial);
+    await act(() => f.result.current.retry());
+    expect(vi.mocked(sendWorkflowOrganizationCommand).mock.calls[2]?.[1]).toBe(
+      captured,
+    );
+    expect(f.result.current.retryAvailable).toBe(false);
+    act(() => {
+      f.result.current.reset();
+    });
+    await act(() => f.result.current.start(single));
+    expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(4);
   });
 
   it.each(['network', 'timeout', 'protocol', 'server'] as const)(
@@ -454,7 +489,6 @@ describe('ephemeral organization command lifetime', () => {
     'session',
     'cache-role',
     'cache-error',
-    'reset',
     'scope',
     'unmount',
   ] as const)(
@@ -494,7 +528,6 @@ describe('ephemeral organization command lifetime', () => {
             }),
           });
         }
-        if (event === 'reset') f.result.current.reset();
         if (event === 'scope')
           f.rerender({ ...f.props, userId: secondWorkflowId });
         if (event === 'unmount') f.unmount();

@@ -48,7 +48,7 @@ type Props = Readonly<{
   onClose: () => void;
 }>;
 const RECOVERY =
-  'Exact recovery is available for 24 hours. After that, refresh current organization and explicitly confirm a new command. Closing or reloading this page loses its in-memory recovery.';
+  'Exact recovery is available for 24 hours, not an indefinite duplicate-prevention guarantee. Refreshing current state preserves an unresolved request; only a known outcome permits a fresh change. Reloading this page loses its in-memory recovery.';
 
 export function WorkflowOrganizationDialog({
   apiClient,
@@ -117,7 +117,7 @@ export function WorkflowOrganizationDialog({
 
   async function refresh() {
     if (preparingRef.current || command.pending || command.denied) return;
-    command.reset();
+    if (!command.retryAvailable) command.reset();
     setReadError(undefined);
     setPreparing(true);
     preparingRef.current = true;
@@ -324,7 +324,7 @@ export function WorkflowOrganizationDialog({
                 }}
               >
                 {command.retryAvailable
-                  ? 'Discard recovery and refresh'
+                  ? 'Refresh current state'
                   : 'Refresh for a new change'}
               </ProgressButton>
             )}
