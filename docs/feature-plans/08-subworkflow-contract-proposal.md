@@ -2,8 +2,11 @@
 
 Status: **PROPOSED; not an accepted ADR or persistent implementation authority.**
 Primary selected strict independent occupancy/fail-fast child admission on
-2026-10-02. All other consequential choices below require complete primary and
-independent design review. Baseline: accepted F07
+2026-10-02. Primary also selected the same-workspace pins, portable closed-object
+descriptors, proposed expansion bounds, configuration-only preview, conservative
+membership-revision authority and publication-pinned family deadline directions.
+The complete ADR, transaction/privilege contract and review closure still require
+acceptance before persistent code. Baseline: accepted F07
 `e7d25e1f85342f10ae0044aadd408d88c49ea993`, tree
 `f3a07aea3819c384928dea7dfd7394553ce4aad3`.
 Parent: [F08](08-subworkflows.md). Decision text:
@@ -148,17 +151,60 @@ Extend the canonical coordinator transaction and existing `acceptWorkflowRun`
 implementation, including ordinary queued-run insertion, pinned entitlement,
 initial checkpoint/event/outbox, current compatibility and failure-notification
 policy. Expose no general worker bypass of the dispatcher reservation helper.
-Today acceptance uses the workspace Drizzle transaction adapter and the
-coordinator uses a pool-client transaction. Extract/reuse the existing acceptance
-operations behind one transaction-local adapter, without opening a nested
-transaction, creating another admission protocol, or duplicating acceptance SQL.
-The exact adapter and privilege changes need review before implementation.
+Today acceptance takes `WorkspaceTransaction` and the coordinator takes the
+already checked-out `PoolClient`. The proposed concrete internal adapter is
+`workspaceTransactionFromClient(client: PoolClient, workspaceId: WorkspaceId):
+WorkspaceTransaction` in `tenant-access/workspace.ts`: construct
+`drizzle(client, { schema: databaseSchema })` and freeze `{ db, workspaceId }`,
+exactly as `withWorkspaceTransaction` already does. Both callers reuse this
+factory. It does not acquire/release a client, begin/commit/rollback, change scope,
+or outlive the owning `withTenantScopedClient` callback. Coordinator transaction
+hygiene, cancellation, protocol and workspace-first lock remain the outer owner.
+Call existing `acceptWorkflowRun` on that adapter, extending its strict internal
+input for a `workflow_call` trigger and immutable lineage; do not duplicate SQL
+or introduce another admission protocol. Manual is the child's graph entry node,
+**not** its persisted trigger type: do not impersonate an API manual start or
+bypass the existing checked-manual-start fence.
+
+Propose worker-only, tenant-bound
+`app.lock_workflow_call_admission(parent_run_id uuid, expected_revision integer,
+invocation_key text, candidate_run_id uuid)`. Canonical acceptance allocates the
+candidate ID with its existing ID owner and passes it with the strict internal
+child context (parent ID/revision/invocation), never caller-supplied actor or
+arbitrary root identity. The coordinator prelocks the ordered prerequisites below;
+the helper verifies/reuses them and refuses any unbound insertion. It resolves the retained call site/root authority and
+immutable bounded lineage from durable pins, validates them, and binds only that
+candidate child insertion/reservation. Add no general reservation-helper grant
+to worker. Any security-definer helper has fixed search path, tenant/identity
+checks, owner-defined SQL, PUBLIC/other-role revocation and only worker EXECUTE;
+no arbitrary identity-table SELECT/UPDATE grant. SQL writer/commit fences must
+reject a `workflow_call` child without its exact parent CAS/call record and
+ordinary reservation, including a direct worker insert or an old writer. The
+canonical acceptance module remains the row/event/checkpoint/outbox owner; the
+proof helper is narrow enforcement, not a second acceptance implementation.
+After canonical acceptance has created its outbox, the equally narrow worker-only
+`app.reserve_workflow_call_active_admission(parent_run_id uuid,
+expected_revision integer, invocation_key text, candidate_run_id uuid,
+outbox_event_id uuid)` revalidates that exact durable call proof, pin/input and
+new child/outbox identity and delegates to the existing
+`reserve_workflow_run_active_admission` implementation. It creates no alternative
+capacity/FIFO calculation. It may operate only on the new candidate bound to the
+still-held parent CAS; identity/protocol mismatch throws, a definite canonical
+capacity/FIFO refusal returns false. Its tenant/role/definer restrictions match
+the proof helper; worker cannot call the unrestricted dispatcher helper directly.
+The exact-call fast path loads and verifies the already recorded identity/fact
+first and performs only the existing parent CAS/receipt continuation; it does not
+invoke fresh-admission authority/active-policy checks. A record appearing during
+fresh admission is rechecked under the immediate-parent CAS and converges on that
+same record. Reading an inactive actor row for lock ordering is not reauthorizing
+or rejecting an already accepted/refused call.
 A narrowly scoped internal child path must bind its parent CAS, exact published
 call site/input and root admission authority before requesting the same canonical
 reservation checks. Persist the call record, parent call-control checkpoint CAS,
 child acceptance/reservation and events/outboxes in one outer transaction.
 
-If the speculative child cannot reserve, a savepoint rolls back **all** candidate
+Every candidate acceptance operation runs within the savepoint, not just reserve.
+If the speculative child is authoritatively refused, a savepoint rolls back **all** candidate
 child acceptance rows, claim, initial event/checkpoint/outbox and reservation;
 ticket sequence gaps are allowed. The outer parent CAS commits only the one
 refusal fact and parent continuation. The pure engine consumes that fact and
@@ -167,14 +213,53 @@ aggregate run status. A crash between refusal and consumption recovers the same
 fact, never attempts fresh admission. Losing parent CAS rolls back both admitted
 and refused branches and reloads/recomputes.
 
+Only definite, locked/authoritatively observed business-policy outcomes become
+immutable refusal facts. Proposed safe classifications are:
+
+| Observed outcome | Durable call outcome |
+| --- | --- |
+| Workspace/child workflow active slot unavailable or earlier eligible FIFO ticket | `workflow.child_capacity_unavailable` |
+| Ordinary queued limit reached | `workflow.child_queue_unavailable` |
+| Current entitlement absent, suspended, expired or not yet effective | `workflow.child_entitlement_unavailable` |
+| Initiating actor/membership inactive, revision changed or `run:start` lost | `workflow.child_authority_unavailable` |
+| Workspace inactive, child archived or current region admission denied | `workflow.child_admission_unavailable` |
+| A supported compatible artifact authoritatively reports the pinned child no longer admissible | `workflow.child_compatibility_unavailable` |
+
+All refusals converge on the same logical call record and ordinary required-node
+failure, with zero child rows/reservations/outboxes after savepoint rollback.
+Invalid typed input is rejected by the declaration's existing durable node-failure
+fact before a child intent exists, with no automatic Call Workflow attempt retry.
+Ancestor cancellation/deadline yields authoritative control observations and
+normal cancellation/deadline precedence, **not** a misleading capacity refusal.
+Exact recorded admitted/refused calls are resolved before current policy checks.
+
+Connection loss, statement/lock timeout, deadlock, missing required counter/pin/
+artifact, malformed facts, identity conflict, unsupported writer protocol or
+compatibility artifact, and unexpected SQL/transport errors roll back the entire
+outer transaction for existing recovery; they never become definite refusal.
+A SQLSTATE alone is insufficient: for example `PTA01` covers both entitlement
+denial and broken required admission state. Classify only an explicit typed
+policy result proven under the relevant locks. After uncertain COMMIT, reconnect
+and resolve the same durable call/CAS identity before doing anything new; do not
+infer zero children from a socket failure. No new retry scheduler is introduced.
+
 Proposed acquisition order for the new child-bearing coordinator path:
 
 1. Shared workspace lifecycle/admission lock; current user/membership authority
    where applicable; current compatibility release.
-2. Target workflow lifecycle/version and existing child acceptance policy locks,
-   in deterministic target-workflow order, **before** parent run/checkpoint.
-3. Parent run/checkpoint `NO KEY UPDATE`; verify expected revision, executable,
-   invocation and cancellation/deadline state; call-record serialization.
+2. Target workflow lifecycle/version, failure-notification policy/destination and
+   notification connection locks, then current entitlement pointer/version,
+   **before** run/checkpoint/counter locks. Multiple target workflows use stable
+   workflow-ID order. Do not prelock concurrency-policy rows: their update owner
+   acquires the counter first; eligibility reads those rows under the same counter.
+3. Verify the immutable lineage (at most four edges), then lock ancestor run rows
+   `FOR SHARE`, individually root-to-immediate-parent, excluding the immediate
+   parent. Lock that parent run/checkpoint directly `NO KEY UPDATE`, never SHARE
+   followed by a lock upgrade. For a root calling directly, there are no separate
+   ancestor locks. Revalidate every lineage edge/root identity, expected revision,
+   executable/invocation, all ancestor cancellation and PostgreSQL-clock deadlines;
+   serialize the call record. A mismatched/missing lineage is corruption, not a
+   caller-selected chain or a policy refusal.
 4. Workspace admission counter; candidate **new** child rows and outbox; ordinary
    ticket/FIFO eligibility and reservation insertion. The child rows belong to
    this transaction, so their FK locks cannot wait on another child owner.
@@ -190,10 +275,40 @@ loads the immutable terminal fact through its existing advance seam. Cancellatio
 propagation similarly emits bounded control intents instead of locking a whole
 family while holding one run.
 
-This lock order is a proposed extension requiring independent reconciliation
-against publication, policy updates, notification policy, lifecycle/deletion,
-terminal producers, reservation recovery and dispatcher owners before SQL. A
-real blocker/race test must prove it; deadlock retries are not its justification.
+Ancestor locks are the cancellation linearization fence, not a family scheduler.
+Cancellation of any ancestor/subtree takes UPDATE on its selected run, so either
+spawn commits first and that child is admitted work requiring cancellation, or
+cancel commits first and the blocked spawn rereads it and accepts no child.
+Hold the lineage locks through outer COMMIT. Never acquire an ancestor while
+holding a descendant run/counter; one advance cannot both spawn and terminalize
+the same immediate parent. Deadline timestamps are immutable; recheck the clock
+just before insertion/reservation. Deadline-marking updates serialize on the same
+ancestor locks; expiry does not depend on a delayed control message. An admission
+whose final clock check precedes expiry can commit as accepted and is canceled/
+timed out normally, never retroactively erased. Control outboxes still propagate
+to already admitted children without multi-run update locks.
+
+Opposing-path reconciliation against the current baseline:
+
+| Existing owner | Current order / required preservation |
+| --- | --- |
+| API manual/root acceptance (`0131`, `execution-acceptance.ts`) | workspace → actor/membership → command identity → canonical admission; acceptance notification and entitlement locks precede insertion/counter. Child uses a distinct narrow proof, not manual-writer impersonation. |
+| Membership commands (`identity-workspace-member-command.ts`) | workspace UPDATE → users in identifier order UPDATE → memberships → command receipt. Child workspace SHARE serializes ahead of those changes; do not acquire workspace after actor/membership. Invitation rejoin retains its workspace/user/membership order and increments the removed membership revision. |
+| Compatibility selection/activation (`0019:179–217,400–424`) | serving selector locks current pointer/release SHARE before workflow/run; activation locks that pointer UPDATE and approval/release, not tenant run/counter locks. New retirement dependency inventory must remain read-only/bounded rather than acquiring run locks behind the pointer. |
+| Publication (`workflow-publication.ts`) | workspace/actor/membership → compatibility → workflow/draft UPDATE; no existing-run lock. New dependency publication reads a bounded tentative pin set, locks all involved mutable workflow rows (own row included) in stable order before its draft, then rereads/verifies draft revision/pins; a change retries/conflicts instead of acquiring a new lower-order lock. It never locks runs/counter. Immutable closure pins are not copied or independently mutated. |
+| Concurrency control (`0127:328–375`) | workspace/authority → workflow SHARE → receipt → entitlement SHARE → counter → concurrency-policy update. No concurrency-policy lock before counter in child path. |
+| Notification/connection policy (`0088:415–440`, `0128:307–317`) | acceptance locks policy/destination then connection before run/counter; existing terminal notification intents use pinned references/FK key-share, not current policy locking. Preserve that separation. |
+| Dispatcher/reservation (`0127:267–302`) | workspace/run KEY SHARE before counter; never ancestor SHARE or run UPDATE behind counter. Ancestor SHARE and parent NO KEY UPDATE are compatible with those FK locks. |
+| Ordinary coordinator terminal/control (`coordinator-run-store-commit-state.ts`, run transition) | workspace → its own run/checkpoint NO KEY UPDATE → node/attempt facts → counter/FK writes. No ancestor/child UPDATE or current target-policy lock from a terminal producer; new child terminal wakeup uses parent identifier only. |
+| API cancellation (`workflow-run-cancellation.ts`) | workspace → selected run UPDATE → cancel fact. It does not lock descendants; the new root-to-parent SHARE fence blocks only the selected ancestor. |
+| Lifecycle/retention/purge (`workflow-authoring-lifecycle.ts`, `0080`, workspace control ledger) | workspace/control ledger before workflow/run/artifact deletion locks. Workspace exclusive destruction prevents overlap with the coordinator's workspace SHARE; ordinary workflow archive UPDATE serializes against target workflow SHARE without run/counter locks. Do not acquire workspace behind lineage/counter. |
+| Reservation recovery (`0127`, current recovery helper) | reservation/outbox rebind only, no counter/parent/ancestor; exact existing child replay never re-reserves. |
+
+This is a proposed lock contract, not executable proof. Independent reconciliation
+and real blocker/race tests must close every path before SQL, including root and
+intermediate-subtree cancellation winning/losing admission, lineage bounds,
+multiple sibling declarations, policy changes and dispatcher/counter contention.
+Deadlock retries are not its justification.
 
 ## Authority, lifecycle and preview
 
@@ -220,8 +335,12 @@ cancel its already accepted root; current child lifecycle/security gates remain.
 The exact durable authority shape and bounded revocation behavior require ADR
 acceptance; existing workflow-run rows do not contain an initiating principal.
 Revision pinning deliberately rejects even a promotion that still grants
-`run:start`; this conservative revocation boundary is a proposed product tradeoff,
-not a behavior already selected by the capacity decision.
+`run:start`; primary selected this conservative product tradeoff separately from
+capacity. Current role changes increment only when changed; removal/leave,
+membership suspend/reactivate, ownership transfer and removed-member invitation
+rejoin increment `role_revision` in their existing owners. This does not assert a
+new user-global or workspace suspension generation: those current status checks
+deny while inactive, and only implemented membership revisions remain pinned.
 
 Connections remain the child's own pinned workflow references and existing
 credential-resolution/revocation policy; no inherited parent credential map,
@@ -237,9 +356,11 @@ design and are not delivered by F08.
 
 ## Deadline, cancellation and outcome precedence
 
-Recommend a one-hour default upper bound for a new F08 root family, reduced by
+Pin a one-hour effective default upper bound in the **new executable family
+policy at publication and the root's accepted immutable policy**, reduced by
 the caller's deadline or configured workflow duration; this introduces no default
-change for retained non-call workflows. Each child deadline is the minimum of the
+change for retained non-call workflows or an ambient fallback on recovered runs.
+Each child deadline is the minimum of the
 parent's absolute deadline and its own configured duration at acceptance, so
 queue/wait time consumes the budget and a child can never extend its parent.
 Recheck the PostgreSQL clock inside admission, not a worker timer.
@@ -324,6 +445,14 @@ source-bound required owned CI, coverage and separate design/implementation revi
 - [Acceptance](../../packages/database/src/execution/runs/execution-acceptance.ts):27–44,277–430 and
   [run schema](../../packages/database/src/schema/execution.ts):18–79:
   existing acceptance owner, five trigger types and no durable initiating principal.
+- [Transaction adapter](../../packages/database/src/tenant-access/workspace.ts),
+  [member commands](../../packages/database/src/tenant-access/identity-workspace-member-command.ts),
+  [membership lifecycle](../../packages/database/src/tenant-access/identity-workspace-membership-lifecycle.ts),
+  [invitation rejoin](../../packages/database/src/tenant-access/identity-workspace-invitation-acceptance-store.ts):548–557:
+  one checked-out client, workspace-first authority and actual revision transitions.
+- [Cancellation](../../packages/database/src/execution/runs/workflow-run-cancellation.ts):41–44
+  and [manual fence](../../packages/database/migrations/0131_checked_manual_start.sql):43–98:
+  selected-run UPDATE and API-only manual trigger enforcement, not child admission.
 - [Run contract](../../packages/contracts/src/http/workflow-runs.ts):39–45,114–154:
   strict existing trigger/summary wire; no child lineage yet.
 - [ADR007](../adr/007-run-node-state-retry-idempotency.md):36–43,156–180,

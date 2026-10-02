@@ -15,6 +15,10 @@ plus committed reservations, against ordinary workspace/workflow capacity.
 An unreserved queued child can therefore deadlock behind its waiting parent at
 cap one. Primary selected strict independent occupancy and fail-fast admission
 for the V1 proposal on 2026-10-02; this is not acceptance of every choice below.
+Primary subsequently selected same-workspace callable pins, the bounded type and
+expansion directions, configuration-only preview, membership-revision authority
+and immutable family-deadline policy. Complete transaction/privilege review and
+ADR acceptance remain open.
 
 ## Proposed decision
 
@@ -44,19 +48,38 @@ the initial callable child and do not fake child execution in node preview.
 Root initiation authority is durable and explicit: human-origin calls recheck
 the initiating actor and the root's pinned membership role revision for fresh
 child admission. Any revision change, even promotion, refuses a future child;
-already accepted children are not retroactively canceled. Automated roots use admitted
-workspace-trigger authority, never a publisher's session. Current child
+already accepted children are not retroactively canceled. Implemented membership
+remove/rejoin/suspend/reactivate transitions advance that revision; user-global
+and workspace status checks do not imply a new suspension generation.
+Automated roots use admitted workspace-trigger authority, never a publisher's
+session. Current child
 lifecycle/compatibility, region, entitlement, capacity, FIFO and connection
 policies remain enforced. Already accepted children settle after actor departure,
 archive or rollback according to existing accepted-run truth.
 
-Child deadlines never exceed their parent's absolute deadline; propose a bounded
-one-hour default for new F08 roots only. Cancellation stops fresh spawn and
-durably propagates to admitted children. Unknown effects outrank cancellation,
+Child deadlines never exceed their parent's absolute deadline; pin the bounded
+one-hour default in the new executable family policy and accepted root, never
+an ambient fallback for recovered/retained runs. Cancellation stops fresh spawn
+and durably propagates to admitted children. Unknown effects outrank cancellation,
 timeout and failure; final parent cancellation waits for truthful reconciliation.
 Child terminal state plus a parent wakeup commits atomically, without holding
 both child and parent locks. Duplicate/lost wakeups reconstruct from PostgreSQL
 and resume the parent once through its own CAS.
+Spawn holds a verified bounded root-to-parent lineage fence: ancestor SHARE rows
+before the immediate parent's direct NO KEY UPDATE/CAS, no lock upgrade when the
+root is that parent. Selected-run cancellation UPDATE serializes with this fence;
+if cancel wins, no child is admitted; if spawn wins, that child is accepted work
+requiring reconciliation. Terminal producers never lock ancestors while holding
+their own run. Final PostgreSQL-clock checks enforce immutable ancestor deadlines.
+
+All definite authoritative policy rejections, including those before reservation,
+converge on one immutable refusal after candidate savepoint rollback. Infrastructure,
+unsupported protocol/artifact and corruption failures roll back the whole outer
+transaction for existing transport/CAS recovery; uncertain commit is resolved by
+durable identity, never fabricated as definite refusal. Reuse the concrete
+transaction-local WorkspaceTransaction adapter and canonical acceptance; a narrow
+tenant-bound worker proof binds child insertion/reservation, not general dispatcher
+privileges or a second admission owner.
 
 Keep dependency versions, lineage, terminal/results and artifact references
 while needed by nonterminal parents, replay-eligible history or legal hold;

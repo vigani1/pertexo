@@ -4,6 +4,11 @@ Status: proposed plan; not implementation-authorized by this document.
 Decision preparation is authorized; primary selected strict independent occupancy
 and fail-fast child admission for the V1 proposal on 2026-10-02. The complete
 contract/ADR still requires design review and acceptance before persistent code.
+Primary additionally selected bounded portable closed-object contracts, exact
+same-workspace pins, depth-four/64-child/1,000-expanded-work bounds,
+configuration-only preview, conservative membership-revision authority and
+immutable publication/root family-deadline policy. Transaction/privilege and
+independent review closure remain pending.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New execution capability across both stacks. Relative size: **XL**, not a calendar estimate.
 
@@ -111,8 +116,8 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 Evidence log: complete plan and relevant current ADRs/contracts inspected against
 accepted F07 `e7d25e1f85342f10ae0044aadd408d88c49ea993`; exact anchors, proposal
 interfaces, capacity/authority/deadline/retention decisions and verification seams
-are recorded in the proposal. Only strict independent occupancy/fail-fast capacity
-direction is selected; no complete ADR acceptance, allocated migration, persistent
-schema/code, child execution, restart proof or live UI evidence exists yet.
+are recorded in the proposal. Product directions above are selected; no complete
+ADR acceptance, allocated migration, persistent schema/code, child execution,
+restart proof or live UI evidence exists yet.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
