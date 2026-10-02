@@ -587,3 +587,11 @@ create-lens history are retained. Rapid name/tag/folder/favorite changes, explic
 null clears, clear-all and double favorite toggles preserve current state. Live
 rapid clicks remain in the qualification; no wait hides the production race.
 The final frozen four-gate run and independent fix-delta review remain open.
+
+The bounded standards delta review caught a delete-confirmation snapshot race:
+the frozen displayed name could otherwise use a newer background revision.
+First deletion now binds the displayed target ID/revision; two folder/tag rename
+regressions prove stale confirmation returns a known conflict and cannot silently
+delete a renamed target. Explicit cancel, refresh and reopening show the new
+target/revision before a fresh attempt. Manager 17/17, typecheck and scoped lint
+pass; exact uncertain retry remains owned by the shared command hook.

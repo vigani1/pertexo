@@ -459,9 +459,9 @@ function FolderManagement({
                   start({
                     ...scope,
                     kind: 'delete-folder',
-                    folderId: current.id,
+                    folderId: deleteTarget.id,
                     idempotencyKey: crypto.randomUUID(),
-                    body: { expectedFolderRevision: current.revision },
+                    body: { expectedFolderRevision: deleteTarget.revision },
                   });
                 }
           }
@@ -683,9 +683,9 @@ function TagManagement({
                   start({
                     ...scope,
                     kind: 'delete-tag',
-                    tagId: current.id,
+                    tagId: deleteTarget.id,
                     idempotencyKey: crypto.randomUUID(),
-                    body: { expectedTagRevision: current.revision },
+                    body: { expectedTagRevision: deleteTarget.revision },
                   });
                 }
           }

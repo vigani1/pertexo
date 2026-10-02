@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
@@ -7,6 +7,7 @@ import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-w
 import { createApiClient } from '../../../src/lib/api/client';
 import { WorkflowOrganizationManager } from '../../../src/features/workflows/components/organization/workflow-organization-manager';
 import { WorkflowFolderPicker } from '../../../src/features/workflows/components/organization/workflow-folder-picker';
+import { workflowOrganizationKeys } from '@/features/workflows/organization.queries';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';
 import {
@@ -85,6 +86,110 @@ function renderManager(
 }
 
 describe('workflow organization manager', () => {
+  it.each(['folder', 'tag'] as const)(
+    'binds %s deletion to the displayed snapshot across a background rename',
+    async (kind) => {
+      installVocabulary();
+      let renamed = false;
+      const nextFolder = { ...folder, name: 'Renamed operations', revision: 8 };
+      const nextTag = { ...tag, key: 'renamed-ops', revision: 9 };
+      const id = kind === 'folder' ? folder.id : tag.id;
+      const originalName = kind === 'folder' ? folder.name : tag.key;
+      const nextName = kind === 'folder' ? nextFolder.name : nextTag.key;
+      const bodies: unknown[] = [];
+      mockServer.use(
+        http.get(`${api}/workflow-folders`, () =>
+          HttpResponse.json({ items: [renamed ? nextFolder : folder] }),
+        ),
+        http.get(`${api}/workflow-tags`, () =>
+          HttpResponse.json({
+            items: [renamed ? nextTag : tag],
+            nextCursor: null,
+          }),
+        ),
+        http.post(
+          `${api}/workflow-${kind}s/${id}/delete`,
+          async ({ request }) => {
+            bodies.push(await request.json());
+            return problem(409, `workflow.${kind}_revision_conflict`);
+          },
+        ),
+      );
+      const { queryClient } = renderManager();
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: `Edit ${kind} ${originalName}`,
+        }),
+      );
+      await userEvent.click(
+        screen.getByRole('button', { name: `Delete ${kind}` }),
+      );
+      renamed = true;
+      await act(async () => {
+        await queryClient.invalidateQueries({
+          queryKey:
+            kind === 'folder'
+              ? workflowOrganizationKeys.folders(userId, workspaceId)
+              : workflowOrganizationKeys.tags(userId, workspaceId),
+        });
+      });
+      expect(
+        screen.getByRole('dialog', { name: `Delete ${originalName}?` }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('dialog', { name: `Delete ${nextName}?` }),
+      ).not.toBeInTheDocument();
+      const confirm = screen.getByRole('button', {
+        name: `Confirm delete ${kind}`,
+      });
+      await waitFor(() => expect(confirm).toBeEnabled());
+      await userEvent.click(confirm);
+      await screen.findByText(
+        `This ${kind} changed. Refresh it before trying again.`,
+      );
+      expect(bodies).toEqual([
+        kind === 'folder'
+          ? { expectedFolderRevision: folder.revision }
+          : { expectedTagRevision: tag.revision },
+      ]);
+      expect(confirm).toBeDisabled();
+      expect(
+        screen.getByRole('dialog', { name: `Delete ${originalName}?` }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('button', { name: 'Retry exact command' }),
+      ).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Reload current folders and tags' }),
+      );
+      await userEvent.click(
+        await screen.findByRole('button', { name: `Edit ${kind} ${nextName}` }),
+      );
+      await userEvent.click(
+        screen.getByRole('button', { name: `Delete ${kind}` }),
+      );
+      expect(
+        screen.getByRole('dialog', { name: `Delete ${nextName}?` }),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: `Confirm delete ${kind}` }),
+        ).toBeEnabled(),
+      );
+      await userEvent.click(
+        screen.getByRole('button', { name: `Confirm delete ${kind}` }),
+      );
+      await waitFor(() => {
+        expect(bodies).toHaveLength(2);
+      });
+      expect(bodies[1]).toEqual(
+        kind === 'folder'
+          ? { expectedFolderRevision: nextFolder.revision }
+          : { expectedTagRevision: nextTag.revision },
+      );
+    },
+  );
   it.each([
     {
       label: 'Folder name',
