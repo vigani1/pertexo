@@ -203,6 +203,13 @@ full package lint/format, complexity and module-import checks. Database unit
 tests (1,035) and worker typecheck also pass against the engine seam. Durable SQL
 admission/settlement, physical reconciliation, worker/catalog registration,
 publication/editor wiring, retention, and all live qualification remain unfinished.
+V3 coordinator completed-output hydration now applies the same source-local
+budget as V3 attempt input: aggregate identity metadata is bounded separately,
+each source can reach 1 MiB without descriptor overhead, and the existing
+persisted-outcome binding remains mandatory. Retained V1/V2 batch bounds are
+unchanged. All 667 engine tests across 47 files pass, including exact-limit
+advance, oversized-source rejection, bounded metadata and hostile containers.
+This does not register callable result persistence or terminal settlement.
 The standalone database Checkpoint V3 codec now validates the persisted wire
 format independently of the engine, retaining the existing whole-checkpoint
 256 KiB limit and strict physical-input/child-result separation. Its V2 projection

@@ -22,6 +22,7 @@ import { forEachCoordinatorObservations } from './observation/coordinator-loop-o
 import {
   indexPersistedSuccessfulOutcomes,
   parseCompletedOutputItems,
+  parseCompletedOutputItemsV3,
 } from './observation/coordinator-output.js';
 import { executableNodes } from './compilation/executable-graph.js';
 import {
@@ -188,9 +189,9 @@ export async function advanceWorkflow(
     input.observations,
     checkpoint,
   );
-  const completedOutputItems = parseCompletedOutputItems(
-    input.completedOutputs,
-  );
+  const completedOutputItems = callExecutable
+    ? parseCompletedOutputItemsV3(input.completedOutputs)
+    : parseCompletedOutputItems(input.completedOutputs);
   const successfulOutcomes = indexPersistedSuccessfulOutcomes(
     persistedObservations.facts,
   );

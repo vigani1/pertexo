@@ -1,6 +1,4 @@
 import { createHash } from 'node:crypto';
-import { types as nodeTypes } from 'node:util';
-import { NODE_JSON_LIMITS_V1 } from '@pertexo/node-sdk';
 
 import {
   canonicalJson,
@@ -17,6 +15,7 @@ import {
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type { ExecuteNodeAttemptInput } from './node-attempt-contract.js';
 import { invocationKey as createInvocationKey } from '../transition/scheduling.js';
+import { ownCompletedFields } from '../completed-output-fields.js';
 
 export type PreparedNodeAttemptInput = Readonly<{
   completedOutputs: Readonly<Record<string, JsonValue>>;
@@ -183,57 +182,6 @@ function retainCompletedOutput(
   }
 }
 
-/** Inspect metadata containers only; their values have independent JSON budgets. */
-function ownCompletedFields(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || nodeTypes.isProxy(value))
-    operationError('attempt_invalid', 'completed output metadata is invalid');
-  const array = Array.isArray(value);
-  const prototype: unknown = Object.getPrototypeOf(value);
-  if (
-    (prototype !== null &&
-      prototype !== (array ? Array.prototype : Object.prototype)) ||
-    Object.getOwnPropertySymbols(value).length !== 0
-  )
-    operationError('attempt_invalid', 'completed output metadata is invalid');
-  const names = Object.getOwnPropertyNames(value);
-  const length: unknown = array
-    ? Object.getOwnPropertyDescriptor(value, 'length')?.value
-    : undefined;
-  if (
-    names.length > NODE_JSON_LIMITS_V1.members + (array ? 1 : 0) ||
-    (array &&
-      (typeof length !== 'number' ||
-        !Number.isSafeInteger(length) ||
-        length > NODE_JSON_LIMITS_V1.members ||
-        names.length !== length + 1))
-  )
-    operationError(
-      'attempt_invalid',
-      'completed output metadata exceeds limits',
-    );
-  for (const name in value)
-    if (!Object.hasOwn(value, name))
-      operationError(
-        'attempt_invalid',
-        'completed output metadata is inherited',
-      );
-  const fields = Object.create(null) as Record<string, unknown>;
-  let ordinal = 0;
-  for (const name of names) {
-    if (array && name === 'length') continue;
-    const descriptor = Object.getOwnPropertyDescriptor(value, name);
-    if (
-      descriptor === undefined ||
-      !descriptor.enumerable ||
-      !('value' in descriptor) ||
-      (array && name !== String(ordinal++))
-    )
-      operationError('attempt_invalid', 'completed output metadata is invalid');
-    fields[name] = descriptor.value;
-  }
-  return fields;
-}
-
 function normalizeCompletedOutputsV3(
   value: unknown,
   input: ExecuteNodeAttemptInput,
@@ -241,7 +189,7 @@ function normalizeCompletedOutputsV3(
   graph: WorkflowExecutableGraphV2,
   directUpstream: ReadonlySet<string>,
 ): Readonly<Record<string, JsonValue>> {
-  const fields = ownCompletedFields(value);
+  const fields = ownCompletedFields(value, 'attempt_invalid');
   const outputs = Object.create(null) as Record<string, JsonValue>;
   if (!Array.isArray(value)) {
     const keys = Object.keys(fields);
@@ -260,7 +208,7 @@ function normalizeCompletedOutputsV3(
   const descriptors = Object.values(fields).map((candidate) => {
     if (Array.isArray(candidate))
       operationError('attempt_invalid', 'completed output must be an object');
-    const descriptor = ownCompletedFields(candidate);
+    const descriptor = ownCompletedFields(candidate, 'attempt_invalid');
     if (
       Object.keys(descriptor).length !== 3 ||
       !['invocationKey', 'nodeId', 'value'].every((key) =>
