@@ -89,10 +89,10 @@ implementation or an explicitly reviewed narrower shared policy was needed.
 The human subsequently authorized option 3 through the roadmap manager: a
 narrower curated-only HTTPS grammar. Its exact bounded v1 grammar, compatibility
 change, versioned descriptor value kind and rationale are recorded in ADR063 and
-the contract for primary review before implementation. Ordinary HTTP/F05 behavior
-remains unchanged. No policy implementation, parser dependency or writer
-enablement has occurred; persistent qualification, cutover, rollback and release
-criteria remain open.
+the contract at `fdfc5699`, accepted by primary exact-source review on 2026-10-02
+before changed-policy implementation. Ordinary HTTP/F05 behavior remains unchanged.
+Consistent implementation is now authorized; no writer enablement has occurred.
+Persistent qualification, cutover, rollback and release criteria remain open.
 
 Foundation verification: 215 model and 124 catalog unit tests; 154 contract tests
 with regenerated artifact/OpenAPI checks; 113 focused API tests and two receipt

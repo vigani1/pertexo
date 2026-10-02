@@ -2,8 +2,9 @@
 
 Status: accepted by the roadmap manager after primary and independent review,
 2026-10-02. Implementation authorized; release and owned qualification remain open.
-Human-authorized option 3 policy amendment: exact grammar below awaits primary
-review before changed-policy implementation; other accepted decisions remain.
+Human-authorized option 3 policy amendment: primary accepted the exact grammar
+at `fdfc5699` on 2026-10-02 before changed-policy implementation; qualification
+remains open and other accepted decisions remain.
 Parent: [F06](06-curated-templates.md), accepted
 [ADR063](../adr/063-curated-template-historical-origin.md).
 
@@ -80,7 +81,8 @@ target values; no tier may treat config-only F05 inspection as input validation.
 
 ### Curated HTTPS endpoint v1 grammar
 
-Exact-source primary review pending, following human-authorized option 3.
+Exact-source primary acceptance of `fdfc5699`, 2026-10-02, following
+human-authorized option 3.
 Applies only to descriptor value kind `curated_https_endpoint_v1` and new
 origin-bearing template preview/create. This is a deliberate narrowing of the
 original registered-URL acceptance set, not a general URL parser or global HTTP
@@ -148,7 +150,7 @@ their hashes/default reads/exports remain unchanged. Retained origin-bearing
 replay precedes this policy, and edits/reads/inheritance never revalidate it.
 
 Both source UI gates and the template SQL writer remain off. The design delta
-must receive exact-source primary review before implementation; completing the
+has received exact-source primary acceptance; completing the
 matrix, raw SQL typed guard, readiness inventory and real owned execution/cutover
 proof is still required before local enablement. No database extension/custom
 parser image, production operation, provider call or auto-cohort switch is added.
@@ -299,8 +301,9 @@ pollute origin cache with inferred safety or similarity state.
 - [x] Primary and independent ADR/contract review; concrete schema/helper/readiness
       rollout and compatible rollback design accepted before persistent code.
       Actual images and runtime cutover qualification remain open below.
-- [ ] Exact-source primary review of the human-authorized curated-only HTTPS v1
-      grammar amendment, followed by consistent three-tier implementation/proof.
+- [x] Exact-source primary review of the human-authorized curated-only HTTPS v1
+      grammar amendment at `fdfc5699`, accepted 2026-10-02.
+- [ ] Consistent three-tier curated HTTPS v1 implementation and differential proof.
 - [x] Three completed external prototype graphs admitted/compiled under pinned supported profile;
       defaultcore rejection and exact IDs/dynamic text preservation proved.
 - [ ] Descriptor digest/target-delta verification tested against missing/extra

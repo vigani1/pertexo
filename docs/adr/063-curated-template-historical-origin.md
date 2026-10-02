@@ -4,8 +4,9 @@ Status: accepted, 2026-10-02, by the roadmap manager after primary and independe
 ADR/contract review and closure of the readiness/typed-validation clarifications.
 Implementation is authorized; migration 0133 is allocated against reviewed
 combined F02/F05 base `f5432838`, integrated normally in `69c10d3b`.
-The curated-only HTTPS policy amendment below awaits exact-source primary review
-before its implementation. Parent: [F06](../feature-plans/06-curated-templates.md).
+The curated-only HTTPS policy amendment at `fdfc5699` received exact-source
+primary acceptance on 2026-10-02. Changed-policy implementation is authorized;
+qualification remains open. Parent: [F06](../feature-plans/06-curated-templates.md).
 
 Curated examples should accelerate setup without creating a second importer or
 coupling an editable workflow to a changing asset. Decision: use F05's
@@ -74,7 +75,7 @@ typed rules as well as ordinary F05 config admission; SQL independently checks
 the same curated grammar. This amendment changes the original full-WHATWG
 acceptance expectation; it does not claim unchanged URL semantics.
 
-### Curated HTTPS endpoint v1 amendment — primary review pending
+### Curated HTTPS endpoint v1 amendment — accepted
 
 On 2026-10-02 the human authorized the recommended option 3 through the roadmap
 manager: narrow only curated-template setup, consistently across browser/model,
@@ -117,8 +118,9 @@ WHATWG/UTS46 implementation in SQL. Explicitly restricting new curated setup
 keeps the SQL guard readily auditable and avoids permissive regex IDNA forgery.
 The prior broad URL oracle at `b69a940b` remains historical evidence of the
 compatibility change, not evidence that this narrower policy is implemented.
-Exact-source primary review precedes changed-policy implementation, and genuine
-three-tier differential plus raw-role PostgreSQL tests precede enablement.
+Primary accepted the exact three-document delta at `fdfc5699` before changed-policy
+implementation. Genuine three-tier differential plus raw-role PostgreSQL tests
+still precede enablement; design acceptance is not qualification evidence.
 
 The canonical idempotent command includes the complete configured manifest,
 name, bindings, compatibility fingerprint and exact optional origin. Omitted
