@@ -191,8 +191,12 @@ whitespace/order rejection. No generic SQL JavaScript encoder, new
 payload store/quota/history owner, artifact relaxation or legacy reinterpretation
 is proposed. Exact byte replay preserves original identity; even semantically
 equal rewritten bytes cannot replace a committed snapshot. See the accepted
-amendment in ADR065; the current SQL poisoning finding remains OPEN until
-implementation and real-role qualification.
+amendment in ADR065. Primary and independent review narrowly closed original
+inline-input poisoning and rounded-reference replay findings for candidate SHA256
+`50897f0343e2f6b8dc87b7989a578ad1984217a89a67e8fd26cb3dec9fbdcb5b` after actual
+worker-login record/read/replay evidence. The 108 scalar eligibility comparisons
+are sampled platform proof; bootstrap publication/root/lease transitions do not
+qualify actual publication, claim/process/crash, completion or the full feature.
 SQL numeric/reference admission and recovery must agree under actual JavaScript
 bounded parsing; PostgreSQL arbitrary-precision JSONB equality or finite casts
 alone are insufficient. Compare numeric leaves with equivalent binary64 semantics:

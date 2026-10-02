@@ -67,7 +67,14 @@ negative. It avoids an improvised generic SQL canonical encoder. Existing
 canonical artifact preparation/hydration stays with its current artifact owner
 and selected NEW native encoder; this amendment is not permission to accept
 arbitrary artifact bytes or add a JSON store, quota/history owner or reaper.
-Required actual-role/reclaim/differential evidence remains open.
+Primary and independent review narrowly closed the original input-byte poisoning
+and rounded-reference replay findings for candidate SHA256
+`50897f0343e2f6b8dc87b7989a578ad1984217a89a67e8fd26cb3dec9fbdcb5b`.
+Actual worker-login record/read/replay preserved immutable bytes, first projection
+and current authority. The 108 scalar eligibility comparisons are sampled
+PostgreSQL18 platform proof, not universal numeric equivalence. Publication/root
+facts and lease transitions were bootstrap fixtures; actual publication, claim,
+process/crash, completion, artifact and full-feature qualification remain open.
 Exact inline bytes remain within the existing 256 KiB inline eligibility and
 wrapper/backstop policies. They share the existing provenance retention, legal
 hold and purge owner: no duplicate quota reservation or unbounded hidden payload.
