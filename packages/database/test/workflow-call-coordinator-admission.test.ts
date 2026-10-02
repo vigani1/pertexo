@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   admitWorkflowCallDeclarations,
+  prepareWorkflowCallAdmissionPass,
   sealWorkflowCallAdmissionPass,
 } from '../src/execution/workflow-calls/workflow-call-coordinator-admission.js';
 import {
@@ -88,6 +89,36 @@ function fixture(recordError?: Error) {
 beforeEach(() => vi.resetAllMocks());
 
 describe('private coordinator Call admission pass', () => {
+  it('allows existing own-run validation after prerequisites and before candidate savepoints', async () => {
+    const f = fixture();
+    const pass = await prepareWorkflowCallAdmissionPass(f.transaction, input);
+    expect(f.order).toEqual(['prelock']);
+    expect(mocks.accept).not.toHaveBeenCalled();
+    f.order.push('own-run-lock-and-receipt');
+    await pass.admit();
+    expect(f.order.slice(0, 4)).toEqual([
+      'prelock',
+      'own-run-lock-and-receipt',
+      'savepoint workflow_call_candidate',
+      'accept:first',
+    ]);
+    const statements = f.statements.length;
+    await expect(pass.admit()).rejects.toThrow('already consumed');
+    expect(f.statements).toHaveLength(statements);
+  });
+
+  it('does not reuse a prepared pass after an operational failure', async () => {
+    const f = fixture();
+    const failure = Object.assign(new Error('lock failure'), { code: '40P01' });
+    const pass = await prepareWorkflowCallAdmissionPass(f.transaction, input);
+    mocks.accept.mockRejectedValue(failure);
+    await expect(pass.admit()).rejects.toBe(failure);
+    const statements = f.statements.length;
+    await expect(pass.admit()).rejects.toThrow('already consumed');
+    expect(f.statements).toHaveLength(statements);
+    expect(mocks.accept).toHaveBeenCalledOnce();
+    expect(f.order).not.toContain('seal');
+  });
   it('prelocks once before candidates and records only after each same-client savepoint release', async () => {
     const f = fixture();
     const outcomes = await admitWorkflowCallDeclarations(f.transaction, input);

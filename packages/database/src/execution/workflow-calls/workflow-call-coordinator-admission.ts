@@ -29,6 +29,16 @@ type RecordedOutcome = Readonly<{
   invocationKey: string;
   outcome: WorkflowCallCandidateOutcome;
 }>;
+type AdmissionPassInput = ParentContext &
+  Readonly<{
+    compatibilityReleases: CompatibilityReleaseExpectationSet;
+    candidates: readonly AcceptWorkflowCallRunInput[];
+  }>;
+
+/** Bound to the exact transaction; SQL remains the authority for each candidate. */
+export interface PreparedWorkflowCallAdmissionPass {
+  admit(): Promise<readonly RecordedOutcome[]>;
+}
 
 async function recordOutcome(
   transaction: WorkspaceTransaction,
@@ -63,12 +73,23 @@ async function recordOutcome(
  */
 export async function admitWorkflowCallDeclarations(
   transaction: WorkspaceTransaction,
-  input: ParentContext &
-    Readonly<{
-      compatibilityReleases: CompatibilityReleaseExpectationSet;
-      candidates: readonly AcceptWorkflowCallRunInput[];
-    }>,
+  input: AdmissionPassInput,
 ): Promise<readonly RecordedOutcome[]> {
+  const pass = await prepareWorkflowCallAdmissionPass(transaction, input);
+  return pass.admit();
+}
+
+/**
+ * Acquire prerequisites before the existing coordinator locks its own run.
+ * The returned single-use pass captures validated candidates and the same
+ * transaction, so the caller can validate/claim its existing CAS and receipt
+ * before admitting children without repeating the prerequisite lock pass.
+ * This does not own commit, rollback, checkpoint persistence, or sealing.
+ */
+export async function prepareWorkflowCallAdmissionPass(
+  transaction: WorkspaceTransaction,
+  input: AdmissionPassInput,
+): Promise<PreparedWorkflowCallAdmissionPass> {
   const parent = parentContextSchema.parse({
     parentRunId: input.parentRunId,
     expectedParentRevision: input.expectedParentRevision,
@@ -90,25 +111,38 @@ export async function admitWorkflowCallDeclarations(
       throw new TypeError('Workflow Call admission pass context is invalid');
     keys.add(call.invocationKey);
   }
-  if (candidates.length === 0) return Object.freeze([]);
-  await transaction.db.execute(sql`
+  if (candidates.length > 0)
+    await transaction.db.execute(sql`
     select app.prelock_workflow_call_parent(
       ${parent.parentRunId}::uuid,${parent.expectedParentRevision}::integer,
       ${expectedSetJson(releases)}::jsonb
     )
   `);
-  const results: RecordedOutcome[] = [];
-  for (const candidate of candidates) {
-    const outcome = await acceptWorkflowCallCandidate(transaction, candidate);
-    await recordOutcome(transaction, candidate.call, outcome);
-    results.push(
-      Object.freeze({
-        invocationKey: candidate.call.invocationKey,
-        outcome,
-      }),
-    );
-  }
-  return Object.freeze(results);
+  let consumed = false;
+  return Object.freeze({
+    admit: async (): Promise<readonly RecordedOutcome[]> => {
+      if (consumed)
+        throw new TypeError('Workflow Call admission pass already consumed');
+      // Operational failure must escape to the outer rollback/reload owner,
+      // never retry a partly journaled pass inside the same transaction.
+      consumed = true;
+      const results: RecordedOutcome[] = [];
+      for (const candidate of candidates) {
+        const outcome = await acceptWorkflowCallCandidate(
+          transaction,
+          candidate,
+        );
+        await recordOutcome(transaction, candidate.call, outcome);
+        results.push(
+          Object.freeze({
+            invocationKey: candidate.call.invocationKey,
+            outcome,
+          }),
+        );
+      }
+      return Object.freeze(results);
+    },
+  });
 }
 
 /** SQL authenticates actual post-CAS state; these identifiers are not authority. */
