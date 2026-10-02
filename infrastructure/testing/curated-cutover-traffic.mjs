@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createServer, request as requestLoopback } from 'node:http';
 
 /** Actual loopback HTTP admission: held requests never reach an API process. */
 export async function createCuratedCutoverTraffic() {
@@ -13,23 +13,46 @@ export async function createCuratedCutoverTraffic() {
       response.end(JSON.stringify({ status: 'traffic_held' }));
       return;
     }
+    if (
+      typeof request.url !== 'string' ||
+      !request.url.startsWith('/') ||
+      request.url.startsWith('//') ||
+      request.url.includes('\\') ||
+      Array.from(request.url).some((character) => {
+        const code = character.charCodeAt(0);
+        return code <= 32 || code === 127;
+      })
+    ) {
+      response.writeHead(400);
+      response.end();
+      return;
+    }
     active++;
     forwarded++;
     void (async () => {
       const chunks = [];
       for await (const chunk of request) chunks.push(chunk);
-      const upstream = await fetch(new URL(request.url, target), {
-        method: request.method,
-        headers: request.headers,
-        redirect: 'manual',
-        signal: AbortSignal.timeout(10_000),
-        ...(chunks.length ? { body: Buffer.concat(chunks) } : {}),
+      const upstream = await new Promise((resolve, reject) => {
+        // Incoming targets are paths only. The transport host is fixed, never
+        // derived from request data or URL resolution (including // targets).
+        const outgoing = requestLoopback(
+          {
+            hostname: '127.0.0.1',
+            port: target,
+            path: request.url,
+            method: request.method,
+            headers: request.headers,
+            signal: AbortSignal.timeout(10_000),
+          },
+          resolve,
+        );
+        outgoing.once('error', reject);
+        outgoing.end(chunks.length ? Buffer.concat(chunks) : undefined);
       });
-      const headers = Object.fromEntries(upstream.headers);
-      const cookies = upstream.headers.getSetCookie();
-      if (cookies.length) headers['set-cookie'] = cookies;
-      response.writeHead(upstream.status, headers);
-      response.end(Buffer.from(await upstream.arrayBuffer()));
+      const body = [];
+      for await (const chunk of upstream) body.push(chunk);
+      response.writeHead(upstream.statusCode ?? 502, upstream.headers);
+      response.end(Buffer.concat(body));
     })()
       .catch(() => {
         if (!response.headersSent) response.writeHead(502);
@@ -71,12 +94,20 @@ export async function createCuratedCutoverTraffic() {
     },
     async release(url) {
       if (!held) throw new Error('Traffic release requires held state');
-      const ready = await fetch(new URL('/health/ready', url), {
+      if (
+        typeof url !== 'string' ||
+        !/^http:\/\/127\.0\.0\.1:[1-9][0-9]{0,4}$/u.test(url)
+      )
+        throw new Error('Traffic requires an explicit loopback API target');
+      const port = Number(url.slice('http://127.0.0.1:'.length));
+      if (!Number.isInteger(port) || port < 1 || port > 65535)
+        throw new Error('Traffic requires an explicit loopback API port');
+      const ready = await fetch(`http://127.0.0.1:${port}/health/ready`, {
         signal: AbortSignal.timeout(10_000),
       });
       if (ready.status !== 200)
         throw new Error('Artifact is not ready; traffic remains held');
-      target = url;
+      target = port;
       held = false;
     },
     close: () =>
