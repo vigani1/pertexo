@@ -210,6 +210,30 @@ runtime-role tests must prove direct content/selection mutation and unauthorized
 helper execution remain forbidden; owner selection updates must block against
 the held SHARE lock. Do not grant general UPDATE merely to enable row locking.
 
+Primary accepted the readiness-only boolean helper
+`app.curated_template_inventory_matches(text)` on 2026-10-02. Owner-owned definer,
+fully qualified objects, fixed `search_path=pg_catalog,pg_temp`, `row_security=on`;
+only API/worker EXECUTE, no PUBLIC/unintended role access, dynamic SQL, tenant
+access, caller-selected relation, returned rows or locks. Worker descriptor
+SELECT/DML and descriptor-lock EXECUTE stay forbidden. Null, malformed or wrong
+lowercase 64-hex digest returns false. Strict readiness pins body/owner/settings/ACL
+and compares the immutable inventory; both actual roles must reject drift.
+
+Inventory SHA-256 uses UTF-8 bytes of domain
+`pertexo.workflow.curated-inventory.v1` plus a NUL, followed by sorted encoded rows.
+The field encoding is decimal UTF-8 byte length, `:`, then exact text. Sort rows by
+ASCII/C template ID then numeric version. Target fields are encoded in order
+`nodeId`, `location`, `key`, `valueKind`; prefix each concatenated target with its
+field encoding. Targets encode decimal target count, `:`, then encoded targets in
+descriptor array order. Each row encodes, in order, template ID, decimal version,
+decimal schema version, exact canonical base-manifest text, manifest digest,
+encoded targets and supported profile; prefix the concatenated row with its field
+encoding. Reject malformed target shapes, missing/extra keys or nonstring target
+fields rather than omit unknown content. Mutable selection/retirement flags are
+excluded deliberately; every immutable descriptor field and typed kind is covered.
+Generated repository and native SQL golden digests must agree. This is readiness
+evidence only, never caller authorization for origin or provider execution.
+
 | Operation | Lock/order and authority | Failure/recovery |
 | --- | --- | --- |
 | New template import | Existing workspace admission → active actor/membership and workflow-create (+ connection-read when bindings exist) → actor-scoped receipt UPDATE → existing import gate SHARE → template writer gate SHARE → descriptor SHARE → serving catalog SHARE → sorted destination connections SHARE → atomic workflow/draft/origin/audit/receipt. API and SQL helper obey the same order. | Any failure rolls back everything, including claim and origin. No partial draft/origin attachment. Descriptor retirement, writer-disable or catalog change winning first rejects new creation. |

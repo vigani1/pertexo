@@ -162,6 +162,20 @@ It locks only the requested row in the existing transaction after authority
 checks; no runtime content/selection mutation or general UPDATE grant. Privilege
 and owner-selection/reader-lock tests must prove this confinement.
 
+Primary accepted a bounded readiness-only seam on 2026-10-02:
+`app.curated_template_inventory_matches(text)` is owner-owned security-definer,
+fixed `search_path=pg_catalog,pg_temp`, `row_security=on`, and executable only by
+API/worker (PUBLIC and other role execution revoked). It returns only a boolean
+for a bounded lowercase SHA-256 inventory digest; null, malformed or mismatched
+arguments return false. It neither returns rows nor locks/mutates descriptors,
+reads tenant data, uses dynamic SQL or accepts a source relation. Worker retains
+no descriptor SELECT/DML or descriptor-lock EXECUTE. Exact body/owner/settings/ACL
+are readiness-pinned. Immutable fields and target kinds enter the domain-prefixed,
+unambiguous canonical inventory encoding in the contract; selection flags do not.
+This preserves independent API/worker inventory readiness without broader grants,
+while retirement remains compatible with reads and retained replay. Actual-role
+wrong digest/content/helper/ACL drift tests remain required before qualification.
+
 This relation is deliberate defense in depth: F05's security-definer SQL helper
 already validates its raw command against a locked receipt. An origin-aware
 helper must similarly check the owner-installed descriptor and permitted literal
