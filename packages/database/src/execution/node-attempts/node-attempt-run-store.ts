@@ -7,6 +7,10 @@ import { completeNodeAttempt } from './node-attempt-run-store-completion.js';
 import { markNodeAttemptDispatched } from './node-attempt-run-store-dispatch.js';
 import { heartbeatNodeAttempt } from './node-attempt-run-store-heartbeat.js';
 import { recordNodeAttemptInput } from './node-attempt-run-store-input-record.js';
+import {
+  recordWorkflowCallDeclarationInput,
+  readWorkflowCallDeclarationInput,
+} from './node-attempt-call-input-record.js';
 import { loadNodeAttemptInputs } from './node-attempt-run-store-inputs.js';
 
 import {
@@ -63,6 +67,16 @@ export function createNodeAttemptRunStore(
     recordInput: (
       input: Parameters<NonNullable<NodeAttemptRunStore['recordInput']>>[0],
     ) => recordNodeAttemptInput(pool, input),
+    recordCallDeclarationInput: (
+      input: Parameters<
+        NonNullable<NodeAttemptRunStore['recordCallDeclarationInput']>
+      >[0],
+    ) => recordWorkflowCallDeclarationInput(pool, input),
+    readCallDeclarationInput: (
+      input: Parameters<
+        NonNullable<NodeAttemptRunStore['readCallDeclarationInput']>
+      >[0],
+    ) => readWorkflowCallDeclarationInput(pool, input),
     complete: (input: Parameters<NodeAttemptRunStore['complete']>[0]) =>
       completeNodeAttempt(pool, input),
     close: () => lease.close(),

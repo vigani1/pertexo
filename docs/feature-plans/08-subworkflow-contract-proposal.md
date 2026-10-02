@@ -222,6 +222,21 @@ call site/input and root admission authority before requesting the same canonica
 reservation checks. Persist the call record, parent call-control checkpoint CAS,
 child acceptance/reservation and events/outboxes in one outer transaction.
 
+Primary clarified declaration recovery on 2026-10-02: the input snapshot belongs
+to the immutable logical Call and its exact physical declaration attempt; its
+creation lease/fence is historical provenance, not current execution authority.
+If an undispatched attempt is reclaimed after input persistence, authenticate the
+new current lease/fence/delivery independently and reuse the protected committed
+snapshot for that same attempt/run/version/invocation/reference/checksum. Never
+rerun its mappings, rewrite or re-reserve the snapshot, or create another logical
+Call/child. A historical fence less than or equal to the current fence is only a
+consistency condition, not authentication: the provenance must originate from
+the protected writer, retain its valid creation fence, and reject stale leases,
+changed identities, references or checksums. Completion still requires current
+lease/fence/delivery authority. Crash-after-input-before-dispatch recovery and
+exactly-one-child proof remain required implementation evidence, not established
+by this clarification. This routine recovery clarification requires no new ADR.
+
 Every candidate acceptance operation runs within the savepoint, not just reserve.
 If the speculative child is authoritatively refused, a savepoint rolls back **all** candidate
 child acceptance rows, claim, initial event/checkpoint/outbox and reservation;

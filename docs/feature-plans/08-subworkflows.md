@@ -331,5 +331,27 @@ across 22 files pass, including the direct/nested-loop and transitive separation
 regressions, with model build/typecheck and narrow lint/format. Publication and
 SQL persistence have not yet registered this derived metadata; these tests are
 not publication, privilege, migration or usable-product qualification.
+The worker's native attempt path now selects explicit V3 projections and reads
+the exact retained callee version, checking workspace/workflow/version, executable
+checksum and callable contract identity before providing its descriptor. Required
+Call input recording is separate from the unchanged best-effort diagnostic writer.
+Recovery reads protected snapshot metadata with the current lease/delivery and
+hydrates/checks its original bytes before loading upstream inputs; it does not
+remap, prepare, reserve or rewrite a committed snapshot. Engine tests cover changed
+mappings and persistence failure before dispatch. Worker orchestration and SQL
+adapter mocks cover recovery reuse, metadata mismatch and operational failures.
+All 691 engine, 1,033 worker and 1,339 non-integration database tests pass, with
+the affected package typechecks. These do not prove real lease reclaim or one child.
+The unregistered SQL draft at SHA256
+`7d0d3b410e9e5d9c080ae698e950ff51ff517df20f92a9afcaa1831377dfc86e`
+installs in an exclusively owned network-none/no-port PostgreSQL18 tmpfs database;
+all 21 draft routines remain ungranted to six serving roles and rollout remains OFF.
+The database was removed. Required input function bodies are not yet qualified
+with native run fixtures. Artifact reservation ownership, pending-upload cleanup,
+physical completion aliasing, V3 input loading and coordinator/result integration
+remain unfinished; the existing preview-only artifact link cannot be reused as
+execution ownership without an explicit additive owner fence. No F08 acceptance
+row is complete from this evidence.
+
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.

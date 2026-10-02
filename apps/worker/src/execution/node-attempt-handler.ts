@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 import {
   canonicalOutboxPayloadChecksum,
   NodeAttemptOutputInvalidError,
@@ -5,7 +7,8 @@ import {
   type NodeAttemptLease,
   type NodeAttemptRunStore,
   type PublishedWorkflowReader,
-  type PublishedWorkflowV2Projection,
+  type PublishedWorkflowExecutableProjection,
+  type PublishedWorkflowV3Projection,
 } from '@pertexo/database/execution';
 import type {
   QueueDelivery,
@@ -32,6 +35,8 @@ import { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error
 import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
 import { connectionHealthCompletionFields } from './connection-health-completion.js';
 import { completionResult } from './node-attempt-completion-result.js';
+import type { createWorkflowExecutionValueCodec } from './workflow-execution-value-codec.js';
+import type { WorkflowCallPinV1 } from '@pertexo/workflow-model/workflow-call-contract';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -39,6 +44,8 @@ type AttemptDelivery = Extract<
 >;
 
 export interface PreparedNodeAttempt {
+  readonly callPin?: WorkflowCallPinV1;
+  readonly inputPersistence?: 'workflow_call_declaration';
   readonly suspensionDurationSeconds?: number;
   readonly upstreamNodeOutputs: readonly Readonly<{
     nodeId: string;
@@ -51,6 +58,8 @@ export interface PreparedNodeAttempt {
         runtime?: NodeExecutionRuntime;
         signal: AbortSignal;
         onInputResolved?: ExecuteNodeAttemptInput['onInputResolved'];
+        pinnedCallableProjection?: PublishedWorkflowV3Projection;
+        recordedWorkflowCallInput?: unknown;
       }
     >,
   ): Promise<NodeAttemptOutcome>;
@@ -60,7 +69,7 @@ export interface NodeAttemptExecutionEngine {
   prepare(
     input: Readonly<{
       lease: NodeAttemptLease;
-      projection: PublishedWorkflowV2Projection;
+      projection: PublishedWorkflowExecutableProjection;
     }>,
   ): PreparedNodeAttempt;
 }
@@ -77,6 +86,10 @@ export interface NodeAttemptHandler {
 }
 
 export type NodeAttemptHandlerDependencies = Readonly<{
+  callDeclarationValues?: Pick<
+    ReturnType<typeof createWorkflowExecutionValueCodec>,
+    'prepare' | 'hydrate'
+  >;
   connectionRunHealthMode?: ConnectionRunHealthMode;
   engine: NodeAttemptExecutionEngine;
   heartbeatIntervalMillis: number;
@@ -210,26 +223,74 @@ async function executePreparedNodeAttempt(
   contextSignal: AbortSignal,
   heartbeat: NodeAttemptHeartbeat,
   environment: NodeExecutionEnvironment,
+  recordedWorkflowCallInput?: Readonly<{ value: unknown }>,
 ): Promise<NodeAttemptHandlerResult> {
   const traceContext =
     delivery.data.traceparent === undefined
       ? {}
       : { traceparent: delivery.data.traceparent };
   let outcome: NodeAttemptOutcome;
+  let declarationInputRecorded = recordedWorkflowCallInput !== undefined;
   try {
+    let pinnedCallableProjection: PublishedWorkflowV3Projection | undefined;
+    if (prepared.callPin !== undefined) {
+      const pinned = await dependencies.reader.readForExecution({
+        workspaceId: lease.workspaceId,
+        workflowVersionId: prepared.callPin.versionId,
+        signal: heartbeat.executionSignal,
+      });
+      if (pinned.kind !== 'v3_projection')
+        throw new TypeError('Pinned callable executable is unavailable');
+      pinnedCallableProjection = pinned.workflowVersion;
+    }
     outcome = await prepared.execute({
       ...inputs,
+      ...(recordedWorkflowCallInput === undefined
+        ? {}
+        : { recordedWorkflowCallInput: recordedWorkflowCallInput.value }),
+      ...(pinnedCallableProjection === undefined
+        ? {}
+        : { pinnedCallableProjection }),
       registry: environment.registry,
       runtime: environment.runtime,
       signal: heartbeat.executionSignal,
-      onInputResolved: (resolved) =>
-        recordAttemptInput(
+      onInputResolved: async (resolved) => {
+        if (prepared.inputPersistence !== 'workflow_call_declaration') {
+          await recordAttemptInput(
+            dependencies.runStore,
+            lease,
+            resolved,
+            heartbeat.executionSignal,
+          );
+          return;
+        }
+        // Recovery uses the already-authorized snapshot, never a second
+        // reservation or a rewrite under the reclaimed creation authority.
+        if (recordedWorkflowCallInput !== undefined) return;
+        const prepare = dependencies.callDeclarationValues?.prepare;
+        const record = dependencies.runStore.recordCallDeclarationInput?.bind(
           dependencies.runStore,
+        );
+        if (prepare === undefined || record === undefined)
+          throw new TypeError('Native Call input persistence is unavailable');
+        const value = await prepare({
+          owner: { kind: 'attempt', lease },
+          value: resolved,
+          signal: heartbeat.executionSignal,
+        });
+        await record({
           lease,
-          resolved,
-          heartbeat.executionSignal,
-        ),
+          ...value,
+          signal: heartbeat.executionSignal,
+        });
+        declarationInputRecorded = true;
+      },
     });
+    if (
+      prepared.inputPersistence === 'workflow_call_declaration' &&
+      !declarationInputRecorded
+    )
+      throw new TypeError('Native Call did not persist its declaration input');
   } catch (error: unknown) {
     const interruption = await resolveHeartbeatInterruption(
       dependencies,
@@ -400,7 +461,10 @@ export function createNodeAttemptHandler(
         workflowVersionId: claimed.lease.workflowVersionId,
         signal: context.signal,
       });
-      if (published.kind !== 'v2_projection')
+      if (
+        published.kind !== 'v2_projection' &&
+        published.kind !== 'v3_projection'
+      )
         throw new NodeAttemptHandlerStateError(
           published.kind === 'not_found'
             ? 'workflow_not_found'
@@ -415,9 +479,42 @@ export function createNodeAttemptHandler(
         lease: claimed.lease,
         projection: published.workflowVersion,
       });
+      let recordedWorkflowCallInput: Readonly<{ value: unknown }> | undefined;
+      if (prepared.inputPersistence === 'workflow_call_declaration') {
+        const read = dependencies.runStore.readCallDeclarationInput?.bind(
+          dependencies.runStore,
+        );
+        const hydrate = dependencies.callDeclarationValues?.hydrate;
+        if (read === undefined || hydrate === undefined)
+          throw new TypeError('Native Call snapshot recovery is unavailable');
+        const snapshot = await read({
+          lease: claimed.lease,
+          signal: context.signal,
+        });
+        if (snapshot !== undefined) {
+          const value = await hydrate({
+            owner: { kind: 'attempt', lease: claimed.lease },
+            reference: snapshot.reference,
+            signal: context.signal,
+          });
+          const canonical = canonicalJson(value);
+          if (
+            Buffer.byteLength(canonical, 'utf8') !== snapshot.byteLength ||
+            createHash('sha256').update(canonical).digest('hex') !==
+              snapshot.sha256
+          )
+            throw new TypeError(
+              'Recovered Call snapshot metadata does not match',
+            );
+          recordedWorkflowCallInput = { value };
+        }
+      }
       const inputs = await dependencies.runStore.loadInputs({
         lease: claimed.lease,
-        upstreamNodeOutputs: prepared.upstreamNodeOutputs,
+        upstreamNodeOutputs:
+          recordedWorkflowCallInput === undefined
+            ? prepared.upstreamNodeOutputs
+            : [],
         signal: context.signal,
       });
       if (inputs.abortRequested) {
@@ -471,6 +568,7 @@ export function createNodeAttemptHandler(
           context.signal,
           heartbeat,
           environment,
+          recordedWorkflowCallInput,
         );
       } finally {
         await heartbeat.stop();

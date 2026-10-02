@@ -366,7 +366,9 @@ describe('public Call declaration attempt validation', () => {
         ),
       },
     });
-    const onInputResolved = vi.fn(async () => {});
+    const onInputResolved = vi
+      .fn<(value: unknown) => Promise<void>>()
+      .mockResolvedValue(undefined);
     const { input, execute } = attempt({
       executable: changed,
       runInput: { name: 'changed upstream' },
@@ -383,16 +385,16 @@ describe('public Call declaration attempt validation', () => {
   it('propagates required snapshot persistence failure without dispatch', async () => {
     const failure = new Error('input transaction failed');
     const { input, execute } = attempt({
-      onInputResolved: async () => {
-        throw failure;
-      },
+      onInputResolved: () => Promise.reject(failure),
     });
     await expect(executeNodeAttempt(input)).rejects.toBe(failure);
     expect(execute).not.toHaveBeenCalled();
   });
 
   it('does not persist a recovered input that violates the pinned contract', async () => {
-    const onInputResolved = vi.fn(async () => {});
+    const onInputResolved = vi
+      .fn<(value: unknown) => Promise<void>>()
+      .mockResolvedValue(undefined);
     const { input, execute } = attempt({
       recordedWorkflowCallInput: { name: 42 },
       onInputResolved,

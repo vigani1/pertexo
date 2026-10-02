@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { SAFE_EXECUTOR_ERROR_CODE_PATTERN } from '@pertexo/workflow-model/attempt-failure';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import type { StoredExecutionValueV1 } from '../stored-execution-value.js';
 
 const identitySchema = z
   .string()
@@ -184,6 +185,14 @@ export const dispatchSchema = ownedLeaseSchema
 export const recordInputSchema = ownedLeaseSchema
   .extend({ input: z.unknown() })
   .strict();
+export const recordCallDeclarationInputSchema = ownedLeaseSchema
+  .extend({
+    reference: z.unknown(),
+    sha256: sha256HexSchema,
+    byteLength: z.number().int().min(1).max(1_048_576),
+  })
+  .strict();
+export const readCallDeclarationInputSchema = ownedLeaseSchema;
 export const heartbeatSchema = ownedLeaseSchema
   .extend({ leaseDurationSeconds: z.number().int().min(1).max(300) })
   .strict();
@@ -346,6 +355,27 @@ export interface NodeAttemptRunStore {
       signal: AbortSignal;
     }>,
   ): Promise<Readonly<{ recorded: boolean }>>;
+  /** Required native Call provenance. Unsupported/lost authority throws. */
+  recordCallDeclarationInput?(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      reference: StoredExecutionValueV1;
+      sha256: string;
+      byteLength: number;
+      signal: AbortSignal;
+    }>,
+  ): Promise<void>;
+  /** Current lease/delivery authorizes access to the immutable existing snapshot. */
+  readCallDeclarationInput?(
+    input: Readonly<{ lease: NodeAttemptLease; signal: AbortSignal }>,
+  ): Promise<
+    | Readonly<{
+        reference: StoredExecutionValueV1;
+        sha256: string;
+        byteLength: number;
+      }>
+    | undefined
+  >;
   complete(
     input: Readonly<{
       lease: NodeAttemptLease;
