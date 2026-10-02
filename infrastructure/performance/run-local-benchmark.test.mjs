@@ -33,6 +33,10 @@ import {
 } from './postgres-evidence.mjs';
 import { validateBenchmarkEvidence } from './compare-local-benchmark.mjs';
 import {
+  createStandaloneBenchmarkWorkspace,
+  readProductionBenchmarkRunner,
+} from './fixtures/standalone-benchmark-workspace.mjs';
+import {
   processExists,
   waitForFile,
 } from '../support/test-process-observation.mjs';
@@ -44,6 +48,28 @@ const benchmarkOperationFixture = fileURLToPath(
 const overlapWorkloadFixture = fileURLToPath(
   new URL('./fixtures/overlap-workload-fixture.mjs', import.meta.url),
 );
+
+function assertPathIsOwnedBy(rootDirectory, candidate) {
+  const relative = path.relative(rootDirectory, candidate);
+  assert.equal(
+    relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative),
+    false,
+  );
+}
+
+async function assertStandaloneFixtureBuild(workspace) {
+  for (const candidate of [
+    workspace.runnerPath,
+    workspace.compiledOutputPath,
+    workspace.sourcePath,
+    workspace.gitDirectory,
+  ])
+    assertPathIsOwnedBy(workspace.root, candidate);
+  assert.equal(
+    await readFile(workspace.compiledOutputPath, 'utf8'),
+    workspace.expectedCompiledOutput,
+  );
+}
 
 function manifest(overrides = {}) {
   return {
@@ -1540,6 +1566,39 @@ test('the overall benchmark deadline cancels an active workload', async () => {
   );
 });
 
+test('the standalone benchmark fixture owns its source and compiled output', async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), 'pertexo-benchmark-fixture-proof-'),
+  );
+  try {
+    const workspace = await createStandaloneBenchmarkWorkspace(directory);
+    const copiedRunnerBeforeBuild = await readFile(
+      workspace.runnerPath,
+      'utf8',
+    );
+    assert.equal(
+      copiedRunnerBeforeBuild,
+      await readProductionBenchmarkRunner(),
+    );
+    assert.equal(
+      path.relative(root, workspace.root).startsWith(`..${path.sep}`),
+      true,
+    );
+    await run('pnpm', ['build'], { cwd: workspace.root });
+    await assertStandaloneFixtureBuild(workspace);
+    assert.equal(
+      await readFile(workspace.runnerPath, 'utf8'),
+      copiedRunnerBeforeBuild,
+    );
+    const status = await run('git', ['status', '--porcelain=v1'], {
+      cwd: workspace.root,
+    });
+    assert.equal(status.stdout, '');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 for (const terminationSignal of ['SIGINT', 'SIGTERM'])
   test(`interrupting the standalone benchmark with ${terminationSignal} terminates only its workload tree`, async () => {
     const directory = await mkdtemp(
@@ -1549,6 +1608,90 @@ for (const terminationSignal of ['SIGINT', 'SIGTERM'])
     const outputFile = path.join(directory, 'evidence.json');
     const nestedPidFile = path.join(directory, 'nested.pid');
     const workload = `const { spawn } = require('node:child_process'); const { writeFileSync } = require('node:fs'); const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' }); writeFileSync(process.env.PERTEXO_TEST_NESTED_PID, String(child.pid)); setInterval(() => {}, 1000);`;
+    let unrelated;
+    let runner;
+    let nestedPid;
+    try {
+      const workspace = await createStandaloneBenchmarkWorkspace(directory);
+      await writeFile(
+        manifestFile,
+        `${JSON.stringify(
+          manifest({
+            scenarios: [
+              {
+                ...manifest().scenarios[0],
+                commands: [
+                  {
+                    file: process.execPath,
+                    args: ['-e', workload],
+                    expectedOperations: [
+                      {
+                        name: 'fixture',
+                        count: 1,
+                        population: 1,
+                        boundary: 'fixture boundary',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        )}\n`,
+      );
+      unrelated = spawn(
+        process.execPath,
+        ['-e', 'setInterval(() => {}, 1000)'],
+        {
+          detached: true,
+          stdio: 'ignore',
+        },
+      );
+      runner = spawn(
+        process.execPath,
+        [workspace.runnerPath, manifestFile, outputFile],
+        {
+          cwd: workspace.root,
+          env: {
+            ...process.env,
+            DATABASE_ADMIN_URL: '',
+            DATABASE_MIGRATION_URL: '',
+            PERTEXO_Q11_ISOLATED: '1',
+            PERTEXO_TEST_NESTED_PID: nestedPidFile,
+          },
+          stdio: 'ignore',
+        },
+      );
+      nestedPid = Number(await waitForFile(nestedPidFile, 30_000));
+      await assertStandaloneFixtureBuild(workspace);
+      runner.kill(terminationSignal);
+      await once(runner, 'close');
+      await delay(100);
+      assert.equal(processExists(nestedPid), false);
+      assert.equal(processExists(unrelated.pid), true);
+    } finally {
+      if (runner && runner.exitCode === null && runner.signalCode === null)
+        runner.kill('SIGKILL');
+      if (nestedPid && processExists(nestedPid))
+        process.kill(nestedPid, 'SIGKILL');
+      if (unrelated?.pid && processExists(unrelated.pid))
+        process.kill(-unrelated.pid, 'SIGKILL');
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+test('a failed benchmark command cannot hang on output pipes inherited by a descendant', async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), 'pertexo-benchmark-failure-'),
+  );
+  const manifestFile = path.join(directory, 'manifest.json');
+  const outputFile = path.join(directory, 'evidence.json');
+  const nestedPidFile = path.join(directory, 'nested.pid');
+  const workload = `const { spawn } = require('node:child_process'); const { writeFileSync } = require('node:fs'); const nested = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'inherit' }); writeFileSync(process.env.PERTEXO_TEST_NESTED_PID, String(nested.pid)); process.exit(9);`;
+  let runner;
+  let nestedPid;
+  try {
+    const workspace = await createStandaloneBenchmarkWorkspace(directory);
     await writeFile(
       manifestFile,
       `${JSON.stringify(
@@ -1575,23 +1718,11 @@ for (const terminationSignal of ['SIGINT', 'SIGTERM'])
         }),
       )}\n`,
     );
-    const unrelated = spawn(
+    runner = spawn(
       process.execPath,
-      ['-e', 'setInterval(() => {}, 1000)'],
+      [workspace.runnerPath, manifestFile, outputFile],
       {
-        detached: true,
-        stdio: 'ignore',
-      },
-    );
-    const runner = spawn(
-      process.execPath,
-      [
-        'infrastructure/performance/run-local-benchmark.mjs',
-        manifestFile,
-        outputFile,
-      ],
-      {
-        cwd: root,
+        cwd: workspace.root,
         env: {
           ...process.env,
           DATABASE_ADMIN_URL: '',
@@ -1602,81 +1733,8 @@ for (const terminationSignal of ['SIGINT', 'SIGTERM'])
         stdio: 'ignore',
       },
     );
-    let nestedPid;
-    try {
-      nestedPid = Number(await waitForFile(nestedPidFile, 30_000));
-      runner.kill(terminationSignal);
-      await once(runner, 'close');
-      await delay(100);
-      assert.equal(processExists(nestedPid), false);
-      assert.equal(processExists(unrelated.pid), true);
-    } finally {
-      if (runner.exitCode === null && runner.signalCode === null)
-        runner.kill('SIGKILL');
-      if (nestedPid && processExists(nestedPid))
-        process.kill(nestedPid, 'SIGKILL');
-      if (unrelated.pid && processExists(unrelated.pid))
-        process.kill(-unrelated.pid, 'SIGKILL');
-      await rm(directory, { recursive: true, force: true });
-    }
-  });
-
-test('a failed benchmark command cannot hang on output pipes inherited by a descendant', async () => {
-  const directory = await mkdtemp(
-    path.join(tmpdir(), 'pertexo-benchmark-failure-'),
-  );
-  const manifestFile = path.join(directory, 'manifest.json');
-  const outputFile = path.join(directory, 'evidence.json');
-  const nestedPidFile = path.join(directory, 'nested.pid');
-  const workload = `const { spawn } = require('node:child_process'); const { writeFileSync } = require('node:fs'); const nested = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'inherit' }); writeFileSync(process.env.PERTEXO_TEST_NESTED_PID, String(nested.pid)); process.exit(9);`;
-  await writeFile(
-    manifestFile,
-    `${JSON.stringify(
-      manifest({
-        scenarios: [
-          {
-            ...manifest().scenarios[0],
-            commands: [
-              {
-                file: process.execPath,
-                args: ['-e', workload],
-                expectedOperations: [
-                  {
-                    name: 'fixture',
-                    count: 1,
-                    population: 1,
-                    boundary: 'fixture boundary',
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      }),
-    )}\n`,
-  );
-  const runner = spawn(
-    process.execPath,
-    [
-      'infrastructure/performance/run-local-benchmark.mjs',
-      manifestFile,
-      outputFile,
-    ],
-    {
-      cwd: root,
-      env: {
-        ...process.env,
-        DATABASE_ADMIN_URL: '',
-        DATABASE_MIGRATION_URL: '',
-        PERTEXO_Q11_ISOLATED: '1',
-        PERTEXO_TEST_NESTED_PID: nestedPidFile,
-      },
-      stdio: 'ignore',
-    },
-  );
-  let nestedPid;
-  try {
     nestedPid = Number(await waitForFile(nestedPidFile, 30_000));
+    await assertStandaloneFixtureBuild(workspace);
     const [code] = await Promise.race([
       once(runner, 'close'),
       delay(2_000, undefined, { ref: false }).then(() => {
@@ -1687,7 +1745,7 @@ test('a failed benchmark command cannot hang on output pipes inherited by a desc
     await delay(100);
     assert.equal(processExists(nestedPid), false);
   } finally {
-    if (runner.exitCode === null && runner.signalCode === null)
+    if (runner && runner.exitCode === null && runner.signalCode === null)
       runner.kill('SIGKILL');
     if (nestedPid && processExists(nestedPid))
       process.kill(nestedPid, 'SIGKILL');

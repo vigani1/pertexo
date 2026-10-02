@@ -4,6 +4,10 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { parse as parseYaml } from 'yaml';
+import {
+  CI_QUALITY_SCRIPTS,
+  parseCiQualityArguments,
+} from '../quality/run-ci-quality.mjs';
 import { CURATED_TEMPLATE_GATES } from '../testing/curated-template-gates.mjs';
 import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-gates.mjs';
 
@@ -115,6 +119,90 @@ function normalizedShellCommand(value) {
         .replaceAll(/\s+/gu, ' ')
         .trim()
     : '';
+}
+
+function ciStepScripts(step) {
+  const direct = directPnpmScript(step);
+  if (direct !== null) return [direct];
+  const command = normalizedShellCommand(step?.run);
+  const runner = 'node infrastructure/quality/run-ci-quality.mjs';
+  if (!command.includes(runner)) return [];
+  const prefix = `set -o pipefail mkdir -p artifacts ${runner} `;
+  const suffix = ' 2>&1 | tee artifacts/quality.log';
+  if (!command.startsWith(prefix) || !command.endsWith(suffix))
+    fail(
+      'joined quality command must retain its exact fail-closed log pipeline',
+    );
+  if (
+    step.if !== undefined ||
+    (step['continue-on-error'] !== undefined &&
+      step['continue-on-error'] !== false)
+  )
+    fail('joined quality gates must be unconditional and fail closed');
+  try {
+    return parseCiQualityArguments(
+      command.slice(prefix.length, -suffix.length).split(' '),
+    ).flat();
+  } catch {
+    fail('joined quality command must name every original gate exactly once');
+  }
+}
+
+function requiredQualityOwner(workflow, job, steps) {
+  if (
+    job.if !== undefined ||
+    job.needs !== undefined ||
+    job.strategy !== undefined ||
+    (job['continue-on-error'] !== undefined &&
+      job['continue-on-error'] !== false)
+  )
+    fail(
+      'quality job must be one unconditional fail-closed owner without needs',
+    );
+  const requireRootBash = (configuration) => {
+    if (configuration?.shell !== undefined && configuration.shell !== 'bash')
+      fail('quality owner must use the default or literal bash shell');
+    if (
+      configuration?.['working-directory'] !== undefined &&
+      configuration['working-directory'] !== '.'
+    )
+      fail('quality owner must execute required gates at the repository root');
+  };
+  requireRootBash(workflow.defaults?.run);
+  requireRootBash(job.defaults?.run);
+  const direct = new Set([
+    'ci:gates:check',
+    'build',
+    'architecture:check',
+    'built-exports:check',
+  ]);
+  for (const step of steps) {
+    requireRootBash(step);
+    if (typeof step.run !== 'string') continue;
+    const command = normalizedShellCommand(step.run);
+    const upstream = command === 'pnpm network-registry:check-upstream';
+    if (upstream) {
+      if (step.if !== "github.event_name == 'schedule'")
+        fail('upstream registry comparison must remain schedule-only');
+    } else if (step.if !== undefined)
+      fail('required quality steps must be unconditional');
+    if (
+      step['continue-on-error'] !== undefined &&
+      step['continue-on-error'] !== false
+    )
+      fail('required quality steps must fail closed');
+    if (
+      command === 'pnpm install --frozen-lockfile' ||
+      upstream ||
+      direct.has(directPnpmScript(step))
+    )
+      continue;
+    if (command.includes('node infrastructure/quality/run-ci-quality.mjs')) {
+      ciStepScripts(step);
+      continue;
+    }
+    fail('quality owner cannot contain opaque or additional gate commands');
+  }
 }
 
 function requiredFailClosedCommand(step, expectedCommand, label) {
@@ -420,6 +508,7 @@ export function validateCiGatePolicy({ packageManifest, workflow }) {
     'quality:local:check',
     'quality:local:contracts',
     'test:browser-probes',
+    ...CI_QUALITY_SCRIPTS,
     ...REQUIRED_ORDINARY_CI_GATES,
   ])
     if (!SCRIPT_NAME.test(name) || typeof scripts[name] !== 'string')
@@ -452,7 +541,7 @@ export function validateCiGatePolicy({ packageManifest, workflow }) {
   const directByJob = new Map();
   for (const [jobName, job] of Object.entries(jobs)) {
     const steps = Array.isArray(job?.steps) ? job.steps : [];
-    const direct = steps.map(directPnpmScript).filter((name) => name !== null);
+    const direct = steps.flatMap(ciStepScripts);
     for (const name of direct)
       if (typeof scripts[name] !== 'string')
         fail(`${jobName} job invokes unknown package script ${name}`);
@@ -460,12 +549,17 @@ export function validateCiGatePolicy({ packageManifest, workflow }) {
   }
 
   const qualitySteps = jobSteps(jobs, 'quality');
-  const qualityScripts = qualitySteps
-    .map(directPnpmScript)
-    .filter((name) => name !== null);
+  const qualityScripts = qualitySteps.flatMap(ciStepScripts);
+  if (jobs.quality['timeout-minutes'] !== 15)
+    fail('quality job must retain its 15-minute deadline');
   requireExactlyOnce(
     qualityScripts,
-    ['ci:gates:check', 'build', ...REQUIRED_ORDINARY_CI_GATES],
+    [
+      'ci:gates:check',
+      'build',
+      ...REQUIRED_ORDINARY_CI_GATES,
+      ...CI_QUALITY_SCRIPTS,
+    ],
     'quality job',
   );
   if (
@@ -473,7 +567,38 @@ export function validateCiGatePolicy({ packageManifest, workflow }) {
     qualityScripts.indexOf('build')
   )
     fail('quality job must build before validating built exports');
-
+  for (const name of [...CI_QUALITY_SCRIPTS, ...REQUIRED_ORDINARY_CI_GATES]) {
+    if (qualityScripts.indexOf(name) <= qualityScripts.indexOf('build'))
+      fail(`quality job must build before ${name}`);
+    const step = qualitySteps.find((candidate) =>
+      ciStepScripts(candidate).includes(name),
+    );
+    if (
+      step.if !== undefined ||
+      (step['continue-on-error'] !== undefined &&
+        step['continue-on-error'] !== false)
+    )
+      fail(`quality gate ${name} must run unconditionally and fail closed`);
+  }
+  const joinedIndex = qualitySteps.findIndex((step) =>
+    normalizedShellCommand(step.run).includes(
+      'node infrastructure/quality/run-ci-quality.mjs',
+    ),
+  );
+  if (
+    qualitySteps.filter((step) =>
+      normalizedShellCommand(step.run).includes(
+        'node infrastructure/quality/run-ci-quality.mjs',
+      ),
+    ).length !== 1
+  )
+    fail('quality job must retain exactly one literal joined runner');
+  for (const name of ['architecture:check', 'built-exports:check'])
+    if (
+      qualitySteps.findIndex((step) => directPnpmScript(step) === name) <=
+      joinedIndex
+    )
+      fail(`quality job must join both lanes before ${name}`);
   for (const [excluded, owner] of Object.entries(
     DELIBERATE_ORDINARY_CI_EXCLUSIONS,
   )) {
@@ -485,6 +610,7 @@ export function validateCiGatePolicy({ packageManifest, workflow }) {
     if (owner !== null && (owners.length !== 1 || owners[0] !== owner))
       fail(`${excluded} must be owned exactly once by the ${owner} job`);
   }
+  requiredQualityOwner(workflow, jobs.quality, qualitySteps);
 
   const browserSteps = jobSteps(jobs, 'browser');
   if (

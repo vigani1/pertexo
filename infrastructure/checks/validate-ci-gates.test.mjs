@@ -7,6 +7,20 @@ import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-ga
 
 import { validateCiGatePolicy } from './validate-ci-gates.mjs';
 
+const qualityBundleScripts = [
+  'docs:check',
+  'format:check',
+  'runtime:check',
+  'network-registry:check',
+  'dependencies:check',
+  'database:schema:check',
+  'lint',
+  'complexity:check',
+  'duplication:check',
+  'contracts:check',
+  'typecheck',
+];
+
 function fixture() {
   const packageManifest = {
     scripts: {
@@ -33,12 +47,12 @@ function fixture() {
   const workflow = parseYaml(`
 jobs:
   quality:
+    timeout-minutes: 15
     steps:
       - run: pnpm ci:gates:check
       - run: pnpm build
       - run: pnpm architecture:check
       - run: pnpm built-exports:check
-      - run: pnpm quality:local:check
   integration:
     steps:
       - run: pnpm mutation:check
@@ -141,6 +155,12 @@ jobs:
       );
   }
   workflow.jobs['workflow-organization-qualification'] = organization;
+  for (const name of qualityBundleScripts) {
+    packageManifest.scripts[name] = 'node fixture.mjs';
+  }
+  workflow.jobs.quality.steps.splice(2, 0, {
+    run: `set -o pipefail\nmkdir -p artifacts\nnode infrastructure/quality/run-ci-quality.mjs --quality ${qualityBundleScripts.join(' ')} --contracts quality:local:check 2>&1 | tee artifacts/quality.log`,
+  });
   return { packageManifest, workflow };
 }
 
@@ -649,7 +669,10 @@ test('accepts the required local, ordinary-CI, and deliberate exclusion mapping'
 
 test('rejects an omitted or duplicated ordinary CI gate', () => {
   const omitted = fixture();
-  omitted.workflow.jobs.quality.steps.splice(2, 1);
+  const architectureIndex = omitted.workflow.jobs.quality.steps.findIndex(
+    (step) => step.run === 'pnpm architecture:check',
+  );
+  omitted.workflow.jobs.quality.steps.splice(architectureIndex, 1);
   assert.throws(
     () => validateCiGatePolicy(omitted),
     /architecture:check exactly once; observed 0/u,
@@ -665,10 +688,50 @@ test('rejects an omitted or duplicated ordinary CI gate', () => {
   );
 });
 
+test('rejects a missing or duplicated original quality-bundle command', () => {
+  for (const name of qualityBundleScripts) {
+    const omitted = fixture();
+    const omittedStep = omitted.workflow.jobs.quality.steps.find((step) =>
+      step.run.includes('--quality'),
+    );
+    omittedStep.run = omittedStep.run.replace(` ${name} `, ' ');
+    assert.throws(() => validateCiGatePolicy(omitted), /exactly once/u);
+    const duplicated = fixture();
+    const duplicatedStep = duplicated.workflow.jobs.quality.steps.find((step) =>
+      step.run.includes('--quality'),
+    );
+    duplicatedStep.run = duplicatedStep.run.replace(
+      ` ${name} `,
+      ` ${name} ${name} `,
+    );
+    assert.throws(() => validateCiGatePolicy(duplicated), /exactly once/u);
+  }
+});
+
+test('requires the unchanged quality deadline and build before every quality gate', () => {
+  const longer = fixture();
+  longer.workflow.jobs.quality['timeout-minutes'] = 30;
+  assert.throws(() => validateCiGatePolicy(longer), /15-minute/u);
+  for (const name of [...qualityBundleScripts, 'quality:local:check']) {
+    const early = fixture();
+    const steps = early.workflow.jobs.quality.steps;
+    const index = steps.findIndex((step) => step.run.includes(` ${name} `));
+    steps.unshift(...steps.splice(index, 1));
+    assert.throws(() => validateCiGatePolicy(early), /build before/u);
+  }
+});
+
 test('rejects built-export validation before its build owner', () => {
   const input = fixture();
   const steps = input.workflow.jobs.quality.steps;
-  [steps[1], steps[3]] = [steps[3], steps[1]];
+  const buildIndex = steps.findIndex((step) => step.run === 'pnpm build');
+  const exportIndex = steps.findIndex(
+    (step) => step.run === 'pnpm built-exports:check',
+  );
+  [steps[buildIndex], steps[exportIndex]] = [
+    steps[exportIndex],
+    steps[buildIndex],
+  ];
   assert.throws(
     () => validateCiGatePolicy(input),
     /quality job must build before validating built exports/u,
@@ -690,6 +753,155 @@ test('rejects an unknown direct package command', () => {
     () => validateCiGatePolicy(input),
     /integration job invokes unknown package script unknown:check/u,
   );
+});
+
+test('the concrete joined command rejects hidden, missing, duplicated, conditional, and reordered gates', async () => {
+  const original = await currentPolicyInput();
+  const joined = (input) =>
+    input.workflow.jobs.quality.steps.find((step) =>
+      step.run?.includes('node infrastructure/quality/run-ci-quality.mjs'),
+    );
+  assert.ok(joined(original));
+  for (const mutate of [
+    (input) => {
+      joined(input).run = joined(input).run.replace(' lint ', ' ');
+    },
+    (input) => {
+      joined(input).run = joined(input).run.replace(' lint ', ' lint lint ');
+    },
+    (input) => {
+      joined(input).run = joined(input).run.replace(
+        ' lint ',
+        ' unknown:check ',
+      );
+    },
+    (input) => {
+      joined(input).run = joined(input)
+        .run.replace('--quality docs:check', '--quality format:check')
+        .replace('format:check runtime:check', 'docs:check runtime:check');
+    },
+    (input) => {
+      joined(input).run += '\ntrue';
+    },
+    (input) => {
+      joined(input).run = joined(input).run.replace(
+        'set -o pipefail',
+        'set +o pipefail',
+      );
+    },
+    (input) => {
+      joined(input).if = 'success()';
+    },
+    (input) => {
+      joined(input)['continue-on-error'] = true;
+    },
+    (input) => {
+      input.workflow.jobs.quality.steps.push({ ...joined(input) });
+    },
+    (input) => {
+      const steps = input.workflow.jobs.quality.steps;
+      const index = steps.findIndex(
+        (step) => step.run === 'pnpm architecture:check',
+      );
+      steps.unshift(...steps.splice(index, 1));
+    },
+    (input) => {
+      const steps = input.workflow.jobs.quality.steps;
+      const index = steps.findIndex(
+        (step) => step.run === 'pnpm built-exports:check',
+      );
+      const joinIndex = steps.indexOf(joined(input));
+      steps.splice(joinIndex, 0, ...steps.splice(index, 1));
+    },
+  ]) {
+    const input = clone(original);
+    mutate(input);
+    assert.throws(() => validateCiGatePolicy(input));
+  }
+});
+
+test('quality owner cannot skip, hide, redirect, or replace required lane execution', async () => {
+  const original = await currentPolicyInput();
+  const joined = (input) =>
+    input.workflow.jobs.quality.steps.find((step) =>
+      step.run?.includes('node infrastructure/quality/run-ci-quality.mjs'),
+    );
+  const build = (input) =>
+    input.workflow.jobs.quality.steps.find((step) => step.run === 'pnpm build');
+  for (const mutate of [
+    (input) => {
+      input.workflow.jobs.quality.if = 'false';
+    },
+    (input) => {
+      input.workflow.jobs.quality.needs = 'optional-job';
+    },
+    (input) => {
+      input.workflow.jobs.quality.strategy = { matrix: { gate: ['quality'] } };
+    },
+    (input) => {
+      input.workflow.jobs.quality['continue-on-error'] = true;
+    },
+    (input) => {
+      input.workflow.jobs.quality['continue-on-error'] = '${{ true }}';
+    },
+    (input) => {
+      input.workflow.jobs.quality.defaults = { run: { shell: 'true {0}' } };
+    },
+    (input) => {
+      input.workflow.defaults = { run: { shell: 'true {0}' } };
+    },
+    (input) => {
+      joined(input).shell = 'true {0}';
+    },
+    (input) => {
+      joined(input)['continue-on-error'] = '${{ true }}';
+    },
+    (input) => {
+      build(input).if = 'false';
+    },
+    (input) => {
+      build(input)['continue-on-error'] = '${{ true }}';
+    },
+    (input) => {
+      build(input).shell = 'true {0}';
+    },
+    (input) => {
+      build(input)['working-directory'] = 'packages/database';
+    },
+    (input) => {
+      input.workflow.jobs.quality.steps.find(
+        (step) => step.run === 'pnpm architecture:check',
+      ).shell = 'true {0}';
+    },
+    (input) => {
+      input.workflow.jobs.quality.steps.find(
+        (step) => step.run === 'pnpm ci:gates:check',
+      ).if = 'false';
+    },
+    (input) => {
+      input.workflow.jobs.quality.steps.push({ run: "bash -c 'pnpm lint'" });
+    },
+    (input) => {
+      const steps = input.workflow.jobs.quality.steps;
+      steps.splice(
+        steps.indexOf(joined(input)),
+        1,
+        ...[...qualityBundleScripts, 'quality:local:check'].map((name) => ({
+          run: `pnpm ${name}`,
+        })),
+      );
+    },
+  ]) {
+    const input = clone(original);
+    mutate(input);
+    assert.throws(() => validateCiGatePolicy(input));
+  }
+  const safeExplicitShell = clone(original);
+  safeExplicitShell.workflow.jobs.quality.defaults = {
+    run: { shell: 'bash', 'working-directory': '.' },
+  };
+  safeExplicitShell.workflow.jobs.quality['continue-on-error'] = false;
+  assert.doesNotThrow(() => validateCiGatePolicy(safeExplicitShell));
 });
 
 test('rejects missing local ownership and an opaque root script', () => {

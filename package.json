@@ -94,7 +94,7 @@
     "network-registry:check-upstream": "node infrastructure/checks/validate-iana-address-registry.mjs --upstream",
     "quality:local": "node infrastructure/quality/run-local-quality.mjs",
     "quality:local:check": "pnpm quality:local:contracts && pnpm performance:local:check",
-    "quality:local:contracts": "node --test infrastructure/quality/run-local-quality.test.mjs infrastructure/quality/verify-mutation-sensitivity.test.mjs",
+    "quality:local:contracts": "node --test infrastructure/quality/run-local-quality.test.mjs infrastructure/quality/verify-mutation-sensitivity.test.mjs infrastructure/quality/run-ci-quality.test.mjs",
     "mutation:check": "node infrastructure/quality/verify-mutation-sensitivity.mjs",
     "observability:check": "node --test infrastructure/observability/qualify-metric-pipeline.test.mjs && node infrastructure/observability/validate-config.mjs && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check rules /etc/prometheus/pertexo-alerts.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus test rules /etc/prometheus/pertexo-alerts.test.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps otel-collector validate --config=/etc/otelcol/config.yaml",
     "observability:qualify": "node infrastructure/observability/qualify-metric-pipeline.mjs",
