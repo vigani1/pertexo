@@ -34,6 +34,13 @@ export class WorkflowPortabilityUnavailableError extends Error {
   public override readonly name = 'WorkflowPortabilityUnavailableError';
 }
 
+export class WorkflowTemplateOriginUnavailableError extends Error {
+  public override readonly name = 'WorkflowTemplateOriginUnavailableError';
+  public constructor() {
+    super('Historical template origin is unavailable');
+  }
+}
+
 export class WorkflowPortabilityCompatibilityConflictError extends Error {
   public override readonly name =
     'WorkflowPortabilityCompatibilityConflictError';

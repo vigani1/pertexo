@@ -40,6 +40,11 @@ import {
   completeWorkflowImport,
 } from './workflow-portability-receipts.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
+import { workflowTemplateOriginRequestSchema } from '@pertexo/workflow-model/curated-templates';
+import {
+  readCuratedTemplateDescriptor,
+  inspectCuratedTemplateOrigin,
+} from './workflow-curated-template-origin.js';
 
 const scope = z.object({
   workspaceId: z.uuid(),
@@ -54,6 +59,7 @@ const previewInput = scope
     bindings: z
       .array(portableConnectionBindingSchema)
       .max(WORKFLOW_PORTABILITY_LIMITS.connectionSlots),
+    templateOrigin: workflowTemplateOriginRequestSchema.optional(),
   })
   .strict();
 const importInput = previewInput
@@ -108,6 +114,7 @@ async function inspectImport(
   selection: Awaited<
     ReturnType<WorkflowAuthoringWriteContext['selectCatalogs']>
   >,
+  descriptor: Awaited<ReturnType<typeof readCuratedTemplateDescriptor>>,
 ) {
   const catalog = selectedPolicy(selection);
   const inspected = inspectWorkflowPortableManifest(
@@ -127,6 +134,7 @@ async function inspectImport(
     input.signal,
   );
   const issues: PortableIssue[] = [
+    ...inspectCuratedTemplateOrigin(input, descriptor, catalog),
     ...inspected.issues,
     ...admission.issues.map(({ code, path }) => ({
       code,
@@ -256,9 +264,20 @@ function previewPortableWorkflow(
         input.actorId,
         true,
       );
+      const descriptor = await readCuratedTemplateDescriptor(
+        client,
+        input,
+        false,
+      );
       const selection = await context.selectCatalogs(client);
       try {
-        const report = await inspectImport(client, context, input, selection);
+        const report = await inspectImport(
+          client,
+          context,
+          input,
+          selection,
+          descriptor,
+        );
         return {
           manifestDigest: await portableManifestDigest(input.manifest),
           compatibilityFingerprint: selectedPolicy(selection).fingerprint,
@@ -321,6 +340,20 @@ function importPortableWorkflow(
         throw new WorkflowPortabilityUnavailableError(
           'New workflow imports are disabled',
         );
+      if (input.templateOrigin !== undefined) {
+        const templateGate = await client.query<{ import_enabled: boolean }>(
+          'select import_enabled from app.curated_template_rollout where singleton for share',
+        );
+        if (templateGate.rows[0]?.import_enabled !== true)
+          throw new WorkflowPortabilityUnavailableError(
+            'New template imports are disabled',
+          );
+      }
+      const descriptor = await readCuratedTemplateDescriptor(
+        client,
+        input,
+        true,
+      );
       const selection = await context.selectCatalogs(client);
       if (
         selectedPolicy(selection).fingerprint !==
@@ -332,7 +365,13 @@ function importPortableWorkflow(
       await context.testHooks?.afterImportStep?.('catalog');
       let graph;
       try {
-        const report = await inspectImport(client, context, input, selection);
+        const report = await inspectImport(
+          client,
+          context,
+          input,
+          selection,
+          descriptor,
+        );
         if (report.hard.length !== 0)
           throw new WorkflowPortabilityValidationError(
             report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),

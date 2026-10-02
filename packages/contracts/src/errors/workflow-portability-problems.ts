@@ -31,4 +31,10 @@ export const WORKFLOW_PORTABILITY_PROBLEM_DETAILS = {
     severity: 'info',
     exposeDetail: true,
   },
+  'workflow.template_origin_unavailable': {
+    status: 503,
+    title: 'Historical template origin unavailable',
+    severity: 'warn',
+    exposeDetail: true,
+  },
 } as const;

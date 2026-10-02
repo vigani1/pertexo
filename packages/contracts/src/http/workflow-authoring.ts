@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { workflowTemplateOriginSchema } from '@pertexo/workflow-model/curated-templates';
+export type { WorkflowTemplateOrigin } from '@pertexo/workflow-model/curated-templates';
 export * from './workflow-auto-pause.js';
 export * from './workflow-concurrency.js';
 import {
@@ -133,6 +135,20 @@ export const workflowSummaryResponseSchema = z
   .strict();
 export type WorkflowSummaryResponse = z.output<
   typeof workflowSummaryResponseSchema
+>;
+
+/** ADR063: opt-in only; unsupported readers must never imply authoritative null. */
+export const workflowTemplateOriginProjectionQuerySchema = z
+  .object({ include: z.literal('templateOrigin') })
+  .strict();
+export const workflowTemplateOriginProjectionResponseSchema = z
+  .object({
+    workflow: workflowSummarySchema,
+    templateOrigin: workflowTemplateOriginSchema.nullable(),
+  })
+  .strict();
+export type WorkflowTemplateOriginProjectionResponse = z.output<
+  typeof workflowTemplateOriginProjectionResponseSchema
 >;
 
 export const workflowLifecycleRequestSchema = z

@@ -6,7 +6,7 @@ export const READINESS_WORKFLOW_PORTABILITY_SQL = `(
       and command.proowner=(select oid from pg_roles where rolname=$1)
       and command.prosecdef and command.provolatile='v'
       and command.proconfig=array['search_path=pg_catalog, pg_temp','row_security=on']::text[]
-      and md5(command.prosrc)='6664b5e481156f7bd185447e5e9a8e17'
+      and md5(command.prosrc)='b6a6e87c4bed5ae35b3edc927a40f4e4'
       and has_function_privilege($3,command.oid,'EXECUTE')
       and not exists(select 1 from aclexplode(coalesce(command.proacl,acldefault('f',command.proowner))) privilege
         where privilege.grantee<>command.proowner

@@ -31,6 +31,8 @@ import {
   type PersistedWorkflowCheckpoint,
 } from '../../compatibility/persisted-workflow-checkpoint.js';
 import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
+import type { RejectedForEachDeclaration } from './coordinator-rejected-loop-proof.js';
+import { loadRejectedForEachDeclarations } from './coordinator-rejected-loop-load.js';
 
 export type CoordinatorCommitRow = Readonly<{
   revision: number;
@@ -70,10 +72,54 @@ export type CoordinatorCommitState =
       currentCheckpoint: PersistedWorkflowCheckpoint;
       pendingFailures: readonly PendingCoordinatorFailure[];
       authoritativeCancellation: boolean;
+      rejectedForEachDeclarations: ReadonlyMap<
+        string,
+        RejectedForEachDeclaration
+      >;
     }>;
 
 function outcome(result: CommitAdvancePlanResult): CoordinatorCommitState {
   return Object.freeze({ kind: 'outcome', result });
+}
+
+function pendingFailureFact(failure: PendingCoordinatorFailure) {
+  return {
+    invocationKey: failure.invocation_key,
+    type: 'attempt_failure',
+    observation: record({
+      kind: 'attempt_failure',
+      attemptId: failure.attempt_id,
+      attemptNumber: failure.attempt_number,
+      failureKind: failure.executor_failure_kind,
+      errorKind: failure.executor_error_kind,
+      possiblyDispatched: failure.executor_possibly_dispatched,
+      safeErrorCode: failure.safe_error_code,
+    }),
+  };
+}
+
+async function lockPendingFailures(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+) {
+  return client.query<PendingCoordinatorFailure>(
+    `select attempt.id attempt_id,attempt.attempt_number,
+            attempt.executor_failure_kind,attempt.executor_error_kind,
+            attempt.executor_possibly_dispatched,attempt.safe_error_code,
+            node.invocation_key
+       from app.node_attempts attempt
+       join app.node_runs node
+         on node.workspace_id=attempt.workspace_id
+        and node.id=attempt.node_run_id
+       where attempt.workspace_id=$1 and node.workflow_run_id=$2
+         and node.current_attempt_id=attempt.id
+         and node.status='running' and attempt.status='failed'
+         and attempt.retry_decision='pending'
+       order by node.invocation_key,attempt.id
+       for update of node,attempt`,
+    [workspaceId, runId],
+  );
 }
 
 export async function lockCoordinatorCommitState(
@@ -205,43 +251,31 @@ export async function lockCoordinatorCommitState(
     return outcome({ kind: 'stale', revision: row.revision });
   validatePersistedFactBatch(persistedFacts);
 
-  const pendingFailures = await client.query<PendingCoordinatorFailure>(
-    `select attempt.id attempt_id,attempt.attempt_number,
-            attempt.executor_failure_kind,attempt.executor_error_kind,
-            attempt.executor_possibly_dispatched,attempt.safe_error_code,
-            node.invocation_key
-       from app.node_attempts attempt
-       join app.node_runs node
-         on node.workspace_id=attempt.workspace_id
-        and node.id=attempt.node_run_id
-       where attempt.workspace_id=$1 and node.workflow_run_id=$2
-         and node.current_attempt_id=attempt.id
-         and node.status='running' and attempt.status='failed'
-         and attempt.retry_decision='pending'
-       order by node.invocation_key,attempt.id
-       for update of node,attempt`,
-    [workspaceId, runId],
+  const rejectedForEachDeclarations = await loadRejectedForEachDeclarations(
+    client,
+    {
+      workspaceId,
+      workflowVersionId,
+      currentCheckpoint,
+      plan,
+      persistedFacts,
+    },
   );
-  validateStatusTransitions(currentCheckpoint, plan, [
-    ...persistedFacts.map((fact) => ({
-      invocationKey: fact.invocation_key,
-      observation: record(mapEvent(fact)),
-      type: fact.type,
-    })),
-    ...pendingFailures.rows.map((failure) => ({
-      invocationKey: failure.invocation_key,
-      type: 'attempt_failure',
-      observation: record({
-        kind: 'attempt_failure',
-        attemptId: failure.attempt_id,
-        attemptNumber: failure.attempt_number,
-        failureKind: failure.executor_failure_kind,
-        errorKind: failure.executor_error_kind,
-        possiblyDispatched: failure.executor_possibly_dispatched,
-        safeErrorCode: failure.safe_error_code,
-      }),
-    })),
-  ]);
+
+  const pendingFailures = await lockPendingFailures(client, workspaceId, runId);
+  validateStatusTransitions(
+    currentCheckpoint,
+    plan,
+    [
+      ...persistedFacts.map((fact) => ({
+        invocationKey: fact.invocation_key,
+        observation: record(mapEvent(fact)),
+        type: fact.type,
+      })),
+      ...pendingFailures.rows.map(pendingFailureFact),
+    ],
+    new Set(rejectedForEachDeclarations.keys()),
+  );
   if (
     (currentCheckpoint.cancelRequested && row.cancel_requested_at === null) ||
     (currentCheckpoint.deadlineExpired && !row.deadline_expired)
@@ -283,5 +317,6 @@ export async function lockCoordinatorCommitState(
     currentCheckpoint,
     pendingFailures: pendingFailures.rows,
     authoritativeCancellation,
+    rejectedForEachDeclarations,
   });
 }

@@ -1,4 +1,5 @@
 import { apiProblemSchema } from './errors/api-problem.js';
+import { workflowTemplateOriginReadContract } from './workflow-template-origin-contract.js';
 import {
   workflowInputCaseContractPaths,
   workflowInputCaseContractSchemas,
@@ -26,6 +27,7 @@ import {
   workflowRevisionConflictProblemSchema,
   workflowSummarySchema,
   workflowSummaryResponseSchema,
+  workflowTemplateOriginProjectionResponseSchema,
   workflowValidateResponseSchema,
   workflowVersionResponseSchema,
   workflowVersionsQuerySchema,
@@ -101,6 +103,11 @@ function contractSchemas(target: 'client' | 'openapi') {
       workflowSummaryResponseSchema,
       'output',
     ),
+    WorkflowTemplateOriginProjectionResponse: project(
+      'WorkflowTemplateOriginProjectionResponse',
+      workflowTemplateOriginProjectionResponseSchema,
+      'output',
+    ),
     WorkflowListResponse: project(
       'WorkflowListResponse',
       workflowListResponseSchema,
@@ -161,6 +168,7 @@ const etagResponseHeader = {
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
+  Unavailable: problemResponse('Historical template origin unavailable'),
   ValidationUnavailable: {
     ...problemResponse('Workflow validation temporarily unavailable'),
     headers: {
@@ -333,14 +341,21 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}': {
       get: {
         operationId: 'getWorkflow',
+        description:
+          'Default metadata retains its strict shape. include=templateOrigin opts into historical origin; unsupported projection is unavailable, never inferred null.',
         security: [{ cookieSession: [] }],
-        parameters: workflowParameters,
+        parameters: [
+          ...workflowParameters,
+          workflowTemplateOriginReadContract.parameter,
+        ],
         responses: {
-          '200': jsonResponse('Workflow metadata', 'WorkflowSummaryResponse'),
+          '200': workflowTemplateOriginReadContract.response,
+          '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '500': responseReference('Unexpected'),
+          '503': responseReference('Unavailable'),
         },
       },
     },

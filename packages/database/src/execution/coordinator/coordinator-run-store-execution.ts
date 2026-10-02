@@ -11,6 +11,7 @@ import { terminalStatus } from './coordinator-run-store-observations.js';
 import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
 import { canonicalOutboxPayloadChecksum } from '../transport/outbox.js';
 import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
+import type { RejectedForEachDeclarations } from './coordinator-rejected-loop-proof.js';
 
 export type CoordinatorExecutionIdentity = Readonly<{
   nodeRunId: string;
@@ -362,6 +363,7 @@ async function persistRunEvents(
     plan: ParsedTransitionPlan;
     runId: string;
     workspaceId: string;
+    rejectedForEachDeclarations: RejectedForEachDeclarations;
   }>,
 ): Promise<void> {
   const { pendingFailures, physical, plan, runId, workspaceId } = input;
@@ -416,7 +418,8 @@ async function persistRunEvents(
     if (
       terminalNodeStatus !== undefined &&
       event.invocationKey !== undefined &&
-      !pendingFailureInvocations.has(event.invocationKey)
+      !pendingFailureInvocations.has(event.invocationKey) &&
+      !input.rejectedForEachDeclarations.has(event.invocationKey)
     ) {
       const updatedNode = await client.query(
         `update app.node_runs
@@ -449,6 +452,7 @@ export async function persistCoordinatorExecutionTransitions(
     runId: string;
     traceparent?: string;
     workspaceId: string;
+    rejectedForEachDeclarations?: RejectedForEachDeclarations;
   }>,
 ): Promise<ReadonlyMap<string, CoordinatorExecutionIdentity>> {
   const { pendingFailures, plan, runId, traceparent, workspaceId } = input;
@@ -485,6 +489,7 @@ export async function persistCoordinatorExecutionTransitions(
     plan,
     runId,
     workspaceId,
+    rejectedForEachDeclarations: input.rejectedForEachDeclarations ?? new Map(),
   });
   return physical;
 }

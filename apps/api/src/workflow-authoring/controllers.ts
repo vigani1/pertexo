@@ -28,6 +28,7 @@ import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from './rename-use-case.js';
 import { DuplicateWorkflowUseCase } from './duplicate-use-case.js';
 import { workflowDuplicateRequestSchema } from '@pertexo/contracts/workflow-authoring';
+import { workflowTemplateOriginProjectionQuerySchema } from '@pertexo/contracts/workflow-authoring';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import { workflowVersionRestoreParamsSchema } from '@pertexo/contracts/workflow-authoring';
 import { throwWorkflowApplicationError } from './errors.js';
@@ -132,12 +133,22 @@ export class WorkflowAuthoringController {
   public async get(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
+    @Query() query?: unknown,
+    @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
     const route = workflowParams(params);
+    const projection = workflowTemplateOriginProjectionQuerySchema
+      .partial()
+      .parse(query ?? {});
+    if (projection.include !== undefined)
+      response?.header('Cache-Control', 'private, no-store');
     return this.getWorkflow.execute({
       ...requestContext(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
+      ...(projection.include === undefined
+        ? {}
+        : { include: projection.include }),
     });
   }
 

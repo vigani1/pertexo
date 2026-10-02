@@ -66,6 +66,7 @@ export function NewWorkflowSheet({
   onChoiceChange,
   onOpenChange,
   onCreated,
+  onChooseTemplate,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -77,6 +78,7 @@ export function NewWorkflowSheet({
   onChoiceChange: (choice: StartChoice) => void;
   onOpenChange: (open: boolean) => void;
   onCreated: (workflowId: string) => void;
+  onChooseTemplate?: (() => void) | undefined;
 }>) {
   const notifications = useNotifications();
   const [name, setName] = useState('');
@@ -162,6 +164,16 @@ export function NewWorkflowSheet({
             </SheetDescription>
           </SheetHeader>
           <SheetBody className="flex flex-col gap-6">
+            {onChooseTemplate === undefined ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={mutation.isPending}
+                onClick={onChooseTemplate}
+              >
+                Choose a complete example…
+              </Button>
+            )}
             <LabelledField
               id="workflow-name"
               label="Workflow name"

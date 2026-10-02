@@ -11,6 +11,9 @@ import {
   type ConnectionSecretContext,
 } from '@pertexo/integrations/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
+import { createCuratedTemplateEnvelopeContext } from '../../../infrastructure/testing/curated-template-envelope-context.mjs';
+import { createCuratedTemplateQualificationTransports } from './support/curated-template-controlled-transports.js';
+import { curatedCoordinatorConsumerFactory } from './support/curated-template-coordinator-diagnostic.js';
 import { createEditorControlledHttpTarget } from './support/editor-controlled-http.js';
 import {
   createTriggerRuntime,
@@ -76,6 +79,10 @@ const cohort =
     : 'validate_activation';
 const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http';
+const curatedTemplates =
+  process.env.EDITOR_BROWSER_CASE === 'curated-templates';
+let curatedTarget:
+  ReturnType<typeof createCuratedTemplateQualificationTransports> | undefined;
 let httpTarget: ReturnType<typeof createEditorControlledHttpTarget> | undefined;
 function sendHttpEffects() {
   if (!process.connected || httpTarget === undefined) return;
@@ -136,6 +143,17 @@ async function performShutdown(setupFailure?: unknown): Promise<void> {
   if (phases.length > 0) process.exitCode = 1;
   sendHttpEffects();
   try {
+    const curatedObservation = curatedTarget?.observe();
+    if (curatedObservation !== undefined && process.connected)
+      await new Promise<void>((resolve, reject) => {
+        process.send?.(
+          { phase: 'curated-template-effects', ...curatedObservation },
+          (error: Error | null) => {
+            if (error === null) resolve();
+            else reject(new Error('Owned curated effects unavailable'));
+          },
+        );
+      });
     if (process.connected && process.send !== undefined) {
       await new Promise<void>((resolve, reject) => {
         process.send?.(
@@ -301,21 +319,26 @@ async function constructRuntimes(
       dispatcherUrl: raw.dispatcherUrl,
       apiUrl: raw.apiUrl,
       migrationUrl: raw.migrationUrl,
-      ...(!controlledHttp
+      ...(!controlledHttp && !curatedTemplates
         ? {}
         : (() => {
             if (
               !('connectionMasterKey' in raw) ||
               typeof raw.connectionMasterKey !== 'string' ||
               !/^[a-f0-9]{64}$/u.test(raw.connectionMasterKey) ||
-              !('authorizationValue' in raw) ||
-              typeof raw.authorizationValue !== 'string' ||
-              raw.authorizationValue.length > 128
+              (controlledHttp &&
+                (!('authorizationValue' in raw) ||
+                  typeof raw.authorizationValue !== 'string' ||
+                  raw.authorizationValue.length > 128))
             )
               throw new Error('Owned HTTP configuration incomplete');
             return {
               connectionMasterKey: raw.connectionMasterKey,
-              authorizationValue: raw.authorizationValue,
+              ...(controlledHttp &&
+              'authorizationValue' in raw &&
+              typeof raw.authorizationValue === 'string'
+                ? { authorizationValue: raw.authorizationValue }
+                : {}),
             };
           })()),
     };
@@ -326,27 +349,42 @@ async function constructRuntimes(
     connectionString: raw.workerUrl,
     max: 6,
   });
-  const coordinator = await createCoordinatorRuntime({
-    database,
-    maximumAdmissions: 10,
-    releaseCohort: cohort,
-    redisUrl: namespace.redisUrl,
-  });
+  const coordinator = await createCoordinatorRuntime(
+    {
+      database,
+      maximumAdmissions: 10,
+      releaseCohort: cohort,
+      redisUrl: namespace.redisUrl,
+    },
+    curatedTemplates
+      ? {
+          consumerFactory: curatedCoordinatorConsumerFactory((value) => {
+            process.stderr.write(
+              `Owned curated coordinator failure ${JSON.stringify(value)}\n`,
+            );
+          }),
+        }
+      : {},
+  );
   resources.coordinator = coordinator;
   assertSetupActive();
   let controlledCapabilities:
     Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>> | undefined;
-  if (controlledHttp) {
+  if (controlledHttp || curatedTemplates) {
     if (
       raw.connectionMasterKey === undefined ||
-      raw.authorizationValue === undefined
+      (controlledHttp && raw.authorizationValue === undefined)
     )
       throw new Error('Owned HTTP configuration incomplete');
     const master = Buffer.from(raw.connectionMasterKey, 'hex');
-    const keys = createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
-      master,
-      'connection',
-    );
+    const keys = curatedTemplates
+      ? createCuratedTemplateEnvelopeContext<ConnectionSecretContext>(
+          raw.connectionMasterKey,
+        )
+      : createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
+          master,
+          'connection',
+        );
     master.fill(0);
     resources.envelopeKeys = {
       close: () => {
@@ -354,13 +392,20 @@ async function constructRuntimes(
         return Promise.resolve();
       },
     };
-    httpTarget = createEditorControlledHttpTarget(
-      raw.authorizationValue,
-      undefined,
-      sendHttpEffects,
-    );
-    resources.controlledHttp = httpTarget;
-    await httpTarget.start();
+    if (curatedTemplates) {
+      curatedTarget = createCuratedTemplateQualificationTransports();
+      resources.controlledHttp = curatedTarget;
+    } else {
+      if (raw.authorizationValue === undefined)
+        throw new Error('Owned HTTP authorization missing');
+      httpTarget = createEditorControlledHttpTarget(
+        raw.authorizationValue,
+        undefined,
+        sendHttpEffects,
+      );
+      resources.controlledHttp = httpTarget;
+      await httpTarget.start();
+    }
     assertSetupActive();
     controlledCapabilities = await createWorkerNodeRuntimeCapabilities(
       { database, redisUrl: namespace.redisUrl },
@@ -371,6 +416,7 @@ async function constructRuntimes(
     await controlledCapabilities.checkReadiness();
     assertSetupActive();
   }
+  const controlledHttpClient = (curatedTarget ?? httpTarget)?.httpClient;
   const attempts = await createNodeAttemptRuntime(
     {
       database,
@@ -383,7 +429,8 @@ async function constructRuntimes(
     {
       // These fail closed if a supposedly pure graph tries to use a provider.
       // Registry, evaluator, durable run store and execution engine remain real.
-      ...(controlledCapabilities === undefined || httpTarget === undefined
+      ...(controlledCapabilities === undefined ||
+      controlledHttpClient === undefined
         ? {
             runtimeCapabilities: {
               connections: () => ({
@@ -406,10 +453,10 @@ async function constructRuntimes(
             registry: createPlatformNodeRegistryForRelease(
               platformServingRegistryRelease(cohort),
               {
-                httpRequest: { httpClient: httpTarget.httpClient },
+                httpRequest: { httpClient: controlledHttpClient },
                 // Never allow unused provider executors to fall back to real networking.
                 slackSendMessage: {
-                  client: {
+                  client: curatedTarget?.slackClient ?? {
                     sendMessage: () =>
                       Promise.reject(
                         new Error('Provider outside controlled HTTP fixture'),
@@ -442,7 +489,7 @@ async function constructRuntimes(
   assertSetupActive();
   const triggers: TriggerRuntime[] = [];
   resources.triggers = triggers;
-  if (cohort === 'schedule_activation' || controlledHttp) {
+  if (cohort === 'schedule_activation' || controlledHttp || curatedTemplates) {
     for (const scanner of cohort === 'schedule_activation'
       ? ['one', 'two']
       : ['webhook']) {

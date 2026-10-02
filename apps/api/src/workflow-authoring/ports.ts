@@ -10,6 +10,7 @@ import type {
 } from '../workspaces/index.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import type { WorkflowAuthoringTelemetry } from './telemetry.js';
+import type { WorkflowTemplateOriginProjectionResponse } from '@pertexo/contracts/workflow-authoring';
 
 /** Narrow persistence seam; runtime owns lifecycle, and callers preserve single-snapshot CAS conflicts. */
 export type WorkflowAuthoringPersistence = Pick<
@@ -26,7 +27,18 @@ export type WorkflowAuthoringPersistence = Pick<
   | 'transitionWorkflowLifecycle'
   | 'renameWorkflow'
   | 'restoreWorkflowVersion'
->;
+> &
+  Readonly<{
+    /** Additive reader capability: absence is unavailable, never origin-null. */
+    getWorkflowWithTemplateOrigin?: (
+      ...input: Parameters<WorkflowAuthoringDatabase['getWorkflow']>
+    ) => Promise<Readonly<{
+      workflow: NonNullable<
+        Awaited<ReturnType<WorkflowAuthoringDatabase['getWorkflow']>>
+      >;
+      templateOrigin: WorkflowTemplateOriginProjectionResponse['templateOrigin'];
+    }> | null>;
+  }>;
 
 export type WorkflowAuthoringDependencies = Readonly<{
   persistence: WorkflowAuthoringPersistence;

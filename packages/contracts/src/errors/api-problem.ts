@@ -51,6 +51,7 @@ export const API_PROBLEM_CODES = [
   'workspace.auto_pause_settings_conflict',
   'workflow.invalid',
   ...WORKFLOW_PORTABILITY_PROBLEM_CODES,
+  'workflow.template_origin_unavailable',
   'workflow.validation_unavailable',
   'workflow.published_version_conflict',
   'workflow.not_published',

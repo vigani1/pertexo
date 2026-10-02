@@ -14,6 +14,9 @@ export function workflowImportCommandIdentity(input: ImportWorkflowInput) {
     bindings: input.bindings,
     name: input.name,
     expectedCompatibilityFingerprint: input.expectedCompatibilityFingerprint,
+    ...(input.templateOrigin === undefined
+      ? {}
+      : { templateOrigin: input.templateOrigin }),
   });
   const requestHash = createHash('sha256').update(command).digest('hex');
   return { command, requestHash };

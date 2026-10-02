@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0132_workflow_portability.sql",
+  "transactionalThrough": "0133_curated_template_origin.sql",
   "migrations": {}
 }

@@ -98,6 +98,7 @@ const MIGRATIONS_AFTER_0045 = [
   '0130_workflow_input_cases.sql',
   '0131_checked_manual_start.sql',
   '0132_workflow_portability.sql',
+  '0133_curated_template_origin.sql',
 ] as const;
 
 export class MemoryLedger implements ControlLedger {

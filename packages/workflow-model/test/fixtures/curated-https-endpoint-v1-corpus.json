@@ -1,0 +1,5767 @@
+[
+  {
+    "name": "null",
+    "value": null,
+    "accepted": false
+  },
+  {
+    "name": "boolean",
+    "value": true,
+    "accepted": false
+  },
+  {
+    "name": "number",
+    "value": 1,
+    "accepted": false
+  },
+  {
+    "name": "array",
+    "value": [],
+    "accepted": false
+  },
+  {
+    "name": "object",
+    "value": {},
+    "accepted": false
+  },
+  {
+    "name": "empty",
+    "value": "",
+    "accepted": false
+  },
+  {
+    "name": "base",
+    "value": "https://example.test/",
+    "accepted": true
+  },
+  {
+    "name": "multi-label",
+    "value": "https://api.example.test/v1/items?id=7&label=a%20b",
+    "accepted": true
+  },
+  {
+    "name": "opaque-bytes",
+    "value": "https://example.test/%C3%A9?q=%FF",
+    "accepted": true
+  },
+  {
+    "name": "duplicate-safe-names",
+    "value": "https://example.test/?key=&key=value",
+    "accepted": true
+  },
+  {
+    "name": "empty-segments",
+    "value": "https://example.test/a//b/%252E/",
+    "accepted": true
+  },
+  {
+    "name": "name-symbols",
+    "value": "https://example.test/?._~-=._~-",
+    "accepted": true
+  },
+  {
+    "name": "encoded-reserved",
+    "value": "https://example.test/%2F%40%23%5C?q=%2B%2F%3A%3F%40%3D%26",
+    "accepted": true
+  },
+  {
+    "name": "three-dots",
+    "value": "https://example.test/...",
+    "accepted": true
+  },
+  {
+    "name": "mixed-encoded-segment",
+    "value": "https://example.test/a%2Eb",
+    "accepted": true
+  },
+  {
+    "name": "double-encoded-dot",
+    "value": "https://example.test/%252E",
+    "accepted": true
+  },
+  {
+    "name": "encoded-null-value",
+    "value": "https://example.test/?q=%00",
+    "accepted": true
+  },
+  {
+    "name": "malformed-utf8-bytes",
+    "value": "https://example.test/%ED%A0%80?q=%C0%AF",
+    "accepted": true
+  },
+  {
+    "name": "missing-path",
+    "value": "https://example.test",
+    "accepted": false
+  },
+  {
+    "name": "uppercase-scheme",
+    "value": "HTTPS://example.test/",
+    "accepted": false
+  },
+  {
+    "name": "missing-scheme-slashes",
+    "value": "https:example.test/",
+    "accepted": false
+  },
+  {
+    "name": "one-scheme-slash",
+    "value": "https:/example.test/",
+    "accepted": false
+  },
+  {
+    "name": "extra-scheme-slash",
+    "value": "https:///example.test/",
+    "accepted": false
+  },
+  {
+    "name": "http",
+    "value": "http://example.test/",
+    "accepted": false
+  },
+  {
+    "name": "single-label",
+    "value": "https://localhost/",
+    "accepted": false
+  },
+  {
+    "name": "host-uppercase",
+    "value": "https://EXAMPLE.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-unicode",
+    "value": "https://é.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-joiner",
+    "value": "https://‍.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-punycode",
+    "value": "https://xn--9ca.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-invalid-punycode",
+    "value": "https://xn--a.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-ipv4",
+    "value": "https://127.0.0.1/",
+    "accepted": false
+  },
+  {
+    "name": "host-short-ip",
+    "value": "https://127.1/",
+    "accepted": false
+  },
+  {
+    "name": "host-hex-ip",
+    "value": "https://0xffffffff/",
+    "accepted": false
+  },
+  {
+    "name": "host-ipv6",
+    "value": "https://[::1]/",
+    "accepted": false
+  },
+  {
+    "name": "host-port",
+    "value": "https://example.test:443/",
+    "accepted": false
+  },
+  {
+    "name": "host-empty-port",
+    "value": "https://example.test:/",
+    "accepted": false
+  },
+  {
+    "name": "host-trailing-dot",
+    "value": "https://example.test./",
+    "accepted": false
+  },
+  {
+    "name": "host-leading-dot",
+    "value": "https://.example.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-empty-label",
+    "value": "https://example..test/",
+    "accepted": false
+  },
+  {
+    "name": "host-underscore",
+    "value": "https://a_b.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-leading-hyphen",
+    "value": "https://-example.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-trailing-hyphen",
+    "value": "https://example-.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-one-letter-tld",
+    "value": "https://example.t/",
+    "accepted": false
+  },
+  {
+    "name": "host-numeric-tld",
+    "value": "https://example.12/",
+    "accepted": false
+  },
+  {
+    "name": "host-alphanumeric-tld",
+    "value": "https://example.t1/",
+    "accepted": false
+  },
+  {
+    "name": "host-punycode-internal",
+    "value": "https://xn--example.api.test/",
+    "accepted": false
+  },
+  {
+    "name": "host-percent",
+    "value": "https://%65xample.test/",
+    "accepted": false
+  },
+  {
+    "name": "userinfo-empty",
+    "value": "https://@example.test/",
+    "accepted": false
+  },
+  {
+    "name": "userinfo-empty-password",
+    "value": "https://:@example.test/",
+    "accepted": false
+  },
+  {
+    "name": "userinfo",
+    "value": "https://user@example.test/",
+    "accepted": false
+  },
+  {
+    "name": "empty-fragment",
+    "value": "https://example.test/#",
+    "accepted": false
+  },
+  {
+    "name": "fragment",
+    "value": "https://example.test/#fragment",
+    "accepted": false
+  },
+  {
+    "name": "raw-unicode-path",
+    "value": "https://example.test/é",
+    "accepted": false
+  },
+  {
+    "name": "raw-unicode-value",
+    "value": "https://example.test/?q=é",
+    "accepted": false
+  },
+  {
+    "name": "raw-plus-value",
+    "value": "https://example.test/?q=a+b",
+    "accepted": false
+  },
+  {
+    "name": "raw-slash-value",
+    "value": "https://example.test/?q=/",
+    "accepted": false
+  },
+  {
+    "name": "raw-colon-value",
+    "value": "https://example.test/?q=:",
+    "accepted": false
+  },
+  {
+    "name": "raw-question-value",
+    "value": "https://example.test/?q=?",
+    "accepted": false
+  },
+  {
+    "name": "raw-at-value",
+    "value": "https://example.test/?q=@",
+    "accepted": false
+  },
+  {
+    "name": "raw-backslash-path",
+    "value": "https://example.test/a\\b",
+    "accepted": false
+  },
+  {
+    "name": "raw-space",
+    "value": "https://example.test/a b",
+    "accepted": false
+  },
+  {
+    "name": "query-empty",
+    "value": "https://example.test/?",
+    "accepted": false
+  },
+  {
+    "name": "query-missing-name",
+    "value": "https://example.test/?=x",
+    "accepted": false
+  },
+  {
+    "name": "query-missing-equals",
+    "value": "https://example.test/?q",
+    "accepted": false
+  },
+  {
+    "name": "query-extra-equals",
+    "value": "https://example.test/?q=a=b",
+    "accepted": false
+  },
+  {
+    "name": "query-leading-empty-pair",
+    "value": "https://example.test/?&q=x",
+    "accepted": false
+  },
+  {
+    "name": "query-middle-empty-pair",
+    "value": "https://example.test/?q=x&&r=y",
+    "accepted": false
+  },
+  {
+    "name": "query-trailing-pair",
+    "value": "https://example.test/?q=x&",
+    "accepted": false
+  },
+  {
+    "name": "query-encoded-name",
+    "value": "https://example.test/?%61uth=x",
+    "accepted": false
+  },
+  {
+    "name": "query-encoded-safe-name",
+    "value": "https://example.test/?%71=x",
+    "accepted": false
+  },
+  {
+    "name": "query-plus-name",
+    "value": "https://example.test/?a+b=x",
+    "accepted": false
+  },
+  {
+    "name": "query-unicode-long-s",
+    "value": "https://example.test/?ſecret=x",
+    "accepted": false
+  },
+  {
+    "name": "query-unicode-kelvin",
+    "value": "https://example.test/?api-Key=x",
+    "accepted": false
+  },
+  {
+    "name": "encoded-credential-name",
+    "value": "https://example.test/?%74oken=x",
+    "accepted": false
+  },
+  {
+    "name": "bad-percent",
+    "value": "https://example.test/%",
+    "accepted": false
+  },
+  {
+    "name": "short-percent",
+    "value": "https://example.test/%A",
+    "accepted": false
+  },
+  {
+    "name": "invalid-percent",
+    "value": "https://example.test/%GG",
+    "accepted": false
+  },
+  {
+    "name": "lowercase-percent",
+    "value": "https://example.test/%2e",
+    "accepted": false
+  },
+  {
+    "name": "lowercase-percent-value",
+    "value": "https://example.test/?q=%ff",
+    "accepted": false
+  },
+  {
+    "name": "path-reserved-colon",
+    "value": "https://example.test/a:b",
+    "accepted": false
+  },
+  {
+    "name": "encoded-dot",
+    "value": "https://example.test/%2E",
+    "accepted": false
+  },
+  {
+    "name": "literal-dot",
+    "value": "https://example.test/.",
+    "accepted": false
+  },
+  {
+    "name": "literal-dotdot",
+    "value": "https://example.test/..",
+    "accepted": false
+  },
+  {
+    "name": "mixed-dotdot",
+    "value": "https://example.test/.%2E",
+    "accepted": false
+  },
+  {
+    "name": "mixed-dotdot-reverse",
+    "value": "https://example.test/%2E.",
+    "accepted": false
+  },
+  {
+    "name": "encoded-dotdot",
+    "value": "https://example.test/%2E%2E",
+    "accepted": false
+  },
+  {
+    "name": "interior-dot",
+    "value": "https://example.test/a/./b",
+    "accepted": false
+  },
+  {
+    "name": "interior-encoded-dot",
+    "value": "https://example.test/a/%2E/b",
+    "accepted": false
+  },
+  {
+    "name": "total-bytes-2047",
+    "value": "https://example.test/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "accepted": true
+  },
+  {
+    "name": "total-bytes-2048",
+    "value": "https://example.test/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "accepted": true
+  },
+  {
+    "name": "total-bytes-2049",
+    "value": "https://example.test/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "accepted": false
+  },
+  {
+    "name": "label-bytes-1",
+    "value": "https://a.test/",
+    "accepted": true
+  },
+  {
+    "name": "label-bytes-2",
+    "value": "https://aa.test/",
+    "accepted": true
+  },
+  {
+    "name": "label-bytes-62",
+    "value": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.test/",
+    "accepted": true
+  },
+  {
+    "name": "label-bytes-63",
+    "value": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.test/",
+    "accepted": true
+  },
+  {
+    "name": "label-bytes-64",
+    "value": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.test/",
+    "accepted": false
+  },
+  {
+    "name": "tld-bytes-1",
+    "value": "https://example.a/",
+    "accepted": false
+  },
+  {
+    "name": "tld-bytes-2",
+    "value": "https://example.aa/",
+    "accepted": true
+  },
+  {
+    "name": "tld-bytes-62",
+    "value": "https://example.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+    "accepted": true
+  },
+  {
+    "name": "tld-bytes-63",
+    "value": "https://example.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+    "accepted": true
+  },
+  {
+    "name": "tld-bytes-64",
+    "value": "https://example.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+    "accepted": false
+  },
+  {
+    "name": "host-bytes-252",
+    "value": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+    "accepted": true
+  },
+  {
+    "name": "host-bytes-253",
+    "value": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+    "accepted": true
+  },
+  {
+    "name": "host-bytes-254",
+    "value": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+    "accepted": false
+  },
+  {
+    "name": "query-name-bytes-1",
+    "value": "https://example.test/?q=",
+    "accepted": true
+  },
+  {
+    "name": "query-name-bytes-63",
+    "value": "https://example.test/?qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq=",
+    "accepted": true
+  },
+  {
+    "name": "query-name-bytes-64",
+    "value": "https://example.test/?qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq=",
+    "accepted": true
+  },
+  {
+    "name": "query-name-bytes-65",
+    "value": "https://example.test/?qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq=",
+    "accepted": false
+  },
+  {
+    "name": "query-pairs-1",
+    "value": "https://example.test/?q=",
+    "accepted": true
+  },
+  {
+    "name": "query-pairs-15",
+    "value": "https://example.test/?q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=",
+    "accepted": true
+  },
+  {
+    "name": "query-pairs-16",
+    "value": "https://example.test/?q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=",
+    "accepted": true
+  },
+  {
+    "name": "query-pairs-17",
+    "value": "https://example.test/?q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=&q=",
+    "accepted": false
+  },
+  {
+    "name": "credential-auth",
+    "value": "https://example.test/?auth=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-AUTH",
+    "value": "https://example.test/?AUTH=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-prefix_auth_suffix",
+    "value": "https://example.test/?prefix_auth_suffix=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-credential",
+    "value": "https://example.test/?credential=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-CreDeNtIaL",
+    "value": "https://example.test/?CreDeNtIaL=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-secret",
+    "value": "https://example.test/?secret=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-token",
+    "value": "https://example.test/?token=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-apiKey",
+    "value": "https://example.test/?apiKey=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-api-key",
+    "value": "https://example.test/?api-key=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-api_key",
+    "value": "https://example.test/?api_key=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-API_KEY",
+    "value": "https://example.test/?API_KEY=x",
+    "accepted": false
+  },
+  {
+    "name": "credential-pretokenpost",
+    "value": "https://example.test/?pretokenpost=x",
+    "accepted": false
+  },
+  {
+    "name": "noncredential-key",
+    "value": "https://example.test/?key=x",
+    "accepted": true
+  },
+  {
+    "name": "noncredential-api--key",
+    "value": "https://example.test/?api--key=x",
+    "accepted": true
+  },
+  {
+    "name": "noncredential-api__key",
+    "value": "https://example.test/?api__key=x",
+    "accepted": true
+  },
+  {
+    "name": "noncredential-se-cret",
+    "value": "https://example.test/?se-cret=x",
+    "accepted": true
+  },
+  {
+    "name": "noncredential-to_ken",
+    "value": "https://example.test/?to_ken=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-00",
+    "value": "https://a\u0000b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-00",
+    "value": "https://example.test/a\u0000b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-00",
+    "value": "https://example.test/?a\u0000b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-00",
+    "value": "https://example.test/?q=a\u0000b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-01",
+    "value": "https://a\u0001b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-01",
+    "value": "https://example.test/a\u0001b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-01",
+    "value": "https://example.test/?a\u0001b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-01",
+    "value": "https://example.test/?q=a\u0001b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-02",
+    "value": "https://a\u0002b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-02",
+    "value": "https://example.test/a\u0002b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-02",
+    "value": "https://example.test/?a\u0002b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-02",
+    "value": "https://example.test/?q=a\u0002b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-03",
+    "value": "https://a\u0003b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-03",
+    "value": "https://example.test/a\u0003b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-03",
+    "value": "https://example.test/?a\u0003b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-03",
+    "value": "https://example.test/?q=a\u0003b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-04",
+    "value": "https://a\u0004b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-04",
+    "value": "https://example.test/a\u0004b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-04",
+    "value": "https://example.test/?a\u0004b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-04",
+    "value": "https://example.test/?q=a\u0004b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-05",
+    "value": "https://a\u0005b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-05",
+    "value": "https://example.test/a\u0005b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-05",
+    "value": "https://example.test/?a\u0005b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-05",
+    "value": "https://example.test/?q=a\u0005b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-06",
+    "value": "https://a\u0006b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-06",
+    "value": "https://example.test/a\u0006b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-06",
+    "value": "https://example.test/?a\u0006b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-06",
+    "value": "https://example.test/?q=a\u0006b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-07",
+    "value": "https://a\u0007b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-07",
+    "value": "https://example.test/a\u0007b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-07",
+    "value": "https://example.test/?a\u0007b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-07",
+    "value": "https://example.test/?q=a\u0007b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-08",
+    "value": "https://a\bb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-08",
+    "value": "https://example.test/a\bb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-08",
+    "value": "https://example.test/?a\bb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-08",
+    "value": "https://example.test/?q=a\bb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-09",
+    "value": "https://a\tb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-09",
+    "value": "https://example.test/a\tb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-09",
+    "value": "https://example.test/?a\tb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-09",
+    "value": "https://example.test/?q=a\tb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-0A",
+    "value": "https://a\nb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-0A",
+    "value": "https://example.test/a\nb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-0A",
+    "value": "https://example.test/?a\nb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-0A",
+    "value": "https://example.test/?q=a\nb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-0B",
+    "value": "https://a\u000bb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-0B",
+    "value": "https://example.test/a\u000bb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-0B",
+    "value": "https://example.test/?a\u000bb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-0B",
+    "value": "https://example.test/?q=a\u000bb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-0C",
+    "value": "https://a\fb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-0C",
+    "value": "https://example.test/a\fb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-0C",
+    "value": "https://example.test/?a\fb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-0C",
+    "value": "https://example.test/?q=a\fb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-0D",
+    "value": "https://a\rb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-0D",
+    "value": "https://example.test/a\rb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-0D",
+    "value": "https://example.test/?a\rb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-0D",
+    "value": "https://example.test/?q=a\rb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-0E",
+    "value": "https://a\u000eb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-0E",
+    "value": "https://example.test/a\u000eb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-0E",
+    "value": "https://example.test/?a\u000eb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-0E",
+    "value": "https://example.test/?q=a\u000eb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-0F",
+    "value": "https://a\u000fb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-0F",
+    "value": "https://example.test/a\u000fb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-0F",
+    "value": "https://example.test/?a\u000fb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-0F",
+    "value": "https://example.test/?q=a\u000fb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-10",
+    "value": "https://a\u0010b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-10",
+    "value": "https://example.test/a\u0010b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-10",
+    "value": "https://example.test/?a\u0010b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-10",
+    "value": "https://example.test/?q=a\u0010b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-11",
+    "value": "https://a\u0011b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-11",
+    "value": "https://example.test/a\u0011b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-11",
+    "value": "https://example.test/?a\u0011b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-11",
+    "value": "https://example.test/?q=a\u0011b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-12",
+    "value": "https://a\u0012b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-12",
+    "value": "https://example.test/a\u0012b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-12",
+    "value": "https://example.test/?a\u0012b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-12",
+    "value": "https://example.test/?q=a\u0012b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-13",
+    "value": "https://a\u0013b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-13",
+    "value": "https://example.test/a\u0013b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-13",
+    "value": "https://example.test/?a\u0013b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-13",
+    "value": "https://example.test/?q=a\u0013b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-14",
+    "value": "https://a\u0014b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-14",
+    "value": "https://example.test/a\u0014b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-14",
+    "value": "https://example.test/?a\u0014b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-14",
+    "value": "https://example.test/?q=a\u0014b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-15",
+    "value": "https://a\u0015b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-15",
+    "value": "https://example.test/a\u0015b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-15",
+    "value": "https://example.test/?a\u0015b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-15",
+    "value": "https://example.test/?q=a\u0015b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-16",
+    "value": "https://a\u0016b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-16",
+    "value": "https://example.test/a\u0016b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-16",
+    "value": "https://example.test/?a\u0016b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-16",
+    "value": "https://example.test/?q=a\u0016b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-17",
+    "value": "https://a\u0017b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-17",
+    "value": "https://example.test/a\u0017b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-17",
+    "value": "https://example.test/?a\u0017b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-17",
+    "value": "https://example.test/?q=a\u0017b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-18",
+    "value": "https://a\u0018b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-18",
+    "value": "https://example.test/a\u0018b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-18",
+    "value": "https://example.test/?a\u0018b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-18",
+    "value": "https://example.test/?q=a\u0018b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-19",
+    "value": "https://a\u0019b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-19",
+    "value": "https://example.test/a\u0019b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-19",
+    "value": "https://example.test/?a\u0019b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-19",
+    "value": "https://example.test/?q=a\u0019b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-1A",
+    "value": "https://a\u001ab.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-1A",
+    "value": "https://example.test/a\u001ab",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-1A",
+    "value": "https://example.test/?a\u001ab=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-1A",
+    "value": "https://example.test/?q=a\u001ab",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-1B",
+    "value": "https://a\u001bb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-1B",
+    "value": "https://example.test/a\u001bb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-1B",
+    "value": "https://example.test/?a\u001bb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-1B",
+    "value": "https://example.test/?q=a\u001bb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-1C",
+    "value": "https://a\u001cb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-1C",
+    "value": "https://example.test/a\u001cb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-1C",
+    "value": "https://example.test/?a\u001cb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-1C",
+    "value": "https://example.test/?q=a\u001cb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-1D",
+    "value": "https://a\u001db.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-1D",
+    "value": "https://example.test/a\u001db",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-1D",
+    "value": "https://example.test/?a\u001db=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-1D",
+    "value": "https://example.test/?q=a\u001db",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-1E",
+    "value": "https://a\u001eb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-1E",
+    "value": "https://example.test/a\u001eb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-1E",
+    "value": "https://example.test/?a\u001eb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-1E",
+    "value": "https://example.test/?q=a\u001eb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-1F",
+    "value": "https://a\u001fb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-1F",
+    "value": "https://example.test/a\u001fb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-1F",
+    "value": "https://example.test/?a\u001fb=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-1F",
+    "value": "https://example.test/?q=a\u001fb",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-20",
+    "value": "https://a b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-20",
+    "value": "https://example.test/a b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-20",
+    "value": "https://example.test/?a b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-20",
+    "value": "https://example.test/?q=a b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-21",
+    "value": "https://a!b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-21",
+    "value": "https://example.test/a!b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-21",
+    "value": "https://example.test/?a!b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-21",
+    "value": "https://example.test/?q=a!b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-22",
+    "value": "https://a\"b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-22",
+    "value": "https://example.test/a\"b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-22",
+    "value": "https://example.test/?a\"b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-22",
+    "value": "https://example.test/?q=a\"b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-23",
+    "value": "https://a#b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-23",
+    "value": "https://example.test/a#b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-23",
+    "value": "https://example.test/?a#b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-23",
+    "value": "https://example.test/?q=a#b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-24",
+    "value": "https://a$b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-24",
+    "value": "https://example.test/a$b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-24",
+    "value": "https://example.test/?a$b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-24",
+    "value": "https://example.test/?q=a$b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-25",
+    "value": "https://a%b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-25",
+    "value": "https://example.test/a%b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-25",
+    "value": "https://example.test/?a%b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-25",
+    "value": "https://example.test/?q=a%b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-26",
+    "value": "https://a&b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-26",
+    "value": "https://example.test/a&b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-26",
+    "value": "https://example.test/?a&b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-26",
+    "value": "https://example.test/?q=a&b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-27",
+    "value": "https://a'b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-27",
+    "value": "https://example.test/a'b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-27",
+    "value": "https://example.test/?a'b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-27",
+    "value": "https://example.test/?q=a'b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-28",
+    "value": "https://a(b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-28",
+    "value": "https://example.test/a(b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-28",
+    "value": "https://example.test/?a(b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-28",
+    "value": "https://example.test/?q=a(b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-29",
+    "value": "https://a)b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-29",
+    "value": "https://example.test/a)b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-29",
+    "value": "https://example.test/?a)b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-29",
+    "value": "https://example.test/?q=a)b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-2A",
+    "value": "https://a*b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-2A",
+    "value": "https://example.test/a*b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-2A",
+    "value": "https://example.test/?a*b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-2A",
+    "value": "https://example.test/?q=a*b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-2B",
+    "value": "https://a+b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-2B",
+    "value": "https://example.test/a+b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-2B",
+    "value": "https://example.test/?a+b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-2B",
+    "value": "https://example.test/?q=a+b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-2C",
+    "value": "https://a,b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-2C",
+    "value": "https://example.test/a,b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-2C",
+    "value": "https://example.test/?a,b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-2C",
+    "value": "https://example.test/?q=a,b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-2D",
+    "value": "https://a-b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-2D",
+    "value": "https://example.test/a-b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-2D",
+    "value": "https://example.test/?a-b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-2D",
+    "value": "https://example.test/?q=a-b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-2E",
+    "value": "https://a.b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-2E",
+    "value": "https://example.test/a.b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-2E",
+    "value": "https://example.test/?a.b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-2E",
+    "value": "https://example.test/?q=a.b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-2F",
+    "value": "https://a/b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-2F",
+    "value": "https://example.test/a/b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-2F",
+    "value": "https://example.test/?a/b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-2F",
+    "value": "https://example.test/?q=a/b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-30",
+    "value": "https://a0b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-30",
+    "value": "https://example.test/a0b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-30",
+    "value": "https://example.test/?a0b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-30",
+    "value": "https://example.test/?q=a0b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-31",
+    "value": "https://a1b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-31",
+    "value": "https://example.test/a1b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-31",
+    "value": "https://example.test/?a1b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-31",
+    "value": "https://example.test/?q=a1b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-32",
+    "value": "https://a2b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-32",
+    "value": "https://example.test/a2b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-32",
+    "value": "https://example.test/?a2b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-32",
+    "value": "https://example.test/?q=a2b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-33",
+    "value": "https://a3b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-33",
+    "value": "https://example.test/a3b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-33",
+    "value": "https://example.test/?a3b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-33",
+    "value": "https://example.test/?q=a3b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-34",
+    "value": "https://a4b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-34",
+    "value": "https://example.test/a4b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-34",
+    "value": "https://example.test/?a4b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-34",
+    "value": "https://example.test/?q=a4b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-35",
+    "value": "https://a5b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-35",
+    "value": "https://example.test/a5b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-35",
+    "value": "https://example.test/?a5b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-35",
+    "value": "https://example.test/?q=a5b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-36",
+    "value": "https://a6b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-36",
+    "value": "https://example.test/a6b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-36",
+    "value": "https://example.test/?a6b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-36",
+    "value": "https://example.test/?q=a6b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-37",
+    "value": "https://a7b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-37",
+    "value": "https://example.test/a7b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-37",
+    "value": "https://example.test/?a7b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-37",
+    "value": "https://example.test/?q=a7b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-38",
+    "value": "https://a8b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-38",
+    "value": "https://example.test/a8b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-38",
+    "value": "https://example.test/?a8b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-38",
+    "value": "https://example.test/?q=a8b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-39",
+    "value": "https://a9b.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-39",
+    "value": "https://example.test/a9b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-39",
+    "value": "https://example.test/?a9b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-39",
+    "value": "https://example.test/?q=a9b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-3A",
+    "value": "https://a:b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-3A",
+    "value": "https://example.test/a:b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-3A",
+    "value": "https://example.test/?a:b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-3A",
+    "value": "https://example.test/?q=a:b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-3B",
+    "value": "https://a;b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-3B",
+    "value": "https://example.test/a;b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-3B",
+    "value": "https://example.test/?a;b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-3B",
+    "value": "https://example.test/?q=a;b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-3C",
+    "value": "https://a<b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-3C",
+    "value": "https://example.test/a<b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-3C",
+    "value": "https://example.test/?a<b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-3C",
+    "value": "https://example.test/?q=a<b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-3D",
+    "value": "https://a=b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-3D",
+    "value": "https://example.test/a=b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-3D",
+    "value": "https://example.test/?a=b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-3D",
+    "value": "https://example.test/?q=a=b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-3E",
+    "value": "https://a>b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-3E",
+    "value": "https://example.test/a>b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-3E",
+    "value": "https://example.test/?a>b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-3E",
+    "value": "https://example.test/?q=a>b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-3F",
+    "value": "https://a?b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-3F",
+    "value": "https://example.test/a?b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-3F",
+    "value": "https://example.test/?a?b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-3F",
+    "value": "https://example.test/?q=a?b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-40",
+    "value": "https://a@b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-40",
+    "value": "https://example.test/a@b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-40",
+    "value": "https://example.test/?a@b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-40",
+    "value": "https://example.test/?q=a@b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-41",
+    "value": "https://aAb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-41",
+    "value": "https://example.test/aAb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-41",
+    "value": "https://example.test/?aAb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-41",
+    "value": "https://example.test/?q=aAb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-42",
+    "value": "https://aBb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-42",
+    "value": "https://example.test/aBb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-42",
+    "value": "https://example.test/?aBb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-42",
+    "value": "https://example.test/?q=aBb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-43",
+    "value": "https://aCb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-43",
+    "value": "https://example.test/aCb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-43",
+    "value": "https://example.test/?aCb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-43",
+    "value": "https://example.test/?q=aCb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-44",
+    "value": "https://aDb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-44",
+    "value": "https://example.test/aDb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-44",
+    "value": "https://example.test/?aDb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-44",
+    "value": "https://example.test/?q=aDb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-45",
+    "value": "https://aEb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-45",
+    "value": "https://example.test/aEb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-45",
+    "value": "https://example.test/?aEb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-45",
+    "value": "https://example.test/?q=aEb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-46",
+    "value": "https://aFb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-46",
+    "value": "https://example.test/aFb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-46",
+    "value": "https://example.test/?aFb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-46",
+    "value": "https://example.test/?q=aFb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-47",
+    "value": "https://aGb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-47",
+    "value": "https://example.test/aGb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-47",
+    "value": "https://example.test/?aGb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-47",
+    "value": "https://example.test/?q=aGb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-48",
+    "value": "https://aHb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-48",
+    "value": "https://example.test/aHb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-48",
+    "value": "https://example.test/?aHb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-48",
+    "value": "https://example.test/?q=aHb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-49",
+    "value": "https://aIb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-49",
+    "value": "https://example.test/aIb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-49",
+    "value": "https://example.test/?aIb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-49",
+    "value": "https://example.test/?q=aIb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-4A",
+    "value": "https://aJb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-4A",
+    "value": "https://example.test/aJb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-4A",
+    "value": "https://example.test/?aJb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-4A",
+    "value": "https://example.test/?q=aJb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-4B",
+    "value": "https://aKb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-4B",
+    "value": "https://example.test/aKb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-4B",
+    "value": "https://example.test/?aKb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-4B",
+    "value": "https://example.test/?q=aKb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-4C",
+    "value": "https://aLb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-4C",
+    "value": "https://example.test/aLb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-4C",
+    "value": "https://example.test/?aLb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-4C",
+    "value": "https://example.test/?q=aLb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-4D",
+    "value": "https://aMb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-4D",
+    "value": "https://example.test/aMb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-4D",
+    "value": "https://example.test/?aMb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-4D",
+    "value": "https://example.test/?q=aMb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-4E",
+    "value": "https://aNb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-4E",
+    "value": "https://example.test/aNb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-4E",
+    "value": "https://example.test/?aNb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-4E",
+    "value": "https://example.test/?q=aNb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-4F",
+    "value": "https://aOb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-4F",
+    "value": "https://example.test/aOb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-4F",
+    "value": "https://example.test/?aOb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-4F",
+    "value": "https://example.test/?q=aOb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-50",
+    "value": "https://aPb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-50",
+    "value": "https://example.test/aPb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-50",
+    "value": "https://example.test/?aPb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-50",
+    "value": "https://example.test/?q=aPb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-51",
+    "value": "https://aQb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-51",
+    "value": "https://example.test/aQb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-51",
+    "value": "https://example.test/?aQb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-51",
+    "value": "https://example.test/?q=aQb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-52",
+    "value": "https://aRb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-52",
+    "value": "https://example.test/aRb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-52",
+    "value": "https://example.test/?aRb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-52",
+    "value": "https://example.test/?q=aRb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-53",
+    "value": "https://aSb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-53",
+    "value": "https://example.test/aSb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-53",
+    "value": "https://example.test/?aSb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-53",
+    "value": "https://example.test/?q=aSb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-54",
+    "value": "https://aTb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-54",
+    "value": "https://example.test/aTb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-54",
+    "value": "https://example.test/?aTb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-54",
+    "value": "https://example.test/?q=aTb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-55",
+    "value": "https://aUb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-55",
+    "value": "https://example.test/aUb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-55",
+    "value": "https://example.test/?aUb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-55",
+    "value": "https://example.test/?q=aUb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-56",
+    "value": "https://aVb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-56",
+    "value": "https://example.test/aVb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-56",
+    "value": "https://example.test/?aVb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-56",
+    "value": "https://example.test/?q=aVb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-57",
+    "value": "https://aWb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-57",
+    "value": "https://example.test/aWb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-57",
+    "value": "https://example.test/?aWb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-57",
+    "value": "https://example.test/?q=aWb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-58",
+    "value": "https://aXb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-58",
+    "value": "https://example.test/aXb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-58",
+    "value": "https://example.test/?aXb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-58",
+    "value": "https://example.test/?q=aXb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-59",
+    "value": "https://aYb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-59",
+    "value": "https://example.test/aYb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-59",
+    "value": "https://example.test/?aYb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-59",
+    "value": "https://example.test/?q=aYb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-5A",
+    "value": "https://aZb.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-5A",
+    "value": "https://example.test/aZb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-5A",
+    "value": "https://example.test/?aZb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-5A",
+    "value": "https://example.test/?q=aZb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-5B",
+    "value": "https://a[b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-5B",
+    "value": "https://example.test/a[b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-5B",
+    "value": "https://example.test/?a[b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-5B",
+    "value": "https://example.test/?q=a[b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-5C",
+    "value": "https://a\\b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-5C",
+    "value": "https://example.test/a\\b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-5C",
+    "value": "https://example.test/?a\\b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-5C",
+    "value": "https://example.test/?q=a\\b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-5D",
+    "value": "https://a]b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-5D",
+    "value": "https://example.test/a]b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-5D",
+    "value": "https://example.test/?a]b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-5D",
+    "value": "https://example.test/?q=a]b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-5E",
+    "value": "https://a^b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-5E",
+    "value": "https://example.test/a^b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-5E",
+    "value": "https://example.test/?a^b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-5E",
+    "value": "https://example.test/?q=a^b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-5F",
+    "value": "https://a_b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-5F",
+    "value": "https://example.test/a_b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-5F",
+    "value": "https://example.test/?a_b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-5F",
+    "value": "https://example.test/?q=a_b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-60",
+    "value": "https://a`b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-60",
+    "value": "https://example.test/a`b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-60",
+    "value": "https://example.test/?a`b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-60",
+    "value": "https://example.test/?q=a`b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-61",
+    "value": "https://aab.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-61",
+    "value": "https://example.test/aab",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-61",
+    "value": "https://example.test/?aab=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-61",
+    "value": "https://example.test/?q=aab",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-62",
+    "value": "https://abb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-62",
+    "value": "https://example.test/abb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-62",
+    "value": "https://example.test/?abb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-62",
+    "value": "https://example.test/?q=abb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-63",
+    "value": "https://acb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-63",
+    "value": "https://example.test/acb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-63",
+    "value": "https://example.test/?acb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-63",
+    "value": "https://example.test/?q=acb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-64",
+    "value": "https://adb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-64",
+    "value": "https://example.test/adb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-64",
+    "value": "https://example.test/?adb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-64",
+    "value": "https://example.test/?q=adb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-65",
+    "value": "https://aeb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-65",
+    "value": "https://example.test/aeb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-65",
+    "value": "https://example.test/?aeb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-65",
+    "value": "https://example.test/?q=aeb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-66",
+    "value": "https://afb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-66",
+    "value": "https://example.test/afb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-66",
+    "value": "https://example.test/?afb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-66",
+    "value": "https://example.test/?q=afb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-67",
+    "value": "https://agb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-67",
+    "value": "https://example.test/agb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-67",
+    "value": "https://example.test/?agb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-67",
+    "value": "https://example.test/?q=agb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-68",
+    "value": "https://ahb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-68",
+    "value": "https://example.test/ahb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-68",
+    "value": "https://example.test/?ahb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-68",
+    "value": "https://example.test/?q=ahb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-69",
+    "value": "https://aib.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-69",
+    "value": "https://example.test/aib",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-69",
+    "value": "https://example.test/?aib=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-69",
+    "value": "https://example.test/?q=aib",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-6A",
+    "value": "https://ajb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-6A",
+    "value": "https://example.test/ajb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-6A",
+    "value": "https://example.test/?ajb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-6A",
+    "value": "https://example.test/?q=ajb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-6B",
+    "value": "https://akb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-6B",
+    "value": "https://example.test/akb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-6B",
+    "value": "https://example.test/?akb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-6B",
+    "value": "https://example.test/?q=akb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-6C",
+    "value": "https://alb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-6C",
+    "value": "https://example.test/alb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-6C",
+    "value": "https://example.test/?alb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-6C",
+    "value": "https://example.test/?q=alb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-6D",
+    "value": "https://amb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-6D",
+    "value": "https://example.test/amb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-6D",
+    "value": "https://example.test/?amb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-6D",
+    "value": "https://example.test/?q=amb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-6E",
+    "value": "https://anb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-6E",
+    "value": "https://example.test/anb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-6E",
+    "value": "https://example.test/?anb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-6E",
+    "value": "https://example.test/?q=anb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-6F",
+    "value": "https://aob.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-6F",
+    "value": "https://example.test/aob",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-6F",
+    "value": "https://example.test/?aob=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-6F",
+    "value": "https://example.test/?q=aob",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-70",
+    "value": "https://apb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-70",
+    "value": "https://example.test/apb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-70",
+    "value": "https://example.test/?apb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-70",
+    "value": "https://example.test/?q=apb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-71",
+    "value": "https://aqb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-71",
+    "value": "https://example.test/aqb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-71",
+    "value": "https://example.test/?aqb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-71",
+    "value": "https://example.test/?q=aqb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-72",
+    "value": "https://arb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-72",
+    "value": "https://example.test/arb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-72",
+    "value": "https://example.test/?arb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-72",
+    "value": "https://example.test/?q=arb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-73",
+    "value": "https://asb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-73",
+    "value": "https://example.test/asb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-73",
+    "value": "https://example.test/?asb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-73",
+    "value": "https://example.test/?q=asb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-74",
+    "value": "https://atb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-74",
+    "value": "https://example.test/atb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-74",
+    "value": "https://example.test/?atb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-74",
+    "value": "https://example.test/?q=atb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-75",
+    "value": "https://aub.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-75",
+    "value": "https://example.test/aub",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-75",
+    "value": "https://example.test/?aub=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-75",
+    "value": "https://example.test/?q=aub",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-76",
+    "value": "https://avb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-76",
+    "value": "https://example.test/avb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-76",
+    "value": "https://example.test/?avb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-76",
+    "value": "https://example.test/?q=avb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-77",
+    "value": "https://awb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-77",
+    "value": "https://example.test/awb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-77",
+    "value": "https://example.test/?awb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-77",
+    "value": "https://example.test/?q=awb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-78",
+    "value": "https://axb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-78",
+    "value": "https://example.test/axb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-78",
+    "value": "https://example.test/?axb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-78",
+    "value": "https://example.test/?q=axb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-79",
+    "value": "https://ayb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-79",
+    "value": "https://example.test/ayb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-79",
+    "value": "https://example.test/?ayb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-79",
+    "value": "https://example.test/?q=ayb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-7A",
+    "value": "https://azb.test/",
+    "accepted": true
+  },
+  {
+    "name": "ascii-path-7A",
+    "value": "https://example.test/azb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-7A",
+    "value": "https://example.test/?azb=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-7A",
+    "value": "https://example.test/?q=azb",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-7B",
+    "value": "https://a{b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-7B",
+    "value": "https://example.test/a{b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-7B",
+    "value": "https://example.test/?a{b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-7B",
+    "value": "https://example.test/?q=a{b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-7C",
+    "value": "https://a|b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-7C",
+    "value": "https://example.test/a|b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-7C",
+    "value": "https://example.test/?a|b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-7C",
+    "value": "https://example.test/?q=a|b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-7D",
+    "value": "https://a}b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-7D",
+    "value": "https://example.test/a}b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-7D",
+    "value": "https://example.test/?a}b=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-7D",
+    "value": "https://example.test/?q=a}b",
+    "accepted": false
+  },
+  {
+    "name": "ascii-host-7E",
+    "value": "https://a~b.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-7E",
+    "value": "https://example.test/a~b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-name-7E",
+    "value": "https://example.test/?a~b=x",
+    "accepted": true
+  },
+  {
+    "name": "ascii-value-7E",
+    "value": "https://example.test/?q=a~b",
+    "accepted": true
+  },
+  {
+    "name": "ascii-host-7F",
+    "value": "https://ab.test/",
+    "accepted": false
+  },
+  {
+    "name": "ascii-path-7F",
+    "value": "https://example.test/ab",
+    "accepted": false
+  },
+  {
+    "name": "ascii-name-7F",
+    "value": "https://example.test/?ab=x",
+    "accepted": false
+  },
+  {
+    "name": "ascii-value-7F",
+    "value": "https://example.test/?q=ab",
+    "accepted": false
+  },
+  {
+    "name": "opaque-path-byte-%00",
+    "value": "https://example.test/x%00x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%00",
+    "value": "https://example.test/?q=%00",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%01",
+    "value": "https://example.test/x%01x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%01",
+    "value": "https://example.test/?q=%01",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%02",
+    "value": "https://example.test/x%02x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%02",
+    "value": "https://example.test/?q=%02",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%03",
+    "value": "https://example.test/x%03x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%03",
+    "value": "https://example.test/?q=%03",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%04",
+    "value": "https://example.test/x%04x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%04",
+    "value": "https://example.test/?q=%04",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%05",
+    "value": "https://example.test/x%05x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%05",
+    "value": "https://example.test/?q=%05",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%06",
+    "value": "https://example.test/x%06x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%06",
+    "value": "https://example.test/?q=%06",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%07",
+    "value": "https://example.test/x%07x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%07",
+    "value": "https://example.test/?q=%07",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%08",
+    "value": "https://example.test/x%08x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%08",
+    "value": "https://example.test/?q=%08",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%09",
+    "value": "https://example.test/x%09x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%09",
+    "value": "https://example.test/?q=%09",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%0A",
+    "value": "https://example.test/x%0Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%0A",
+    "value": "https://example.test/?q=%0A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%0B",
+    "value": "https://example.test/x%0Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%0B",
+    "value": "https://example.test/?q=%0B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%0C",
+    "value": "https://example.test/x%0Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%0C",
+    "value": "https://example.test/?q=%0C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%0D",
+    "value": "https://example.test/x%0Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%0D",
+    "value": "https://example.test/?q=%0D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%0E",
+    "value": "https://example.test/x%0Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%0E",
+    "value": "https://example.test/?q=%0E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%0F",
+    "value": "https://example.test/x%0Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%0F",
+    "value": "https://example.test/?q=%0F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%10",
+    "value": "https://example.test/x%10x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%10",
+    "value": "https://example.test/?q=%10",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%11",
+    "value": "https://example.test/x%11x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%11",
+    "value": "https://example.test/?q=%11",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%12",
+    "value": "https://example.test/x%12x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%12",
+    "value": "https://example.test/?q=%12",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%13",
+    "value": "https://example.test/x%13x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%13",
+    "value": "https://example.test/?q=%13",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%14",
+    "value": "https://example.test/x%14x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%14",
+    "value": "https://example.test/?q=%14",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%15",
+    "value": "https://example.test/x%15x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%15",
+    "value": "https://example.test/?q=%15",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%16",
+    "value": "https://example.test/x%16x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%16",
+    "value": "https://example.test/?q=%16",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%17",
+    "value": "https://example.test/x%17x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%17",
+    "value": "https://example.test/?q=%17",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%18",
+    "value": "https://example.test/x%18x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%18",
+    "value": "https://example.test/?q=%18",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%19",
+    "value": "https://example.test/x%19x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%19",
+    "value": "https://example.test/?q=%19",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%1A",
+    "value": "https://example.test/x%1Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%1A",
+    "value": "https://example.test/?q=%1A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%1B",
+    "value": "https://example.test/x%1Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%1B",
+    "value": "https://example.test/?q=%1B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%1C",
+    "value": "https://example.test/x%1Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%1C",
+    "value": "https://example.test/?q=%1C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%1D",
+    "value": "https://example.test/x%1Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%1D",
+    "value": "https://example.test/?q=%1D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%1E",
+    "value": "https://example.test/x%1Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%1E",
+    "value": "https://example.test/?q=%1E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%1F",
+    "value": "https://example.test/x%1Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%1F",
+    "value": "https://example.test/?q=%1F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%20",
+    "value": "https://example.test/x%20x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%20",
+    "value": "https://example.test/?q=%20",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%21",
+    "value": "https://example.test/x%21x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%21",
+    "value": "https://example.test/?q=%21",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%22",
+    "value": "https://example.test/x%22x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%22",
+    "value": "https://example.test/?q=%22",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%23",
+    "value": "https://example.test/x%23x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%23",
+    "value": "https://example.test/?q=%23",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%24",
+    "value": "https://example.test/x%24x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%24",
+    "value": "https://example.test/?q=%24",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%25",
+    "value": "https://example.test/x%25x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%25",
+    "value": "https://example.test/?q=%25",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%26",
+    "value": "https://example.test/x%26x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%26",
+    "value": "https://example.test/?q=%26",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%27",
+    "value": "https://example.test/x%27x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%27",
+    "value": "https://example.test/?q=%27",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%28",
+    "value": "https://example.test/x%28x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%28",
+    "value": "https://example.test/?q=%28",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%29",
+    "value": "https://example.test/x%29x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%29",
+    "value": "https://example.test/?q=%29",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%2A",
+    "value": "https://example.test/x%2Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%2A",
+    "value": "https://example.test/?q=%2A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%2B",
+    "value": "https://example.test/x%2Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%2B",
+    "value": "https://example.test/?q=%2B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%2C",
+    "value": "https://example.test/x%2Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%2C",
+    "value": "https://example.test/?q=%2C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%2D",
+    "value": "https://example.test/x%2Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%2D",
+    "value": "https://example.test/?q=%2D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%2E",
+    "value": "https://example.test/x%2Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%2E",
+    "value": "https://example.test/?q=%2E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%2F",
+    "value": "https://example.test/x%2Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%2F",
+    "value": "https://example.test/?q=%2F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%30",
+    "value": "https://example.test/x%30x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%30",
+    "value": "https://example.test/?q=%30",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%31",
+    "value": "https://example.test/x%31x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%31",
+    "value": "https://example.test/?q=%31",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%32",
+    "value": "https://example.test/x%32x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%32",
+    "value": "https://example.test/?q=%32",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%33",
+    "value": "https://example.test/x%33x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%33",
+    "value": "https://example.test/?q=%33",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%34",
+    "value": "https://example.test/x%34x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%34",
+    "value": "https://example.test/?q=%34",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%35",
+    "value": "https://example.test/x%35x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%35",
+    "value": "https://example.test/?q=%35",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%36",
+    "value": "https://example.test/x%36x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%36",
+    "value": "https://example.test/?q=%36",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%37",
+    "value": "https://example.test/x%37x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%37",
+    "value": "https://example.test/?q=%37",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%38",
+    "value": "https://example.test/x%38x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%38",
+    "value": "https://example.test/?q=%38",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%39",
+    "value": "https://example.test/x%39x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%39",
+    "value": "https://example.test/?q=%39",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%3A",
+    "value": "https://example.test/x%3Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%3A",
+    "value": "https://example.test/?q=%3A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%3B",
+    "value": "https://example.test/x%3Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%3B",
+    "value": "https://example.test/?q=%3B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%3C",
+    "value": "https://example.test/x%3Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%3C",
+    "value": "https://example.test/?q=%3C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%3D",
+    "value": "https://example.test/x%3Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%3D",
+    "value": "https://example.test/?q=%3D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%3E",
+    "value": "https://example.test/x%3Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%3E",
+    "value": "https://example.test/?q=%3E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%3F",
+    "value": "https://example.test/x%3Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%3F",
+    "value": "https://example.test/?q=%3F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%40",
+    "value": "https://example.test/x%40x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%40",
+    "value": "https://example.test/?q=%40",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%41",
+    "value": "https://example.test/x%41x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%41",
+    "value": "https://example.test/?q=%41",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%42",
+    "value": "https://example.test/x%42x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%42",
+    "value": "https://example.test/?q=%42",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%43",
+    "value": "https://example.test/x%43x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%43",
+    "value": "https://example.test/?q=%43",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%44",
+    "value": "https://example.test/x%44x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%44",
+    "value": "https://example.test/?q=%44",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%45",
+    "value": "https://example.test/x%45x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%45",
+    "value": "https://example.test/?q=%45",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%46",
+    "value": "https://example.test/x%46x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%46",
+    "value": "https://example.test/?q=%46",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%47",
+    "value": "https://example.test/x%47x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%47",
+    "value": "https://example.test/?q=%47",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%48",
+    "value": "https://example.test/x%48x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%48",
+    "value": "https://example.test/?q=%48",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%49",
+    "value": "https://example.test/x%49x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%49",
+    "value": "https://example.test/?q=%49",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%4A",
+    "value": "https://example.test/x%4Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%4A",
+    "value": "https://example.test/?q=%4A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%4B",
+    "value": "https://example.test/x%4Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%4B",
+    "value": "https://example.test/?q=%4B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%4C",
+    "value": "https://example.test/x%4Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%4C",
+    "value": "https://example.test/?q=%4C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%4D",
+    "value": "https://example.test/x%4Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%4D",
+    "value": "https://example.test/?q=%4D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%4E",
+    "value": "https://example.test/x%4Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%4E",
+    "value": "https://example.test/?q=%4E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%4F",
+    "value": "https://example.test/x%4Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%4F",
+    "value": "https://example.test/?q=%4F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%50",
+    "value": "https://example.test/x%50x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%50",
+    "value": "https://example.test/?q=%50",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%51",
+    "value": "https://example.test/x%51x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%51",
+    "value": "https://example.test/?q=%51",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%52",
+    "value": "https://example.test/x%52x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%52",
+    "value": "https://example.test/?q=%52",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%53",
+    "value": "https://example.test/x%53x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%53",
+    "value": "https://example.test/?q=%53",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%54",
+    "value": "https://example.test/x%54x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%54",
+    "value": "https://example.test/?q=%54",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%55",
+    "value": "https://example.test/x%55x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%55",
+    "value": "https://example.test/?q=%55",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%56",
+    "value": "https://example.test/x%56x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%56",
+    "value": "https://example.test/?q=%56",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%57",
+    "value": "https://example.test/x%57x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%57",
+    "value": "https://example.test/?q=%57",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%58",
+    "value": "https://example.test/x%58x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%58",
+    "value": "https://example.test/?q=%58",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%59",
+    "value": "https://example.test/x%59x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%59",
+    "value": "https://example.test/?q=%59",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%5A",
+    "value": "https://example.test/x%5Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%5A",
+    "value": "https://example.test/?q=%5A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%5B",
+    "value": "https://example.test/x%5Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%5B",
+    "value": "https://example.test/?q=%5B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%5C",
+    "value": "https://example.test/x%5Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%5C",
+    "value": "https://example.test/?q=%5C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%5D",
+    "value": "https://example.test/x%5Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%5D",
+    "value": "https://example.test/?q=%5D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%5E",
+    "value": "https://example.test/x%5Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%5E",
+    "value": "https://example.test/?q=%5E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%5F",
+    "value": "https://example.test/x%5Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%5F",
+    "value": "https://example.test/?q=%5F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%60",
+    "value": "https://example.test/x%60x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%60",
+    "value": "https://example.test/?q=%60",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%61",
+    "value": "https://example.test/x%61x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%61",
+    "value": "https://example.test/?q=%61",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%62",
+    "value": "https://example.test/x%62x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%62",
+    "value": "https://example.test/?q=%62",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%63",
+    "value": "https://example.test/x%63x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%63",
+    "value": "https://example.test/?q=%63",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%64",
+    "value": "https://example.test/x%64x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%64",
+    "value": "https://example.test/?q=%64",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%65",
+    "value": "https://example.test/x%65x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%65",
+    "value": "https://example.test/?q=%65",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%66",
+    "value": "https://example.test/x%66x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%66",
+    "value": "https://example.test/?q=%66",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%67",
+    "value": "https://example.test/x%67x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%67",
+    "value": "https://example.test/?q=%67",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%68",
+    "value": "https://example.test/x%68x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%68",
+    "value": "https://example.test/?q=%68",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%69",
+    "value": "https://example.test/x%69x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%69",
+    "value": "https://example.test/?q=%69",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%6A",
+    "value": "https://example.test/x%6Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%6A",
+    "value": "https://example.test/?q=%6A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%6B",
+    "value": "https://example.test/x%6Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%6B",
+    "value": "https://example.test/?q=%6B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%6C",
+    "value": "https://example.test/x%6Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%6C",
+    "value": "https://example.test/?q=%6C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%6D",
+    "value": "https://example.test/x%6Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%6D",
+    "value": "https://example.test/?q=%6D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%6E",
+    "value": "https://example.test/x%6Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%6E",
+    "value": "https://example.test/?q=%6E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%6F",
+    "value": "https://example.test/x%6Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%6F",
+    "value": "https://example.test/?q=%6F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%70",
+    "value": "https://example.test/x%70x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%70",
+    "value": "https://example.test/?q=%70",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%71",
+    "value": "https://example.test/x%71x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%71",
+    "value": "https://example.test/?q=%71",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%72",
+    "value": "https://example.test/x%72x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%72",
+    "value": "https://example.test/?q=%72",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%73",
+    "value": "https://example.test/x%73x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%73",
+    "value": "https://example.test/?q=%73",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%74",
+    "value": "https://example.test/x%74x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%74",
+    "value": "https://example.test/?q=%74",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%75",
+    "value": "https://example.test/x%75x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%75",
+    "value": "https://example.test/?q=%75",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%76",
+    "value": "https://example.test/x%76x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%76",
+    "value": "https://example.test/?q=%76",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%77",
+    "value": "https://example.test/x%77x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%77",
+    "value": "https://example.test/?q=%77",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%78",
+    "value": "https://example.test/x%78x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%78",
+    "value": "https://example.test/?q=%78",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%79",
+    "value": "https://example.test/x%79x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%79",
+    "value": "https://example.test/?q=%79",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%7A",
+    "value": "https://example.test/x%7Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%7A",
+    "value": "https://example.test/?q=%7A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%7B",
+    "value": "https://example.test/x%7Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%7B",
+    "value": "https://example.test/?q=%7B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%7C",
+    "value": "https://example.test/x%7Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%7C",
+    "value": "https://example.test/?q=%7C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%7D",
+    "value": "https://example.test/x%7Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%7D",
+    "value": "https://example.test/?q=%7D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%7E",
+    "value": "https://example.test/x%7Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%7E",
+    "value": "https://example.test/?q=%7E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%7F",
+    "value": "https://example.test/x%7Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%7F",
+    "value": "https://example.test/?q=%7F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%80",
+    "value": "https://example.test/x%80x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%80",
+    "value": "https://example.test/?q=%80",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%81",
+    "value": "https://example.test/x%81x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%81",
+    "value": "https://example.test/?q=%81",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%82",
+    "value": "https://example.test/x%82x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%82",
+    "value": "https://example.test/?q=%82",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%83",
+    "value": "https://example.test/x%83x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%83",
+    "value": "https://example.test/?q=%83",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%84",
+    "value": "https://example.test/x%84x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%84",
+    "value": "https://example.test/?q=%84",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%85",
+    "value": "https://example.test/x%85x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%85",
+    "value": "https://example.test/?q=%85",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%86",
+    "value": "https://example.test/x%86x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%86",
+    "value": "https://example.test/?q=%86",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%87",
+    "value": "https://example.test/x%87x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%87",
+    "value": "https://example.test/?q=%87",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%88",
+    "value": "https://example.test/x%88x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%88",
+    "value": "https://example.test/?q=%88",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%89",
+    "value": "https://example.test/x%89x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%89",
+    "value": "https://example.test/?q=%89",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%8A",
+    "value": "https://example.test/x%8Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%8A",
+    "value": "https://example.test/?q=%8A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%8B",
+    "value": "https://example.test/x%8Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%8B",
+    "value": "https://example.test/?q=%8B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%8C",
+    "value": "https://example.test/x%8Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%8C",
+    "value": "https://example.test/?q=%8C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%8D",
+    "value": "https://example.test/x%8Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%8D",
+    "value": "https://example.test/?q=%8D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%8E",
+    "value": "https://example.test/x%8Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%8E",
+    "value": "https://example.test/?q=%8E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%8F",
+    "value": "https://example.test/x%8Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%8F",
+    "value": "https://example.test/?q=%8F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%90",
+    "value": "https://example.test/x%90x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%90",
+    "value": "https://example.test/?q=%90",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%91",
+    "value": "https://example.test/x%91x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%91",
+    "value": "https://example.test/?q=%91",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%92",
+    "value": "https://example.test/x%92x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%92",
+    "value": "https://example.test/?q=%92",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%93",
+    "value": "https://example.test/x%93x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%93",
+    "value": "https://example.test/?q=%93",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%94",
+    "value": "https://example.test/x%94x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%94",
+    "value": "https://example.test/?q=%94",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%95",
+    "value": "https://example.test/x%95x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%95",
+    "value": "https://example.test/?q=%95",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%96",
+    "value": "https://example.test/x%96x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%96",
+    "value": "https://example.test/?q=%96",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%97",
+    "value": "https://example.test/x%97x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%97",
+    "value": "https://example.test/?q=%97",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%98",
+    "value": "https://example.test/x%98x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%98",
+    "value": "https://example.test/?q=%98",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%99",
+    "value": "https://example.test/x%99x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%99",
+    "value": "https://example.test/?q=%99",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%9A",
+    "value": "https://example.test/x%9Ax",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%9A",
+    "value": "https://example.test/?q=%9A",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%9B",
+    "value": "https://example.test/x%9Bx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%9B",
+    "value": "https://example.test/?q=%9B",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%9C",
+    "value": "https://example.test/x%9Cx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%9C",
+    "value": "https://example.test/?q=%9C",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%9D",
+    "value": "https://example.test/x%9Dx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%9D",
+    "value": "https://example.test/?q=%9D",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%9E",
+    "value": "https://example.test/x%9Ex",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%9E",
+    "value": "https://example.test/?q=%9E",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%9F",
+    "value": "https://example.test/x%9Fx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%9F",
+    "value": "https://example.test/?q=%9F",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A0",
+    "value": "https://example.test/x%A0x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A0",
+    "value": "https://example.test/?q=%A0",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A1",
+    "value": "https://example.test/x%A1x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A1",
+    "value": "https://example.test/?q=%A1",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A2",
+    "value": "https://example.test/x%A2x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A2",
+    "value": "https://example.test/?q=%A2",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A3",
+    "value": "https://example.test/x%A3x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A3",
+    "value": "https://example.test/?q=%A3",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A4",
+    "value": "https://example.test/x%A4x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A4",
+    "value": "https://example.test/?q=%A4",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A5",
+    "value": "https://example.test/x%A5x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A5",
+    "value": "https://example.test/?q=%A5",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A6",
+    "value": "https://example.test/x%A6x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A6",
+    "value": "https://example.test/?q=%A6",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A7",
+    "value": "https://example.test/x%A7x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A7",
+    "value": "https://example.test/?q=%A7",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A8",
+    "value": "https://example.test/x%A8x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A8",
+    "value": "https://example.test/?q=%A8",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%A9",
+    "value": "https://example.test/x%A9x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%A9",
+    "value": "https://example.test/?q=%A9",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%AA",
+    "value": "https://example.test/x%AAx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%AA",
+    "value": "https://example.test/?q=%AA",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%AB",
+    "value": "https://example.test/x%ABx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%AB",
+    "value": "https://example.test/?q=%AB",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%AC",
+    "value": "https://example.test/x%ACx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%AC",
+    "value": "https://example.test/?q=%AC",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%AD",
+    "value": "https://example.test/x%ADx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%AD",
+    "value": "https://example.test/?q=%AD",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%AE",
+    "value": "https://example.test/x%AEx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%AE",
+    "value": "https://example.test/?q=%AE",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%AF",
+    "value": "https://example.test/x%AFx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%AF",
+    "value": "https://example.test/?q=%AF",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B0",
+    "value": "https://example.test/x%B0x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B0",
+    "value": "https://example.test/?q=%B0",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B1",
+    "value": "https://example.test/x%B1x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B1",
+    "value": "https://example.test/?q=%B1",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B2",
+    "value": "https://example.test/x%B2x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B2",
+    "value": "https://example.test/?q=%B2",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B3",
+    "value": "https://example.test/x%B3x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B3",
+    "value": "https://example.test/?q=%B3",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B4",
+    "value": "https://example.test/x%B4x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B4",
+    "value": "https://example.test/?q=%B4",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B5",
+    "value": "https://example.test/x%B5x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B5",
+    "value": "https://example.test/?q=%B5",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B6",
+    "value": "https://example.test/x%B6x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B6",
+    "value": "https://example.test/?q=%B6",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B7",
+    "value": "https://example.test/x%B7x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B7",
+    "value": "https://example.test/?q=%B7",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B8",
+    "value": "https://example.test/x%B8x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B8",
+    "value": "https://example.test/?q=%B8",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%B9",
+    "value": "https://example.test/x%B9x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%B9",
+    "value": "https://example.test/?q=%B9",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%BA",
+    "value": "https://example.test/x%BAx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%BA",
+    "value": "https://example.test/?q=%BA",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%BB",
+    "value": "https://example.test/x%BBx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%BB",
+    "value": "https://example.test/?q=%BB",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%BC",
+    "value": "https://example.test/x%BCx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%BC",
+    "value": "https://example.test/?q=%BC",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%BD",
+    "value": "https://example.test/x%BDx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%BD",
+    "value": "https://example.test/?q=%BD",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%BE",
+    "value": "https://example.test/x%BEx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%BE",
+    "value": "https://example.test/?q=%BE",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%BF",
+    "value": "https://example.test/x%BFx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%BF",
+    "value": "https://example.test/?q=%BF",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C0",
+    "value": "https://example.test/x%C0x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C0",
+    "value": "https://example.test/?q=%C0",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C1",
+    "value": "https://example.test/x%C1x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C1",
+    "value": "https://example.test/?q=%C1",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C2",
+    "value": "https://example.test/x%C2x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C2",
+    "value": "https://example.test/?q=%C2",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C3",
+    "value": "https://example.test/x%C3x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C3",
+    "value": "https://example.test/?q=%C3",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C4",
+    "value": "https://example.test/x%C4x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C4",
+    "value": "https://example.test/?q=%C4",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C5",
+    "value": "https://example.test/x%C5x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C5",
+    "value": "https://example.test/?q=%C5",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C6",
+    "value": "https://example.test/x%C6x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C6",
+    "value": "https://example.test/?q=%C6",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C7",
+    "value": "https://example.test/x%C7x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C7",
+    "value": "https://example.test/?q=%C7",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C8",
+    "value": "https://example.test/x%C8x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C8",
+    "value": "https://example.test/?q=%C8",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%C9",
+    "value": "https://example.test/x%C9x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%C9",
+    "value": "https://example.test/?q=%C9",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%CA",
+    "value": "https://example.test/x%CAx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%CA",
+    "value": "https://example.test/?q=%CA",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%CB",
+    "value": "https://example.test/x%CBx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%CB",
+    "value": "https://example.test/?q=%CB",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%CC",
+    "value": "https://example.test/x%CCx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%CC",
+    "value": "https://example.test/?q=%CC",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%CD",
+    "value": "https://example.test/x%CDx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%CD",
+    "value": "https://example.test/?q=%CD",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%CE",
+    "value": "https://example.test/x%CEx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%CE",
+    "value": "https://example.test/?q=%CE",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%CF",
+    "value": "https://example.test/x%CFx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%CF",
+    "value": "https://example.test/?q=%CF",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D0",
+    "value": "https://example.test/x%D0x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D0",
+    "value": "https://example.test/?q=%D0",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D1",
+    "value": "https://example.test/x%D1x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D1",
+    "value": "https://example.test/?q=%D1",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D2",
+    "value": "https://example.test/x%D2x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D2",
+    "value": "https://example.test/?q=%D2",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D3",
+    "value": "https://example.test/x%D3x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D3",
+    "value": "https://example.test/?q=%D3",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D4",
+    "value": "https://example.test/x%D4x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D4",
+    "value": "https://example.test/?q=%D4",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D5",
+    "value": "https://example.test/x%D5x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D5",
+    "value": "https://example.test/?q=%D5",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D6",
+    "value": "https://example.test/x%D6x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D6",
+    "value": "https://example.test/?q=%D6",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D7",
+    "value": "https://example.test/x%D7x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D7",
+    "value": "https://example.test/?q=%D7",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D8",
+    "value": "https://example.test/x%D8x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D8",
+    "value": "https://example.test/?q=%D8",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%D9",
+    "value": "https://example.test/x%D9x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%D9",
+    "value": "https://example.test/?q=%D9",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%DA",
+    "value": "https://example.test/x%DAx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%DA",
+    "value": "https://example.test/?q=%DA",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%DB",
+    "value": "https://example.test/x%DBx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%DB",
+    "value": "https://example.test/?q=%DB",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%DC",
+    "value": "https://example.test/x%DCx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%DC",
+    "value": "https://example.test/?q=%DC",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%DD",
+    "value": "https://example.test/x%DDx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%DD",
+    "value": "https://example.test/?q=%DD",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%DE",
+    "value": "https://example.test/x%DEx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%DE",
+    "value": "https://example.test/?q=%DE",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%DF",
+    "value": "https://example.test/x%DFx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%DF",
+    "value": "https://example.test/?q=%DF",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E0",
+    "value": "https://example.test/x%E0x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E0",
+    "value": "https://example.test/?q=%E0",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E1",
+    "value": "https://example.test/x%E1x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E1",
+    "value": "https://example.test/?q=%E1",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E2",
+    "value": "https://example.test/x%E2x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E2",
+    "value": "https://example.test/?q=%E2",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E3",
+    "value": "https://example.test/x%E3x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E3",
+    "value": "https://example.test/?q=%E3",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E4",
+    "value": "https://example.test/x%E4x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E4",
+    "value": "https://example.test/?q=%E4",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E5",
+    "value": "https://example.test/x%E5x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E5",
+    "value": "https://example.test/?q=%E5",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E6",
+    "value": "https://example.test/x%E6x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E6",
+    "value": "https://example.test/?q=%E6",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E7",
+    "value": "https://example.test/x%E7x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E7",
+    "value": "https://example.test/?q=%E7",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E8",
+    "value": "https://example.test/x%E8x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E8",
+    "value": "https://example.test/?q=%E8",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%E9",
+    "value": "https://example.test/x%E9x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%E9",
+    "value": "https://example.test/?q=%E9",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%EA",
+    "value": "https://example.test/x%EAx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%EA",
+    "value": "https://example.test/?q=%EA",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%EB",
+    "value": "https://example.test/x%EBx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%EB",
+    "value": "https://example.test/?q=%EB",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%EC",
+    "value": "https://example.test/x%ECx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%EC",
+    "value": "https://example.test/?q=%EC",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%ED",
+    "value": "https://example.test/x%EDx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%ED",
+    "value": "https://example.test/?q=%ED",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%EE",
+    "value": "https://example.test/x%EEx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%EE",
+    "value": "https://example.test/?q=%EE",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%EF",
+    "value": "https://example.test/x%EFx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%EF",
+    "value": "https://example.test/?q=%EF",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F0",
+    "value": "https://example.test/x%F0x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F0",
+    "value": "https://example.test/?q=%F0",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F1",
+    "value": "https://example.test/x%F1x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F1",
+    "value": "https://example.test/?q=%F1",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F2",
+    "value": "https://example.test/x%F2x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F2",
+    "value": "https://example.test/?q=%F2",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F3",
+    "value": "https://example.test/x%F3x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F3",
+    "value": "https://example.test/?q=%F3",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F4",
+    "value": "https://example.test/x%F4x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F4",
+    "value": "https://example.test/?q=%F4",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F5",
+    "value": "https://example.test/x%F5x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F5",
+    "value": "https://example.test/?q=%F5",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F6",
+    "value": "https://example.test/x%F6x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F6",
+    "value": "https://example.test/?q=%F6",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F7",
+    "value": "https://example.test/x%F7x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F7",
+    "value": "https://example.test/?q=%F7",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F8",
+    "value": "https://example.test/x%F8x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F8",
+    "value": "https://example.test/?q=%F8",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%F9",
+    "value": "https://example.test/x%F9x",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%F9",
+    "value": "https://example.test/?q=%F9",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%FA",
+    "value": "https://example.test/x%FAx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%FA",
+    "value": "https://example.test/?q=%FA",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%FB",
+    "value": "https://example.test/x%FBx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%FB",
+    "value": "https://example.test/?q=%FB",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%FC",
+    "value": "https://example.test/x%FCx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%FC",
+    "value": "https://example.test/?q=%FC",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%FD",
+    "value": "https://example.test/x%FDx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%FD",
+    "value": "https://example.test/?q=%FD",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%FE",
+    "value": "https://example.test/x%FEx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%FE",
+    "value": "https://example.test/?q=%FE",
+    "accepted": true
+  },
+  {
+    "name": "opaque-path-byte-%FF",
+    "value": "https://example.test/x%FFx",
+    "accepted": true
+  },
+  {
+    "name": "opaque-value-byte-%FF",
+    "value": "https://example.test/?q=%FF",
+    "accepted": true
+  }
+]

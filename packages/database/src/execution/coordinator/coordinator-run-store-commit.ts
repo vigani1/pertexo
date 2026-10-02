@@ -27,6 +27,7 @@ import { persistCoordinatorRunTransition } from './coordinator-run-store-run-tra
 import {
   persistDueReadyTransitions,
   persistLoopBarrierTransitions,
+  persistRejectedForEachDeclarations,
 } from './coordinator-run-store-settlement.js';
 import {
   assertCoordinatorNotAborted as assertNotAborted,
@@ -114,6 +115,11 @@ export async function commitCoordinatorAdvancePlan(
           commitState.currentCheckpoint,
           plan.checkpoint,
         );
+        await persistRejectedForEachDeclarations(client, {
+          workspaceId,
+          runId,
+          declarations: commitState.rejectedForEachDeclarations,
+        });
         assertNotAborted(input.signal);
         const receipt = await claimCoordinatorReceipt(
           client,
@@ -128,6 +134,7 @@ export async function commitCoordinatorAdvancePlan(
 
         const physical = await persistCoordinatorExecutionTransitions(client, {
           pendingFailures: commitState.pendingFailures,
+          rejectedForEachDeclarations: commitState.rejectedForEachDeclarations,
           plan,
           runId,
           ...(traceparent === undefined ? {} : { traceparent }),
