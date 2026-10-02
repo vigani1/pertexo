@@ -25,6 +25,8 @@ export type {
   FinalizeArtifactUploadInput,
 } from './execution/artifacts/artifact-upload.js';
 export type { ArtifactCapacityObservation } from './execution/artifacts/artifacts.js';
+export { prepareInlineWorkflowExecutionValueV3 } from './execution/artifacts/execution-value-representation.js';
+export type { StoredExecutionValueV1 } from './execution/stored-execution-value.js';
 export {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,
@@ -39,6 +41,7 @@ export {
   createCoordinatorRunStore,
 } from './execution/coordinator/coordinator-run-store.js';
 export type {
+  CoordinatorAdvanceDelivery,
   CoordinatorRunStore,
   CoordinatorRunStoreOptions,
 } from './execution/coordinator/coordinator-run-store.js';

@@ -174,9 +174,15 @@ precedence. All 590 engine tests across 43 files pass, with engine typecheck,
 narrow lint and complexity checks. Retained checkpoint parsers and runtime
 advance/attempt owners are not yet wired to these semantics. The existing inline
 owner supplies an independently tested representation selector; its 256 KiB
-limit is unchanged. A standalone framework artifact codec is under verification,
-but protected SQL provenance, reserved-ID writer integration and live storage
-qualification are still required. Durable admission/settlement, native runtime
+limit is unchanged. The standalone framework artifact codec admits source-local
+1 MiB JSON, spills only through protected reservation callbacks, and verifies
+same-workspace metadata, canonical byte integrity and availability before
+hydration. The reserved-ID adapter reuses the existing spool/upload/finalize
+owner without a second quota charge or fabricated attempt identity. All 1,011
+worker tests across 80 files and 1,035 database unit tests across 136 files pass;
+worker/database build and typecheck, narrow lint/format and module-import checks
+pass. SQL callback authority/provenance and live storage qualification are still
+required; these adapters are not registered. Durable admission/settlement, native runtime
 integration and all live qualification remain unfinished.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.

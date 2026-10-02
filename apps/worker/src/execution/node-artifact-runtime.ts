@@ -228,7 +228,12 @@ export function createNodeArtifactRuntimeFactory(
     spoolDirectory?: string;
     spoolOperations?: ArtifactSpoolOperations;
   }>,
-): (context: NodeExecutionCapabilityContext) => NodeArtifactRuntime {
+): (
+  context: Pick<
+    NodeExecutionCapabilityContext,
+    'workspaceId' | 'previewRunId' | 'artifactRetentionDeadline'
+  >,
+) => NodeArtifactRuntime {
   const artifactId = input.artifactId ?? generatePersistedId;
   const now = input.now ?? (() => new Date());
   const spoolDirectory = input.spoolDirectory ?? tmpdir();
