@@ -164,6 +164,47 @@ recorded result before current capacity checks; mismatch is corruption/conflict,
 not permission to allocate another child. Ordinary request/inbox receipts remain
 with their existing owners and cannot replace call identity after expiry.
 
+### Native byte owner and accepted inline byte preservation
+
+Primary selected the existing persisted execution-value encoder for NEW native
+input/result bytes/checksums on 2026-10-02. Reuse that implementation with an
+explicit 1 MiB value bound; retain 256 KiB inline eligibility and all legacy,
+graph/catalog and artifact quota identities. In particular, numeric-looking keys
+are sorted lexicographically like the persisted encoder, not enumerated by the
+model/graph JSON serializer. Prepare, record, read and hydrate must agree for
+nested numeric keys, Unicode/escapes, finite numeric edges and negative zero.
+NEW native artifact production uses that same encoder without reinterpreting
+retained artifact bytes. SDK-valid NUL strings remain artifact-eligible only.
+
+**Accepted by primary and independent review on 2026-10-02:** add an immutable exact
+UTF8 serialized-value field to the existing protected inline provenance row,
+retaining its normalized inline reference. SQL hashes/counts those exact bytes,
+validates original JSON with unique keys before conversion, bounds depth/members/
+bytes and finite numeric values, and binds value/reference plus live authority in
+the same transaction. Read/reclaim verifies original bytes before bounded parsing
+and semantic reference comparison; never infer historical byte identity from
+JSONB. Canonical application producers remain unchanged. Raw SQL ingress
+accepts unique-key alternate whitespace/order as distinct, recoverable immutable
+byte identity; rejects duplicate keys, invalid/bounds/numeric/identity mismatch.
+This accepted disposition changes earlier negative vectors that expected
+whitespace/order rejection. No generic SQL JavaScript encoder, new
+payload store/quota/history owner, artifact relaxation or legacy reinterpretation
+is proposed. Exact byte replay preserves original identity; even semantically
+equal rewritten bytes cannot replace a committed snapshot. See the accepted
+amendment in ADR065; the current SQL poisoning finding remains OPEN until
+implementation and real-role qualification.
+SQL numeric/reference admission and recovery must agree under actual JavaScript
+bounded parsing; PostgreSQL arbitrary-precision JSONB equality or finite casts
+alone are insufficient. Compare numeric leaves with equivalent binary64 semantics:
+raw `9007199254740993` may normalize to `9007199254740992` only when the reference
+agrees with that same JavaScript value. Underflow and negative zero follow the
+same normalization; overflow/nonfinite/unsupported ranges fail operationally.
+Prove SQL/JavaScript differential numeric disposition, never rewrite original
+bytes, and carry them through reclaim/completion without recanonicalization.
+Exact bytes stay within existing inline 256 KiB eligibility and
+wrapper/backstop policies, with existing provenance retention/hold/purge and no
+duplicate reservation or hidden unbounded payload.
+
 ## Atomic spawn, FIFO and lock contract
 
 Extend the canonical coordinator transaction and existing `acceptWorkflowRun`

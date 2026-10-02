@@ -16,6 +16,62 @@ F07 base `0b4e0810d405ecb0b222a2e000d363ef4fbd2380`, tree
 `27c2362ba58c9eb161335d89a6665200403d8052`, and exclusive migration0136 allocation.
 Required real-service, compatibility and rollout evidence remains open.
 
+## Native execution byte identity amendment
+
+Primary selected the existing persisted execution-value encoder on 2026-10-02
+for NEW native input/result bytes and checksums, with an explicit 1 MiB value
+policy. Reuse its bounded normalization and encoding implementation: UTF16
+lexicographic object keys (including integer-looking keys), existing JavaScript
+scalar/string spelling and negative-zero normalization. Retained 256 KiB inline
+eligibility, legacy values, graph/catalog checksums and their codecs do not change.
+The model's graph canonical JSON is not the native execution byte owner.
+NEW native artifact production also uses this selected encoder; retained artifact
+bytes are not reinterpreted. The native byte policy keeps SDK-valid NUL strings
+eligible for artifact encoding, without making them PostgreSQL-inline eligible.
+
+The following protected byte-preservation amendment is **ACCEPTED — 2026-10-02**
+after primary and independent full-delta review. This is decision acceptance, not
+closure of the SQL poisoning finding or executable qualification. Store exact
+immutable UTF8 serialized inline-value bytes alongside their normalized inline
+reference in the existing execution-value provenance
+owner. SQL derives/checks SHA256 and byte length from those same durable bytes,
+not a re-encoding of JSONB or a caller label. The byte record is authoritative for
+integrity/replay; the inline JSON reference is the value projection used by
+existing consumers, not an alternative content identity or storage owner.
+
+Normal producers emit the selected persisted encoding. Protected SQL
+ingress intentionally tolerates alternate whitespace/key order for otherwise
+valid, unique-key, bounded JSON: it seals their exact bytes, never calls them
+canonical or rewrites them, and recovery verifies those bytes before parsing the
+semantic value. Duplicate keys at any nesting, malformed JSON, non-finite/out-of-
+range numeric input and bounds/identity mismatches fail operationally before
+commit. SQL validates the original text with PostgreSQL18's unique-key JSON
+predicate before JSONB conversion, and enforces the existing depth64/member10000
+and inline/value byte policies, rather than implementing a JavaScript serializer.
+Original bytes and normalized reference must denote the same input. Recovery
+and SQL admission must agree under actual JavaScript bounded parsing, not merely
+PostgreSQL arbitrary-precision JSONB equality. Numeric leaves use equivalent
+binary64 semantics: raw `9007199254740993` may normalize to `9007199254740992`
+only when the reference agrees with that same JavaScript value. Underflow and
+negative zero likewise follow bounded JavaScript normalization; overflow,
+nonfinite or unsupported range cases fail operationally. Raw byte identity is
+never replaced by normalized numeric spelling. Differential SQL/JavaScript
+rounding, underflow, overflow, negative-zero and producer edge vectors are required.
+Recovery checks stored byte/hash/length and bounded semantic value/reference agreement;
+it must not recompute historical byte identity from JSONB. A later attempt to
+change whitespace/order is a different immutable byte identity and is rejected.
+
+This amendment changes treatment of hostile whitespace/key-order calls from
+rejection to recoverable byte-preserving admission; duplicate-key calls remain
+negative. It avoids an improvised generic SQL canonical encoder. Existing
+canonical artifact preparation/hydration stays with its current artifact owner
+and selected NEW native encoder; this amendment is not permission to accept
+arbitrary artifact bytes or add a JSON store, quota/history owner or reaper.
+Required actual-role/reclaim/differential evidence remains open.
+Exact inline bytes remain within the existing 256 KiB inline eligibility and
+wrapper/backstop policies. They share the existing provenance retention, legal
+hold and purge owner: no duplicate quota reservation or unbounded hidden payload.
+
 ## Context and selected direction
 
 F08 needs reusable typed calls without copying graphs or occupying a parent
