@@ -1,6 +1,6 @@
 # F08 — Reusable subworkflows with durable parent/child runs
 
-Status: accepted ADR065; implementation in progress, callable type foundation verified.
+Status: accepted ADR065; implementation in progress, callable contract and executable foundations verified.
 Decision preparation is authorized; primary selected strict independent occupancy
 and fail-fast child admission for the V1 proposal on 2026-10-02. The complete
 contract/ADR was accepted at `b6c2998d29408b086c289e87058f9c67d2008ff2` after
@@ -151,5 +151,21 @@ hostile-input cases. Model build/typecheck, narrow lint/format, complexity and
 module-import checks pass; built browser-condition imports and dependency
 traversal prove the graph/pin leaves safe and closure leaf server-only. These
 contracts are not yet wired into publication, persistence or the editor.
+
+Executable V3 separately hashes the Graph V2 callable declaration, required
+family policy and new scheduler/checkpoint/timeout/cancellation policy identities.
+Retained V2 compilation and parsing reject Call nodes even when a future catalog
+recognizes their definition. Pure Call input and explicit result helpers preserve
+the existing bounded JSON and restricted expression owners, validate the exact
+callable identity, reject hostile accessors and normalize cancellation without
+swallowing operational evaluator failures. All 464 engine tests across 41 files
+and 129 core-node tests across eight files pass. Engine/core typecheck, engine
+build, narrow lint/format, module-import and complexity checks pass. The pure
+declaration executor performs no child admission or provider I/O and is not yet
+registered. Executable V3 is not yet accepted by advance/attempt runtime owners.
+Durable Call output must remain distinct from the immutable declaration attempt;
+existing 256 KiB inline persistence cannot silently stand in for the independent
+1 MiB callable value limit. Checkpoint V3, artifact-owner integration, durable
+admission/settlement and all live qualification remain unfinished.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.

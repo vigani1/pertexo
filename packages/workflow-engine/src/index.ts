@@ -48,4 +48,15 @@ export type {
   WorkflowExecutableV2,
 } from './executable-workflow.js';
 export { invocationKey } from './transition/scheduling.js';
+export {
+  buildWorkflowExecutableV3,
+  parseWorkflowExecutableV3,
+  verifyWorkflowExecutableV3,
+  computeWorkflowExecutableChecksumV3,
+  composeExecutableCompatibilityReleaseV3,
+  WORKFLOW_CALL_RUNTIME_POLICIES_V1,
+  type WorkflowExecutableV3,
+  type VerifiedWorkflowExecutableV3,
+  type CompiledWorkflowExecutableV3,
+} from './executable-workflow.js';
 export type * from './types.js';
