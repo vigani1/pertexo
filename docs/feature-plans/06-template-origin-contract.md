@@ -2,6 +2,8 @@
 
 Status: accepted by the roadmap manager after primary and independent review,
 2026-10-02. Implementation authorized; release and owned qualification remain open.
+Human-authorized option 3 policy amendment: exact grammar below awaits primary
+review before changed-policy implementation; other accepted decisions remain.
 Parent: [F06](06-curated-templates.md), accepted
 [ADR063](../adr/063-curated-template-historical-origin.md).
 
@@ -16,8 +18,9 @@ explicit additive changes accepted in ADR063.
 
 Manager approved audience/examples, `validate_activation` only, explicit binding
 before creation and durable historical provenance. The API/database design here
-is accepted after closure of both review clarifications. No migration number is allocated before
-manager reconciliation of combined F02/F05 release history.
+is accepted after closure of both review clarifications. Reviewed combined base
+`f5432838` was integrated by normal merge `69c10d3b`; the release owner allocated
+migration 0133. The policy amendment below is not an enablement or release claim.
 
 ## Exact additive wire changes
 
@@ -47,10 +50,11 @@ Pointer). Location is `config` or `literalInput`; initial targets are precisely
 HTTP `config.url` and Slack literal `inputMappings.channelId.value`. The latter
 retains its mapping's exact `kind: literal` and other shape; it is not a config
 property. Allowed value kinds are bounded HTTPS endpoint and Slack channel ID.
-HTTP URL is at most 2,048 **UTF-8 bytes**, not characters, and must satisfy the
-registered HTTP config URL rule: a valid HTTPS URL, no username/password, no
-fragment, and no decoded query parameter name matching
-`/(?:auth|credential|secret|token|api[-_]?key)/iu`. Slack channel is 2–128 ASCII
+HTTP URL is at most 2,048 **UTF-8 bytes**, not characters, and must satisfy both
+the registered HTTP config URL rule and the narrower curated HTTPS endpoint v1
+grammar below. Preserve no username/password, no fragment, and no decoded query
+parameter name matching `/(?:auth|credential|secret|token|api[-_]?key)/iu`.
+Slack channel is 2–128 ASCII
 characters matching `^[CDGU][A-Z0-9]+$`: the intersection of the registered
 Slack input rule (2–255) with the tighter template bound. Existing secret-content
 policy still applies. Bounds are intersections, not weaker substitutes.
@@ -66,10 +70,88 @@ F05 `platformPortableDefinitionPolicy` validates registered config only; it does
 not validate Slack literal input mappings. Do not import server-only node-catalog
 or integrations into the browser model. Differential server-side tests compare
 the browser-safe validator with the registered rules plus template bounds,
-including Slack prefixes/case/length 1, 2, 128, 129 and HTTP 2,048/2,049-byte
-multibyte boundaries, invalid URLs, userinfo, fragments and encoded/case-varied
-credential query names. The SQL typed-delta guard must reject the same disallowed
+including Slack prefixes/case/length 1, 2, 128, 129, HTTP 2,048/2,049-byte
+boundaries, the grammar matrix below, raw Unicode/multibyte rejection, invalid
+URLs, userinfo, fragments and encoded/case-varied credential query names.
+Registered HTTP admission remains necessary, not sufficient: previously valid
+registered URLs outside the curated grammar must now fail all curated tiers.
+The SQL typed-delta guard must reject the same disallowed
 target values; no tier may treat config-only F05 inspection as input validation.
+
+### Curated HTTPS endpoint v1 grammar
+
+Exact-source primary review pending, following human-authorized option 3.
+Applies only to descriptor value kind `curated_https_endpoint_v1` and new
+origin-bearing template preview/create. This is a deliberate narrowing of the
+original registered-URL acceptance set, not a general URL parser or global HTTP
+policy change. No coercion, trim, decoding of stored values or normalization.
+
+1. Input is a string of **1–2,048 UTF-8 bytes**, consisting solely of the ASCII
+   grammar characters below. Every raw non-ASCII character, whitespace/control,
+   backslash, `#` or `@` is rejected. In particular, empty fragment/userinfo
+   markers fail even where the registered parser reports empty fields.
+2. Scheme is exactly lowercase `https://`.
+3. Host is 2 or more dot-separated lowercase ASCII DNS labels, at most 253
+   bytes total. Each label is 1–63 bytes, begins/ends with `[a-z0-9]`, and has
+   only `[a-z0-9-]` between them. No label may begin `xn--`. The last label is
+   **2–63 `[a-z]` letters only**, excluding WHATWG numeric-host interpretation.
+   No host percent escapes, Unicode/IDNA, IP literal, underscore, empty label,
+   trailing dot or explicit port. Syntax does not prove that a domain resolves.
+4. Path is mandatory and begins `/`; remaining tokens are unreserved ASCII
+   `[A-Za-z0-9._~-]`, `/`, or uppercase percent byte escapes `%[0-9A-F]{2}`.
+   Empty segments/repeated or trailing `/` are allowed. A segment equal to `.`
+   or `..` after replacing each exact `%2E` with `.` is rejected, preventing
+   WHATWG dot-segment normalization. No recursive decoding; `%252E` is not `.`.
+5. Query is absent, or a literal `?` followed by **1–16** ampersand-separated
+   pairs `name=value`. A bare/empty `?`, empty pair/name, missing `=`, additional
+   raw `=` or trailing `&` is invalid. Name is **1–64** unreserved ASCII
+   `[A-Za-z0-9._~-]` characters; **no percent escapes or `+` in names**. Names
+   case-insensitively reject `auth|credential|secret|token|api[-_]?key` anywhere.
+   Because names cannot be encoded or non-ASCII, their decoded names are exactly
+   their submitted names; encoded/Unicode spellings are rejected outright, not
+   accidentally ignored by a partial decoder. Duplicate safe names are allowed.
+6. Query value is zero or more unreserved ASCII tokens or uppercase `%HH` byte
+   escapes; raw `+`, `/`, `:`, `?`, `@` and other reserved characters are invalid
+   there, but may be represented by `%HH`. Encoded UTF-8 in path/values is
+   permitted, including byte sequences not valid UTF-8 after decoding: the URL
+   value is the exact ASCII sequence, not decoded PostgreSQL text. All limits
+   count the submitted UTF-8 bytes, including all three bytes of each escape.
+7. No fragment. Existing portable secret-content policy and registered HTTP
+   config validation still apply independently. This grammar does not authorize
+   network effects or weaken runtime DNS/public-address/redirect/credential rules.
+
+| Accepted new curated values | Rejected new curated values |
+| --- | --- |
+| `https://example.test/` | `https://example.test` (missing explicit path) |
+| `https://api.example.test/v1/items?id=7&label=a%20b` | `https://example.test/?%61uth=x` and `?AUTH=x` |
+| `https://example.test/%C3%A9?q=%FF` | Raw `https://é.example.test/` or raw Unicode path |
+| `https://example.test/?key=&key=value` | `https://xn--9ca.example/`, IP host, explicit `:443` |
+| `https://example.test/a//b/%252E/` | `/./`, `/..`, `/%2E/`, `/.%2E/` dot segments |
+| ASCII grammar at 2,048 submitted bytes | 2,049 bytes, lowercase/malformed escape, bare `?`, 17 pairs |
+
+Shared interface remains the existing pure typed setup validator. Browser/model
+and API use the same implementation; selected server policy additionally runs
+the registered HTTP config schema. SQL implements the bounded components above
+independently inside the origin guard, never a trusted boolean from API. Golden
+accepted/rejected vectors must compare all tiers, including direct API-role SQL
+creator attempts with an otherwise valid claim/descriptor/binding command.
+
+Initial descriptors change their HTTP target value kind from `https_endpoint`
+to `curated_https_endpoint_v1`; regenerate installation and readiness evidence.
+The manifest and its base digest remain unchanged. Reusing initial template
+version 1 is permitted only before the first reviewed durable installation or
+authentic origin-bearing acceptance; prior installations were disposable owned
+fixtures with writers off and seeded metadata. No installed descriptor update,
+retained receipt rewrite or silent widening. Future grammar versions need new
+value-kind and template/descriptor versions. Old F05 imports without origin and
+their hashes/default reads/exports remain unchanged. Retained origin-bearing
+replay precedes this policy, and edits/reads/inheritance never revalidate it.
+
+Both source UI gates and the template SQL writer remain off. The design delta
+must receive exact-source primary review before implementation; completing the
+matrix, raw SQL typed guard, readiness inventory and real owned execution/cutover
+proof is still required before local enablement. No database extension/custom
+parser image, production operation, provider call or auto-cohort switch is added.
 
 Verification is exact, not fuzzy graph matching:
 
@@ -217,6 +299,8 @@ pollute origin cache with inferred safety or similarity state.
 - [x] Primary and independent ADR/contract review; concrete schema/helper/readiness
       rollout and compatible rollback design accepted before persistent code.
       Actual images and runtime cutover qualification remain open below.
+- [ ] Exact-source primary review of the human-authorized curated-only HTTPS v1
+      grammar amendment, followed by consistent three-tier implementation/proof.
 - [x] Three completed external prototype graphs admitted/compiled under pinned supported profile;
       defaultcore rejection and exact IDs/dynamic text preservation proved.
 - [ ] Descriptor digest/target-delta verification tested against missing/extra

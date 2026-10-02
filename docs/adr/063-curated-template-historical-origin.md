@@ -2,8 +2,10 @@
 
 Status: accepted, 2026-10-02, by the roadmap manager after primary and independent
 ADR/contract review and closure of the readiness/typed-validation clarifications.
-Implementation is authorized; migration allocation awaits the manager's reviewed
-combined F02/F05 base. Parent: [F06](../feature-plans/06-curated-templates.md).
+Implementation is authorized; migration 0133 is allocated against reviewed
+combined F02/F05 base `f5432838`, integrated normally in `69c10d3b`.
+The curated-only HTTPS policy amendment below awaits exact-source primary review
+before its implementation. Parent: [F06](../feature-plans/06-curated-templates.md).
 
 Curated examples should accelerate setup without creating a second importer or
 coupling an editable workflow to a changing asset. Decision: use F05's
@@ -65,11 +67,58 @@ with differential tests against registered server rules; no server integrations
 are imported into the browser model. F05 portable catalog policy validates config
 only, not Slack literal inputs. Slack must satisfy its registered input pattern
 `^[CDGU][A-Z0-9]+$` intersected with the template's 2–128-character bound. HTTP
-must satisfy its registered config rule: at most 2,048 UTF-8 bytes, valid HTTPS,
-no userinfo/fragment and no credential-like query parameter names. Server origin
-verification checks these typed rules as well as ordinary F05 config admission;
-the SQL guard must reject disallowed typed values too. See the contract design
-for exact rules and differential cases.
+must satisfy its registered config rule and the narrower curated HTTPS endpoint
+v1 grammar below: at most 2,048 UTF-8 bytes, no userinfo/fragment and no
+credential-like query parameter names. Server origin verification checks these
+typed rules as well as ordinary F05 config admission; SQL independently checks
+the same curated grammar. This amendment changes the original full-WHATWG
+acceptance expectation; it does not claim unchanged URL semantics.
+
+### Curated HTTPS endpoint v1 amendment — primary review pending
+
+On 2026-10-02 the human authorized the recommended option 3 through the roadmap
+manager: narrow only curated-template setup, consistently across browser/model,
+registered server admission and independent SQL validation. Do not add a general
+URL parser, database extension or caller-trusted verification flag. The exact
+grammar and differential acceptance matrix are specified in the
+[contract](../feature-plans/06-template-origin-contract.md#curated-https-endpoint-v1-grammar).
+
+Choose a lowercase `https://` scheme, lowercase ASCII DNS host (no Unicode,
+punycode, IP literal, port or trailing dot), explicit absolute path and at most
+16 `name=value` query pairs. Raw characters are ASCII only; path/query values
+may use uppercase `%HH` byte escapes, but host/query names may not. Reject dot
+path segments including `%2E` equivalents, every literal fragment marker and
+userinfo delimiter, whitespace, controls and backslashes. Query names are
+bounded unreserved ASCII and case-insensitively reject the existing credential
+name pattern. No decoding/normalization of the admitted manifest occurs.
+
+This deliberately excludes valid registered-node inputs such as Unicode/IDNA
+hosts, `https:example.test`, explicit ports, empty `@`/`#` markers, encoded query
+names and raw Unicode paths. Users may supply percent-encoded UTF-8 in path or
+query values within the original byte ceiling; those bytes remain exact. The
+ordinary HTTP node, F05 imports without origin, existing serving cohorts and
+execution network policy are unchanged. URL syntax is not DNS reachability,
+public-address safety, credential readiness or delivery proof.
+
+Use descriptor value kind `curated_https_endpoint_v1` rather than silently
+changing the unversioned `https_endpoint` meaning. Initial template version 1
+and manifest digest can remain because this is a pre-release descriptor revision:
+no authentic origin-bearing creation has been admitted, writers remain off and
+all installed partial candidates were disposable qualification databases.
+Regenerate/review descriptor targets and their inventory digest before the first
+installation/acceptance. Future grammar changes require a new value-kind and
+descriptor/template version; never mutate an installed descriptor or revalidate
+retained exact replay under a new policy. Old commands without origin keep their
+exact bytes/hash; origin-bearing replay remains ahead of policy checks.
+
+Rationale: three bounded instructional examples do not justify introducing a
+security-sensitive PostgreSQL native parser/custom image or maintaining a full
+WHATWG/UTS46 implementation in SQL. Explicitly restricting new curated setup
+keeps the SQL guard readily auditable and avoids permissive regex IDNA forgery.
+The prior broad URL oracle at `b69a940b` remains historical evidence of the
+compatibility change, not evidence that this narrower policy is implemented.
+Exact-source primary review precedes changed-policy implementation, and genuine
+three-tier differential plus raw-role PostgreSQL tests precede enablement.
 
 The canonical idempotent command includes the complete configured manifest,
 name, bindings, compatibility fingerprint and exact optional origin. Omitted

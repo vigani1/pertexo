@@ -48,7 +48,51 @@ using the strict opt-in GET under the existing scoped query prefix; no asset
 lookup or current-safety inference. File-read/example-selection ownership is
 regression-tested (`f088e4dc`). No persistent origin SQL writer/reader, inheritance or migration has yet
 been installed; the opt-in API fails unavailable without a supported reader.
-Combined F02/F05 base and migration allocation remain release-owner gates.
+That foundation preceded the combined-base handoff recorded below.
+
+Persistent continuation update (2026-10-02, unqualified working tree): the exact
+reviewed F02/F05 base `f543283825887165889f7520655558b2a3f9229c` is integrated by
+normal merge `69c10d3b`, preserving all six F06 foundation commits through
+`7b8839f4`. This remains an unmerged local dependency, not a natural-main or
+hosted-CI claim. The release owner allocated additive migration 0133 to F06.
+The combined merge passed the TypeScript build, 160 contract tests, generated
+OpenAPI checks and focused API/web checks. The release owner's historical 160
+database tests belong to its frozen `af76b53e` tree, not an F06 rerun at `f5432838`.
+
+Uncommitted continuation prepares generated owner descriptors, child origin/RLS
+schema, atomic creator/inheritance changes, scoped origin reading, origin-aware
+runtime verification/replay, and an explicit owned-build browser gate. Descriptor
+drift/schema checks and focused runtime unit checks pass; they are not real
+PostgreSQL or browser/worker qualification. Migration 0133 is unfinished: its
+HTTPS SQL validator and synchronized readiness inventory are not implemented.
+No migration has been applied outside disposable owned qualification databases,
+no template writer enabled, and no real template journey has run. Do not deploy
+or commit this partial migration as a usable checkpoint.
+
+Independent partial-candidate qualification at migration SHA-256
+`29d3d434fa146e720ee414881ddff13f7d45bc0fe42fcd068113ea2435c4f99e`:
+16 owned PostgreSQL boundary tests pass with explicitly owner-seeded origin,
+writer off, and the current candidate correctly NOT READY. They cover descriptor
+and origin ACL/RLS, the actual descriptor SHARE barrier, immutable descriptor
+content, default/opt-in reads, duplicate inheritance/replay after retirement,
+membership-loss denial with retained metadata, and the child FK cascade. This is
+not guard-accepted creation, old-image cutover, hold/purge protocol or live
+browser/worker qualification. Exact disposable databases/connections were removed;
+only task-owned PostgreSQL/Redis containers and volumes are retained stopped.
+The URL decision oracle is recorded in `b69a940b` (74 focused / 153 catalog tests
+pass); merged problem metadata is grouped without artifact drift in `4b38ea7a`.
+
+The HTTPS guard cannot safely be approximated by a Unicode-host regex or
+PostgreSQL `inet`: the accepted WHATWG rule admits IDNA and noncanonical valid URL
+forms while rejecting invalid punycode/joiner hosts. A full SQL-side URL/IDNA
+implementation or an explicitly reviewed narrower shared policy was needed.
+The human subsequently authorized option 3 through the roadmap manager: a
+narrower curated-only HTTPS grammar. Its exact bounded v1 grammar, compatibility
+change, versioned descriptor value kind and rationale are recorded in ADR063 and
+the contract for primary review before implementation. Ordinary HTTP/F05 behavior
+remains unchanged. No policy implementation, parser dependency or writer
+enablement has occurred; persistent qualification, cutover, rollback and release
+criteria remain open.
 
 Foundation verification: 215 model and 124 catalog unit tests; 154 contract tests
 with regenerated artifact/OpenAPI checks; 113 focused API tests and two receipt
