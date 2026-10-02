@@ -1,6 +1,8 @@
 # ADR064 — Shared workflow organization and private favorites
 
-Status: **PROPOSED — primary review required; not accepted or implementation-authorized.**
+Status: **ACCEPTED — primary exact-source review of `a0508cd0`, 2026-10-02.**
+Consequential persistent implementation remains gated on the qualified F06 handoff
+and exact migration/base allocation; this acceptance does not enable writers.
 Number reserved by the primary on 2026-10-02. Migration 0134 remains provisional
 pending release-owner reconciliation after F06. Parent: [F07](../feature-plans/07-workflow-organization.md).
 
@@ -58,7 +60,8 @@ Additive child relations, RLS/least privileges, hold-aware bounded purge, indepe
 reader/writer rollout and exact readiness cutover precede enablement. Rollback
 disables controls/new writes but retains compatible readers and metadata. No
 down migration, external search cluster, new package, provider effect, production
-operation or implementation follows from this proposed ADR. The
+operation follows from this ADR. The
 [contract proposal](../feature-plans/07-organization-contract-proposal.md) carries
 concrete normalization, privacy, locking, recovery and acceptance requirements;
-all require primary exact-source review before this status can change.
+govern implementation. Folder name bounds/sibling uniqueness and exact folder
+command schemas require a reviewed follow-on before the folder slice.

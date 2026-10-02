@@ -1,6 +1,7 @@
 # F07 — Folders, tags, favorites and workspace discovery
 
-Status: proposed plan; not implementation-authorized by this document.
+Status: ADR064/contract accepted by primary; persistent implementation gated on
+the qualified F06 handoff and exact migration/base allocation.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Metadata backend + frontend. Relative size: **M**, not a calendar estimate.
 
@@ -27,6 +28,16 @@ Code availability is not a fresh end-to-end verification claim.
 01; implement only organization actions not already present.
 
 Folders are organization only in V1, not permission inheritance. Decide tag normalization and deletion behavior.
+
+The primary accepted [ADR064](../adr/064-workflow-organization-metadata.md) and
+the [concrete organization contract](07-organization-contract-proposal.md) after
+full exact-source review at `a0508cd0` on 2026-10-02. It specifies tags/private
+favorites first, authoritative bounded discovery, revision/replay/privacy,
+hold-aware departure, bounded tag deletion and archived cleanup, shared lock
+order, signed cursor integrity and compatible reader/writer rollback. Folders
+and general bulk are required later slices, not omitted from F07 completion.
+Folder name/sibling uniqueness and command schemas need a reviewed follow-on.
+Migration 0134 is provisional only; no schema or writer is installed or enabled.
 
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
@@ -86,15 +97,19 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 
 ## Delivery tracker
 
-- [ ] Baseline reconciled against current code and accepted decisions.
-- [ ] Product choices resolved; necessary ADR accepted.
-- [ ] Contracts and failure/security model reviewed.
+- [x] Baseline reconciled against current code and accepted decisions.
+- [x] Slice-1 product choices resolved; necessary ADR accepted. Folder-specific
+      name/uniqueness/command decisions remain required before its later slice.
+- [x] Slice-1 contracts and failure/security model reviewed; concrete folder/bulk
+      implementation reviews and all execution evidence remain open.
 - [ ] Backend behavior implemented and independently verified where needed.
 - [ ] Frontend behavior implemented and independently verified where needed.
 - [ ] Real integrated acceptance evidence recorded.
 - [ ] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
-Evidence log: none for this new plan. Existing foundations above are not completion
-of the proposed increment. Mark genuinely inapplicable rows with a reason rather
-than fabricating work.
+Evidence log: source inventory `1433780b`, proposed contract `dbe5a0a6`, concrete
+ADR/contract `a0508cd0` accepted by primary exact-source review. Documentation
+checks pass (21 tests/451 links at that draft). This is design evidence only:
+no F07 persistent behavior, live journey, independent implementation review or
+release is complete. Existing foundations are not completion of this increment.

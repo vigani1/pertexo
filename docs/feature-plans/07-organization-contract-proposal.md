@@ -1,11 +1,13 @@
 # F07 — Workflow organization contract proposal
 
-Status: **PROPOSED — primary review required, not accepted or implementation-authorized.**
+Status: **ACCEPTED CONTRACT — primary exact-source review of `a0508cd0`, 2026-10-02.**
+Persistent implementation remains gated on the qualified F06 handoff and exact
+migration/base allocation. No writer enablement or completed behavior is implied.
 Inventory source: `1433780b8540545bea66ba9f39aff9e44f40e3c3`, 2026-10-02.
 Parent: [F07](07-workflow-organization.md), [roadmap](../product-roadmap.md).
 This is read-only source reconciliation plus a recommendation, not runtime proof.
 F06 qualification remains the active delivery priority. The primary reserved
-ADR064; its [draft](../adr/064-workflow-organization-metadata.md) remains proposed.
+ADR064; its [decision](../adr/064-workflow-organization-metadata.md) is accepted.
 Migration 0134 is provisional pending release-owner reconciliation after F06;
 this document does not allocate it or authorize persistent implementation.
 
@@ -333,8 +335,18 @@ source presence do not close persistence or live gates.
 Primary clarification incorporated: bounded atomic tag deletion ≤50 affected
 workflows, zero-change overflow discovered with LIMIT 51, explicit authorized
 archived cleanup and fresh confirmation after changing the intended operation.
-These are proposed documents pending exact-source ADR/contract review, not an
-accepted-state declaration by their drafter.
+The primary accepted these documents at `a0508cd0` after full exact-source review.
+List query names are finalized as `query`, `view`, `tagId`, `favoritesOnly`,
+`include=organization`, and existing `order`/`limit`/`after`; schemas must strictly
+enforce their documented bounds, enums and unknown-member handling.
 
-These are candidates for one coherent next-free ADR, not several routine ADRs or
-an accepted decision. Numerical proposals and transport shapes remain reviewable.
+Cursor HMAC keys must use the established secret/configuration owner with stable
+cross-instance behavior and explicit rotation/fail-closed availability. No
+process-random key, hardcoded fallback or logged filter payload is permitted.
+Finalize cursor size/expiry before its implementation. Recovery UI must disclose
+the favorite retry-horizon limitation and never automatically reset to a new key.
+Folder names/sibling uniqueness and exact folder commands require a reviewed
+follow-on before that slice. Folders and general bulk remain required F07 scope.
+
+Acceptance of ADR064 is not persistence, privacy/race/retention or browser proof.
+Required independent review and exact-source live gates remain open.
