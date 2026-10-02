@@ -1,12 +1,14 @@
 # F07 — Workflow organization contract proposal
 
 Status: **ACCEPTED CONTRACT — primary exact-source review of `a0508cd0`, 2026-10-02.**
-Persistent implementation remains gated on the qualified F06 handoff and exact
-migration/base allocation. No writer enablement or completed behavior is implied.
+The qualified F06 handoff at `eed68cd6` is accepted by primary final source review.
+Persistent implementation remains gated on release-owner exact integration-base
+and migration allocation. No writer enablement or completed behavior is implied.
 Inventory source: `1433780b8540545bea66ba9f39aff9e44f40e3c3`, 2026-10-02.
 Parent: [F07](07-workflow-organization.md), [roadmap](../product-roadmap.md).
-This is read-only source reconciliation plus a recommendation, not runtime proof.
-F06 qualification remains the active delivery priority. The primary reserved
+This inventory was read-only preparation before the F06 handoff, not runtime proof.
+At that preparation checkpoint F06 qualification was the active priority. F07
+contracts/model/frontend preparation is now authorized. The primary reserved
 ADR064; its [decision](../adr/064-workflow-organization-metadata.md) is accepted.
 Migration 0134 is provisional pending release-owner reconciliation after F06;
 this document does not allocate it or authorize persistent implementation.

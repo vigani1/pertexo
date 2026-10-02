@@ -1,8 +1,9 @@
 # ADR064 — Shared workflow organization and private favorites
 
 Status: **ACCEPTED — primary exact-source review of `a0508cd0`, 2026-10-02.**
-Consequential persistent implementation remains gated on the qualified F06 handoff
-and exact migration/base allocation; this acceptance does not enable writers.
+The primary accepted the qualified F06 handoff at `eed68cd6` on 2026-10-02.
+Consequential persistent implementation remains gated on release-owner exact
+integration-base/migration allocation; this acceptance does not enable writers.
 Number reserved by the primary on 2026-10-02. Migration 0134 remains provisional
 pending release-owner reconciliation after F06. Parent: [F07](../feature-plans/07-workflow-organization.md).
 

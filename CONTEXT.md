@@ -5,6 +5,18 @@ versions while preserving operational history.
 
 ## Language
 
+**Workflow organization**: Shared workspace metadata that helps people discover
+and arrange workflows without changing their behavior or access. _Avoid_:
+Workflow graph, permission inheritance
+
+**Workflow tag**: A shared workspace label with stable identity that can be
+assigned to workflows independently of their names and lifecycle. _Avoid_:
+Personal bookmark, node label
+
+**Workflow favorite**: One person's private bookmark of a workflow they may
+currently read. It is not a team recommendation or an access grant. _Avoid_:
+Shared tag, activation, permission
+
 **Connection health**: Evidence that a workflow connection's current credential
 is usable or requires reauthorization. A failed operation is not necessarily an
 unhealthy connection. _Avoid_: Provider availability, run status

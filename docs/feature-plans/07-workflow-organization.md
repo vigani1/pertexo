@@ -1,7 +1,8 @@
 # F07 — Folders, tags, favorites and workspace discovery
 
-Status: ADR064/contract accepted by primary; persistent implementation gated on
-the qualified F06 handoff and exact migration/base allocation.
+Status: ADR064/contract and qualified F06 handoff accepted; contracts/model/frontend
+preparation authorized, persistent implementation gated on release-owner exact
+integration-base/migration allocation.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Metadata backend + frontend. Relative size: **M**, not a calendar estimate.
 
@@ -38,6 +39,17 @@ order, signed cursor integrity and compatible reader/writer rollback. Folders
 and general bulk are required later slices, not omitted from F07 completion.
 Folder name/sibling uniqueness and command schemas need a reviewed follow-on.
 Migration 0134 is provisional only; no schema or writer is installed or enabled.
+
+Continuation authorized by primary final source review on 2026-10-02: F06
+candidate `eed68cd67b45280db3951981da7e29b3726e06c7` is accepted and its release
+handoff is owned by the release chat. That reviewed foundation is integrated
+additively in this isolated F07 worktree, preserving accepted planning commit
+`342239d8` and all F06 features/fixes. No history rewrite or mutation of the F06
+checkout. Contracts/model/frontend preparation can proceed; persistent SQL must
+use the release owner's subsequently verified exact locally qualified integration
+base and migration allocation, not stale inventory `1433780b`. Hosted CI is not a
+prerequisite to that local base decision. Folders and general bulk remain required
+F07 acceptance scope; tags/favorites slice 1 is not completion of the feature.
 
 Recommendations are not accepted ADRs. Resolve consequential choices before code;
 use the next free ADR number when required. Do not create ADRs for routine fixes.
