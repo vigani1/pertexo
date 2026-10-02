@@ -1144,6 +1144,47 @@ describe.skipIf(!organizationFixtureEnabled)(
         t = await createTag(s),
         old = await absence(s, workflow);
       await assignment(s, workflow, [t.id]);
+      const folders: string[] = [];
+      for (const name of ['root', 'child', 'leaf']) {
+        const created = await api(s, s.actor, (client) =>
+          client.query<{ result: { folder: { id: string } } }>(
+            "select app.execute_workflow_folder_command('folder.create',null,$1,$2::jsonb) result",
+            [
+              commandKey(),
+              JSON.stringify({ name, parentId: folders.at(-1) ?? null }),
+            ],
+          ),
+        );
+        folders.push(required(created.rows[0]).result.folder.id);
+      }
+      await api(s, s.actor, (client) =>
+        client.query(
+          'select app.execute_workflow_folder_placement($1,$2,$3::jsonb)',
+          [
+            workflow,
+            commandKey(),
+            JSON.stringify({
+              folderId: folders.at(-1),
+              expectedOrganizationRevision: 2,
+            }),
+          ],
+        ),
+      );
+      await api(s, s.actor, (client) =>
+        client.query(
+          'select app.admit_workflow_organization_batch($1,$2::jsonb)',
+          [
+            commandKey(),
+            JSON.stringify({
+              operation: 'move',
+              folderId: null,
+              items: [
+                { workflowId: workflow, expectedOrganizationRevision: 3 },
+              ],
+            }),
+          ],
+        ),
+      );
       await favorite(s, workflow, true, old.token, old);
       await removeAndRejoin(s);
       const hold = randomUUID();
@@ -1252,6 +1293,7 @@ describe.skipIf(!organizationFixtureEnabled)(
         'workflow_organization_receipts',
         'workflow_tag_assignments',
         'workflow_organization_state',
+        'workflow_folders',
         'workflow_tags',
         'workflow_favorite_membership_generations',
         'workflow_organization_coordination',

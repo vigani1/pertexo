@@ -1,4 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { Pool, type PoolClient } from 'pg';
 import {
   verifyCuratedFixtureOwnership,
@@ -7,10 +10,17 @@ import {
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
-import { createArtifactMigrationConfig } from './artifact-migration-fixture.js';
+import {
+  createArtifactMigrationConfig,
+  copyMigrationsBefore,
+} from './artifact-migration-fixture.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 import { createWorkflowAuthoringFixtureDatabase } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowTagDatabase } from '../../src/authoring/workflow-tags.js';
+import {
+  createWorkflowFolderDatabase,
+  createWorkflowOrganizationBatchDatabase,
+} from '../../src/api.js';
 import { createWorkflowOrganizationReadDatabase } from '../../src/authoring/workflow-organization-read.js';
 import {
   createWorkflowFavoriteDatabase,
@@ -60,7 +70,11 @@ async function ownership() {
   };
 }
 
-export async function createOrganizationOwnedFixture() {
+export async function createOrganizationOwnedFixture(
+  options: Readonly<{
+    initialMigrationHead?: '0134_workflow_organization.sql';
+  }> = {},
+) {
   if (!organizationFixtureEnabled)
     throw new Error('Explicit F07 owned fixture flag is required');
   const attestation = await ownership();
@@ -106,7 +120,23 @@ export async function createOrganizationOwnedFixture() {
     const migrationUrl = disposable.databaseUrl(
       attestation.urls.DATABASE_MIGRATION_URL,
     );
-    await migrateDatabase(createArtifactMigrationConfig(migrationUrl));
+    const migrationConfig = createArtifactMigrationConfig(migrationUrl);
+    if (options.initialMigrationHead === undefined)
+      await migrateDatabase(migrationConfig);
+    else {
+      const directory = await mkdtemp(
+        path.join(tmpdir(), 'pertexo-f07-upgrade-migrations-'),
+      );
+      resources.push({
+        close: () => rm(directory, { recursive: true, force: true }),
+      });
+      await copyMigrationsBefore(directory, '0135_');
+      await migrateDatabase(migrationConfig, directory);
+    }
+    async function upgrade() {
+      await recheck();
+      return migrateDatabase(migrationConfig);
+    }
     function pool(base: string) {
       const value = new Pool({
         connectionString: disposable.databaseUrl(base),
@@ -131,6 +161,12 @@ export async function createOrganizationOwnedFixture() {
     const authoring = createWorkflowAuthoringFixtureDatabase(config);
     const tags = createWorkflowTagDatabase(config);
     resources.push(identity, authoring, tags);
+    function folderStores() {
+      const folders = createWorkflowFolderDatabase(config);
+      const batches = createWorkflowOrganizationBatchDatabase(config);
+      resources.push(folders, batches);
+      return { folders, batches };
+    }
     function organizationStores(
       absenceTokens: WorkflowFavoriteAbsenceTokenAuthority,
     ) {
@@ -237,7 +273,9 @@ export async function createOrganizationOwnedFixture() {
       identity,
       authoring,
       tags,
+      folderStores,
       organizationStores,
+      upgrade,
       transaction,
       scope,
       waitForBlocker,

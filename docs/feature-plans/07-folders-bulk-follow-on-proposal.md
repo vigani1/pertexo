@@ -128,7 +128,12 @@ legal-hold preservation, indexed bounded maintenance and purge apply unchanged.
 The item helper must verify the committed matching parent admission in the same
 actor/workspace authority scope before NEW item work, checking purpose, derived
 key and full parent hash. It must not accept a client-supplied hash or proof
-boolean as evidence of admission. The constant parent operation intentionally
+boolean as evidence of admission. A private nullable
+`admission_xid xid8` on this existing receipt stores only the top-level admission
+transaction, so a savepoint-created marker cannot masquerade as committed work.
+NEW admission sets it before completing the admitted-only result; exact replay
+never replaces it. Item work rejects a null/current top-level transaction marker.
+The constant parent operation intentionally
 shares one namespace between tag cleanup and general bulk. The 24-hour recovery
 horizon is not an indefinite key fence; retained hold bytes never authorize work.
 

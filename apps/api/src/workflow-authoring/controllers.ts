@@ -105,6 +105,7 @@ export class WorkflowAuthoringController {
       input.query !== undefined ||
       input.view !== undefined ||
       input.tagId !== undefined ||
+      input.folderId !== undefined ||
       input.favoritesOnly !== undefined ||
       input.include !== undefined
     ) {

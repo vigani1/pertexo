@@ -62,6 +62,7 @@ export class WorkflowOrganizationReadsUseCase {
       ...(query.query === undefined ? {} : { query: query.query }),
       view: query.view ?? 'all',
       ...(query.tagId === undefined ? {} : { tagId: query.tagId }),
+      ...(query.folderId === undefined ? {} : { folderId: query.folderId }),
       favoritesOnly: query.favoritesOnly === 'true',
     };
     const cursorContext = {
@@ -74,6 +75,7 @@ export class WorkflowOrganizationReadsUseCase {
             query: filters.query ?? null,
             view: filters.view,
             tagId: filters.tagId ?? null,
+            folderId: filters.folderId ?? null,
             favoritesOnly: filters.favoritesOnly,
             include: query.include ?? null,
           }),

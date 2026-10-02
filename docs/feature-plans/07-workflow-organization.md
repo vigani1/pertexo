@@ -39,8 +39,9 @@ and general bulk are required later slices, not omitted from F07 completion.
 Folder name/sibling uniqueness and command schemas need a reviewed follow-on.
 A [concrete folder/general-bulk proposal](07-folders-bulk-follow-on-proposal.md)
 has received primary full-source acceptance of folder policy and its concrete
-whole-parent batch identity guard. No folder persistence
-is implemented yet. Release-owner global reservation/base audit now allocates
+whole-parent batch identity guard. Additive folder persistence and batch admission
+are being qualified in owned disposable databases; folder/bulk HTTP and browser
+behavior are not yet registered or accepted. Release-owner global reservation/base audit allocates
 additive migration 0135 exclusively to this follow-on, preserving 0134 unchanged.
 Migration 0134 is allocated exclusively to F07 against release-owner verified
 base `936612f26567f760c83e41c13e4c7fc7b620e69f`, whose tree is identical to accepted
@@ -346,3 +347,26 @@ dependency inventory, complexity and unchanged duplication ratchets pass.
 Tag cleanup and general bulk are not registered/qualified yet: their accepted
 parent-admission guard requires additive 0135 implementation. Folders, restart,
 real browser behavior, rollout and whole-feature acceptance remain open.
+
+Folder/batch database foundation (0135 draft): 87 owned PostgreSQL cases pass
+with no skips across folder/batch behavior (13), organization SQL (28), scoped
+reader (7), readiness/upgrade drift (36), and public folder/batch adapters (3).
+The adapter tests exercise real committed admission, item key derivation,
+replacement/cleanup and placement preservation; their 45 focused unit cases
+separately cover strict mapping, cancellation and lease/error behavior.
+The tag and folder adapters share only the existing leased tenant-transaction
+boundary; command SQL, parsing and error semantics retain their owners. The
+source and test duplication baselines are unchanged.
+Parent admission records a private
+top-level transaction ID; items reject admission created in their own transaction,
+including a released savepoint. Changed ordered selections, operations and expected
+revisions conflict before items; exact retries still recheck current authority.
+The populated 0134 upgrade preserves existing receipts and organization revisions
+and resets organization writers OFF. Folder placement shares organization CAS,
+preserves workflow timestamps, and participates in bounded leaf-first purge and
+legal-hold retention. Exact folder/root filters run before keyset pagination and
+are bound into signed continuation identity. Existing compiled tag/favorite HTTP
+and actual MAC/public-adapter qualification passes 15 cases against the draft.
+These are source-as-run proofs, not a frozen 0135 release receipt, frozen old-image
+qualification, process restart, folder/bulk HTTP registration, or browser proof.
+Those gates and whole-feature acceptance remain open.

@@ -1,5 +1,12 @@
 [
   {
+    "name": "workflow_folders",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role"],
+    "rls": "forced",
+    "reason": "Bounded workspace-owned folder hierarchy and placement are maintained only by confined organization SQL commands."
+  },
+  {
     "name": "workflow_organization_rollout",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role"],

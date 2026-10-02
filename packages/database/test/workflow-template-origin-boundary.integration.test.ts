@@ -257,17 +257,19 @@ describe.skipIf(!enabled)(
     afterAll(cleanup, 30_000);
 
     it('requires the current head and preserved 0133 inventory on API and worker; is not an old-image cutover proof', async () => {
-      expect(EXPECTED_MIGRATION_HEAD).toBe('0134_workflow_organization.sql');
+      expect(EXPECTED_MIGRATION_HEAD).toBe(
+        '0135_workflow_folders_batch_identity.sql',
+      );
       expect(
         (
           await apiPool.query(
             'select name from pertexo_internal.schema_migrations order by name desc limit 1',
           )
         ).rows,
-      ).toEqual([{ name: '0134_workflow_organization.sql' }]);
+      ).toEqual([{ name: '0135_workflow_folders_batch_identity.sql' }]);
       for (const pool of [apiPool, workerPool])
         await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
-          migrationHead: '0134_workflow_organization.sql',
+          migrationHead: '0135_workflow_folders_batch_identity.sql',
         });
     });
 

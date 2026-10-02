@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { WorkflowFavoriteAbsenceTokenAuthority } from '../src/authoring/workflow-favorites.js';
 import { WorkflowNotFoundError } from '../src/authoring/workflow-authoring-errors.js';
 import {
+  commandKey,
   createOrganizationOwnedFixture,
   organizationFixtureEnabled,
   type OrganizationOwnedFixture,
@@ -123,6 +124,84 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).toHaveLength(5);
       expect(
         await stores.reader.listWorkflows({ ...context(scope), query: '\0' }),
+      ).toEqual({ items: [], nextCursor: null });
+    });
+    it('projects placement and intersects exact folder/root filters before pagination', async () => {
+      const scope = await fixture.scope();
+      const createFolder = (name: string, parentId: string | null = null) =>
+        fixture.transaction(
+          fixture.api,
+          scope.workspace,
+          scope.actor,
+          async (client) => {
+            const result = await client.query<{
+              result: { folder: { id: string } };
+            }>(
+              "select app.execute_workflow_folder_command('folder.create',null,$1,$2::jsonb) result",
+              [commandKey(), JSON.stringify({ name, parentId })],
+            );
+            const id = result.rows[0]?.result.folder.id;
+            if (id === undefined) throw new Error('Missing owned folder');
+            return id;
+          },
+        );
+      const parent = await createFolder('parent'),
+        child = await createFolder('child', parent);
+      const unfiled = await scope.workflow('match unfiled'),
+        inParent = await scope.workflow('match parent'),
+        inChild = await scope.workflow('match child');
+      for (const [workflow, folder] of [
+        [inParent, parent],
+        [inChild, child],
+      ])
+        await fixture.transaction(
+          fixture.api,
+          scope.workspace,
+          scope.actor,
+          (client) =>
+            client.query(
+              'select app.execute_workflow_folder_placement($1,$2,$3::jsonb)',
+              [
+                workflow,
+                commandKey(),
+                JSON.stringify({
+                  folderId: folder,
+                  expectedOrganizationRevision: 1,
+                }),
+              ],
+            ),
+        );
+      expect(
+        (
+          await stores.reader.listWorkflows({
+            ...context(scope),
+            folderId: parent,
+            query: 'match',
+            limit: 1,
+          })
+        ).items.map((item) => item.workflow.id),
+      ).toEqual([inParent]);
+      expect(
+        (
+          await stores.reader.listWorkflows({
+            ...context(scope),
+            folderId: 'root',
+          })
+        ).items.map((item) => item.workflow.id),
+      ).toEqual([unfiled]);
+      expect(
+        (
+          await stores.reader.getWorkflow({
+            ...context(scope),
+            workflowId: inChild,
+          })
+        )?.organization.folderId,
+      ).toBe(child);
+      expect(
+        await stores.reader.listWorkflows({
+          ...context(scope),
+          folderId: randomUUID(),
+        }),
       ).toEqual({ items: [], nextCursor: null });
     });
 

@@ -28,12 +28,13 @@ export type WorkflowOrganizationFilters = Readonly<{
   query?: string;
   view?: 'active' | 'archived' | 'all';
   tagId?: string;
+  folderId?: string;
   favoritesOnly?: boolean;
 }>;
 export type WorkflowOrganizationMetadata = Readonly<{
   tags: readonly Readonly<{ id: string; key: string; revision: number }>[];
   organizationRevision: number;
-  folderId: null;
+  folderId: string | null;
   isFavorite: boolean;
   favoriteRevision: string;
 }>;
@@ -72,6 +73,7 @@ const rowSchema = z
   .object({
     workflow: z.record(z.string(), z.unknown()),
     organizationRevision: revision,
+    folderId: uuid.nullable(),
     tags: z
       .array(
         z
@@ -106,6 +108,7 @@ const filterSchema = z.object({
     .optional(),
   view: z.enum(['active', 'archived', 'all']).default('all'),
   tagId: uuid.optional(),
+  folderId: z.union([uuid, z.literal('root')]).optional(),
   favoritesOnly: z.boolean().default(false),
 });
 
@@ -164,6 +167,7 @@ export function createWorkflowOrganizationReadDatabase(
       query: input.query,
       view: input.view,
       tagId: input.tagId,
+      folderId: input.folderId,
       favoritesOnly: input.favoritesOnly,
     });
     if (input.workflowId !== undefined)
@@ -184,6 +188,9 @@ export function createWorkflowOrganizationReadDatabase(
         `exists(select 1 from app.workflow_tag_assignments selected where selected.workspace_id=w.workspace_id and selected.workflow_id=w.id and selected.tag_id=${parameter(filters.tagId)}::uuid)`,
       );
     if (filters.favoritesOnly) predicates.push('f.favorite=true');
+    if (filters.folderId === 'root') predicates.push('s.folder_id is null');
+    else if (filters.folderId !== undefined)
+      predicates.push(`s.folder_id=${parameter(filters.folderId)}::uuid`);
     const orderColumn =
       input.order === 'created_asc' ? 'created_at' : 'updated_at';
     const ascending = input.order === 'created_asc';
@@ -199,7 +206,7 @@ export function createWorkflowOrganizationReadDatabase(
     const limit = parameter(input.limit + 1);
     const rows = await client.query<{ projection: unknown }>(
       `select jsonb_build_object(
-      'workflow',row_to_json(w),'organizationRevision',coalesce(s.revision,1),
+      'workflow',row_to_json(w),'organizationRevision',coalesce(s.revision,1),'folderId',s.folder_id,
       'tags',coalesce((select jsonb_agg(jsonb_build_object('id',t.id,'key',t.key,'revision',t.revision) order by t.id)
         from app.workflow_tag_assignments a join app.workflow_tags t on t.workspace_id=a.workspace_id and t.id=a.tag_id
         where a.workspace_id=w.workspace_id and a.workflow_id=w.id),'[]'::jsonb),
@@ -218,7 +225,7 @@ export function createWorkflowOrganizationReadDatabase(
       const organization: WorkflowOrganizationMetadata = Object.freeze({
         tags: Object.freeze(row.tags.map((tag) => Object.freeze(tag))),
         organizationRevision: row.organizationRevision,
-        folderId: null,
+        folderId: row.folderId,
         isFavorite: row.favorite === true,
         favoriteRevision:
           row.favoriteRevision ??

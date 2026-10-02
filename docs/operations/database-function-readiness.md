@@ -53,7 +53,13 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.verify_curated_template_origin(jsonb,jsonb,text)` | `e7a60281a1a81b56a085ff72c4bf8bf4` | definer, `pg_catalog, pg_temp`, `row_security=on`, owner-only | `0133_curated_template_origin.sql` |
 | `app.guard_workflow_input_case_write()` | `a3108e59e200d8e251cf39c056f41dd9` | definer, `pg_catalog, pg_temp`, `row_security=on`, internal trigger | `0130_workflow_input_cases.sql` |
 | `app.reap_workflow_input_cases(integer)` | `f5a5951bcb6a7d913dac66dc15702e25` | definer, `pg_catalog, pg_temp`, `row_security=on`, maintenance-only | `0130_workflow_input_cases.sql` |
-| `app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)` | `348588ea384effc589d6c8c74686aa58` | definer, `pg_catalog, pg_temp`, `row_security=on`, maintenance/operator-only | `0130_workflow_input_cases.sql` |
+| `app.execute_workspace_tenant_rows_page_before_organization(uuid,uuid,bigint,integer,bigint,character)` | `348588ea384effc589d6c8c74686aa58` | definer, `pg_catalog, pg_temp`, `row_security=on`, owner-only retained body | `0130_workflow_input_cases.sql` |
+| `app.execute_workspace_tenant_rows_page_before_folders(uuid,uuid,bigint,integer,bigint,character)` | `04650e6c8360b75173a63d34265f7aa0` | definer, `pg_catalog, pg_temp`, `row_security=on`, owner-only retained body | `0134_workflow_organization.sql` |
+| `app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)` | `c19d0d7f7d347550eba8c52564144a86` | definer, `pg_catalog, pg_temp`, `row_security=on`, maintenance-only | `0135_workflow_folders_batch_identity.sql` |
+| `app.execute_workflow_folder_command(text,uuid,text,jsonb)` | `ecfc968efc4600e3da617848ecf3742d` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0135_workflow_folders_batch_identity.sql` |
+| `app.admit_workflow_organization_batch(text,jsonb)` | `fefeaa5b268b5cabf83939bc5ef12da5` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0135_workflow_folders_batch_identity.sql` |
+| `app.execute_workflow_folder_placement(uuid,text,jsonb)` | `61a15b76b135ee03615f79ee90014c10` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0135_workflow_folders_batch_identity.sql` |
+| `app.execute_workflow_organization_batch_item(text,jsonb,uuid,text)` | `22c72a807734ddb1cca778b55584ee57` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0135_workflow_folders_batch_identity.sql` |
 | `app.lock_manual_workflow_run_start(uuid,uuid,text,text)` | `e70f076dbfffbb8a79b4534b49bdc138` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0131_checked_manual_start.sql` |
 | `app.enforce_manual_start_writer()` | `a24d51f06dfe43548064394c9bf03ca9` | invoker, `pg_catalog, pg_temp`, internal trigger | `0131_checked_manual_start.sql` |
 | `app.assert_workflow_input_cases_enabled()` | `f537940438bedfc091e8a19b64c01689` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0131_checked_manual_start.sql` |
@@ -74,6 +80,18 @@ tenant guard/count body, ownership, security configuration, API-only execution
 grant, lack of API reservation-row privileges, and workspace index.
 This table is an operator aid and must
 change in the same commit whenever an owning inventory changes.
+
+The organization boundary (ADR064) is catalog-only at startup in
+`packages/database/src/platform/readiness-workflow-organization.sql.ts`. Head
+0135 pins 11 relations, 30 function ABIs and 29 exact function bodies/security/ACL
+contracts, with normalized catalog SHA-256
+`9827f9fecb4e4c69185428ce253e57728fde64996d6469455f6bccdc317ad4ea`.
+All 0134 bodies remain pinned unchanged; its former public purge body is retained
+as the owner-only `before_folders` alias. The independent writer is not a schema
+readiness input. Migration 0135 closes an already enabled writer during the
+held-traffic upgrade, and never enables it; compatible reads and admitted exact
+replays do not authorize new batch items while the writer is OFF. Follow the
+accepted [folder/batch contract](../feature-plans/07-folders-bulk-follow-on-proposal.md).
 
 The queue-only workflow concurrency boundary (ADR 058) is shared by API/worker
 admission startup and dispatcher startup in

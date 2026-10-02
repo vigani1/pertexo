@@ -1,12 +1,8 @@
 import { createHash } from 'node:crypto';
-import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import type { DatabaseConfig } from '../config.js';
-import {
-  acquireDatabasePool,
-  type DatabaseRuntime,
-} from '../platform/database-runtime.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { createOrganizationDatabaseSession } from './organization-database-session.js';
 import { ROLES } from '../tenant-access/workspace-policy.js';
 import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
 import {
@@ -201,23 +197,12 @@ export function createWorkflowTagDatabase(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
 ): WorkflowTagDatabase {
-  const lease = acquireDatabasePool(config, options.runtime);
-  async function transact<T>(
-    input: Scope,
-    work: (client: PoolClient, scope: Scope) => Promise<T>,
-  ): Promise<T> {
-    const scope = parseScope(input);
-    try {
-      return await withTenantScopedClient(
-        lease.pool,
-        scope,
-        (client) => work(client, scope),
-        scope.signal === undefined ? {} : { signal: scope.signal },
-      );
-    } catch (error: unknown) {
-      return failure(error);
-    }
-  }
+  const { transact, close } = createOrganizationDatabaseSession(
+    config,
+    options.runtime,
+    parseScope,
+    failure,
+  );
   async function tagCommand<T>(
     input: Command,
     operation: string,
@@ -361,7 +346,7 @@ export function createWorkflowTagDatabase(
         },
         assignmentResult,
       ),
-    close: lease.close,
+    close,
   };
   return Object.freeze(store);
 }

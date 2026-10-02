@@ -4,7 +4,7 @@ const WORKFLOW_ORGANIZATION_CATALOG_SQL = `
 with configured_roles as (select $1::text owner_role,$2::text worker_role,$3::text api_role), relations as (
   select c.* from pg_class c join pg_namespace n on n.oid=c.relnamespace
   where n.nspname='app' and c.relname=any(array[
-    'workflow_organization_rollout','workflow_organization_coordination','workflow_tags',
+    'workflow_organization_rollout','workflow_organization_coordination','workflow_tags','workflow_folders',
     'workflow_organization_state','workflow_tag_assignments',
     'workflow_favorite_membership_generations','workflow_favorites',
     'workflow_favorite_held_evidence','workflow_organization_receipts','workflow_favorite_receipts'])
@@ -56,6 +56,17 @@ select encode(sha256(convert_to(jsonb_build_object(
       'app.prepare_workflow_favorite_command(uuid,text,jsonb)',
       'app.execute_workflow_favorite_command(uuid,text,jsonb,uuid,bigint,bigint)',
       'app.reap_workflow_organization(integer)',
+      'app.workflow_organization_uuid(jsonb,boolean)',
+      'app.workflow_organization_revision(jsonb)',
+      'app.workflow_folder_command_body(text,jsonb)',
+      'app.workflow_folder_depth(uuid,uuid)',
+      'app.execute_workflow_folder_command(text,uuid,text,jsonb)',
+      'app.workflow_organization_batch_body(jsonb)',
+      'app.admit_workflow_organization_batch(text,jsonb)',
+      'app.apply_workflow_organization_item(text,uuid,jsonb)',
+      'app.execute_workflow_folder_placement(uuid,text,jsonb)',
+      'app.execute_workflow_organization_batch_item(text,jsonb,uuid,text)',
+      'app.execute_workspace_tenant_rows_page_before_folders(uuid,uuid,bigint,integer,bigint,character)',
       'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)',
       'app.execute_workspace_tenant_rows_page_before_organization(uuid,uuid,bigint,integer,bigint,character)'
     ]) signature join pg_proc p on p.oid=to_regprocedure(signature)
@@ -64,23 +75,23 @@ select encode(sha256(convert_to(jsonb_build_object(
 from inventory`;
 
 export const READINESS_WORKFLOW_ORGANIZATION_SQL = `(
-  (${WORKFLOW_ORGANIZATION_CATALOG_SQL})='fe64dc5bcca4282be6e6cfd8ffa8cda06538755cad374dfcedffa4d0061e8bf7'
-  and (select count(*)=10 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  (${WORKFLOW_ORGANIZATION_CATALOG_SQL})='9827f9fecb4e4c69185428ce253e57728fde64996d6469455f6bccdc317ad4ea'
+  and (select count(*)=11 from pg_class c join pg_namespace n on n.oid=c.relnamespace
     where n.nspname='app' and c.relname=any(array[
-      'workflow_organization_rollout','workflow_organization_coordination','workflow_tags',
+      'workflow_organization_rollout','workflow_organization_coordination','workflow_tags','workflow_folders',
       'workflow_organization_state','workflow_tag_assignments','workflow_favorite_membership_generations',
       'workflow_favorites','workflow_favorite_held_evidence','workflow_organization_receipts','workflow_favorite_receipts'])
     and c.relowner=(select oid from pg_roles where rolname=$1)
     and not exists(select 1 from aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
       where a.grantee<>c.relowner and (a.grantee<>(select oid from pg_roles where rolname=$3)
-        or c.relname not in ('workflow_organization_rollout','workflow_tags','workflow_organization_state',
+        or c.relname not in ('workflow_organization_rollout','workflow_tags','workflow_folders','workflow_organization_state',
           'workflow_tag_assignments','workflow_favorites','workflow_favorite_receipts')
         or a.privilege_type<>'SELECT' or a.is_grantable))
-    and has_table_privilege($3,c.oid,'SELECT')=(c.relname in ('workflow_organization_rollout','workflow_tags',
+    and has_table_privilege($3,c.oid,'SELECT')=(c.relname in ('workflow_organization_rollout','workflow_tags','workflow_folders',
       'workflow_organization_state','workflow_tag_assignments','workflow_favorites','workflow_favorite_receipts'))
     and not exists(select 1 from pg_attribute column_grant,lateral aclexplode(column_grant.attacl) a
       where column_grant.attrelid=c.oid and a.grantee<>c.relowner))
-  and (select count(*)=18 from (values
+  and (select count(*)=29 from (values
     ('app.current_workflow_favorite_generation()','a4ba15974e37062666297f2b0e793448',true,'s','api'),
     ('app.invalidate_workflow_favorite_membership()','011b8addaf75da048217315f3d11ee65',true,'v','owner'),
     ('app.lock_workflow_organization_authority(text[])','dd640fd299b3fb92e5cba1ca92d484fa',true,'v','owner'),
@@ -98,7 +109,18 @@ export const READINESS_WORKFLOW_ORGANIZATION_SQL = `(
     ('app.prepare_workflow_favorite_command(uuid,text,jsonb)','be7fbe4a3f2c0f881247c0ca08330d5d',true,'v','api'),
     ('app.execute_workflow_favorite_command(uuid,text,jsonb,uuid,bigint,bigint)','0a73807e8a209b01456fcc9a7393b7c3',true,'v','api'),
     ('app.reap_workflow_organization(integer)','9e62ca1ae4dcbf36b7f30879a9e7c91e',true,'v','maintenance'),
-    ('app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','04650e6c8360b75173a63d34265f7aa0',true,'v','maintenance')
+    ('app.execute_workspace_tenant_rows_page_before_folders(uuid,uuid,bigint,integer,bigint,character)','04650e6c8360b75173a63d34265f7aa0',true,'v','owner'),
+    ('app.workflow_organization_uuid(jsonb,boolean)','94463cdf1b64862518e0485170afd33a',false,'i','owner'),
+    ('app.workflow_organization_revision(jsonb)','201c704d261354590a84f9ec87ead7d7',false,'i','owner'),
+    ('app.workflow_folder_command_body(text,jsonb)','01773bdd3d61ea9d1101e4630c4339d9',false,'i','owner'),
+    ('app.workflow_folder_depth(uuid,uuid)','593902bdcc4c9e84bb073425ed74afa7',true,'s','owner'),
+    ('app.execute_workflow_folder_command(text,uuid,text,jsonb)','ecfc968efc4600e3da617848ecf3742d',true,'v','api'),
+    ('app.workflow_organization_batch_body(jsonb)','d9552d8499162598434ef6dc63febd43',false,'i','owner'),
+    ('app.admit_workflow_organization_batch(text,jsonb)','fefeaa5b268b5cabf83939bc5ef12da5',true,'v','api'),
+    ('app.apply_workflow_organization_item(text,uuid,jsonb)','e4bd8f98d958572812ec0ae77bf808a8',true,'v','owner'),
+    ('app.execute_workflow_folder_placement(uuid,text,jsonb)','61a15b76b135ee03615f79ee90014c10',true,'v','api'),
+    ('app.execute_workflow_organization_batch_item(text,jsonb,uuid,text)','22c72a807734ddb1cca778b55584ee57',true,'v','api'),
+    ('app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','c19d0d7f7d347550eba8c52564144a86',true,'v','maintenance')
   ) expected(signature,body_hash,definer,volatility,capability)
     join pg_proc p on p.oid=to_regprocedure(expected.signature)
     where p.proowner=(select oid from pg_roles where rolname=$1)

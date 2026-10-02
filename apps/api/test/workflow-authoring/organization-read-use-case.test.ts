@@ -172,6 +172,8 @@ describe('workflow organization read interface', () => {
       { include: undefined },
       { view: 'active' },
       { tagId: f.tag.id },
+      { folderId: 'root' },
+      { folderId: randomUUID() },
       { favoritesOnly: 'true' },
       { order: 'updated_desc' },
     ]) {

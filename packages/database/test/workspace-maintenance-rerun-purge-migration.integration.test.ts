@@ -179,6 +179,7 @@ describe('workspace maintenance-rerun purge upgrade', () => {
       '0132_workflow_portability.sql',
       '0133_curated_template_origin.sql',
       '0134_workflow_organization.sql',
+      '0135_workflow_folders_batch_identity.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

@@ -30,7 +30,7 @@ describe.skipIf(!organizationFixtureEnabled)(
 
     it('accepts the exact installed default-off schema through real API startup readiness', async () => {
       expect(await checkDatabaseReadiness(fixture.api)).toMatchObject({
-        migrationHead: '0134_workflow_organization.sql',
+        migrationHead: '0135_workflow_folders_batch_identity.sql',
         role: 'pertexo_api',
         postgresMajor: 18,
       });
@@ -53,6 +53,73 @@ describe.skipIf(!organizationFixtureEnabled)(
       } finally {
         await client.query('rollback');
         client.release();
+      }
+    });
+    it('upgrades populated 0134 without changing receipts/revisions and closes its writer before new serving', async () => {
+      const previous = await createOrganizationOwnedFixture({
+        initialMigrationHead: '0134_workflow_organization.sql',
+      });
+      try {
+        await expect(checkDatabaseReadiness(previous.api)).rejects.toThrow();
+        const scope = await previous.scope(),
+          workflowId = await scope.workflow();
+        await previous.owner.query(
+          'update app.workflow_organization_rollout set writes_enabled=true',
+        );
+        const tag = await previous.tags.createTag({
+          workspaceId: scope.workspace,
+          actorId: scope.actor,
+          key: 'upgrade',
+          idempotencyKey: 'upgrade-create-tag',
+        });
+        const input = {
+          workspaceId: scope.workspace,
+          actorId: scope.actor,
+          workflowId,
+          tagIds: [tag.tag.id],
+          expectedOrganizationRevision: 1,
+          idempotencyKey: 'upgrade-replace-tags',
+        };
+        await previous.tags.replaceTags(input);
+        const before = (
+          await previous.owner.query(
+            'select operation,key_hash,request_hash,result from app.workflow_organization_receipts order by operation',
+          )
+        ).rows;
+        expect(await previous.upgrade()).toEqual([
+          '0135_workflow_folders_batch_identity.sql',
+        ]);
+        expect(
+          (
+            await previous.owner.query(
+              'select operation,key_hash,request_hash,result from app.workflow_organization_receipts order by operation',
+            )
+          ).rows,
+        ).toEqual(before);
+        expect(
+          (
+            await previous.owner.query(
+              'select writes_enabled from app.workflow_organization_rollout',
+            )
+          ).rows,
+        ).toEqual([{ writes_enabled: false }]);
+        expect(
+          (
+            await previous.owner.query(
+              'select revision::int revision,folder_id from app.workflow_organization_state',
+            )
+          ).rows,
+        ).toEqual([{ revision: 2, folder_id: null }]);
+        expect(await previous.tags.replaceTags(input)).toMatchObject({
+          organizationRevision: 2,
+          replayed: true,
+        });
+        expect(await checkDatabaseReadiness(previous.api)).toMatchObject({
+          migrationHead: '0135_workflow_folders_batch_identity.sql',
+        });
+        expect(await previous.upgrade()).toEqual([]);
+      } finally {
+        await previous.close();
       }
     });
 
@@ -98,6 +165,27 @@ describe.skipIf(!organizationFixtureEnabled)(
 
     it.each([
       ['missing table', 'drop table app.workflow_favorite_held_evidence'],
+      ['missing folder table', 'drop table app.workflow_folders cascade'],
+      [
+        'missing parent transaction marker',
+        'alter table app.workflow_organization_receipts drop column admission_xid',
+      ],
+      [
+        'missing folder scoped FK',
+        'alter table app.workflow_organization_state drop constraint workflow_organization_state_folder_fk',
+      ],
+      [
+        'folder direct write',
+        'grant update on app.workflow_folders to pertexo_api',
+      ],
+      [
+        'parent helper exposure',
+        'grant execute on function app.workflow_organization_batch_body(jsonb) to pertexo_api',
+      ],
+      [
+        'old purge alias exposure',
+        'grant execute on function app.execute_workspace_tenant_rows_page_before_folders(uuid,uuid,bigint,integer,bigint,character) to pertexo_maintenance',
+      ],
       [
         'extra column',
         'alter table app.workflow_tags add column unexpected text',

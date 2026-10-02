@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0134_workflow_organization.sql",
+  "transactionalThrough": "0135_workflow_folders_batch_identity.sql",
   "migrations": {}
 }

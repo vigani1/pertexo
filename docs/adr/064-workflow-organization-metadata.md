@@ -98,6 +98,10 @@ idempotency through the existing scoped receipt owner: constant shared batch
 operation, full canonical parent-body hash, admitted-only marker committed before
 independent item transactions, and matching committed admission verified by each
 NEW item helper. Item receipts alone cannot bind a disjoint changed request;
+the existing receipt row's internal top-level `xid8` admission marker also rejects
+same-transaction admission through savepoints, without relying on tuple `xmin`
+or exposing a transaction/proof field in the result. Exact replay preserves that
+marker; visible admitted rows must belong to a different top-level transaction.
 parent admission never promises atomic completion. Release-owner global allocation
 and exact integration-base audit reserve additive migration 0135 exclusively for
 this follow-on; the qualified 0134 migration and inventory remain immutable.

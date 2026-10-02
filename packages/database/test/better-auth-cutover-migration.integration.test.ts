@@ -118,6 +118,7 @@ describe('Better Auth cutover migration rehearsal', () => {
         '0132_workflow_portability.sql',
         '0133_curated_template_origin.sql',
         '0134_workflow_organization.sql',
+        '0135_workflow_folders_batch_identity.sql',
       ]);
 
       const verifier = new Pool({

@@ -68,7 +68,9 @@ const startupRow = Object.freeze({
 
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0134_workflow_organization.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0135_workflow_folders_batch_identity.sql',
+    );
   });
 
   it('checks only bounded live compatibility state', async () => {

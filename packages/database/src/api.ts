@@ -1,4 +1,24 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
+export {
+  createWorkflowFolderDatabase,
+  WorkflowFolderConflictError,
+} from './authoring/workflow-folders.js';
+export type {
+  WorkflowFolderDatabase,
+  WorkflowFolderRecord,
+  WorkflowFolderCommandResult,
+  WorkflowFolderDeleteResult,
+  WorkflowFolderPlacementResult,
+  WorkflowFolderConflictKind,
+} from './authoring/workflow-folders.js';
+export { createWorkflowOrganizationBatchDatabase } from './authoring/workflow-organization-batches.js';
+export type {
+  WorkflowOrganizationBatchDatabase,
+  WorkflowOrganizationBatchRequest,
+  WorkflowOrganizationBatchInput,
+  WorkflowOrganizationBatchItem,
+  WorkflowOrganizationBatchItemResult,
+} from './authoring/workflow-organization-batches.js';
 export { createWorkflowOrganizationReadDatabase } from './authoring/workflow-organization-read.js';
 export type {
   WorkflowOrganizationFilters,
