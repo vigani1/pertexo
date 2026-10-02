@@ -81,7 +81,9 @@ export const READINESS_CURATED_TEMPLATE_ORIGIN_SQL = `(
     and not exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
       where a.grantee<>p.proowner and (a.grantee not in ((select oid from pg_roles where rolname=$2),
         (select oid from pg_roles where rolname=$3)) or a.privilege_type<>'EXECUTE' or a.is_grantable)))
-  and app.curated_template_inventory_matches('b2c003431f093031cdaebb97b78f8a9ddae81f8ce5fa14efd4035b639a3e9f75')
+  -- The API/worker-only data witness is queried separately on the validated
+  -- caller's connection. Even a CASE reference can require helper EXECUTE on
+  -- PostgreSQL; other roles must retain these pins without invoking it.
   and exists(select 1 from pg_trigger t where t.tgrelid=to_regclass('app.curated_template_descriptors')
     and t.tgname='curated_template_descriptor_immutable' and not t.tgisinternal
     and t.tgenabled='O' and t.tgtype=27
