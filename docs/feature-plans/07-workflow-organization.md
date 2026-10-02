@@ -243,3 +243,19 @@ Final root integration rerun passes all 2,095 API unit tests/150 files, strict
 API typecheck/build, architecture (19 tests), complexity, unchanged duplication
 ratchets and documentation checks (21 tests/456 links). The eight actual favorite
 MAC/PostgreSQL composition cases pass again after the cursor refactor.
+
+Tag database adapter: bounded UUID-ascending vocabulary pages, owner/admin
+assignment discovery including archived workflows, canonical vocabulary commands,
+editor replacement and independent admin cleanup detachment now call the accepted
+0134 helpers through one scoped transaction per command. Authority uses the same
+explicit workspace/actor/member lock order as existing authoring writes; a narrow
+extraction preserves those write queries and their role policy. Assignment tag
+visibility and bounded rows use one statement snapshot, without granting API tag
+UPDATE or helper EXECUTE. Seven new owned PostgreSQL adapter cases plus 28 existing
+organization SQL and five existing lifecycle cases pass (40 total); the 986
+database unit cases, strict build/typecheck and scoped lint pass. Eight actual
+application favorite MAC/PostgreSQL cases pass after shared error extraction.
+Source/test duplication remains 20 groups/330 lines and 10 groups/285 lines with
+the unchanged ratchets. This is not signed HTTP discovery, live routing, bulk
+transport recovery or browser proof. Unknown/foreign workflow-list tag-filter
+empty-page behavior still requires its filtered-reader implementation and tests.

@@ -15,6 +15,7 @@ import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
 import { normalizeWorkflowAuthoringCompatibility } from './workflow-authoring-compatibility.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
+import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
 import { createWorkflowVersionRestoreStore } from './workflow-authoring-version-restore.js';
 import { createWorkflowDuplicationStore } from './workflow-authoring-duplication.js';
@@ -149,28 +150,12 @@ async function requireWorkspaceAuthor(
   workspaceId: string,
   actorId: string,
 ): Promise<void> {
-  // Keep the authority fence in the same explicit workspace-first order as
-  // organization commands. A joined locking query does not establish that order.
-  const workspace = await client.query(
-    `select 1 from app.workspaces where id=$1 and status='active' for share`,
-    [workspaceId],
+  await lockWorkflowAuthoringAuthority(
+    client,
+    workspaceId,
+    actorId,
+    rolesForCapability('workflow:update'),
   );
-  if (workspace.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const actor = await client.query(
-    `select 1 from app.users where id=$1 and status='active' for share`,
-    [actorId],
-  );
-  if (actor.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const membership = await client.query(
-    `select 1 from app.workspace_memberships
-     where workspace_id=$1 and user_id=$2 and status='active'
-       and role=any($3::text[]) for share`,
-    [workspaceId, actorId, [...rolesForCapability('workflow:update')]],
-  );
-  if (membership.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
 }
 
 async function requireWorkspaceReader(

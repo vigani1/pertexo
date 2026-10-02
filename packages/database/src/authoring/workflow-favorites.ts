@@ -11,6 +11,14 @@ import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
 } from './workflow-authoring-errors.js';
+import {
+  WorkflowOrganizationUnavailableError,
+  WorkflowOrganizationValidationError,
+} from './workflow-organization-errors.js';
+export {
+  WorkflowOrganizationUnavailableError,
+  WorkflowOrganizationValidationError,
+} from './workflow-organization-errors.js';
 
 type FavoriteScope = Readonly<{
   workspaceId: string;
@@ -60,18 +68,6 @@ export class WorkflowFavoriteRevisionConflictError extends Error {
   override readonly name = 'WorkflowFavoriteRevisionConflictError';
   constructor() {
     super('Workflow favorite revision does not match');
-  }
-}
-export class WorkflowOrganizationUnavailableError extends Error {
-  override readonly name = 'WorkflowOrganizationUnavailableError';
-  constructor() {
-    super('Workflow organization is unavailable');
-  }
-}
-export class WorkflowOrganizationValidationError extends Error {
-  override readonly name = 'WorkflowOrganizationValidationError';
-  constructor() {
-    super('Workflow organization command is invalid');
   }
 }
 

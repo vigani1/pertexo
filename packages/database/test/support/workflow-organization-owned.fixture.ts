@@ -10,6 +10,7 @@ import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identit
 import { createArtifactMigrationConfig } from './artifact-migration-fixture.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 import { createWorkflowAuthoringFixtureDatabase } from './workflow-authoring-admission.fixture.js';
+import { createWorkflowTagDatabase } from '../../src/authoring/workflow-tags.js';
 
 const roles = {
   DATABASE_ADMIN_URL: 'postgres',
@@ -123,7 +124,8 @@ export async function createOrganizationOwnedFixture() {
     });
     const identity = createIdentityWorkspaceDatabase(config);
     const authoring = createWorkflowAuthoringFixtureDatabase(config);
-    resources.push(identity, authoring);
+    const tags = createWorkflowTagDatabase(config);
+    resources.push(identity, authoring, tags);
 
     async function transaction<T>(
       selected: Pool,
@@ -217,6 +219,7 @@ export async function createOrganizationOwnedFixture() {
       maintenance,
       identity,
       authoring,
+      tags,
       transaction,
       scope,
       waitForBlocker,

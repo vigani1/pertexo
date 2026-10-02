@@ -1,5 +1,19 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
 export {
+  createWorkflowTagDatabase,
+  WorkflowTagConflictError,
+} from './authoring/workflow-tags.js';
+export type {
+  WorkflowTagAssignment,
+  WorkflowTagAssignmentResult,
+  WorkflowTagCommandResult,
+  WorkflowTagConflictKind,
+  WorkflowTagDatabase,
+  WorkflowTagDeleteResult,
+  WorkflowTagRecord,
+  WorkflowTagReplaceResult,
+} from './authoring/workflow-tags.js';
+export {
   createWorkflowFavoriteDatabase,
   WorkflowFavoriteRevisionConflictError,
   WorkflowOrganizationUnavailableError,
