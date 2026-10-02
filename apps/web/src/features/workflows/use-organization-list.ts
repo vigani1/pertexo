@@ -6,6 +6,10 @@ import {
   WORKFLOW_ORDER_BY_SORT,
   type WorkflowListSearch,
 } from './model/workflow-list-view';
+import {
+  isOrganizationReadDenied,
+  useOrganizationReadLifetime,
+} from './use-organization-read-lifetime';
 
 /** A separate strict cache and cursor identity; no previous-filter rows. */
 export function useOrganizationList(
@@ -15,7 +19,8 @@ export function useOrganizationList(
   search: WorkflowListSearch,
   enabled: boolean,
 ) {
-  return useInfiniteQuery({
+  const lifetime = useOrganizationReadLifetime(userId, workspaceId);
+  const query = useInfiniteQuery({
     ...workflowOrganizationInfiniteQueryOptions(
       apiClient,
       userId,
@@ -30,7 +35,7 @@ export function useOrganizationList(
         favoritesOnly: search.favoritesOnly,
       },
     ),
-    enabled,
+    enabled: enabled && lifetime.error === undefined,
     select: (data) => ({
       ...data,
       pages: data.pages.map((page) => {
@@ -43,4 +48,30 @@ export function useOrganizationList(
       }),
     }),
   });
+  const error =
+    lifetime.error ??
+    (isOrganizationReadDenied(query.error) ? query.error : undefined);
+  const refetch: typeof query.refetch = async (options) => {
+    const result = await query.refetch(options);
+    if (result.isSuccess) lifetime.restore();
+    return result;
+  };
+  return error === undefined
+    ? { ...query, refetch }
+    : {
+        ...query,
+        data: undefined,
+        error,
+        status: 'error' as const,
+        isError: true as const,
+        isPending: false as const,
+        isSuccess: false as const,
+        isLoading: false as const,
+        isLoadingError: true as const,
+        isRefetchError: false as const,
+        isFetchNextPageError: false as const,
+        isFetchPreviousPageError: false as const,
+        isPlaceholderData: false as const,
+        refetch,
+      };
 }

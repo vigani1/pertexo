@@ -213,7 +213,7 @@ describe('organization editing controls', () => {
     );
     expect(captures).toHaveLength(1);
     expect(
-      screen.queryByRole('button', { name: 'Remove favorite', exact: true }),
+      screen.queryByRole('button', { name: 'Remove favorite' }),
     ).not.toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     expect(onClose).not.toHaveBeenCalled();

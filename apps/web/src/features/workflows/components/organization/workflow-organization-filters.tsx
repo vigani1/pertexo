@@ -24,9 +24,14 @@ import {
 import {
   updateWorkflowListSearch,
   type WorkflowListSearch,
+  type WorkflowListSearchUpdate,
 } from '../../model/workflow-list-view';
 import { WorkflowOrganizationManager } from './workflow-organization-manager';
 import { workflowFolderOptions } from '../../model/workflow-folder-navigation';
+import {
+  isOrganizationReadDenied,
+  useOrganizationReadLifetime,
+} from '../../use-organization-read-lifetime';
 
 function OrganizationNameFilter({
   value,
@@ -93,29 +98,39 @@ export function WorkflowOrganizationFilters({
   workspace: AccessibleWorkspace;
   search: WorkflowListSearch;
   filterRef: Ref<HTMLInputElement>;
-  onSearchChange: (search: WorkflowListSearch) => void;
+  onSearchChange: (search: WorkflowListSearchUpdate) => void;
 }>) {
-  const folders = useQuery(
-    workflowFoldersQueryOptions(apiClient, userId, workspace.id),
-  );
-  const tags = useInfiniteQuery(
-    workflowTagsInfiniteQueryOptions(apiClient, userId, workspace.id),
-  );
+  const lifetime = useOrganizationReadLifetime(userId, workspace.id);
+  const folders = useQuery({
+    ...workflowFoldersQueryOptions(apiClient, userId, workspace.id),
+    enabled: lifetime.error === undefined,
+  });
+  const tags = useInfiniteQuery({
+    ...workflowTagsInfiniteQueryOptions(apiClient, userId, workspace.id),
+    enabled: lifetime.error === undefined,
+  });
+  const denied =
+    lifetime.error !== undefined ||
+    isOrganizationReadDenied(folders.error) ||
+    isOrganizationReadDenied(tags.error);
   const [managing, setManaging] = useState(false);
   const folderItems = [
     { value: 'all', label: 'All folders' },
     { value: 'root', label: 'Unfiled' },
-    ...workflowFolderOptions(folders.data?.items ?? []),
+    ...workflowFolderOptions(denied ? [] : (folders.data?.items ?? [])),
   ];
   const tagItems = [
     { value: 'all', label: 'All tags' },
-    ...(tags.data?.pages.flatMap((page) => page.items) ?? []).map((tag) => ({
+    ...(denied
+      ? []
+      : (tags.data?.pages.flatMap((page) => page.items) ?? [])
+    ).map((tag) => ({
       value: tag.id,
       label: tag.key,
     })),
   ];
   const change = (next: Parameters<typeof updateWorkflowListSearch>[1]) => {
-    onSearchChange(updateWorkflowListSearch(search, next));
+    onSearchChange((current) => updateWorkflowListSearch(current, next));
   };
   return (
     <section
@@ -135,14 +150,12 @@ export function WorkflowOrganizationFilters({
           type="button"
           variant="ghost"
           onClick={() => {
-            onSearchChange(
-              updateWorkflowListSearch(search, {
-                query: null,
-                tagId: null,
-                folderId: null,
-                favoritesOnly: null,
-              }),
-            );
+            change({
+              query: null,
+              tagId: null,
+              folderId: null,
+              favoritesOnly: null,
+            });
           }}
         >
           Clear filters
@@ -181,7 +194,7 @@ export function WorkflowOrganizationFilters({
         <Select
           items={folderItems}
           value={search.folderId ?? 'all'}
-          disabled={folders.data === undefined}
+          disabled={denied || folders.data === undefined}
           onValueChange={(value) => {
             if (typeof value === 'string')
               change({ folderId: value === 'all' ? null : value });
@@ -206,7 +219,7 @@ export function WorkflowOrganizationFilters({
         <Select
           items={tagItems}
           value={search.tagId ?? 'all'}
-          disabled={tags.data === undefined}
+          disabled={denied || tags.data === undefined}
           onValueChange={(value) => {
             if (typeof value === 'string')
               change({ tagId: value === 'all' ? null : value });
@@ -230,9 +243,11 @@ export function WorkflowOrganizationFilters({
           variant="outline"
           aria-pressed={search.favoritesOnly === 'true'}
           onClick={() => {
-            change({
-              favoritesOnly: search.favoritesOnly === 'true' ? null : 'true',
-            });
+            onSearchChange((current) =>
+              updateWorkflowListSearch(current, {
+                favoritesOnly: current.favoritesOnly === 'true' ? null : 'true',
+              }),
+            );
           }}
         >
           My favorites
@@ -264,28 +279,37 @@ export function WorkflowOrganizationFilters({
       <LoadMore
         subject="tags"
         label="Load more tags"
-        hasNextPage={tags.hasNextPage}
+        hasNextPage={!denied && tags.hasNextPage}
         loading={tags.isFetchingNextPage}
         failed={tags.isFetchNextPageError}
         onLoadMore={() => void tags.fetchNextPage()}
       />
-      {folders.isError || tags.isError ? (
+      {denied || folders.isError || tags.isError ? (
         <Notice
           tone="warning"
           action={
             <Button
               variant="ghost"
               onClick={() => {
-                void folders.refetch();
-                void tags.refetch();
+                void Promise.all([folders.refetch(), tags.refetch()]).then(
+                  (results) => {
+                    if (results.every((result) => result.isSuccess))
+                      lifetime.restore();
+                  },
+                );
               }}
             >
               Retry folders and tags
             </Button>
           }
         >
-          Folders or tags couldn’t be read. Existing filters remain in the URL;
-          missing metadata is not an empty vocabulary.
+          {denied
+            ? 'Access changed. Cached folders and tags were forgotten. Retry to read current authorized metadata.'
+            : folders.data !== undefined || tags.data !== undefined
+              ? 'Folders or tags couldn’t be refreshed. Showing the last authorized vocabulary; it may be stale.'
+              : 'Folders or tags couldn’t be read.'}{' '}
+          Existing filters remain in the URL; missing metadata is not an empty
+          vocabulary.
         </Notice>
       ) : null}
       {managing ? (

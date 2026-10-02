@@ -21,6 +21,10 @@ export type WorkflowListSearch = Readonly<{
   favoritesOnly?: 'true';
 }>;
 
+/** Complete replacements remain supported; independent patches use router-current search. */
+export type WorkflowListSearchUpdate =
+  WorkflowListSearch | ((current: WorkflowListSearch) => WorkflowListSearch);
+
 export const WORKFLOW_ORDER_BY_SORT: Readonly<
   Record<WorkflowSort, WorkflowListOrder>
 > = { updated: 'updated_desc', created: 'created_asc' };

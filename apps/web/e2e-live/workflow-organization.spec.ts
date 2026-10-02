@@ -255,7 +255,7 @@ async function lifecycle(
   );
   await expect(dialog).not.toBeVisible();
 }
-async function cleanupTag(page: Page, workflowId: string) {
+async function cleanupTag(page: Page, workflowName: string) {
   await page
     .getByRole('button', { name: 'Manage folders and tags…', exact: true })
     .click();
@@ -271,7 +271,7 @@ async function cleanupTag(page: Page, workflowId: string) {
     .click();
   await manager
     .getByRole('checkbox', {
-      name: `Select workflow ${workflowId}`,
+      name: `Select ${workflowName}`,
       exact: true,
     })
     .check();
@@ -636,7 +636,7 @@ async function qualifyExtended(input: {
   expect(
     (await projection(page, workspaceId, beta)).organization.folderId,
   ).toBe(null);
-  await cleanupTag(page, beta);
+  await cleanupTag(page, betaName);
   const cleaned = await projection(page, workspaceId, beta);
   expect(cleaned.workflow.lifecycleStatus).toBe('archived');
   expect(cleaned.organization.tags).toHaveLength(0);
@@ -738,15 +738,23 @@ test('ordinary owner persists shared organization, exact recovery and private di
     .click();
   await command(
     page,
-    manager.getByRole('button', { name: 'Confirm delete folder' }),
+    page
+      .getByRole('dialog', { name: 'Delete Operations?', exact: true })
+      .getByRole('button', { name: 'Confirm delete folder' }),
     '/delete',
     409,
   );
   await expect(
-    manager.getByText(
-      'Move the workflows and child folders out before deleting this folder.',
-    ),
+    page
+      .getByRole('dialog', { name: 'Delete Operations?', exact: true })
+      .getByText(
+        'Move the workflows and child folders out before deleting this folder.',
+      ),
   ).toBeVisible();
+  await page
+    .getByRole('dialog', { name: 'Delete Operations?', exact: true })
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
   await manager.getByRole('button', { name: 'Edit folder Child' }).click();
   await manager.getByLabel('Folder name', { exact: true }).fill('Delivery');
   await command(
@@ -928,7 +936,7 @@ test('ordinary owner persists shared organization, exact recovery and private di
     .click();
 
   await phase('cleanup');
-  await cleanupTag(page, alpha);
+  await cleanupTag(page, alphaName);
   await phase('evidence');
   for (const id of [alpha, beta]) {
     const response = await page.request.get(

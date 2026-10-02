@@ -568,3 +568,22 @@ current revision checks are unchanged. Owned lint/format checks pass without
 suppressions. React Doctor reports three manager control-flow maintainability
 advisories, reviewed and retained honestly; no functional defect is asserted from
 the score. Independent committed-delta review remains required.
+
+Ordinary organization reads now own permission retirement even with no command
+dialog: 401/403/404 immediately mask protected rows/vocabulary, cancel held reads
+and remove only the actor/workspace organization sibling cache. Transient 503 and
+network failures retain an explicitly stale authorized snapshot. Remounts recover
+only through fresh reads, never the removed snapshot; legacy workflow and F06
+recovery siblings are preserved. Immutable query-error events also reach command
+owners even when an earlier read observer cancels and reverts query state.
+Thirteen lifetime/filter regressions plus real plain-page denial/stale regressions
+pass; the combined focused set passes 67/67, and web typecheck/lint pass.
+
+The combined-filter failure has a concrete failing regression, not a timeout
+explanation: while rendered search props await navigation, a second full-object
+filter update drops the first filter. Organization changes now use functional
+updates against router-current search; existing complete replacement callers and
+create-lens history are retained. Rapid name/tag/folder/favorite changes, explicit
+null clears, clear-all and double favorite toggles preserve current state. Live
+rapid clicks remain in the qualification; no wait hides the production race.
+The final frozen four-gate run and independent fix-delta review remain open.

@@ -63,6 +63,65 @@ function page(
 }
 
 describe('owned organization workflow list integration', () => {
+  it('retires denied rows, tags and private favorites without opening a command dialog', async () => {
+    install(() => page());
+    const { queryClient } = renderApp(
+      `/w/${workspaceId}/workflows?folderId=${folderId}&tagId=${tagId}`,
+    );
+    await screen.findByRole('link', { name: 'Daily intake' });
+    await screen.findByText('Operations');
+    mockServer.use(
+      http.get(`${api}/workflows`, ({ request }) =>
+        new URL(request.url).searchParams.get('include') === 'organization'
+          ? HttpResponse.json({}, { status: 403 })
+          : HttpResponse.json({
+              items: [summary(workflowId, 'Daily intake')],
+              nextCursor: null,
+            }),
+      ),
+    );
+    await queryClient.invalidateQueries({
+      queryKey: [
+        ...workflowOrganizationKeys.scope(userId, workspaceId),
+        'list',
+      ],
+    });
+    await screen.findByText('Workflows didn’t load');
+    expect(
+      screen.queryByRole('link', { name: 'Daily intake' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Operations')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Manage favorite for Daily intake',
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Filter by tag' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps an authorized organization snapshot with stale disclosure after503', async () => {
+    install(() => page());
+    const { queryClient } = renderApp(`/w/${workspaceId}/workflows`);
+    await screen.findByRole('link', { name: 'Daily intake' });
+    mockServer.use(
+      http.get(`${api}/workflows`, () =>
+        HttpResponse.json({}, { status: 503 }),
+      ),
+    );
+    await queryClient.invalidateQueries({
+      queryKey: [
+        ...workflowOrganizationKeys.scope(userId, workspaceId),
+        'list',
+      ],
+    });
+    expect(screen.getByRole('link', { name: 'Daily intake' })).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Manage favorite for Daily intake' }),
+    ).toBeVisible();
+    await screen.findByText(/couldn’t refresh/i);
+  });
   it('retains exact favorite recovery when a background favorites-only read removes its row', async () => {
     let visible = true;
     const captures: { key: string | null; body: unknown }[] = [];

@@ -37,6 +37,7 @@ import {
   updateWorkflowListSearch,
   parseWorkflowListSearch,
   type WorkflowListSearch,
+  type WorkflowListSearchUpdate,
 } from './model/workflow-list-view';
 import { availableStarters } from './model/workflow-starters';
 import { curatedTemplateChooserEnabled } from '@/features/workflows/model/template-feature-gates';
@@ -201,7 +202,7 @@ function WorkflowListContent({
   search: WorkflowListSearch;
   /** Saves starter steps; without it the lens offers Blank only. */
   starterDraftWriter?: StarterDraftWriter | undefined;
-  onSearchChange: (search: WorkflowListSearch) => void;
+  onSearchChange: (search: WorkflowListSearchUpdate) => void;
   onCreated: (workflowId: string) => void;
   /** Opens a run started from a row. */
   onRunStarted: (runId: string) => void;
