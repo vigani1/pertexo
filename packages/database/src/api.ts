@@ -1,5 +1,18 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
 export {
+  createWorkflowFavoriteDatabase,
+  WorkflowFavoriteRevisionConflictError,
+  WorkflowOrganizationUnavailableError,
+  WorkflowOrganizationValidationError,
+} from './authoring/workflow-favorites.js';
+export type {
+  WorkflowFavoriteAbsenceTokenAuthority,
+  WorkflowFavoriteCommand,
+  WorkflowFavoriteDatabase,
+  WorkflowFavoriteResult,
+  WorkflowFavoriteState,
+} from './authoring/workflow-favorites.js';
+export {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,

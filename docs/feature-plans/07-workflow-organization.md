@@ -205,3 +205,27 @@ Reusing the established independently validated migration-history fixture remove
 a newly exposed copied-history clone; the unchanged duplication ratchet passes
 at 10 test groups/285 duplicated lines. The affected published-repair and two
 control-ledger suites pass 11 real PostgreSQL tests after that focused refactor.
+
+HTTP routes and separate purpose-bound UUID-page continuation were accepted by
+primary and recorded before endpoint code in `8f22b73f`. Additive readiness repair
+`a63cd61e` integrates release-owner qualified `cbcfdfb5`: universal exact
+metadata/body/ACL pins remain, while only actual API/worker database identities
+invoke the separate confined inventory witness on the validated connection.
+F07 migration head 0134 and its exact organization catalog pins are preserved.
+On this integration, 21 serving-readiness unit cases and 32 owned PostgreSQL
+readiness cases pass, including actual dispatcher without helper EXECUTE and
+organization catalog-drift denials. These are fresh local qualification results,
+not relabeled release evidence.
+
+Private favorite adapter and application MAC authority: 16 transaction-protocol
+unit cases, two actual-codec authority cases and eight owned PostgreSQL/application
+composition cases pass. The live cases cover viewer/archived access, strict private
+output, exact recovery before rotated MAC authority/disabled writer, changed-body
+conflict, invalid-MAC receipt rollback, concurrent absence CAS, departure/rejoin
+generation fencing and SQL rejection of valid-MAC expired/future timestamps.
+Borrowed-runtime lifecycle is verified. Each read/write owns one tenant transaction;
+transport callers cannot provide generation/proof selectors. The integrated unit
+suites pass 986 database and 2,074 API tests. No new dependency or rollout is added.
+This is not HTTP/session/CSRF, actual invitation, restart/browser or full F07
+acceptance evidence; endpoints, filtered projections and folder/general-bulk slices
+remain open. Writer remains default-off outside disposable qualification fixtures.
