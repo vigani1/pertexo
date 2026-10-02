@@ -15,17 +15,16 @@ const snapshot = {
   reference: { schemaVersion: 1 as const, kind: 'inline' as const, value },
   byteLength: Buffer.byteLength(canonical),
   sha256: createHash('sha256').update(canonical).digest('hex'),
+  serializedValue: canonical,
 };
 function fixture(recovered = true) {
   const read = vi.fn().mockResolvedValue(recovered ? snapshot : undefined);
   const record = vi.fn().mockResolvedValue(undefined);
-  const loadInputs = vi
-    .fn()
-    .mockResolvedValue({
-      abortRequested: false,
-      completedNodeOutputs: {},
-      runInput: null,
-    });
+  const loadInputs = vi.fn().mockResolvedValue({
+    abortRequested: false,
+    completedNodeOutputs: {},
+    runInput: null,
+  });
   const complete = vi.fn().mockResolvedValue({ kind: 'committed' });
   const runStore = executionStore({
     loadInputs,
@@ -84,6 +83,24 @@ function fixture(recovered = true) {
   };
 }
 describe('required Call declaration input recovery orchestration', () => {
+  it('reuses whitespace-bearing original bytes without rehashing normalized value', async () => {
+    const f = fixture();
+    const serializedValue = '{ "name" : "immutable" }';
+    f.read.mockResolvedValue({
+      ...snapshot,
+      serializedValue,
+      byteLength: Buffer.byteLength(serializedValue),
+      sha256: createHash('sha256').update(serializedValue).digest('hex'),
+    });
+    await expect(
+      f.handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).resolves.toMatchObject({ kind: 'committed' });
+    expect(f.prepare).not.toHaveBeenCalled();
+    expect(f.record).not.toHaveBeenCalled();
+    expect(f.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ recordedWorkflowCallInput: value }),
+    );
+  });
   it('hydrates an existing snapshot without loading changed upstream values or preparing another reservation', async () => {
     const f = fixture();
     await expect(

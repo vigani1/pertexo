@@ -497,11 +497,20 @@ export function createNodeAttemptHandler(
             reference: snapshot.reference,
             signal: context.signal,
           });
-          const canonical = serializeWorkflowExecutionJsonValueV3(value);
+          const integrityBytes =
+            snapshot.reference.kind === 'inline'
+              ? snapshot.serializedValue
+              : serializeWorkflowExecutionJsonValueV3(value);
+          if (integrityBytes === undefined)
+            throw new TypeError('Recovered Call inline bytes are missing');
           if (
-            Buffer.byteLength(canonical, 'utf8') !== snapshot.byteLength ||
-            createHash('sha256').update(canonical).digest('hex') !==
-              snapshot.sha256
+            Buffer.byteLength(integrityBytes, 'utf8') !== snapshot.byteLength ||
+            createHash('sha256').update(integrityBytes).digest('hex') !==
+              snapshot.sha256 ||
+            (snapshot.reference.kind === 'inline' &&
+              serializeWorkflowExecutionJsonValueV3(
+                JSON.parse(integrityBytes) as unknown,
+              ) !== serializeWorkflowExecutionJsonValueV3(value))
           )
             throw new TypeError(
               'Recovered Call snapshot metadata does not match',

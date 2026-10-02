@@ -132,6 +132,7 @@ describe('framework execution value codec', () => {
           reference: JSON.parse(reference as string) as unknown,
           sha256: sha,
           byteLength: bytes,
+          serializedValue: serialized,
         };
       }
       if (sql.includes('app.read_workflow_call_declaration_input'))
@@ -171,7 +172,10 @@ describe('framework execution value codec', () => {
           lease: { ...owner.lease, fenceToken: owner.lease.fenceToken + 1 },
           signal: signal(),
         });
-        expect(recovered).toEqual(prepared);
+        expect(recovered).toEqual({
+          ...prepared,
+          serializedValue: recordedBytes.at(-1),
+        });
         if (recovered === undefined)
           throw new Error('Committed Call input is missing');
         const hydrated = await h.codec.hydrate({

@@ -44,6 +44,7 @@ const snapshot = {
   sha256: createHash('sha256').update(canonical).digest('hex'),
   byteLength: Buffer.byteLength(canonical),
 };
+const persistedSnapshot = { ...snapshot, serializedValue: canonical };
 const pool = {} as Pool;
 const signal = new AbortController().signal;
 beforeEach(() => {
@@ -98,10 +99,10 @@ describe('required Call input SQL adapter (mocked client, not authority proof)',
   it('returns the exact committed snapshot under current authority', async () => {
     query
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ snapshot }] });
+      .mockResolvedValueOnce({ rows: [{ snapshot: persistedSnapshot }] });
     await expect(
       readWorkflowCallDeclarationInput(pool, { lease, signal }),
-    ).resolves.toEqual(snapshot);
+    ).resolves.toEqual(persistedSnapshot);
     expect(query.mock.calls[1]?.[0]).toContain(
       'read_workflow_call_declaration_input',
     );
@@ -122,11 +123,56 @@ describe('required Call input SQL adapter (mocked client, not authority proof)',
   });
   it('rejects returned reference/checksum mismatch', async () => {
     query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
-      rows: [{ snapshot: { ...snapshot, sha256: 'f'.repeat(64) } }],
+      rows: [{ snapshot: { ...persistedSnapshot, sha256: 'f'.repeat(64) } }],
     });
     await expect(
       readWorkflowCallDeclarationInput(pool, { lease, signal }),
     ).rejects.toThrow('metadata does not match');
+  });
+  it.each([
+    ['{ "name": "input" }', value],
+    ['9007199254740993', 9007199254740992],
+    ['1e-400', 0],
+    ['-0', 0],
+  ])(
+    'verifies original %s bytes without recanonicalizing immutable identity',
+    async (serializedValue, normalizedValue) => {
+      const saved = {
+        reference: { schemaVersion: 1, kind: 'inline', value: normalizedValue },
+        serializedValue,
+        sha256: createHash('sha256').update(serializedValue).digest('hex'),
+        byteLength: Buffer.byteLength(serializedValue),
+      };
+      query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ snapshot: saved }] });
+      await expect(
+        readWorkflowCallDeclarationInput(pool, { lease, signal }),
+      ).resolves.toEqual(saved);
+    },
+  );
+  it('rejects intact bytes whose parsed value disagrees with the reference', async () => {
+    query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
+      rows: [
+        {
+          snapshot: {
+            ...persistedSnapshot,
+            reference: { ...snapshot.reference, value: 'different' },
+          },
+        },
+      ],
+    });
+    await expect(
+      readWorkflowCallDeclarationInput(pool, { lease, signal }),
+    ).rejects.toThrow('do not agree');
+  });
+  it('rejects inline snapshots missing their immutable bytes', async () => {
+    query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ snapshot }] });
+    await expect(
+      readWorkflowCallDeclarationInput(pool, { lease, signal }),
+    ).rejects.toThrow('bytes are missing');
   });
   it.each(['read', 'record'] as const)(
     'lets %s operational failure escape without a fabricated result',

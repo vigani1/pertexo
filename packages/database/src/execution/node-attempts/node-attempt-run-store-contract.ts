@@ -373,6 +373,8 @@ export interface NodeAttemptRunStore {
         reference: StoredExecutionValueV1;
         sha256: string;
         byteLength: number;
+        /** Exact immutable inline bytes; absent for artifact references. */
+        serializedValue?: string;
       }>
     | undefined
   >;
