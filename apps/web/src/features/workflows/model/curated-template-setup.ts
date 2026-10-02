@@ -8,10 +8,7 @@ import {
 export type CuratedTemplate = CuratedWorkflowTemplate;
 export type SetupTarget = CuratedTemplate['setupTargets'][number];
 
-// Deliberately off until the owned API/DB/browser qualification is accepted.
-export function curatedTemplateChooserEnabled(): boolean {
-  return false;
-}
+export { curatedTemplateChooserEnabled } from './template-feature-gates';
 
 export function templateOrigin(template: CuratedTemplate) {
   return {
@@ -49,8 +46,8 @@ export function templateUnavailableReasons(
 export function setupValueError(target: SetupTarget, value: string) {
   return validateCuratedTemplateSetupValue(target.valueKind, value).ok
     ? undefined
-    : target.valueKind === 'https_endpoint'
-      ? 'Use an HTTPS endpoint of at most 2,048 UTF-8 bytes, without credentials, fragments or credential query parameters.'
+    : target.valueKind === 'curated_https_endpoint_v1'
+      ? 'Use lowercase https://, a lowercase ASCII DNS host and an explicit /path (at most 2,048 bytes). No ports, punycode, userinfo, fragments, dot segments or credential query names; escapes must be uppercase %HH.'
       : 'Use a Slack channel ID of 2–128 characters beginning C, D, G or U, followed by uppercase letters or digits.';
 }
 

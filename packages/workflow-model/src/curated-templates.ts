@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 import { CURATED_TEMPLATE_MANIFESTS } from './curated-template-assets.js';
+import { isCuratedHttpsEndpointV1 } from './curated-https-endpoint.js';
+export {
+  isCuratedHttpsEndpointV1,
+  CURATED_HTTPS_ENDPOINT_V1_LIMITS,
+} from './curated-https-endpoint.js';
 import type { WorkflowGraph, WorkflowNode } from './graph-contract.js';
 import {
   canonicalWorkflowPortableJson,
@@ -43,7 +48,7 @@ export type WorkflowTemplateOrigin = z.infer<
   typeof workflowTemplateOriginSchema
 >;
 export type CuratedTemplateSetupValueKind =
-  'https_endpoint' | 'slack_channel_id';
+  'curated_https_endpoint_v1' | 'slack_channel_id';
 export interface CuratedTemplateSetupTarget {
   readonly nodeId: string;
   readonly location: 'config' | 'literalInput';
@@ -121,7 +126,7 @@ const descriptorDetails = [
         nodeId: 'controlled-http',
         location: 'config',
         key: 'url',
-        valueKind: 'https_endpoint',
+        valueKind: 'curated_https_endpoint_v1',
       },
       {
         nodeId: 'slack-notification',
@@ -171,9 +176,6 @@ function invalid(
   };
 }
 
-const endpointSchema = z.url().max(2_048);
-const credentialQueryName = /(?:auth|credential|secret|token|api[-_]?key)/iu;
-
 /** No coercion, normalization, network access or uploaded values in findings. */
 export function validateCuratedTemplateSetupValue(
   valueKind: string,
@@ -188,21 +190,8 @@ export function validateCuratedTemplateSetupValue(
       ? { ok: true }
       : invalid('template_setup_invalid', 'setup');
   }
-  if (valueKind !== 'https_endpoint' || value.length > 2_048)
-    return invalid('template_setup_invalid', 'setup');
-  const parsed = endpointSchema.safeParse(value);
-  if (
-    !parsed.success ||
-    parsed.data !== value ||
-    new TextEncoder().encode(value).byteLength > 2_048
-  )
-    return invalid('template_setup_invalid', 'setup');
-  const url = new URL(value);
-  return url.protocol === 'https:' &&
-    url.username === '' &&
-    url.password === '' &&
-    url.hash === '' &&
-    [...url.searchParams.keys()].every((key) => !credentialQueryName.test(key))
+  return valueKind === 'curated_https_endpoint_v1' &&
+    isCuratedHttpsEndpointV1(value)
     ? { ok: true }
     : invalid('template_setup_invalid', 'setup');
 }

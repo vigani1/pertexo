@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import {
   HTTP_REQUEST_DEFINITION_REGISTRATION,
@@ -6,6 +7,7 @@ import {
 import {
   CURATED_WORKFLOW_TEMPLATES,
   validateCuratedTemplateSetupValue,
+  isCuratedHttpsEndpointV1,
 } from '@pertexo/workflow-model/curated-templates';
 import { platformServingRegistryRelease } from '../src/registry.js';
 import { platformPortableDefinitionPolicy } from '../src/portable-definition-policy.js';
@@ -25,8 +27,8 @@ function endpointOfBytes(bytes: number): string {
 }
 
 function configuredTemplate(
-  kind: 'https_endpoint' | 'slack_channel_id',
-  value: string,
+  kind: 'curated_https_endpoint_v1' | 'slack_channel_id',
+  value: unknown,
 ) {
   const descriptor = required(CURATED_WORKFLOW_TEMPLATES[2]);
   const manifest = structuredClone(descriptor.manifest);
@@ -36,7 +38,7 @@ function configuredTemplate(
     templateVersion: descriptor.templateVersion,
     baseManifestDigest: descriptor.baseManifestDigest,
   };
-  if (kind === 'https_endpoint') {
+  if (kind === 'curated_https_endpoint_v1') {
     Object.assign(
       required(
         manifest.graph.nodes.find((node) => node.id === 'controlled-http'),
@@ -53,6 +55,21 @@ function configuredTemplate(
   }
   return { manifest, origin };
 }
+
+interface CorpusCase {
+  readonly name: string;
+  readonly value: unknown;
+  readonly accepted: boolean;
+}
+const corpus = JSON.parse(
+  await readFile(
+    new URL(
+      '../../workflow-model/test/fixtures/curated-https-endpoint-v1-corpus.json',
+      import.meta.url,
+    ),
+    'utf8',
+  ),
+) as readonly CorpusCase[];
 
 describe('browser template setup versus registered server policy', () => {
   const release = platformServingRegistryRelease('validate_activation');
@@ -81,11 +98,18 @@ describe('browser template setup versus registered server policy', () => {
     ['https://example.test?%C5%BFecret=value', false],
     ['https://example.test?api-Key=value', false],
   ] as const)(
-    'pins the URL guard decision oracle for %s',
+    'preserves historical broad registered oracle while curated v1 intentionally rejects %s',
     (value, accepted) => {
       expect(
-        validateCuratedTemplateSetupValue('https_endpoint', value).ok,
+        HTTP_REQUEST_DEFINITION_REGISTRATION.configSchema.safeParse({
+          ...httpConfig,
+          url: value,
+        }).success,
       ).toBe(accepted);
+      expect(
+        validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value)
+          .ok,
+      ).toBe(false);
     },
   );
 
@@ -137,23 +161,26 @@ describe('browser template setup versus registered server policy', () => {
     'https://example.test?prefix_auth_suffix=value',
     'https://example.test?%61pi%5Fkey=value',
   ])(
-    'matches registered HTTP config plus exact-preservation for %s',
+    'retains ordinary HTTP admission and intersects curated grammar for %s',
     (value) => {
       const candidate = { ...httpConfig, url: value };
       const registered =
         HTTP_REQUEST_DEFINITION_REGISTRATION.configSchema.safeParse(candidate);
-      const matches = registered.success && http.validateConfig(candidate);
+      const ordinaryMatches =
+        registered.success && http.validateConfig(candidate);
+      const matches = ordinaryMatches && isCuratedHttpsEndpointV1(value);
       expect(
-        validateCuratedTemplateSetupValue('https_endpoint', value).ok,
+        validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value)
+          .ok,
       ).toBe(matches);
-      const configured = configuredTemplate('https_endpoint', value);
+      const configured = configuredTemplate('curated_https_endpoint_v1', value);
       expect(
         policy.validateTemplateSetup(configured.manifest, configured.origin),
       ).toBe(matches);
     },
   );
 
-  it('enforces actual multibyte 2048/2049 boundaries, not string characters', () => {
+  it('retains ordinary multibyte byte boundaries but curated v1 rejects raw Unicode', () => {
     expect(new TextEncoder().encode(endpointOfBytes(2048)).byteLength).toBe(
       2048,
     );
@@ -162,14 +189,46 @@ describe('browser template setup versus registered server policy', () => {
     );
     expect(endpointOfBytes(2049).length).toBeLessThan(2048);
     expect(
-      validateCuratedTemplateSetupValue('https_endpoint', endpointOfBytes(2048))
-        .ok,
+      validateCuratedTemplateSetupValue(
+        'curated_https_endpoint_v1',
+        endpointOfBytes(2048),
+      ).ok,
+    ).toBe(false);
+    expect(
+      http.validateConfig({ ...httpConfig, url: endpointOfBytes(2048) }),
     ).toBe(true);
     expect(
-      validateCuratedTemplateSetupValue('https_endpoint', endpointOfBytes(2049))
-        .ok,
+      http.validateConfig({ ...httpConfig, url: endpointOfBytes(2049) }),
+    ).toBe(false);
+    expect(
+      validateCuratedTemplateSetupValue(
+        'curated_https_endpoint_v1',
+        endpointOfBytes(2049),
+      ).ok,
     ).toBe(false);
   });
+
+  it.each(corpus)(
+    'shared curated HTTPS corpus in model and registered server: $name',
+    ({ value, accepted }) => {
+      expect(
+        validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value)
+          .ok,
+      ).toBe(accepted);
+      const configured = configuredTemplate('curated_https_endpoint_v1', value);
+      expect(
+        policy.validateTemplateSetup(configured.manifest, configured.origin),
+      ).toBe(accepted);
+      if (accepted) {
+        expect(http.validateConfig({ ...httpConfig, url: value })).toBe(true);
+        expect(
+          configured.manifest.graph.nodes.find(
+            (node) => node.id === 'controlled-http',
+          )?.config.url,
+        ).toBe(value);
+      }
+    },
+  );
 
   it.each([
     'C',

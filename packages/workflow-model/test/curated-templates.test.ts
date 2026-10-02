@@ -72,7 +72,7 @@ describe('reviewed browser-safe curated templates', () => {
         nodeId: 'controlled-http',
         location: 'config',
         key: 'url',
-        valueKind: 'https_endpoint',
+        valueKind: 'curated_https_endpoint_v1',
       },
       {
         nodeId: 'slack-notification',
@@ -299,10 +299,11 @@ describe('reviewed browser-safe curated templates', () => {
   it('validates setup without normalization or literal disclosure', () => {
     for (const value of [
       'https://example.test/path',
-      'https://example.test?safe=private',
+      'https://example.test/?safe=private',
     ])
       expect(
-        validateCuratedTemplateSetupValue('https_endpoint', value).ok,
+        validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value)
+          .ok,
       ).toBe(true);
     for (const value of [
       ' https://example.test ',
@@ -312,7 +313,10 @@ describe('reviewed browser-safe curated templates', () => {
       'https://example.test?%74oken=private',
       null,
     ]) {
-      const result = validateCuratedTemplateSetupValue('https_endpoint', value);
+      const result = validateCuratedTemplateSetupValue(
+        'curated_https_endpoint_v1',
+        value,
+      );
       expect(result.ok).toBe(false);
       expect(JSON.stringify(result)).not.toContain('private');
     }

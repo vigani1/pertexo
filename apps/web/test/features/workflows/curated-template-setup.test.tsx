@@ -190,6 +190,9 @@ describe('Curated template setup in the existing import session', () => {
     await waitFor(() => expect(choose).toBeEnabled());
     await event.click(choose);
     expect(screen.getByLabelText('HTTPS endpoint')).toHaveValue('');
+    expect(screen.getByLabelText('HTTPS endpoint')).toHaveAccessibleDescription(
+      'Curated setup requires lowercase https://, a lowercase ASCII DNS host and an explicit /path. No ports or credentials; use uppercase %HH escapes.',
+    );
     expect(screen.getByLabelText('Slack channel ID')).toHaveValue('');
     expect(
       screen.getByRole('button', { name: 'Preview import' }),

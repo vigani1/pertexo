@@ -6,10 +6,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { workflowKeys } from './workflows.queries';
 import { readWorkflowTemplateOrigin } from './workflow-origin.api';
 
-// Retained reader presentation is independently gated; writer-off never deletes origin.
-export function workflowTemplateOriginPresentationEnabled(): boolean {
-  return false;
-}
+export { workflowTemplateOriginPresentationEnabled } from './model/template-feature-gates';
 
 export const workflowTemplateOriginKey = (
   userId: string,

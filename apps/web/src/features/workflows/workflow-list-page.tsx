@@ -38,7 +38,7 @@ import {
   type WorkflowListSearch,
 } from './model/workflow-list-view';
 import { availableStarters } from './model/workflow-starters';
-import { curatedTemplateChooserEnabled } from './model/curated-template-setup';
+import { curatedTemplateChooserEnabled } from '@/features/workflows/model/template-feature-gates';
 import { useListShortcuts } from './use-list-shortcuts';
 import { useRunWorkflow } from './use-run-workflow';
 import type { StarterDraftWriter } from './workflows.mutations';
