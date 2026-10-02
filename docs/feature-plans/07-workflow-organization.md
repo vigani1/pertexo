@@ -138,3 +138,24 @@ ADR/contract `a0508cd0` accepted by primary exact-source review. Documentation
 checks pass (21 tests/451 links at that draft). This is design evidence only:
 no F07 persistent behavior, live journey, independent implementation review or
 release is complete. Existing foundations are not completion of this increment.
+
+Implementation foundation `5d6df9b4`: strict browser-safe organization command,
+metadata and explicit projection schemas; canonical ASCII/U+0020 tag keys,
+ordered bounded cleanup and literal UTF-8 query bounds. Contracts build/typecheck,
+203 tests, unchanged generated transport artifacts and architecture/complexity/
+duplication checks pass. These are primitives, not registered organization HTTP
+commands or installed database behavior.
+
+Implementation foundation `71a7676c`: signed organization cursor helper and
+dedicated optional API key parser; version-1 fixed-order bounded payload,
+HMAC-SHA256, 15-minute
+expiry, exact timestamp/UUID position and scope/filter/order binding. Stable
+canonical 32-byte base64 configuration rejects direct/previous identity key reuse;
+there is no fallback or reader/writer enablement. Runtime wiring remains open.
+The API dependency build, API strict typecheck/build, 1,982 API unit tests
+(including 52 cursor and 18 key-configuration cases), narrow lint/format checks,
+19 architecture tests, complexity ratchet and eight duplication-policy tests
+pass; no quality baseline changed. Documentation checks pass (21 tests/456 links).
+The [persistence implementation constraints](07-organization-persistence-design.md)
+record the primary-accepted membership-generation and private held-evidence
+approach before SQL, including explicit hold/lock/purge proof obligations.
