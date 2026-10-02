@@ -9,7 +9,7 @@ import {
 } from './callable-graph-contract.js';
 import type { WorkflowGraph, WorkflowNode } from './graph-contract.js';
 import { validateWorkflowGraph } from './graph/validation.js';
-import { validateExpression } from './expressions.js';
+import { inspectExpressionNodeOutputReferences } from './expressions.js';
 import { parseJsonPath } from './json-path.js';
 import {
   WORKFLOW_CALL_FAMILY_POLICY_V1,
@@ -117,13 +117,32 @@ export function validateWorkflowCallableGraphV2(
   if (
     selector.kind === 'structured_input' ||
     (selector.kind === 'node_output' &&
-      !graph.nodes.some(({ id }) => id === selector.nodeId))
+      !graph.nodes.some(
+        ({ id, disabled }) => id === selector.nodeId && disabled !== true,
+      ))
   )
     throw new WorkflowCallClosureError('invalid_graph');
   if (selector.kind === 'expression') {
+    const references = inspectExpressionNodeOutputReferences(
+      selector.expression,
+      selector.policyVersion,
+    );
+    if (references.kind !== 'valid')
+      throw new WorkflowCallClosureError('invalid_graph');
+    const selected =
+      references.nodeIds === 'all'
+        ? graph.nodes.map(({ id }) => id)
+        : references.nodeIds;
+    // Publication can prove that an absent, nested or disabled node cannot
+    // supply one successful root invocation. Conditional execution and scoped
+    // cardinality remain with the existing scheduler/runtime result owner.
     if (
-      validateExpression(selector.expression, selector.policyVersion).kind !==
-      'valid'
+      selected.some(
+        (nodeId) =>
+          !graph.nodes.some(
+            ({ id, disabled }) => id === nodeId && disabled !== true,
+          ),
+      )
     )
       throw new WorkflowCallClosureError('invalid_graph');
   } else if (parseJsonPath(selector.path) === undefined)

@@ -243,6 +243,14 @@ and worker builds/typechecks, API typecheck, narrow lint/format, architecture an
 complexity checks. Execution handlers still reject V3 until their protected
 admission and settlement owners are wired; this reader extension does not enable
 fresh roots, publication, Call execution or migration0136.
+Callable compilation now rejects statically impossible selected outputs: direct
+disabled nodes and expression dependencies on absent, nested or disabled root
+outputs. It reuses the existing bounded expression dependency owner. Unreferenced
+disabled nodes remain legal, and a uniquely scoped branch output is not rejected
+merely for being scoped. The existing topology compiler rejects branch
+reconvergence before Merge; no parallel scope scanner or selector grammar was
+introduced. All 1,539 model tests across 23 files and 688 engine tests across
+48 files pass. This is pure artifact validation, not publication-service wiring.
 The standalone database Checkpoint V3 codec now validates the persisted wire
 format independently of the engine, retaining the existing whole-checkpoint
 256 KiB limit and strict physical-input/child-result separation. Its V2 projection

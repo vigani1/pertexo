@@ -103,6 +103,72 @@ describe('callable graph result-selector semantic validation', () => {
     });
     expect(validateWorkflowCallableGraphV2(source)).toEqual(source);
   });
+  it('rejects statically impossible selected root outputs without rejecting unrelated disabled nodes', () => {
+    const nodes = [node('result'), { ...node('disabled'), disabled: true }];
+    expectCode(
+      () =>
+        validateWorkflowCallableGraphV2(
+          selected(
+            { kind: 'node_output', nodeId: 'disabled', path: '$' },
+            nodes,
+          ),
+        ),
+      'invalid_graph',
+    );
+    expect(
+      validateWorkflowCallableGraphV2(
+        selected({ kind: 'node_output', nodeId: 'result', path: '$' }, nodes),
+      ),
+    ).toMatchObject({ callable: { resultSelector: { nodeId: 'result' } } });
+    for (const expression of [
+      'runInput.result',
+      'nodeOutputs.result',
+      '$lookup(nodeOutputs, "result")',
+    ])
+      expect(
+        validateWorkflowCallableGraphV2(
+          selected(
+            {
+              kind: 'expression',
+              language: 'jsonata',
+              expression,
+              policyVersion: 1,
+            },
+            nodes,
+          ),
+        ),
+      ).toMatchObject({ callable: { resultSelector: { expression } } });
+  });
+  it.each([
+    'nodeOutputs.absent',
+    'nodeOutputs.nested',
+    'nodeOutputs.disabled',
+    'nodeOutputs',
+    '$lookup(nodeOutputs, runInput.key)',
+  ])(
+    'rejects an expression dependency that cannot supply a successful root output: %s',
+    (expression) => {
+      expectCode(
+        () =>
+          validateWorkflowCallableGraphV2(
+            selected(
+              {
+                kind: 'expression',
+                language: 'jsonata',
+                expression,
+                policyVersion: 1,
+              },
+              [
+                node('result'),
+                { ...node('disabled'), disabled: true },
+                loop(1, node('nested')),
+              ],
+            ),
+          ),
+        'invalid_graph',
+      );
+    },
+  );
   it.each([
     { expression: 'runInput.name', policyVersion: 2 },
     { expression: '(', policyVersion: 1 },

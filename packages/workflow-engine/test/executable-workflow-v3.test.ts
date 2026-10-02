@@ -21,6 +21,7 @@ import {
   forEachGraph,
   graph,
   nodeRelease,
+  pairedParallelGraph,
 } from './executable-workflow.fixtures.js';
 
 const emptyType = { type: 'object', properties: {}, required: [] } as const;
@@ -409,6 +410,39 @@ describe('workflow executable V3', () => {
       ).toThrow(invalid);
     },
   );
+
+  it('retains the topology owner for scoped callable outputs instead of rejecting every branch selector', () => {
+    const source = {
+      ...pairedParallelGraph(),
+      schemaVersion: 2,
+      callable: {
+        ...callable,
+        resultSelector: { kind: 'node_output', nodeId: 'left', path: '$' },
+      },
+    };
+    const admissionRelease = composeExecutableCompatibilityReleaseV3(
+      nodeRelease({ parallel: true, merge: true }),
+    );
+    expect(() =>
+      buildWorkflowExecutableV3({ graph: source, release: admissionRelease }),
+    ).not.toThrow();
+    expect(() =>
+      buildWorkflowExecutableV3({
+        graph: {
+          ...source,
+          edges: [
+            ...source.edges,
+            {
+              id: 'left-right',
+              source: { nodeId: 'left', port: 'out' },
+              target: { nodeId: 'right', port: 'in' },
+            },
+          ],
+        },
+        release: admissionRelease,
+      }),
+    ).toThrow('branches cannot reconverge');
+  });
 
   it('rejects hostile envelopes before invoking accessors or recursive parsing', () => {
     const admissionRelease = release();
