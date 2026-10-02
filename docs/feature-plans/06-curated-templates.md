@@ -71,7 +71,8 @@ No migration has been applied outside disposable owned qualification databases,
 no template writer enabled, and no real template journey has run. Do not deploy
 or commit that partial migration as a usable checkpoint.
 
-Current continuation (2026-10-02): primary accepted grammar delta `fdfc5699`,
+Current continuation (2026-10-02): persistence checkpoint `1433780b` is committed;
+primary accepted grammar delta `fdfc5699`,
 recorded in `167d1432`; the confined readiness-only boolean inventory seam was
 accepted and documented before code in `bd0dacd8`. Shared browser/model/catalog
 grammar, versioned descriptor kind and generator/corpus are committed in
@@ -86,7 +87,37 @@ The browser creates/configures all three examples and verifies edit/rename/copy/
 export/reimport semantics (one browser case passed). Complete worker execution
 remains unqualified: a minimal real resolver/validator regression fixed an extra
 fixture payload wrapper without asset/assertion changes; both webhook branches now
-pass, but the schedule start fails with `execution.attempt_invalid`, under investigation.
+pass. The registered Schedule@3 trigger contract exposed a second synthetic
+fixture error; supplying that exact existing envelope now makes the two-item
+batch pass. The independently edited empty batch exposed a status-validator
+rejection of the engine's immediate empty-loop completion. Fix `b0d9fdf2` permits
+only the exact derived empty-loop completion: nine focused tests, 919 database
+unit tests and a genuine owned queue/worker empty-batch pass. The four-item batch
+then exposed a separate bounded-declaration rejection persistence mismatch.
+Repair `17c50546` independently derives immutable compiled bounds and
+matches the exact persisted executor success/attempt/output before settling only
+the rejected control node, retaining the successful executor attempt for audit.
+The proof/status suite passes 51 tests and the database unit suite passes 961.
+Eight genuine PostgreSQL tests pass, covering engine-derived settlement, fresh
+retained load/replay, wrong attempt/output/ledger, ordinary-node and stored-bound
+adversaries, changed physical collection, and post-settlement corruption denial
+with restored successful reads. Ten existing coordinator PostgreSQL regressions
+and 40 worker coordinator tests also pass.
+The latest owned worker journey reaches all nine manual-run outcomes; its final
+provider-dispatch count assertion was corrected to use persisted binding kinds,
+not pure-node attempt totals. The next live attempt completed signed webhook
+ingress and automatic database-clock schedule delivery, then failed its final
+transport trace because a stale fixture constructor omitted the planned HTTP
+500 response. A shared qualification factory and exhaustion regression correct
+that fixture. The complete thirteen-run owned journey now passes: nine manual
+cases, three signed loopback webhook HTTP deliveries and one automatic normal
+scanner schedule run using the actual database clock. The schedule proof is an
+independently edited one-minute variation, not a modification of asset v1; normal
+API disable clears its lease afterward. Persisted dispatch kinds and bounded
+transport observations both prove HTTP 200 → Slack 200 → HTTP 204 → HTTP 500,
+with no remaining planned responses. No real provider or public-network requests
+occur. Actual ingress and schedule acceptance are not inferred from manual cases. Neither
+fixture correction changes an asset, production runtime or acceptance assertion.
 Independent source review found missing readiness CHECK-constraint pins; exact
 validated pins and actual-role drop/weaken/rollback regressions are now added and
 the full guard suite passes. Database 910 and API 1,898 unit tests pass, along with
@@ -119,7 +150,8 @@ narrower curated-only HTTPS grammar. Its exact bounded v1 grammar, compatibility
 change, versioned descriptor value kind and rationale are recorded in ADR063 and
 the contract at `fdfc5699`, accepted by primary exact-source review on 2026-10-02
 before changed-policy implementation. Ordinary HTTP/F05 behavior remains unchanged.
-Consistent implementation is now authorized; no writer enablement has occurred.
+Consistent implementation is now authorized; writer enablement is confined to
+disposable owned qualification, never production.
 Persistent qualification, cutover, rollback and release criteria remain open.
 
 Foundation verification: 215 model and 124 catalog unit tests; 154 contract tests
@@ -375,8 +407,9 @@ and three complete normal-admission graph prototypes are recorded above. Manager
 acceptance of ADR063/contract follows primary and independent review, including
 strict held-traffic new-head/helper inventory compatibility, bounded browser-safe
 Slack input/HTTP UTF-8 validation and confined descriptor lock privileges.
-No chooser, persistent
-provenance, real API/database preview or live journey exists from this preparation.
+That initial preparation did not yet contain a chooser, persistent provenance,
+real API/database preview or live journey; current implementation and later
+qualification evidence are recorded above.
 Baseline/product-choice and ADR/contract review rows are complete; implementation,
 owned qualification and release gates remain open. No runtime or image qualification
 is implied by design acceptance.
