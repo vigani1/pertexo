@@ -1,5 +1,16 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
 export {
+  createWorkflowInputCaseDatabase,
+  WorkflowInputCaseRevisionConflictError,
+  WorkflowInputCaseLimitError,
+  WorkflowInputCaseUnavailableError,
+} from './authoring/workflow-input-cases.js';
+export type {
+  WorkflowInputCaseDatabase,
+  WorkflowInputCaseMetadata,
+  WorkflowInputCaseResult,
+} from './authoring/workflow-input-cases.js';
+export {
   WorkflowConcurrencyRevisionConflictError,
   WorkflowConcurrencyLimitUnavailableError,
   WorkflowConcurrencyLimitExceededError,
@@ -203,12 +214,21 @@ export {
   WorkflowNameRevisionConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
+  WorkflowPortabilityUnavailableError,
+  WorkflowPortabilityCompatibilityConflictError,
+  WorkflowPortabilityReviewConflictError,
+  WorkflowPortabilityValidationError,
   createWorkflowAuthoringDatabase,
 } from './authoring/workflow-authoring.js';
 export type {
   WorkflowAuthoringDatabase,
   DuplicateWorkflowInput,
   DuplicateWorkflowResult,
+  ExportWorkflowInput,
+  PreviewWorkflowImportInput,
+  PreviewWorkflowImportResult,
+  ImportWorkflowInput,
+  ImportWorkflowResult,
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
@@ -217,9 +237,11 @@ export type {
   TransitionWorkflowLifecycleResult,
   WorkflowLifecycleCommand,
 } from './authoring/workflow-authoring.js';
+export { WorkflowManualStartUnavailableError } from './execution/runs/workflow-run-errors.js';
 export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
+  WorkflowPublishedVersionConflictError,
   createWorkflowRunDatabase,
 } from './execution/runs/workflow-run-api.js';
 export type { WorkflowRunDatabase } from './execution/runs/workflow-run-api.js';

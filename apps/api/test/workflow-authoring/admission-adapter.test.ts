@@ -40,6 +40,25 @@ const draft = {
 };
 
 describe('authoring API admission adapter', () => {
+  it('binds portable destination CAS to full serving compatibility while retaining definition-selection identity', () => {
+    const compatibility = createCoreWorkflowCompatibility();
+    const options = createCoreAuthoringOptions(
+      compatibility.variants,
+      compatibility.readinessSupport.descriptions,
+      { validate: () => Promise.resolve(valid) },
+    );
+    for (const variant of options.compatibilityReleaseVariants) {
+      expect(variant.portableCatalog.fingerprint).toBe(
+        variant.definitionCatalog.releaseFingerprint,
+      );
+      expect(variant.portableCatalog.fingerprint).toBe(
+        variant.compatibilityRelease.fingerprint,
+      );
+      expect(variant.portableCatalog.selectionFingerprint([])).toMatch(
+        /^node-select:v1:sha256:[a-f0-9]{64}$/u,
+      );
+    }
+  });
   it('admits through the real compiled parser with the production release projection', async () => {
     const compatibility = createCoreWorkflowCompatibility();
     const validator = new WorkflowAuthoringValidator();

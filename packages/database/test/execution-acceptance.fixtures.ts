@@ -17,6 +17,7 @@ import {
   workflowRuns,
 } from '../src/schema.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
+import type { WorkspaceTransaction } from '../src/tenant-access/workspace.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -118,10 +119,24 @@ export function acceptanceInput(
     requestHash: requestHashOverride,
     ...(runInput === undefined ? {} : { runInput }),
     scope: `workflow:${workflowId}:manual`,
-    triggerType: 'manual',
+    // Generic admission tests exercise the API trigger. Explicit manual tests
+    // must use the serialized, current-authority manual command protocol.
+    triggerType: 'api',
     workflowId,
     workflowVersionId,
   } as const;
+}
+
+/** Explicit manual tests use the real serialized authority protocol, not a GUC bypass. */
+export async function lockManualFixtureStart(
+  transaction: WorkspaceTransaction,
+): Promise<void> {
+  await transaction.db.execute(
+    sql`select set_config('app.actor_id',${workspaceCreatorId},true)`,
+  );
+  await transaction.db.execute(
+    sql`select app.lock_manual_workflow_run_start(${workspaceCreatorId}::uuid,${workflowId}::uuid,${`workflow:${workflowId}:manual`},${keyHash})`,
+  );
 }
 
 export function initialCheckpoint() {
@@ -252,6 +267,11 @@ async function resetExecutionFixture(): Promise<void> {
     await client.query("select set_config('app.workspace_id',$1,true)", [
       workspaceA,
     ]);
+    await client.query(
+      `insert into app.workspace_memberships(workspace_id,user_id,role,status)
+      values($1,$2,'owner','active') on conflict(workspace_id,user_id) do update set status='active'`,
+      [workspaceA, workspaceCreatorId],
+    );
     await client.query(
       `update app.workspace_execution_entitlements set current_version=1
         where workspace_id=$1`,
@@ -389,7 +409,7 @@ export async function insertDirectPinnedRun(
         failure_notification_side_effect_class,
         failure_notification_connection_secret_version_id
       ) values (${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},
-        'manual','queued',1,${pin.destinationId},1,${pin.sideEffectClass},
+        'api','queued',1,${pin.destinationId},1,${pin.sideEffectClass},
         ${pin.secretVersionId})
     `,
       )

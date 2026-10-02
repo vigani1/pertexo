@@ -59,6 +59,15 @@ import {
   workflowDuplicationEvidenceSchema,
   verifyWorkflowDuplicationEvidence,
 } from './support/workflow-duplication-browser-evidence.js';
+import {
+  prepareWorkflowPortabilityBrowserFixture,
+  workflowPortabilityBrowserEvidenceSchema,
+  verifyWorkflowPortabilityBrowserEvidence,
+} from './support/workflow-portability-browser-fixture.js';
+import {
+  workflowInputCasesEvidenceSchema,
+  verifyWorkflowInputCasesEvidence,
+} from './support/workflow-input-cases-browser-evidence.js';
 
 const enabled = process.env.EDITOR_BROWSER_INTEGRATION === 'true';
 const scenario = z
@@ -71,6 +80,8 @@ const scenario = z
     'schedule',
     'webhook-controlled-http',
     'duplication',
+    'portability',
+    'input-cases',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -127,6 +138,21 @@ const browserEvidenceSchema = z.strictObject({
 let evidence: z.infer<typeof browserEvidenceSchema> | undefined;
 let duplicationEvidence:
   z.infer<typeof workflowDuplicationEvidenceSchema> | undefined;
+let portabilityFixture:
+  | Awaited<ReturnType<typeof prepareWorkflowPortabilityBrowserFixture>>
+  | undefined;
+let portabilityEvidence:
+  z.infer<typeof workflowPortabilityBrowserEvidenceSchema> | undefined;
+let inputCasesEvidence:
+  z.infer<typeof workflowInputCasesEvidenceSchema> | undefined;
+const inputCasesRolloutEvidenceSchema = z.strictObject({
+  workspaceId: z.uuid(),
+  workflowId: z.uuid(),
+  workflowVersionId: z.uuid(),
+  runIds: z.array(z.uuid()).length(4),
+});
+let inputCasesRolloutEvidence:
+  z.infer<typeof inputCasesRolloutEvidenceSchema> | undefined;
 let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
 let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
 let expressionEvidence:
@@ -468,6 +494,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       expect(response.statusCode, `${path}: ${response.payload}`).toBe(200);
     }
     const apiOrigin = await api.listen();
+    if (scenario === 'portability')
+      portabilityFixture = await prepareWorkflowPortabilityBrowserFixture(
+        api,
+        webOrigin,
+      );
     httpControl?.setApiOrigin(apiOrigin);
     const readiness = await fetch(`${apiOrigin}/health/ready`);
     expect(readiness.status).toBe(200);
@@ -477,6 +508,62 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     const mailServer = createServer((request, response) => {
       if (httpControl?.handle(request, response) === true) return;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+      if (
+        request.method === 'GET' &&
+        url.pathname === '/workflow-portability-seed' &&
+        scenario === 'portability' &&
+        portabilityFixture !== undefined
+      ) {
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify(portabilityFixture.scope));
+        return;
+      }
+      if (
+        request.method === 'POST' &&
+        url.pathname === '/workflow-portability-deny' &&
+        scenario === 'portability' &&
+        portabilityFixture !== undefined
+      ) {
+        void portabilityFixture.deny().then(
+          () => response.writeHead(204).end(),
+          () => response.writeHead(400).end(),
+        );
+        return;
+      }
+      if (
+        scenario === 'input-cases' &&
+        request.method === 'POST' &&
+        url.pathname === '/input-cases-rollout'
+      ) {
+        let body = '';
+        request.on('data', (chunk: Buffer) => {
+          body += chunk.toString();
+          if (body.length > 128) request.destroy();
+        });
+        request.on('end', () => {
+          void (async () => {
+            try {
+              const { enabled: casesEnabled } = z
+                .strictObject({ enabled: z.boolean() })
+                .parse(JSON.parse(body) as unknown);
+              await recheckOwnership();
+              // Test-only operator control on the attested disposable database;
+              // never a route or entitlement on the application API.
+              const changed = await api
+                .database()
+                .query(
+                  'update app.workflow_input_case_rollout set enabled=$1 where singleton',
+                  [casesEnabled],
+                );
+              expect(changed.rowCount).toBe(1);
+              response.writeHead(204).end();
+            } catch {
+              response.writeHead(400).end();
+            }
+          })();
+        });
+        return;
+      }
       if (
         request.method === 'POST' &&
         (url.pathname === '/browser-opened' ||
@@ -622,6 +709,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           url.pathname === '/evidence/run-recovery' ||
           url.pathname === '/evidence/expression-admission' ||
           url.pathname === '/evidence/duplication' ||
+          url.pathname === '/evidence/portability' ||
+          url.pathname === '/input-cases-evidence' ||
+          url.pathname === '/input-cases-rollout-evidence' ||
           url.pathname === '/evidence/readonly' ||
           url.pathname === '/evidence/schedule')
       ) {
@@ -633,7 +723,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         request.on('end', () => {
           try {
             const value: unknown = JSON.parse(body);
-            if (url.pathname === '/evidence' && scenario === 'nested-conflict')
+            if (
+              url.pathname === '/evidence/portability' &&
+              scenario === 'portability'
+            )
+              portabilityEvidence =
+                workflowPortabilityBrowserEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/evidence' &&
+              scenario === 'nested-conflict'
+            )
               evidence = browserEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/receipts' &&
@@ -657,6 +756,18 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             )
               duplicationEvidence =
                 workflowDuplicationEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/input-cases-evidence' &&
+              scenario === 'input-cases'
+            )
+              inputCasesEvidence =
+                workflowInputCasesEvidenceSchema.parse(value);
+            else if (
+              url.pathname === '/input-cases-rollout-evidence' &&
+              scenario === 'input-cases'
+            )
+              inputCasesRolloutEvidence =
+                inputCasesRolloutEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/readonly' &&
               scenario === 'readonly'
@@ -768,21 +879,25 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'duplication'
-              ? 'workflow-duplication.spec.ts'
-              : scenario === 'nested-conflict'
-                ? 'editor-execution.spec.ts'
-                : scenario === 'receipts'
-                  ? 'editor-receipts.spec.ts'
-                  : scenario === 'run-recovery'
-                    ? 'editor-run-recovery.spec.ts'
-                    : scenario === 'expression-admission'
-                      ? 'editor-expression-admission.spec.ts'
-                      : scenario === 'readonly'
-                        ? 'editor-readonly.spec.ts'
-                        : scenario === 'schedule'
-                          ? 'editor-schedule.spec.ts'
-                          : 'editor-webhook-controlled-http.spec.ts',
+            scenario === 'portability'
+              ? 'workflow-portability.spec.ts'
+              : scenario === 'input-cases'
+                ? 'workflow-input-cases.spec.ts'
+                : scenario === 'duplication'
+                  ? 'workflow-duplication.spec.ts'
+                  : scenario === 'nested-conflict'
+                    ? 'editor-execution.spec.ts'
+                    : scenario === 'receipts'
+                      ? 'editor-receipts.spec.ts'
+                      : scenario === 'run-recovery'
+                        ? 'editor-run-recovery.spec.ts'
+                        : scenario === 'expression-admission'
+                          ? 'editor-expression-admission.spec.ts'
+                          : scenario === 'readonly'
+                            ? 'editor-readonly.spec.ts'
+                            : scenario === 'schedule'
+                              ? 'editor-schedule.spec.ts'
+                              : 'editor-webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -802,6 +917,64 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'portability') {
+      if (portabilityFixture === undefined || portabilityEvidence === undefined)
+        throw new Error('Workflow portability evidence missing');
+      await verifyWorkflowPortabilityBrowserEvidence(
+        api.database(),
+        portabilityFixture.scope,
+        portabilityEvidence,
+      );
+      process.stdout.write(
+        `Live browser workflow portability evidence ${JSON.stringify(portabilityEvidence)}\n`,
+      );
+      return;
+    }
+    if (scenario === 'input-cases') {
+      if (inputCasesEvidence === undefined)
+        throw new Error('Workflow input cases evidence missing');
+      await verifyWorkflowInputCasesEvidence(
+        api.database(),
+        inputCasesEvidence,
+      );
+      if (inputCasesRolloutEvidence === undefined)
+        throw new Error(
+          'Default-off and rollback ordinary run evidence missing',
+        );
+      expect(new Set(inputCasesRolloutEvidence.runIds).size).toBe(4);
+      const ordinaryRuns = await api.database().query<{
+        id: string;
+        workflow_version_id: string;
+        status: string;
+        input_ref: unknown;
+      }>('select id,workflow_version_id,status,input_ref from app.workflow_runs where workspace_id=$1 and workflow_id=$2 order by id', [inputCasesRolloutEvidence.workspaceId, inputCasesRolloutEvidence.workflowId]);
+      expect(ordinaryRuns.rows).toHaveLength(4);
+      expect(ordinaryRuns.rows.map((run) => run.id).sort()).toEqual(
+        [...inputCasesRolloutEvidence.runIds].sort(),
+      );
+      for (const run of ordinaryRuns.rows)
+        expect(run).toMatchObject({
+          workflow_version_id: inputCasesRolloutEvidence.workflowVersionId,
+          status: 'succeeded',
+          input_ref: { kind: 'inline', value: { proof: 'f02-unchecked' } },
+        });
+      expect(
+        (
+          await api
+            .database()
+            .query<{ enabled: boolean }>(
+              'select enabled from app.workflow_input_case_rollout where singleton',
+            )
+        ).rows,
+      ).toEqual([{ enabled: false }]);
+      process.stdout.write(
+        `Live browser workflow input cases verified identities ${JSON.stringify(inputCasesEvidence)}\n`,
+      );
+      process.stdout.write(
+        `Live browser default-off and rollback ordinary runs verified identities ${JSON.stringify(inputCasesRolloutEvidence)}\n`,
+      );
+      return;
+    }
     if (scenario === 'duplication') {
       if (duplicationEvidence === undefined)
         throw new Error('Workflow duplication evidence missing');

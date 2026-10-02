@@ -11,6 +11,7 @@ import {
   workflowId,
   workspace,
   workspaceId,
+  workflowSummary,
   type Graph,
   type RemoteDraft,
 } from './workflow-editor-support';
@@ -89,6 +90,9 @@ test('tests a step, publishes v1, and follows the exact accepted run', async ({
 
   await page.getByRole('button', { name: 'Run', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Run published version' }).click();
+  await page
+    .getByRole('button', { name: 'Start published version', exact: true })
+    .click();
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${runId}`);
 });
 
@@ -221,9 +225,16 @@ async function installNodeTestRoute(page: Page, remote: RemoteDraft) {
 async function installPublishRoutes(page: Page, remote: RemoteDraft) {
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/publish`,
-    (route) => {
+    async (route) => {
       expect(route.request().headers()['if-match']).toBe(currentEtag(remote));
       expect(route.request().headers()['idempotency-key']).toBeTruthy();
+      await page.route(
+        `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+        (summaryRoute) =>
+          summaryRoute.fulfill({
+            json: workflowSummary('Customer onboarding', versionId),
+          }),
+      );
       return route.fulfill({
         json: { version: version(remote.graph, 'b'), reused: false },
       });

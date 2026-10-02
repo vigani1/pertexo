@@ -484,7 +484,7 @@ describe.each([
 describe('database compatibility and readiness', () => {
   it('verifies bounded steady-state migration, PostgreSQL, and role readiness', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0129_workflow_duplication.sql',
+      migrationHead: '0132_workflow_portability.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

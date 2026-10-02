@@ -1,7 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { CompatibilityReleaseMismatchError } from '../src/compatibility/compatibility-release.js';
@@ -10,11 +18,14 @@ import {
   WorkspaceRunAdmissionDeniedError,
 } from '../src/execution/runs/execution-acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { checkDatabaseReadiness } from '../src/platform/readiness.js';
+import { WorkflowManualStartUnavailableError } from '../src/execution/runs/workflow-run-errors.js';
 import {
   createWorkflowRunDatabase,
   WorkflowRunNotFoundError,
   WorkflowRunNotExecutableError,
   WorkflowRunReadCapacityError,
+  WorkflowPublishedVersionConflictError,
 } from '../src/execution/runs/workflow-run-api.js';
 import type { ExecutionStateConflictError } from '../src/execution/runs/execution-state.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
@@ -215,6 +226,7 @@ async function apiQueryWithIndexPreference(
 }
 
 async function resetFixture(): Promise<void> {
+  await ownerQuery('update app.workflow_input_case_rollout set enabled=true');
   await ownerQuery(`
     truncate table
       app.audit_events,
@@ -250,6 +262,17 @@ async function resetFixture(): Promise<void> {
       `run-api-other-${otherWorkspaceId}`,
       actorId,
     ],
+  );
+  await ownerQuery(
+    `insert into app.workspace_memberships (workspace_id,user_id,role,status)
+     values ($1,$2,'owner','active')`,
+    [workspaceId, actorId],
+  );
+  await ownerQuery(
+    `insert into app.workspace_memberships (workspace_id,user_id,role,status)
+     values ($1,$2,'owner','active')`,
+    [otherWorkspaceId, actorId],
+    otherWorkspaceId,
   );
   await ownerQuery(
     `insert into app.workflows
@@ -355,6 +378,44 @@ afterAll(async () => {
 });
 
 describe('workflow run API persistence', () => {
+  it.each([
+    [
+      'alter table app.workflow_runs disable trigger manual_start_writer_fence',
+      'alter table app.workflow_runs enable trigger manual_start_writer_fence',
+    ],
+    [
+      'grant select on app.workflow_manual_start_rejections to pertexo_worker',
+      'revoke select on app.workflow_manual_start_rejections from pertexo_worker',
+    ],
+    [
+      'create policy test_manual_receipt_bypass on app.workflow_manual_start_rejections to pertexo_api using(true)',
+      'drop policy test_manual_receipt_bypass on app.workflow_manual_start_rejections',
+    ],
+    [
+      'grant update on app.workflow_input_case_rollout to pertexo_api',
+      'revoke update on app.workflow_input_case_rollout from pertexo_api',
+    ],
+    [
+      'alter function app.lock_manual_workflow_run_start(uuid,uuid,text,text) set search_path=pg_catalog,public',
+      'alter function app.lock_manual_workflow_run_start(uuid,uuid,text,text) set search_path=pg_catalog,pg_temp',
+    ],
+  ])('rejects checked-start startup drift: %s', async (tamper, restore) => {
+    await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
+      migrationHead: '0132_workflow_portability.sql',
+    });
+    await ownerQuery(tamper);
+    try {
+      await expect(checkDatabaseReadiness(api)).rejects.toThrow(
+        'Published workflow execution schema is incompatible',
+      );
+    } finally {
+      await ownerQuery(restore);
+    }
+    await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
+      migrationHead: '0132_workflow_portability.sql',
+    });
+  });
+
   it('counts filtered rows as plan work even when a scan emits no rows', () => {
     expect(
       explainWork({
@@ -745,6 +806,264 @@ describe('workflow run API persistence', () => {
     } finally {
       await drifted.close();
     }
+  });
+
+  it('disables new checked commands during rollback while preserving unchecked manual admission', async () => {
+    await ownerQuery(
+      'update app.workflow_input_case_rollout set enabled=false',
+    );
+    await expect(
+      database.start({
+        ...startInput(),
+        expectedPublishedVersionId: workflowVersionId,
+      }),
+    ).rejects.toBeInstanceOf(WorkflowManualStartUnavailableError);
+    await expect(database.start(startInput())).resolves.toMatchObject({
+      replayed: false,
+    });
+    expect(
+      (
+        await ownerQuery(
+          'select count(*)::int count from app.workflow_manual_start_rejections',
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+  });
+
+  it('commits a stale rejection, preserves it after republication, and conflicts on changed intent', async () => {
+    const input = {
+      ...startInput(),
+      expectedPublishedVersionId: retainedWorkflowVersionId,
+    };
+    await expect(database.start(input)).rejects.toBeInstanceOf(
+      WorkflowPublishedVersionConflictError,
+    );
+    await ownerQuery(
+      'update app.workflows set published_version_id=$2 where id=$1',
+      [workflowId, retainedWorkflowVersionId],
+    );
+    await ownerQuery(
+      'update app.workflow_input_case_rollout set enabled=false',
+    );
+    await expect(database.start(input)).rejects.toBeInstanceOf(
+      WorkflowPublishedVersionConflictError,
+    );
+    await expect(
+      database.start({ ...input, requestHash: digest('changed-intent') }),
+    ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
+    const effects = await ownerQuery(`select
+      (select count(*)::int from app.workflow_runs) runs,
+      (select count(*)::int from app.run_checkpoints) checkpoints,
+      (select count(*)::int from app.outbox_events) outbox,
+      (select count(*)::int from app.workflow_manual_start_rejections) rejections`);
+    expect(effects.rows).toEqual([
+      { runs: 0, checkpoints: 0, outbox: 0, rejections: 1 },
+    ]);
+  });
+
+  it('recovers accepted checked duplicate requests before publication change', async () => {
+    const input = {
+      ...startInput(),
+      expectedPublishedVersionId: workflowVersionId,
+    };
+    const accepted = await database.start(input);
+    await ownerQuery(
+      'update app.workflows set published_version_id=$2 where id=$1',
+      [workflowId, retainedWorkflowVersionId],
+    );
+    await ownerQuery(
+      'update app.workflow_input_case_rollout set enabled=false',
+    );
+    const duplicates = await Promise.all(
+      Array.from({ length: 4 }, () => database.start(input)),
+    );
+    expect(duplicates).toEqual(
+      Array.from({ length: 4 }, () => ({ ...accepted, replayed: true })),
+    );
+    expect(
+      (
+        await ownerQuery(
+          'select count(*)::int count from app.workflow_manual_start_rejections',
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+  });
+
+  it('serializes concurrent new checked starts to one acceptance and rechecks current run capability', async () => {
+    const input = {
+      ...startInput(),
+      expectedPublishedVersionId: workflowVersionId,
+    };
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => database.start(input)),
+    );
+    expect(new Set(results.map((result) => result.run.id)).size).toBe(1);
+    expect(results.filter((result) => !result.replayed)).toHaveLength(1);
+    await ownerQuery(
+      "update app.workspace_memberships set role='viewer' where workspace_id=$1 and user_id=$2",
+      [workspaceId, actorId],
+    );
+    await expect(database.start(input)).rejects.toBeInstanceOf(
+      WorkflowRunNotFoundError,
+    );
+    await ownerQuery(
+      "update app.workspace_memberships set role='operator' where workspace_id=$1 and user_id=$2",
+      [workspaceId, actorId],
+    );
+    await expect(database.start(input)).resolves.toMatchObject({
+      run: { id: results[0]?.run.id },
+      replayed: true,
+    });
+  });
+
+  it('fences a legacy manual writer and releases a rejected key only after bounded expiry cleanup', async () => {
+    await expect(
+      apiQuery(
+        `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
+      values($1,$2,$3,$4,'manual','queued')`,
+        [randomUUID(), workspaceId, workflowId, workflowVersionId],
+      ),
+    ).rejects.toMatchObject({ code: 'PTM01' });
+    const input = {
+      ...startInput(),
+      expectedPublishedVersionId: retainedWorkflowVersionId,
+    };
+    await expect(database.start(input)).rejects.toBeInstanceOf(
+      WorkflowPublishedVersionConflictError,
+    );
+    await ownerQuery(
+      "update app.workflow_manual_start_rejections set expires_at=clock_timestamp()-interval '1 second'",
+    );
+    expect(
+      (await ownerQuery('select app.prune_manual_start_rejections(100) count'))
+        .rows,
+    ).toEqual([{ count: 1 }]);
+    await ownerQuery(
+      'update app.workflows set published_version_id=$2 where id=$1',
+      [workflowId, retainedWorkflowVersionId],
+    );
+    await expect(
+      database.start({
+        ...input,
+        checkpointFactory: () => ({
+          engineVersion: 'phase3-engine-v1',
+          checkpoint: checkpoint(retainedWorkflowVersionId),
+        }),
+      }),
+    ).resolves.toMatchObject({
+      replayed: false,
+      run: { workflowVersionId: retainedWorkflowVersionId },
+    });
+  });
+
+  it('holds publication through acceptance and recovers a concurrently blocked exact duplicate', async () => {
+    await ownerQuery(`create function app.test_manual_start_pause() returns trigger language plpgsql as $$
+      begin perform pg_advisory_xact_lock(1934781132); return new; end $$;
+      create trigger zzz_test_manual_start_pause before insert on app.workflow_runs
+        for each row execute function app.test_manual_start_pause()`);
+    const gate = await owner.connect();
+    const publicationPool = new Pool({
+      connectionString: migrationUrl,
+      max: 1,
+    });
+    const publisher = await publicationPool.connect();
+    let first: ReturnType<typeof database.start> | undefined;
+    let duplicate: ReturnType<typeof database.start> | undefined;
+    let publication: Promise<QueryResult> | undefined;
+    try {
+      await gate.query('select pg_advisory_lock(1934781132)');
+      const input = {
+        ...startInput(),
+        expectedPublishedVersionId: workflowVersionId,
+      };
+      first = database.start(input);
+      await vi.waitFor(
+        async () => {
+          const waiting = await apiQuery(
+            "select count(*)::int count from pg_stat_activity where usename='pertexo_api' and wait_event='advisory'",
+          );
+          expect(waiting.rows[0]?.count).toBeGreaterThanOrEqual(1);
+        },
+        { timeout: 3000 },
+      );
+      duplicate = database.start(input);
+      await publisher.query('begin');
+      await publisher.query('set local role pertexo_owner');
+      await publisher.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      publication = publisher.query(
+        'update app.workflows set published_version_id=$2 where id=$1',
+        [workflowId, retainedWorkflowVersionId],
+      );
+      await vi.waitFor(
+        async () => {
+          const waiting = await apiQuery(
+            "select count(*)::int count from pg_stat_activity where usename='pertexo_api' and wait_event='advisory'",
+          );
+          expect(waiting.rows[0]?.count).toBeGreaterThanOrEqual(2);
+        },
+        { timeout: 3000 },
+      );
+      await gate.query('select pg_advisory_unlock(1934781132)');
+      const accepted = await first;
+      await publication;
+      await publisher.query('commit');
+      expect(await duplicate).toEqual({ ...accepted, replayed: true });
+      expect(accepted.run.workflowVersionId).toBe(workflowVersionId);
+      expect(
+        (await apiQuery('select count(*)::int count from app.workflow_runs'))
+          .rows,
+      ).toEqual([{ count: 1 }]);
+    } finally {
+      await gate.query('select pg_advisory_unlock(1934781132)');
+      if (publication !== undefined) await publication.catch(() => undefined);
+      await publisher.query('rollback').catch(() => undefined);
+      await Promise.allSettled([
+        ...(first === undefined ? [] : [first]),
+        ...(duplicate === undefined ? [] : [duplicate]),
+      ]);
+      publisher.release();
+      gate.release();
+      await publicationPool.end();
+      await ownerQuery(
+        'drop trigger zzz_test_manual_start_pause on app.workflow_runs; drop function app.test_manual_start_pause()',
+      );
+    }
+  });
+
+  it('rejects a checked command when publication commits before its authoritative lock', async () => {
+    const publishing = await owner.connect();
+    let attempted: ReturnType<typeof database.start> | undefined;
+    try {
+      await publishing.query('begin');
+      await publishing.query('set local role pertexo_owner');
+      await publishing.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      await publishing.query(
+        'update app.workflows set published_version_id=$2 where id=$1',
+        [workflowId, retainedWorkflowVersionId],
+      );
+      attempted = database.start({
+        ...startInput(),
+        expectedPublishedVersionId: workflowVersionId,
+      });
+      // Attach the rejection observer before releasing publication.
+      const rejected = expect(attempted).rejects.toBeInstanceOf(
+        WorkflowPublishedVersionConflictError,
+      );
+      await publishing.query('commit');
+      await rejected;
+    } finally {
+      await publishing.query('rollback').catch(() => undefined);
+      if (attempted !== undefined) await attempted.catch(() => undefined);
+      publishing.release();
+    }
+    expect(
+      (await apiQuery('select count(*)::int count from app.workflow_runs'))
+        .rows,
+    ).toEqual([{ count: 0 }]);
   });
 
   it('atomically starts, exactly replays, reads, and cancels one published V2 run', async () => {

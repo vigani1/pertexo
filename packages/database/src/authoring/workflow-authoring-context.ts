@@ -4,7 +4,11 @@ import type {
   WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 
-import type { WorkflowAuthoringTestHooks } from './workflow-authoring-types.js';
+import type { WorkflowPortabilityCatalog } from '@pertexo/workflow-model/portability';
+import type {
+  WorkflowAuthoringGraphValidator,
+  WorkflowAuthoringTestHooks,
+} from './workflow-authoring-types.js';
 
 /** Variable transaction, authority and compatibility seams shared by writes. */
 export type WorkflowAuthoringWriteContext = Readonly<{
@@ -23,6 +27,8 @@ export type WorkflowAuthoringWriteContext = Readonly<{
     Readonly<{
       definitionCatalog: WorkflowDefinitionCatalogV1;
       placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;
+      portableCatalog: WorkflowPortabilityCatalog | undefined;
+      validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
     }>
   >;
   testHooks?: WorkflowAuthoringTestHooks;

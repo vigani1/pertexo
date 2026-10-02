@@ -29,3 +29,30 @@ export class WorkflowNameRevisionConflictError extends Error {
 export class WorkflowIdempotencyConflictError extends Error {
   public override readonly name = 'WorkflowIdempotencyConflictError';
 }
+
+export class WorkflowPortabilityUnavailableError extends Error {
+  public override readonly name = 'WorkflowPortabilityUnavailableError';
+}
+
+export class WorkflowPortabilityCompatibilityConflictError extends Error {
+  public override readonly name =
+    'WorkflowPortabilityCompatibilityConflictError';
+}
+
+export class WorkflowPortabilityReviewConflictError extends Error {
+  public override readonly name = 'WorkflowPortabilityReviewConflictError';
+}
+
+export class WorkflowPortabilityValidationError extends Error {
+  public override readonly name = 'WorkflowPortabilityValidationError';
+  public constructor(
+    public readonly issues: readonly Readonly<{
+      code: string;
+      path: string;
+      message: string;
+    }>[],
+    public readonly truncated = false,
+  ) {
+    super('Workflow portability input is not compatible');
+  }
+}

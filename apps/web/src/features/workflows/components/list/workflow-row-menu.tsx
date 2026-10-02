@@ -140,6 +140,11 @@ export function WorkflowRowMenu({
           Settings
         </DropdownMenuLinkItem>
         <DropdownMenuSeparator />
+        {can('workflow:read') && actions.onExport !== undefined ? (
+          <DropdownMenuItem onClick={() => actions.onExport?.(workflow)}>
+            Export saved draft…
+          </DropdownMenuItem>
+        ) : null}
         {canDuplicateWorkflow(workspace, workflow) &&
         actions.onDuplicate !== undefined ? (
           <DropdownMenuItem onClick={() => actions.onDuplicate?.(workflow)}>

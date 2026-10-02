@@ -18,6 +18,36 @@ test('registers the process error classification leaf consumer', () => {
   );
 });
 
+test('proves portable contracts are browser-safe and portable policy remains server-only', () => {
+  for (const specifier of [
+    '@pertexo/contracts/schemas/workflow-portability',
+    '@pertexo/workflow-model/portability-contract',
+  ])
+    assert.ok(
+      BUILT_PACKAGE_CONSUMER_CASES.some(
+        (entry) =>
+          entry.specifier === specifier &&
+          entry.conditions?.includes('browser') &&
+          entry.expected === undefined,
+      ),
+    );
+  assert.ok(
+    BUILT_PACKAGE_CONSUMER_CASES.some(
+      (entry) =>
+        entry.specifier === '@pertexo/workflow-model/portability' &&
+        entry.conditions?.includes('browser') &&
+        entry.expected === 'browser-rejected',
+    ),
+  );
+  assert.ok(
+    BUILT_PACKAGE_CONSUMER_CASES.some(
+      (entry) =>
+        entry.specifier === '@pertexo/workflow-model/portability' &&
+        entry.conditions === undefined,
+    ),
+  );
+});
+
 test('registers every database role surface and rejects broad paths', () => {
   const databaseCases = BUILT_PACKAGE_CONSUMER_CASES.filter(
     ({ packageDirectory }) => packageDirectory === 'packages/database',

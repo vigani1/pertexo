@@ -18,6 +18,10 @@ describe('browser contract consumer bundle', () => {
       'workspaces',
       'workflows',
       'workflowRun',
+      'workflowPortable',
+      'workflowPortablePreview',
+      'parsePortableJson',
+      'portableGraphDigest',
       'webhooks',
       'workspaceInbox',
     ]);
@@ -73,6 +77,17 @@ describe('browser contract consumer bundle', () => {
     expect(moduleIds.some((id) => id.endsWith('/http/workflow-runs.js'))).toBe(
       true,
     );
+    expect(
+      moduleIds.some((id) => id.endsWith('/http/workflow-portability.js')),
+    ).toBe(true);
+    expect(
+      moduleIds.some((id) => id.endsWith('/portability-contract.js')),
+    ).toBe(true);
+    expect(
+      moduleIds.some((id) =>
+        /\/node-catalog\/|\/workflow-engine\/|\/portability\.js$/u.test(id),
+      ),
+    ).toBe(false);
     expect(moduleIds.some((id) => id.endsWith('/http/webhooks.js'))).toBe(true);
     expect(
       moduleIds.some((id) => id.endsWith('/http/workspace-inbox.js')),

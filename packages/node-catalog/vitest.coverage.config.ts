@@ -10,7 +10,7 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/node-catalog',
       include: [
-        'src/{definition-resolution,registry,server}.ts',
+        'src/{definition-resolution,portable-definition-policy,registry,server}.ts',
         'src/server-only.ts',
       ],
       thresholds: {

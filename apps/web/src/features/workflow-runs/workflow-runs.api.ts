@@ -111,6 +111,7 @@ export function startWorkflowRun(
   input: Readonly<{
     value?: unknown;
     deadlineAt?: string;
+    expectedPublishedVersionId?: string;
     idempotencyKey: string;
   }>,
 ): Promise<WorkflowRunStartResponse> {
@@ -123,6 +124,9 @@ export function startWorkflowRun(
       ...(input.deadlineAt === undefined
         ? {}
         : { deadlineAt: input.deadlineAt }),
+      ...(input.expectedPublishedVersionId === undefined
+        ? {}
+        : { expectedPublishedVersionId: input.expectedPublishedVersionId }),
     }),
     response: {
       kind: 'json',

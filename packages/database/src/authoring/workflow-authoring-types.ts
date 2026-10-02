@@ -1,4 +1,5 @@
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import type { WorkflowPortabilityCatalog } from '@pertexo/workflow-model/portability';
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
 import type {
   WorkflowDefinitionCatalogV1,
@@ -7,6 +8,19 @@ import type {
 } from '@pertexo/workflow-model/graph';
 
 export type WorkflowAuthoringTestHooks = Readonly<{
+  /** Integration-only ordered-lock and atomic rollback seam. */
+  afterImportStep?: (
+    step:
+      | 'authority'
+      | 'claim'
+      | 'catalog'
+      | 'connections'
+      | 'workflow'
+      | 'draft'
+      | 'audit'
+      | 'idempotency',
+  ) => Promise<void>;
+  afterExportSourceLock?: () => Promise<void>;
   /** Integration-only synchronization/fault seam; omitted in runtime composition. */
   afterDuplicateStep?: (
     step: 'claim' | 'source' | 'workflow' | 'draft' | 'audit' | 'idempotency',
@@ -55,6 +69,7 @@ export type WorkflowAuthoringGraphValidator = (
 ) => Promise<GraphValidationResult>;
 
 type WorkflowAuthoringCompatibilityVariant = Readonly<{
+  portableCatalog?: WorkflowPortabilityCatalog;
   compatibilityRelease: CompatibilityReleaseExpectation;
   definitionCatalog: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog: WorkflowDefinitionCatalogV1;
@@ -63,6 +78,7 @@ type WorkflowAuthoringCompatibilityVariant = Readonly<{
 }>;
 
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
+  portableCatalog?: WorkflowPortabilityCatalog;
   compatibilityRelease?: CompatibilityReleaseExpectation;
   compatibilityReleaseVariants?: readonly WorkflowAuthoringCompatibilityVariant[];
   compatibilityReadinessReleases?: readonly CompatibilityReleaseExpectation[];

@@ -13,6 +13,49 @@ import type {
 import type { GraphValidationResult } from '@pertexo/workflow-model/graph';
 import type { WorkflowAutoPauseDatabase } from './workflow-auto-pause.js';
 import type { WorkflowConcurrencyDatabase } from './workflow-concurrency.js';
+import type {
+  WorkflowPortableManifest,
+  PortableConnectionBinding,
+  PortableIssue,
+} from '@pertexo/workflow-model/portability-contract';
+
+export type ExportWorkflowInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  workflowId: string;
+  source:
+    | Readonly<{ kind: 'draft' }>
+    | Readonly<{ kind: 'version'; versionId: string }>;
+  reviewedGraphDigest: string;
+  representationTag?: string;
+  requestId?: string;
+  traceId?: string;
+  signal?: AbortSignal;
+}>;
+export type PreviewWorkflowImportInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  manifest: WorkflowPortableManifest;
+  bindings: readonly PortableConnectionBinding[];
+  requestId?: string;
+  traceId?: string;
+  signal?: AbortSignal;
+}>;
+export type PreviewWorkflowImportResult = Readonly<{
+  manifestDigest: string;
+  compatibilityFingerprint: string;
+  compatible: boolean;
+  issues: readonly PortableIssue[];
+  truncated: boolean;
+  connectionSlots: WorkflowPortableManifest['connectionSlots'];
+}>;
+export type ImportWorkflowInput = PreviewWorkflowImportInput &
+  Readonly<{
+    name: string;
+    expectedCompatibilityFingerprint: string;
+    idempotencyKey: string;
+  }>;
+export type ImportWorkflowResult = Readonly<{ workflowId: string }>;
 
 export type CreateWorkflowInput = Readonly<{
   id?: string;
@@ -135,6 +178,11 @@ export type RenameWorkflowResult = Readonly<{
 }>;
 
 export type WorkflowAuthoringDatabase = Readonly<{
+  exportWorkflow(input: ExportWorkflowInput): Promise<WorkflowPortableManifest>;
+  previewWorkflowImport(
+    input: PreviewWorkflowImportInput,
+  ): Promise<PreviewWorkflowImportResult>;
+  importWorkflow(input: ImportWorkflowInput): Promise<ImportWorkflowResult>;
   acceptPreview(
     input: AcceptPreviewRunInput & Readonly<{ workspaceId: string }>,
   ): Promise<AcceptedPreviewRun>;

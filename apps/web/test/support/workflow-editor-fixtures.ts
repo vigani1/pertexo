@@ -158,6 +158,9 @@ export function editorHandlers(
       HttpResponse.json({ items: [scoped], nextCursor: null }),
     ),
     workflowSummaryHandler('Test workflow', null),
+    http.get(`${workflowApi}/input-cases`, () =>
+      HttpResponse.json({ items: [] }),
+    ),
     http.get(`${api}/node-definitions`, () =>
       HttpResponse.json({ schemaVersion: 1, release, items: definitions }),
     ),
@@ -355,6 +358,13 @@ const runApi = `${api}/workspaces/${workspaceId}/runs/${runId}`;
 
 /** Run ▾ → Run with input… */
 export async function openRunLens(event: UserEvent) {
+  const recover = screen.queryByRole('button', {
+    name: 'Recover unconfirmed run',
+  });
+  if (recover !== null) {
+    await event.click(recover);
+    return;
+  }
   await event.click(await screen.findByRole('button', { name: 'Run' }));
   await event.click(
     await screen.findByRole('menuitem', { name: 'Run with input…' }),

@@ -264,7 +264,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0129_workflow_duplication.sql',
+          migrationHead: '0132_workflow_portability.sql',
           role: expectedRole,
         });
       } finally {
@@ -325,7 +325,7 @@ describe('execution value persistence migration', () => {
             `insert into app.workflow_runs
              (id, workspace_id, workflow_id, workflow_version_id, trigger_type,
               status, input_ref, input_ref_expires_at)
-           values ($1, $2, $3, $4, 'manual', 'queued', $5::jsonb,
+           values ($1, $2, $3, $4, 'api', 'queued', $5::jsonb,
                    now() + interval '30 days')`,
             [
               randomUUID(),
@@ -352,7 +352,7 @@ describe('execution value persistence migration', () => {
             `insert into app.workflow_runs
              (id, workspace_id, workflow_id, workflow_version_id, trigger_type,
               status, input_ref, input_ref_expires_at)
-           values ($1, $2, $3, $4, 'manual', 'queued', $5::jsonb,
+           values ($1, $2, $3, $4, 'api', 'queued', $5::jsonb,
                    now() + interval '30 days')`,
             [
               randomUUID(),

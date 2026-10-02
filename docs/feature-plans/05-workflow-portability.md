@@ -2,13 +2,21 @@
 
 Status: same-workspace duplication first slice independently reviewed, merged
 and qualified under ADR060 through PR142; broader F05 is not complete.
-Import/export remain proposed.
+Import/export is approved and implemented under accepted
+ADR062. Format, persistence, authenticated HTTP and rendered UI are implemented
+in the dedicated portability worktree. Frozen-source local qualification passes
+at `5ada95ea`; later frontend repairs are independently reviewed at `ba997c39`.
+Combined upstream migration qualification passes on tree `af76b53e`, recorded
+as normal integration commit `780a1542`. Hosted integration remains open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New cross-stack authoring slice. Relative size: **M–L**, not a calendar estimate.
 
 ## Outcome
 
-Move or reuse workflow structure safely, without copying secrets, workspace IDs or historical executions.
+Move or reuse reviewed workflow structure without secret-store reads, source
+resource metadata or historical executions. Authored literal strings can contain
+private content and are deliberately preserved; export is not arbitrary-secret
+redaction.
 
 ## Current implementation and evidence
 
@@ -43,6 +51,15 @@ This closes first-slice implementation qualification, not production activation
 or the rest of F05.
 
 ## Dependencies and planning gate
+
+The next slice is specified in accepted
+[ADR062](../adr/062-portable-workflow-authoring.md). It reconciles current main
+`228a692dda5f67e7256be88ff496c8810ddc36f9` without depending on PR144's pending
+input-case release. On 2026-10-01 the manager accepted deliberately reviewed
+literal-content export with fail-closed known credential checks after independent
+Standards/Spec reviews reported zero findings on `228a692d...d8ddc152`. Current
+generic JSON configuration does not provide automatic secret classification.
+The manager authorized the cohesive vertical slice; qualification remains open.
 
 01; manifest format chosen before 06. No dependency on file uploads.
 
@@ -176,7 +193,7 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 ## First-slice delivery tracker
 
 These criteria apply only to same-workspace Duplicate workflow. Import/export,
-templates and cross-workspace copy remain unimplemented; production activation
+templates and portable import/export are outside this first-slice tracker; production activation
 remains unauthorized. Completing this tracker does not complete broader F05.
 
 - [x] First-slice baseline reconciled against current authoring/model owners.
@@ -210,3 +227,134 @@ reran all 26 focused duplication tests successfully. Earlier service-backed
 local evidence remains bound to `06ca64c1`, not claimed as a local rerun on the
 repaired head. Hosted exact-head and natural-main evidence above completes this
 first slice; it does not complete import/export or authorize production activation.
+
+## Portable import/export delivery tracker
+
+Accepted [ADR062](../adr/062-portable-workflow-authoring.md) is the contract for
+this slice, based on main `228a692dda5f67e7256be88ff496c8810ddc36f9`.
+Qualification is separate from the earlier duplication evidence above.
+
+- [x] Literal-content review policy, manifest V1, explicit slot bindings,
+      compatibility CAS, authority and lock ordering accepted before code.
+- [x] Browser-safe bounded JSON/manifest contract and server-only registered
+      configuration policy implemented; model/catalog focused and full suites pass.
+- [x] Atomic default-off persistence and authenticated HTTP implemented; initial
+      enabled real PostgreSQL and HTTP probes pass.
+- [x] Saved-draft and selected-version export plus explicit import preview,
+      rebinding and ephemeral manual recovery controls implemented.
+- [x] Ordinary HTTP/database integration and a strict, owned real-browser CI
+      lane assigned without optional flags or zero-minimum reports.
+- [x] Connection/catalog/authority races and receipt hold/expiry/purge evidence
+      closed on the final implementation source.
+- [x] Enabled two-workspace browser/API/database/worker acceptance and safe
+      owned-fixture teardown recorded on the final implementation source.
+- [x] Repository/static checks and source-bound coverage qualified on the exact
+      implementation candidate.
+- [x] Independent standards/spec implementation reviews and combined upstream
+      migration history qualification closed on the integration candidate.
+- [ ] Required reviewed-head checks, merge and natural-main result inspected.
+
+Implementation evidence so far: `c83e21a0` adds the bounded format and registered
+policy. The full model suite passes 192 tests and the catalog suite 79; their
+coverage exceeds unchanged thresholds. The initial authenticated HTTP probe
+passes three cases, including route-specific byte rejection and reader behavior
+with the writer gate disabled. Those evolving-worktree probes are not final-head
+qualification. Production activation, templates, dependency bundles, competitor
+formats, automatic publishing/running and arbitrary-secret redaction remain
+unauthorized or out of scope.
+
+Backend behavior is committed at `46958e93`; UI, explicit rebinding and its
+required CI browser owner at `fe4a7ec8`. Focused real PostgreSQL evidence passes
+38 tests, hardened authenticated HTTP three tests, and final frontend unit
+evidence 858 tests. The real two-workspace browser/API/database/worker journey
+passes on the evolving UI candidate: both saved-draft and selected-version
+downloads preserve reviewed structure, explicit binding uses only the chosen
+destination account, a destination-only edit leaves its source unchanged,
+core-only import is explicitly published and executes successfully, and
+membership loss clears sensitive client state. The download issue was isolated
+to prototype-sensitive registered-config equality and repaired with a red/green
+regression at `457180e4`. A delayed-query keyboard regression distinguishes
+connection discovery from selection; no eligibility or security checks were
+weakened. Broad database qualification discovered two stale migration support
+suffixes, corrected at `60fd2619`; the original failed report is retained.
+These are pre-freeze evidence, not a claim of final-head or hosted qualification.
+
+Pre-review local qualification is bound to implementation head `5ada95ea`,
+followed by documentation candidate `a0d69f57`. `pnpm check` and
+`pnpm test:coverage` pass on unchanged, clean source. Coverage provenance binds
+24 cohorts to
+`sha256:49c26dc5db2c6466e2d5a918aa21d374f65eadd964239956131dc695dfa002ba`;
+the strict risk report has zero unreviewed branches (391 reviewed
+uncovered branches). Full database integration passes 854 cases across 111 files,
+with zero skips and unchanged thresholds; database unit coverage passes 892.
+The database source tree remains unchanged between its final `cbdfd86e` run and
+`5ada95ea`. Fresh exact-head authenticated HTTP passes three cases and the owned
+real browser journey one. All 91 ordinary mock browser cases pass across
+Chromium, Firefox and WebKit; its web source tree remains unchanged at the final
+implementation head. Final ordinary suites include 1,849 API, 903 worker and 858
+web tests. Task-owned databases and both isolated fixture projects were removed
+after exact ownership and zero-client checks; unrelated containers, user data
+and the existing API/web processes are unchanged.
+
+Qualification failures are retained, not waived. An existing mail retry fixture
+was made explicitly due after proving its host/PG submillisecond clock boundary;
+the unchanged webhook browser case passed after contention was removed. The
+coverage gate exposed reachable authority/parser test gaps and a dead nested
+schema-projection callback; `5ada95ea` adds the regressions and removes that
+callback without changing generated contracts. Three Fastify default fallbacks
+are narrowly reviewed against the pinned real framework and its eager defaults.
+React Doctor's final changed scan reports 89; its full scan remains 78, matching
+the prior comparable full scan. Loading-reset findings point inside `finally`,
+and the source/authority-dependent export effect is intentional; component
+size/control-flow advisories remain review notes. No rule suppression, test or
+performance threshold relaxation, hook bypass, push, hosted-CI or merge claim is
+made. Independent implementation review and the `0130`/`0131` plus `0132` combined
+upstream migration history remain open; production activation is unauthorized.
+
+### Independent-review repair (2026-10-02)
+
+The independent Spec review found that dialog dismissal unmounted the scoped
+import command, discarding its frozen request/key after an uncertain response.
+Three actual-page regressions reproduced lost-response Close/reopen, dismissal
+while a POST is held, and hidden authority loss followed by a late acceptance.
+The repair keeps the keyed import session mounted while its presentation closes;
+reopening exposes the same unresolved/confirmed command without an automatic
+POST. Same-workspace route departure is protected while sending/uncertain;
+session/workspace departure and authority loss remain allowed and late results
+are fenced. Browser closing/reloading warns but cannot durably retain memory.
+
+The independent Standards review also required the command hook with cache
+effects to live in the feature mutation module. It now belongs to
+`workflow-portability.mutations.ts`; view lifetime and departure presentation
+remain separate. Neither repair changes backend persistence, F05 wire contracts,
+graph identity policy or migration history, nor requires a new ADR.
+
+The broad `5ada95ea`/`a0d69f57` receipt above remains historical qualification,
+not an exact-source rerun claim for this repair. Repair-specific checks and the
+manager's final inspection must close before push/release; combined migrations,
+hosted checks and natural-main verification remain independently open.
+
+Repair-local verification passes 17 focused portability/recovery tests and all
+866 web unit tests across 115 files, plus web typecheck/lint/build, repository
+ownership/dependency and complexity checks. The focused Chromium mock browser
+journey verifies held-request dismissal, exact recovery, same-workspace departure
+protection and confirmed reopen without another POST. Its initially missing
+statistics mock returned 401; a contract-valid scoped fixture corrected the
+test boundary without weakening authority retirement. Late-result tests await
+settlement after authority, session and workspace departure. React Doctor stays
+at changed-source 89/full-app 78 with unchanged advisory counts. These checks
+do not relabel the earlier service-backed acceptance as a repaired-head rerun.
+
+The manager accepted `169b776`'s two original fixes after independently rerunning
+17 focused tests, then identified a confirmed-state usability regression:
+Close/reopen could recover the known destination but not deliberately import
+another file without leaving the route. The narrow follow-up adds Start another
+import only for a definitively confirmed, currently authorized session. Fresh
+authority verification precedes clearing private setup, validation, native file
+input and the confirmed attempt; reset sends no POST. A new key is allocated only
+on the next explicit submit. Sending/uncertain/denied have no reset path; a
+verification outage preserves the known destination, and access loss fences a
+late verification. Six new parent-mounted regressions plus existing scenarios
+pass 23 focused tests. Web build/typecheck/lint, unchanged React Doctor changed
+score 89, and the focused Chromium browser journey pass. Prior 866-test/full
+qualification remains bound to `169b776`/earlier sources, not this narrow rerun.

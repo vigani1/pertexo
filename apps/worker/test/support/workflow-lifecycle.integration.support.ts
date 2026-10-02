@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { lockManualFixtureClient } from './manual-start.fixture.js';
 import { readFileSync } from 'node:fs';
 
 import {
@@ -424,6 +425,12 @@ async function seedApiOwnedRows(
       'b'.repeat(64),
       ids.disabledWebhookSecret,
     ],
+  );
+  await lockManualFixtureClient(
+    client,
+    actorId,
+    ids.workflow,
+    createHash('sha256').update(ids.runs.queued).digest('hex'),
   );
   await client.query(
     `insert into app.workflow_runs

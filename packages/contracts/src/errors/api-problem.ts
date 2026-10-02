@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import {
+  WORKFLOW_PORTABILITY_PROBLEM_CODES,
+  WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
+} from './workflow-portability-problems.js';
+import {
+  checkedStartProblems,
+  workflowInputCaseProblems,
+} from './workflow-input-case-problems.js';
 
 export const API_PROBLEM_CODES = [
   'auth.unauthenticated',
@@ -37,9 +45,14 @@ export const API_PROBLEM_CODES = [
   'workflow.concurrency_revision_conflict',
   'workflow.concurrency_limit_exceeded',
   'workflow.concurrency_limit_unavailable',
+  'workflow.input_case_revision_conflict',
+  'workflow.input_case_limit_exceeded',
+  'workflow.input_cases_unavailable',
   'workspace.auto_pause_settings_conflict',
   'workflow.invalid',
+  ...WORKFLOW_PORTABILITY_PROBLEM_CODES,
   'workflow.validation_unavailable',
+  'workflow.published_version_conflict',
   'workflow.not_published',
   'workflow.activation_failed',
   'run.not_cancelable',
@@ -318,6 +331,7 @@ const apiProblemDetails = {
     severity: 'warn',
     exposeDetail: true,
   },
+  ...workflowInputCaseProblems,
   'workspace.auto_pause_settings_conflict': {
     status: 409,
     title: 'Workspace auto-pause settings conflict',
@@ -330,12 +344,14 @@ const apiProblemDetails = {
     severity: 'info',
     exposeDetail: true,
   },
+  ...WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
   'workflow.validation_unavailable': {
     status: 503,
     title: 'Workflow validation unavailable',
     severity: 'warn',
     exposeDetail: true,
   },
+  ...checkedStartProblems,
   'workflow.not_published': {
     status: 409,
     title: 'Workflow not published',

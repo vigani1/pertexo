@@ -18,6 +18,7 @@ import { ApiShutdownCoordinator } from './platform/health/drain-state.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { registerApiMetrics } from './platform/observability/api-metrics.js';
 import { registerWebhookIngress } from './webhooks/ingress.js';
+import { registerWorkflowPortabilityJsonParser } from './workflow-authoring/portability-json-parser.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 import { RATE_LIMIT_CONSUMER } from './platform/rate-limit/rate-limit.module.js';
 import {
@@ -98,6 +99,7 @@ export async function createApiApplication(
   application.enableShutdownHooks();
   try {
     const fastifyInstance: FastifyInstance = fastifyAdapter.getInstance();
+    registerWorkflowPortabilityJsonParser(fastifyAdapter);
     registerApiMetrics(fastifyInstance);
     registerAuthenticationCapabilities(fastifyInstance, {
       password: {

@@ -217,11 +217,35 @@ function createTestFailureNotificationStore(
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   });
-  if (failure === undefined)
+  if (failure === undefined) {
+    // This fixture qualifies repository checkout, not independent telemetry
+    // connections whose eager startup can race pg_stat_activity baselines.
+    const runtime = createDatabaseRuntime(config, {
+      role: 'worker',
+      monitorLockWaits: false,
+    });
+    const repository = createFailureNotificationStore(config, runtime);
     return {
       applicationName,
-      store: createFailureNotificationStore(config),
+      store: Object.freeze({
+        ...repository,
+        close: async (): Promise<void> => {
+          const settled = await Promise.allSettled([
+            repository.close(),
+            runtime.close(),
+          ]);
+          const failures = settled.flatMap((result) =>
+            result.status === 'rejected' ? [result.reason as unknown] : [],
+          );
+          if (failures.length > 0)
+            throw new AggregateError(
+              failures,
+              'Notification fixture cleanup failed',
+            );
+        },
+      }),
     };
+  }
 
   const wrappedClients = new WeakSet<PoolClient>();
   let armed = true;

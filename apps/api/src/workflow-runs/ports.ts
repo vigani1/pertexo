@@ -170,6 +170,7 @@ export type StartWorkflowRunCommand = Readonly<{
   requestHash: string;
   scope: string;
   input?: unknown;
+  expectedPublishedVersionId?: string;
   deadlineAt?: Date;
   requestId?: string;
   traceId?: string;

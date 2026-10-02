@@ -254,9 +254,9 @@
           "branchId": "2",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 60,
+          "line": 61,
           "column": 49,
-          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
+          "sourceFingerprint": "sha256:7422d7a41d3466cab639feec43217e029a826675acafc0e45b84a6e4fdf577d4",
           "classification": "defensive",
           "justification": "When the bootstrap owns or receives a database runtime, it forwards that optional runtime into the dynamic module; omission remains valid for an injected workspace database."
         },
@@ -264,9 +264,9 @@
           "branchId": "3",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 62,
+          "line": 63,
           "column": 12,
-          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
+          "sourceFingerprint": "sha256:7422d7a41d3466cab639feec43217e029a826675acafc0e45b84a6e4fdf577d4",
           "classification": "defensive",
           "justification": "The workspace database dependency is optional because production bootstrap can own its database runtime; this arm preserves omission when no database adapter is injected."
         },
@@ -274,11 +274,47 @@
           "branchId": "4",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 65,
+          "line": 66,
           "column": 12,
-          "sourceFingerprint": "sha256:afb39c936bda7eed8d2d5cafe255804fd04a03757006edcac117b3d5dd67af90",
+          "sourceFingerprint": "sha256:7422d7a41d3466cab639feec43217e029a826675acafc0e45b84a6e4fdf577d4",
           "classification": "defensive",
           "justification": "The rate-limit consumer is an optional test/composition override, and this arm preserves omission so the module can construct its configured consumer."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/workflow-authoring/portability-json-parser.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 18,
+          "column": 24,
+          "sourceFingerprint": "sha256:3d2e403a36e55a16279c9346ec2a4f237567c2fefe9f295b26c5ca62d1afd49c",
+          "classification": "defensive",
+          "justification": "Pinned Fastify eagerly fills initialConfig.onProtoPoisoning with error before adapter construction completes; the real-instance probe and lib/config-validator.js default prove this nullish fallback cannot occur through the production registration boundary. It retains the secure error policy if an incomplete adapter is ever supplied."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 19,
+          "column": 30,
+          "sourceFingerprint": "sha256:3d2e403a36e55a16279c9346ec2a4f237567c2fefe9f295b26c5ca62d1afd49c",
+          "classification": "defensive",
+          "justification": "Pinned Fastify eagerly fills initialConfig.onConstructorPoisoning with error before adapter construction completes; the real-instance probe and lib/config-validator.js default prove this nullish fallback cannot occur through the production registration boundary. It retains the secure error policy if an incomplete adapter is ever supplied."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 25,
+          "column": 53,
+          "sourceFingerprint": "sha256:1d870b675ed41a1b2d6235938f3cf7fe9c4a35e34772b24079f094d27acf7181",
+          "classification": "defensive",
+          "justification": "Pinned Fastify eagerly defaults initialConfig.bodyLimit to 1048576 and validates it as an integer; a real-instance probe and lib/config-validator.js confirm it is never nullish. The fallback preserves the ordinary one-MiB ceiling for an incomplete adapter, while only declared import routes receive the separately tested two-MiB ceiling."
         }
       ]
     },
@@ -918,9 +954,9 @@
           "branchType": "if",
           "line": 69,
           "column": 2,
-          "sourceFingerprint": "sha256:1de9503b11d879d8b4924025c55fd6c025868038cdaaa9b32e296b836665b2f1",
+          "sourceFingerprint": "sha256:d42a523098d85a0ab1d75b6593c9736351c74729dc2f34d335c10f8a5f218af3",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 capacity and ADR058 blocker schemas are below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
+          "justification": "This unchanged defensive timestamp-normalizer guard rejects malformed pagination material. The ADR061 optional checked-start field is below the normalizer; Istanbul's null end column fingerprints the whole file, so this existing review is re-pinned without adding an exception or changing its obligation."
         },
         {
           "branchId": "1",
@@ -928,9 +964,9 @@
           "branchType": "if",
           "line": 72,
           "column": 2,
-          "sourceFingerprint": "sha256:1de9503b11d879d8b4924025c55fd6c025868038cdaaa9b32e296b836665b2f1",
+          "sourceFingerprint": "sha256:d42a523098d85a0ab1d75b6593c9736351c74729dc2f34d335c10f8a5f218af3",
           "classification": "defensive",
-          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary. ADR057 capacity and ADR058 blocker schemas are below the unchanged timestamp normalizer; Istanbul's null end column fingerprints the whole file, so this existing guard review is re-pinned without broadening its scope."
+          "justification": "This unchanged defensive timestamp-normalizer guard rejects malformed pagination material. The ADR061 optional checked-start field is below the normalizer; Istanbul's null end column fingerprints the whole file, so this existing review is re-pinned without adding an exception or changing its obligation."
         },
         {
           "branchId": "3",

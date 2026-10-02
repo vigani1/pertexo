@@ -18,6 +18,7 @@ import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js'
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
 import { createWorkflowVersionRestoreStore } from './workflow-authoring-version-restore.js';
 import { createWorkflowDuplicationStore } from './workflow-authoring-duplication.js';
+import { createWorkflowPortabilityStore } from './workflow-authoring-portability.js';
 import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import { createWorkflowAuthoringLifecycleStore } from './workflow-authoring-lifecycle.js';
 import { createWorkflowAuthoringRenameStore } from './workflow-authoring-rename.js';
@@ -59,6 +60,10 @@ export {
   WorkflowRevisionConflictError,
   WorkflowLifecycleRevisionConflictError,
   WorkflowNameRevisionConflictError,
+  WorkflowPortabilityUnavailableError,
+  WorkflowPortabilityCompatibilityConflictError,
+  WorkflowPortabilityReviewConflictError,
+  WorkflowPortabilityValidationError,
 } from './workflow-authoring-errors.js';
 export type {
   TransitionWorkflowLifecycleInput,
@@ -87,6 +92,11 @@ export type {
   CreateWorkflowResult,
   DuplicateWorkflowInput,
   DuplicateWorkflowResult,
+  ExportWorkflowInput,
+  PreviewWorkflowImportInput,
+  PreviewWorkflowImportResult,
+  ImportWorkflowInput,
+  ImportWorkflowResult,
   ListWorkflowsInput,
   ListWorkflowVersionsInput,
   PublishWorkflowInput,
@@ -304,6 +314,7 @@ export function createWorkflowAuthoringDatabase(
     ...createWorkflowAuthoringDraftStore(authoringContext),
     ...createWorkflowVersionRestoreStore(authoringContext),
     ...createWorkflowDuplicationStore(authoringContext),
+    ...createWorkflowPortabilityStore(authoringContext),
     ...createWorkflowAuthoringReadStore({
       requireReader: requireWorkspaceReader,
       selectDefinitionCatalog: async (client) =>

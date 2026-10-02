@@ -7,6 +7,15 @@ import {
   oidcLoginTransactions,
 } from './schema/authentication.js';
 import {
+  workflowInputCaseRollout,
+  workflowManualStartRejections,
+} from './schema/manual-start.js';
+import {
+  workflowInputCases,
+  workflowInputCasePayloads,
+  workflowInputCaseReceipts,
+} from './schema/workflow-input-cases.js';
+import {
   users,
   workspaces,
   workspaceMemberships,
@@ -151,6 +160,11 @@ export {
 } from './schema/compatibility.js';
 
 export const databaseSchema = {
+  workflowInputCaseRollout,
+  workflowManualStartRejections,
+  workflowInputCases,
+  workflowInputCasePayloads,
+  workflowInputCaseReceipts,
   workflowConcurrencyPolicies,
   workflowConcurrencyCommandReceipts,
   artifactLinks,

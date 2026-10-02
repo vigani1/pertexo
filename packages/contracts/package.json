@@ -5,6 +5,14 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./workflow-portability": {
+      "types": "./dist/workflow-portability.d.ts",
+      "default": "./dist/workflow-portability.js"
+    },
+    "./schemas/workflow-portability": {
+      "types": "./dist/http/workflow-portability.d.ts",
+      "default": "./dist/http/workflow-portability.js"
+    },
     "./workspace-inbox": {
       "types": "./dist/workspace-inbox.d.ts",
       "default": "./dist/workspace-inbox.js"

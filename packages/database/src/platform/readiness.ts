@@ -18,7 +18,7 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD = '0129_workflow_duplication.sql';
+export const EXPECTED_MIGRATION_HEAD = '0132_workflow_portability.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -28,6 +28,8 @@ export type DatabaseReadiness = Readonly<{
 }>;
 
 export type ReadinessOptions = Readonly<{
+  maintenanceRole?: string;
+  operatorRole?: string;
   apiRuntimeRole?: string;
   ownerRole: string;
   workerRuntimeRole?: string;
@@ -60,6 +62,8 @@ export async function checkDatabaseReadiness(
     options.ownerRole,
     options.workerRuntimeRole ?? 'pertexo_worker',
     options.apiRuntimeRole ?? 'pertexo_api',
+    options.maintenanceRole ?? 'pertexo_maintenance',
+    options.operatorRole ?? 'pertexo_operator',
   ]);
   const row = result.rows[0];
   assertDatabaseReadinessRow(row, {

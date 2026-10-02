@@ -33,6 +33,11 @@ _Avoid_: Workflow restoration, rollback of execution history
 input, linked to a source run whose history remains unchanged. _Avoid_: Queue
 redelivery, retry
 
+**Run-input case**: A named, shared workflow input with an explicit published
+version context. Loading it supplies editable input for a separately confirmed
+real manual run; it is not an execution or a substitute for provider effects.
+_Avoid_: Replay, preview, mock, pinned sample
+
 **Pertexo account**: A person's stable identity across their workspace
 memberships, independent of which sign-in method they use. _Avoid_: Workspace,
 provider account

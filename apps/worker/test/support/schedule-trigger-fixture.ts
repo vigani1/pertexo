@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { lockManualFixtureClient } from './manual-start.fixture.js';
 
 import {
   migrateDatabase,
@@ -166,6 +167,7 @@ export interface ScheduleTriggerFixture {
   readonly apiQuery: <Row extends QueryResultRow = QueryResultRow>(
     statement: string,
     parameters?: unknown[],
+    manualStart?: Readonly<{ workflowId: string; keyHash: string }>,
   ) => Promise<QueryResult<Row>>;
   readonly workspaceId: string;
 }
@@ -272,6 +274,7 @@ export function createScheduleTriggerFixture(
     statement: string,
     parameters: unknown[] = [],
     ownerRole = false,
+    manualStart?: Readonly<{ workflowId: string; keyHash: string }>,
   ): Promise<QueryResult<Row>> => {
     const client = await pool.connect();
     try {
@@ -280,6 +283,13 @@ export function createScheduleTriggerFixture(
       await client.query("select set_config('app.workspace_id',$1,true)", [
         scopedWorkspaceId,
       ]);
+      if (manualStart !== undefined)
+        await lockManualFixtureClient(
+          client,
+          actorId,
+          manualStart.workflowId,
+          manualStart.keyHash,
+        );
       const result = await client.query<Row>(statement, parameters);
       await client.query('commit');
       return result;
@@ -314,7 +324,16 @@ export function createScheduleTriggerFixture(
   const apiQuery = <Row extends QueryResultRow = QueryResultRow>(
     statement: string,
     parameters: unknown[] = [],
-  ) => queryIn<Row>(requireApiEvidence(), workspaceId, statement, parameters);
+    manualStart?: Readonly<{ workflowId: string; keyHash: string }>,
+  ) =>
+    queryIn<Row>(
+      requireApiEvidence(),
+      workspaceId,
+      statement,
+      parameters,
+      false,
+      manualStart,
+    );
 
   const dropDatabase = async (): Promise<void> => {
     if (!databaseCreated || runnerOwnsDatabase) return;

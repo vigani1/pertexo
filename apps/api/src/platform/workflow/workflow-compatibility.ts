@@ -20,6 +20,7 @@ import {
   AuthoringValidationUnavailableError,
 } from '@pertexo/workflow-model/authoring-validation';
 import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
+import { platformPortableDefinitionPolicy } from '@pertexo/node-catalog/server';
 
 type PlatformRegistryRelease = ReturnType<
   typeof platformExecutableRegistryHistory
@@ -136,6 +137,12 @@ export function createCoreWorkflowCompatibility(
       compatibilityReleaseDescription,
       definitionCatalog,
       placementDefinitionCatalog,
+      portableCatalog: Object.freeze({
+        ...platformPortableDefinitionPolicy(nodeRelease),
+        // Destination CAS belongs to the full serving compatibility release,
+        // while requirements retain the definition-selection projection.
+        fingerprint: compatibilityRelease.fingerprint,
+      }),
       authoringPolicies: Object.freeze({
         releaseFingerprint: compatibilityRelease.fingerprint,
         definitions: Object.freeze(
@@ -183,11 +190,13 @@ export function createCoreAuthoringOptions(
         compatibilityReleaseDescription,
         definitionCatalog,
         placementDefinitionCatalog,
+        portableCatalog,
         authoringPolicies,
       }) => ({
         compatibilityRelease: compatibilityReleaseDescription,
         definitionCatalog,
         placementDefinitionCatalog,
+        portableCatalog,
         validateAuthoringGraph: (
           graph: WorkflowGraph,
           options: Readonly<{ signal?: AbortSignal }>,
