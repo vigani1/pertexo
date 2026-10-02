@@ -136,6 +136,8 @@ export { createPublishedWorkflowReader } from './execution/published-workflow-re
 export type {
   PublishedWorkflowReader,
   PublishedWorkflowV2Projection,
+  PublishedWorkflowV3Projection,
+  PublishedWorkflowExecutableProjection,
 } from './execution/published-workflow-reader.js';
 export { createScheduleTriggerScanner } from './triggers/schedule-trigger-scanner.js';
 export type {

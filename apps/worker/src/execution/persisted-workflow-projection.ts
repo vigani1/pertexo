@@ -1,6 +1,13 @@
-import type { PublishedWorkflowV2Projection } from '@pertexo/database/execution';
+import type {
+  PublishedWorkflowV2Projection,
+  PublishedWorkflowV3Projection,
+  PublishedWorkflowExecutableProjection,
+} from '@pertexo/database/execution';
 import {
   verifyWorkflowExecutableV2,
+  verifyWorkflowExecutableV3,
+  type CompiledWorkflowExecutableV2,
+  type CompiledWorkflowExecutableV3,
   type ExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 
@@ -14,7 +21,19 @@ export type PersistedWorkflowProjectionVerificationOptions = Readonly<{
 export function verifyPersistedWorkflowProjection(
   projection: PublishedWorkflowV2Projection,
   options: PersistedWorkflowProjectionVerificationOptions,
-) {
+): CompiledWorkflowExecutableV2;
+export function verifyPersistedWorkflowProjection(
+  projection: PublishedWorkflowV3Projection,
+  options: PersistedWorkflowProjectionVerificationOptions,
+): CompiledWorkflowExecutableV3;
+export function verifyPersistedWorkflowProjection(
+  projection: PublishedWorkflowExecutableProjection,
+  options: PersistedWorkflowProjectionVerificationOptions,
+): CompiledWorkflowExecutableV2 | CompiledWorkflowExecutableV3;
+export function verifyPersistedWorkflowProjection(
+  projection: PublishedWorkflowExecutableProjection,
+  options: PersistedWorkflowProjectionVerificationOptions,
+): CompiledWorkflowExecutableV2 | CompiledWorkflowExecutableV3 {
   const supportedCurrent = projection.currentCompatibilityRelease;
   const admissionDescription = options.releaseSupport?.descriptions.find(
     ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
@@ -35,13 +54,24 @@ export function verifyPersistedWorkflowProjection(
       supportedCurrent.fingerprint,
     );
   }
-  const executable = verifyWorkflowExecutableV2({
+  const verify =
+    projection.executableSchemaVersion === 3
+      ? verifyWorkflowExecutableV3
+      : verifyWorkflowExecutableV2;
+  const executable = verify({
     envelope: projection.executableJson,
     checksum: projection.checksum,
     admissionRelease,
     ...(currentRelease === undefined ? {} : { currentRelease }),
     execution: { alreadyAdmitted: true },
   });
+  if (
+    executable.envelope.schemaVersion !== projection.executableSchemaVersion ||
+    executable.envelope.sourceGraphSchemaVersion !== projection.schemaVersion
+  )
+    throw new TypeError(
+      'Published workflow format columns do not match its executable envelope',
+    );
   if (
     executable.envelope.compatibilityReleaseEpoch !==
     projection.compatibilityReleaseEpoch

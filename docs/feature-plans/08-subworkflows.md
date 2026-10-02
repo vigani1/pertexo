@@ -233,6 +233,16 @@ expressions do not reject unrelated ambiguous outputs. All 687 engine tests
 across 48 files and 1,533 model tests across 23 files pass. Protected result
 persistence, actual terminal/wakeup wiring, coordinator V3 registration and
 source-bound service qualification remain unfinished.
+The published execution reader now distinguishes the exact Graph V2 / Executable
+V3 outer format from retained V1 and Executable V2 projections. The worker's
+existing private artifact verifier authenticates V3 against its exact admission
+catalog and supported current catalog, including format-column and epoch
+agreement; malformed or tampered V3 cannot fall back to V2. All 1,310 database
+tests across 141 files and 1,019 worker tests across 81 files pass, with database
+and worker builds/typechecks, API typecheck, narrow lint/format, architecture and
+complexity checks. Execution handlers still reject V3 until their protected
+admission and settlement owners are wired; this reader extension does not enable
+fresh roots, publication, Call execution or migration0136.
 The standalone database Checkpoint V3 codec now validates the persisted wire
 format independently of the engine, retaining the existing whole-checkpoint
 256 KiB limit and strict physical-input/child-result separation. Its V2 projection

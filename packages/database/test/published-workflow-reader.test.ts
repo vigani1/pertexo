@@ -59,6 +59,12 @@ describe('published workflow row classification', () => {
     executable_json: { deliberately: 'shallow projection only' },
     executable_schema_version: 2,
   } as const;
+  const v3 = {
+    ...v2,
+    schema_version: 2,
+    checksum: `wf:v3:sha256:${'3'.repeat(64)}`,
+    executable_schema_version: 3,
+  } as const;
 
   it('distinguishes absence, retained V1, and a shallow V2 projection', () => {
     expect(classifyPublishedWorkflowVersionRow(undefined)).toEqual({
@@ -75,6 +81,35 @@ describe('published workflow row classification', () => {
         compatibilityReleaseEpoch: 7,
       },
     });
+  });
+
+  it('classifies an explicit Graph V2 / Executable V3 pair without reinterpreting V2', () => {
+    expect(classifyPublishedWorkflowVersionRow(v3)).toMatchObject({
+      kind: 'v3_projection',
+      workflowVersion: {
+        id: base.id,
+        schemaVersion: 2,
+        executableSchemaVersion: 3,
+        checksum: v3.checksum,
+        executableJson: v3.executable_json,
+        compatibilityReleaseEpoch: 7,
+      },
+    });
+    expect(classifyPublishedWorkflowVersionRow(v2).kind).toBe('v2_projection');
+  });
+
+  it.each([
+    { ...v3, schema_version: 1 },
+    { ...v3, checksum: v2.checksum },
+    { ...v3, executable_schema_version: 2 },
+    { ...v3, compatibility_release_epoch: 0 },
+    { ...v3, executable_json: null },
+    { ...v3, executable_json: [] },
+    { ...v3, graph_json: {} },
+  ])('rejects a malformed/cross-format V3 row %#', (row) => {
+    expect(() => classifyPublishedWorkflowVersionRow(row)).toThrow(
+      PublishedWorkflowVersionCorruptError,
+    );
   });
 
   it.each([
