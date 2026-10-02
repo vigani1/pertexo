@@ -307,3 +307,14 @@ were extracted unchanged to their own leaf so the central error function gets
 smaller rather than worsening its complexity hotspot. API build/typecheck,
 scoped lint, architecture, complexity and unchanged duplication ratchets pass.
 This connects error translation only, not runtime routes or persistence ports.
+
+Organization application interface: strict command and read use cases now own
+transport schemas, organization-specific owner/admin checks, trusted actor scope,
+cancellation, normalized filter identity and purpose-bound signed continuations.
+Fifty command and 14 read cases pass. The opt-in read path preserves strict
+summary-only responses without `include=organization`; changed filters/order/
+projection/actor invalidate continuations, while normalized equivalent queries
+and a changed page size retain them. Combined origin projections call the existing
+compatible origin owner, never a raw join or fabricated null. Every page is
+authorized and database adapters remain the transactional current-authority owner.
+These focused use-case tests are not live HTTP or browser qualification.
