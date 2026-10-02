@@ -55,6 +55,20 @@ pins immutable; stage explicit new format/policy versions rather than reinterpre
 retained V1/V2 graphs or checkpoints. Use the existing Manual entry contract for
 the initial callable child and do not fake child execution in node preview.
 
+Primary clarified V1 result selection on 2026-10-02: a root-graph `node_output`
+selector selects exactly one successful durable invocation of that node in the
+child run, preserving its immutable scope and output reference. Zero successful
+invocations (including missing/skipped/non-success) or multiple successful
+branch-scoped invocations is definite `workflow.child_result_invalid`, even if
+their values are equal. Do not choose the last value, deduplicate by equality,
+aggregate an array or invent a selecting branch scope. Apply the declared path
+and portable result contract to that one independently bounded source; a missing
+path remains `workflow.child_result_missing`. Every node output referenced by an
+expression has the same unambiguous-source requirement. Existing per-attempt
+scope-specific mapping is unchanged. Publication rejects statically proven
+ambiguity; runtime checks remain necessary when branch outcomes decide uniqueness.
+This clarification is implementation guidance, not completion evidence.
+
 Root initiation authority is durable and explicit: human-origin calls recheck
 the initiating actor and the root's pinned membership role revision for fresh
 child admission. Any revision change, even promotion, refuses a future child;

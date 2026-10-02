@@ -71,6 +71,18 @@ the selected result before a callable run may succeed. Missing/skipped selector
 output or invalid result is a definite child failure, not implicit null, the last
 node output, or concatenation of every output.
 
+Primary's 2026-10-02 clarification fixes the run-wide scope rule: a root-graph
+`node_output` selector must have exactly one matching successful durable
+invocation in the child run, bound to its immutable scope/output reference. Zero
+matches, including missing/skipped/non-success, or multiple successful scoped
+matches is `workflow.child_result_invalid`, including equal-valued matches.
+Validate the declared path and result type against that one bounded source;
+missing paths remain `workflow.child_result_missing`. Expression-referenced node
+outputs obey the same uniqueness rule. No last-value selection, equality-based
+deduplication, aggregation or implicit selecting scope is permitted. Existing
+per-attempt mapping is unchanged. Reject statically proven ambiguity at
+publication without rejecting cases whose unique outcome is decided at runtime.
+
 Use existing bounded JSON values and schema-document projection owners, but do
 not mistake `schemaDocumentSchema`'s JSON-object check for a runtime validator.
 V1 recommends a versioned portable type descriptor for string, finite number,

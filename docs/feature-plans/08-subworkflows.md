@@ -50,6 +50,14 @@ slot with existing FIFO/entitlement checks or fail definitely with no child;
 cap one cannot execute nested calls, and any full workspace can refuse a call.
 Do not silently implement an extra child pool or conserved-token redesign.
 
+Callable result-selector guidance: select a root-graph node with exactly one
+successful durable invocation. Missing/skipped/non-success selection or multiple
+successful scoped invocations fails result validation, even when their values
+are equal; use an explicit unique root result-producing node instead of expecting
+last-value selection or implicit aggregation. Expression-referenced outputs have
+the same uniqueness rule. The future editor must explain this rule beside the
+selector, without pretending this guidance is already an implemented picker.
+
 ## Ownership and structure
 
 Model/SDK callable contract; engine call decisions; database parent-child admission/settlement; worker dispatch; contracts; web editor and run history.
