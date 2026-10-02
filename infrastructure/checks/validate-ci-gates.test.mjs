@@ -72,6 +72,11 @@ jobs:
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
+      - run: |
+          export PNPM_CONFIG_STORE_DIR="$(pnpm store path --silent)"
+          export PNPM_CONFIG_CACHE_DIR="$RUNNER_TEMP/curated-cutover-pnpm-cache"
+          printf 'PNPM_CONFIG_STORE_DIR=%s\\nPNPM_CONFIG_CACHE_DIR=%s\\n' "$PNPM_CONFIG_STORE_DIR" "$PNPM_CONFIG_CACHE_DIR" >> "$GITHUB_ENV"
+          node infrastructure/testing/prepare-curated-cutover-cache.mjs
       - run: pnpm build
       - run: pnpm --filter @pertexo/web exec playwright install --with-deps chromium
       - run: docker compose up -d --wait postgres redis
@@ -802,6 +807,46 @@ test('rejects orphaned curated-template owned fixtures in ordinary CI', async ()
     () => validateCiGatePolicy({ packageManifest, workflow }),
     /curated-template.*owner/u,
   );
+});
+
+test('rejects absent, optional, late, or unshared archived dependency preparation', async () => {
+  for (const mutation of [
+    'missing',
+    'optional',
+    'conditional',
+    'late',
+    'store',
+    'cache',
+    'sharing',
+  ]) {
+    const input = await currentPolicyInput();
+    const steps = input.workflow.jobs['curated-templates'].steps;
+    const preparation = steps.find((step) =>
+      step.run?.includes('prepare-curated-cutover-cache.mjs'),
+    );
+    if (mutation === 'missing') steps.splice(steps.indexOf(preparation), 1);
+    else if (mutation === 'optional') preparation['continue-on-error'] = true;
+    else if (mutation === 'conditional') preparation.if = 'false';
+    else if (mutation === 'late') {
+      steps.splice(steps.indexOf(preparation), 1);
+      steps.push(preparation);
+    } else if (mutation === 'store')
+      preparation.run = preparation.run.replace(
+        '$(pnpm store path --silent)',
+        '/other/store',
+      );
+    else if (mutation === 'cache')
+      preparation.run = preparation.run.replace(
+        '$RUNNER_TEMP/curated-cutover-pnpm-cache',
+        '/other/cache',
+      );
+    else preparation.run = preparation.run.replace('>> "$GITHUB_ENV"', '');
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /curated-template.*cache/u,
+      mutation,
+    );
+  }
 });
 
 test('rejects dropped, conditional, optional, or substituted curated-template qualification', async () => {

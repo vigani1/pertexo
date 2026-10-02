@@ -51,6 +51,33 @@ A partial run starts required service prerequisites automatically, records all
 unselected cohorts as skipped, and labels its manifest `partial`. It is useful
 diagnostic evidence but is never a complete qualification.
 
+The curated-template cohort requires a clean, committed checkout. It attests
+the exact PostgreSQL/Redis container IDs and loopback ports created by this run
+through the canonical editor-browser ownership manifest, then sequentially runs
+the origin guard (minimum 2,340 tests), metadata boundary (16), complete real
+browser/API/worker scenario (1), and independently built compiled cutover and
+compatible-off rollback (10). Every gate requires zero failures, skips, and todo
+cases. Its fresh report directory contains report hashes and unchanged clean
+start/end source fingerprints; the outer partial manifest remains diagnostic,
+even when this complete nested qualification passes.
+
+Ordinary API/database CI excludes only the owned origin guard and metadata
+boundary in addition to its existing opt-in exclusions. The required
+`curated-templates` CI job owns all four gates, full-history source checkout,
+Chromium installation, disposable services, cleanup, and uploaded source-bound
+reports. It writes reports outside the checkout so evidence cannot dirty the
+qualified source. Never enable the owned flags against discovered/shared
+services or substitute a passing file wrapper for actual cutover test counts.
+
+Before offline compiled cutover builds, prepare both exact source refs with
+`node infrastructure/testing/prepare-curated-cutover-cache.mjs`. Set absolute
+`PNPM_CONFIG_STORE_DIR` to `pnpm store path --silent` and an owned absolute
+`PNPM_CONFIG_CACHE_DIR`; retain both for qualification. Preparation archives each
+ref separately and runs pinned pnpm's frozen, script-free fetch, recording source
+and unchanged lock hashes. Package content alone is insufficient: fresh installs
+also need metadata for pnpm's supply-chain verification. Every artifact build
+still starts from a fresh archive and installs offline without network fallback.
+
 Ordinary PR CI keeps its stable `quality` check name and runs the service-free
 `architecture:check`, `built-exports:check`, and `quality:local:check` gates.
 The build step precedes built-export validation. A semantic policy validator

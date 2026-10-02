@@ -4,7 +4,10 @@ import { mkdir, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-async function command(executable, args, cwd, timeout = 180_000) {
+export const CURATED_PRE_ORIGIN_SOURCE =
+  'f543283825887165889f7520655558b2a3f9229c';
+
+async function command(stage, executable, args, cwd, timeout = 180_000) {
   const child = spawn(executable, args, {
     cwd,
     env: { ...process.env, CI: 'true' },
@@ -24,11 +27,27 @@ async function command(executable, args, cwd, timeout = 180_000) {
       child.once('exit', resolve);
     });
     const output = Buffer.concat(chunks).toString('utf8');
-    if (code !== 0)
+    if (code !== 0) {
+      const diagnostics = [
+        ...new Set(
+          output.match(/\b(?:ERR_PNPM_[A-Z_]+|TS[0-9]{4,5})\b/gu) ?? [],
+        ),
+      ];
       throw new Error(
-        `Artifact ${executable} failed (${String(code)}): ${output.slice(-8000)}`,
+        `CURATED_ARTIFACT_${stage}_FAILED exit=${String(code)} diagnostics=${diagnostics.slice(0, 8).join(',') || 'none'}`,
       );
+    }
     return output.trim();
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith(`CURATED_ARTIFACT_${stage}_FAILED`)
+    )
+      throw error;
+    const code = ['ENOENT', 'EACCES', 'EPERM'].includes(error?.code)
+      ? error.code
+      : 'unknown';
+    throw new Error(`CURATED_ARTIFACT_${stage}_FAILED diagnostics=${code}`);
   } finally {
     clearTimeout(timer);
     clearTimeout(forceTimer);
@@ -53,8 +72,7 @@ async function filesDigest(root, relative = '') {
   await visit(relative);
   return hash.digest('hex');
 }
-/** Frozen committed source; offline installs never fall back to a registry. */
-export async function buildCuratedCutoverArtifact({ repository, ref, label }) {
+async function archiveSource({ repository, ref, label }) {
   if (!/^[a-f0-9]{40}$/u.test(ref) || !/^[a-z][a-z0-9-]{0,40}$/u.test(label))
     throw new Error('Invalid source-bound artifact identity');
   const directory = await mkdtemp(
@@ -63,23 +81,64 @@ export async function buildCuratedCutoverArtifact({ repository, ref, label }) {
   try {
     const archive = path.join(directory, 'source.tar');
     await command(
+      'ARCHIVE',
       'git',
       ['archive', '--format=tar', `--output=${archive}`, ref],
       repository,
     );
     const source = path.join(directory, 'source');
     await mkdir(source);
-    await command('tar', ['-xf', archive, '-C', source], repository);
+    await command('EXTRACT', 'tar', ['-xf', archive, '-C', source], repository);
     const sourceDigest = await filesDigest(source);
     const lockDigest = createHash('sha256')
       .update(await readFile(path.join(source, 'pnpm-lock.yaml')))
       .digest('hex');
+    return { directory, source, sourceDigest, lockDigest };
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+/** Explicit online preparation, separate from every independently built artifact. */
+export async function prepareCuratedCutoverCache(identity) {
+  const archived = await archiveSource(identity);
+  try {
     await command(
+      'CACHE_PREPARE',
+      'pnpm',
+      ['fetch', '--ignore-scripts', '--frozen-lockfile'],
+      archived.source,
+    );
+    const lockDigest = createHash('sha256')
+      .update(await readFile(path.join(archived.source, 'pnpm-lock.yaml')))
+      .digest('hex');
+    if (lockDigest !== archived.lockDigest)
+      throw new Error('Frozen cache preparation changed the source lockfile');
+    return {
+      ref: identity.ref,
+      sourceDigest: archived.sourceDigest,
+      lockDigest,
+    };
+  } finally {
+    await rm(archived.directory, { recursive: true, force: true });
+  }
+}
+
+/** Frozen committed source; offline installs never fall back to a registry. */
+export async function buildCuratedCutoverArtifact(identity) {
+  const { ref, label } = identity;
+  const { directory, source, sourceDigest, lockDigest } =
+    await archiveSource(identity);
+  try {
+    await command(
+      'OFFLINE_INSTALL',
       'pnpm',
       ['install', '--offline', '--ignore-scripts', '--frozen-lockfile'],
       source,
     );
     await command(
+      'COMPILE',
       'pnpm',
       ['exec', 'tsc', '--build', 'apps/api/tsconfig.json', '--pretty', 'false'],
       source,

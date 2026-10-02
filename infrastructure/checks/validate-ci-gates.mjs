@@ -193,6 +193,26 @@ function requiredCuratedTemplateOwner(jobs) {
       ),
     'curated-template owner must invoke the source-bound qualification command exactly once',
   );
+  const preparation = requiredStep(
+    (step) =>
+      step.run?.includes(
+        'node infrastructure/testing/prepare-curated-cutover-cache.mjs',
+      ),
+    'curated-template cache preparation must run exactly once',
+  );
+  if (steps.indexOf(preparation) >= steps.indexOf(qualification))
+    fail('curated-template cache preparation must precede qualification');
+  for (const witness of [
+    'export PNPM_CONFIG_STORE_DIR="$(pnpm store path --silent)"',
+    'export PNPM_CONFIG_CACHE_DIR="$RUNNER_TEMP/curated-cutover-pnpm-cache"',
+    'PNPM_CONFIG_STORE_DIR=%s',
+    'PNPM_CONFIG_CACHE_DIR=%s',
+    '>> "$GITHUB_ENV"',
+  ])
+    if (!preparation.run.includes(witness))
+      fail(
+        'curated-template cache preparation must share explicit canonical store and task-owned metadata paths',
+      );
   if (
     steps.indexOf(qualification) <= steps.indexOf(browser) ||
     steps.indexOf(qualification) <= steps.indexOf(start)

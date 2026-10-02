@@ -6,13 +6,16 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildCuratedCutoverArtifact } from './curated-cutover-artifact-build.mjs';
+import {
+  buildCuratedCutoverArtifact,
+  CURATED_PRE_ORIGIN_SOURCE,
+} from './curated-cutover-artifact-build.mjs';
 import { createCuratedCutoverResources } from './curated-cutover-owned-resources.mjs';
 import { startCuratedCutoverApi } from './curated-cutover-process-owner.mjs';
 import { createCuratedCutoverTraffic } from './curated-cutover-traffic.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
-const oldRef = 'f543283825887165889f7520655558b2a3f9229c';
+const oldRef = CURATED_PRE_ORIGIN_SOURCE;
 const enabled = process.env.F06_CUTOVER_OWNED_FIXTURE === 'true';
 const origin = 'https://app.integration.test';
 async function artifactPackage(artifact, specifier) {
@@ -94,7 +97,7 @@ test(
     };
     try {
       for (const [label, ref] of [
-        ['pre-origin', oldRef],
+        ['pre-origin', CURATED_PRE_ORIGIN_SOURCE],
         ['compatible-current', compatibleRef],
         ['compatible-off-rollback', compatibleRef],
       ]) {
