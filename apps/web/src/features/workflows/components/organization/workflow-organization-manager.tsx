@@ -1,6 +1,12 @@
 import { useId, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import {
+  workflowFolderNameInputSchema,
+  workflowTagKeyInputSchema,
+} from '@pertexo/contracts/schemas/workflow-authoring';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type {
   WorkflowFolder,
   WorkflowTag,
@@ -82,12 +88,16 @@ function OrganizationManagerContent({
   });
   const [validation, setValidation] = useState<string>();
   const [cleanup, setCleanup] = useState<WorkflowTag>();
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [pendingKind, setPendingKind] =
+    useState<WorkflowOrganizationAttempt['kind']>();
   const locked = command.pending || command.retryAvailable || command.denied;
   const start: StartCommand = (attempt) => {
     if (locked) return;
     try {
       const frozen = freezeWorkflowOrganizationAttempt(attempt);
       setValidation(undefined);
+      setPendingKind(frozen.kind);
       void command.start(frozen);
     } catch {
       setValidation(
@@ -110,7 +120,10 @@ function OrganizationManagerContent({
           permissions or execution.
         </DialogDescription>
         <div className="mt-6 flex flex-col gap-6">
-          <OrganizationCommandFeedback command={command} />
+          {!command.denied &&
+          (cleanup !== undefined || confirmationOpen) ? null : (
+            <OrganizationCommandFeedback command={command} />
+          )}
           {cleanup === undefined && !command.denied ? (
             <Button
               type="button"
@@ -161,6 +174,9 @@ function OrganizationManagerContent({
                 locked={locked}
                 scope={scope}
                 start={start}
+                command={command}
+                pendingKind={pendingKind}
+                onConfirmationChange={setConfirmationOpen}
               />
               <Separator />
               <TagManagement
@@ -169,6 +185,9 @@ function OrganizationManagerContent({
                 locked={locked}
                 scope={scope}
                 start={start}
+                command={command}
+                pendingKind={pendingKind}
+                onConfirmationChange={setConfirmationOpen}
                 onCleanup={(tag) => {
                   command.reset();
                   setCleanup(tag);
@@ -220,19 +239,36 @@ function FolderManagement({
   locked,
   scope,
   start,
+  command,
+  pendingKind,
+  onConfirmationChange,
 }: Readonly<{
   folders: readonly WorkflowFolder[];
   ready: boolean;
   locked: boolean;
   scope: { workspaceId: string };
   start: StartCommand;
+  command: ReturnType<typeof useWorkflowOrganizationCommand>;
+  pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
+  onConfirmationChange: (open: boolean) => void;
 }>) {
   const [selected, setSelected] = useState<string>();
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<WorkflowFolder>();
   const id = useId();
+  const fields = useFieldValidation<'name'>();
   const current = folders.find((folder) => folder.id === selected);
+  const nameError = (value: string) =>
+    workflowFolderNameInputSchema.safeParse(value).success
+      ? undefined
+      : 'Enter a folder name of 1–128 UTF-8 bytes without control characters.';
+  const changeConfirmation = (open: boolean) => {
+    setConfirmDelete(open);
+    setDeleteTarget(open ? current : undefined);
+    onConfirmationChange(open);
+  };
   const disabled =
     locked || !ready || (selected !== undefined && current === undefined);
   return (
@@ -250,6 +286,7 @@ function FolderManagement({
                 disabled={locked}
                 onClick={() => {
                   setSelected(folder.id);
+                  fields.reset();
                   setName(folder.name);
                   setParentId(folder.parentId);
                   setConfirmDelete(false);
@@ -265,6 +302,7 @@ function FolderManagement({
         onSubmit={(event) => {
           event.preventDefault();
           if (disabled) return;
+          if (!fields.submit({ name: nameError(name) })) return;
           start(
             current === undefined
               ? {
@@ -287,15 +325,18 @@ function FolderManagement({
           <LabelledField
             id={id}
             label="Folder name"
+            error={fields.error('name')}
             description="Up to 128 UTF-8 bytes. Display casing is kept; sibling names differ only by ASCII casing conflict."
           >
             {(control) => (
               <Input
                 {...control}
+                ref={fields.register('name')}
                 value={name}
                 disabled={disabled}
                 onChange={(event) => {
                   setName(event.target.value);
+                  fields.change('name', nameError(event.target.value));
                 }}
               />
             )}
@@ -310,16 +351,23 @@ function FolderManagement({
           <div className="flex flex-wrap gap-2">
             <ProgressButton
               type="submit"
-              disabled={disabled || name.trim().length === 0}
+              disabled={disabled}
+              pending={
+                command.pending &&
+                (pendingKind === 'create-folder' ||
+                  pendingKind === 'rename-folder')
+              }
               pendingLabel="Saving…"
             >
               {current === undefined ? 'Create folder' : 'Rename folder'}
             </ProgressButton>
             {current === undefined ? null : (
               <>
-                <Button
+                <ProgressButton
                   type="button"
                   disabled={disabled}
+                  pending={command.pending && pendingKind === 'move-folder'}
+                  pendingLabel="Moving…"
                   onClick={() => {
                     start({
                       ...scope,
@@ -334,13 +382,13 @@ function FolderManagement({
                   }}
                 >
                   Move folder
-                </Button>
+                </ProgressButton>
                 <Button
                   type="button"
                   variant="destructive"
                   disabled={disabled}
                   onClick={() => {
-                    setConfirmDelete(true);
+                    changeConfirmation(true);
                   }}
                 >
                   Delete folder
@@ -351,6 +399,7 @@ function FolderManagement({
                   disabled={disabled}
                   onClick={() => {
                     setSelected(undefined);
+                    fields.reset();
                     setName('');
                     setParentId(null);
                     setConfirmDelete(false);
@@ -378,32 +427,51 @@ function FolderManagement({
           New folder
         </Button>
       ) : null}
-      {confirmDelete && current !== undefined ? (
-        <Notice
-          tone="warning"
-          title={`Delete ${current.name}?`}
-          action={
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={disabled}
-              onClick={() => {
-                start({
-                  ...scope,
-                  kind: 'delete-folder',
-                  folderId: current.id,
-                  idempotencyKey: crypto.randomUUID(),
-                  body: { expectedFolderRevision: current.revision },
-                });
-              }}
-            >
-              Confirm delete folder
-            </Button>
+      {confirmDelete && deleteTarget !== undefined ? (
+        <ConfirmDialog
+          open
+          onOpenChange={changeConfirmation}
+          tone="destructive"
+          title={`Delete ${deleteTarget.name}?`}
+          description="Deletion requires an empty folder, including archived workflows and immediate child folders. Nothing is automatically unfiled."
+          pending={command.pending && pendingKind === 'delete-folder'}
+          pendingLabel="Deleting…"
+          locked={command.pending || command.retryAvailable}
+          confirmDisabled={
+            command.denied ||
+            (!command.retryAvailable &&
+              (disabled ||
+                command.error !== undefined ||
+                command.result !== undefined))
+          }
+          confirmLabel={
+            command.retryAvailable
+              ? 'Retry exact command'
+              : 'Confirm delete folder'
+          }
+          error={command.error}
+          errorTone={command.retryAvailable ? 'warning' : 'destructive'}
+          onConfirm={
+            command.retryAvailable
+              ? command.retry
+              : () => {
+                  if (current === undefined) return;
+                  start({
+                    ...scope,
+                    kind: 'delete-folder',
+                    folderId: current.id,
+                    idempotencyKey: crypto.randomUUID(),
+                    body: { expectedFolderRevision: current.revision },
+                  });
+                }
           }
         >
-          Deletion requires an empty folder, including archived workflows and
-          immediate child folders. Nothing is automatically unfiled.
-        </Notice>
+          {command.result === undefined ? null : (
+            <Notice tone="success">
+              Command completed. Current organization is being reloaded.
+            </Notice>
+          )}
+        </ConfirmDialog>
       ) : null}
     </section>
   );
@@ -416,6 +484,9 @@ function TagManagement({
   scope,
   start,
   onCleanup,
+  command,
+  pendingKind,
+  onConfirmationChange,
 }: Readonly<{
   tags: readonly WorkflowTag[];
   ready: boolean;
@@ -423,14 +494,28 @@ function TagManagement({
   scope: { workspaceId: string };
   start: StartCommand;
   onCleanup: (tag: WorkflowTag) => void;
+  command: ReturnType<typeof useWorkflowOrganizationCommand>;
+  pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
+  onConfirmationChange: (open: boolean) => void;
 }>) {
   const [selected, setSelected] = useState<string>();
   const [name, setName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<WorkflowTag>();
   const current = tags.find((tag) => tag.id === selected);
   const disabled =
     locked || !ready || (selected !== undefined && current === undefined);
   const id = useId();
+  const fields = useFieldValidation<'name'>();
+  const nameError = (value: string) =>
+    workflowTagKeyInputSchema.safeParse(value).success
+      ? undefined
+      : 'Enter a tag key of 1–32 bytes using letters, numbers and single hyphens.';
+  const changeConfirmation = (open: boolean) => {
+    setConfirmDelete(open);
+    setDeleteTarget(open ? current : undefined);
+    onConfirmationChange(open);
+  };
   return (
     <section aria-label="Tag management" className="flex flex-col gap-4">
       <h2 className="font-display text-lg">Tags</h2>
@@ -446,6 +531,7 @@ function TagManagement({
                 disabled={locked}
                 onClick={() => {
                   setSelected(tag.id);
+                  fields.reset();
                   setName(tag.key);
                   setConfirmDelete(false);
                 }}
@@ -460,6 +546,7 @@ function TagManagement({
         onSubmit={(event) => {
           event.preventDefault();
           if (disabled) return;
+          if (!fields.submit({ name: nameError(name) })) return;
           start(
             current === undefined
               ? {
@@ -482,15 +569,18 @@ function TagManagement({
           <LabelledField
             id={id}
             label="Tag key"
+            error={fields.error('name')}
             description="Lowercase letters, numbers and single hyphens; at most 32 bytes."
           >
             {(control) => (
               <Input
                 {...control}
+                ref={fields.register('name')}
                 value={name}
                 disabled={disabled}
                 onChange={(event) => {
                   setName(event.target.value);
+                  fields.change('name', nameError(event.target.value));
                 }}
               />
             )}
@@ -498,7 +588,11 @@ function TagManagement({
           <div className="flex flex-wrap gap-2">
             <ProgressButton
               type="submit"
-              disabled={disabled || name.trim().length === 0}
+              disabled={disabled}
+              pending={
+                command.pending &&
+                (pendingKind === 'create-tag' || pendingKind === 'rename-tag')
+              }
               pendingLabel="Saving…"
             >
               {current === undefined ? 'Create tag' : 'Rename tag'}
@@ -510,7 +604,7 @@ function TagManagement({
                   variant="destructive"
                   disabled={disabled}
                   onClick={() => {
-                    setConfirmDelete(true);
+                    changeConfirmation(true);
                   }}
                 >
                   Delete tag
@@ -531,6 +625,7 @@ function TagManagement({
                   disabled={disabled}
                   onClick={() => {
                     setSelected(undefined);
+                    fields.reset();
                     setName('');
                     setConfirmDelete(false);
                   }}
@@ -556,33 +651,51 @@ function TagManagement({
           New tag
         </Button>
       ) : null}
-      {confirmDelete && current !== undefined ? (
-        <Notice
-          tone="warning"
-          title={`Delete ${current.key}?`}
-          action={
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={disabled}
-              onClick={() => {
-                start({
-                  ...scope,
-                  kind: 'delete-tag',
-                  tagId: current.id,
-                  idempotencyKey: crypto.randomUUID(),
-                  body: { expectedTagRevision: current.revision },
-                });
-              }}
-            >
-              Confirm delete tag
-            </Button>
+      {confirmDelete && deleteTarget !== undefined ? (
+        <ConfirmDialog
+          open
+          onOpenChange={changeConfirmation}
+          tone="destructive"
+          title={`Delete ${deleteTarget.key}?`}
+          description="Up to 50 assignments can be detached together. If the tag is used by more workflows, review assignments and explicitly clean up selected workflows first."
+          pending={command.pending && pendingKind === 'delete-tag'}
+          pendingLabel="Deleting…"
+          locked={command.pending || command.retryAvailable}
+          confirmDisabled={
+            command.denied ||
+            (!command.retryAvailable &&
+              (disabled ||
+                command.error !== undefined ||
+                command.result !== undefined))
+          }
+          confirmLabel={
+            command.retryAvailable
+              ? 'Retry exact command'
+              : 'Confirm delete tag'
+          }
+          error={command.error}
+          errorTone={command.retryAvailable ? 'warning' : 'destructive'}
+          onConfirm={
+            command.retryAvailable
+              ? command.retry
+              : () => {
+                  if (current === undefined) return;
+                  start({
+                    ...scope,
+                    kind: 'delete-tag',
+                    tagId: current.id,
+                    idempotencyKey: crypto.randomUUID(),
+                    body: { expectedTagRevision: current.revision },
+                  });
+                }
           }
         >
-          Up to 50 assignments can be detached atomically. If the tag is used by
-          more workflows, review assignments and explicitly clean up selected
-          workflows first.
-        </Notice>
+          {command.result === undefined ? null : (
+            <Notice tone="success">
+              Command completed. Current organization is being reloaded.
+            </Notice>
+          )}
+        </ConfirmDialog>
       ) : null}
     </section>
   );

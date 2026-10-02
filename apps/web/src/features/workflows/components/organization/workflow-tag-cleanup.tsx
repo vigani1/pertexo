@@ -13,7 +13,11 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { LoadMore } from '@/components/patterns/load-more';
 import { workflowTagAssignmentsInfiniteQueryOptions } from '../../organization.queries';
 import type { WorkflowOrganizationAttempt } from '../../model/workflow-organization';
-import type { OrganizationCommand } from './organization-command-feedback';
+import {
+  OrganizationCommandFeedback,
+  type OrganizationCommand,
+} from './organization-command-feedback';
+import { useOrganizationWorkflowNames } from './use-organization-workflow-names';
 
 export function WorkflowTagCleanup({
   apiClient,
@@ -48,6 +52,16 @@ export function WorkflowTagCleanup({
   );
   const id = useId();
   const rows = assignments.data?.pages.flatMap((page) => page.items) ?? [];
+  const names = useOrganizationWorkflowNames(
+    apiClient,
+    userId,
+    workspaceId,
+    [
+      ...selection.map((item) => item.workflowId),
+      ...rows.map((row) => row.workflowId),
+    ],
+    command.denied,
+  );
   const settled = command.result !== undefined;
   const disabled =
     locked || settled || !assignments.isSuccess || assignments.isFetching;
@@ -59,6 +73,7 @@ export function WorkflowTagCleanup({
         assignments. There is no select-all. Selection order is the order you
         check them.
       </p>
+      <OrganizationCommandFeedback command={command} names={names} />
       {assignments.isError ? (
         <Notice tone="destructive">
           Assignments could not be loaded. Reload before choosing workflows.
@@ -69,7 +84,7 @@ export function WorkflowTagCleanup({
           Workflows with this tag ({selection.length}/50 selected)
         </legend>
         <FieldGroup>
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const checked = selection.some(
               (item) => item.workflowId === row.workflowId,
             );
@@ -77,7 +92,7 @@ export function WorkflowTagCleanup({
               <LabelledField
                 key={row.workflowId}
                 id={`${id}-${row.workflowId}`}
-                label={`Select workflow ${row.workflowId}`}
+                label={`Select ${names.get(row.workflowId) ?? `workflow name unavailable (${String(index + 1)})`}`}
               >
                 {(control) => (
                   <Checkbox

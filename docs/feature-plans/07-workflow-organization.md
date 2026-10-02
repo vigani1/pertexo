@@ -555,3 +555,16 @@ and captured search state are under investigation; no timeout or guard is weaken
 The complete coverage command on this frozen checkpoint separately passes all 24
 cohorts with zero unreviewed and the same 391 reviewed branches. Passing producer
 coverage does not cancel the review findings or the failed whole browser gate.
+
+The bounded Weft corrections now pass 18 focused manager/feedback regressions:
+folder/tag forms use field-associated validation with first-invalid focus and
+actual save/move/delete pending states; deletion uses the canonical confirmation
+owner. Bounded assignment labels resolve at most fifty explicit loaded/selected
+workflow IDs through current authorized projections, cache only names or null
+under the organization scope, and show safe unavailable labels rather than UUIDs.
+Resource-specific missing workflow labels return null without claiming authority;
+401/403 still fence the scope. Selection order, exact frozen command bodies and
+current revision checks are unchanged. Owned lint/format checks pass without
+suppressions. React Doctor reports three manager control-flow maintainability
+advisories, reviewed and retained honestly; no functional defect is asserted from
+the score. Independent committed-delta review remains required.

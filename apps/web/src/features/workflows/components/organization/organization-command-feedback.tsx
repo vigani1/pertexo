@@ -20,7 +20,11 @@ const outcomeLabels = {
 
 export function OrganizationCommandFeedback({
   command,
-}: Readonly<{ command: OrganizationCommand }>) {
+  names = new Map(),
+}: Readonly<{
+  command: OrganizationCommand;
+  names?: ReadonlyMap<string, string>;
+}>) {
   return (
     <>
       {command.error === undefined ? null : (
@@ -29,9 +33,15 @@ export function OrganizationCommandFeedback({
       {command.result === undefined ? null : 'items' in command.result ? (
         <Notice title="Cleanup outcomes">
           <ol className="flex flex-col gap-2">
-            {command.result.items.map((item) => (
+            {command.result.items.map((item, index) => (
               <li key={item.workflowId}>
-                {item.workflowId}: {outcomeLabels[item.status]}
+                <span className="break-words">
+                  {command.denied
+                    ? `Workflow name unavailable (${String(index + 1)})`
+                    : (names.get(item.workflowId) ??
+                      `Workflow name unavailable (${String(index + 1)})`)}
+                </span>
+                : {outcomeLabels[item.status]}
                 {'replayed' in item && item.replayed
                   ? ' (previously completed)'
                   : ''}

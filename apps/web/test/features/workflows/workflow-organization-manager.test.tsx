@@ -12,11 +12,13 @@ import { testFetch } from '../../support/render-app';
 import {
   api,
   userId,
+  workspaceId,
   workflowId,
   secondWorkflowId,
   workspaceWith,
   discoveryHandlers,
   problem,
+  summary,
 } from './workflow-list.fixtures';
 
 const folder = {
@@ -36,6 +38,21 @@ function installVocabulary() {
     ),
     http.get(`${api}/workflow-tags`, () =>
       HttpResponse.json({ items: [tag], nextCursor: null }),
+    ),
+    http.get(`${api}/workflows/:id`, ({ params }) =>
+      HttpResponse.json({
+        workflow: summary(
+          String(params.id),
+          params.id === workflowId ? 'Alpha' : 'Beta',
+        ),
+        organization: {
+          tags: [],
+          folderId: null,
+          organizationRevision: 1,
+          isFavorite: true,
+          favoriteRevision: workflowId,
+        },
+      }),
     ),
   );
 }
@@ -68,6 +85,167 @@ function renderManager(
 }
 
 describe('workflow organization manager', () => {
+  it.each([
+    {
+      label: 'Folder name',
+      action: 'Create folder',
+      value: 'é'.repeat(65),
+      message: /1–128 UTF-8/,
+    },
+    {
+      label: 'Tag key',
+      action: 'Create tag',
+      value: 'bad.key',
+      message: /1–32 bytes/,
+    },
+  ])(
+    'associates $label validation and focuses the invalid field only on submit',
+    async ({ label, action, value, message }) => {
+      installVocabulary();
+      renderManager();
+      await screen.findByRole('button', { name: 'Edit folder Operations' });
+      const field = screen.getByLabelText(label);
+      await userEvent.type(field, value);
+      expect(field).not.toHaveAttribute('aria-invalid', 'true');
+      await userEvent.click(screen.getByRole('button', { name: action }));
+      expect(field).toHaveFocus();
+      expect(field).toHaveAttribute('aria-invalid', 'true');
+      const error = screen.getByText(message);
+      expect(field.getAttribute('aria-describedby')).toContain(error.id);
+      await userEvent.clear(field);
+      await userEvent.type(field, 'valid');
+      expect(field).not.toHaveAttribute('aria-invalid', 'true');
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+    },
+  );
+  it('shows real pending progress for the submitted folder command', async () => {
+    installVocabulary();
+    let release: (() => void) | undefined;
+    mockServer.use(
+      http.post(`${api}/workflow-folders`, async () => {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return HttpResponse.json({ folder, replayed: false });
+      }),
+    );
+    renderManager();
+    await screen.findByRole('button', { name: 'Edit folder Operations' });
+    await userEvent.type(screen.getByLabelText('Folder name'), 'New folder');
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Create folder' }),
+    );
+    const saving = await screen.findByRole('button', { name: 'Saving…' });
+    expect(saving).toHaveAttribute('data-pending');
+    expect(saving).toBeDisabled();
+    await waitFor(() => {
+      expect(release).toBeDefined();
+    });
+    release?.();
+    await screen.findByText(/Command completed/);
+  });
+  it('uses a cancellable canonical destructive confirmation without sending on open', async () => {
+    installVocabulary();
+    const sent = vi.fn();
+    mockServer.use(
+      http.post(`${api}/workflow-folders/${workflowId}/delete`, () => {
+        sent();
+        return HttpResponse.json({ deleted: true, replayed: false });
+      }),
+    );
+    renderManager();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Edit folder Operations' }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete folder' }),
+    );
+    const confirmation = screen.getByRole('dialog', {
+      name: 'Delete Operations?',
+    });
+    expect(
+      within(confirmation).getByRole('button', {
+        name: 'Confirm delete folder',
+      }),
+    ).toBeEnabled();
+    expect(sent).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(confirmation).getByRole('button', { name: 'Cancel' }),
+    );
+    expect(
+      screen.queryByRole('dialog', { name: 'Delete Operations?' }),
+    ).not.toBeInTheDocument();
+    expect(sent).not.toHaveBeenCalled();
+  });
+  it('uses an unavailable ordinal instead of leaking IDs or stale names for an invisible assignment', async () => {
+    installVocabulary();
+    mockServer.use(
+      http.get(`${api}/workflow-tags/${secondWorkflowId}/workflows`, () =>
+        HttpResponse.json({
+          items: [{ workflowId, organizationRevision: 7 }],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`${api}/workflows/${workflowId}`, () =>
+        problem(404, 'workflow.not_found'),
+      ),
+    );
+    const { queryClient } = renderManager();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Edit tag ops' }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Review tag assignments' }),
+    );
+    const checkbox = await screen.findByRole('checkbox', {
+      name: 'Select workflow name unavailable (1)',
+    });
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData([
+          'identity',
+          userId,
+          'workspace',
+          workspaceId,
+          'workflow-organization',
+          'labels',
+          workflowId,
+        ]),
+      ).toBeNull();
+    });
+    expect(checkbox).not.toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.queryByText(workflowId, { exact: false }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
+  });
+  it('retires cleanup controls and names when a projection name read loses permission', async () => {
+    installVocabulary();
+    mockServer.use(
+      http.get(`${api}/workflow-tags/${secondWorkflowId}/workflows`, () =>
+        HttpResponse.json({
+          items: [{ workflowId, organizationRevision: 7 }],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`${api}/workflows/${workflowId}`, () =>
+        problem(403, 'request.forbidden'),
+      ),
+    );
+    renderManager();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Edit tag ops' }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Review tag assignments' }),
+    );
+    await screen.findByText(/Organization controls are closed/);
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(workflowId, { exact: false }),
+    ).not.toBeInTheDocument();
+  });
   it.each(['builder', 'viewer'] as const)(
     'does not mount admin reads or controls for %s',
     async (role) => {
@@ -137,6 +315,7 @@ describe('workflow organization manager', () => {
     await screen.findByText(
       'Move the workflows and child folders out before deleting this folder.',
     );
+    await event.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByLabelText('Folder name')).toHaveValue('Operations');
     expect(
       screen.getByRole('button', { name: 'Reload current folders and tags' }),
@@ -273,11 +452,12 @@ describe('workflow organization manager', () => {
       screen.getByRole('button', { name: 'Confirm delete tag' }),
     );
     await screen.findByText(/too many assignments/);
+    await event.click(screen.getByRole('button', { name: 'Cancel' }));
     await event.click(
       screen.getByRole('button', { name: 'Review tag assignments' }),
     );
     await screen.findByRole('checkbox', {
-      name: `Select workflow ${workflowId}`,
+      name: 'Select Alpha',
     });
     expect(assignmentReads).toHaveBeenCalledTimes(1);
     expect(
@@ -288,12 +468,10 @@ describe('workflow organization manager', () => {
     );
     await event.click(
       await screen.findByRole('checkbox', {
-        name: `Select workflow ${secondWorkflowId}`,
+        name: 'Select Beta',
       }),
     );
-    await event.click(
-      screen.getByRole('checkbox', { name: `Select workflow ${workflowId}` }),
-    );
+    await event.click(screen.getByRole('checkbox', { name: 'Select Alpha' }));
     await event.click(
       screen.getByRole('button', {
         name: 'Detach tag from 2 selected workflows',
@@ -301,7 +479,7 @@ describe('workflow organization manager', () => {
     );
     await screen.findByRole('button', { name: 'Retry exact command' });
     expect(
-      screen.getByRole('checkbox', { name: `Select workflow ${workflowId}` }),
+      screen.getByRole('checkbox', { name: 'Select Alpha' }),
     ).toHaveAttribute('aria-disabled', 'true');
     expect(sent[0]?.body).toEqual({
       tagId: secondWorkflowId,
@@ -383,6 +561,19 @@ describe('workflow organization manager', () => {
     );
     const reads = vi.fn();
     mockServer.use(
+      http.get(`${api}/workflows/:id`, ({ params }) => {
+        const index = ids.indexOf(String(params.id));
+        return HttpResponse.json({
+          workflow: summary(String(params.id), `Workflow ${String(index + 1)}`),
+          organization: {
+            tags: [],
+            folderId: null,
+            organizationRevision: 1,
+            isFavorite: true,
+            favoriteRevision: workflowId,
+          },
+        });
+      }),
       http.get(
         `${api}/workflow-tags/${secondWorkflowId}/workflows`,
         ({ request }) => {
@@ -412,24 +603,30 @@ describe('workflow organization manager', () => {
     const last = ids[50];
     if (first === undefined || secondPage === undefined || last === undefined)
       throw new Error('Expected three fixture pages');
-    await screen.findByRole('checkbox', { name: `Select workflow ${first}` });
+    await screen.findByRole('checkbox', { name: 'Select Workflow 1' });
     expect(reads).toHaveBeenCalledTimes(1);
     await event.click(
       screen.getByRole('button', { name: 'Load more assignments' }),
     );
     await screen.findByRole('checkbox', {
-      name: `Select workflow ${secondPage}`,
+      name: 'Select Workflow 26',
     });
     await event.click(
       screen.getByRole('button', { name: 'Load more assignments' }),
     );
-    await screen.findByRole('checkbox', { name: `Select workflow ${last}` });
-    for (const id of ids.slice(0, 50))
+    await screen.findByRole('checkbox', {
+      name: 'Select workflow name unavailable (51)',
+    });
+    for (let index = 0; index < 50; index += 1)
       await event.click(
-        screen.getByRole('checkbox', { name: `Select workflow ${id}` }),
+        await screen.findByRole('checkbox', {
+          name: `Select Workflow ${String(index + 1)}`,
+        }),
       );
     expect(
-      screen.getByRole('checkbox', { name: `Select workflow ${last}` }),
+      screen.getByRole('checkbox', {
+        name: 'Select workflow name unavailable (51)',
+      }),
     ).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('button', {
