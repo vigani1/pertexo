@@ -17,6 +17,9 @@
       "jscpd"
     ],
     "ignoreIssues": {
+      "infrastructure/testing/curated-cutover-owned-resources.mjs": [
+        "unlisted"
+      ],
       "packages/contracts/src/http/workflow-authoring.ts": [
         "duplicates"
       ],
@@ -28,12 +31,14 @@
       ".": {
         "entry": [
           "infrastructure/testing/editor-browser-envelope-keys.d.mts",
+          "infrastructure/testing/curated-template-envelope-context.d.mts",
           "infrastructure/testing/connection-health-slack-transport.d.mts"
         ]
       },
       "apps/web": {
         "entry": [
           "playwright.live.config.ts",
+          "vite.curated-qualification.config.ts",
           "e2e-live/**/*.spec.ts",
           "e2e-live/support/*.probe.ts",
           "e2e-live/support/*.lifetime-probe.ts"
