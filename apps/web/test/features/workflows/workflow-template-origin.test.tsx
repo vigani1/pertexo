@@ -55,6 +55,124 @@ function mount() {
 }
 
 describe('Scoped historical template origin projection', () => {
+  it.each([
+    ['inbox', 403],
+    ['inbox', 404],
+    ['other-workflow', 403],
+    ['other-workflow', 404],
+  ] as const)(
+    'keeps the authorized origin after unrelated %s %s',
+    async (scope, status) => {
+      mockServer.use(
+        http.get(`${api}/workflows/${workflowId}`, () =>
+          HttpResponse.json({
+            workflow: summary(workflowId, 'Authorized'),
+            templateOrigin: origin,
+          }),
+        ),
+      );
+      const { queryClient } = mount();
+      await screen.findByText(/Originally based on/u);
+      const queryKey =
+        scope === 'inbox'
+          ? ['identity', userId, 'workspace', workspaceId, 'inbox']
+          : workflowKeys.detail(userId, workspaceId, secondWorkflowId);
+      await act(async () => {
+        await queryClient
+          .query({
+            queryKey,
+            queryFn: () =>
+              Promise.reject(
+                new ApiError({
+                  kind: 'problem',
+                  message: 'Unrelated denial',
+                  status,
+                }),
+              ),
+            retry: false,
+          })
+          .catch(() => undefined);
+      });
+      expect(screen.getByText(/Originally based on/u)).toBeInTheDocument();
+      expect(screen.queryByText(/access changed/u)).not.toBeInTheDocument();
+      expect(
+        queryClient.getQueryData(
+          workflowTemplateOriginKey(userId, workspaceId, workflowId),
+        ),
+      ).toMatchObject({ templateOrigin: origin });
+    },
+  );
+  it.each([
+    ['workspace', 403],
+    ['workspace', 404],
+    ['workflow', 403],
+    ['workflow', 404],
+    ['origin', 403],
+    ['origin', 404],
+    ['inbox', 401],
+    ['other-workflow', 401],
+    ['session', 0],
+  ] as const)(
+    'retires cached metadata for relevant %s %s',
+    async (scope, status) => {
+      mockServer.use(
+        http.get(`${api}/workflows/${workflowId}`, () =>
+          HttpResponse.json({
+            workflow: summary(workflowId, 'Authorized'),
+            templateOrigin: origin,
+          }),
+        ),
+      );
+      const { queryClient } = mount();
+      await screen.findByText(/Originally based on/u);
+      act(() => {
+        if (scope === 'session') {
+          window.dispatchEvent(
+            new StorageEvent('storage', {
+              key: 'pertexo:auth-session-change:v1',
+              newValue: JSON.stringify({
+                event: 'changed',
+                generation: crypto.randomUUID(),
+                sender: 'another-tab',
+              }),
+            }),
+          );
+          return;
+        }
+        const queryKey =
+          scope === 'workspace'
+            ? ['identity', userId, 'workspace', workspaceId]
+            : scope === 'workflow'
+              ? workflowKeys.detail(userId, workspaceId, workflowId)
+              : scope === 'origin'
+                ? workflowTemplateOriginKey(userId, workspaceId, workflowId)
+                : scope === 'other-workflow'
+                  ? workflowKeys.detail(userId, workspaceId, secondWorkflowId)
+                  : ['identity', userId, 'workspace', workspaceId, 'inbox'];
+        // Inject the same cache notification as a failed scoped read, without
+        // replacing the live origin query's authority-checked request function.
+        const query = queryClient
+          .getQueryCache()
+          .build(queryClient, { queryKey });
+        query.setState({
+          error: new ApiError({
+            kind: 'problem',
+            message: 'Authority lost',
+            status,
+          }),
+        });
+      });
+      await screen.findByText('Template origin unavailable: access changed.');
+      expect(
+        screen.queryByText(/Originally based on/u),
+      ).not.toBeInTheDocument();
+      expect(
+        queryClient.getQueryData(
+          workflowTemplateOriginKey(userId, workspaceId, workflowId),
+        ),
+      ).toBeUndefined();
+    },
+  );
   it.each(['identity', 'workspace'] as const)(
     'fences a late origin read when %s changes',
     async (scope) => {
@@ -190,51 +308,70 @@ describe('Scoped historical template origin projection', () => {
     expect(screen.queryByText(/Originally based on/u)).not.toBeInTheDocument();
   });
 
-  it('retires cached origin on authority loss and fences a held successful response', async () => {
-    let release: () => void = () => undefined;
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    let started = false;
-    mockServer.use(
-      http.get(`${api}/workflows/${workflowId}`, async () => {
-        started = true;
+  it.each(['workflow', 'session'] as const)(
+    'fences a held successful origin response after %s authority loss',
+    async (scope) => {
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let started = false;
+      mockServer.use(
+        http.get(`${api}/workflows/${workflowId}`, async () => {
+          started = true;
+          await held;
+          return HttpResponse.json({
+            workflow: summary(workflowId, 'Held'),
+            templateOrigin: origin,
+          });
+        }),
+      );
+      const { queryClient } = mount();
+      await waitFor(() => {
+        expect(started).toBe(true);
+      });
+      await act(async () => {
+        if (scope === 'session') {
+          window.dispatchEvent(
+            new StorageEvent('storage', {
+              key: 'pertexo:auth-session-change:v1',
+              newValue: JSON.stringify({
+                event: 'changed',
+                generation: crypto.randomUUID(),
+                sender: 'another-tab',
+              }),
+            }),
+          );
+          return;
+        }
+        await queryClient
+          .query({
+            queryKey: workflowKeys.detail(userId, workspaceId, workflowId),
+            queryFn: () =>
+              Promise.reject(
+                new ApiError({
+                  kind: 'problem',
+                  message: 'Denied',
+                  status: 403,
+                }),
+              ),
+            retry: false,
+          })
+          .catch(() => undefined);
+      });
+      await screen.findByText('Template origin unavailable: access changed.');
+      await act(async () => {
+        release();
         await held;
-        return HttpResponse.json({
-          workflow: summary(workflowId, 'Held'),
-          templateOrigin: origin,
-        });
-      }),
-    );
-    const { queryClient } = mount();
-    await waitFor(() => {
-      expect(started).toBe(true);
-    });
-    await act(async () => {
-      await queryClient
-        .query({
-          queryKey: [
-            ...workflowKeys.scope(userId, workspaceId),
-            'authority-test',
-          ],
-          queryFn: () =>
-            Promise.reject(
-              new ApiError({ kind: 'problem', message: 'Denied', status: 403 }),
-            ),
-          retry: false,
-        })
-        .catch(() => undefined);
-    });
-    await screen.findByText('Template origin unavailable: access changed.');
-    await act(async () => {
-      release();
-      await held;
-    });
-    expect(screen.queryByText(/Originally based on/u)).not.toBeInTheDocument();
-    expect(
-      queryClient.getQueryData(
-        workflowTemplateOriginKey(userId, workspaceId, workflowId),
-      ),
-    ).toBeUndefined();
-  });
+      });
+      expect(
+        screen.queryByText(/Originally based on/u),
+      ).not.toBeInTheDocument();
+      expect(
+        queryClient.getQueryData(
+          workflowTemplateOriginKey(userId, workspaceId, workflowId),
+        ),
+      ).toBeUndefined();
+    },
+  );
 });
