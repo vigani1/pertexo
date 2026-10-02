@@ -646,6 +646,9 @@ test(
             "update app.workspace_memberships set status='suspended' where workspace_id=$1 and user_id=$2",
             [workspaceId, actor],
           );
+          // Workflow authority deliberately hides inaccessible workspace data.
+          // The existing read and retained-import contracts both return 404,
+          // rather than revealing a suspended membership through a 403.
           assert.equal(
             (
               await send(
@@ -655,7 +658,7 @@ test(
                 browser,
               )
             ).status,
-            403,
+            404,
           );
           assert.equal(
             (
@@ -664,7 +667,7 @@ test(
                 'idempotency-key': originKey,
               })
             ).status,
-            403,
+            404,
           );
           assert.equal(
             (
