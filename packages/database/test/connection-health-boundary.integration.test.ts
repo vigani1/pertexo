@@ -111,7 +111,7 @@ async function assertDriftRejected(statement: string, restore: string) {
     await expect(
       checkDatabaseReadiness(api, readinessOptions),
     ).resolves.toMatchObject({
-      migrationHead: '0133_curated_template_origin.sql',
+      migrationHead: '0135_workflow_folders_batch_identity.sql',
     });
   }
 }
@@ -175,6 +175,8 @@ describe('connection health migration and runtime boundary', () => {
       '0131_checked_manual_start.sql',
       '0132_workflow_portability.sql',
       '0133_curated_template_origin.sql',
+      '0134_workflow_organization.sql',
+      '0135_workflow_folders_batch_identity.sql',
     ]);
     const retained = await upgrade.asOwner((client) =>
       client.query(

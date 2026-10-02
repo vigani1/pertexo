@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { acceptWorkflowRun } from '../src/execution/runs/execution-acceptance.js';
+import { assertWorkspaceTenantPurgeChain } from './support/workspace-tenant-purge-chain.js';
 import {
   apiDatabase,
   hasPostgresCode,
@@ -713,11 +714,7 @@ describe('current workflow concurrency and ordered production admission', () => 
           set expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and key_hash=$2`,
           [workspaceA, expiredHash],
         );
-        const purge = (
-          await client.query<{ definition: string }>(
-            "select pg_get_functiondef('app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)'::regprocedure)||pg_get_functiondef('app.execute_workspace_tenant_rows_page_before_input_cases(uuid,uuid,bigint,integer,bigint,character)'::regprocedure) definition",
-          )
-        ).rows[0]?.definition;
+        const purge = await assertWorkspaceTenantPurgeChain(client);
         expect(purge).toContain(
           'RETURN QUERY SELECT * FROM app.execute_workspace_tenant_rows_page_before_input_cases',
         );

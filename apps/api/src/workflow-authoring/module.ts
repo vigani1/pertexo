@@ -20,6 +20,10 @@ import {
   WorkspaceAutoPauseReadGuard,
 } from './guards.js';
 import { WorkflowAuthoringController } from './controllers.js';
+import {
+  workflowOrganizationProviders,
+  workflowOrganizationControllers,
+} from './organization-providers.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from './rename-use-case.js';
 import { DuplicateWorkflowUseCase } from './duplicate-use-case.js';
@@ -55,6 +59,7 @@ export class WorkflowAuthoringModule {
       dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY;
     const portabilityPersistence = dependencies.portabilityPersistence;
     const providers: Provider[] = [
+      ...workflowOrganizationProviders(dependencies),
       ...(portabilityPersistence === undefined
         ? []
         : [
@@ -214,6 +219,7 @@ export class WorkflowAuthoringModule {
       imports: [identityModule],
       controllers: [
         WorkflowAuthoringController,
+        ...workflowOrganizationControllers,
         ...(dependencies.portabilityPersistence === undefined
           ? []
           : [WorkflowPortabilityController]),

@@ -17,6 +17,10 @@ import {
   parseIdentityConfig,
   type ApiIdentityConfig,
 } from './identity-config.js';
+import {
+  parseWorkflowOrganizationConfig,
+  type WorkflowOrganizationConfig,
+} from './workflow-organization-config.js';
 
 const API_NODE_ENVIRONMENTS = [
   'development',
@@ -135,6 +139,7 @@ export type ApiConfig = Readonly<{
   }>;
   host: string;
   identity?: ApiIdentityConfig;
+  workflowOrganization?: WorkflowOrganizationConfig;
   nodeEnv: ApiNodeEnvironment;
   nodeCompatibilityCohort: PlatformReleaseCohort;
   observability: ObservabilityConfig;
@@ -157,6 +162,15 @@ export function parseApiConfig(
       : { otlpHttpEndpoint: parsed.OTEL_EXPORTER_OTLP_ENDPOINT }),
   });
   const identity = parseIdentityConfig(parsed, environment);
+  const workflowOrganization = parseWorkflowOrganizationConfig(environment, [
+    ...(identity?.secretEncryption?.previous ?? []).map(({ key }) => key),
+    ...(identity?.invitationTokenEncryption?.previous ?? []).map(
+      ({ key }) => key,
+    ),
+    ...(identity?.betterAuth?.durableMail?.encryption.previous ?? []).map(
+      ({ key }) => key,
+    ),
+  ]);
   const connections = parseConnectionsConfig(parsed, environment);
   const deployed =
     parsed.NODE_ENV === 'staging' || parsed.NODE_ENV === 'production';
@@ -182,6 +196,7 @@ export function parseApiConfig(
     }),
     host: parsed.HOST,
     ...(identity === undefined ? {} : { identity }),
+    ...(workflowOrganization === undefined ? {} : { workflowOrganization }),
     nodeEnv: parsed.NODE_ENV,
     nodeCompatibilityCohort: parsed.NODE_COMPATIBILITY_COHORT,
     observability,

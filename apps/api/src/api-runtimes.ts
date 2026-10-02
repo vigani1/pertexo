@@ -141,6 +141,9 @@ export async function acquireApiRuntimes(
         {
           ...dependencies.workflowOverrides,
           releaseCohort: config.nodeCompatibilityCohort,
+          ...(config.workflowOrganization === undefined
+            ? {}
+            : { organization: config.workflowOrganization }),
         },
         databaseRuntime,
       );

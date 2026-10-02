@@ -13,6 +13,7 @@ import {
 import {
   authorizeWorkspace,
   createActorContext,
+  isCanonicalUuid,
   type AuthorizationCapability,
   type WorkspaceStatus,
 } from '../workspaces/index.js';
@@ -193,7 +194,7 @@ function routeWorkspace(request: IdentityWorkspaceRequest): string {
     typeof params !== 'object' ||
     params === null ||
     !('workspaceId' in params) ||
-    typeof params.workspaceId !== 'string'
+    !isCanonicalUuid(params.workspaceId)
   ) {
     return throwApplicationError(applicationError('request.invalid'));
   }

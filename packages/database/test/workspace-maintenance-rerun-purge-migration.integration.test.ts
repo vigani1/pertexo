@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../src/migrations.js';
 import { copyMigrationsBefore } from './support/artifact-migration-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
+import { assertWorkspaceTenantPurgeChain } from './support/workspace-tenant-purge-chain.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -178,6 +179,8 @@ describe('workspace maintenance-rerun purge upgrade', () => {
       '0131_checked_manual_start.sql',
       '0132_workflow_portability.sql',
       '0133_curated_template_origin.sql',
+      '0134_workflow_organization.sql',
+      '0135_workflow_folders_batch_identity.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 
@@ -209,15 +212,9 @@ describe('workspace maintenance-rerun purge upgrade', () => {
           target_type: 'workspace_purge_job',
         },
       ]);
-      const functionBody = await owner.query<{ body: string }>(
-        `select pg_get_functiondef(
-          'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)'::regprocedure
-        )||pg_get_functiondef('app.execute_workspace_tenant_rows_page_before_input_cases(uuid,uuid,bigint,integer,bigint,character)'::regprocedure) body`,
-      );
-      expect(functionBody.rows[0]?.body).toContain(
-        'operator_maintenance_rerun_requests',
-      );
-      expect(functionBody.rows[0]?.body).toContain(
+      const functionBody = await assertWorkspaceTenantPurgeChain(owner);
+      expect(functionBody).toContain('operator_maintenance_rerun_requests');
+      expect(functionBody).toContain(
         'RETURN QUERY SELECT * FROM app.execute_workspace_tenant_rows_page_before_input_cases',
       );
       await owner.query('commit');

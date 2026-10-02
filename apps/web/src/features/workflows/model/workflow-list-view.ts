@@ -3,6 +3,7 @@ import type {
   WorkflowSummary,
 } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { StatusTone } from '@/components/ui/status';
+import { workflowOrganizationListQuerySchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { describeWorkflowState } from './workflow-state';
 
 export type WorkflowView = 'active' | 'archived' | 'all';
@@ -14,7 +15,15 @@ export type WorkflowListSearch = Readonly<{
   create?: true;
   view?: Exclude<WorkflowView, 'active'>;
   sort?: Exclude<WorkflowSort, 'updated'>;
+  query?: string;
+  tagId?: string;
+  folderId?: string;
+  favoritesOnly?: 'true';
 }>;
+
+/** Complete replacements remain supported; independent patches use router-current search. */
+export type WorkflowListSearchUpdate =
+  WorkflowListSearch | ((current: WorkflowListSearch) => WorkflowListSearch);
 
 export const WORKFLOW_ORDER_BY_SORT: Readonly<
   Record<WorkflowSort, WorkflowListOrder>
@@ -29,12 +38,29 @@ export function parseWorkflowListSearch(search: unknown): WorkflowListSearch {
   const create = read('create');
   const view = read('view');
   const sort = read('sort');
+  const filters: Record<string, unknown> = {};
+  for (const key of ['query', 'tagId', 'folderId', 'favoritesOnly'] as const) {
+    const raw = read(key);
+    // The router JSON-decodes URL scalars. HTTP inputs remain strict.
+    const value =
+      key === 'query' &&
+      (typeof raw === 'boolean' ||
+        (typeof raw === 'number' && Number.isFinite(raw)))
+        ? String(raw)
+        : raw;
+    const parsed = workflowOrganizationListQuerySchema.shape[key].safeParse(
+      key === 'favoritesOnly' && raw === true ? 'true' : (value ?? undefined),
+    );
+    if (parsed.success && parsed.data !== undefined && parsed.data !== '')
+      filters[key] = parsed.data;
+  }
   return {
     ...(create === true || create === 'true' || create === 1 || create === '1'
       ? { create: true as const }
       : {}),
     ...(view === 'archived' || view === 'all' ? { view } : {}),
     ...(sort === 'created' ? { sort } : {}),
+    ...filters,
   };
 }
 
@@ -45,12 +71,17 @@ export function updateWorkflowListSearch(
     create?: boolean;
     view?: WorkflowView;
     sort?: WorkflowSort;
+    query?: string | null;
+    tagId?: string | null;
+    folderId?: string | null;
+    favoritesOnly?: 'true' | null;
   }>,
 ): WorkflowListSearch {
   const create = change.create ?? current.create === true;
   const view = change.view ?? current.view ?? 'active';
   const sort = change.sort ?? current.sort ?? 'updated';
   return {
+    ...parseWorkflowListSearch({ ...current, ...change }),
     ...(create ? { create: true as const } : {}),
     ...(view === 'active' ? {} : { view }),
     ...(sort === 'updated' ? {} : { sort }),

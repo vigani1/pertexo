@@ -14,11 +14,6 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-  WorkflowPortabilityUnavailableError,
-  WorkflowTemplateOriginUnavailableError,
-  WorkflowPortabilityCompatibilityConflictError,
-  WorkflowPortabilityReviewConflictError,
-  WorkflowPortabilityValidationError,
 } from '@pertexo/database/api';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
@@ -34,6 +29,8 @@ import {
 import { AuthorizationError } from '../workspaces/index.js';
 import { WorkflowHeaderError } from './preconditions.js';
 import { InvalidWorkflowCursorError } from './cursor.js';
+import { mapWorkflowOrganizationError } from './organization-errors.js';
+import { mapWorkflowPortabilityError } from './portability-errors.js';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
@@ -65,30 +62,10 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
-  if (error instanceof WorkflowTemplateOriginUnavailableError)
-    return applicationError('workflow.template_origin_unavailable', {
-      safeDetail: 'Historical template origin is temporarily unavailable.',
-    });
-  if (error instanceof WorkflowPortabilityUnavailableError)
-    return applicationError('workflow.portability_unavailable', {
-      safeDetail:
-        'New workflow imports are unavailable. Exact accepted commands can still be retried.',
-    });
-  if (error instanceof WorkflowPortabilityCompatibilityConflictError)
-    return applicationError('workflow.portability_compatibility_conflict', {
-      safeDetail:
-        'The destination catalog changed. Preview the import again before creating it.',
-    });
-  if (error instanceof WorkflowPortabilityReviewConflictError)
-    return applicationError('workflow.portability_review_conflict', {
-      safeDetail:
-        'The source no longer matches the reviewed content. Review the current saved source before exporting.',
-    });
-  if (error instanceof WorkflowPortabilityValidationError)
-    return applicationError('workflow.portability_invalid', {
-      safeDetail:
-        'The portable workflow is unsafe or incompatible. Review the import preview.',
-    });
+  const organization = mapWorkflowOrganizationError(error);
+  if (organization !== undefined) return organization;
+  const portability = mapWorkflowPortabilityError(error);
+  if (portability !== undefined) return portability;
   if (error instanceof AuthoringValidationUnavailableError)
     return validationUnavailable();
   if (error instanceof AuthorizationError)

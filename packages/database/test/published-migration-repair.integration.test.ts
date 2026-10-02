@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
+import { expectedMigrationHistoryFrom } from './support/migration-history-fixture.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -111,72 +112,11 @@ describe('selected published migration repair upgrade', () => {
       await owner.end();
     }
 
-    await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
-      '0067_reconcile_published_migration_repairs.sql',
-      '0068_restore_artifact_inventory.sql',
-      '0069_regional_write_admission.sql',
-      '0070_preview_execution_deadline.sql',
-      '0071_oidc_browser_binding.sql',
-      '0072_regional_replica_identity.sql',
-      '0073_transient_data_retention.sql',
-      '0074_retention_schedule_state_rls.sql',
-      '0075_workspace_purge_step_release.sql',
-      '0076_replay_lineage_retention.sql',
-      '0077_replay_read_locks.sql',
-      '0078_workflow_lifecycle_revision.sql',
-      '0079_artifact_upload_capacity.sql',
-      '0080_expired_artifact_upload_retention.sql',
-      '0081_schedule_claim_concurrency.sql',
-      '0082_legal_hold_destruction_serialization.sql',
-      '0083_artifact_finalization_retention_deadline.sql',
-      '0084_workspace_member_discovery_index.sql',
-      '0085_artifact_media_type_http_safety.sql',
-      '0086_operator_attempt_reclaim_state.sql',
-      '0087_workspace_maintenance_rerun_purge.sql',
-      '0088_sql_boundary_integrity.sql',
-      '0089_oidc_capacity_lock_time.sql',
-      '0090_workspace_discovery_policy.sql',
-      '0091_workspace_discovery_scope.sql',
-      '0092_workflow_run_history_indexes.sql',
-      '0093_workspace_member_role_management.sql',
-      '0094_workspace_invitations.sql',
-      '0095_workspace_invitation_lifecycle_safety.sql',
-      '0096_workspace_invitation_claim_cleanup_progress.sql',
-      '0097_workspace_invitation_claim_scan_restart.sql',
-      '0098_workspace_display_name.sql',
-      '0099_workflow_recent_list.sql',
-      '0100_workspace_invitation_delivery_snapshot.sql',
-      '0101_better_auth_foundation.sql',
-      '0102_better_auth_session_lifecycle.sql',
-      '0103_durable_authentication_mail.sql',
-      '0104_auth_email_change_session_revocation.sql',
-      '0105_owned_auth_email_proofs.sql',
-      '0106_auth_method_link_attempts.sql',
-      '0107_legacy_method_migration_attempts.sql',
-      '0108_workflow_name_revision.sql',
-      '0110_workspace_member_removal.sql',
-      '0111_user_display_name.sql',
-      '0113_workflow_run_statistics_index.sql',
-      '0115_webhook_delivery_log.sql',
-      '0116_workspace_member_departure.sql',
-      '0117_workspace_member_suspension.sql',
-      '0118_workspace_ownership_transfer.sql',
-      '0119_record_step_inputs.sql',
-      '0120_workspace_inbox_foundation.sql',
-      '0121_workspace_inbox_capture.sql',
-      '0122_workspace_inbox_projection.sql',
-      '0123_workspace_inbox_threads.sql',
-      '0124_workflow_trigger_pause.sql',
-      '0125_workflow_auto_pause_controls.sql',
-      '0126_workspace_usage_capacity.sql',
-      '0127_workflow_concurrency.sql',
-      '0128_connection_health.sql',
-      '0129_workflow_duplication.sql',
-      '0130_workflow_input_cases.sql',
-      '0131_checked_manual_start.sql',
-      '0132_workflow_portability.sql',
-      '0133_curated_template_origin.sql',
-    ]);
+    await expect(migrateDatabase(migrationConfig)).resolves.toEqual(
+      await expectedMigrationHistoryFrom(
+        '0067_reconcile_published_migration_repairs.sql',
+      ),
+    );
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 
     const verification = new Pool({ connectionString: databaseUrl, max: 1 });

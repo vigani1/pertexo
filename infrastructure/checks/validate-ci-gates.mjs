@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { parse as parseYaml } from 'yaml';
 import { CURATED_TEMPLATE_GATES } from '../testing/curated-template-gates.mjs';
+import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-gates.mjs';
 
 export const REQUIRED_ORDINARY_CI_GATES = Object.freeze([
   'architecture:check',
@@ -32,6 +33,12 @@ const CURATED_TEMPLATE_REPORTS_DIRECTORY =
 const CURATED_TEMPLATE_UPLOAD_DIRECTORY =
   '${{ runner.temp }}/curated-template-qualification';
 const CURATED_TEMPLATE_QUALIFICATION_COMMAND = `node infrastructure/testing/run-curated-template-qualification.mjs --reports-directory "${CURATED_TEMPLATE_REPORTS_DIRECTORY}"`;
+const WORKFLOW_ORGANIZATION_JOB = 'workflow-organization-qualification';
+const WORKFLOW_ORGANIZATION_REPORTS_DIRECTORY =
+  '$RUNNER_TEMP/workflow-organization-qualification';
+const WORKFLOW_ORGANIZATION_UPLOAD_DIRECTORY =
+  '${{ runner.temp }}/workflow-organization-qualification';
+const WORKFLOW_ORGANIZATION_QUALIFICATION_COMMAND = `node infrastructure/testing/run-workflow-organization-qualification.mjs --reports-directory "${WORKFLOW_ORGANIZATION_REPORTS_DIRECTORY}"`;
 const CURATED_TEMPLATE_DATABASE_URLS = Object.freeze({
   DATABASE_ADMIN_URL:
     'postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres',
@@ -110,35 +117,68 @@ function normalizedShellCommand(value) {
     : '';
 }
 
-function requiredCuratedTemplateOwner(jobs) {
-  const gateMinimums = CURATED_TEMPLATE_GATES.map(({ id, minimumTests }) => ({
+function requiredFailClosedCommand(step, expectedCommand, label) {
+  const lines = step.run
+    .trim()
+    .split('\n')
+    .map((line) => line.trim());
+  if (lines[0] !== 'set -euo pipefail' || lines.at(-1) !== expectedCommand)
+    fail(`${label} must fail closed and invoke its exact command`);
+}
+
+function requiredWorkflowOrganizationFixture(qualification, command) {
+  if (
+    qualification.env?.DATABASE_MAINTENANCE_URL !==
+    'postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo'
+  )
+    fail(
+      'workflow-organization owner must pin explicit DATABASE_MAINTENANCE_URL',
+    );
+  requiredFailClosedCommand(
+    qualification,
+    WORKFLOW_ORGANIZATION_QUALIFICATION_COMMAND,
+    'workflow-organization qualification',
+  );
+  if (!command.includes('export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn'))
+    fail(
+      'workflow-organization owner must construct its explicit JSON ownership manifest',
+    );
+  for (const witness of [
+    'postgres_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q postgres)")',
+    'redis_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q redis)")',
+    'test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"',
+    'test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"',
+    '--arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id"',
+    '--argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT"',
+    "'{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}'",
+  ])
+    if (!command.includes(witness))
+      fail(
+        `workflow-organization owner is missing exact fixture witness: ${witness}`,
+      );
+}
+
+function requiredFeatureQualificationOwner(jobs, profile) {
+  const gateMinimums = profile.gates.map(({ id, minimumTests }) => ({
     id,
     minimumTests,
   }));
-  if (
-    JSON.stringify(gateMinimums) !==
-    JSON.stringify([
-      { id: 'origin-guard', minimumTests: 2340 },
-      { id: 'origin-boundary', minimumTests: 16 },
-      { id: 'curated-browser', minimumTests: 1 },
-      { id: 'compiled-cutover', minimumTests: 10 },
-    ])
-  )
+  if (JSON.stringify(gateMinimums) !== JSON.stringify(profile.counts))
     fail(
-      'curated-template owner must retain all four exact no-skip gate minima',
+      `${profile.label} owner must retain all four exact no-skip gate minima`,
     );
-  const job = jobs[CURATED_TEMPLATE_JOB];
+  const job = jobs[profile.job];
   if (job === undefined)
-    fail('curated-template fixtures require one dedicated owner');
+    fail(`${profile.label} fixtures require one dedicated owner`);
   if (job.if !== undefined || job['continue-on-error'] === true)
-    fail('curated-template owner must be required');
+    fail(`${profile.label} owner must be required`);
   if (
     job.env?.COMPOSE_PROJECT_NAME !==
-    'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-curated-templates'
+    'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-' + profile.job
   )
-    fail('curated-template owner must use its unique Compose project');
+    fail(`${profile.label} owner must use its unique Compose project`);
 
-  const steps = jobSteps(jobs, CURATED_TEMPLATE_JOB);
+  const steps = jobSteps(jobs, profile.job);
   const requiredStep = (predicate, message) => {
     const matches = steps.filter(predicate);
     if (matches.length !== 1) fail(message);
@@ -149,59 +189,62 @@ function requiredCuratedTemplateOwner(jobs) {
   };
   const checkout = requiredStep(
     (step) => step.uses?.startsWith('actions/checkout@'),
-    'curated-template owner must check out source exactly once',
+    `${profile.label} owner must check out source exactly once`,
   );
   if (checkout.with?.['fetch-depth'] !== 0)
-    fail('curated-template owner requires full Git history');
+    fail(`${profile.label} owner requires full Git history`);
   const node = requiredStep(
     (step) => step.uses?.startsWith('actions/setup-node@'),
-    'curated-template owner must set up Node exactly once',
+    `${profile.label} owner must set up Node exactly once`,
   );
   if (node.with?.['node-version'] !== 24)
-    fail('curated-template owner must use Node 24');
+    fail(`${profile.label} owner must use Node 24`);
   const pnpm = requiredStep(
     (step) => step.uses?.startsWith('pnpm/action-setup@'),
-    'curated-template owner must set up pnpm exactly once',
+    `${profile.label} owner must set up pnpm exactly once`,
   );
   if (pnpm.with?.version !== '11.22.0')
-    fail('curated-template owner must pin pnpm 11.22.0');
+    fail(`${profile.label} owner must pin pnpm 11.22.0`);
   requiredStep(
     (step) =>
       normalizedShellCommand(step.run) === 'pnpm install --frozen-lockfile',
-    'curated-template owner must install the frozen dependency graph exactly once',
+    `${profile.label} owner must install the frozen dependency graph exactly once`,
   );
-  requiredStep(
+  const build = requiredStep(
     (step) => normalizedShellCommand(step.run) === 'pnpm build',
-    'curated-template owner must build the workspace exactly once',
+    `${profile.label} owner must build the workspace exactly once`,
   );
   const browser = requiredStep(
     (step) =>
       normalizedShellCommand(step.run) ===
       'pnpm --filter @pertexo/web exec playwright install --with-deps chromium',
-    'curated-template owner must install Playwright Chromium exactly once',
+    `${profile.label} owner must install Playwright Chromium exactly once`,
   );
   const start = requiredStep(
     (step) =>
       normalizedShellCommand(step.run) ===
       'docker compose up -d --wait postgres redis',
-    'curated-template owner must create PostgreSQL and Redis exactly once',
+    `${profile.label} owner must create PostgreSQL and Redis exactly once`,
   );
   const qualification = requiredStep(
-    (step) =>
-      normalizedShellCommand(step.run).endsWith(
-        CURATED_TEMPLATE_QUALIFICATION_COMMAND,
-      ),
-    'curated-template owner must invoke the source-bound qualification command exactly once',
+    (step) => normalizedShellCommand(step.run).endsWith(profile.command),
+    `${profile.label} owner must invoke the source-bound qualification command exactly once`,
   );
   const preparation = requiredStep(
     (step) =>
       step.run?.includes(
         'node infrastructure/testing/prepare-curated-cutover-cache.mjs',
       ),
-    'curated-template cache preparation must run exactly once',
+    `${profile.label} cache preparation must run exactly once`,
   );
   if (steps.indexOf(preparation) >= steps.indexOf(qualification))
-    fail('curated-template cache preparation must precede qualification');
+    fail(`${profile.label} cache preparation must precede qualification`);
+  if (profile.job === WORKFLOW_ORGANIZATION_JOB)
+    requiredFailClosedCommand(
+      preparation,
+      'node infrastructure/testing/prepare-curated-cutover-cache.mjs',
+      'workflow-organization cache preparation',
+    );
   for (const witness of [
     'export PNPM_CONFIG_STORE_DIR="$(pnpm store path --silent)"',
     'export PNPM_CONFIG_CACHE_DIR="$RUNNER_TEMP/curated-cutover-pnpm-cache"',
@@ -211,21 +254,24 @@ function requiredCuratedTemplateOwner(jobs) {
   ])
     if (!preparation.run.includes(witness))
       fail(
-        'curated-template cache preparation must share explicit canonical store and task-owned metadata paths',
+        `${profile.label} cache preparation must share explicit canonical store and task-owned metadata paths`,
       );
   if (
+    steps.indexOf(qualification) <= steps.indexOf(build) ||
     steps.indexOf(qualification) <= steps.indexOf(browser) ||
     steps.indexOf(qualification) <= steps.indexOf(start)
   )
     fail(
-      'curated-template qualification must follow browser and service setup',
+      `${profile.label} qualification must follow browser and service setup`,
     );
   if (qualification.env?.EDITOR_BROWSER_OWNED_FIXTURE !== 'true')
-    fail('curated-template owner must require the canonical owned fixture');
+    fail(`${profile.label} owner must require the canonical owned fixture`);
   for (const [name, value] of Object.entries(CURATED_TEMPLATE_DATABASE_URLS))
     if (qualification.env?.[name] !== value)
-      fail(`curated-template owner must pin explicit ${name}`);
+      fail(`${profile.label} owner must pin explicit ${name}`);
   const command = normalizedShellCommand(qualification.run);
+  if (profile.job === WORKFLOW_ORGANIZATION_JOB)
+    requiredWorkflowOrganizationFixture(qualification, command);
   for (const witness of [
     'docker inspect --format',
     'docker compose ps -q postgres',
@@ -233,11 +279,11 @@ function requiredCuratedTemplateOwner(jobs) {
     'EDITOR_BROWSER_OWNERSHIP_MANIFEST',
     '127.0.0.1:$POSTGRES_PORT',
     '127.0.0.1:$REDIS_PORT',
-    CURATED_TEMPLATE_QUALIFICATION_COMMAND,
+    profile.command,
   ])
     if (!command.includes(witness))
       fail(
-        `curated-template owner is missing source or ownership witness: ${witness}`,
+        `${profile.label} owner is missing source or ownership witness: ${witness}`,
       );
 
   const cleanup = steps.filter(
@@ -251,13 +297,13 @@ function requiredCuratedTemplateOwner(jobs) {
     cleanup.length !== 1 ||
     steps.indexOf(cleanup[0]) <= steps.indexOf(qualification)
   )
-    fail('curated-template owner must retain one required post-run cleanup');
+    fail(`${profile.label} owner must retain one required post-run cleanup`);
   const upload = steps.filter(
     (step) =>
       step.if === 'always()' &&
       step['continue-on-error'] !== true &&
       step.uses?.startsWith('actions/upload-artifact@') &&
-      step.with?.path === CURATED_TEMPLATE_UPLOAD_DIRECTORY &&
+      step.with?.path === profile.uploadDirectory &&
       step.with?.['if-no-files-found'] === 'error',
   );
   if (
@@ -265,11 +311,19 @@ function requiredCuratedTemplateOwner(jobs) {
     steps.indexOf(upload[0]) <= steps.indexOf(qualification)
   )
     fail(
-      'curated-template owner must upload the complete qualification directory',
+      `${profile.label} owner must upload the complete qualification directory`,
     );
 }
 
-function requiredCuratedTemplateOrdinaryExclusions(jobs) {
+function ownedOrganizationTestFiles(...ids) {
+  return WORKFLOW_ORGANIZATION_GATES.filter((gate) =>
+    ids.includes(gate.id),
+  ).flatMap((gate) =>
+    gate.command.filter((argument) => argument.startsWith('test/')),
+  );
+}
+
+function requiredFeatureOrdinaryExclusions(jobs) {
   const steps = jobSteps(jobs, 'integration');
   const commandFor = (report) => {
     const output = `--outputFile=../../${report}`;
@@ -302,6 +356,7 @@ function requiredCuratedTemplateOrdinaryExclusions(jobs) {
     'test/workflow-concurrency-browser.integration.test.ts',
     'test/connection-health-browser.integration.test.ts',
     'test/curated-template-origin-guard.integration.test.ts',
+    ...ownedOrganizationTestFiles('organization-api', 'organization-browser'),
   ];
   if (JSON.stringify(api) !== JSON.stringify(expectedApi))
     fail(
@@ -317,18 +372,44 @@ function requiredCuratedTemplateOrdinaryExclusions(jobs) {
     JSON.stringify(database) !==
     JSON.stringify([
       'test/workflow-template-origin-boundary.integration.test.ts',
+      ...ownedOrganizationTestFiles('organization-database'),
     ])
   )
     fail(
-      'ordinary database integration must exclude only the curated origin boundary owner',
+      'ordinary database integration must exclude only its dedicated opt-in owners',
     );
 }
 
 export function validateCiGatePolicy({ packageManifest, workflow }) {
   const scripts = packageScripts(packageManifest);
   const jobs = workflowJobs(workflow);
-  requiredCuratedTemplateOwner(jobs);
-  requiredCuratedTemplateOrdinaryExclusions(jobs);
+  requiredFeatureQualificationOwner(jobs, {
+    job: CURATED_TEMPLATE_JOB,
+    label: 'curated-template',
+    gates: CURATED_TEMPLATE_GATES,
+    counts: [
+      { id: 'origin-guard', minimumTests: 2340 },
+      { id: 'origin-boundary', minimumTests: 16 },
+      { id: 'curated-browser', minimumTests: 1 },
+      { id: 'compiled-cutover', minimumTests: 10 },
+    ],
+    command: CURATED_TEMPLATE_QUALIFICATION_COMMAND,
+    uploadDirectory: CURATED_TEMPLATE_UPLOAD_DIRECTORY,
+  });
+  requiredFeatureQualificationOwner(jobs, {
+    job: WORKFLOW_ORGANIZATION_JOB,
+    label: 'workflow-organization',
+    gates: WORKFLOW_ORGANIZATION_GATES,
+    counts: [
+      { id: 'organization-database', minimumTests: 95 },
+      { id: 'organization-api', minimumTests: 20 },
+      { id: 'organization-process', minimumTests: 6 },
+      { id: 'organization-browser', minimumTests: 4 },
+    ],
+    command: WORKFLOW_ORGANIZATION_QUALIFICATION_COMMAND,
+    uploadDirectory: WORKFLOW_ORGANIZATION_UPLOAD_DIRECTORY,
+  });
+  requiredFeatureOrdinaryExclusions(jobs);
   for (const name of [
     'build',
     'check',

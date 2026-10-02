@@ -51,7 +51,6 @@ export function sanitizedCutoverFailure(error, depth = 0) {
     ]),
   ].slice(0, 8);
 }
-
 /** CLI reporter consumes the real test stream, never console-derived pass markers. */
 export default async function* curatedCutoverGateReporter(events) {
   const output = process.env.CURATED_CUTOVER_GATE_REPORT;

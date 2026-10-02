@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { parse as parseYaml } from 'yaml';
+import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-gates.mjs';
 
 import { validateCiGatePolicy } from './validate-ci-gates.mjs';
 
@@ -49,10 +50,21 @@ jobs:
           --exclude test/workflow-concurrency-browser.integration.test.ts
           --exclude test/connection-health-browser.integration.test.ts
           --exclude test/curated-template-origin-guard.integration.test.ts
+          --exclude test/workflow-authoring/organization.integration.test.ts
+          --exclude test/workflow-authoring/favorite-persistence.integration.test.ts
+          --exclude test/workflow-authoring/folders-bulk.integration.test.ts
+          --exclude test/workflow-organization-browser.integration.test.ts
           --outputFile=../../artifacts/api-gates.json
       - run: >-
           pnpm --filter @pertexo/database exec vitest run
           --exclude test/workflow-template-origin-boundary.integration.test.ts
+          --exclude test/workflow-organization.integration.test.ts
+          --exclude test/workflow-organization-read.integration.test.ts
+          --exclude test/workflow-organization-readiness.integration.test.ts
+          --exclude test/workflow-organization-maintenance-plans.integration.test.ts
+          --exclude test/workflow-folders-batch.integration.test.ts
+          --exclude test/workflow-organization-adapters.integration.test.ts
+          --exclude test/workflow-tags.integration.test.ts
           --outputFile=../../artifacts/database-gates.json
   browser:
     steps:
@@ -103,6 +115,32 @@ jobs:
           path: \${{ runner.temp }}/curated-template-qualification
           if-no-files-found: error
 `);
+  const organization = clone(workflow.jobs['curated-templates']);
+  organization.env.COMPOSE_PROJECT_NAME =
+    'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-workflow-organization-qualification';
+  for (const step of organization.steps) {
+    if (step.run?.includes('prepare-curated-cutover-cache.mjs'))
+      step.run = `set -euo pipefail\n${step.run}`;
+    if (step.run?.includes('run-curated-template-qualification.mjs')) {
+      step.env.DATABASE_MAINTENANCE_URL =
+        'postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo';
+      step.run = `set -euo pipefail\n${step.run}`
+        .replaceAll(
+          'curated-template-qualification',
+          'workflow-organization-qualification',
+        )
+        .replace(
+          'export EDITOR_BROWSER_OWNERSHIP_MANIFEST="$postgres_id:$redis_id"',
+          'export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \'{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}\')',
+        );
+    }
+    if (step.with?.path)
+      step.with.path = step.with.path.replace(
+        'curated-template-qualification',
+        'workflow-organization-qualification',
+      );
+  }
+  workflow.jobs['workflow-organization-qualification'] = organization;
   return { packageManifest, workflow };
 }
 
@@ -807,6 +845,329 @@ test('rejects orphaned curated-template owned fixtures in ordinary CI', async ()
     () => validateCiGatePolicy({ packageManifest, workflow }),
     /curated-template.*owner/u,
   );
+});
+
+const organizationJob = (input) =>
+  input.workflow.jobs['workflow-organization-qualification'];
+const organizationRun = (input) =>
+  organizationJob(input).steps.find((step) =>
+    step.run?.includes('run-workflow-organization-qualification.mjs'),
+  );
+
+test('routes every F07 fixture to its exact owner without excluding ordinary behavior', async () => {
+  const original = await currentPolicyInput();
+  for (const gate of WORKFLOW_ORGANIZATION_GATES.filter((gate) =>
+    [
+      'organization-database',
+      'organization-api',
+      'organization-browser',
+    ].includes(gate.id),
+  )) {
+    const report = gate.id === 'organization-database' ? 'database' : 'api';
+    for (const file of gate.command.filter((argument) =>
+      argument.startsWith('test/'),
+    )) {
+      const input = clone(original);
+      const step = input.workflow.jobs.integration.steps.find((candidate) =>
+        candidate.run?.includes(`artifacts/${report}-gates.json`),
+      );
+      step.run = step.run.replace(`--exclude ${file}`, '');
+      assert.throws(
+        () => validateCiGatePolicy(input),
+        /ordinary (?:API|database)/u,
+        file,
+      );
+    }
+  }
+  for (const report of ['api', 'database']) {
+    const input = clone(original);
+    const step = input.workflow.jobs.integration.steps.find((candidate) =>
+      candidate.run?.includes(`artifacts/${report}-gates.json`),
+    );
+    step.run = step.run.replace(
+      `--outputFile=../../artifacts/${report}-gates.json`,
+      `--exclude test/ordinary-behavior.integration.test.ts --outputFile=../../artifacts/${report}-gates.json`,
+    );
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /ordinary (?:API|database)/u,
+    );
+  }
+});
+
+test('requires the dedicated F07 qualification owner and fail-closed exact runner', async () => {
+  const original = await currentPolicyInput();
+  assert.doesNotThrow(() => validateCiGatePolicy(original));
+  for (const [label, mutate] of [
+    [
+      'omitted job',
+      (input) => {
+        delete input.workflow.jobs['workflow-organization-qualification'];
+      },
+    ],
+    [
+      'conditional job',
+      (input) => {
+        organizationJob(input).if = 'false';
+      },
+    ],
+    [
+      'optional job',
+      (input) => {
+        organizationJob(input)['continue-on-error'] = true;
+      },
+    ],
+    [
+      'shared project',
+      (input) => {
+        organizationJob(input).env.COMPOSE_PROJECT_NAME =
+          original.workflow.jobs['curated-templates'].env.COMPOSE_PROJECT_NAME;
+      },
+    ],
+    [
+      'missing runner',
+      (input) => {
+        const job = organizationJob(input);
+        job.steps = job.steps.filter((step) => step !== organizationRun(input));
+      },
+    ],
+    [
+      'conditional runner',
+      (input) => {
+        organizationRun(input).if = 'false';
+      },
+    ],
+    [
+      'optional runner',
+      (input) => {
+        organizationRun(input)['continue-on-error'] = true;
+      },
+    ],
+    [
+      'substitute runner',
+      (input) => {
+        organizationRun(input).run = organizationRun(input).run.replace(
+          'run-workflow-organization-qualification.mjs',
+          'run-curated-template-qualification.mjs',
+        );
+      },
+    ],
+    [
+      'different reports',
+      (input) => {
+        organizationRun(input).run = organizationRun(input).run.replace(
+          '$RUNNER_TEMP/workflow-organization-qualification',
+          '/tmp/old-reports',
+        );
+      },
+    ],
+    [
+      'ignored failure',
+      (input) => {
+        organizationRun(input).run += ' || true';
+      },
+    ],
+    [
+      'conditional command',
+      (input) => {
+        organizationRun(input).run = organizationRun(input).run.replace(
+          'node infrastructure/testing/run-workflow-organization',
+          'false && node infrastructure/testing/run-workflow-organization',
+        );
+      },
+    ],
+    [
+      'no fail-closed shell',
+      (input) => {
+        organizationRun(input).run = organizationRun(input).run.replace(
+          'set -euo pipefail',
+          'set +e',
+        );
+      },
+    ],
+  ]) {
+    const input = clone(original);
+    mutate(input);
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /workflow-organization/u,
+      label,
+    );
+  }
+});
+
+test('rejects unsafe F07 role URLs, lost ownership, and weakened fixture witnesses', async () => {
+  const original = await currentPolicyInput();
+  const run = organizationRun(original);
+  for (const name of Object.keys(run.env)) {
+    for (const mutation of ['missing', 'foreign']) {
+      const input = clone(original);
+      if (mutation === 'missing')
+        Reflect.deleteProperty(organizationRun(input).env, name);
+      else
+        organizationRun(input).env[name] =
+          name === 'EDITOR_BROWSER_OWNED_FIXTURE'
+            ? 'false'
+            : 'postgresql://wrong:wrong@remote.example.test:5432/pertexo';
+      assert.throws(
+        () => validateCiGatePolicy(input),
+        /workflow-organization/u,
+        `${name}:${mutation}`,
+      );
+    }
+  }
+  for (const [before, after] of [
+    ['docker inspect --format', 'echo'],
+    ['docker compose ps -q postgres', 'docker compose ps -q shared-postgres'],
+    ['docker compose ps -q redis', 'docker compose ps -q shared-redis'],
+    ['EDITOR_BROWSER_OWNERSHIP_MANIFEST', 'OTHER_MANIFEST'],
+    ['$(jq -cn', '$(echo'],
+    [
+      'test "$(docker compose port postgres 5432)"',
+      'echo "$(docker compose port postgres 5432)"',
+    ],
+    ['127.0.0.1:$REDIS_PORT', '0.0.0.0:$REDIS_PORT'],
+    ['--arg project "$COMPOSE_PROJECT_NAME"', '--arg project shared'],
+    ['--argjson postgresPort "$POSTGRES_PORT"', '--argjson postgresPort 5433'],
+    [
+      'postgres:{id:$postgres,port:$postgresPort}',
+      'postgres:{id:$redis,port:$postgresPort}',
+    ],
+  ]) {
+    const input = clone(original);
+    organizationRun(input).run = organizationRun(input).run.replace(
+      before,
+      after,
+    );
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /workflow-organization/u,
+      before,
+    );
+  }
+});
+
+test('requires F07 full history, frozen install, normal build, Chromium, and shared archived cache', async () => {
+  const original = await currentPolicyInput();
+  for (const selector of [
+    (step) => step.uses?.startsWith('actions/checkout@'),
+    (step) => step.uses?.startsWith('actions/setup-node@'),
+    (step) => step.uses?.startsWith('pnpm/action-setup@'),
+    (step) => step.run === 'pnpm install --frozen-lockfile',
+    (step) => step.run === 'pnpm build',
+    (step) => step.run?.includes('playwright install'),
+    (step) => step.run === 'docker compose up -d --wait postgres redis',
+    (step) => step.run?.includes('prepare-curated-cutover-cache.mjs'),
+  ]) {
+    for (const mutation of [
+      'missing',
+      'optional',
+      'conditional',
+      'late',
+      'duplicate',
+    ]) {
+      const input = clone(original);
+      const job = organizationJob(input);
+      const step = job.steps.find(selector);
+      if (mutation === 'missing') job.steps.splice(job.steps.indexOf(step), 1);
+      if (mutation === 'optional') step['continue-on-error'] = true;
+      if (mutation === 'conditional') step.if = 'false';
+      if (mutation === 'duplicate') job.steps.push(clone(step));
+      if (mutation === 'late') {
+        // The build, browser, services, and cache must precede qualification.
+        if (step.uses || step.run === 'pnpm install --frozen-lockfile')
+          continue;
+        job.steps.splice(job.steps.indexOf(step), 1);
+        job.steps.push(step);
+      }
+      assert.throws(
+        () => validateCiGatePolicy(input),
+        /workflow-organization/u,
+        mutation,
+      );
+    }
+  }
+  for (const [before, after] of [
+    ['$(pnpm store path --silent)', '/tmp/another-store'],
+    ['$RUNNER_TEMP/curated-cutover-pnpm-cache', '/tmp/another-cache'],
+    ['>> "$GITHUB_ENV"', ''],
+    ['prepare-curated-cutover-cache.mjs', 'prepare-another-cache.mjs'],
+    [
+      'prepare-curated-cutover-cache.mjs',
+      'prepare-curated-cutover-cache.mjs || true',
+    ],
+    ['set -euo pipefail', 'set +e'],
+  ]) {
+    const input = clone(original);
+    const preparation = organizationJob(input).steps.find((step) =>
+      step.run?.includes('prepare-curated-cutover-cache.mjs'),
+    );
+    preparation.run = preparation.run.replace(before, after);
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /workflow-organization/u,
+      before,
+    );
+  }
+  for (const [action, setting, weakened] of [
+    ['actions/checkout@', 'fetch-depth', 1],
+    ['actions/setup-node@', 'node-version', 22],
+    ['pnpm/action-setup@', 'version', 'latest'],
+  ]) {
+    const input = clone(original);
+    organizationJob(input).steps.find((step) =>
+      step.uses?.startsWith(action),
+    ).with[setting] = weakened;
+    assert.throws(
+      () => validateCiGatePolicy(input),
+      /workflow-organization/u,
+      setting,
+    );
+  }
+});
+
+test('requires F07 always cleanup and complete strict qualification uploads', async () => {
+  const original = await currentPolicyInput();
+  for (const kind of ['cleanup', 'upload']) {
+    for (const mutation of [
+      'missing',
+      'optional',
+      'success-only',
+      'early',
+      'duplicate',
+      'weakened',
+    ]) {
+      const input = clone(original);
+      const job = organizationJob(input);
+      const step = job.steps.find((candidate) =>
+        kind === 'cleanup'
+          ? candidate.run === 'docker compose down -v --remove-orphans'
+          : candidate.with?.name === 'workflow-organization-qualification',
+      );
+      if (mutation === 'missing') job.steps.splice(job.steps.indexOf(step), 1);
+      if (mutation === 'optional') step['continue-on-error'] = true;
+      if (mutation === 'success-only') step.if = 'success()';
+      if (mutation === 'duplicate') job.steps.push(clone(step));
+      if (mutation === 'early') {
+        job.steps.splice(job.steps.indexOf(step), 1);
+        job.steps.unshift(step);
+      }
+      if (mutation === 'weakened') {
+        if (kind === 'cleanup') step.run = 'docker compose down';
+        else step.with['if-no-files-found'] = 'ignore';
+      }
+      assert.throws(
+        () => validateCiGatePolicy(input),
+        /workflow-organization/u,
+        `${kind}:${mutation}`,
+      );
+    }
+  }
+  const input = clone(original);
+  organizationJob(input).steps.find(
+    (step) => step.with?.name === 'workflow-organization-qualification',
+  ).with.path = '${{ runner.temp }}/curated-template-qualification';
+  assert.throws(() => validateCiGatePolicy(input), /workflow-organization/u);
 });
 
 test('rejects absent, optional, late, or unshared archived dependency preparation', async () => {

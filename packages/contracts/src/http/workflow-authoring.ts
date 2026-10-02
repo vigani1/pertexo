@@ -3,6 +3,14 @@ import { workflowTemplateOriginSchema } from '@pertexo/workflow-model/curated-te
 export type { WorkflowTemplateOrigin } from '@pertexo/workflow-model/curated-templates';
 export * from './workflow-auto-pause.js';
 export * from './workflow-concurrency.js';
+export * from './workflow-organization.js';
+export * from './workflow-organization-folders.js';
+import { workflowOrganizationFolderFilterSchema } from './workflow-organization-folders.js';
+import {
+  workflowOrganizationNameQuerySchema,
+  workflowOrganizationSchema,
+  workflowOrganizationViewSchema,
+} from './workflow-organization.js';
 import {
   workflowActivationStatusSchema,
   workflowLifecycleStatusSchema,
@@ -228,6 +236,64 @@ export const workflowListQuerySchema = z
     order: workflowListOrderSchema.optional(),
   })
   .strict();
+
+/** ADR064 additive path; unchanged default schemas/cursors remain separate. */
+export const workflowOrganizationListQuerySchema = workflowListQuerySchema
+  .extend({
+    query: workflowOrganizationNameQuerySchema.optional(),
+    view: workflowOrganizationViewSchema.optional(),
+    tagId: z
+      .uuid()
+      .overwrite((id) => id.toLowerCase())
+      .optional(),
+    folderId: workflowOrganizationFolderFilterSchema.optional(),
+    favoritesOnly: z.literal('true').optional(),
+    include: z.literal('organization').optional(),
+  })
+  .overwrite(({ query, ...rest }) =>
+    query === '' || query === undefined ? rest : { ...rest, query },
+  );
+export const workflowOrganizationProjectionQuerySchema = z
+  .object({
+    include: z.enum(['organization', 'templateOrigin,organization']),
+  })
+  .strict();
+/** Unified transport grammar; legacy projection validators remain unchanged. */
+export const workflowGetQuerySchema = z
+  .object({
+    include: z
+      .enum(['templateOrigin', 'organization', 'templateOrigin,organization'])
+      .optional(),
+  })
+  .strict();
+export const workflowOrganizationProjectionResponseSchema = z
+  .object({
+    workflow: workflowSummarySchema,
+    organization: workflowOrganizationSchema,
+  })
+  .strict();
+export const workflowCombinedOrganizationProjectionResponseSchema = z
+  .object({
+    workflow: workflowSummarySchema,
+    templateOrigin: workflowTemplateOriginSchema.nullable(),
+    organization: workflowOrganizationSchema,
+  })
+  .strict();
+export const workflowOrganizationListResponseSchema = z
+  .object({
+    items: z.array(workflowOrganizationProjectionResponseSchema).max(100),
+    nextCursor: workflowCursorSchema.nullable(),
+  })
+  .strict();
+export type WorkflowOrganizationListQuery = z.output<
+  typeof workflowOrganizationListQuerySchema
+>;
+export type WorkflowOrganizationListResponse = z.output<
+  typeof workflowOrganizationListResponseSchema
+>;
+export type WorkflowOrganizationProjectionResponse = z.output<
+  typeof workflowOrganizationProjectionResponseSchema
+>;
 export const workflowVersionsQuerySchema = z
   .object({
     limit: workflowPageLimitSchema.optional(),

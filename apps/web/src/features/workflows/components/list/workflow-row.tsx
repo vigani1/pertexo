@@ -12,7 +12,7 @@ import {
   WebhookIcon,
   type LucideIcon,
 } from 'lucide-react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
@@ -214,12 +214,14 @@ export function WorkflowRow({
   workspace,
   workflow,
   actions,
+  organizationControls,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   actions: WorkflowRowActions;
+  organizationControls?: ReactNode;
 }>) {
   const [observe, seen] = useHasBeenVisible<HTMLLIElement>();
   const showRuns = workspace.capabilities.includes('run:read');
@@ -301,6 +303,11 @@ export function WorkflowRow({
           runnable={run !== undefined}
         />
       </div>
+      {organizationControls === undefined ? null : (
+        <div className="col-span-full pl-0 sm:pl-20">
+          {organizationControls}
+        </div>
+      )}
     </li>
   );
 }

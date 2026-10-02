@@ -6,7 +6,7 @@ import { useWorkspaceScope } from './use-workspace-scope';
 export function WorkflowListRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();
   const search = useSearch({ from: '/w/$workspaceId/shell/workflows' });
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: '/w/$workspaceId/workflows' });
   return (
     <WorkflowListPage
       apiClient={apiClient}
@@ -20,7 +20,10 @@ export function WorkflowListRoute() {
           params: { workspaceId: workspace.id },
           search: next,
           // Opening the lens is a step Back can undo; filters just replace.
-          replace: next.create !== true || search.create === true,
+          replace:
+            typeof next === 'function' ||
+            next.create !== true ||
+            search.create === true,
         });
       }}
       onCreated={(workflowId) => {
