@@ -15,6 +15,8 @@ transition into `removed`. Suspension, reactivation, ordinary role changes and
 invitation acceptance do not advance it. Removing a person who has never used
 favorites must still establish the departure fence. No API generation write or
 caller-selected generation is allowed.
+Generations are fresh explicitly generated UUIDs, not a counter that can reset
+to a prior value after physical row recreation.
 
 The generation survives a removed membership. Do not reset it if a membership
 row is recreated; parent removal must not cascade through it. Membership, user
@@ -30,6 +32,20 @@ active authority and matching generation. Removal immediately makes old state
 inaccessible; rejoining reads an absent state, never the old bookmark. Matching
 private receipt replay also requires the current generation: a same-person
 rejoin must not replay a pre-departure command.
+Retained receipt identity includes workspace/person/workflow/key across generations;
+the receipt carries its generation, and an old-generation match denies processing
+without returning its result. Merely selecting current-generation receipts would
+allow a delayed pre-departure command expecting the old literal `absent` to execute again after
+rejoin. Existing 24-hour/hold-aware receipt retention still bounds the promise;
+there is no new indefinite key-history protocol.
+
+Receipt fencing alone cannot deny a pre-departure command never delivered to the
+server. The accepted correction in ADR064 replaces literal `absent` with the
+bounded authenticated generation-bound absence read token described in the
+contract. Keep receipt-first recovery ahead of MAC/key-rotation/expiry validation;
+only new commands need the fresh verified internal generation and database-clock
+precondition. The API's authenticated precondition proof does not replace SQL's
+locked generation/absence/authority/body-identity checks.
 
 A new favorite command encountering a prior-generation state preserves it in a
 separate private held-evidence relation before replacing the current row when a

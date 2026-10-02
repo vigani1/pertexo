@@ -144,8 +144,9 @@ and outcome-unknown recovery; accept that weaker semantics explicitly if chosen.
 Do not increment shared organization revision or workflow.updated_at for a
 personal bookmark, and do not emit tag/favorite literals in telemetry.
 
-Proposed concrete token: `favoriteRevision` is `absent` when no current state
-exists, otherwise an opaque server-generated UUID refreshed on every committed
+Accepted correction before favorite SQL: `favoriteRevision` is an authenticated
+server-issued opaque `absent.v1` read token when no current state exists, otherwise
+an opaque server-generated UUID refreshed on every committed
 favorite command. A false state is a tombstone, not immediate physical deletion.
 It persists through the existing 24-hour terminal-command retry horizon; matching
 receipt replay precedes revision checks and does not renew its expiry. Keep at
@@ -155,6 +156,36 @@ expiry a new command requires a current read, not automatic retry/reset; the
 contract does not promise deduplication or stale-token fencing beyond that horizon.
 The concrete migration must prove cleanup indexing and API-rate-limit composition;
 time-bounded retention alone is not a claim of a hard row-count quota.
+
+The timeless literal `absent` is rejected: after removal/rejoin it could let a
+never-recorded pre-departure request execute for the first time. Exact absence
+wire is `absent.v1.<issuedSeconds>.<expiresSeconds>.<MAC>`, at most 128 ASCII bytes.
+Timestamp decimals are canonical unsigned integer seconds (zero or no leading
+zeros), bounded through year 9999, with expiry exactly issuance plus 86,400 seconds.
+MAC is canonical unpadded base64url for 32 HMAC-SHA256 bytes. Derive a separate
+absence-token subkey by HMAC-SHA256 over the fixed UTF-8 label
+`pertexo.workflow.favorite.absence-key.v1` using the dedicated organization key.
+Authenticate fixed-order canonical JSON `{v:1,w:workspaceId,a:actorId,id:workflowId,
+g:privateGeneration,i:issuedSeconds,e:expiresSeconds}`. UUID spellings are canonical
+lowercase; only times and MAC appear in the wire, not the generation or actor.
+
+Only a current authenticated membership snapshot can issue a token. API MAC
+verification authenticates a transport precondition against a fresh server-read
+generation; no HTTP generation/actor selector or trusted client generation exists.
+SQL independently locks and compares that verified internal generation, checks
+current absence and authority, and validates issuance/expiry against database time
+before a **new** command. Issuance may be at most five seconds ahead of database
+time for explicit API/database clock skew; expiry is exclusive and cannot be
+extended by the caller. This does not relax the separately accepted cursor clock.
+Current-generation completed receipt replay precedes token verification, expiry,
+rotation and writer checks, after current authority and workflow visibility;
+same key with different exact body/token conflicts. Present UUID tokens naturally
+stale; an old-generation absence token fails even if its request was never stored.
+Suspension/reactivation does not rotate generation, so an otherwise valid token
+remains valid through its TTL. Removal between transport verification and SQL
+write fails the locked-generation check. Rotation requires an explicit fresh read
+for a new command, not automatic new-key retry. The existing 24-hour command
+recovery horizon is unchanged; no token store or indefinite history is added.
 
 Suspension denies access immediately but preserves bookmarks for reactivation.
 Recommendation: permanent membership removal invalidates that membership's private
@@ -293,7 +324,7 @@ sanitized unavailable/forbidden/not-found/conflict errors. No actor selector.
 | Workflow organization GET | Opt-in existing workflow GET projection described above, same workflow-read authority. |
 | Workflow tag replacement POST | `{tagIds, expectedOrganizationRevision}`; unique UUID array, at most 16, canonical UUID sort, atomic replacement and one revision advance. |
 | Admin tag cleanup detach POST | `{tagId, items: [{workflowId, expectedOrganizationRevision}]}`; unique ≤50 explicit workflow IDs, current owner/admin per-item authority, archived allowed, independent ordered outcomes and frozen per-item identities. |
-| Workflow favorite POST | `{favorite, expectedFavoriteRevision}`; explicit boolean and `absent`/opaque UUID token; current read authority including viewers. |
+| Workflow favorite POST | `{favorite, expectedFavoriteRevision}`; explicit boolean and authenticated bounded `absent.v1` read token/opaque UUID token; current read authority including viewers. |
 | Existing workflow list GET | `query` ≤128 UTF-8 bytes, `view=active|archived|all`, optional `tagId`, `favoritesOnly=true`, `include=organization`, existing `order/limit/after`; exact query names finalized by primary before schemas. |
 
 Proposed successful metadata command returns only its scoped metadata outcome and

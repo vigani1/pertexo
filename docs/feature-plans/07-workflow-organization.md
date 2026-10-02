@@ -159,3 +159,13 @@ pass; no quality baseline changed. Documentation checks pass (21 tests/456 links
 The [persistence implementation constraints](07-organization-persistence-design.md)
 record the primary-accepted membership-generation and private held-evidence
 approach before SQL, including explicit hold/lock/purge proof obligations.
+
+The primary accepted a pre-favorite-helper correction: an absence expectation is
+a bounded authenticated generation-bound `absent.v1` read token, not a timeless
+`absent` literal. A command never delivered before departure has no receipt;
+the token must still reject that old request after rejoin. ADR064 and the concrete
+contract now specify the opaque HMAC wire, 24-hour TTL, five-second issuance clock
+skew and mandatory receipt-first recovery before expiry/rotation verification.
+The corrected browser-safe schemas pass 204 contract tests, build/typecheck and
+narrow lint; real authentication, first-delivery/replay and database races remain
+unimplemented/unqualified. The SQL migration draft is not installed or committed.

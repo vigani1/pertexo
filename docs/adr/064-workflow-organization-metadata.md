@@ -30,6 +30,16 @@ Favorites belong to authenticated actors, including viewers, and never appear in
 another member's projection/audit. Use desired-state commands with independent
 opaque revision tokens and one false-state tombstone per person/workflow for the
 existing 24-hour retry horizon, not toggles or unbounded per-toggle history.
+Absence is an authenticated server-issued `absent.v1` read token, not the timeless
+literal `absent`. On 2026-10-02 the primary accepted this correction before the
+favorite helper: a never-delivered pre-departure command has no receipt to fence
+it, and the literal would repeat after rejoin. The bounded 24-hour token binds
+workspace/person/workflow/private membership generation through a domain-separated
+HMAC using the existing dedicated organization secret; generation is not in the
+wire. After authenticated transport verification, SQL independently rechecks the
+locked generation, current absence, authority and database-clock expiry. Exact
+same-generation committed receipt replay precedes token expiry/rotation checks;
+neither old-generation replay nor a never-recorded old request can restore state.
 Permanent departure invalidates private state; held evidence follows existing
 legal-hold/deletion orchestration and cannot become rejoined-member state.
 Suspension only denies access. Shared metadata survives its author's departure.
