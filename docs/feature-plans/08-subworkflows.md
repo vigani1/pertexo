@@ -226,5 +226,14 @@ database unit tests across 140 files pass. These are mocked protocol tests, not
 SQL/savepoint or race qualification. The branch remains unregistered: the SQL
 proof/reservation bodies, held prerequisite locks, candidate savepoint recovery,
 durable journal and parent CAS integration are still unfinished.
+The sequential candidate savepoint boundary now removes acceptance writes only
+for typed refusal/ancestor-stop outcomes and returns them to the outer journal/CAS
+owner. Unexpected errors escape for whole-transaction recovery; failed rollback
+or release retains both errors and cannot manufacture a refusal. Its 25 focused
+protocol tests pass, and the full database suite passes 1,302 tests across 141
+files after additive integration of verified main `ed9116b9`. Build/typecheck,
+narrow lint/format, complexity and architecture checks pass. This helper is also
+unregistered; real prerequisite-lock retention and rollback behavior require the
+unfinished SQL owner and owned PostgreSQL race qualification.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
