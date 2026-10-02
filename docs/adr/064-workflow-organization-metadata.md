@@ -98,5 +98,6 @@ idempotency through the existing scoped receipt owner: constant shared batch
 operation, full canonical parent-body hash, admitted-only marker committed before
 independent item transactions, and matching committed admission verified by each
 NEW item helper. Item receipts alone cannot bind a disjoint changed request;
-parent admission never promises atomic completion. No folder migration
-number is final until allocation and integration-base audit complete.
+parent admission never promises atomic completion. Release-owner global allocation
+and exact integration-base audit reserve additive migration 0135 exclusively for
+this follow-on; the qualified 0134 migration and inventory remain immutable.

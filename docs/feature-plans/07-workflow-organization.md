@@ -40,7 +40,8 @@ Folder name/sibling uniqueness and command schemas need a reviewed follow-on.
 A [concrete folder/general-bulk proposal](07-folders-bulk-follow-on-proposal.md)
 has received primary full-source acceptance of folder policy and its concrete
 whole-parent batch identity guard. No folder persistence
-is implemented yet; migration 0135 is provisional pending global reservation.
+is implemented yet. Release-owner global reservation/base audit now allocates
+additive migration 0135 exclusively to this follow-on, preserving 0134 unchanged.
 Migration 0134 is allocated exclusively to F07 against release-owner verified
 base `936612f26567f760c83e41c13e4c7fc7b620e69f`, whose tree is identical to accepted
 F06 `eed68cd6`. The draft schema has been installed only in disposable owned

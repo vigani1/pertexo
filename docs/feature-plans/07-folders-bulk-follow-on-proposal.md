@@ -1,11 +1,18 @@
 # F07 folder and general-bulk follow-on
 
 Status: folder policy and concrete general-bulk parent-identity guard accepted by
-primary full-source reviews on 2026-10-02; migration allocation remains provisional.
+primary full-source reviews on 2026-10-02; migration 0135 allocated exclusively to
+F07 after the release owner's global reservation audit.
 Builds on [ADR064](../adr/064-workflow-organization-metadata.md) and the accepted
 [organization contract](07-organization-contract-proposal.md). No folder SQL or
-runtime code precedes acceptance. Migration 0134 remains unchanged; a subsequent
-migration number must be allocated against the then-current integration head.
+runtime code precedes acceptance. Migration 0134 remains unchanged. The allocation
+audit covered 190 refs, 123 objects and 14 worktrees with no competing migration
+or reservation at/above 0135. The exact audited integration point is
+`4409777256340784a1c19578da920b69f4547a32` (tree
+`ae38a40204ba96bbfe9a1b3cfa6e67cc0d3c5c28`), preserving the qualified 0134
+foundation `b4146df614d0e880d9c653df9fb43965d5b99796`. Migration 0134 SHA-256 is
+`ff632b94a30c06c1fbb0af4bb1425bdf9f7b3fc659f7cbf978218cd22b766416`;
+its catalog inventory/digest and role-aware readiness repair are unchanged.
 
 ## Folder identity, names and hierarchy
 
@@ -169,5 +176,4 @@ codes: `workflow.folder_name_conflict`, `workflow.folder_limit_exceeded`,
 race tests for sibling uniqueness, cycles/subtree depth, stale rename/move versus
 archive, partial recovery/authority loss, restart and actual accessible browser
 navigation retaining exact filters and selection. The concrete parent
-identity guard above is accepted; migration 0135 is provisional pending
-global reservation and the exact 0134 integration-base audit.
+identity guard above is accepted and migration 0135 is exclusively allocated.
