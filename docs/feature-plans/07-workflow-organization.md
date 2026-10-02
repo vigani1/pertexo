@@ -292,3 +292,13 @@ per-workflow list revisions, rejection on another workflow and acceptance by the
 favorite command. The SQL-reader fixture deliberately uses a synthetic authority;
 only the application integration suite qualifies actual MAC composition. These
 are database/public-adapter proofs, not registered HTTP or browser behavior.
+
+Organization API failures now flow through the existing authoring error boundary:
+all six tag conflict kinds, favorite conflict, unavailable and invalid requests
+map to the accepted fixed-detail problem codes without private revision/proof
+properties. The 29 focused cases exercise both the leaf and composed mapper;
+all 15 existing mapper cases still pass. Existing portability/origin mappings
+were extracted unchanged to their own leaf so the central error function gets
+smaller rather than worsening its complexity hotspot. API build/typecheck,
+scoped lint, architecture, complexity and unchanged duplication ratchets pass.
+This connects error translation only, not runtime routes or persistence ports.
