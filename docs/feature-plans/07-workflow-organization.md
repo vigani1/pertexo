@@ -258,7 +258,7 @@ application favorite MAC/PostgreSQL cases pass after shared error extraction.
 Source/test duplication remains 20 groups/330 lines and 10 groups/285 lines with
 the unchanged ratchets. This is not signed HTTP discovery, live routing, bulk
 transport recovery or browser proof. Unknown/foreign workflow-list tag-filter
-empty-page behavior still requires its filtered-reader implementation and tests.
+empty-page behavior is qualified by the subsequent filtered-reader slice below.
 
 Endpoint contracts now describe the eight accepted tag/favorite operations,
 canonical GET includes, projected/default list union, strict bounded UUID pages
@@ -273,5 +273,22 @@ manifest with the unified four-shape contract, using equivalent named schema
 clones rather than duplicate exports, and keeping the internal catalog witness
 private. The SQL catalog expression/digest is unchanged; all 29 exact organization
 readiness tests pass again. No endpoint/controller or organization reader is
-registered by this contract checkpoint; session/CSRF, routing, actual filtered
-pagination, restart and browser proof remain open.
+registered by this contract checkpoint; session/CSRF, routing, restart and browser
+proof remain open. Filtered pagination is qualified separately below.
+
+Organization database reader: one scoped generation/clock read and one bounded
+SQL projection now intersect literal case-sensitive name search, lifecycle,
+workspace-scoped tag and current-actor favorites before keyset pagination. Only
+U+0020 is trimmed; the 128-byte UTF-8 search limit and escaped percent, underscore
+and backslash preserve literal matching. Canonical authoring workflow fields use
+the existing row mapper; metadata never returns actor/generation/evidence fields.
+Default lifecycle selection remains `all`, organization writes preserve workflow
+timestamps, and archived favorites remain readable. Six new owned PostgreSQL
+cases plus all seven tag-adapter cases pass, including unknown/foreign tag empty
+pages, current authority on continuation and compatible reads while writers are
+off. The 16 favorite protocol tests still pass after sharing absence metadata
+logic. Nine actual application MAC/PostgreSQL cases pass, including distinct
+per-workflow list revisions, rejection on another workflow and acceptance by the
+favorite command. The SQL-reader fixture deliberately uses a synthetic authority;
+only the application integration suite qualifies actual MAC composition. These
+are database/public-adapter proofs, not registered HTTP or browser behavior.

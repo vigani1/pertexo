@@ -1,5 +1,9 @@
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
+import {
+  readWorkflowFavoriteGeneration,
+  issueWorkflowFavoriteAbsenceRevision,
+} from './workflow-favorite-metadata.js';
 import { z } from 'zod';
 import type { DatabaseConfig } from '../config.js';
 import {
@@ -83,18 +87,6 @@ function parseScope(input: FavoriteScope): FavoriteScope {
   const { signal, ...scope } = scopeSchema.parse(input);
   return signal === undefined ? scope : { ...scope, signal };
 }
-const absenceRevisionSchema = z
-  .string()
-  .max(128)
-  .regex(
-    /^absent\.v1\.(0|[1-9][0-9]{0,11})\.(0|[1-9][0-9]{0,11})\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\s\S])/u,
-  )
-  .refine((value) => {
-    const parts = value.split('.');
-    const issued = Number(parts[2]);
-    const expires = Number(parts[3]);
-    return expires <= 253_402_300_799 && expires - issued === 86_400;
-  });
 const keySchema = z
   .string()
   .min(1)
@@ -111,9 +103,6 @@ const stateSchema = z
   .object({ isFavorite: z.boolean(), favoriteRevision: uuid })
   .strict();
 const resultSchema = stateSchema.extend({ replayed: z.boolean() }).strict();
-const snapshotSchema = z
-  .object({ generation: uuid, readAtSeconds: seconds })
-  .strict();
 const proofSchema = z
   .object({
     generation: uuid,
@@ -178,10 +167,7 @@ export function createWorkflowFavoriteDatabase(
     async readFavorite(input: FavoriteScope): Promise<WorkflowFavoriteState> {
       const scope = parseScope(input);
       return transact(scope, async (client) => {
-        const snapshot = await client.query<{ snapshot: unknown }>(
-          'select app.read_workflow_favorite_generation() snapshot',
-        );
-        const current = snapshotSchema.parse(snapshot.rows[0]?.snapshot);
+        const current = await readWorkflowFavoriteGeneration(client);
         const visible = await client.query(
           'select 1 from app.workflows where workspace_id=$1 and id=$2 for share',
           [scope.workspaceId, scope.workflowId],
@@ -205,18 +191,14 @@ export function createWorkflowFavoriteDatabase(
           );
         return Object.freeze({
           isFavorite: false,
-          favoriteRevision: absenceRevisionSchema.parse(
-            options.absenceTokens.issue(
-              {
-                workspaceId: scope.workspaceId,
-                actorId: scope.actorId,
-                workflowId: scope.workflowId,
-              },
-              {
-                generation: current.generation,
-                issuedAtSeconds: current.readAtSeconds,
-              },
-            ),
+          favoriteRevision: issueWorkflowFavoriteAbsenceRevision(
+            options.absenceTokens,
+            {
+              workspaceId: scope.workspaceId,
+              actorId: scope.actorId,
+              workflowId: scope.workflowId,
+            },
+            current,
           ),
         });
       });

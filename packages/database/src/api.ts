@@ -1,4 +1,11 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
+export { createWorkflowOrganizationReadDatabase } from './authoring/workflow-organization-read.js';
+export type {
+  WorkflowOrganizationFilters,
+  WorkflowOrganizationMetadata,
+  WorkflowOrganizationReadDatabase,
+  WorkflowWithOrganization,
+} from './authoring/workflow-organization-read.js';
 export {
   createWorkflowTagDatabase,
   WorkflowTagConflictError,

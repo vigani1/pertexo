@@ -5,10 +5,12 @@ import {
   createDatabaseRuntime,
   createIdentityWorkspaceDatabase,
   createWorkflowFavoriteDatabase,
+  createWorkflowOrganizationReadDatabase,
   WorkflowFavoriteRevisionConflictError,
   WorkflowOrganizationUnavailableError,
   type WorkflowFavoriteDatabase,
   type WorkflowFavoriteAbsenceTokenAuthority,
+  type WorkflowOrganizationReadDatabase,
 } from '@pertexo/database/api';
 import {
   parseDatabaseConfig,
@@ -24,6 +26,7 @@ let owner: Pool;
 let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
 let favorites: WorkflowFavoriteDatabase;
 let authority: WorkflowFavoriteAbsenceTokenAuthority;
+let organization: WorkflowOrganizationReadDatabase;
 const verify = vi.fn();
 async function ownerQuery(
   workspaceId: string,
@@ -129,7 +132,13 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
           verify,
         },
       });
-      resources.push(identity, favorites);
+      organization = createWorkflowOrganizationReadDatabase(config, {
+        absenceTokens: {
+          issue: (s, snapshot) => authority.issue(s, snapshot),
+          verify,
+        },
+      });
+      resources.push(identity, favorites, organization);
       await writer(true);
     }, 120_000);
     afterAll(async () => {
@@ -366,6 +375,58 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
         expect((await favorites.readFavorite(input)).isFavorite).toBe(false);
       },
     );
+
+    it('issues per-workflow actual MAC revisions from batched organization projections', async () => {
+      const s = await scope(true);
+      const context = { workspaceId: s.workspaceId, actorId: s.actorId };
+      const second = randomUUID();
+      await ownerQuery(
+        s.workspaceId,
+        s.ownerId,
+        'insert into app.workflows(id,workspace_id,name,created_by) values($1,$2,$3,$4)',
+        [second, s.workspaceId, 'Second MAC fixture', s.ownerId],
+      );
+      const page = await organization.listWorkflows(context);
+      expect(page.items).toHaveLength(2);
+      const first = page.items.find(
+        (item) => item.workflow.id === s.workflowId,
+      );
+      const other = page.items.find((item) => item.workflow.id === second);
+      if (first === undefined || other === undefined)
+        throw new Error('Missing bounded projection');
+      expect(first.organization.favoriteRevision).not.toBe(
+        other.organization.favoriteRevision,
+      );
+      await expect(
+        favorites.setFavorite({
+          ...context,
+          workflowId: second,
+          favorite: true,
+          expectedFavoriteRevision: first.organization.favoriteRevision,
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toBeInstanceOf(WorkflowFavoriteRevisionConflictError);
+      const saved = await favorites.setFavorite({
+        ...context,
+        workflowId: s.workflowId,
+        favorite: true,
+        expectedFavoriteRevision: first.organization.favoriteRevision,
+        idempotencyKey: randomUUID(),
+      });
+      expect(
+        (
+          await organization.getWorkflow({
+            ...context,
+            workflowId: s.workflowId,
+          })
+        )?.organization.favoriteRevision,
+      ).toBe(saved.favoriteRevision);
+      expect(
+        (
+          await organization.listWorkflows({ ...context, favoritesOnly: true })
+        ).items.map((item) => item.workflow.id),
+      ).toEqual([s.workflowId]);
+    });
 
     it('does not close an injected runtime when the repository closes', async () => {
       const config = parseDatabaseConfig({

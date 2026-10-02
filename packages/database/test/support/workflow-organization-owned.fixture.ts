@@ -11,6 +11,11 @@ import { createArtifactMigrationConfig } from './artifact-migration-fixture.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 import { createWorkflowAuthoringFixtureDatabase } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowTagDatabase } from '../../src/authoring/workflow-tags.js';
+import { createWorkflowOrganizationReadDatabase } from '../../src/authoring/workflow-organization-read.js';
+import {
+  createWorkflowFavoriteDatabase,
+  type WorkflowFavoriteAbsenceTokenAuthority,
+} from '../../src/authoring/workflow-favorites.js';
 
 const roles = {
   DATABASE_ADMIN_URL: 'postgres',
@@ -126,6 +131,18 @@ export async function createOrganizationOwnedFixture() {
     const authoring = createWorkflowAuthoringFixtureDatabase(config);
     const tags = createWorkflowTagDatabase(config);
     resources.push(identity, authoring, tags);
+    function organizationStores(
+      absenceTokens: WorkflowFavoriteAbsenceTokenAuthority,
+    ) {
+      const reader = createWorkflowOrganizationReadDatabase(config, {
+        absenceTokens,
+      });
+      const favorites = createWorkflowFavoriteDatabase(config, {
+        absenceTokens,
+      });
+      resources.push(reader, favorites);
+      return { reader, favorites };
+    }
 
     async function transaction<T>(
       selected: Pool,
@@ -220,6 +237,7 @@ export async function createOrganizationOwnedFixture() {
       identity,
       authoring,
       tags,
+      organizationStores,
       transaction,
       scope,
       waitForBlocker,
