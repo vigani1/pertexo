@@ -1,6 +1,7 @@
 # F07 folder and general-bulk follow-on
 
-Status: proposed for primary review, not accepted implementation guidance.
+Status: folder policy accepted by primary full-source review on 2026-10-02;
+general-bulk parent-identity guard below proposed for follow-up review.
 Builds on [ADR064](../adr/064-workflow-organization-metadata.md) and the accepted
 [organization contract](07-organization-contract-proposal.md). No folder SQL or
 runtime code precedes acceptance. Migration 0134 remains unchanged; a subsequent
@@ -79,12 +80,50 @@ POST `/workflows/organization/bulk` accepts exactly one discriminated operation:
 Tag IDs remain sorted/unique and at most 16. There is no select-all, saved query,
 wildcard, mixed operation or actor field. Static route collision is HTTP-tested.
 
-Use independent sequential transactions in submitted order. Derive each item's
-receipt key from a domain-separated hash of parent key, operation and workflow ID;
-the normalized per-item command body retains target/revision. Retry the frozen
-entire request, not regenerated revisions/keys. Completed known items replay;
-unprocessed items can execute only with current authority. The parent has no
-atomic receipt pretending that partial work is all-or-nothing.
+Use independent sequential transactions in submitted order. Before any item,
+admit an immutable full-parent identity in a separate bounded transaction as
+specified below. Derive each item's receipt key from parent key identity and
+workflow ID, never operation/body-dependent key namespaces that could evade
+same-key conflicts. Every item body also binds the full canonical parent hash.
+Retry the frozen entire request, not regenerated revisions/keys. Completed known
+items replay; unprocessed items execute only with current authority. Parent
+admission never represents atomic completion or hides partial results.
+
+### Proposed bounded parent identity guard
+
+Reuse `app.workflow_organization_receipts`, not a new batch history table. A
+confined security-definer helper claims operation `organization.batch.identity`,
+target ID equal to the current workspace UUID, and SHA-256 of the parent
+idempotency key under the existing actor/workspace scope. This operation is
+constant across bulk move, tag replacement and tag cleanup. Thus changing
+operation or selecting entirely different workflow IDs cannot evade identity.
+
+The canonical full request binds a versioned purpose (`move`, `replace_tags` or
+`tag_cleanup`), normalized target, ordered unique item IDs and expected revisions.
+Store its SHA-256 as the existing receipt body hash; store only `{admitted:true}`
+as result, not a completion summary. Exact admission replay returns that marker;
+different full body with the same parent key is `request.idempotency_conflict`
+before any item, including when the first attempt processed no item. The helper
+uses existing workspace/actor/member admission and receipt locking, current role
+checks and writer/replay policy. A NEW admission is writer-gated; exact admitted
+replay does not permit bypassing current authority or NEW item writer gates.
+
+Item keys are canonical SHA-256 of fixed-order JSON
+`{v:1,p:'organization.batch.item',k:parentKeyHash,id:workflowId}`; item command
+bodies add the canonical full-parent hash. Admission is committed before starting
+items, and every item retains its own transaction, current authority and receipt.
+Unknown admission transport outcome stops before item processing and returns a
+sanitized transport failure requiring exact retry; no success/all-or-nothing
+claim and no automatic new key. Concurrent identical parent commands can replay
+admission and independently converge through item receipts; different bodies
+serialize to one accepted identity. Existing 24-hour shared receipt retention,
+legal-hold preservation, indexed bounded maintenance and purge apply unchanged.
+
+This guard also closes the same whole-request identity gap in tag cleanup. It
+needs a reviewed additive helper/migration and adapter before either batch route
+is claimed live; API roles still receive no direct receipt writes. Qualification
+must include changed operation/disjoint items/reordered revisions, concurrent
+claims, claim-only crash/restart, authority loss and held/expired cleanup.
 
 Ordered outcomes reuse the reviewed cleanup vocabulary, with success
 `{workflowId,status:'updated',organizationRevision,replayed}`. `not_visible`
@@ -116,11 +155,13 @@ No migration edits, writer enablement or deploy until exact upgrade/old-image
 denial/compatible-OFF readers and hold-safe bounded cleanup are qualified. Import,
 export, duplicate and template origin do not copy folder/organization metadata.
 
-Before code, review the proposed name/control policy, archived admin placement,
-bounded hierarchy response, bulk target semantics and new sanitized conflict
+Primary accepted name/control policy, archived admin placement, bounded hierarchy
+response, bulk target semantics and new sanitized conflict
 codes: `workflow.folder_name_conflict`, `workflow.folder_limit_exceeded`,
 `workflow.folder_revision_conflict`, `workflow.folder_hierarchy_conflict`,
 `workflow.folder_not_empty`, `workflow.folder_not_visible`. Acceptance also needs
 race tests for sibling uniqueness, cycles/subtree depth, stale rename/move versus
 archive, partial recovery/authority loss, restart and actual accessible browser
-navigation retaining exact filters and selection.
+navigation retaining exact filters and selection. Only the concrete parent
+identity guard above remains under review; migration 0135 is provisional pending
+global reservation and the exact 0134 integration-base audit.
