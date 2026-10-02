@@ -259,6 +259,9 @@ function mockPool(input: {
               deadline_at: null,
               input_ref: inline(null),
               scheduler_state: input.checkpoint,
+              graph_schema_version: 1,
+              executable_schema_version: 2,
+              executable_checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
             },
           ],
         };

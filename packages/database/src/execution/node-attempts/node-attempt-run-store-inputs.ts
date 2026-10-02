@@ -4,6 +4,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import { parsePersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
+import { parsePersistedWorkflowCheckpointV3 } from '../../compatibility/persisted-workflow-checkpoint-v3.js';
 import {
   loadInputsSchema,
   NodeAttemptStateCorruptError,
@@ -20,7 +21,9 @@ import {
   serializeStoredExecutionJsonValue,
 } from '../stored-execution-value.js';
 
-type ParsedCheckpoint = ReturnType<typeof parsePersistedWorkflowCheckpoint>;
+type ParsedCheckpoint =
+  | ReturnType<typeof parsePersistedWorkflowCheckpoint>
+  | ReturnType<typeof parsePersistedWorkflowCheckpointV3>;
 type StructuredLoopDeclaration = Extract<
   ParsedCheckpoint,
   { schemaVersion: 2 }
@@ -246,8 +249,13 @@ export async function loadNodeAttemptInputs(
         deadline_at: Date | null;
         input_ref: unknown;
         scheduler_state: unknown;
+        graph_schema_version: number;
+        executable_schema_version: number | null;
+        executable_checksum: string;
       }>(
         `select run.input_ref,run.deadline_at,checkpoint.scheduler_state,
+                version.schema_version as graph_schema_version,
+                version.executable_schema_version,version.checksum as executable_checksum,
                 (run.cancel_requested_at is not null or
                  (run.deadline_at is not null and
                   run.deadline_at <= clock_timestamp())) as abort_requested,
@@ -258,6 +266,10 @@ export async function loadNodeAttemptInputs(
                   else null
                 end as abort_reason
          from app.workflow_runs run
+         join app.workflow_versions version
+           on version.workspace_id=run.workspace_id
+          and version.workflow_id=run.workflow_id
+          and version.id=run.workflow_version_id
          join app.node_runs node
            on node.workspace_id=run.workspace_id
           and node.workflow_run_id=run.id
@@ -291,6 +303,24 @@ export async function loadNodeAttemptInputs(
       );
       const row = current.rows[0];
       if (row === undefined) throw new NodeAttemptStateCorruptError();
+      // The real retained version, never a checkpoint's self-reported grammar,
+      // selects the parser. Partial native pairs cannot fall back to V1/V2.
+      const native =
+        row.graph_schema_version === 2 &&
+        row.executable_schema_version === 3 &&
+        /^wf:v3:sha256:[0-9a-f]{64}$/u.test(row.executable_checksum);
+      const retained =
+        row.graph_schema_version === 1 &&
+        ((row.executable_schema_version === 2 &&
+          /^wf:v2:sha256:[0-9a-f]{64}$/u.test(row.executable_checksum)) ||
+          (row.executable_schema_version === null &&
+            /^wf:v1:sha256:[0-9a-f]{64}$/u.test(row.executable_checksum)));
+      if (!native && !retained) throw new NodeAttemptStateCorruptError();
+      const checkpoint = native
+        ? parsePersistedWorkflowCheckpointV3(row.scheduler_state)
+        : parsePersistedWorkflowCheckpoint(row.scheduler_state);
+      if (checkpoint.workflowVersionId !== input.lease.workflowVersionId)
+        throw new NodeAttemptStateCorruptError();
       let runInput: unknown = null;
       if (row.input_ref !== null) {
         const stored = parseStoredExecutionValueV1(row.input_ref);
@@ -344,7 +374,6 @@ export async function loadNodeAttemptInputs(
           outputs.rows,
         );
       }
-      const checkpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
       const coordinatorInput = projectCoordinatorInput(
         checkpoint,
         input.lease.invocationKey,

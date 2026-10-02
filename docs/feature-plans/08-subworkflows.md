@@ -348,10 +348,20 @@ installs in an exclusively owned network-none/no-port PostgreSQL18 tmpfs databas
 all 21 draft routines remain ungranted to six serving roles and rollout remains OFF.
 The database was removed. Required input function bodies are not yet qualified
 with native run fixtures. Artifact reservation ownership, pending-upload cleanup,
-physical completion aliasing, V3 input loading and coordinator/result integration
+physical completion aliasing, native source hydration and coordinator/result integration
 remain unfinished; the existing preview-only artifact link cannot be reused as
 execution ownership without an explicit additive owner fence. No F08 acceptance
 row is complete from this evidence.
+
+Node-attempt input loading now joins the actual retained workflow version and
+selects Checkpoint V3 only for the exact Graph2/executable3/checksum-v3 pair.
+Mismatched outer formats, a retained version carrying CP3, a native version carrying
+CP2 and a different checkpoint workflow-version identity fail without fallback.
+Retained Graph1/executable2/CP2 input loading and bounded loop/upstream query counts
+remain covered. All 1,348 non-integration database tests across 144 files pass,
+including nine mocked native/retained format-selection cases, with database
+build/typecheck and narrow lint/format. This does not yet hydrate child-run artifact
+inputs or journal-owned Call result outputs, nor qualify SQL writer authority.
 
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
