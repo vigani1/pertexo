@@ -60,3 +60,10 @@ export {
   type CompiledWorkflowExecutableV3,
 } from './executable-workflow.js';
 export type * from './types.js';
+export {
+  createWorkflowCheckpointV3,
+  parseWorkflowCheckpointV3,
+  parseWorkflowCallStateV1,
+} from './checkpoint/checkpoint-v3.js';
+export type * from './workflow-call-state.js';
+export type { CompiledWorkflowExecutable } from './compilation/executable-authentication.js';

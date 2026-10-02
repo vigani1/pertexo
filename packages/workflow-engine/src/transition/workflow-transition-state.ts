@@ -21,6 +21,8 @@ import type {
   WorkflowCheckpoint,
   WorkflowObservation,
 } from '../types.js';
+import type { WorkflowCallStateV1 } from '../workflow-call-state.js';
+import type { WorkflowCallControlDecisionV1 } from '../workflow-call-control.js';
 
 export interface MutableWorkflowTransition {
   readonly current: WorkflowCheckpoint;
@@ -29,6 +31,11 @@ export interface MutableWorkflowTransition {
   readonly invocations: Map<string, InvocationState>;
   readonly joins: Map<string, JoinState>;
   readonly loops: Map<string, LoopState>;
+  readonly calls: Map<string, WorkflowCallStateV1>;
+  readonly workflowCallDeclarations: WorkflowCallStateV1[];
+  readonly workflowCallCancellations: NonNullable<
+    WorkflowCallControlDecisionV1['cancelChild']
+  >[];
   readonly branchSelections: BranchSelection[];
   remainingIterationBudget: number;
   readonly eventDrafts: Omit<EngineEventPlan, 'sequence'>[];

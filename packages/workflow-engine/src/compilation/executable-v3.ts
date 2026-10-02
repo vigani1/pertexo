@@ -78,10 +78,20 @@ export interface CompiledWorkflowExecutableV3 {
 
 const authenticIdentities = new WeakSet<object>();
 
+export function isAuthenticExecutableIdentityV3(
+  value: unknown,
+): value is CompiledWorkflowExecutableV3 {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    authenticIdentities.has(value)
+  );
+}
+
 export function assertAuthenticExecutableIdentityV3(
   value: CompiledWorkflowExecutableV3,
 ): void {
-  if (!authenticIdentities.has(value))
+  if (!isAuthenticExecutableIdentityV3(value))
     fail('workflow executable V3 identity was not verified in this process');
 }
 

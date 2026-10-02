@@ -63,7 +63,7 @@ function successful() {
 }
 
 describe('checkpoint V3 wire boundary', () => {
-  it('creates explicit empty V3 without modifying V2 dispatch', () => {
+  it('creates explicit empty V3 with separate retained V2 grammar', () => {
     const input = {
       engineVersion: 'test',
       workflowVersionId,
@@ -72,7 +72,7 @@ describe('checkpoint V3 wire boundary', () => {
     const v3 = createWorkflowCheckpointV3(input);
     expect(parseWorkflowCheckpointV3(v3)).toEqual(v3);
     expect(createCheckpointV2(input).schemaVersion).toBe(2);
-    expect(() => parseCheckpoint(v3)).toThrow(/Unsupported/);
+    expect(parseCheckpoint(v3)).toEqual(v3);
     expect(() =>
       parseWorkflowCheckpointV3(createCheckpointV2(input)),
     ).toThrow();

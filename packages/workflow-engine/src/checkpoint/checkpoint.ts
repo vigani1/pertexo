@@ -3,6 +3,7 @@ import { WorkflowEngineError } from '../errors.js';
 import { assertBoundedCheckpointJson, isRecord } from './checkpoint-shared.js';
 import { parseCheckpointV1Boundary } from './checkpoint-v1.js';
 import { parseCheckpointV2Boundary } from './checkpoint-v2.js';
+import { parseWorkflowCheckpointV3 } from './checkpoint-v3.js';
 export { createCheckpoint, createCheckpointV2 } from './checkpoint-initial.js';
 
 export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
@@ -12,6 +13,8 @@ export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
       return parseCheckpointV1Boundary(value);
     if (isRecord(value) && value.schemaVersion === 2)
       return parseCheckpointV2Boundary(value);
+    if (isRecord(value) && value.schemaVersion === 3)
+      return parseWorkflowCheckpointV3(value);
     throw new WorkflowEngineError(
       'checkpoint_unsupported',
       `Unsupported checkpoint schema version: ${String(isRecord(value) ? value.schemaVersion : undefined)}`,

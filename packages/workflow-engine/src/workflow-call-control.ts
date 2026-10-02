@@ -12,7 +12,7 @@ import {
 import { findExecutableNodeContext } from './compilation/executable-graph.js';
 import { WorkflowEngineError } from './errors.js';
 import { compareOrdinal } from './ordering.js';
-import type { OutputReference } from './types.js';
+import type { AttemptOutputReference } from './types.js';
 import type {
   WorkflowCallInvocationStateV1,
   WorkflowCallStateV1,
@@ -29,7 +29,7 @@ export interface WorkflowCallDeclarationMaterialV1 {
   readonly invocationKey: string;
   readonly nodeId: string;
   readonly declarationAttemptId: string;
-  readonly input: OutputReference;
+  readonly input: AttemptOutputReference;
   readonly value: unknown;
 }
 

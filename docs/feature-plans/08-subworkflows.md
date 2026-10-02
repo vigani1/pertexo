@@ -162,7 +162,8 @@ swallowing operational evaluator failures. All 464 engine tests across 41 files
 and 129 core-node tests across eight files pass. Engine/core typecheck, engine
 build, narrow lint/format, module-import and complexity checks pass. The pure
 declaration executor performs no child admission or provider I/O and is not yet
-registered. Executable V3 is not yet accepted by advance/attempt runtime owners.
+registered. At this executable-foundation checkpoint, V3 was not yet accepted
+by advance/attempt runtime owners; native engine integration is recorded below.
 Durable Call output must remain distinct from the immutable declaration attempt;
 existing 256 KiB inline persistence cannot silently stand in for the independent
 1 MiB callable value limit.
@@ -171,8 +172,8 @@ Standalone Checkpoint V3 and pure Call reconciliation now preserve separate
 declaration-attempt input and child-result references, exact journal identity,
 dedicated waiting, bounded Call ledgers, monotonic stops and unknown-outcome
 precedence. All 590 engine tests across 43 files pass, with engine typecheck,
-narrow lint and complexity checks. Retained checkpoint parsers and runtime
-advance/attempt owners are not yet wired to these semantics. The existing inline
+narrow lint and complexity checks. Retained checkpoint grammars remain separate
+from the new wire format. The existing inline
 owner supplies an independently tested representation selector; its 256 KiB
 limit is unchanged. The standalone framework artifact codec admits source-local
 1 MiB JSON, spills only through protected reservation callbacks, and verifies
@@ -182,7 +183,25 @@ owner without a second quota charge or fabricated attempt identity. All 1,011
 worker tests across 80 files and 1,035 database unit tests across 136 files pass;
 worker/database build and typecheck, narrow lint/format and module-import checks
 pass. SQL callback authority/provenance and live storage qualification are still
-required; these adapters are not registered. Durable admission/settlement, native runtime
-integration and all live qualification remain unfinished.
+required; these adapters are not registered.
+
+The existing pure advance/attempt seam now accepts authenticated Executable V3
+only with Checkpoint V3; retained artifacts retain their existing checkpoint
+formats and reject Call material. Physical declaration success requires exact
+attempt/output material, becomes a dedicated wait, and emits an atomic journal
+intent rather than a fabricated child result. Actual mapped input is validated
+against the retained callable identity before execution; declaration output must
+equal that input. Call declarations never receive a new logical retry. Accepted
+children remain waiting through parent stops until immutable terminal facts
+reconcile; unknown outcomes outrank cancellation, timeout and ordinary failure.
+ForEach waits preserve active ordinals and child results unlock downstream
+readiness through separate scoped references. V3 source values keep independent
+1 MiB budgets without descriptor-envelope overhead or duplicate retained copies;
+retained V2 wrapper bounds and restricted-expression aggregate bounds are
+unchanged. All 659 engine tests across 46 files pass, with engine build/typecheck,
+full package lint/format, complexity and module-import checks. Database unit
+tests (1,035) and worker typecheck also pass against the engine seam. Durable SQL
+admission/settlement, physical reconciliation, worker/catalog registration,
+publication/editor wiring, retention, and all live qualification remain unfinished.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.

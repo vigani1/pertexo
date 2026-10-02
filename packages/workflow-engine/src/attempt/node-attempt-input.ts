@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { types as nodeTypes } from 'node:util';
+import { NODE_JSON_LIMITS_V1 } from '@pertexo/node-sdk';
 
 import {
   canonicalJson,
@@ -6,6 +8,7 @@ import {
 } from '@pertexo/workflow-model/canonical-json';
 
 import { findExecutableNodeContext } from '../compilation/executable-graph.js';
+import { freezeExecutable } from '../compilation/executable-foundation.js';
 import {
   normalizeBoundedEngineJson,
   type WorkflowExecutableGraphV2,
@@ -138,18 +141,15 @@ function parseCompletedOutputs(
         graph,
         directUpstream,
       );
-      const canonicalValue = canonicalJson(value);
-      const existing = canonicalByNodeId.get(nodeId);
-      if (existing !== undefined && existing !== canonicalValue)
-        operationError('attempt_invalid', 'completed outputs conflict');
-      if (existing === undefined) {
-        canonicalByNodeId.set(nodeId, canonicalValue);
-        outputs[nodeId] = value;
-      }
+      retainCompletedOutput(outputs, canonicalByNodeId, nodeId, value);
     }
     return outputs;
   }
-  if ((input.iterationPath?.length ?? 0) > 0) {
+  if (
+    (input.iterationPath?.length ?? 0) > 0 ||
+    (input.executable.envelope.schemaVersion === 3 &&
+      (input.branchPath?.length ?? 0) > 0)
+  ) {
     operationError(
       'attempt_invalid',
       'scoped completed outputs require invocation descriptors',
@@ -165,6 +165,140 @@ function parseCompletedOutputs(
     }
   }
   return legacy;
+}
+
+function retainCompletedOutput(
+  outputs: Record<string, JsonValue>,
+  canonicalByNodeId: Map<string, string>,
+  nodeId: string,
+  value: JsonValue,
+): void {
+  const canonicalValue = canonicalJson(value);
+  const existing = canonicalByNodeId.get(nodeId);
+  if (existing !== undefined && existing !== canonicalValue)
+    operationError('attempt_invalid', 'completed outputs conflict');
+  if (existing === undefined) {
+    canonicalByNodeId.set(nodeId, canonicalValue);
+    outputs[nodeId] = value;
+  }
+}
+
+/** Inspect metadata containers only; their values have independent JSON budgets. */
+function ownCompletedFields(value: unknown): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || nodeTypes.isProxy(value))
+    operationError('attempt_invalid', 'completed output metadata is invalid');
+  const array = Array.isArray(value);
+  const prototype: unknown = Object.getPrototypeOf(value);
+  if (
+    (prototype !== null &&
+      prototype !== (array ? Array.prototype : Object.prototype)) ||
+    Object.getOwnPropertySymbols(value).length !== 0
+  )
+    operationError('attempt_invalid', 'completed output metadata is invalid');
+  const names = Object.getOwnPropertyNames(value);
+  const length: unknown = array
+    ? Object.getOwnPropertyDescriptor(value, 'length')?.value
+    : undefined;
+  if (
+    names.length > NODE_JSON_LIMITS_V1.members + (array ? 1 : 0) ||
+    (array &&
+      (typeof length !== 'number' ||
+        !Number.isSafeInteger(length) ||
+        length > NODE_JSON_LIMITS_V1.members ||
+        names.length !== length + 1))
+  )
+    operationError(
+      'attempt_invalid',
+      'completed output metadata exceeds limits',
+    );
+  for (const name in value)
+    if (!Object.hasOwn(value, name))
+      operationError(
+        'attempt_invalid',
+        'completed output metadata is inherited',
+      );
+  const fields = Object.create(null) as Record<string, unknown>;
+  let ordinal = 0;
+  for (const name of names) {
+    if (array && name === 'length') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, name);
+    if (
+      descriptor === undefined ||
+      !descriptor.enumerable ||
+      !('value' in descriptor) ||
+      (array && name !== String(ordinal++))
+    )
+      operationError('attempt_invalid', 'completed output metadata is invalid');
+    fields[name] = descriptor.value;
+  }
+  return fields;
+}
+
+function normalizeCompletedOutputsV3(
+  value: unknown,
+  input: ExecuteNodeAttemptInput,
+  node: WorkflowExecutableNodeV2,
+  graph: WorkflowExecutableGraphV2,
+  directUpstream: ReadonlySet<string>,
+): Readonly<Record<string, JsonValue>> {
+  const fields = ownCompletedFields(value);
+  const outputs = Object.create(null) as Record<string, JsonValue>;
+  if (!Array.isArray(value)) {
+    const keys = Object.keys(fields);
+    normalizeBoundedEngineJson(keys);
+    parseCompletedOutputs(
+      Object.fromEntries(keys.map((key) => [key, null])),
+      input,
+      node,
+      graph,
+      directUpstream,
+    );
+    for (const [nodeId, source] of Object.entries(fields))
+      outputs[nodeId] = normalizeBoundedEngineJson(source);
+    return freezeExecutable(outputs);
+  }
+  const descriptors = Object.values(fields).map((candidate) => {
+    if (Array.isArray(candidate))
+      operationError('attempt_invalid', 'completed output must be an object');
+    const descriptor = ownCompletedFields(candidate);
+    if (
+      Object.keys(descriptor).length !== 3 ||
+      !['invocationKey', 'nodeId', 'value'].every((key) =>
+        Object.hasOwn(descriptor, key),
+      )
+    )
+      operationError('attempt_invalid', 'observation fields are invalid');
+    return descriptor;
+  });
+  // Bound aggregate metadata independently, never the source-value wrapper.
+  const metadata = normalizeBoundedEngineJson(
+    descriptors.map(({ nodeId, invocationKey }) => ({ nodeId, invocationKey })),
+  );
+  if (!Array.isArray(metadata))
+    operationError('attempt_invalid', 'completed output metadata is invalid');
+  // Validate every scoped source identity before inspecting any source value.
+  const sources = descriptors.map((descriptor, index) => {
+    const candidate = record(
+      (metadata as readonly JsonValue[])[index] ?? null,
+      'attempt_invalid',
+      'completed output metadata',
+    );
+    const [nodeId] = parseCompletedDescriptor(
+      { ...candidate, value: null },
+      input,
+      node,
+      graph,
+      directUpstream,
+    );
+    return [nodeId, descriptor.value] as const;
+  });
+  const canonicalByNodeId = new Map<string, string>();
+  for (const [nodeId, source] of sources) {
+    // Do not retain an independently cloned value for every duplicate descriptor.
+    const normalized = normalizeBoundedEngineJson(source);
+    retainCompletedOutput(outputs, canonicalByNodeId, nodeId, normalized);
+  }
+  return freezeExecutable(outputs);
 }
 
 function parseStructuredInputs(
@@ -213,10 +347,11 @@ export function prepareNodeAttemptInput(
   input: ExecuteNodeAttemptInput,
 ): PreparedNodeAttemptInput {
   let runInput: JsonValue;
-  let completed: JsonValue;
+  let completed: JsonValue = null;
   try {
     runInput = normalizeBoundedEngineJson(input.runInput);
-    completed = normalizeBoundedEngineJson(input.completedNodeOutputs);
+    if (input.executable.envelope.schemaVersion !== 3)
+      completed = normalizeBoundedEngineJson(input.completedNodeOutputs);
   } catch (error) {
     operationError(
       'attempt_invalid',
@@ -244,17 +379,36 @@ export function prepareNodeAttemptInput(
       .map(({ source }) => source.nodeId),
   );
   const structuredInputs = parseStructuredInputs(input);
-  return {
-    node,
-    runInput,
-    directUpstream,
-    completedOutputs: parseCompletedOutputs(
+  let completedOutputs: Readonly<Record<string, JsonValue>>;
+  if (input.executable.envelope.schemaVersion === 3) {
+    try {
+      completedOutputs = normalizeCompletedOutputsV3(
+        input.completedNodeOutputs,
+        input,
+        node,
+        containingGraph,
+        directUpstream,
+      );
+    } catch (error) {
+      operationError(
+        'attempt_invalid',
+        error instanceof Error ? error.message : 'attempt input is invalid',
+      );
+    }
+  } else {
+    completedOutputs = parseCompletedOutputs(
       completed,
       input,
       node,
       containingGraph,
       directUpstream,
-    ),
+    );
+  }
+  return {
+    node,
+    runInput,
+    directUpstream,
+    completedOutputs,
     ...(structuredInputs === undefined ? {} : { structuredInputs }),
   };
 }

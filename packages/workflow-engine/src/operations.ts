@@ -25,9 +25,7 @@ import {
 } from './observation/coordinator-output.js';
 import { executableNodes } from './compilation/executable-graph.js';
 import {
-  assertAuthenticExecutableIdentity,
   normalizeBoundedEngineJson,
-  type CompiledWorkflowExecutableV2,
   type WorkflowExecutableNodeV2,
   type WorkflowExecutableGraphV2,
 } from './executable-workflow.js';
@@ -36,7 +34,7 @@ import { parseCheckpoint } from './checkpoint/checkpoint.js';
 import type { SchedulerState } from './transition/graph-scheduler.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './observation/persisted-observations.js';
-import { providerIdempotencyKey } from './attempt/retries.js';
+import { withPlanProviderKeys } from './attempt/plan-provider-keys.js';
 import { prepareNodeAttemptInput } from './attempt/node-attempt-input.js';
 import type {
   ExecuteNodeAttemptInput,
@@ -48,6 +46,18 @@ import {
   isTriggerSourceDefinition,
 } from './core-definition-identities.js';
 import { assertCheckpointMatchesExecutable } from './checkpoint/checkpoint-executable-validation.js';
+import {
+  assertAuthenticWorkflowExecutable,
+  type CompiledWorkflowExecutable,
+} from './compilation/executable-authentication.js';
+import { isAuthenticExecutableIdentityV3 } from './compilation/executable-v3.js';
+import type { WorkflowCallableDeclarationV1 } from '@pertexo/workflow-model/callable-graph-contract';
+import type { WorkflowCallDeclarationMaterialV1 } from './workflow-call-control.js';
+import { workflowCallCoordinatorControls } from './observation/workflow-call-observations.js';
+import {
+  validateCallDeclarationAttemptInput,
+  validateCallDeclarationAttemptResult,
+} from './attempt/workflow-call-input.js';
 
 export type {
   ExecuteNodeAttemptInput,
@@ -63,11 +73,19 @@ export type {
 
 export interface AdvanceWorkflowInput {
   readonly runId: string;
-  readonly executable: CompiledWorkflowExecutableV2;
+  readonly executable: CompiledWorkflowExecutable;
   readonly workflowVersionId: string;
   readonly checkpoint: unknown;
   readonly observations?: unknown;
   readonly completedOutputs?: unknown;
+  readonly workflowCalls?: Readonly<{
+    readonly declarations: readonly WorkflowCallDeclarationMaterialV1[];
+    readonly facts: readonly unknown[];
+    readonly calleeDeclarations: ReadonlyMap<
+      string,
+      WorkflowCallableDeclarationV1
+    >;
+  }>;
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
   readonly signal: AbortSignal;
@@ -119,7 +137,7 @@ export function projectSchedulerState(
 }
 
 function schedulerState(
-  executable: CompiledWorkflowExecutableV2,
+  executable: CompiledWorkflowExecutable,
 ): SchedulerState {
   return projectSchedulerState(executable.envelope.graph);
 }
@@ -127,7 +145,7 @@ function schedulerState(
 export async function advanceWorkflow(
   input: AdvanceWorkflowInput,
 ): Promise<WorkflowTransitionPlan> {
-  assertAuthenticExecutableIdentity(input.executable);
+  assertAuthenticWorkflowExecutable(input.executable);
   assertIdentity(input.runId, 'runId', 'workflow_identity_invalid');
   assertIdentity(
     input.workflowVersionId,
@@ -137,6 +155,17 @@ export async function advanceWorkflow(
   await Promise.resolve();
   assertNotAborted(input.signal);
   const checkpoint = parseCheckpoint(input.checkpoint);
+  const callExecutable = isAuthenticExecutableIdentityV3(input.executable);
+  if (callExecutable !== (checkpoint.schemaVersion === 3))
+    operationError(
+      'workflow_identity_invalid',
+      'checkpoint format does not match the executable runtime',
+    );
+  if (!callExecutable && input.workflowCalls !== undefined)
+    operationError(
+      'observation_invalid',
+      'Call materials require executable V3',
+    );
   if (checkpoint.workflowVersionId !== input.workflowVersionId)
     operationError(
       'workflow_identity_invalid',
@@ -187,6 +216,17 @@ export async function advanceWorkflow(
     retryPolicyReference: input.executable.envelope.runtimePolicies.retry,
     controlCanceled,
     controlDeadline,
+    ...(callExecutable
+      ? {
+          nonRetryableNodeIds: new Set(
+            executableNodeList
+              .filter(
+                ({ definition }) => definition.key === 'core.workflow_call',
+              )
+              .map(({ id }) => id),
+          ),
+        }
+      : {}),
   });
   const forEach = forEachCoordinatorObservations(
     completedOutputItems,
@@ -197,10 +237,22 @@ export async function advanceWorkflow(
     nodesById,
     resolvedFailures,
   );
+  const calls = isAuthenticExecutableIdentityV3(input.executable)
+    ? workflowCallCoordinatorControls({
+        executable: input.executable,
+        checkpoint,
+        observations: persistedObservations.observations,
+        successfulOutcomes,
+        materials: input.workflowCalls,
+        controlCanceled,
+        controlDeadline,
+      })
+    : { controls: [], declarationInvocationKeys: new Set<string>() };
   const executionObservations = persistedObservations.observations.map(
     (observation): WorkflowObservation =>
       observation.kind === 'outcome' &&
-      forEach.declarationInvocationKeys.has(observation.invocationKey)
+      (forEach.declarationInvocationKeys.has(observation.invocationKey) ||
+        calls.declarationInvocationKeys.has(observation.invocationKey))
         ? { kind: 'cursor_only' }
         : observation,
   );
@@ -231,38 +283,10 @@ export async function advanceWorkflow(
     dueResumptions: persistedObservations.dueResumptions,
     occurredAt: input.occurredAt,
     maximumAdmissions: input.maximumAdmissions,
+    workflowCallControls: calls.controls,
   });
   assertNotAborted(input.signal);
-  const providerKey = (
-    nodeId: string,
-    invocationKey: string,
-  ): string | undefined => {
-    const node = nodesById.get(nodeId);
-    if (node?.sideEffectClass !== 'idempotent_with_key') return undefined;
-    return providerIdempotencyKey({
-      invocationKey,
-      namespace: 'pertexo.node-attempt',
-      operationIdentity: `${node.definition.key}@${String(node.definition.version)}`,
-      runId: input.runId,
-    });
-  };
-  return Object.freeze({
-    ...plan,
-    attempts: plan.attempts.map((attempt) => {
-      const key = providerKey(attempt.nodeId, attempt.invocationKey);
-      return Object.freeze({
-        ...attempt,
-        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
-      });
-    }),
-    nodeRunAdmissions: plan.nodeRunAdmissions.map((admission) => {
-      const key = providerKey(admission.nodeId, admission.invocationKey);
-      return Object.freeze({
-        ...admission,
-        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
-      });
-    }),
-  });
+  return withPlanProviderKeys(plan, nodesById, input.runId);
 }
 
 function assertNotAborted(signal: AbortSignal): void {
@@ -393,7 +417,7 @@ export async function resolveSingleNodePreviewInput(
 export async function executeNodeAttempt(
   input: ExecuteNodeAttemptInput,
 ): Promise<NodeAttemptOutcome> {
-  assertAuthenticExecutableIdentity(input.executable);
+  assertAuthenticWorkflowExecutable(input.executable);
   assertIdentity(input.runId, 'runId', 'attempt_invalid');
   assertIdentity(input.nodeRunId, 'nodeRunId', 'attempt_invalid');
   assertIdentity(input.attemptId, 'attemptId', 'attempt_invalid');
@@ -429,6 +453,11 @@ export async function executeNodeAttempt(
   // Recorded before the executor runs, so failed attempts keep it (ADR 052).
   await input.onInputResolved?.(executionInput);
   assertNotAborted(input.signal);
+  executionInput = validateCallDeclarationAttemptInput(
+    input,
+    node,
+    executionInput,
+  );
   let result: NodeExecutionResult;
   try {
     result = await input.registry.execute({
@@ -446,6 +475,9 @@ export async function executeNodeAttempt(
     if (isNodeExecutorFailure(error)) throw error;
     operationError('attempt_invalid', 'node execution failed');
   }
+  if (node.definition.key === 'core.workflow_call')
+    assertNotAborted(input.signal);
+  result = validateCallDeclarationAttemptResult(node, executionInput, result);
   return {
     runId: input.runId,
     nodeRunId: input.nodeRunId,

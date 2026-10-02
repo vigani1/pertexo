@@ -3,12 +3,12 @@ import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 import { normalizeBoundedEngineJson } from '../executable-workflow.js';
 import { isJsonRecord, operationError } from '../operation-values.js';
 import { uuidPattern } from './persisted-observations.js';
-import type { OutputReference } from '../types.js';
+import type { AttemptOutputReference } from '../types.js';
 
 export function completedOutputReference(
   outcome: Readonly<Record<string, JsonValue>>,
   attemptId: string,
-): OutputReference | undefined {
+): AttemptOutputReference | undefined {
   const output = outcome.output;
   if (!isJsonRecord(output)) return undefined;
   if (output.kind === 'inline' && output.attemptId === attemptId)

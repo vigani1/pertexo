@@ -30,7 +30,7 @@ describe('checkpoint seam', () => {
   });
 
   it('fails closed for an unsupported checkpoint version', () => {
-    expect(() => parseCheckpoint({ schemaVersion: 3 })).toThrow(
+    expect(() => parseCheckpoint({ schemaVersion: 4 })).toThrow(
       expect.objectContaining({ code: 'checkpoint_unsupported' }),
     );
   });

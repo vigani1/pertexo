@@ -3,6 +3,7 @@ import type {
   BranchLedgerEntry,
   InvocationState,
   JoinState,
+  AttemptOutputReference,
   OutputReference,
   WorkflowCheckpointV2,
 } from './types.js';
@@ -14,8 +15,7 @@ export interface WorkflowCallResultReferenceV1 {
   readonly childRunId: string;
 }
 
-export type WorkflowCallOutputReferenceV1 =
-  OutputReference | WorkflowCallResultReferenceV1;
+export type WorkflowCallOutputReferenceV1 = OutputReference;
 
 export const WORKFLOW_CALL_REFUSAL_CODES_V1 = [
   'workflow.child_capacity_unavailable',
@@ -33,7 +33,7 @@ interface WorkflowCallDeclarationStateV1 {
   readonly nodeId: string;
   readonly declarationAttemptId: string;
   readonly pin: WorkflowCallPinV1;
-  readonly input: OutputReference;
+  readonly input: AttemptOutputReference;
   /** SHA-256 of the admitted input's canonical JSON, not its storage reference. */
   readonly inputChecksum: string;
 }
@@ -58,31 +58,17 @@ export type WorkflowCallStateV1 = WorkflowCallDeclarationStateV1 &
       }>
   );
 
-export interface WorkflowCallInvocationStateV1 extends Omit<
-  InvocationState,
-  'output'
-> {
-  readonly output?: WorkflowCallOutputReferenceV1;
-}
+export type WorkflowCallInvocationStateV1 = InvocationState;
 
-export interface WorkflowCallBranchLedgerEntryV1 extends Omit<
-  BranchLedgerEntry,
-  'output'
-> {
-  readonly output?: WorkflowCallOutputReferenceV1;
-}
+export type WorkflowCallBranchLedgerEntryV1 = BranchLedgerEntry;
 
-export interface WorkflowCallJoinStateV1 extends Omit<JoinState, 'ledger'> {
-  readonly ledger: readonly WorkflowCallBranchLedgerEntryV1[];
-}
+export type WorkflowCallJoinStateV1 = JoinState;
 
 /** Explicit wire version: retained checkpoint V1/V2 do not gain Call semantics. */
 export interface WorkflowCheckpointV3 extends Omit<
   WorkflowCheckpointV2,
-  'schemaVersion' | 'invocations' | 'joins'
+  'schemaVersion'
 > {
   readonly schemaVersion: 3;
-  readonly invocations: readonly WorkflowCallInvocationStateV1[];
-  readonly joins: readonly WorkflowCallJoinStateV1[];
   readonly calls: readonly WorkflowCallStateV1[];
 }

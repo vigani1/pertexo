@@ -5,10 +5,8 @@ import {
 
 import type { parseCheckpoint } from '../checkpoint/checkpoint.js';
 import { executableEdges } from '../compilation/executable-graph.js';
-import type {
-  CompiledWorkflowExecutableV2,
-  WorkflowExecutableNodeV2,
-} from '../executable-workflow.js';
+import type { WorkflowExecutableNodeV2 } from '../executable-workflow.js';
+import type { CompiledWorkflowExecutable } from '../compilation/executable-authentication.js';
 import { completedOutputReference } from './coordinator-output.js';
 import {
   configuredBranchOutputPorts,
@@ -145,7 +143,7 @@ export function branchSelectionObservations(
 }
 
 export function mergeCoordinatorObservations(
-  executable: CompiledWorkflowExecutableV2,
+  executable: CompiledWorkflowExecutable,
   checkpoint: ReturnType<typeof parseCheckpoint>,
   observations: readonly WorkflowObservation[],
   nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,

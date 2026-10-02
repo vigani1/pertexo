@@ -7,7 +7,8 @@ import type {
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 
-import type { CompiledWorkflowExecutableV2 } from '../executable-workflow.js';
+import type { CompiledWorkflowExecutable } from '../compilation/executable-authentication.js';
+import type { WorkflowCallableDeclarationV1 } from '@pertexo/workflow-model/callable-graph-contract';
 import type { BranchScopePart, IterationScopePart } from '../types.js';
 
 // What one node attempt takes and gives back, shared by the engine's
@@ -26,7 +27,12 @@ export interface ExecuteNodeAttemptInput {
   readonly runId: string;
   readonly nodeRunId: string;
   readonly attemptId: string;
-  readonly executable: CompiledWorkflowExecutableV2;
+  readonly executable: CompiledWorkflowExecutable;
+  /** Retained exact-version callable descriptors, never current publication data. */
+  readonly calleeDeclarations?: ReadonlyMap<
+    string,
+    WorkflowCallableDeclarationV1
+  >;
   readonly workflowVersionId: string;
   readonly invocationKey: string;
   readonly nodeId: string;

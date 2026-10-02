@@ -9,7 +9,7 @@ import { operationError } from '../operation-values.js';
 import { compareOrdinal } from '../ordering.js';
 import { sameOutputReference } from '../output-reference.js';
 import { parsePersistedObservation } from './persisted-observation-parser.js';
-import type { OutputReference, WorkflowObservation } from '../types.js';
+import type { AttemptOutputReference, WorkflowObservation } from '../types.js';
 
 type OutcomeObservation = Extract<
   WorkflowObservation,
@@ -23,7 +23,7 @@ export type PersistedWorkflowObservation = Readonly<
         readonly kind: 'outcome';
         readonly invocationKey: string;
         readonly status: PersistedOutcomeStatus;
-        readonly output?: OutputReference;
+        readonly output?: AttemptOutputReference;
         readonly reasonCode?: string;
         readonly attemptId: string;
         readonly attemptNumber: number;
@@ -44,7 +44,7 @@ export type PersistedWorkflowObservation = Readonly<
         readonly attemptNumber: number;
         readonly resumeAt: string;
         readonly waitKind: 'node_wait' | 'retry_backoff';
-        readonly output?: OutputReference;
+        readonly output?: AttemptOutputReference;
       }
   )
 >;

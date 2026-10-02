@@ -99,6 +99,16 @@ export interface CompiledWorkflowExecutableV2 {
 }
 const authenticExecutableIdentities = new WeakSet<object>();
 
+export function isAuthenticExecutableIdentity(
+  value: unknown,
+): value is CompiledWorkflowExecutableV2 {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    authenticExecutableIdentities.has(value)
+  );
+}
+
 export function registerExecutableIdentity(
   value: CompiledWorkflowExecutableV2,
 ): CompiledWorkflowExecutableV2 {
@@ -109,7 +119,7 @@ export function registerExecutableIdentity(
 export function assertAuthenticExecutableIdentity(
   value: CompiledWorkflowExecutableV2,
 ): void {
-  if (!authenticExecutableIdentities.has(value))
+  if (!isAuthenticExecutableIdentity(value))
     fail('workflow executable identity was not verified in this process');
 }
 
