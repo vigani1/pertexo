@@ -318,3 +318,31 @@ and a changed page size retain them. Combined origin projections call the existi
 compatible origin owner, never a raw join or fabricated null. Every page is
 authorized and database adapters remain the transactional current-authority owner.
 These focused use-case tests are not live HTTP or browser qualification.
+
+Individual organization HTTP slice: seven tag/favorite operations and opt-in
+workflow list/get projections are registered through the existing Nest feature
+module, session/workspace/CSRF guards, mutation rate policy, cancellation and
+private no-store headers. A dedicated metadata runtime validates the configured
+organization root, composes actual MAC/cursor/database capabilities and owns
+their shutdown; missing configuration is sanitized unavailable, not synthetic
+empty metadata. Existing input-case ownership/test opt-in behavior is preserved;
+the core runtime hotspot decreases from 177 lines/39 branches to 174/34.
+Twenty-seven Nest/Fastify controller cases use fake session admission/persistence
+and are explicitly not live-session/SQL proof; five lifecycle/construction cases
+send no database query. Separately, six fresh F07-owned real-session, compiled-API
+and PostgreSQL HTTP cases pass: session/CSRF/strict private-body rejection, actual
+MAC failure with same-key corrected retry, exact tag recovery/stale conflicts,
+canonical filtered keyset pages, cursor scope/purpose binding, viewer privacy and
+current role/suspension fences, stable rename and bounded archived deletion,
+combined compatible origin projection, and writer-OFF reads/replays/new-write
+denial. Membership rows are privileged fixture setup, not invitation transport
+qualification. Nine actual application MAC/public database cases still pass.
+The live literal-query regression also found PostgreSQL's invalid NUL text
+parameter boundary. The reader now returns an empty page for this valid literal
+query, since stored PostgreSQL names cannot contain NUL; owned reader and actual
+HTTP regressions pass without narrowing the accepted query contract.
+All 2,220 API unit cases/155 files, build/typecheck, scoped lint, architecture,
+dependency inventory, complexity and unchanged duplication ratchets pass.
+Tag cleanup and general bulk are not registered/qualified yet: their accepted
+parent-admission guard requires additive 0135 implementation. Folders, restart,
+real browser behavior, rollout and whole-feature acceptance remain open.

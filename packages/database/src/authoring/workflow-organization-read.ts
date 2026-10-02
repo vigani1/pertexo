@@ -168,7 +168,10 @@ export function createWorkflowOrganizationReadDatabase(
     });
     if (input.workflowId !== undefined)
       predicates.push(`w.id=${parameter(uuid.parse(input.workflowId))}::uuid`);
-    if (filters.query !== undefined && filters.query !== '') {
+    // PostgreSQL text cannot contain NUL: this valid literal query can never
+    // match a stored name, and must not be sent as an invalid text parameter.
+    if (filters.query?.includes('\0') === true) predicates.push('false');
+    else if (filters.query !== undefined && filters.query !== '') {
       const pattern = `%${filters.query.replace(/[\\%_]/gu, (letter) => `\\${letter}`)}%`;
       predicates.push(
         String.raw`w.name COLLATE "C" LIKE ${parameter(pattern)} ESCAPE '\'`,

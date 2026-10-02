@@ -121,6 +121,9 @@ describe.skipIf(!organizationFixtureEnabled)(
         (await stores.reader.listWorkflows({ ...context(scope), query: '   ' }))
           .items,
       ).toHaveLength(5);
+      expect(
+        await stores.reader.listWorkflows({ ...context(scope), query: '\0' }),
+      ).toEqual({ items: [], nextCursor: null });
     });
 
     it('intersects filters before pagination and keeps actor-private favorite state out of other projections', async () => {

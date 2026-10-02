@@ -1,0 +1,536 @@
+import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
+import { beforeAll, describe, expect, it } from 'vitest';
+import {
+  verifyCuratedFixtureOwnership,
+  recheckCuratedFixtureOwnership,
+  type CuratedOwnedFixture,
+} from '../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
+import {
+  useBetterAuthRealApi,
+  expectProblem,
+} from '../support/better-auth-real-api.integration.support.js';
+
+describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
+  'owned real session organization HTTP',
+  () => {
+    let ownership: CuratedOwnedFixture;
+    beforeAll(async () => {
+      for (const name of [
+        'DATABASE_ADMIN_URL',
+        'DATABASE_MIGRATION_URL',
+        'DATABASE_API_URL',
+        'REDIS_URL',
+      ])
+        if (process.env[name] === undefined)
+          throw new Error(`Explicit owned ${name} is required`);
+      ownership = await verifyCuratedFixtureOwnership();
+    });
+    const api = useBetterAuthRealApi('f07-organization', {
+      databaseNamespace: 'f07_organization',
+      workflowOrganization: {
+        cursorSigningKey: Buffer.alloc(32, 0x7a).toString('base64'),
+      },
+      afterMigration: async (url) => {
+        await recheckCuratedFixtureOwnership(ownership);
+        const pool = new Pool({
+          connectionString: url(process.env.DATABASE_ADMIN_URL ?? ''),
+        });
+        try {
+          await pool.query(
+            'update app.workflow_organization_rollout set writes_enabled=true',
+          );
+        } finally {
+          await pool.end();
+        }
+      },
+      beforeDrop: () => recheckCuratedFixtureOwnership(ownership),
+    });
+    async function fixture() {
+      const email = `${randomUUID()}@example.test`;
+      await api.signUp(email, '/login?verified=true');
+      const browser = await api.signIn(email);
+      const workspace = await api.send('POST', '/v1/workspaces', {
+        browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { name: 'Owned F07 HTTP', slug: `f07-${randomUUID()}` },
+      });
+      expect(workspace.statusCode, workspace.payload).toBe(201);
+      const workspaceId = workspace.json<{ id: string }>().id;
+      const route = `/v1/workspaces/${workspaceId}`;
+      const created = await api.send('POST', `${route}/workflows`, {
+        browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { name: 'Literal Ops%_\\' },
+      });
+      expect(created.statusCode, created.payload).toBe(201);
+      const workflowId = created.json<{ workflow: { id: string } }>().workflow
+        .id;
+      return { browser, workspaceId, workflowId, route };
+    }
+
+    it('requires real session/CSRF/single key and rejects untrusted private body fields', async () => {
+      const f = await fixture(),
+        url = `${f.route}/workflow-tags`;
+      expectProblem(await api.send('GET', url), 401, 'auth.unauthenticated');
+      expectProblem(
+        await api.send('POST', url, {
+          headers: {
+            cookie: f.browser.cookie,
+            'idempotency-key': randomUUID(),
+          },
+          payload: { key: 'ops' },
+        }),
+        403,
+        'auth.forbidden',
+      );
+      for (const headers of [{}, { 'idempotency-key': 'first,second' }])
+        expectProblem(
+          await api.send('POST', url, {
+            browser: f.browser,
+            headers,
+            payload: { key: 'ops' },
+          }),
+          400,
+          'request.invalid',
+        );
+      for (const extra of ['actorId', 'generation', 'verifiedAbsence']) {
+        const response = await api.send(
+          'POST',
+          `${f.route}/workflows/${f.workflowId}/favorite`,
+          {
+            browser: f.browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: {
+              favorite: true,
+              expectedFavoriteRevision: randomUUID(),
+              [extra]: 'private-marker',
+            },
+          },
+        );
+        expectProblem(response, 400, 'request.invalid');
+        expect(response.payload).not.toContain('private-marker');
+      }
+    });
+
+    it('serves strict default/projected reads and exact tag/favorite command recovery with actual MACs', async () => {
+      const f = await fixture();
+      const created = await api.send('POST', `${f.route}/workflow-tags`, {
+        browser: f.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { key: ' Ops ' },
+      });
+      expect(created.statusCode, created.payload).toBe(201);
+      const tag = created.json<{
+        tag: { id: string; key: string; revision: number };
+      }>().tag;
+      expect(tag.key).toBe('ops');
+      const key = randomUUID(),
+        body = { tagIds: [tag.id], expectedOrganizationRevision: 1 };
+      const url = `${f.route}/workflows/${f.workflowId}`;
+      const first = await api.send('POST', `${url}/tags`, {
+        browser: f.browser,
+        headers: { 'idempotency-key': key },
+        payload: body,
+      });
+      expect(first.statusCode, first.payload).toBe(200);
+      const replay = await api.send('POST', `${url}/tags`, {
+        browser: f.browser,
+        headers: { 'idempotency-key': key },
+        payload: body,
+      });
+      expect(replay.json()).toMatchObject({
+        organizationRevision: 2,
+        replayed: true,
+      });
+      expectProblem(
+        await api.send('POST', `${url}/tags`, {
+          browser: f.browser,
+          headers: { 'idempotency-key': randomUUID() },
+          payload: body,
+        }),
+        409,
+        'workflow.organization_revision_conflict',
+      );
+      const projected = await api.send('GET', `${url}?include=organization`, {
+        browser: f.browser,
+      });
+      expect(projected.statusCode, projected.payload).toBe(200);
+      expect(projected.headers['cache-control']).toBe('private, no-store');
+      const organization = projected.json<{
+        organization: {
+          favoriteRevision: string;
+          tags: unknown[];
+          organizationRevision: number;
+        };
+      }>().organization;
+      expect(organization.tags).toEqual([tag]);
+      expect(organization.favoriteRevision).toMatch(/^absent\.v1\./u);
+      expect(Object.keys(organization).sort()).toEqual([
+        'favoriteRevision',
+        'folderId',
+        'isFavorite',
+        'organizationRevision',
+        'tags',
+      ]);
+      const favoriteKey = randomUUID();
+      const tampered = organization.favoriteRevision.split('.');
+      tampered[4] = Buffer.alloc(32, 1).toString('base64url');
+      expectProblem(
+        await api.send('POST', `${url}/favorite`, {
+          browser: f.browser,
+          headers: { 'idempotency-key': favoriteKey },
+          payload: {
+            favorite: true,
+            expectedFavoriteRevision: tampered.join('.'),
+          },
+        }),
+        409,
+        'workflow.favorite_revision_conflict',
+      );
+      const favorite = await api.send('POST', `${url}/favorite`, {
+        browser: f.browser,
+        headers: { 'idempotency-key': favoriteKey },
+        payload: {
+          favorite: true,
+          expectedFavoriteRevision: organization.favoriteRevision,
+        },
+      });
+      expect(favorite.statusCode, favorite.payload).toBe(200);
+      const original = await api.send('GET', url, { browser: f.browser });
+      expect(Object.keys(original.json()).sort()).toEqual(['workflow']);
+      const combined = await api.send(
+        'GET',
+        `${url}?include=templateOrigin,organization`,
+        { browser: f.browser },
+      );
+      expect(combined.statusCode, combined.payload).toBe(200);
+      expect(combined.json()).toMatchObject({
+        templateOrigin: null,
+        organization: { isFavorite: true },
+      });
+      const defaultList = await api.send('GET', `${f.route}/workflows`, {
+        browser: f.browser,
+      });
+      expect(
+        defaultList.json<{ items: object[] }>().items[0],
+      ).not.toHaveProperty('organization');
+    });
+
+    it('filters literally before pagination and rejects cursor filter/purpose tampering over HTTP', async () => {
+      const f = await fixture();
+      const tagReply = await api.send('POST', `${f.route}/workflow-tags`, {
+        browser: f.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { key: 'selected' },
+      });
+      const tagId = tagReply.json<{ tag: { id: string } }>().tag.id;
+      const second = await api.send('POST', `${f.route}/workflows`, {
+        browser: f.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { name: 'Second%_\\' },
+      });
+      const secondId = second.json<{ workflow: { id: string } }>().workflow.id;
+      for (const workflowId of [f.workflowId, secondId]) {
+        const response = await api.send(
+          'POST',
+          `${f.route}/workflows/${workflowId}/tags`,
+          {
+            browser: f.browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: { tagIds: [tagId], expectedOrganizationRevision: 1 },
+          },
+        );
+        expect(response.statusCode, response.payload).toBe(200);
+      }
+      const query = `query=${encodeURIComponent('%_\\')}&tagId=${tagId}&include=organization&limit=1`;
+      const first = await api.send('GET', `${f.route}/workflows?${query}`, {
+        browser: f.browser,
+      });
+      expect(first.statusCode, first.payload).toBe(200);
+      const page = first.json<{
+        items: { workflow: { id: string } }[];
+        nextCursor: string;
+      }>();
+      expect(page.items.map((item) => item.workflow.id)).toEqual([
+        f.workflowId,
+      ]);
+      const last = await api.send(
+        'GET',
+        `${f.route}/workflows?${query}&after=${encodeURIComponent(page.nextCursor)}`,
+        { browser: f.browser },
+      );
+      expect(
+        last
+          .json<{ items: { workflow: { id: string } }[]; nextCursor: null }>()
+          .items.map((item) => item.workflow.id),
+      ).toEqual([secondId]);
+      expectProblem(
+        await api.send(
+          'GET',
+          `${f.route}/workflows?${query}&view=active&after=${encodeURIComponent(page.nextCursor)}`,
+          { browser: f.browser },
+        ),
+        400,
+        'request.invalid',
+      );
+      expectProblem(
+        await api.send(
+          'GET',
+          `${f.route}/workflow-tags?after=${encodeURIComponent(page.nextCursor)}`,
+          { browser: f.browser },
+        ),
+        400,
+        'request.invalid',
+      );
+      const empty = await api.send(
+        'GET',
+        `${f.route}/workflows?tagId=${randomUUID()}&include=organization`,
+        { browser: f.browser },
+      );
+      expect(empty.json()).toEqual({ items: [], nextCursor: null });
+      const impossibleName = await api.send(
+        'GET',
+        `${f.route}/workflows?query=%00&include=organization`,
+        { browser: f.browser },
+      );
+      expect(impossibleName.statusCode, impossibleName.payload).toBe(200);
+      expect(impossibleName.json()).toEqual({ items: [], nextCursor: null });
+    });
+
+    it('preserves tag identity on rename and atomically deletes bounded archived assignments', async () => {
+      const f = await fixture();
+      const created = await api.send('POST', `${f.route}/workflow-tags`, {
+        browser: f.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { key: 'before-rename' },
+      });
+      const tag = created.json<{ tag: { id: string; revision: number } }>().tag;
+      const workflow = `${f.route}/workflows/${f.workflowId}`;
+      expect(
+        (
+          await api.send('POST', `${workflow}/tags`, {
+            browser: f.browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: { tagIds: [tag.id], expectedOrganizationRevision: 1 },
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(
+        (
+          await api.send('POST', `${workflow}/archive`, {
+            browser: f.browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: { expectedLifecycleRevision: 1 },
+          })
+        ).statusCode,
+      ).toBe(202);
+      const renamed = await api.send(
+        'POST',
+        `${f.route}/workflow-tags/${tag.id}/rename`,
+        {
+          browser: f.browser,
+          headers: { 'idempotency-key': randomUUID() },
+          payload: { key: 'After-Rename', expectedTagRevision: tag.revision },
+        },
+      );
+      expect(renamed.statusCode, renamed.payload).toBe(200);
+      expect(renamed.json()).toMatchObject({
+        tag: { id: tag.id, key: 'after-rename', revision: 2 },
+      });
+      const assigned = await api.send(
+        'GET',
+        `${f.route}/workflow-tags/${tag.id}/workflows?limit=1`,
+        { browser: f.browser },
+      );
+      expect(assigned.statusCode, assigned.payload).toBe(200);
+      expect(assigned.json()).toEqual({
+        items: [{ workflowId: f.workflowId, organizationRevision: 2 }],
+        nextCursor: null,
+      });
+      const before = (
+        await api.send('GET', `${workflow}?include=organization`, {
+          browser: f.browser,
+        })
+      ).json<{ workflow: object }>().workflow;
+      const key = randomUUID(),
+        url = `${f.route}/workflow-tags/${tag.id}/delete`,
+        payload = { expectedTagRevision: 2 };
+      const deleted = await api.send('POST', url, {
+        browser: f.browser,
+        headers: { 'idempotency-key': key },
+        payload,
+      });
+      expect(deleted.statusCode, deleted.payload).toBe(200);
+      expect(deleted.json()).toEqual({
+        tagId: tag.id,
+        deleted: true,
+        detachedWorkflowCount: 1,
+        replayed: false,
+      });
+      expect(
+        (
+          await api.send('POST', url, {
+            browser: f.browser,
+            headers: { 'idempotency-key': key },
+            payload,
+          })
+        ).json(),
+      ).toMatchObject({ replayed: true });
+      const after = (
+        await api.send('GET', `${workflow}?include=organization`, {
+          browser: f.browser,
+        })
+      ).json<{ workflow: object; organization: object }>();
+      expect(after.workflow).toEqual(before);
+      expect(after.organization).toMatchObject({
+        tags: [],
+        organizationRevision: 3,
+      });
+    });
+
+    it('keeps viewer favorites private while enforcing current admin/editor roles', async () => {
+      const f = await fixture(),
+        url = `${f.route}/workflows/${f.workflowId}`;
+      const ownerProjection = await api.send(
+        'GET',
+        `${url}?include=organization`,
+        { browser: f.browser },
+      );
+      const ownerRevision = ownerProjection.json<{
+        organization: { favoriteRevision: string };
+      }>().organization.favoriteRevision;
+      expect(
+        (
+          await api.send('POST', `${url}/favorite`, {
+            browser: f.browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: {
+              favorite: true,
+              expectedFavoriteRevision: ownerRevision,
+            },
+          })
+        ).statusCode,
+      ).toBe(200);
+      for (const role of ['viewer', 'builder', 'admin'] as const) {
+        const email = `${randomUUID()}@example.test`;
+        await api.signUp(email, '/login?verified=true');
+        const member = await api.signIn(email);
+        const userId = (
+          await api.send('GET', '/v1/users/me', { browser: member })
+        ).json<{ id: string }>().id;
+        // Real user/session; privileged fixture membership setup is not invitation proof.
+        await api
+          .database()
+          .query(
+            "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,$3,'active')",
+            [f.workspaceId, userId, role],
+          );
+        const projection = await api.send(
+          'GET',
+          `${url}?include=organization`,
+          { browser: member },
+        );
+        expect(projection.statusCode, projection.payload).toBe(200);
+        const metadata = projection.json<{
+          organization: {
+            isFavorite: boolean;
+            favoriteRevision: string;
+            organizationRevision: number;
+          };
+        }>().organization;
+        expect(metadata.isFavorite).toBe(false);
+        const create = await api.send('POST', `${f.route}/workflow-tags`, {
+          browser: member,
+          headers: { 'idempotency-key': randomUUID() },
+          payload: { key: `${role}-tag` },
+        });
+        if (role === 'admin')
+          expect(create.statusCode, create.payload).toBe(201);
+        else expectProblem(create, 403, 'auth.forbidden');
+        const replacement = await api.send('POST', `${url}/tags`, {
+          browser: member,
+          headers: { 'idempotency-key': randomUUID() },
+          payload: {
+            tagIds: [],
+            expectedOrganizationRevision: metadata.organizationRevision,
+          },
+        });
+        if (role === 'viewer')
+          expectProblem(replacement, 404, 'resource.not_found');
+        else expect(replacement.statusCode, replacement.payload).toBe(200);
+        const starred = await api.send('POST', `${url}/favorite`, {
+          browser: member,
+          headers: { 'idempotency-key': randomUUID() },
+          payload: {
+            favorite: true,
+            expectedFavoriteRevision: metadata.favoriteRevision,
+          },
+        });
+        expect(starred.statusCode, starred.payload).toBe(200);
+        await api
+          .database()
+          .query(
+            "update app.workspace_memberships set status='suspended' where workspace_id=$1 and user_id=$2",
+            [f.workspaceId, userId],
+          );
+        expectProblem(
+          await api.send(
+            'GET',
+            `${f.route}/workflows?favoritesOnly=true&include=organization`,
+            { browser: member },
+          ),
+          404,
+          'resource.not_found',
+        );
+      }
+    });
+
+    it('keeps compatible organization reads and exact accepted retries while the SQL writer is off', async () => {
+      const f = await fixture();
+      const key = randomUUID(),
+        payload = { key: 'off-reader' };
+      const first = await api.send('POST', `${f.route}/workflow-tags`, {
+        browser: f.browser,
+        headers: { 'idempotency-key': key },
+        payload,
+      });
+      expect(first.statusCode, first.payload).toBe(201);
+      await api
+        .database()
+        .query(
+          'update app.workflow_organization_rollout set writes_enabled=false',
+        );
+      try {
+        expect(
+          (
+            await api.send('GET', `${f.route}/workflows?include=organization`, {
+              browser: f.browser,
+            })
+          ).statusCode,
+        ).toBe(200);
+        const replay = await api.send('POST', `${f.route}/workflow-tags`, {
+          browser: f.browser,
+          headers: { 'idempotency-key': key },
+          payload,
+        });
+        expect(replay.json()).toMatchObject({ replayed: true });
+        expectProblem(
+          await api.send('POST', `${f.route}/workflow-tags`, {
+            browser: f.browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: { key: 'new-off' },
+          }),
+          503,
+          'workflow.organization_unavailable',
+        );
+      } finally {
+        await api
+          .database()
+          .query(
+            'update app.workflow_organization_rollout set writes_enabled=true',
+          );
+      }
+    });
+  },
+);

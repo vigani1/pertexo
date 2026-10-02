@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Optional,
   Param,
   Post,
   Put,
@@ -28,7 +29,15 @@ import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from './rename-use-case.js';
 import { DuplicateWorkflowUseCase } from './duplicate-use-case.js';
 import { workflowDuplicateRequestSchema } from '@pertexo/contracts/workflow-authoring';
-import { workflowTemplateOriginProjectionQuerySchema } from '@pertexo/contracts/workflow-authoring';
+import {
+  workflowOrganizationListQuerySchema,
+  workflowGetQuerySchema,
+} from '@pertexo/contracts/schemas/workflow-authoring';
+import { WorkflowOrganizationReadsUseCase } from './organization-read-use-case.js';
+import {
+  requireWorkflowOrganization,
+  withWorkflowOrganizationRequest,
+} from './organization-http.js';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import { workflowVersionRestoreParamsSchema } from '@pertexo/contracts/workflow-authoring';
 import { throwWorkflowApplicationError } from './errors.js';
@@ -52,7 +61,6 @@ import {
 import {
   workflowDraftSaveRequestSchema,
   workflowIdParamSchema,
-  workflowListQuerySchema,
   workflowVersionsQuerySchema,
   type WorkflowAuthoringRequest,
   type WorkflowResponse,
@@ -79,6 +87,8 @@ export class WorkflowAuthoringController {
     private readonly restoreWorkflowVersion: RestoreWorkflowVersionUseCase,
     private readonly renameWorkflow: RenameWorkflowUseCase,
     private readonly duplicateWorkflow: DuplicateWorkflowUseCase,
+    @Optional()
+    private readonly organization?: WorkflowOrganizationReadsUseCase,
   ) {}
 
   @Get()
@@ -87,9 +97,25 @@ export class WorkflowAuthoringController {
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
     @Query() query: unknown,
+    @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
     const { workspaceId } = workspaceParams(params);
-    const input = workflowListQuerySchema.parse(query ?? {});
+    const input = workflowOrganizationListQuerySchema.parse(query ?? {});
+    if (
+      input.query !== undefined ||
+      input.view !== undefined ||
+      input.tagId !== undefined ||
+      input.favoritesOnly !== undefined ||
+      input.include !== undefined
+    ) {
+      response?.header('Cache-Control', 'private, no-store');
+      return withWorkflowOrganizationRequest(request, workspaceId, (context) =>
+        requireWorkflowOrganization(this.organization).list({
+          ...context,
+          query: input,
+        }),
+      );
+    }
     const context = requestContext(request, workspaceId);
     return this.listWorkflows.execute({
       ...context,
@@ -137,11 +163,23 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
     const route = workflowParams(params);
-    const projection = workflowTemplateOriginProjectionQuerySchema
-      .partial()
-      .parse(query ?? {});
+    const projection = workflowGetQuerySchema.parse(query ?? {});
     if (projection.include !== undefined)
       response?.header('Cache-Control', 'private, no-store');
+    if (
+      projection.include === 'organization' ||
+      projection.include === 'templateOrigin,organization'
+    )
+      return withWorkflowOrganizationRequest(
+        request,
+        route.workspaceId,
+        (context) =>
+          requireWorkflowOrganization(this.organization).get({
+            ...context,
+            workflowId: route.workflowId,
+            query: projection,
+          }),
+      );
     return this.getWorkflow.execute({
       ...requestContext(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
