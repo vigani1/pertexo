@@ -101,6 +101,29 @@ state and database-clock TTL. Actor, generation and proof flags are never HTTP
 request fields. Exact committed replay bypasses MAC expiry/key rotation only
 after current authority and generation fencing.
 
+Primary accepted the bounded transport-outcome refinement on 2026-10-02 before
+contracts: `workflow.organization_unavailable` is 503; the new 409 codes are
+`workflow.tag_key_conflict`, `workflow.tag_limit_exceeded`,
+`workflow.tag_revision_conflict`, `workflow.tag_delete_overflow`,
+`workflow.organization_revision_conflict` and `workflow.favorite_revision_conflict`.
+Reuse existing generic not-found, invalid-request, idempotency and lifecycle
+problems. Details never disclose private generation, token proofs or another
+actor's state.
+
+Cleanup returns strict ordered at-most-50 item outcomes: `detached` carries only
+requested workflow ID, organization revision and replay marker; `not_visible`
+does not distinguish missing from foreign; `conflict` carries a bounded known
+409 revision/idempotency/lifecycle code; `unavailable` carries only the bounded
+organization-unavailable code; `outcome_unknown` represents unexpected database/
+transport ambiguity, never a claimed failure. A generic `forbidden` outcome
+represents lost current authority; stop processing remaining items, mark them
+`not_processed`, and disclose no retained receipt/current revision after authority
+loss. No actor/generation/proof/count fields. Current authority is rechecked per
+item, including recovery. A reread informs current UI state but exact retry retains
+the original frozen body/revisions/derived item keys; never rebuild it with fresh
+revisions. Only a known result followed by explicit fresh confirmation creates a
+new command. Historical successful replay metadata is not a current projection.
+
 ### Shared tags
 
 Recommendation: workspace-scoped stable tag IDs and unique canonical keys;
