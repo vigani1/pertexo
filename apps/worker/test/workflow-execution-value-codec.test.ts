@@ -251,11 +251,14 @@ describe('framework execution value codec', () => {
   });
   it('preserves the 256KiB inline limit and spills one byte beyond it', async () => {
     const h = harness();
+    const overhead = Buffer.byteLength(
+      JSON.stringify({ kind: 'inline', schemaVersion: 1, value: '' }),
+    );
     expect(
       (
         await h.codec.prepare({
           owner,
-          value: 'x'.repeat(262_144 - 2),
+          value: 'x'.repeat(262_144 - overhead),
           signal: signal(),
         })
       ).reference.kind,
@@ -264,7 +267,7 @@ describe('framework execution value codec', () => {
       (
         await h.codec.prepare({
           owner,
-          value: 'x'.repeat(262_144 - 1),
+          value: 'x'.repeat(262_144 - overhead + 1),
           signal: signal(),
         })
       ).reference.kind,

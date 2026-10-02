@@ -1,5 +1,7 @@
 import {
   parseStoredExecutionValueV1,
+  serializeStoredExecutionValueV1,
+  STORED_EXECUTION_VALUE_LIMITS_V1,
   StoredExecutionValueInvalidError,
   type StoredExecutionValueV1,
 } from '../stored-execution-value.js';
@@ -20,6 +22,13 @@ export function prepareInlineWorkflowExecutionValueV3(
     });
     if (reference.kind !== 'inline')
       throw new TypeError('Inline representation owner returned another kind');
+    // Native protected ingress includes the immutable reference wrapper in its
+    // inline budget. Keep retained V1 parsing/encoding unchanged.
+    if (
+      Buffer.byteLength(serializeStoredExecutionValueV1(reference), 'utf8') >
+      STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes
+    )
+      return undefined;
     return reference;
   } catch (error) {
     if (error instanceof StoredExecutionValueInvalidError) return undefined;

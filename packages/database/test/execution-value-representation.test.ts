@@ -4,7 +4,11 @@ import { STORED_EXECUTION_VALUE_LIMITS_V1 } from '../src/execution/stored-execut
 
 describe('V3 framework inline representation selection', () => {
   it('keeps the retained source-local inline byte bound and independent snapshot', () => {
-    const overhead = JSON.stringify({ value: '' }).length;
+    const overhead = JSON.stringify({
+      kind: 'inline',
+      schemaVersion: 1,
+      value: { value: '' },
+    }).length;
     const value = {
       value: 'a'.repeat(
         STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes - overhead,
