@@ -4,6 +4,7 @@ import { READINESS_WORKFLOW_DUPLICATION_SQL } from './readiness-workflow-duplica
 import { READINESS_WORKFLOW_PORTABILITY_SQL } from './readiness-workflow-portability.sql.js';
 import { READINESS_CURATED_TEMPLATE_ORIGIN_SQL } from './readiness-curated-template-origin.sql.js';
 import { READINESS_WORKFLOW_INPUT_CASES_SQL } from './readiness-workflow-input-cases.sql.js';
+import { READINESS_WORKFLOW_ORGANIZATION_SQL } from './readiness-workflow-organization.sql.js';
 export const READINESS_IDENTITY_AUTHORING_SQL = `
     select
       current_user,
@@ -423,5 +424,6 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and ${READINESS_WORKFLOW_DUPLICATION_SQL}
         and ${READINESS_WORKFLOW_PORTABILITY_SQL}
         and ${READINESS_CURATED_TEMPLATE_ORIGIN_SQL}
-        and ${READINESS_WORKFLOW_INPUT_CASES_SQL}) as phase2_schema_compatible,
+        and ${READINESS_WORKFLOW_INPUT_CASES_SQL}
+        and ${READINESS_WORKFLOW_ORGANIZATION_SQL}) as phase2_schema_compatible,
       ${READINESS_AUTHORING_GRANTS_SQL}`;

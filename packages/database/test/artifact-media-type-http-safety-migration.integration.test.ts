@@ -163,6 +163,7 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
         '0131_checked_manual_start.sql',
         '0132_workflow_portability.sql',
         '0133_curated_template_origin.sql',
+        '0134_workflow_organization.sql',
       ]);
 
       await owner.query('begin');

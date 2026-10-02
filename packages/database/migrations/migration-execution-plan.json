@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0133_curated_template_origin.sql",
+  "transactionalThrough": "0134_workflow_organization.sql",
   "migrations": {}
 }

@@ -45,11 +45,11 @@ export const READINESS_WORKFLOW_INPUT_CASES_SQL = `(
     and has_function_privilege($4::name,p.oid,'EXECUTE')
     and not exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
       where a.grantee not in (p.proowner,(select oid from pg_roles where rolname=$4))))
-  and exists(select 1 from pg_proc p where p.oid=to_regprocedure('app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)')
+  and exists(select 1 from pg_proc p where p.oid=to_regprocedure('app.execute_workspace_tenant_rows_page_before_organization(uuid,uuid,bigint,integer,bigint,character)')
     and p.proowner=(select oid from pg_roles where rolname=$1) and p.prosecdef
     and md5(p.prosrc)='348588ea384effc589d6c8c74686aa58'
     and p.proconfig=array['search_path=pg_catalog, pg_temp','row_security=on']::text[]
-    and has_function_privilege($4::name,p.oid,'EXECUTE')
+    and not has_function_privilege($4::name,p.oid,'EXECUTE')
     and not exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
-      where a.grantee not in (p.proowner,(select oid from pg_roles where rolname=$4))))
+      where a.grantee<>p.proowner))
 )`;

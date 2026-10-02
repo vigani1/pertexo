@@ -256,18 +256,18 @@ describe.skipIf(!enabled)(
     }, 120_000);
     afterAll(cleanup, 30_000);
 
-    it('requires the exact compatible 0133 inventory on API and worker; is not an old-image cutover proof', async () => {
-      expect(EXPECTED_MIGRATION_HEAD).toBe('0133_curated_template_origin.sql');
+    it('requires the current head and preserved 0133 inventory on API and worker; is not an old-image cutover proof', async () => {
+      expect(EXPECTED_MIGRATION_HEAD).toBe('0134_workflow_organization.sql');
       expect(
         (
           await apiPool.query(
             'select name from pertexo_internal.schema_migrations order by name desc limit 1',
           )
         ).rows,
-      ).toEqual([{ name: '0133_curated_template_origin.sql' }]);
+      ).toEqual([{ name: '0134_workflow_organization.sql' }]);
       for (const pool of [apiPool, workerPool])
         await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
-          migrationHead: '0133_curated_template_origin.sql',
+          migrationHead: '0134_workflow_organization.sql',
         });
     });
 

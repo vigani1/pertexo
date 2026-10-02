@@ -90,6 +90,7 @@ const expectedSuffix = [
   '0131_checked_manual_start.sql',
   '0132_workflow_portability.sql',
   '0133_curated_template_origin.sql',
+  '0134_workflow_organization.sql',
 ] as const;
 
 interface FunctionMetadata {

@@ -161,11 +161,12 @@ describe('additive portable workflow migration', () => {
         ]);
         expect(await migrateDatabase(config)).toEqual([
           '0133_curated_template_origin.sql',
+          '0134_workflow_organization.sql',
         ]);
         expect(await migrateDatabase(config)).toEqual([]);
         for (const role of [api, worker])
           expect((await checkDatabaseReadiness(role)).migrationHead).toBe(
-            '0133_curated_template_origin.sql',
+            '0134_workflow_organization.sql',
           );
         expect(
           await authoring.getDraft(workspace.id, retained.workflowId, actorId),

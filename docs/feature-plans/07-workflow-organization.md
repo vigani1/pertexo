@@ -37,9 +37,10 @@ hold-aware departure, bounded tag deletion and archived cleanup, shared lock
 order, signed cursor integrity and compatible reader/writer rollback. Folders
 and general bulk are required later slices, not omitted from F07 completion.
 Folder name/sibling uniqueness and command schemas need a reviewed follow-on.
-Migration 0134 is now allocated exclusively to F07 against release-owner verified
-base `936612f26567f760c83e41c13e4c7fc7b620e69f`; no schema or writer is installed
-or enabled yet. Its tree is identical to accepted F06 `eed68cd6`.
+Migration 0134 is allocated exclusively to F07 against release-owner verified
+base `936612f26567f760c83e41c13e4c7fc7b620e69f`, whose tree is identical to accepted
+F06 `eed68cd6`. The draft schema has been installed only in disposable owned
+qualification databases; no persistent deployment or writer enablement occurred.
 
 Continuation authorized by primary final source review on 2026-10-02: F06
 candidate `eed68cd67b45280db3951981da7e29b3726e06c7` is accepted and its release
@@ -168,4 +169,39 @@ contract now specify the opaque HMAC wire, 24-hour TTL, five-second issuance clo
 skew and mandatory receipt-first recovery before expiry/rotation verification.
 The corrected browser-safe schemas pass 204 contract tests, build/typecheck and
 narrow lint; real authentication, first-delivery/replay and database races remain
-unimplemented/unqualified. The SQL migration draft is not installed or committed.
+unimplemented/unqualified at that contract checkpoint.
+
+Implementation foundation `dc16aadb`: authenticated generation-bound absence
+token codec, fixed subkey and JSON order, canonical bounded opaque wire and generic
+errors. Its 41 focused cases and full API 2,023 tests/147 files, strict build and
+typecheck pass. This is not receipt-first HTTP/database integration proof.
+Approved F06 CI-only descendant `80a439ad` is integrated additively by normal
+merge `807a07e7`; 77 harness/policy Node tests and 27 actual CI policy checks pass.
+Those checks are not a fresh F06 live qualification run on F07 source.
+
+Database foundation: additive 0134, registration and exact readiness,
+workspace-first author locks, lifecycle coordination and separately transacted
+bounded cleanup have two read-only review axes with no remaining actionable
+findings. Review corrected maintenance index seeks and added helper return/argument
+ABI pins before final reruns. Fresh owned PostgreSQL qualification
+passes 28 organization SQL tests (five observed-lock races, privacy, quotas,
+hold-aware cleanup and bounded nine-relation purge pages), 29 exact-readiness tests
+(27 deliberate catalog/ACL/helper/trigger/return-ABI drift denials), a real
+EXPLAIN ANALYZE test with 5,000 current bookmarks and future receipts (indexed
+expiry and generation ranges without planner overrides), and five existing live
+lifecycle cases. Eight narrow suites pass 67 tests including migration regressions.
+Database unit suite passes 961 tests, build/typecheck and schema ownership accounting
+(119 tables: 77 typed, 42 raw SQL); architecture, complexity and duplication checks
+pass without quality-ratchet changes. These runs use dynamically bound services
+in task-owned project `pertexo-f07-c366649bac5e72a163344781`; disposable databases
+are ownership-rechecked and dropped without force. Migration installation is
+qualification only, not rollout. HTTP MAC verification, actual invitation rejoin,
+full external-ledger deletion, browser journeys and later folder/bulk slices remain
+open. Privileged fixture projections do not establish those product flows.
+The final SQL/readiness sources are pinned by SHA-256
+`ff632b94a30c06c1fbb0af4bb1425bdf9f7b3fc659f7cbf978218cd22b766416` /
+`ec145e5188fc377cf9d68e73bcd0881a6c6f0f101aeaccd7a0a21250e75d1de0`.
+Reusing the established independently validated migration-history fixture removes
+a newly exposed copied-history clone; the unchanged duplication ratchet passes
+at 10 test groups/285 duplicated lines. The affected published-repair and two
+control-ledger suites pass 11 real PostgreSQL tests after that focused refactor.

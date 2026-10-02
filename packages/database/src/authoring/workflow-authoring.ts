@@ -149,18 +149,27 @@ async function requireWorkspaceAuthor(
   workspaceId: string,
   actorId: string,
 ): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-     join app.users actor on actor.id = membership.user_id
-     join app.workspaces workspace on workspace.id = membership.workspace_id
-     where membership.workspace_id = $1 and membership.user_id = $2
-       and membership.status = 'active' and membership.role = any($3::text[])
-       and actor.status = 'active'
-       and workspace.status = 'active'
-     for share of membership, actor, workspace`,
+  // Keep the authority fence in the same explicit workspace-first order as
+  // organization commands. A joined locking query does not establish that order.
+  const workspace = await client.query(
+    `select 1 from app.workspaces where id=$1 and status='active' for share`,
+    [workspaceId],
+  );
+  if (workspace.rowCount !== 1)
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  const actor = await client.query(
+    `select 1 from app.users where id=$1 and status='active' for share`,
+    [actorId],
+  );
+  if (actor.rowCount !== 1)
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  const membership = await client.query(
+    `select 1 from app.workspace_memberships
+     where workspace_id=$1 and user_id=$2 and status='active'
+       and role=any($3::text[]) for share`,
     [workspaceId, actorId, [...rolesForCapability('workflow:update')]],
   );
-  if (result.rowCount !== 1)
+  if (membership.rowCount !== 1)
     throw new WorkflowNotFoundError('Workflow is not visible');
 }
 
