@@ -8,42 +8,30 @@ import {
   SIGNED_CURSOR_MAX_UNIX_SECONDS,
 } from './signed-cursor-primitives.js';
 
-const TTL_SECONDS = 15 * 60;
-// Unlike $, this end assertion cannot match before a terminal line separator.
+const TTL_SECONDS = 900;
+const SUBKEY_LABEL = 'pertexo.workflow.organization.page-cursor-key.v1';
 const uuidSchema = z
   .uuid()
   .length(36)
   .regex(/^[0-9a-f-]+(?![\s\S])/u);
-const timestampSchema = z
-  .string()
-  .max(27)
-  .refine((value) => {
-    if (
-      !/^(?!0000)\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z(?![\s\S])/u.test(
-        value,
-      )
-    )
-      return false;
-    const parsed = new Date(value);
-    return (
-      Number.isFinite(parsed.getTime()) &&
-      parsed.toISOString().slice(0, 19) === value.slice(0, 19)
-    );
-  });
-const contextSchema = z
-  .object({
-    workspaceId: uuidSchema,
-    actorId: uuidSchema,
-    order: z.enum(['created_asc', 'updated_desc']),
-    filterHash: z
-      .string()
-      .length(64)
-      .regex(/^[0-9a-f]{64}(?![\s\S])/u),
-  })
-  .strict();
-const positionSchema = z
-  .object({ positionAt: timestampSchema, id: uuidSchema })
-  .strict();
+const scopeShape = { workspaceId: uuidSchema, actorId: uuidSchema };
+const contextSchema = z.discriminatedUnion('purpose', [
+  z
+    .object({
+      ...scopeShape,
+      purpose: z.literal('tags'),
+      selectedTagId: z.null(),
+    })
+    .strict(),
+  z
+    .object({
+      ...scopeShape,
+      purpose: z.literal('tag-assignments'),
+      selectedTagId: uuidSchema,
+    })
+    .strict(),
+]);
+const positionSchema = z.object({ id: uuidSchema }).strict();
 const secondsSchema = z
   .number()
   .int()
@@ -52,57 +40,59 @@ const secondsSchema = z
 const payloadSchema = z
   .object({
     v: z.literal(1),
+    p: z.enum(['tags', 'tag-assignments']),
     w: uuidSchema,
     a: uuidSchema,
-    o: contextSchema.shape.order,
-    f: contextSchema.shape.filterHash,
-    t: timestampSchema,
+    s: uuidSchema.nullable(),
     id: uuidSchema,
     i: secondsSchema,
     e: secondsSchema,
   })
-  .strict();
+  .strict()
+  .refine((payload) =>
+    payload.p === 'tags' ? payload.s === null : payload.s !== null,
+  );
 
-export type WorkflowOrganizationCursorContext = Readonly<
+export type WorkflowOrganizationPageCursorContext = Readonly<
   z.output<typeof contextSchema>
 >;
-export type WorkflowOrganizationCursorPosition = Readonly<
+export type WorkflowOrganizationPageCursorPosition = Readonly<
   z.output<typeof positionSchema>
 >;
-export type WorkflowOrganizationCursorCodec = Readonly<{
+export type WorkflowOrganizationPageCursorCodec = Readonly<{
   encode(
-    context: WorkflowOrganizationCursorContext,
-    position: WorkflowOrganizationCursorPosition,
+    context: WorkflowOrganizationPageCursorContext,
+    position: WorkflowOrganizationPageCursorPosition,
   ): string;
   decode(
     value: string,
-    context: WorkflowOrganizationCursorContext,
-  ): WorkflowOrganizationCursorPosition;
+    context: WorkflowOrganizationPageCursorContext,
+  ): WorkflowOrganizationPageCursorPosition;
 }>;
 
-/** The fixed field order is part of version 1's canonical signing protocol. */
+/** Version 1 always orders UUIDs ascending; purpose cannot select another order. */
 function canonicalPayload(payload: z.output<typeof payloadSchema>): string {
   return JSON.stringify({
     v: payload.v,
+    p: payload.p,
     w: payload.w,
     a: payload.a,
-    o: payload.o,
-    f: payload.f,
-    t: payload.t,
+    s: payload.s,
     id: payload.id,
     i: payload.i,
     e: payload.e,
   });
 }
 
-/** Stable, purpose-specific key material is supplied by the configuration owner. */
-export function createWorkflowOrganizationCursorCodec(
+/** The stable organization root is injected; this purpose owns a derived subkey. */
+export function createWorkflowOrganizationPageCursorCodec(
   key: Uint8Array,
   now: () => number = Date.now,
-): WorkflowOrganizationCursorCodec {
+): WorkflowOrganizationPageCursorCodec {
   const envelope = createSignedCursorByteEnvelope(
     key,
-    'Workflow organization cursor key must contain 32 bytes.',
+    'Workflow organization page cursor key must contain 32 bytes.',
+    SUBKEY_LABEL,
   );
   return Object.freeze({
     encode(context, position): string {
@@ -112,11 +102,10 @@ export function createWorkflowOrganizationCursorCodec(
         const issued = currentSignedCursorSeconds(now);
         const payload = payloadSchema.parse({
           v: 1,
+          p: scope.purpose,
           w: scope.workspaceId,
           a: scope.actorId,
-          o: scope.order,
-          f: scope.filterHash,
-          t: cursor.positionAt,
+          s: scope.selectedTagId,
           id: cursor.id,
           i: issued,
           e: issued + TTL_SECONDS,
@@ -127,10 +116,9 @@ export function createWorkflowOrganizationCursorCodec(
         throw new InvalidWorkflowCursorError();
       }
     },
-    decode(value, context): WorkflowOrganizationCursorPosition {
+    decode(value, context): WorkflowOrganizationPageCursorPosition {
       try {
         const bytes = envelope.authenticate(value);
-        // Only authenticated, bounded bytes reach JSON/schema parsing.
         const payload = payloadSchema.parse(JSON.parse(bytes.toString('utf8')));
         if (!bytes.equals(Buffer.from(canonicalPayload(payload), 'utf8')))
           throw new InvalidWorkflowCursorError();
@@ -142,13 +130,13 @@ export function createWorkflowOrganizationCursorCodec(
           TTL_SECONDS,
         );
         if (
+          payload.p !== scope.purpose ||
           payload.w !== scope.workspaceId ||
           payload.a !== scope.actorId ||
-          payload.o !== scope.order ||
-          payload.f !== scope.filterHash
+          payload.s !== scope.selectedTagId
         )
           throw new InvalidWorkflowCursorError();
-        return Object.freeze({ positionAt: payload.t, id: payload.id });
+        return Object.freeze({ id: payload.id });
       } catch {
         throw new InvalidWorkflowCursorError();
       }

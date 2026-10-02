@@ -229,3 +229,17 @@ suites pass 986 database and 2,074 API tests. No new dependency or rollout is ad
 This is not HTTP/session/CSRF, actual invitation, restart/browser or full F07
 acceptance evidence; endpoints, filtered projections and folder/general-bulk slices
 remain open. Writer remains default-off outside disposable qualification fixtures.
+
+The separate UUID-page cursor primitive covers vocabulary and owner/admin
+assignment discovery with distinct purpose, workspace/actor/selected-tag binding,
+fixed canonical field order, derived HMAC subkey, 900-second TTL and bounded wire.
+Its 49 cases, 52 existing workflow-cursor cases and 21 shared byte-envelope/clock
+cases pass (122 total). A narrow low-level extraction preserves the existing
+workflow cursor's exact wire vectors and separate semantic schemas while reducing
+source duplication to 20 groups/330 lines; the test baseline remains 10 groups/
+285 lines. No quality baseline changed. This does not establish endpoint routing,
+current-authority page reads or real discovery pagination yet.
+Final root integration rerun passes all 2,095 API unit tests/150 files, strict
+API typecheck/build, architecture (19 tests), complexity, unchanged duplication
+ratchets and documentation checks (21 tests/456 links). The eight actual favorite
+MAC/PostgreSQL composition cases pass again after the cursor refactor.
