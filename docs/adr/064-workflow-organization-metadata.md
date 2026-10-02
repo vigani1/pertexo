@@ -52,6 +52,17 @@ and private favorite writes do not reshuffle workflow.updated_at or borrow
 name/lifecycle/graph revisions. Exact receipt replay precedes current selection/
 writer checks after current authority/visibility, retaining old command identity.
 
+Primary accepted the slice-1 HTTP routes and separate UUID-page cursor on
+2026-10-02 before endpoint implementation. Workspace tag vocabulary uses
+GET/POST `workflow-tags`; rename/delete, workflow tag replacement and favorite
+desired-state changes use POST commands. Owner/admin assignment discovery uses
+GET `workflow-tags/:tagId/workflows`; explicit cleanup uses POST
+`workflow-tags/cleanup/detach`. Vocabulary and assignment discovery paginate by
+ascending UUID with no total count. Their purpose-bound cursor derives a separate
+HMAC subkey from the existing dedicated organization root, not a new secret or
+an overloaded timestamp workflow cursor. The accepted exact transport and wire
+constraints are recorded in the contract below.
+
 Shared metadata/archive/hierarchy mutations obey one workspace-first lock order
 and dedicated organization-coordination lock before tag/folder/workflow locks.
 Folders remain required follow-on scope: one folder/workflow, depth ≤4, 256 folders/

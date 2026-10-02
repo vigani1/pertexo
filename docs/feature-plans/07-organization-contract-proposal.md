@@ -55,6 +55,52 @@ browser-safe schemas in contracts, and UI/Query/Router state in web workflows.
 
 ## Accepted slice-1 semantics
 
+### Accepted HTTP routes and UUID-page continuations
+
+Primary accepted these choices on 2026-10-02 before endpoint contracts/code.
+All routes below are relative to `/v1/workspaces/:workspaceId`:
+
+| Method | Route | Authority / behavior |
+| --- | --- | --- |
+| GET | `/workflow-tags` | Current active reader; vocabulary page. |
+| POST | `/workflow-tags` | Owner/admin; create vocabulary command. |
+| POST | `/workflow-tags/:tagId/rename` | Owner/admin; revision-checked rename. |
+| POST | `/workflow-tags/:tagId/delete` | Owner/admin; bounded atomic delete. |
+| GET | `/workflow-tags/:tagId/workflows` | Owner/admin; authoritative assignment discovery, including archived workflows. |
+| POST | `/workflow-tags/cleanup/detach` | Owner/admin; existing strict `{tagId,items}` command, independent ordered per-item outcomes. |
+| POST | `/workflows/:workflowId/tags` | Active workflow editor; tag-set replacement. |
+| POST | `/workflows/:workflowId/favorite` | Current active reader, including viewer; private desired-state command, archived allowed. |
+
+Every POST uses existing session/CSRF protection and exact receipt semantics.
+Existing workflow list/get routes retain the accepted opt-in include grammar.
+Test static cleanup routing against UUID parameter routes. Missing/foreign tag
+assignment discovery returns generic not-found; an unknown/foreign workflow-list
+tag filter instead returns a scoped empty page. Test this distinction explicitly.
+
+Vocabulary and assignment discovery use stable ascending UUID keysets, limit
+1–100, and no total count. Assignment items are strictly
+`{workflowId,organizationRevision}`. Every page rechecks current authority.
+Use a separate purpose-bound UUID-page codec, never the timestamp workflow codec:
+
+- Derive its HMAC-SHA256 subkey using UTF-8 label
+  `pertexo.workflow.organization.page-cursor-key.v1` from the existing dedicated
+  32-byte organization root; no additional secret.
+- Version 1, fixed 900-second TTL, maximum 512 ASCII wire bytes; fixed canonical
+  JSON field order `{v:1,p,w,a,s,id,i,e}`. `p` is `tags` or `tag-assignments`,
+  `w` is workspace ID, `a` actor ID, `id` last UUID, and `i`/`e` issue/expiry
+  seconds. `s` is null only for `tags`, otherwise the selected tag ID.
+- UUIDs are canonical lowercase; pagination order is ascending UUID only.
+  Reject wrong purpose/scope/selected tag, noncanonical identity or encoding,
+  expired/future/invalid time bounds and bad signature with generic invalid
+  cursor errors. Current authority is never inferred from a valid cursor.
+
+Favorite persistence owns one tenant transaction: prepare and current authority/
+exact committed replay first, then application MAC verification against the
+locked server generation, then SQL write. SQL independently rechecks current
+state and database-clock TTL. Actor, generation and proof flags are never HTTP
+request fields. Exact committed replay bypasses MAC expiry/key rotation only
+after current authority and generation fencing.
+
 ### Shared tags
 
 Recommendation: workspace-scoped stable tag IDs and unique canonical keys;
