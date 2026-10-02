@@ -27,14 +27,19 @@ import {
   validateTransitionDelta,
 } from './coordinator-run-store-plan.js';
 import {
-  parsePersistedWorkflowCheckpoint,
-  type PersistedWorkflowCheckpoint,
-} from '../../compatibility/persisted-workflow-checkpoint.js';
+  parseCoordinatorCheckpoint,
+  coordinatorExecutableFormat,
+  type CoordinatorCheckpoint as PersistedWorkflowCheckpoint,
+} from './coordinator-checkpoint.js';
 import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
 import type { RejectedForEachDeclaration } from './coordinator-rejected-loop-proof.js';
 import { loadRejectedForEachDeclarations } from './coordinator-rejected-loop-load.js';
+import { loadCoordinatorCallFacts } from './coordinator-call-facts.js';
 
 export type CoordinatorCommitRow = Readonly<{
+  executable_schema_version: number;
+  graph_schema_version: number;
+  executable_checksum: string;
   revision: number;
   scheduler_state: unknown;
   last_transition_fingerprint: string | null;
@@ -154,7 +159,8 @@ export async function lockCoordinatorCommitState(
   const locked = await client.query<CoordinatorCommitRow>(
     `select checkpoint.revision, checkpoint.scheduler_state,
             checkpoint.last_transition_fingerprint,
-            checkpoint.workflow_version_id, run.status,
+            checkpoint.workflow_version_id, run.status,version.executable_schema_version,
+            version.schema_version as graph_schema_version,version.checksum as executable_checksum,
             run.cancel_requested_at,run.workflow_id,run.trigger_type,
             run.started_at,run.created_at,
             run.failure_notification_policy_version,
@@ -168,6 +174,8 @@ export async function lockCoordinatorCommitState(
        join app.run_checkpoints checkpoint
          on checkpoint.workspace_id = run.workspace_id
         and checkpoint.workflow_run_id = run.id
+       join app.workflow_versions version
+         on version.workspace_id=run.workspace_id and version.id=run.workflow_version_id
        where run.workspace_id = $1 and run.id = $2
        for no key update of run, checkpoint`,
     [workspaceId, runId],
@@ -175,6 +183,11 @@ export async function lockCoordinatorCommitState(
   const row = locked.rows[0];
   if (row === undefined) return outcome({ kind: 'not_found' });
   if (row.workflow_version_id !== workflowVersionId)
+    throw new CoordinatorPlanInvalidError();
+  const executableFormat = coordinatorExecutableFormat(row);
+  if (executableFormat === undefined)
+    throw new CoordinatorRunStateCorruptError();
+  if ((executableFormat === 3) !== (plan.checkpoint.schemaVersion === 3))
     throw new CoordinatorPlanInvalidError();
   if (row.revision !== plan.expectedRevision) {
     if (
@@ -196,7 +209,10 @@ export async function lockCoordinatorCommitState(
 
   let currentCheckpoint: PersistedWorkflowCheckpoint;
   try {
-    currentCheckpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
+    currentCheckpoint = parseCoordinatorCheckpoint(
+      row.scheduler_state,
+      executableFormat,
+    );
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }
@@ -263,6 +279,10 @@ export async function lockCoordinatorCommitState(
   );
 
   const pendingFailures = await lockPendingFailures(client, workspaceId, runId);
+  const callFacts =
+    currentCheckpoint.schemaVersion === 3
+      ? await loadCoordinatorCallFacts(client, runId)
+      : [];
   validateStatusTransitions(
     currentCheckpoint,
     plan,
@@ -275,6 +295,7 @@ export async function lockCoordinatorCommitState(
       ...pendingFailures.rows.map(pendingFailureFact),
     ],
     new Set(rejectedForEachDeclarations.keys()),
+    callFacts,
   );
   if (
     (currentCheckpoint.cancelRequested && row.cancel_requested_at === null) ||

@@ -2,6 +2,7 @@ import type {
   CoordinatorRunStore,
   PublishedWorkflowReader,
   PublishedWorkflowExecutableProjection,
+  PublishedWorkflowV3Projection,
 } from '@pertexo/database/execution';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/execution';
 import type {
@@ -27,6 +28,11 @@ export interface CoordinatorAdvanceEngine {
       checkpoint: unknown;
       observations: readonly unknown[];
       completedOutputs?: readonly unknown[];
+      workflowCalls?: Extract<
+        Awaited<ReturnType<CoordinatorRunStore['loadAdvanceState']>>,
+        { kind: 'ready' }
+      >['state']['workflowCalls'];
+      calleeProjections?: readonly PublishedWorkflowV3Projection[];
       occurredAt: string;
       maximumAdmissions: number;
       signal: AbortSignal;
@@ -122,12 +128,34 @@ export function createCoordinatorHandler(
       ) {
         throw new CoordinatorHandlerStateError('identity_mismatch');
       }
+      const calleeProjections: PublishedWorkflowV3Projection[] = [];
+      for (const versionId of new Set(
+        loaded.state.workflowCalls?.declarations.map(
+          ({ calleeVersionId }) => calleeVersionId,
+        ) ?? [],
+      )) {
+        const callee = await dependencies.reader.readForExecution({
+          workspaceId: delivery.data.workspaceId,
+          workflowVersionId: versionId,
+          signal: context.signal,
+        });
+        if (
+          callee.kind !== 'v3_projection' ||
+          callee.workflowVersion.id !== versionId ||
+          callee.workflowVersion.workspaceId !== delivery.data.workspaceId
+        )
+          throw new CoordinatorHandlerStateError('workflow_non_executable');
+        calleeProjections.push(callee.workflowVersion);
+      }
       const advanced = await dependencies.engine.advance({
         runId: loaded.state.runId,
         workflowVersionId: loaded.state.workflowVersionId,
         projection: published.workflowVersion,
         checkpoint: loaded.state.checkpoint,
         observations: loaded.state.observations,
+        ...(loaded.state.workflowCalls === undefined
+          ? {}
+          : { workflowCalls: loaded.state.workflowCalls, calleeProjections }),
         ...(loaded.state.completedOutputs === undefined
           ? {}
           : { completedOutputs: loaded.state.completedOutputs }),

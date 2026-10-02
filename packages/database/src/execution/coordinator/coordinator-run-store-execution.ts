@@ -419,7 +419,13 @@ async function persistRunEvents(
       terminalNodeStatus !== undefined &&
       event.invocationKey !== undefined &&
       !pendingFailureInvocations.has(event.invocationKey) &&
-      !input.rejectedForEachDeclarations.has(event.invocationKey)
+      !input.rejectedForEachDeclarations.has(event.invocationKey) &&
+      !(
+        plan.checkpoint.schemaVersion === 3 &&
+        plan.checkpoint.calls.some(
+          ({ invocationKey }) => invocationKey === event.invocationKey,
+        )
+      )
     ) {
       const updatedNode = await client.query(
         `update app.node_runs

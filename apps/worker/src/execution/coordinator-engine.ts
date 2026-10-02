@@ -4,6 +4,7 @@ import {
   advanceWorkflow,
   parseCheckpoint,
   type WorkflowTransitionPlan,
+  type CompiledWorkflowExecutableV3,
 } from '@pertexo/workflow-engine';
 
 import type { CoordinatorAdvanceEngine } from './coordinator-handler.js';
@@ -23,6 +24,16 @@ export function createCoordinatorAdvanceEngine(
       input: Parameters<CoordinatorAdvanceEngine['advance']>[0],
     ): ReturnType<CoordinatorAdvanceEngine['advance']> => {
       const previous = parseCheckpoint(input.checkpoint);
+      const calleeDeclarations = new Map(
+        (input.calleeProjections ?? []).map((projection) => {
+          const executable: CompiledWorkflowExecutableV3 =
+            verifyPersistedWorkflowProjection(projection, options);
+          const declaration = executable.envelope.graph.callable;
+          if (declaration === undefined)
+            throw new TypeError('Call target is not callable');
+          return [projection.id, declaration] as const;
+        }),
+      );
       const plan: WorkflowTransitionPlan = await advanceWorkflow({
         runId: input.runId,
         workflowVersionId: input.workflowVersionId,
@@ -33,6 +44,15 @@ export function createCoordinatorAdvanceEngine(
         checkpoint: input.checkpoint,
         observations: input.observations,
         completedOutputs: input.completedOutputs,
+        ...(input.workflowCalls === undefined
+          ? {}
+          : {
+              workflowCalls: {
+                declarations: input.workflowCalls.declarations,
+                facts: input.workflowCalls.facts,
+                calleeDeclarations,
+              },
+            }),
         occurredAt: input.occurredAt,
         maximumAdmissions: input.maximumAdmissions,
         signal: input.signal,

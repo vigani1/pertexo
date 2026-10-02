@@ -8,7 +8,10 @@ import {
   CoordinatorRunStateCorruptError,
   coordinatorIdentitySchema as identitySchema,
 } from './coordinator-run-store-contract.js';
-import { normalizedJson } from './coordinator-run-store-observations.js';
+import {
+  normalizeCoordinatorPlan,
+  coordinatorPlanFingerprintJson,
+} from './coordinator-plan-values.js';
 import {
   assertTransitionPlanValid,
   invocationScope,
@@ -16,9 +19,14 @@ import {
 } from './coordinator-run-store-plan-validation.js';
 import { assertStatusTransitionsValid } from './coordinator-run-store-status-validation.js';
 import {
-  parsePersistedWorkflowCheckpoint,
-  type PersistedWorkflowCheckpoint,
-} from '../../compatibility/persisted-workflow-checkpoint.js';
+  parseCoordinatorCheckpoint,
+  type CoordinatorCheckpoint as PersistedWorkflowCheckpoint,
+} from './coordinator-checkpoint.js';
+import {
+  persistedWorkflowCallStateSchemaV1,
+  type PersistedWorkflowCallStateV1,
+} from '../../compatibility/persisted-workflow-checkpoint-v3.js';
+import { readWorkflowCallResultReference } from '../workflow-calls/workflow-call-result-reference.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
@@ -104,6 +112,71 @@ const transitionPlanSchema = z
     nodeRunAdmissions: z.array(nodeRunAdmissionSchema).max(10_000),
     attempts: z.array(attemptAdmissionSchema).max(64),
     immediateContinuation: z.literal(true).optional(),
+    workflowCalls: z
+      .object({
+        declarations: z.array(persistedWorkflowCallStateSchemaV1).max(64),
+        cancelChildren: z
+          .array(
+            z
+              .object({
+                childRunId: identitySchema,
+                reason: z.enum(['cancel_requested', 'deadline_expired']),
+              })
+              .strict(),
+          )
+          .max(64),
+      })
+      .strict()
+      .optional(),
+    callableResult: z
+      .discriminatedUnion('kind', [
+        z
+          .object({
+            kind: z.literal('failed'),
+            reasonCode: z.enum([
+              'workflow.child_result_invalid',
+              'workflow.child_result_missing',
+            ]),
+          })
+          .strict(),
+        z
+          .object({
+            kind: z.literal('succeeded'),
+            value: z.record(z.string(), z.unknown()),
+            sources: z
+              .array(
+                z
+                  .object({
+                    invocationKey: z.string().min(1).max(256),
+                    output: z.discriminatedUnion('kind', [
+                      z
+                        .object({
+                          kind: z.literal('inline'),
+                          attemptId: identitySchema,
+                        })
+                        .strict(),
+                      z
+                        .object({
+                          kind: z.literal('artifact'),
+                          artifactId: identitySchema,
+                        })
+                        .strict(),
+                      z
+                        .object({
+                          kind: z.literal('workflow_call'),
+                          invocationKey: z.string().min(1).max(256),
+                          childRunId: identitySchema,
+                        })
+                        .strict(),
+                    ]),
+                  })
+                  .strict(),
+              )
+              .max(10_000),
+          })
+          .strict(),
+      ])
+      .optional(),
   })
   .strict();
 export const traceparentSchema = z
@@ -118,10 +191,24 @@ export type ParsedTransitionPlan = Omit<
 
 export function parseTransitionPlan(value: unknown): ParsedTransitionPlan {
   try {
-    const parsed = transitionPlanSchema.parse(normalizedJson(value));
+    const parsed = transitionPlanSchema.parse(normalizeCoordinatorPlan(value));
+    const checkpointFields = z
+      .object({ schemaVersion: z.number() })
+      .loose()
+      .parse(parsed.checkpoint);
+    const checkpoint = parseCoordinatorCheckpoint(
+      parsed.checkpoint,
+      checkpointFields.schemaVersion === 3 ? 3 : 2,
+    );
+    if (
+      checkpoint.schemaVersion !== 3 &&
+      (parsed.workflowCalls !== undefined ||
+        parsed.callableResult !== undefined)
+    )
+      throw new CoordinatorPlanInvalidError();
     return Object.freeze({
       ...parsed,
-      checkpoint: parsePersistedWorkflowCheckpoint(parsed.checkpoint),
+      checkpoint,
     });
   } catch {
     throw new CoordinatorPlanInvalidError();
@@ -147,7 +234,7 @@ export function transitionFingerprint(
       serializeStoredExecutionJsonValue({
         schemaVersion: 1,
         workflowVersionId: input.workflowVersionId,
-        plan: input.plan,
+        plan: JSON.parse(coordinatorPlanFingerprintJson(input.plan)) as unknown,
         traceparent: input.traceparent ?? null,
       }),
     )
@@ -158,6 +245,36 @@ export function validateTransitionDelta(
   current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
 ): void {
+  if (current.schemaVersion !== plan.checkpoint.schemaVersion)
+    throw new CoordinatorPlanInvalidError();
+  if (current.schemaVersion === 3 && plan.checkpoint.schemaVersion === 3) {
+    const nextCalls = plan.checkpoint.calls;
+    const currentCalls = new Set(
+      current.calls.map(({ invocationKey }) => invocationKey),
+    );
+    const declaredCalls = plan.checkpoint.calls.filter(
+      ({ invocationKey }) => !currentCalls.has(invocationKey),
+    );
+    const declarations = plan.workflowCalls?.declarations ?? [];
+    if (
+      current.calls.some(
+        ({ invocationKey }) =>
+          !nextCalls.some((call) => call.invocationKey === invocationKey),
+      ) ||
+      new Set(declarations.map(({ invocationKey }) => invocationKey)).size !==
+        declarations.length ||
+      declaredCalls.length !== declarations.length ||
+      declarations.some(
+        (call) =>
+          !declaredCalls.some(
+            (declared) =>
+              serializeStoredExecutionJsonValue(declared) ===
+              serializeStoredExecutionJsonValue(call),
+          ),
+      )
+    )
+      throw new CoordinatorPlanInvalidError();
+  }
   const expectedAdmittedKeys = new Set([
     ...current.admittedInvocationKeys,
     ...plan.attempts.map(({ invocationKey }) => invocationKey),
@@ -299,6 +416,7 @@ export function validateStatusTransitions(
     type: string;
   }>[],
   rejectedForEachDeclarations: ReadonlySet<string> = new Set(),
+  callFacts: readonly PersistedWorkflowCallStateV1[] = [],
 ): void {
   assertStatusTransitionsValid(
     current,
@@ -306,6 +424,7 @@ export function validateStatusTransitions(
     persistedFacts,
     terminalRunStatuses,
     rejectedForEachDeclarations,
+    callFacts,
   );
 }
 
@@ -318,8 +437,19 @@ export async function validateCheckpointOutputOwnership(
   waitResumeKeys: ReadonlySet<string>,
 ): Promise<void> {
   const expected = checkpoint.invocations.filter(
-    (invocation) => invocation.output !== undefined,
+    (invocation) =>
+      invocation.output !== undefined &&
+      invocation.output.kind !== 'workflow_call',
   );
+  for (const invocation of checkpoint.invocations) {
+    if (invocation.output?.kind !== 'workflow_call') continue;
+    await readWorkflowCallResultReference(client, {
+      workspaceId,
+      parentRunId: runId,
+      invocationKey: invocation.invocationKey,
+      childRunId: invocation.output.childRunId,
+    });
+  }
   if (expected.length === 0) return;
   const rows = await client.query<{
     attempt_id: string | null;
@@ -410,14 +540,14 @@ export async function validateCheckpointOutputOwnership(
     if (output.kind === 'inline') {
       if (output.attemptId !== row.attempt_id || nodeValue.kind !== 'inline')
         throw new CoordinatorRunStateCorruptError();
-    } else {
+    } else if (output.kind === 'artifact') {
       if (
         nodeValue.kind !== 'artifact' ||
         nodeValue.artifactId !== output.artifactId
       )
         throw new CoordinatorRunStateCorruptError();
       artifacts.add(output.artifactId);
-    }
+    } else throw new CoordinatorRunStateCorruptError();
   }
   if (artifacts.size === 0) return;
   const available = await client.query<{ id: string }>(

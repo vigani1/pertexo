@@ -23,11 +23,25 @@ export function workflowControlOutputKind(
 export function workflowControlOutputNodeIdsV2(
   executableJson: unknown,
 ): ReadonlySet<string> {
+  return controlOutputNodeIds(executableJson, 2);
+}
+
+/** Explicit new cohort; the retained V2 selector still rejects V3. */
+export function workflowControlOutputNodeIdsV3(
+  executableJson: unknown,
+): ReadonlySet<string> {
+  return controlOutputNodeIds(executableJson, 3);
+}
+
+function controlOutputNodeIds(
+  executableJson: unknown,
+  format: 2 | 3,
+): ReadonlySet<string> {
   if (
     typeof executableJson !== 'object' ||
     executableJson === null ||
     Array.isArray(executableJson) ||
-    Reflect.get(executableJson, 'schemaVersion') !== 2
+    Reflect.get(executableJson, 'schemaVersion') !== format
   )
     throw new TypeError('V2 executable control metadata is invalid');
   const pending: unknown[] = [Reflect.get(executableJson, 'graph')];
@@ -99,8 +113,21 @@ export function workflowForEachBoundsV2(executableJson: unknown): ReadonlyMap<
     ancestorLoopNodeIds: readonly string[];
   }>
 > {
+  return forEachBounds(executableJson, 2);
+}
+
+export function workflowForEachBoundsV3(
+  executableJson: unknown,
+): ReturnType<typeof workflowForEachBoundsV2> {
+  return forEachBounds(executableJson, 3);
+}
+
+function forEachBounds(
+  executableJson: unknown,
+  format: 2 | 3,
+): ReturnType<typeof workflowForEachBoundsV2> {
   // Reuse global identity/duplicate/node-count validation before selecting bounds.
-  workflowControlOutputNodeIdsV2(executableJson);
+  controlOutputNodeIds(executableJson, format);
   const bounds = new Map<
     string,
     Readonly<{

@@ -30,11 +30,20 @@ function checksum(value: unknown): string {
 function material(
   patch: Partial<WorkflowCallDeclarationMaterialV1> = {},
 ): WorkflowCallDeclarationMaterialV1 {
+  let inputChecksum = checksum({ name: 'input' });
+  if (patch.value !== undefined) {
+    try {
+      inputChecksum = checksum(patch.value);
+    } catch {
+      /* Deliberately invalid hydration fixtures are rejected by the engine. */
+    }
+  }
   return {
     invocationKey: key,
     nodeId: 'call',
     declarationAttemptId,
     input: { kind: 'inline', attemptId: declarationAttemptId },
+    inputChecksum,
     value: { name: 'input' },
     ...patch,
   };
@@ -140,6 +149,13 @@ const observationInvalid: unknown = expect.objectContaining({
 });
 
 describe('pure workflow Call control', () => {
+  it('retains the protected original-byte checksum instead of hashing hydrated projection JSON', () => {
+    const bytes = '{ "name" : "input" }';
+    const inputChecksum = createHash('sha256').update(bytes).digest('hex');
+    const [decision] = derive({ declarations: [material({ inputChecksum })] });
+    expect(decision?.call.inputChecksum).toBe(inputChecksum);
+    expect(inputChecksum).not.toBe(checksum({ name: 'input' }));
+  });
   it('bounds physical declaration and journal projections before processing values', () => {
     expect(() =>
       derive({ declarations: Array.from({ length: 65 }, () => material()) }),

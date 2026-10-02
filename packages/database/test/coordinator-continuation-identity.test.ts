@@ -42,6 +42,9 @@ function plan(immediate = true, terminal = false) {
   });
 }
 const row: CoordinatorCommitRow = {
+  executable_schema_version: 2,
+  graph_schema_version: 1,
+  executable_checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
   revision: 0,
   scheduler_state: {},
   last_transition_fingerprint: null,

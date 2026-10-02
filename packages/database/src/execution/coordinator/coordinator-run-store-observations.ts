@@ -1,6 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model/observation-window';
-import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model/graph';
+import {
+  workflowControlOutputNodeIdsV2,
+  workflowControlOutputNodeIdsV3,
+} from '@pertexo/workflow-model/graph';
 
 import {
   CoordinatorRunStateCorruptError,
@@ -17,9 +20,10 @@ import {
   validateLoadedCheckpointPhysicalState,
 } from './coordinator-run-store-physical-state.js';
 import {
-  parsePersistedWorkflowCheckpoint,
-  type PersistedWorkflowCheckpoint,
-} from '../../compatibility/persisted-workflow-checkpoint.js';
+  parseCoordinatorCheckpoint,
+  coordinatorExecutableFormat,
+  type CoordinatorCheckpoint as PersistedWorkflowCheckpoint,
+} from './coordinator-checkpoint.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
@@ -34,6 +38,7 @@ import {
   appendPendingFailureObservations,
   type PendingFailureRow,
 } from './coordinator-pending-failure-observations.js';
+import { loadCoordinatorCallMaterials } from './coordinator-call-materials.js';
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -552,6 +557,8 @@ export async function loadCoordinatorAdvanceState(
         engine_version: string;
         scheduler_state: unknown;
         executable_schema_version: number | null;
+        graph_schema_version: number;
+        executable_checksum: string;
         executable_json: unknown;
         event_high_water: number;
       }>(
@@ -561,6 +568,7 @@ export async function loadCoordinatorAdvanceState(
                     checkpoint.revision, checkpoint.engine_version,
                     checkpoint.scheduler_state,
                     version.executable_schema_version,version.executable_json,
+                    version.schema_version as graph_schema_version,version.checksum as executable_checksum,
                     coalesce((select max(event.sequence) from app.run_events event
                               where event.workspace_id = run.workspace_id
                                 and event.workflow_run_id = run.id), 0)::int as event_high_water
@@ -578,11 +586,15 @@ export async function loadCoordinatorAdvanceState(
       assertCoordinatorNotAborted(input.signal);
       const row = result.rows[0];
       if (row === undefined) return Object.freeze({ kind: 'not_found' });
-      if (row.executable_schema_version !== 2)
+      const executableFormat = coordinatorExecutableFormat(row);
+      if (executableFormat === undefined)
         return Object.freeze({ kind: 'not_executable' });
       let checkpoint: PersistedWorkflowCheckpoint;
       try {
-        checkpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
+        checkpoint = parseCoordinatorCheckpoint(
+          row.scheduler_state,
+          executableFormat,
+        );
       } catch {
         return Object.freeze({ kind: 'unsupported_checkpoint' });
       }
@@ -623,15 +635,23 @@ export async function loadCoordinatorAdvanceState(
       const observations = events.map(mapEvent);
       let controlOutputNodeIds: ReadonlySet<string>;
       try {
-        controlOutputNodeIds = workflowControlOutputNodeIdsV2(
-          row.executable_json,
-        );
+        controlOutputNodeIds = (
+          checkpoint.schemaVersion === 3
+            ? workflowControlOutputNodeIdsV3
+            : workflowControlOutputNodeIdsV2
+        )(row.executable_json);
       } catch {
         throw new CoordinatorRunStateCorruptError();
       }
       const completedOutputs = events.flatMap((event) =>
         completedInlineOutput(event, controlOutputNodeIds),
       );
+      const workflowCalls = await loadCoordinatorCallMaterials(client, {
+        workspaceId,
+        runId,
+        checkpoint,
+        events,
+      });
       const pendingFailures = await client.query<PendingFailureRow>(
         `select attempt.id attempt_id,attempt.attempt_number,
                     attempt.completed_at,attempt.executor_failure_kind,
@@ -741,6 +761,7 @@ export async function loadCoordinatorAdvanceState(
           checkpoint,
           observations: Object.freeze(observations.map(Object.freeze)),
           completedOutputs: Object.freeze(completedOutputs.map(Object.freeze)),
+          ...(workflowCalls === undefined ? {} : { workflowCalls }),
         }),
       });
     },

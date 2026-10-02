@@ -5,7 +5,7 @@ import { workflowCallPinSchemaV1 } from '@pertexo/workflow-model/workflow-call-c
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import {
   parseStoredExecutionValueV1,
-  serializeStoredExecutionValueV1,
+  serializeWorkflowExecutionJsonValueV3,
   type StoredExecutionValueV1,
 } from '../stored-execution-value.js';
 import {
@@ -46,6 +46,7 @@ const proofSchema = z.discriminatedUnion('kind', [
       kind: z.literal('allowed'),
       ...common,
       inputRef: z.unknown(),
+      inputRefJson: z.string().max(4_194_304),
       inputChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
       deadlineAt: timestampSchema,
     })
@@ -171,6 +172,15 @@ export async function lockWorkflowCallAdmission(
   let inputRef: StoredExecutionValueV1;
   try {
     inputRef = parseStoredExecutionValueV1(proof.inputRef);
+    const raw = parseStoredExecutionValueV1(
+      JSON.parse(proof.inputRefJson) as unknown,
+    );
+    if (
+      Buffer.byteLength(proof.inputRefJson, 'utf8') > 4_194_304 ||
+      serializeWorkflowExecutionJsonValueV3(raw) !==
+        serializeWorkflowExecutionJsonValueV3(inputRef)
+    )
+      throw new WorkflowCallAdmissionCorruptError();
   } catch {
     throw new WorkflowCallAdmissionCorruptError();
   }
@@ -179,7 +189,7 @@ export async function lockWorkflowCallAdmission(
     context,
     candidateRunId,
     inputRef,
-    storedInputJson: serializeStoredExecutionValueV1(inputRef),
+    storedInputJson: proof.inputRefJson,
     inputChecksum: proof.inputChecksum,
     deadlineAt: proof.deadlineAt,
     pin: Object.freeze(proof.pin),

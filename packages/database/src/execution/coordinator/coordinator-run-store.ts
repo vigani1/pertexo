@@ -18,6 +18,7 @@ import {
 import { commitCoordinatorAdvancePlan } from './coordinator-run-store-commit.js';
 import { acknowledgeCoordinatorDelivery } from './coordinator-run-store-delivery.js';
 import { loadCoordinatorAdvanceState } from './coordinator-run-store-observations.js';
+import type { CoordinatorCallAdmissionOptions } from './coordinator-call-admission.js';
 
 export {
   CoordinatorDeliveryMismatchError,
@@ -32,6 +33,7 @@ export type {
   LoadAdvanceStateResult,
 };
 export type CoordinatorRunStoreOptions = Readonly<{
+  workflowCallAdmission?: CoordinatorCallAdmissionOptions;
   runTimeoutFailureContextEnabled?: boolean;
   /** ADR 055: record terminal failures for the workspace inbox. */
   workspaceInboxProducerEnabled?: boolean;
@@ -59,6 +61,9 @@ export function createCoordinatorRunStore(
           options.workspaceInboxProducerEnabled ?? false,
         workflowTriggerOutcomesEnabled:
           options.workflowTriggerOutcomesEnabled ?? false,
+        ...(options.workflowCallAdmission === undefined
+          ? {}
+          : { workflowCallAdmission: options.workflowCallAdmission }),
       }),
     close: () => lease.close(),
   });

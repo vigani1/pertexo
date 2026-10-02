@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 import type { WorkflowCallableDeclarationV1 } from '@pertexo/workflow-model/callable-graph-contract';
 import {
@@ -30,6 +29,8 @@ export interface WorkflowCallDeclarationMaterialV1 {
   readonly nodeId: string;
   readonly declarationAttemptId: string;
   readonly input: AttemptOutputReference;
+  /** Immutable byte identity verified by the protected input owner. */
+  readonly inputChecksum: string;
   readonly value: unknown;
 }
 
@@ -202,7 +203,8 @@ export function deriveWorkflowCallControlsV1(input: {
       invocation?.nodeId !== material.nodeId ||
       invocation.attemptNumber !== 1 ||
       node?.definition.key !== 'core.workflow_call' ||
-      node.definition.version !== 1
+      node.definition.version !== 1 ||
+      !/^[0-9a-f]{64}$/.test(material.inputChecksum)
     )
       invalid('call declaration does not belong to its executable invocation');
     const pin = workflowCallPinSchemaV1.parse(node.config);
@@ -222,9 +224,7 @@ export function deriveWorkflowCallControlsV1(input: {
       declarationAttemptId: material.declarationAttemptId,
       pin,
       input: material.input,
-      inputChecksum: createHash('sha256')
-        .update(canonicalJson(validated.value))
-        .digest('hex'),
+      inputChecksum: material.inputChecksum,
       status: stop === undefined ? 'awaiting_admission' : 'aborted',
       ...(stop === undefined ? {} : { reasonCode: `workflow.${stop}` }),
     });

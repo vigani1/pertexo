@@ -43,6 +43,7 @@ const allowed = {
   kind: 'allowed',
   ...common,
   inputRef: { schemaVersion: 1, kind: 'inline', value: { name: 'input' } },
+  inputRefJson: '{"kind":"inline","schemaVersion":1,"value":{"name":"input"}}',
   inputChecksum: 'c'.repeat(64),
   deadlineAt,
 };
@@ -127,7 +128,11 @@ describe('locked Workflow Call admission proof', () => {
       kind: 'artifact',
       artifactId: outboxEventId,
     };
-    const test = fixture([{ proof: { ...allowed, inputRef } }]);
+    const test = fixture([
+      {
+        proof: { ...allowed, inputRef, inputRefJson: JSON.stringify(inputRef) },
+      },
+    ]);
     expect(
       allowedProof(await lockWorkflowCallAdmission(test.transaction, input))
         .inputRef,
@@ -141,7 +146,11 @@ describe('locked Workflow Call admission proof', () => {
     expect(
       Buffer.byteLength(JSON.stringify({ ...allowed, inputRef })),
     ).toBeGreaterThan(262_144);
-    const test = fixture([{ proof: { ...allowed, inputRef } }]);
+    const test = fixture([
+      {
+        proof: { ...allowed, inputRef, inputRefJson: JSON.stringify(inputRef) },
+      },
+    ]);
     expect(
       allowedProof(await lockWorkflowCallAdmission(test.transaction, input))
         .inputRef,

@@ -1,6 +1,9 @@
-import { workflowForEachBoundsV2 } from '@pertexo/workflow-model/graph';
+import {
+  workflowForEachBoundsV2,
+  workflowForEachBoundsV3,
+} from '@pertexo/workflow-model/graph';
 import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
-import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
+import type { CoordinatorCheckpoint as PersistedWorkflowCheckpoint } from './coordinator-checkpoint.js';
 import { parseStoredExecutionValueV1 } from '../stored-execution-value.js';
 import { CoordinatorPlanInvalidError } from './coordinator-run-store-contract.js';
 import type { CoordinatorEventRow } from './coordinator-run-store-fact-physical-state.js';
@@ -57,9 +60,14 @@ function derive(
   }: Parameters<typeof deriveRejectedForEachDeclarations>[0],
   candidates: ParsedTransitionPlan['events'],
 ): ReadonlyMap<string, RejectedForEachDeclaration> {
-  const bounds = workflowForEachBoundsV2(executableJson);
+  const bounds = (
+    current.schemaVersion === 3
+      ? workflowForEachBoundsV3
+      : workflowForEachBoundsV2
+  )(executableJson);
   assertProof(
-    current.schemaVersion === 2 && plan.checkpoint.schemaVersion === 2,
+    current.schemaVersion !== 1 &&
+      current.schemaVersion === plan.checkpoint.schemaVersion,
   );
   assertProof(current.workflowVersionId === plan.checkpoint.workflowVersionId);
   assertProof(

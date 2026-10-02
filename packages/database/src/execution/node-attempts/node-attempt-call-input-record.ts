@@ -88,41 +88,46 @@ export async function readWorkflowCallDeclarationInput(
         throw new TypeError('Call snapshot result is missing');
       const snapshot = row.snapshot;
       if (snapshot === null) return undefined;
-      const parsed = snapshotSchema.parse(snapshot);
-      const reference = parseStoredExecutionValueV1(parsed.reference);
-      if (reference.kind === 'inline') {
-        const original = parsed.serializedValue;
-        if (original === undefined)
-          throw new TypeError('Call inline snapshot bytes are missing');
-        if (
-          Buffer.byteLength(original, 'utf8') !== parsed.byteLength ||
-          parsed.byteLength > 262_144 ||
-          Buffer.byteLength(
-            `{"kind":"inline","schemaVersion":1,"value":${original}}`,
-            'utf8',
-          ) > 262_144 ||
-          createHash('sha256').update(original).digest('hex') !== parsed.sha256
-        )
-          throw new TypeError('Call snapshot metadata does not match');
-        const value: unknown = JSON.parse(original);
-        if (
-          serializeWorkflowExecutionJsonValueV3(value) !==
-          serializeStoredExecutionJsonValue(reference.value)
-        )
-          throw new TypeError('Call snapshot bytes and reference do not agree');
-      } else if (parsed.serializedValue !== undefined) {
-        throw new TypeError('Call artifact snapshot contains inline bytes');
-      }
-      return Object.freeze({
-        reference,
-        sha256: parsed.sha256,
-        byteLength: parsed.byteLength,
-        ...(parsed.serializedValue === undefined
-          ? {}
-          : { serializedValue: parsed.serializedValue }),
-      });
+      return parseWorkflowExecutionValueSnapshot(snapshot);
     },
   );
+}
+
+/** Shared native recovery verification; exact original bytes remain identity. */
+export function parseWorkflowExecutionValueSnapshot(snapshot: unknown) {
+  const parsed = snapshotSchema.parse(snapshot);
+  const reference = parseStoredExecutionValueV1(parsed.reference);
+  if (reference.kind === 'inline') {
+    const original = parsed.serializedValue;
+    if (original === undefined)
+      throw new TypeError('Call inline snapshot bytes are missing');
+    if (
+      Buffer.byteLength(original, 'utf8') !== parsed.byteLength ||
+      parsed.byteLength > 262_144 ||
+      Buffer.byteLength(
+        `{"kind":"inline","schemaVersion":1,"value":${original}}`,
+        'utf8',
+      ) > 262_144 ||
+      createHash('sha256').update(original).digest('hex') !== parsed.sha256
+    )
+      throw new TypeError('Call snapshot metadata does not match');
+    const value: unknown = JSON.parse(original);
+    if (
+      serializeWorkflowExecutionJsonValueV3(value) !==
+      serializeStoredExecutionJsonValue(reference.value)
+    )
+      throw new TypeError('Call snapshot bytes and reference do not agree');
+  } else if (parsed.serializedValue !== undefined) {
+    throw new TypeError('Call artifact snapshot contains inline bytes');
+  }
+  return Object.freeze({
+    reference,
+    sha256: parsed.sha256,
+    byteLength: parsed.byteLength,
+    ...(parsed.serializedValue === undefined
+      ? {}
+      : { serializedValue: parsed.serializedValue }),
+  });
 }
 
 /** Required execution input, not the optional diagnostic writer. */

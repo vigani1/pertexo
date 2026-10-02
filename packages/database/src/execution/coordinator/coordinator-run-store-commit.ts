@@ -33,8 +33,20 @@ import {
   assertCoordinatorNotAborted as assertNotAborted,
   withCoordinatorWriteClient as withWorkspaceWriteClient,
 } from './coordinator-run-store-transactions.js';
-import { serializePersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
+import { serializeCoordinatorCheckpoint } from './coordinator-checkpoint.js';
 import { observeScheduleToStartSeconds } from './coordinator-schedule-observation.js';
+import {
+  prepareCoordinatorCallAdmission,
+  type CoordinatorCallAdmissionOptions,
+} from './coordinator-call-admission.js';
+import { persistCoordinatorCallTransitions } from './coordinator-call-transitions.js';
+import { persistCoordinatorCallResult } from './coordinator-call-result.js';
+
+class NativeAdmissionPassAbandoned extends Error {
+  public constructor(readonly result: CommitAdvancePlanResult) {
+    super('Native admission pass requires rollback');
+  }
+}
 
 export async function commitCoordinatorAdvancePlan(
   pool: Pool,
@@ -43,6 +55,7 @@ export async function commitCoordinatorAdvancePlan(
     runTimeoutFailureContextEnabled: boolean;
     workspaceInboxProducerEnabled: boolean;
     workflowTriggerOutcomesEnabled: boolean;
+    workflowCallAdmission?: CoordinatorCallAdmissionOptions;
   }>,
 ): Promise<CommitAdvancePlanResult> {
   if (!(input.signal instanceof AbortSignal))
@@ -64,7 +77,11 @@ export async function commitCoordinatorAdvancePlan(
   }
   const plan = parseTransitionPlan(input.plan);
   validateTransitionPlan(plan, workflowVersionId);
-  const checkpointJson = serializePersistedWorkflowCheckpoint(plan.checkpoint);
+  // The native cohort stays OFF until its child-control persistence owner is
+  // wired. Never acknowledge a cancellation plan while dropping its intent.
+  if ((plan.workflowCalls?.cancelChildren.length ?? 0) > 0)
+    throw new TypeError('Native child cancellation persistence is unavailable');
+  const checkpointJson = serializeCoordinatorCheckpoint(plan.checkpoint);
   const planFingerprint = transitionFingerprint({
     plan,
     traceparent,
@@ -77,6 +94,16 @@ export async function commitCoordinatorAdvancePlan(
       workspaceId,
       input.signal,
       async (client) => {
+        const callAdmission = await prepareCoordinatorCallAdmission(
+          client,
+          {
+            workspaceId,
+            runId,
+            plan,
+            ...(traceparent === undefined ? {} : { traceparent }),
+          },
+          options.workflowCallAdmission,
+        );
         const commitState = await lockCoordinatorCommitState(client, {
           checkpointJson,
           delivery,
@@ -87,7 +114,11 @@ export async function commitCoordinatorAdvancePlan(
           workflowVersionId,
           workspaceId,
         });
-        if (commitState.kind === 'outcome') return commitState.result;
+        if (commitState.kind === 'outcome') {
+          if (callAdmission !== undefined)
+            throw new NativeAdmissionPassAbandoned(commitState.result);
+          return commitState.result;
+        }
 
         await validateCheckpointOutputOwnership(
           client,
@@ -126,11 +157,23 @@ export async function commitCoordinatorAdvancePlan(
           workspaceId,
           delivery,
         );
-        if (receipt === 'duplicate')
-          return Object.freeze({
+        if (receipt === 'duplicate') {
+          const duplicate = Object.freeze({
             kind: 'already_committed' as const,
             revision: commitState.row.revision,
           });
+          if (callAdmission !== undefined)
+            throw new NativeAdmissionPassAbandoned(duplicate);
+          return duplicate;
+        }
+
+        await callAdmission?.admit();
+        await persistCoordinatorCallTransitions(client, {
+          workspaceId,
+          runId,
+          current: commitState.currentCheckpoint,
+          plan,
+        });
 
         const physical = await persistCoordinatorExecutionTransitions(client, {
           pendingFailures: commitState.pendingFailures,
@@ -162,6 +205,8 @@ export async function commitCoordinatorAdvancePlan(
           continuationOutboxEventId: _continuation,
           ...publicRunTransition
         } = runTransition;
+        await persistCoordinatorCallResult(client, { runId, plan, delivery });
+        await callAdmission?.seal(_continuation);
         await completeCoordinatorReceipt(client, workspaceId, delivery);
         assertNotAborted(input.signal);
         return Object.freeze({
@@ -202,6 +247,10 @@ export async function commitCoordinatorAdvancePlan(
         : { scheduleToStartSeconds }),
     });
   } catch (error: unknown) {
+    if (error instanceof NativeAdmissionPassAbandoned) {
+      if (error.result.kind === 'deferred') throw error;
+      return error.result;
+    }
     if (error instanceof DeliveryMismatch)
       return auditCoordinatorDeliveryMismatch(
         pool,

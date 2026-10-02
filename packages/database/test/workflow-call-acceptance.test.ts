@@ -102,6 +102,8 @@ function allowed() {
       value: { message: 'declaration' },
     },
     inputChecksum: 'c'.repeat(64),
+    inputRefJson:
+      '{"kind":"inline","schemaVersion":1,"value":{"message":"declaration"}}',
     deadlineAt,
   };
 }
@@ -342,7 +344,13 @@ describe('canonical workflow Call child acceptance', () => {
   });
   it('uses declaration artifact unchanged without any additional artifact/quota insertion', async () => {
     const inputRef = { schemaVersion: 1, kind: 'artifact', artifactId };
-    const f = fixture({ proof: { ...allowed(), inputRef } });
+    const f = fixture({
+      proof: {
+        ...allowed(),
+        inputRef,
+        inputRefJson: serializeStoredExecutionValueV1(inputRef),
+      },
+    });
     await acceptWorkflowRun(f.transaction, input());
     expect(query(f.values.get(workflowRuns)?.inputRef).params).toEqual([
       serializeStoredExecutionValueV1(inputRef),
@@ -361,7 +369,13 @@ describe('canonical workflow Call child acceptance', () => {
       kind: 'inline',
       value: 'x'.repeat(262_142),
     };
-    const f = fixture({ proof: { ...allowed(), inputRef } });
+    const f = fixture({
+      proof: {
+        ...allowed(),
+        inputRef,
+        inputRefJson: serializeStoredExecutionValueV1(inputRef),
+      },
+    });
     await acceptWorkflowRun(f.transaction, input());
     const serialized = serializeStoredExecutionValueV1(inputRef);
     expect(Buffer.byteLength(serialized)).toBeGreaterThan(262_144);

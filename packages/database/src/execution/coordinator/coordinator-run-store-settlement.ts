@@ -4,7 +4,7 @@ import {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
 } from './coordinator-run-store-contract.js';
-import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
+import type { CoordinatorCheckpoint as PersistedWorkflowCheckpoint } from './coordinator-checkpoint.js';
 import type { RejectedForEachDeclaration } from './coordinator-rejected-loop-proof.js';
 
 export async function persistRejectedForEachDeclarations(

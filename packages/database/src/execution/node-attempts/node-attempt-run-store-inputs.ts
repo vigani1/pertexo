@@ -20,6 +20,7 @@ import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
 } from '../stored-execution-value.js';
+import { readWorkflowCallResultReference } from '../workflow-calls/workflow-call-result-reference.js';
 
 type ParsedCheckpoint =
   | ReturnType<typeof parsePersistedWorkflowCheckpoint>
@@ -351,9 +352,11 @@ export async function loadNodeAttemptInputs(
           node_id: string;
           node_output_ref: unknown;
           attempt_output_ref: unknown;
+          node_input_ref: unknown;
+          attempt_id: string;
         }>(
           `select node.invocation_key,node.node_id,
-                  node.output_ref as node_output_ref,
+                  node.output_ref as node_output_ref,node.input_ref as node_input_ref,attempt.id as attempt_id,
                   attempt.output_ref as attempt_output_ref
            from app.node_runs node
            join app.node_attempts attempt
@@ -369,9 +372,46 @@ export async function loadNodeAttemptInputs(
             input.upstreamNodeOutputs.map(({ invocationKey }) => invocationKey),
           ],
         );
+        const projectedRows = [];
+        for (const output of outputs.rows) {
+          const invocation = checkpoint.invocations.find(
+            ({ invocationKey }) => invocationKey === output.invocation_key,
+          );
+          if (invocation?.output?.kind !== 'workflow_call') {
+            projectedRows.push(output);
+            continue;
+          }
+          if (checkpoint.schemaVersion !== 3)
+            throw new NodeAttemptStateCorruptError();
+          const call = checkpoint.calls.find(
+            ({ invocationKey }) => invocationKey === output.invocation_key,
+          );
+          if (
+            call?.status !== 'settled' ||
+            call.childStatus !== 'succeeded' ||
+            call.declarationAttemptId !== output.attempt_id ||
+            serializeStoredExecutionJsonValue(output.node_input_ref) !==
+              serializeStoredExecutionJsonValue(output.attempt_output_ref)
+          )
+            throw new NodeAttemptStateCorruptError();
+          const referenceJson = await readWorkflowCallResultReference(client, {
+            workspaceId: input.lease.workspaceId,
+            parentRunId: input.lease.runId,
+            invocationKey: output.invocation_key,
+            childRunId: invocation.output.childRunId,
+          });
+          const reference: unknown = JSON.parse(referenceJson);
+          if (
+            serializeStoredExecutionJsonValue(reference) !==
+            serializeStoredExecutionJsonValue(output.node_output_ref)
+          )
+            throw new NodeAttemptStateCorruptError();
+          // Reconcile the authenticated logical result, never the declaration input.
+          projectedRows.push({ ...output, attempt_output_ref: reference });
+        }
         completedNodeOutputs = reconcileCompletedNodeOutputs(
           input.upstreamNodeOutputs,
-          outputs.rows,
+          projectedRows,
         );
       }
       const coordinatorInput = projectCoordinatorInput(

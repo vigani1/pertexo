@@ -35,51 +35,60 @@ const declaration = {
   input: physicalReference,
   inputChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
 };
-const callSchema = z.discriminatedUnion('status', [
-  z
-    .object({ ...declaration, status: z.literal('awaiting_admission') })
-    .strict(),
-  z
-    .object({ ...declaration, status: z.literal('admitted'), childRunId: uuid })
-    .strict(),
-  z
-    .object({
-      ...declaration,
-      status: z.literal('refused'),
-      reasonCode: z.enum([
-        'workflow.child_capacity_unavailable',
-        'workflow.child_queue_unavailable',
-        'workflow.child_entitlement_unavailable',
-        'workflow.child_authority_unavailable',
-        'workflow.child_admission_unavailable',
-        'workflow.child_compatibility_unavailable',
-      ]),
-    })
-    .strict(),
-  z
-    .object({
-      ...declaration,
-      status: z.literal('aborted'),
-      reasonCode: z.enum(['workflow.canceled', 'workflow.timed_out']),
-    })
-    .strict(),
-  z
-    .object({
-      ...declaration,
-      status: z.literal('settled'),
-      childRunId: uuid,
-      childStatus: z.enum([
-        'succeeded',
-        'failed',
-        'canceled',
-        'timed_out',
-        'outcome_unknown',
-      ]),
-    })
-    .strict(),
-]);
+export const persistedWorkflowCallStateSchemaV1 = z.discriminatedUnion(
+  'status',
+  [
+    z
+      .object({ ...declaration, status: z.literal('awaiting_admission') })
+      .strict(),
+    z
+      .object({
+        ...declaration,
+        status: z.literal('admitted'),
+        childRunId: uuid,
+      })
+      .strict(),
+    z
+      .object({
+        ...declaration,
+        status: z.literal('refused'),
+        reasonCode: z.enum([
+          'workflow.child_capacity_unavailable',
+          'workflow.child_queue_unavailable',
+          'workflow.child_entitlement_unavailable',
+          'workflow.child_authority_unavailable',
+          'workflow.child_admission_unavailable',
+          'workflow.child_compatibility_unavailable',
+        ]),
+      })
+      .strict(),
+    z
+      .object({
+        ...declaration,
+        status: z.literal('aborted'),
+        reasonCode: z.enum(['workflow.canceled', 'workflow.timed_out']),
+      })
+      .strict(),
+    z
+      .object({
+        ...declaration,
+        status: z.literal('settled'),
+        childRunId: uuid,
+        childStatus: z.enum([
+          'succeeded',
+          'failed',
+          'canceled',
+          'timed_out',
+          'outcome_unknown',
+        ]),
+      })
+      .strict(),
+  ],
+);
 
-export type PersistedWorkflowCallStateV1 = z.output<typeof callSchema>;
+export type PersistedWorkflowCallStateV1 = z.output<
+  typeof persistedWorkflowCallStateSchemaV1
+>;
 export type PersistedWorkflowCallResultReferenceV1 = z.output<
   typeof resultReference
 >;
@@ -128,7 +137,7 @@ function unsettled(call: PersistedWorkflowCallStateV1 | undefined): boolean {
 
 function parseCalls(value: unknown): PersistedWorkflowCallStateV1[] {
   const calls = z
-    .array(callSchema)
+    .array(persistedWorkflowCallStateSchemaV1)
     .max(WORKFLOW_CALL_FAMILY_POLICY_V1.maxChildRuns)
     .parse(value);
   const keys = new Set<string>();

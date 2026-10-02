@@ -1,4 +1,5 @@
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
   advanceWorkflow,
@@ -35,6 +36,7 @@ const material = {
   nodeId: 'call',
   declarationAttemptId,
   input: reference,
+  inputChecksum: createHash('sha256').update('{"name":"input"}').digest('hex'),
   value: { name: 'input' },
 };
 const calleeDeclarations = new Map([[pin.versionId, declaration]]);

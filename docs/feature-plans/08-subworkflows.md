@@ -372,5 +372,32 @@ All 1,353 non-integration database tests across 145 files pass, with typecheck a
 narrow lint/format. Native V3 plan validation, admission integration and post-CAS
 seal are still not wired into this owner; these checks do not close that gate.
 
+The coordinator now has an explicit native plan/checkpoint seam and invokes the
+protected prerequisite, canonical child acceptance, journal and post-CAS seal
+inside its existing transaction. Call wait/settlement changes only the logical
+node projection, retaining its real succeeded physical declaration attempt.
+Terminal callable results bind the actual coordinator CAS and receipt; a deferred
+fence rejects successful callable checkpoints without their result. Protected
+child-result aliases now hydrate downstream inline inputs without rewriting the
+declaration. Original input byte checksums and raw PostgreSQL references survive
+the admission handoff. Retained codecs and old compatibility manifests remain
+unchanged. Cancellation plans and artifact result production fail closed until
+their persistence owners are wired.
+
+An exclusively owned PostgreSQL18 inline development flow on 2026-10-03 passed
+parent→child→result→parent downstream→terminal with the actual runtime login,
+published reader, worker coordinator engine, node claims/input/completion and
+coordinator stores. Each node/coordinator delivery replayed without another
+child, journal or result. Deliberately omitting the required child result rolled
+back its terminal CAS, events, outboxes and receipt. The exact unregistered draft
+SHA256 is `d2f8fca0becc2e62570617d5fba5cabd3523355004e1d8d50916ccb66966b249`.
+This evidence uses explicit publication/root bootstrap, a distinct local native
+compatibility fixture, temporary V3-only worker visibility and temporary native
+EXECUTE grants. Visibility/grants were removed, rollout stayed OFF, registered
+head/count stayed 0135/133, and the disposable database was removed. It is not
+qualification of publication/root, permanent serving access/readiness, artifacts,
+retention, cancellation propagation, API/editor, process restart or races. No
+backend or integrated acceptance row is complete from this milestone.
+
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
