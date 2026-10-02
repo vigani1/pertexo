@@ -316,7 +316,8 @@ export function parseArguments(arguments_) {
       );
       if (
         definition?.internal !== undefined &&
-        definition.internal !== 'performance'
+        definition.internal !== 'performance' &&
+        definition.internal !== 'curated-template-qualification'
       )
         throw new Error(
           `The ${id} internal cohort cannot be selected directly`,

@@ -731,6 +731,16 @@ test('managed command deadline enters owned cleanup and cannot report success', 
   assert.equal(released, 1);
 });
 
+test('owned curated qualification can be selected without selecting internal resource operations', () => {
+  assert.deepEqual(
+    [
+      ...parseArguments(['--partial', 'curated-template-qualification'])
+        .selected,
+    ],
+    ['curated-template-qualification'],
+  );
+});
+
 test('exploratory partial runs remain explicit and reject unknown cohorts', () => {
   assert.deepEqual(parseArguments([]), {
     mode: 'qualification',
