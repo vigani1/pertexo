@@ -7,6 +7,5 @@ export const CURATED_TEMPLATE_FIXTURE: Readonly<{
 }>;
 export function createCuratedTemplateEnvelopeContext<Context extends object>(
   masterKeyHex: string,
-): ReturnType<
-  typeof import('./editor-browser-envelope-keys.mjs').createEditorBrowserEnvelopeKeys<Context>
->;
+): ReturnType<typeof createEditorBrowserEnvelopeKeys<Context>>;
+import type { createEditorBrowserEnvelopeKeys } from './editor-browser-envelope-keys.mjs';
