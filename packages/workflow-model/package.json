@@ -27,6 +27,10 @@
       "types": "./dist/portability-contract.d.ts",
       "default": "./dist/portability-contract.js"
     },
+    "./curated-templates": {
+      "types": "./dist/curated-templates.d.ts",
+      "default": "./dist/curated-templates.js"
+    },
     "./portability": {
       "types": "./dist/portability.d.ts",
       "browser": false,

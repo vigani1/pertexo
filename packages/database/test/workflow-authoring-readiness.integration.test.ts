@@ -5,6 +5,7 @@ import {
   checkDatabaseReadiness,
   dispatcherPool,
   executeAsOwner,
+  queryAsOwner,
   workerPool,
 } from './support/workflow-authoring.integration.support.js';
 
@@ -16,6 +17,17 @@ describe('workflow authoring readiness', () => {
     expect(apiReadiness.role).toBe('pertexo_api');
     expect(workerReadiness.role).toBe('pertexo_worker');
     expect(dispatcherReadiness.role).toBe('pertexo_dispatcher');
+    await expect(
+      dispatcherPool.query(
+        "select has_function_privilege(current_user, 'app.curated_template_inventory_matches(text)', 'EXECUTE') allowed",
+      ),
+    ).resolves.toMatchObject({ rows: [{ allowed: false }] });
+    await expect(
+      dispatcherPool.query(
+        'select app.curated_template_inventory_matches($1)',
+        ['0'.repeat(64)],
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
     await expect(
       checkDatabaseReadiness(apiPool, {
         ownerRole: 'pertexo_owner',
@@ -34,6 +46,44 @@ describe('workflow authoring readiness', () => {
         supportedExecutableSchemaVersions: [],
       }),
     ).rejects.toThrow('Workflow executable schema support is incompatible');
+  });
+
+  it('keeps curated helper body and ACL pins strict for every readiness caller', async () => {
+    const pools = [apiPool, workerPool, dispatcherPool];
+    const definition = (
+      await queryAsOwner<{ definition: string }>(
+        "select pg_get_functiondef('app.curated_template_inventory_matches(text)'::regprocedure) definition",
+      )
+    )[0]?.definition;
+    if (definition === undefined)
+      throw new Error('Inventory helper unavailable');
+    const end = definition.lastIndexOf('$function$');
+    if (end < 0) throw new Error('Unexpected helper quoting');
+    try {
+      await executeAsOwner(
+        `${definition.slice(0, end)}\n-- readiness body drift fixture\n${definition.slice(end)}`,
+      );
+      for (const pool of pools)
+        await expect(checkDatabaseReadiness(pool)).rejects.toThrow(
+          'Workflow authoring schema is incompatible',
+        );
+    } finally {
+      await executeAsOwner(definition);
+    }
+    try {
+      await executeAsOwner(
+        'grant execute on function app.curated_template_inventory_matches(text) to pertexo_dispatcher',
+      );
+      for (const pool of pools)
+        await expect(checkDatabaseReadiness(pool)).rejects.toThrow(
+          'Workflow authoring schema is incompatible',
+        );
+    } finally {
+      await executeAsOwner(
+        'revoke execute on function app.curated_template_inventory_matches(text) from pertexo_dispatcher',
+      );
+    }
+    for (const pool of pools) await checkDatabaseReadiness(pool);
   });
 
   it('fails readiness on policy, grant, function, and dispatch-index drift', async () => {

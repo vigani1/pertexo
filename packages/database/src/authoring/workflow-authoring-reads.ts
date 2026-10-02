@@ -2,6 +2,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
+import { createWorkflowTemplateOriginReader } from './workflow-template-origin-read.js';
 import {
   mapDraft,
   mapVersion,
@@ -30,6 +31,7 @@ type ReadStore = Pick<
   | 'validateDraft'
   | 'getVersion'
   | 'getWorkflow'
+  | 'getWorkflowWithTemplateOrigin'
   | 'listVersions'
   | 'listWorkflows'
 >;
@@ -63,6 +65,7 @@ export function createWorkflowAuthoringReadStore(
   context: WorkflowAuthoringReadContext,
 ): ReadStore {
   return Object.freeze({
+    getWorkflowWithTemplateOrigin: createWorkflowTemplateOriginReader(context),
     validateDraft: (
       workspaceId: string,
       workflowId: string,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workflowTemplateOriginRequestSchema } from '@pertexo/workflow-model/curated-templates';
 import {
   portableConnectionBindingSchema,
   portableConnectionSlotSchema,
@@ -40,6 +41,7 @@ export const workflowImportPreviewRequestSchema = z
   .object({
     manifest: workflowPortableManifestSchema,
     bindings,
+    templateOrigin: workflowTemplateOriginRequestSchema.optional(),
   })
   .strict();
 export const workflowImportRequestSchema =

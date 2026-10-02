@@ -1,4 +1,6 @@
 import type { PoolClient } from 'pg';
+import { workflowForEachBoundsV2 } from '@pertexo/workflow-model/graph';
+import { isRejectedForEachCollection } from './coordinator-rejected-loop-collection.js';
 
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
 import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
@@ -25,6 +27,8 @@ type PhysicalInvocationRow = Readonly<{
   resume_at: Date | null;
   retry_due_at: Date | null;
   wait_kind: 'node_wait' | 'retry_backoff' | null;
+  safe_error_code: string | null;
+  has_rejection_fact: boolean;
 }>;
 
 function corruptIf(condition: boolean): void {
@@ -208,6 +212,7 @@ function validateInvocation(
   invocation: Invocation,
   checkpoint: PersistedWorkflowCheckpoint,
   freshFact: Readonly<Record<string, unknown>> | undefined,
+  executableJson: unknown,
 ): string | undefined {
   if (row === undefined) throw new CoordinatorRunStateCorruptError();
   corruptIf(row.node_id !== invocation.nodeId);
@@ -217,9 +222,76 @@ function validateInvocation(
   );
   validateAttemptIdentity(row, invocation);
   validatePhysicalStatus(row, invocation, checkpoint, freshFact);
+  if (invocation.status === 'failed' && row.attempt_status === 'succeeded') {
+    validateRejectedForEachState(row, invocation, checkpoint, executableJson);
+    return undefined;
+  }
   return invocation.status === 'running' && freshFact !== undefined
     ? undefined
     : parsedPhysicalOutput(row, invocation.output);
+}
+
+function validateRejectedForEachState(
+  row: PhysicalInvocationRow,
+  invocation: Invocation,
+  checkpoint: PersistedWorkflowCheckpoint,
+  executableJson: unknown,
+): void {
+  corruptIf(
+    row.safe_error_code !== 'loop_limit_exceeded' ||
+      !row.has_rejection_fact ||
+      row.node_output_ref !== null ||
+      invocation.output !== undefined ||
+      row.control_kind !== null ||
+      row.wait_kind !== null ||
+      row.resume_at !== null ||
+      row.retry_due_at !== null ||
+      checkpoint.loops.some(
+        (loop) => loop.controlInvocationKey === invocation.invocationKey,
+      ),
+  );
+  try {
+    const stored = parseStoredExecutionValueV1(row.attempt_output_ref);
+    corruptIf(stored.kind !== 'inline');
+    if (stored.kind !== 'inline') return;
+    const iterationPath =
+      'iterationPath' in invocation ? (invocation.iterationPath ?? []) : [];
+    corruptIf(
+      iterationPath.some(
+        (scope, index) =>
+          checkpoint.loops.filter(
+            (loop) =>
+              loop.loopId === scope.loopNodeId &&
+              serializeStoredExecutionJsonValue(loop.iterationPath) ===
+                serializeStoredExecutionJsonValue(
+                  iterationPath.slice(0, index),
+                ) &&
+              loop.branchPath.every(
+                (branch, ordinal) =>
+                  serializeStoredExecutionJsonValue(branch) ===
+                  serializeStoredExecutionJsonValue(
+                    'branchPath' in invocation
+                      ? invocation.branchPath?.[ordinal]
+                      : undefined,
+                  ),
+              ) &&
+              (loop.activeOrdinals.includes(scope.ordinal) ||
+                loop.terminalOrdinals.includes(scope.ordinal)),
+          ).length !== 1,
+      ),
+    );
+    corruptIf(
+      !isRejectedForEachCollection({
+        nodeId: invocation.nodeId,
+        iterationPath,
+        value: stored.value,
+        bounds: workflowForEachBoundsV2(executableJson),
+        remainingIterationBudget: checkpoint.remainingIterationBudget,
+      }),
+    );
+  } catch {
+    throw new CoordinatorRunStateCorruptError();
+  }
 }
 
 export async function validateLoadedCheckpointPhysicalState(
@@ -228,10 +300,23 @@ export async function validateLoadedCheckpointPhysicalState(
   runId: string,
   checkpoint: PersistedWorkflowCheckpoint,
   freshSemanticFacts: ReadonlyMap<string, Readonly<Record<string, unknown>>>,
+  executableJson?: unknown,
 ): Promise<void> {
   const result = await client.query<PhysicalInvocationRow>(
     `select node.invocation_key, node.node_id, node.branch_context,
-             node.control_kind,
+             node.control_kind,node.safe_error_code,
+             case when node.status='failed' and node.safe_error_code='loop_limit_exceeded'
+                       and attempt.status='succeeded' then exists(select 1 from app.run_events event
+               where event.workspace_id=node.workspace_id
+                 and event.workflow_run_id=node.workflow_run_id
+                 and event.type='node.failed'
+                 and event.payload->>'reasonCode'='loop_limit_exceeded'
+                 and event.payload->>'invocationKey'=node.invocation_key
+                 and event.payload->>'attemptId'=node.current_attempt_id::text
+                 and event.payload->>'nodeRunId'=node.id::text
+                 and event.payload->>'nodeId'=node.node_id
+                 and event.payload->>'attemptNumber'=node.current_attempt_number::text
+             ) else false end as has_rejection_fact,
             node.status as node_status,
             node.current_attempt_id, node.current_attempt_number,
              node.resume_at, node.retry_due_at, node.wait_kind,
@@ -261,6 +346,7 @@ export async function validateLoadedCheckpointPhysicalState(
       invocation,
       checkpoint,
       freshSemanticFacts.get(invocation.invocationKey),
+      executableJson,
     );
     if (artifactId !== undefined) artifactIds.add(artifactId);
   }

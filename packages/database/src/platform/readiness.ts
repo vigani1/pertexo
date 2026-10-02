@@ -12,13 +12,14 @@ import {
   assertReadinessSupport,
   DATABASE_READINESS_SQL,
   type ReadinessRow,
+  type CompatibleReadinessRow,
 } from './readiness-probe.js';
 
 // Exact function-body hashes below are startup compatibility controls. Keep
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD = '0132_workflow_portability.sql';
+export const EXPECTED_MIGRATION_HEAD = '0133_curated_template_origin.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -58,19 +59,7 @@ export async function checkDatabaseReadiness(
 ): Promise<DatabaseReadiness> {
   assertUnambiguousCompatibilityReleaseExpectation(options);
   assertReadinessSupport(options);
-  const result = await pool.query<ReadinessRow>(DATABASE_READINESS_SQL, [
-    options.ownerRole,
-    options.workerRuntimeRole ?? 'pertexo_worker',
-    options.apiRuntimeRole ?? 'pertexo_api',
-    options.maintenanceRole ?? 'pertexo_maintenance',
-    options.operatorRole ?? 'pertexo_operator',
-  ]);
-  const row = result.rows[0];
-  assertDatabaseReadinessRow(row, {
-    migrationHead: EXPECTED_MIGRATION_HEAD,
-    minimumPostgresMajor: MINIMUM_POSTGRES_MAJOR,
-    ownerRole: options.ownerRole,
-  });
+  const row = await checkReadinessMetadata(pool, options);
 
   await checkCompatibilityReleaseSchema(
     pool,
@@ -104,6 +93,47 @@ export async function checkDatabaseReadiness(
     postgresMajor: row.postgres_major,
     role: row.current_user,
   });
+}
+
+async function checkReadinessMetadata(
+  pool: Pool,
+  options: ReadinessOptions,
+): Promise<CompatibleReadinessRow> {
+  const client = await pool.connect();
+  try {
+    const workerRole = options.workerRuntimeRole ?? 'pertexo_worker';
+    const apiRole = options.apiRuntimeRole ?? 'pertexo_api';
+    const result = await client.query<ReadinessRow>(DATABASE_READINESS_SQL, [
+      options.ownerRole,
+      workerRole,
+      apiRole,
+      options.maintenanceRole ?? 'pertexo_maintenance',
+      options.operatorRole ?? 'pertexo_operator',
+    ]);
+    const row = result.rows[0];
+    assertDatabaseReadinessRow(row, {
+      migrationHead: EXPECTED_MIGRATION_HEAD,
+      minimumPostgresMajor: MINIMUM_POSTGRES_MAJOR,
+      ownerRole: options.ownerRole,
+    });
+    // ADR063 grants only API/worker this bounded data witness. Use the actual
+    // database identity and same connection, never a caller-selected role.
+    if (row.current_user === apiRole || row.current_user === workerRole) {
+      try {
+        const inventory = await client.query<{ matches: boolean }>(
+          'select app.curated_template_inventory_matches($1) matches',
+          ['b2c003431f093031cdaebb97b78f8a9ddae81f8ce5fa14efd4035b639a3e9f75'],
+        );
+        if (inventory.rows.length !== 1 || inventory.rows[0]?.matches !== true)
+          throw new Error('Curated inventory mismatch');
+      } catch {
+        throw new Error('Workflow authoring schema is incompatible');
+      }
+    }
+    return row;
+  } finally {
+    client.release();
+  }
 }
 
 export async function checkDatabaseServingReadiness(

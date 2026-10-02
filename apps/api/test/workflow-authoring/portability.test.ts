@@ -104,6 +104,79 @@ function fixture(role: 'owner' | 'builder' | 'operator' | 'viewer' = 'owner') {
   };
 }
 describe('workflow portability application authority and exact commands', () => {
+  const templateOrigin = {
+    schemaVersion: 1,
+    templateId: 'retired-reviewed-example',
+    templateVersion: 1,
+    baseManifestDigest: 'a'.repeat(64),
+  } as const;
+
+  it('forwards origin exactly and leaves retained replay before descriptor/writer checks to persistence', async () => {
+    const f = fixture();
+    const request = {
+      manifest,
+      bindings: [],
+      name: 'Imported',
+      expectedCompatibilityFingerprint: fingerprint,
+      templateOrigin,
+    };
+    await f.preview.execute({
+      ...context,
+      request: { manifest, bindings: [], templateOrigin },
+    });
+    expect(f.persistence.previewWorkflowImport).toHaveBeenCalledWith(
+      expect.objectContaining({ templateOrigin }),
+    );
+    await f.import.execute({
+      ...context,
+      request,
+      idempotencyKey: 'retained-origin',
+    });
+    await f.import.execute({
+      ...context,
+      request,
+      idempotencyKey: 'retained-origin',
+    });
+    expect(f.persistence.importWorkflow).toHaveBeenCalledTimes(2);
+    expect(f.persistence.importWorkflow.mock.calls[0]?.[0]).toEqual(
+      f.persistence.importWorkflow.mock.calls[1]?.[0],
+    );
+    expect(f.persistence.importWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...request,
+        idempotencyKey: 'retained-origin',
+      }),
+    );
+  });
+
+  it.each([
+    null,
+    { ...templateOrigin, derivation: 'direct' },
+    { ...templateOrigin, creationCommandDigest: 'b'.repeat(64) },
+  ])(
+    'rejects invalid request origin without disclosure (%j)',
+    async (origin) => {
+      const f = fixture();
+      await expect(
+        f.import.execute({
+          ...context,
+          idempotencyKey: 'invalid-origin',
+          request: {
+            manifest,
+            bindings: [],
+            name: 'Imported',
+            expectedCompatibilityFingerprint: fingerprint,
+            templateOrigin: origin,
+          },
+        }),
+      ).rejects.toEqual({
+        code: 'request.invalid',
+        safeDetail: 'The portable workflow request is invalid.',
+      });
+      expect(f.persistence.importWorkflow).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(['workflow:create', 'workflow:read'] as const)(
     'reuses only an issued matching %s guard proof and freshly authorizes bindings',
     async (capability) => {

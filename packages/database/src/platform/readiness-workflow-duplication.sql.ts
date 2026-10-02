@@ -6,7 +6,7 @@ export const READINESS_WORKFLOW_DUPLICATION_SQL = `(
         and command.proowner=(select oid from pg_roles where rolname=$1)
         and command.prosecdef and command.provolatile='v'
         and command.proconfig=array['search_path=pg_catalog, pg_temp','row_security=on']::text[]
-        and md5(command.prosrc)='b70f29f6408a6ef018b23b10f45fb443'
+        and md5(command.prosrc)='cca6cf717f5528c781f30c2460fe9dca'
         and has_function_privilege($3,command.oid,'EXECUTE')
         and not exists(select 1 from aclexplode(coalesce(command.proacl,acldefault('f',command.proowner))) privilege
           where privilege.grantee<>command.proowner

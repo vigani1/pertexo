@@ -747,7 +747,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0132_workflow_portability.sql',
+        migrationHead: '0133_curated_template_origin.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -946,7 +946,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0132_workflow_portability.sql',
+        migrationHead: '0133_curated_template_origin.sql',
       });
     } finally {
       await pool.end();

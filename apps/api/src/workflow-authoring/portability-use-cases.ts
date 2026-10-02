@@ -119,10 +119,12 @@ export class PreviewWorkflowImportUseCase extends PortabilityAuthority {
     return this.telemetry.measure('workflow.import.preview', async () => {
       const command = parse(workflowImportPreviewRequestSchema, input.request);
       await this.authorize(input, 'workflow:create', command.bindings.length);
+      const { templateOrigin, ...portableCommand } = command;
       return workflowImportPreviewResponseSchema.parse(
         await this.persistence.previewWorkflowImport({
           ...this.context(input),
-          ...command,
+          ...portableCommand,
+          ...(templateOrigin === undefined ? {} : { templateOrigin }),
         }),
       );
     });
@@ -133,10 +135,12 @@ export class ImportWorkflowUseCase extends PortabilityAuthority {
     return this.telemetry.measure('workflow.import', async () => {
       const command = parse(workflowImportRequestSchema, input.request);
       await this.authorize(input, 'workflow:create', command.bindings.length);
+      const { templateOrigin, ...portableCommand } = command;
       return workflowImportResponseSchema.parse(
         await this.persistence.importWorkflow({
           ...this.context(input),
-          ...command,
+          ...portableCommand,
+          ...(templateOrigin === undefined ? {} : { templateOrigin }),
           idempotencyKey: input.idempotencyKey,
         }),
       );

@@ -15,6 +15,7 @@ import {
   type ConnectionSecretContext,
 } from '@pertexo/integrations/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
+import { createCuratedTemplateEnvelopeContext } from '../../../infrastructure/testing/curated-template-envelope-context.mjs';
 import { createEditorWebhookRuntime } from './support/editor-webhook-runtime.js';
 import { createEditorHttpControl } from './support/editor-http-control.js';
 import {
@@ -68,6 +69,11 @@ import {
   workflowInputCasesEvidenceSchema,
   verifyWorkflowInputCasesEvidence,
 } from './support/workflow-input-cases-browser-evidence.js';
+import {
+  prepareCuratedTemplateBrowserFixture,
+  curatedTemplateBrowserEvidenceSchema,
+} from './support/curated-template-browser-fixture.js';
+import { curatedTemplateEffectsSchema } from './support/curated-template-worker-evidence.js';
 
 const enabled = process.env.EDITOR_BROWSER_INTEGRATION === 'true';
 const scenario = z
@@ -82,6 +88,7 @@ const scenario = z
     'duplication',
     'portability',
     'input-cases',
+    'curated-templates',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -112,11 +119,18 @@ function ownChild<T extends ChildProcess>(
 }
 let worker: ChildProcess;
 const httpMaster =
-  scenario === 'webhook-controlled-http' ? randomBytes(32) : undefined;
+  scenario === 'webhook-controlled-http' || scenario === 'curated-templates'
+    ? randomBytes(32)
+    : undefined;
 const httpAuthorization =
   scenario === 'webhook-controlled-http' ? `Bearer ${randomUUID()}` : undefined;
 let httpControl: ReturnType<typeof createEditorHttpControl> | undefined;
 let httpEffects: z.infer<typeof httpEffectsSchema> | undefined;
+let curatedEffects: z.infer<typeof curatedTemplateEffectsSchema> | undefined;
+let curatedFixture:
+  Awaited<ReturnType<typeof prepareCuratedTemplateBrowserFixture>> | undefined;
+let curatedEvidence:
+  z.infer<typeof curatedTemplateBrowserEvidenceSchema> | undefined;
 function assertHttpDependenciesDisposable(child: ChildProcess | undefined) {
   if (child === undefined) return;
   if (processOwners.get(child)?.diagnostics().stage !== 'disposed')
@@ -251,6 +265,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   // acquiring Redis or allowing the ordinary migrated UUID database fixture.
   beforeAll(async () => {
     await recheckOwnership();
+    if (scenario === 'curated-templates' && httpMaster !== undefined)
+      owner.acquire('curated synthetic master key', httpMaster, (key) => {
+        assertHttpDependenciesDisposable(worker);
+        key.fill(0);
+      });
     if (httpMaster !== undefined && httpAuthorization !== undefined) {
       // Reverse acquisition order: worker drains first, then sender/proxy; no
       // key material or server is disposed while attempts may still dispatch.
@@ -295,6 +314,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     );
     // Register the startup observer synchronously before the child can do work.
     worker.on('message', (value: unknown) => {
+      const curatedObservation = curatedTemplateEffectsSchema.safeParse(value);
+      if (curatedObservation.success) {
+        curatedEffects = curatedObservation.data;
+        return;
+      }
       const observation = httpEffectsSchema.safeParse(value);
       if (observation.success) {
         httpEffects = observation.data;
@@ -333,12 +357,18 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         : scenario === 'webhook-controlled-http'
           ? httpCohort
           : 'validate_activation',
-    schedules: scenario === 'schedule',
+    schedules: scenario === 'schedule' || scenario === 'curated-templates',
     ...(httpMaster === undefined
       ? {}
       : {
           webhookRuntime: (config) =>
-            createEditorWebhookRuntime(config.database, httpCohort, httpMaster),
+            createEditorWebhookRuntime(
+              config.database,
+              scenario === 'curated-templates'
+                ? 'validate_activation'
+                : httpCohort,
+              httpMaster,
+            ),
         }),
     redisUrl: redis.toString(),
     connections: {
@@ -370,10 +400,14 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             : {
                 factory: () => {
                   const keys =
-                    createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
-                      httpMaster,
-                      'connection',
-                    );
+                    scenario === 'curated-templates'
+                      ? createCuratedTemplateEnvelopeContext<ConnectionSecretContext>(
+                          httpMaster.toString('hex'),
+                        )
+                      : createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
+                          httpMaster,
+                          'connection',
+                        );
                   return {
                     encryption: new ConnectionEnvelopeEncryption(keys),
                     close: () => {
@@ -499,6 +533,33 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         api,
         webOrigin,
       );
+    if (scenario === 'curated-templates')
+      curatedFixture = await prepareCuratedTemplateBrowserFixture(
+        api,
+        webOrigin,
+        async () => {
+          await recheckOwnership();
+          const client = await api.database().connect();
+          try {
+            await client.query('begin');
+            for (const table of [
+              'workflow_portability_rollout',
+              'curated_template_rollout',
+            ]) {
+              const changed = await client.query(
+                `update app.${table} set import_enabled=true where singleton`,
+              );
+              expect(changed.rowCount).toBe(1);
+            }
+            await client.query('commit');
+          } catch (error) {
+            await client.query('rollback');
+            throw error;
+          } finally {
+            client.release();
+          }
+        },
+      );
     httpControl?.setApiOrigin(apiOrigin);
     const readiness = await fetch(`${apiOrigin}/health/ready`);
     expect(readiness.status).toBe(200);
@@ -508,6 +569,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     const mailServer = createServer((request, response) => {
       if (httpControl?.handle(request, response) === true) return;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+      if (
+        request.method === 'GET' &&
+        url.pathname === '/curated-template-seed' &&
+        scenario === 'curated-templates' &&
+        curatedFixture !== undefined
+      ) {
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify(curatedFixture.scope));
+        return;
+      }
       if (
         request.method === 'GET' &&
         url.pathname === '/workflow-portability-seed' &&
@@ -710,6 +781,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           url.pathname === '/evidence/expression-admission' ||
           url.pathname === '/evidence/duplication' ||
           url.pathname === '/evidence/portability' ||
+          url.pathname === '/evidence/curated-templates' ||
           url.pathname === '/input-cases-evidence' ||
           url.pathname === '/input-cases-rollout-evidence' ||
           url.pathname === '/evidence/readonly' ||
@@ -724,6 +796,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           try {
             const value: unknown = JSON.parse(body);
             if (
+              url.pathname === '/evidence/curated-templates' &&
+              scenario === 'curated-templates'
+            )
+              curatedEvidence =
+                curatedTemplateBrowserEvidenceSchema.parse(value);
+            else if (
               url.pathname === '/evidence/portability' &&
               scenario === 'portability'
             )
@@ -841,7 +919,18 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         });
       });
     await exitedSuccessfully(
-      startWebChild('live Vite build', [viteCli, 'build']),
+      startWebChild('live Vite build', [
+        viteCli,
+        'build',
+        ...(scenario === 'curated-templates'
+          ? [
+              '--config',
+              'vite.curated-qualification.config.ts',
+              '--mode',
+              'curated-template-qualification',
+            ]
+          : []),
+      ]),
     );
     const preview = startWebChild('live Vite preview', [
       viteCli,
@@ -879,25 +968,27 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'portability'
-              ? 'workflow-portability.spec.ts'
-              : scenario === 'input-cases'
-                ? 'workflow-input-cases.spec.ts'
-                : scenario === 'duplication'
-                  ? 'workflow-duplication.spec.ts'
-                  : scenario === 'nested-conflict'
-                    ? 'editor-execution.spec.ts'
-                    : scenario === 'receipts'
-                      ? 'editor-receipts.spec.ts'
-                      : scenario === 'run-recovery'
-                        ? 'editor-run-recovery.spec.ts'
-                        : scenario === 'expression-admission'
-                          ? 'editor-expression-admission.spec.ts'
-                          : scenario === 'readonly'
-                            ? 'editor-readonly.spec.ts'
-                            : scenario === 'schedule'
-                              ? 'editor-schedule.spec.ts'
-                              : 'editor-webhook-controlled-http.spec.ts',
+            scenario === 'curated-templates'
+              ? 'curated-templates.spec.ts'
+              : scenario === 'portability'
+                ? 'workflow-portability.spec.ts'
+                : scenario === 'input-cases'
+                  ? 'workflow-input-cases.spec.ts'
+                  : scenario === 'duplication'
+                    ? 'workflow-duplication.spec.ts'
+                    : scenario === 'nested-conflict'
+                      ? 'editor-execution.spec.ts'
+                      : scenario === 'receipts'
+                        ? 'editor-receipts.spec.ts'
+                        : scenario === 'run-recovery'
+                          ? 'editor-run-recovery.spec.ts'
+                          : scenario === 'expression-admission'
+                            ? 'editor-expression-admission.spec.ts'
+                            : scenario === 'readonly'
+                              ? 'editor-readonly.spec.ts'
+                              : scenario === 'schedule'
+                                ? 'editor-schedule.spec.ts'
+                                : 'editor-webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -917,6 +1008,37 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
+    if (scenario === 'curated-templates') {
+      if (curatedFixture === undefined || curatedEvidence === undefined)
+        throw new Error('Curated template browser evidence missing');
+      await curatedFixture.verifyEvidence(curatedEvidence);
+      await recheckOwnership();
+      const runs = await curatedFixture.executeGraphs(curatedEvidence);
+      await recheckOwnership();
+      const triggerRuns = await curatedFixture.executeTriggers(
+        curatedEvidence,
+        apiOrigin,
+      );
+      await closeChild(worker);
+      if (curatedEffects === undefined)
+        throw new Error('Controlled curated worker effects missing');
+      expect(
+        curatedEffects.observations.map(({ kind, status }) => ({
+          kind,
+          status,
+        })),
+      ).toEqual([
+        { kind: 'http', status: 200 },
+        { kind: 'slack', status: 200 },
+        { kind: 'http', status: 204 },
+        { kind: 'http', status: 500 },
+      ]);
+      expect(curatedEffects.pendingHttpResponses).toBe(0);
+      process.stdout.write(
+        `Live browser curated template verified identities ${JSON.stringify({ ...curatedEvidence, runs, triggerRuns, effects: curatedEffects })}\n`,
+      );
+      return;
+    }
     if (scenario === 'portability') {
       if (portabilityFixture === undefined || portabilityEvidence === undefined)
         throw new Error('Workflow portability evidence missing');

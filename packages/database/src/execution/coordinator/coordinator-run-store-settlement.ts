@@ -5,6 +5,42 @@ import {
   CoordinatorRunStateCorruptError,
 } from './coordinator-run-store-contract.js';
 import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
+import type { RejectedForEachDeclaration } from './coordinator-rejected-loop-proof.js';
+
+export async function persistRejectedForEachDeclarations(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    declarations: ReadonlyMap<string, RejectedForEachDeclaration>;
+  }>,
+): Promise<void> {
+  for (const [invocationKey, declaration] of input.declarations) {
+    const updated = await client.query(
+      `update app.node_runs node
+       set status='failed',output_ref=null,safe_error_code='loop_limit_exceeded',
+           completed_at=clock_timestamp(),resume_at=null,retry_due_at=null,
+           due_wakeup_at=null,wait_kind=null,updated_at=clock_timestamp()
+       from app.node_attempts attempt
+       where node.workspace_id=$1 and node.workflow_run_id=$2
+         and node.invocation_key=$3 and node.node_id=$4
+         and node.status='succeeded' and node.control_kind is null
+         and node.current_attempt_id=$5 and node.current_attempt_number=$6
+         and attempt.workspace_id=node.workspace_id and attempt.id=$5
+         and attempt.node_run_id=node.id and attempt.attempt_number=$6
+         and attempt.status='succeeded' and attempt.output_ref=node.output_ref`,
+      [
+        input.workspaceId,
+        input.runId,
+        invocationKey,
+        declaration.nodeId,
+        declaration.attemptId,
+        declaration.attemptNumber,
+      ],
+    );
+    if (updated.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+  }
+}
 
 export async function persistLoopBarrierTransitions(
   client: PoolClient,

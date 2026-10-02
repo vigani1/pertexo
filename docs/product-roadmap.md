@@ -47,8 +47,9 @@ competitor has ever offered. Later items are decision-gated options.
   [notifications plan](workspace-notifications-plan.md) is the detailed F03
   plan under accepted [ADR055](adr/055-workspace-inbox-failure-threads.md).
   CONTEXT.md remains outside the scoped delivery changes.
-- No runtime tests were executed for this planning pass. Current-code presence,
-  historical verification and new acceptance requirements are distinct.
+- The initial roadmap planning inventory did not execute runtime qualification.
+  Later feature-specific proofs are recorded in their plans. Current-code
+  presence, historical verification and new acceptance requirements are distinct.
 - Original intermittent account-link behavior remains an explicit qualification
   limitation, not “fixed” by a green run or by this roadmap.
 
@@ -187,11 +188,11 @@ only after its gate is resolved.
 | --- | --- | --- | --- | --- |
 | [F00](feature-plans/00-release-baseline.md) | Release baseline and existing-capability qualification | Existing implementation / evidence gate | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F01](feature-plans/01-editor-capability-completion.md) | Complete and qualify the existing editor surface | Frontend-led parity, not a rebuild | M | PR verified/merged: bounded local gates closed; external qualification open |
-| [F02](feature-plans/02-workflow-test-workspace.md) | Saved test cases, pinned samples and workflow regression runs | New product over existing previews | L | ADR061 first slice independently reviewed; pure PR144 checks pass and combined database qualification is recorded at `780a1542`; combined hosted release/natural-main open; pins/regression deferred |
+| [F02](feature-plans/02-workflow-test-workspace.md) | Saved test cases, pinned samples and workflow regression runs | New product over existing previews | L | ADR061 first slice released with F05 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical combined database evidence retained; pins/regression deferred |
 | [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | Delivered: ADR055 database (PR118), worker (PR119), API (PR120) and web (PR123) slices merged; local acceptance recorded; producer on |
 | [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs and artifact lifecycle | Backend foundation exists; consumer contract + frontend missing | L | Proposed |
-| [F05](feature-plans/05-workflow-portability.md) | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Duplicate released through PR142 on natural main `5f78e155`; ADR062 import/export independently reviewed at `ba997c39`, historical broad qualification at `5ada95ea` plus later repair evidence; combined database qualification at `780a1542`, hosted release open; production activation unauthorized |
-| [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Proposed |
+| [F05](feature-plans/05-workflow-portability.md) | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Duplicate released through PR142 on natural main `5f78e155`; ADR062 import/export released with F02 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical qualification/repair evidence retained; production activation unauthorized |
+| [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Locally qualified and independently reviewed; primary final review/release open; production gates off |
 | [F07](feature-plans/07-workflow-organization.md) | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Proposed |
 | [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | Proposed |
 | [F09](feature-plans/09-failure-paths-and-recovery.md) | Workflow-authored failure paths and explicit recovery UX | Existing recovery foundation + new graph behavior | XL | Proposed |

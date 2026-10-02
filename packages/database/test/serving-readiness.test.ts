@@ -68,7 +68,7 @@ const startupRow = Object.freeze({
 
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0132_workflow_portability.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0133_curated_template_origin.sql');
   });
 
   it('checks only bounded live compatibility state', async () => {
@@ -126,6 +126,23 @@ describe('steady database serving readiness', () => {
       expect(query).toHaveBeenCalledOnce();
     },
   );
+
+  it('sanitizes inventory query errors, fails closed and releases the same client', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [startupRow] })
+      .mockRejectedValueOnce(new Error('private database connection detail'));
+    const release = vi.fn(),
+      otherQuery = vi.fn();
+    await expect(
+      checkDatabaseReadiness({
+        query: otherQuery,
+        connect: () => Promise.resolve({ query, release }),
+      } as unknown as Pool),
+    ).rejects.toThrow('Workflow authoring schema is incompatible');
+    expect(release).toHaveBeenCalledOnce();
+    expect(otherQuery).not.toHaveBeenCalled();
+  });
 
   it.each([
     ['single', { expectedCompatibilityRelease: compatibilityRelease }],
@@ -196,6 +213,7 @@ describe('steady database serving readiness', () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({ rows: [startupRow] })
+      .mockResolvedValueOnce({ rows: [{ matches: true }] })
       .mockResolvedValueOnce({
         rows: [
           {
@@ -227,31 +245,114 @@ describe('steady database serving readiness', () => {
       });
 
     await expect(
-      checkDatabasePreactivationReadiness({ query } as unknown as Pool, {
-        apiRuntimeRole: 'pertexo_api',
-        expectedCompatibilityReleases: [compatibilityRelease],
-        ownerRole: 'pertexo_owner',
-        preactivationTarget: compatibilityRelease,
-        workerRuntimeRole: 'pertexo_worker',
-      }),
+      checkDatabasePreactivationReadiness(
+        {
+          query,
+          connect: () => Promise.resolve({ query, release: vi.fn() }),
+        } as unknown as Pool,
+        {
+          apiRuntimeRole: 'pertexo_api',
+          expectedCompatibilityReleases: [compatibilityRelease],
+          ownerRole: 'pertexo_owner',
+          preactivationTarget: compatibilityRelease,
+          workerRuntimeRole: 'pertexo_worker',
+        },
+      ),
     ).resolves.toMatchObject({ role: 'pertexo_api' });
-    expect(query).toHaveBeenCalledTimes(5);
+    expect(query).toHaveBeenCalledTimes(6);
     expect(String(query.mock.calls[0]?.[0])).toContain(
       'phase4_connections_compatible',
     );
     expect(String(query.mock.calls[1]?.[0])).toContain(
-      'node_compatibility_releases',
+      'curated_template_inventory_matches',
     );
     expect(String(query.mock.calls[2]?.[0])).toContain(
-      'node_compatibility_preactivation_checks',
+      'node_compatibility_releases',
     );
     expect(String(query.mock.calls[3]?.[0])).toContain(
-      'lock_node_compatibility_current_supported',
+      'node_compatibility_preactivation_checks',
     );
     expect(String(query.mock.calls[4]?.[0])).toContain(
+      'lock_node_compatibility_current_supported',
+    );
+    expect(String(query.mock.calls[5]?.[0])).toContain(
       'from app.node_compatibility_releases',
     );
   });
+
+  it.each([
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+    'pertexo_operator',
+  ])(
+    'selects the inventory witness by actual database role %s on the same client',
+    async (role) => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [{ ...startupRow, current_user: role }],
+        })
+        .mockResolvedValueOnce({ rows: [{ matches: true }] });
+      const release = vi.fn();
+      const otherQuery = vi.fn().mockResolvedValue({
+        rows: [
+          {
+            compatible: true,
+            current_role_can_read: true,
+            current_role_can_write: false,
+            worker_can_read: true,
+            worker_can_write: false,
+          },
+        ],
+      });
+      const pool = {
+        query: otherQuery,
+        connect: () => Promise.resolve({ query, release }),
+      } as unknown as Pool;
+      await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
+        role,
+      });
+      expect(query).toHaveBeenCalledTimes(
+        role === 'pertexo_api' || role === 'pertexo_worker' ? 2 : 1,
+      );
+      expect(String(query.mock.calls[0]?.[0])).not.toContain(
+        'and app.curated_template_inventory_matches(',
+      );
+      expect(release).toHaveBeenCalledOnce();
+      expect(
+        otherQuery.mock.calls.every(
+          ([sql]) =>
+            !String(sql).includes('curated_template_inventory_matches'),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    { rows: [] },
+    { rows: [{ matches: false }] },
+    { rows: [{ matches: null }] },
+    { rows: [{ matches: true }, { matches: true }] },
+  ])(
+    'fails closed for a non-authoritative inventory response %# and releases the client',
+    async ({ rows }) => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [startupRow] })
+        .mockResolvedValueOnce({ rows });
+      const release = vi.fn(),
+        otherQuery = vi.fn();
+      await expect(
+        checkDatabaseReadiness({
+          query: otherQuery,
+          connect: () => Promise.resolve({ query, release }),
+        } as unknown as Pool),
+      ).rejects.toThrow('Workflow authoring schema is incompatible');
+      expect(release).toHaveBeenCalledOnce();
+      expect(otherQuery).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects unsupported startup contracts before querying', async () => {
     const query = vi.fn();

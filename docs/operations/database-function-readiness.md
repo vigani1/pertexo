@@ -43,9 +43,14 @@ change `md5(prosrc)` and remain operational changes that block startup.
 | `app.audit_connection_secret_access(uuid,uuid,uuid,text,text,text,text)` | `62ddece0876f51039e5825ac914246d3` | definer, `pg_catalog, app`, `row_security=on`, worker-only | `0128_connection_health.sql` |
 | `app.apply_workspace_deletion_side_effects()` | `908becdc3d5fbf1ec9a1a855c97c75bf` | definer, `pg_catalog, app, pg_temp`, `row_security=on`, internal trigger | `0128_connection_health.sql` |
 | `app.reject_retention_batch_direct_mutation()` | `bd7d508fdf10cf97eb33467e8bd00f37` | invoker, `pg_catalog, pg_temp`, internal trigger | `0128_connection_health.sql` |
-| `app.create_workflow_duplicate_draft(uuid,uuid,uuid,uuid,character varying,integer,jsonb,character,character,text,uuid)` | `b70f29f6408a6ef018b23b10f45fb443` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0129_workflow_duplication.sql` |
+| `app.create_workflow_duplicate_draft(uuid,uuid,uuid,uuid,character varying,integer,jsonb,character,character,text,uuid)` | `cca6cf717f5528c781f30c2460fe9dca` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0133_curated_template_origin.sql` |
 | `app.lock_workflow_portable_version(uuid,uuid,uuid,uuid)` | `00c1b41bf997942d194f9af7819f4d15` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only scoped read lock | `0132_workflow_portability.sql` |
-| `app.create_workflow_import_draft(uuid,uuid,uuid,jsonb,character,character,text)` | `6664b5e481156f7bd185447e5e9a8e17` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0132_workflow_portability.sql` |
+| `app.create_workflow_import_draft(uuid,uuid,uuid,jsonb,character,character,text)` | `b6a6e87c4bed5ae35b3edc927a40f4e4` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0133_curated_template_origin.sql` |
+| `app.guard_curated_template_descriptor()` | `6e0fd4efae62132ea0312d9d99496039` | invoker, `pg_catalog, pg_temp`, internal trigger | `0133_curated_template_origin.sql` |
+| `app.curated_template_inventory_matches(text)` | `c24b77c0f824bd4701e2afa88404cd90` | definer, stable, `pg_catalog, pg_temp`, `row_security=on`, API/worker-only boolean | `0133_curated_template_origin.sql` |
+| `app.lock_curated_template_descriptor(text,integer)` | `f9f5e6053b93a8900abe09fe5e624bba` | definer, `pg_catalog, pg_temp`, `row_security=on`, API-only | `0133_curated_template_origin.sql` |
+| `app.curated_https_endpoint_valid(text)` | `dde56c7e4aca9c64bd745c80be97e8d5` | invoker, immutable, `pg_catalog, pg_temp`, owner-only | `0133_curated_template_origin.sql` |
+| `app.verify_curated_template_origin(jsonb,jsonb,text)` | `e7a60281a1a81b56a085ff72c4bf8bf4` | definer, `pg_catalog, pg_temp`, `row_security=on`, owner-only | `0133_curated_template_origin.sql` |
 | `app.guard_workflow_input_case_write()` | `a3108e59e200d8e251cf39c056f41dd9` | definer, `pg_catalog, pg_temp`, `row_security=on`, internal trigger | `0130_workflow_input_cases.sql` |
 | `app.reap_workflow_input_cases(integer)` | `f5a5951bcb6a7d913dac66dc15702e25` | definer, `pg_catalog, pg_temp`, `row_security=on`, maintenance-only | `0130_workflow_input_cases.sql` |
 | `app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)` | `348588ea384effc589d6c8c74686aa58` | definer, `pg_catalog, pg_temp`, `row_security=on`, maintenance/operator-only | `0130_workflow_input_cases.sql` |
@@ -157,6 +162,25 @@ historical boundaries, not permission to serve an `0131` image at combined head
 combined head; leave both new writer gates disabled until separately authorized.
 
 ## Synchronized update procedure
+
+ADR063 advances the exact head to `0133_curated_template_origin.sql` under held
+traffic, retaining all combined F02/F05 capability checks. Unmodified 0132 images
+are not compatible with that head. The curated writer remains off by default;
+both API and worker pin the helper above and immutable inventory digest
+`b2c003431f093031cdaebb97b78f8a9ddae81f8ce5fa14efd4035b639a3e9f75`.
+Its canonical length-prefixed encoding is specified in the
+[F06 contract](../feature-plans/06-template-origin-contract.md); mutable selection
+flags are excluded. Worker gains no descriptor SELECT/DML or descriptor-lock
+execution. Qualification of new-head compatible/off, owned enablement and
+compatible/off rollback remains required; inventory code alone is not cutover proof.
+
+All startup roles retain the exact curated schema, helper-body and ACL metadata
+checks. After that audit, API/worker alone invoke the bounded inventory witness
+on the same connection, selected by the database's actual `current_user`.
+Dispatcher and other roles receive no helper execution grant. Their metadata
+query must not reference the confined helper, even inside `CASE`: PostgreSQL can
+require execution permission before evaluating that branch. Missing, false,
+malformed or errored API/worker inventory results fail readiness closed.
 
 1. Treat any body edit, including formatting, as a forward-only database
    compatibility change. Do not edit a published migration.

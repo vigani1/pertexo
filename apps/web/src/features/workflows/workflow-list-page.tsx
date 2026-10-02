@@ -38,6 +38,7 @@ import {
   type WorkflowListSearch,
 } from './model/workflow-list-view';
 import { availableStarters } from './model/workflow-starters';
+import { curatedTemplateChooserEnabled } from '@/features/workflows/model/template-feature-gates';
 import { useListShortcuts } from './use-list-shortcuts';
 import { useRunWorkflow } from './use-run-workflow';
 import type { StarterDraftWriter } from './workflows.mutations';
@@ -189,6 +190,7 @@ export function WorkflowListPage({
 }>) {
   const canCreate = workspace.capabilities.includes('workflow:create');
   const scope = { apiClient, userId: user.id, workspace };
+  const templatesEnabled = curatedTemplateChooserEnabled();
   const list = useWorkflowList(
     scope,
     search.sort ?? 'updated',
@@ -314,6 +316,16 @@ export function WorkflowListPage({
             onSearchChange(updateWorkflowListSearch(search, { create: open }));
           }}
           onCreated={onCreated}
+          onChooseTemplate={
+            templatesEnabled
+              ? () => {
+                  onSearchChange(
+                    updateWorkflowListSearch(search, { create: false }),
+                  );
+                  setImporting(true);
+                }
+              : undefined
+          }
         />
       ) : null}
       <WorkflowDialogs
@@ -365,6 +377,7 @@ export function WorkflowListPage({
         userId={user.id}
         workspace={workspace}
         open={importing}
+        templatesEnabled={templatesEnabled}
         onReopen={() => {
           setImporting(true);
         }}

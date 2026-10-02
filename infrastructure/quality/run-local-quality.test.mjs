@@ -32,6 +32,7 @@ import {
   validateQualificationManifest,
 } from './run-local-quality.mjs';
 import { isolatedGitEnvironment } from '../support/git-environment.mjs';
+import { CURATED_TEMPLATE_GATES } from '../testing/curated-template-gates.mjs';
 import {
   OwnedProcessSupervisor,
   processGroupExists,
@@ -77,6 +78,10 @@ test('ordinary API integration selection excludes opt-in browser and rollout own
       .split('\n'),
   );
   assert.equal(selected.has('test/editor-browser.integration.test.ts'), false);
+  assert.equal(
+    selected.has('test/curated-template-origin-guard.integration.test.ts'),
+    false,
+  );
   assert.equal(selected.has('test/usage-browser.integration.test.ts'), false);
   assert.equal(
     selected.has('test/workflow-concurrency-browser.integration.test.ts'),
@@ -104,6 +109,31 @@ test('ordinary API integration selection excludes opt-in browser and rollout own
     selected.has('test/support/editor-browser-process.integration.test.ts'),
     true,
   );
+});
+
+test('ordinary database collection retains existing coverage but excludes the dedicated origin owner', () => {
+  const cohort = LOCAL_QUALITY_COHORTS.find(
+    ({ id }) => id === 'integration-database',
+  );
+  const arguments_ = cohort.command
+    .slice(1)
+    .filter((argument) => argument !== '--coverage');
+  arguments_[arguments_.indexOf('run')] = 'list';
+  const selected = new Set(
+    execFileSync(cohort.command[0], [...arguments_, '--filesOnly'], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 10000,
+      maxBuffer: 65536,
+    })
+      .trim()
+      .split('\n'),
+  );
+  assert.equal(
+    selected.has('test/workflow-template-origin-boundary.integration.test.ts'),
+    false,
+  );
+  assert.equal(selected.has('test/transport.integration.test.ts'), true);
 });
 
 test('current CI supplies the shared local service and specialized-suite contract', async () => {
@@ -264,6 +294,45 @@ test('qualification rejects failed, skipped, and incomplete required reports', (
           result: { passed: 1, total: 1 },
         }),
     status: 'passed',
+    ...(id === 'curated-template-qualification'
+      ? {
+          reportValidated: true,
+          evidence: 'coverage/curated/qualification.json',
+          ownedQualification: {
+            version: 1,
+            outcome: 'passed',
+            source: {
+              started: {
+                head: 'a'.repeat(40),
+                fingerprint: 'b'.repeat(64),
+                dirty: false,
+              },
+              completed: {
+                head: 'a'.repeat(40),
+                fingerprint: 'b'.repeat(64),
+                dirty: false,
+              },
+            },
+            gates: CURATED_TEMPLATE_GATES.map((gate) => ({
+              id: gate.id,
+              minimumTests: gate.minimumTests,
+              command: gate.command,
+              status: 'passed',
+              report: `${gate.id}.json`,
+              reportSha256: 'c'.repeat(64),
+              counts: {
+                success: true,
+                numTotalTests: gate.minimumTests,
+                numPassedTests: gate.minimumTests,
+                numFailedTests: 0,
+                numPendingTests: 0,
+                numTodoTests: 0,
+              },
+              result: { passed: gate.minimumTests, total: gate.minimumTests },
+            })),
+          },
+        }
+      : {}),
   }));
   const complete = {
     mode: 'qualification',
@@ -660,6 +729,16 @@ test('managed command deadline enters owned cleanup and cannot report success', 
     /timed out after 5 ms/u,
   );
   assert.equal(released, 1);
+});
+
+test('owned curated qualification can be selected without selecting internal resource operations', () => {
+  assert.deepEqual(
+    [
+      ...parseArguments(['--partial', 'curated-template-qualification'])
+        .selected,
+    ],
+    ['curated-template-qualification'],
+  );
 });
 
 test('exploratory partial runs remain explicit and reject unknown cohorts', () => {

@@ -394,6 +394,76 @@ jobs:
           path: apps/web/test-results/
           if-no-files-found: ignore
 
+  curated-templates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      COMPOSE_PROJECT_NAME:
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
+        }}-curated-templates
+    steps:
+      - name: Check out full source history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.22.0
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prepare exact archived dependencies for offline cutover builds
+        run: |
+          set -euo pipefail
+          export PNPM_CONFIG_STORE_DIR="$(pnpm store path --silent)"
+          export PNPM_CONFIG_CACHE_DIR="$RUNNER_TEMP/curated-cutover-pnpm-cache"
+          printf 'PNPM_CONFIG_STORE_DIR=%s\nPNPM_CONFIG_CACHE_DIR=%s\n' \
+            "$PNPM_CONFIG_STORE_DIR" "$PNPM_CONFIG_CACHE_DIR" >> "$GITHUB_ENV"
+          node infrastructure/testing/prepare-curated-cutover-cache.mjs
+      - name: Build workspace
+        run: pnpm build
+      - name: Install Playwright Chromium
+        run:
+          pnpm --filter @pertexo/web exec playwright install --with-deps
+          chromium
+      - name: Start owned curated-template dependencies
+        run: docker compose up -d --wait postgres redis
+      - name: Run source-bound curated-template qualification
+        env:
+          DATABASE_ADMIN_URL: postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres
+          DATABASE_MIGRATION_URL: postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
+          DATABASE_API_URL: postgresql://pertexo_api:pertexo-local-api@127.0.0.1:5432/pertexo
+          DATABASE_WORKER_URL: postgresql://pertexo_worker:pertexo-local-worker@127.0.0.1:5432/pertexo
+          DATABASE_DISPATCHER_URL: postgresql://pertexo_dispatcher:pertexo-local-dispatcher@127.0.0.1:5432/pertexo
+          REDIS_URL: redis://:pertexo-local-redis@127.0.0.1:6379/0
+          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
+        run: |
+          set -euo pipefail
+          test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
+          test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
+          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
+          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
+          export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
+            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
+            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
+            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
+          node infrastructure/testing/run-curated-template-qualification.mjs --reports-directory "$RUNNER_TEMP/curated-template-qualification"
+      - name: Stop disposable curated-template dependencies
+        if: always()
+        run: docker compose down -v --remove-orphans
+      - name: Upload curated-template qualification
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: curated-template-qualification
+          path: ${{ runner.temp }}/curated-template-qualification
+          if-no-files-found: error
+
   coverage:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -538,6 +608,7 @@ jobs:
           pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/queue-gates.json
           pnpm --filter @pertexo/database exec vitest run --config vitest.integration-coverage.config.ts --coverage \
+            --exclude test/workflow-template-origin-boundary.integration.test.ts \
             --reporter=json --outputFile=../../artifacts/database-gates.json
           pnpm --filter @pertexo/database test:coverage
           pnpm database:coverage:merge
@@ -549,6 +620,7 @@ jobs:
             --exclude test/usage-browser.integration.test.ts \
             --exclude test/workflow-concurrency-browser.integration.test.ts \
             --exclude test/connection-health-browser.integration.test.ts \
+            --exclude test/curated-template-origin-guard.integration.test.ts \
             --reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json
       - name: Prove new regression tests fail under selected mutations
         run: pnpm mutation:check

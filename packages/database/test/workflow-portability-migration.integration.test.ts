@@ -36,7 +36,7 @@ describe('additive portable workflow migration', () => {
       suffix: ['0132_workflow_portability.sql'],
     },
   ])(
-    'upgrades populated $priorHead with default-off imports, unchanged stored authoring and pinned API/worker reader readiness',
+    'preserves the historical F05 helper bodies before upgrading $priorHead to current API/worker reader readiness',
     async ({ priorHead: expectedPriorHead, stopBefore, suffix }) => {
       const fixture = createDisposableDatabaseFixture({
         adminUrl:
@@ -134,15 +134,15 @@ describe('additive portable workflow migration', () => {
         );
         expect(priorHead.rows).toEqual([{ name: expectedPriorHead }]);
         await expect(checkDatabaseReadiness(api)).rejects.toThrow();
-        expect(await migrateDatabase(config)).toEqual(suffix);
-        expect(await migrateDatabase(config)).toEqual([]);
+        // Pin the F05 migration proof at 0132, not the current image's head.
+        await copyMigrationsBefore(prior, '0133_');
+        expect(await migrateDatabase(config, prior)).toEqual(suffix);
+        expect(await migrateDatabase(config, prior)).toEqual([]);
         expect(
           await authoring.getDraft(workspace.id, retained.workflowId, actorId),
         ).toEqual(priorDraft);
         for (const role of [api, worker])
-          expect((await checkDatabaseReadiness(role)).migrationHead).toBe(
-            '0132_workflow_portability.sql',
-          );
+          await expect(checkDatabaseReadiness(role)).rejects.toThrow();
         expect(
           (
             await api.query(`select proname,md5(prosrc) digest from pg_proc where oid in (
@@ -159,6 +159,17 @@ describe('additive portable workflow migration', () => {
             digest: '00c1b41bf997942d194f9af7819f4d15',
           },
         ]);
+        expect(await migrateDatabase(config)).toEqual([
+          '0133_curated_template_origin.sql',
+        ]);
+        expect(await migrateDatabase(config)).toEqual([]);
+        for (const role of [api, worker])
+          expect((await checkDatabaseReadiness(role)).migrationHead).toBe(
+            '0133_curated_template_origin.sql',
+          );
+        expect(
+          await authoring.getDraft(workspace.id, retained.workflowId, actorId),
+        ).toEqual(priorDraft);
         const body = {
           workspaceId: workspace.id,
           actorId,

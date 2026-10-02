@@ -27,6 +27,9 @@
     },
     {
       "path": "../nodes-core/tsconfig.json"
+    },
+    {
+      "path": "../workflow-model/tsconfig.json"
     }
   ]
 }
