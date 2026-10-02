@@ -312,7 +312,7 @@ test(
             browser,
           );
           assert.equal(summary.status, 200);
-          oldContract.workflowSummarySchema.parse(summary.body);
+          oldContract.workflowSummaryResponseSchema.parse(summary.body);
           assert.equal('templateOrigin' in summary.body, false);
           assert.equal(
             (
@@ -452,7 +452,7 @@ test(
             browser,
           );
           assert.equal(summary.status, 200);
-          oldContract.workflowSummarySchema.parse(summary.body);
+          oldContract.workflowSummaryResponseSchema.parse(summary.body);
           const replay = await send('POST', `${scope}/import`, ordinary, {
             ...browser,
             'idempotency-key': ordinaryKey,
@@ -598,7 +598,7 @@ test(
             browser,
           );
           assert.equal(defaultRead.status, 200);
-          oldContract.workflowSummarySchema.parse(defaultRead.body);
+          oldContract.workflowSummaryResponseSchema.parse(defaultRead.body);
           assert.equal('templateOrigin' in defaultRead.body, false);
           const direct = await send(
             'GET',
