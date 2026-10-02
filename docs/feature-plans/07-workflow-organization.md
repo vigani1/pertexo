@@ -595,3 +595,21 @@ regressions prove stale confirmation returns a known conflict and cannot silentl
 delete a renamed target. Explicit cancel, refresh and reopening show the new
 target/revision before a fresh attempt. Manager 17/17, typecheck and scoped lint
 pass; exact uncertain retry remains owned by the shared command hook.
+
+The final bounded two-axis review through `657ecca5` closes the recovery, read
+retirement, filter sequencing, Weft and confirmation-snapshot findings. Its only
+remaining specification finding is the tag-delete confirmation's omission of
+archived assignments; the confirmation now explicitly says deletion also removes
+assignments from archived workflows, with a focused rendered-copy assertion.
+This final wording delta still requires exact-source reviewer closure.
+
+The clean-source four-gate attempt at `657ecca5` stops at database 94/95: the
+populated 0134-to-0135 upgrade case exceeds its unchanged five-second deadline.
+API, process and browser gates therefore did not run on that candidate. The
+failed manifest/report are preserved separately from the earlier failed browser
+candidate. Running only that exact upgrade case without the concurrent full web
+suite passes in 1,875 ms; this supports resource contention as a possibility,
+not a proven root cause or permission to weaken the deadline. Full web tests on
+`657ecca5` separately pass 1,080/1,080 with zero skips; lint, typecheck, CI policy
+67/67 and unchanged complexity/duplication ratchets pass. Final owned qualification
+must run alone on a new frozen clean candidate and remains open.

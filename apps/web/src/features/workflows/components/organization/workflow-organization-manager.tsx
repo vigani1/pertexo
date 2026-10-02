@@ -657,7 +657,7 @@ function TagManagement({
           onOpenChange={changeConfirmation}
           tone="destructive"
           title={`Delete ${deleteTarget.key}?`}
-          description="Up to 50 assignments can be detached together. If the tag is used by more workflows, review assignments and explicitly clean up selected workflows first."
+          description="Deletion also removes assignments from archived workflows. Up to 50 assignments can be detached together. If the tag is used by more workflows, review assignments and explicitly clean up selected workflows first."
           pending={command.pending && pendingKind === 'delete-tag'}
           pendingLabel="Deleting…"
           locked={command.pending || command.retryAvailable}

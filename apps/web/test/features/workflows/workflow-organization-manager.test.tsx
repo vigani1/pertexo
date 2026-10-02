@@ -553,6 +553,11 @@ describe('workflow organization manager', () => {
       await screen.findByRole('button', { name: 'Edit tag ops' }),
     );
     await event.click(screen.getByRole('button', { name: 'Delete tag' }));
+    expect(
+      screen.getByText(
+        /Deletion also removes assignments from archived workflows\./,
+      ),
+    ).toBeInTheDocument();
     await event.click(
       screen.getByRole('button', { name: 'Confirm delete tag' }),
     );
