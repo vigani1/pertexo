@@ -142,6 +142,32 @@ export const BUILT_PACKAGE_CONSUMER_CASES = Object.freeze([
   },
   {
     conditions: ['browser'],
+    packageDirectory: 'packages/workflow-model',
+    specifier: '@pertexo/workflow-model/callable-graph-contract',
+    requiredExports: ['workflowCallableGraphSchemaV2'],
+    requireTypes: true,
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/workflow-model',
+    specifier: '@pertexo/workflow-model/workflow-call-contract',
+    requiredExports: ['workflowCallPinSchemaV1'],
+    requireTypes: true,
+  },
+  {
+    conditions: ['browser'],
+    expected: 'browser-rejected',
+    packageDirectory: 'packages/workflow-model',
+    specifier: '@pertexo/workflow-model/workflow-call-closure',
+  },
+  {
+    packageDirectory: 'packages/workflow-model',
+    specifier: '@pertexo/workflow-model/workflow-call-closure',
+    requiredExports: ['validateWorkflowCallClosureV1'],
+    requireTypes: true,
+  },
+  {
+    conditions: ['browser'],
     expected: 'browser-rejected',
     packageDirectory: 'packages/workflow-model',
     specifier: '@pertexo/workflow-model/portability',

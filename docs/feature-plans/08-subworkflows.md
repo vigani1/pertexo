@@ -139,5 +139,17 @@ pass (35 tests), as do all 1,032 database unit tests across 135 files, database
 build/typecheck and narrow lint/format checks. It is not yet connected to child
 acceptance and grants no public client-adaptation API. No persistent F08 schema,
 child execution, restart proof or live UI evidence exists at this checkpoint.
+
+The explicit guarded Graph V2 grammar, exact child pins, required immutable
+family policy and pure closure verifier are implemented separately from retained
+V1 parsing. Closure verification counts repeated sites and loop products, rejects
+workflow-identity recursion, and enforces depth four, 64 children and 1,000
+expanded invocations. Existing structural rules and restricted path/expression
+owners validate callable selectors; the closure index contains pins, not copied
+graphs. All 1,488 model tests across 22 files pass, including retained V1 and
+hostile-input cases. Model build/typecheck, narrow lint/format, complexity and
+module-import checks pass; built browser-condition imports and dependency
+traversal prove the graph/pin leaves safe and closure leaf server-only. These
+contracts are not yet wired into publication, persistence or the editor.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
