@@ -235,5 +235,12 @@ files after additive integration of verified main `ed9116b9`. Build/typecheck,
 narrow lint/format, complexity and architecture checks pass. This helper is also
 unregistered; real prerequisite-lock retention and rollback behavior require the
 unfinished SQL owner and owned PostgreSQL race qualification.
+Fresh Call declaration plans now request an immediate durable continuation and
+leave other ready attempts unadmitted until the journal fact is consumed. The
+following advance reconciles the existing Call and admits ordinary ready work
+without declaring another child. All 660 engine tests across 46 files pass,
+including that sequencing regression and retained grammars, with build/typecheck,
+repository-root package lint/format, complexity and architecture checks. This is
+pure scheduling evidence; the SQL continuation/CAS seal remains unqualified.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.

@@ -168,7 +168,53 @@ describe('checkpoint V3 shared Call transitions', () => {
     expect(plan.nodeRunAdmissions).toEqual([]);
     expect(plan.checkpoint.readySet).toEqual([]);
     expect(plan.checkpoint.admittedInvocationKeys).toEqual([key]);
-    expect(plan.immediateContinuation).toBeUndefined();
+    expect(plan.immediateContinuation).toBe(true);
+  });
+  it('defers new sibling attempts until the durable admission fact is consumed', () => {
+    const siblingKey = invocationKey({ workflowVersionId, nodeId: 'sibling' });
+    const source = initial();
+    const checkpoint = {
+      ...source,
+      readySet: [siblingKey],
+      invocations: [
+        ...source.invocations,
+        {
+          invocationKey: siblingKey,
+          nodeId: 'sibling',
+          status: 'ready' as const,
+          attemptNumber: 0,
+        },
+      ],
+    };
+    const schedulerState: SchedulerState = {
+      deriveReadiness: false,
+      nodes: [...callOnly.nodes, { id: 'sibling', sideEffectClass: 'safe' }],
+      edges: [],
+    };
+    const plan = advance(
+      checkpoint,
+      [
+        control({ ...baseCall, status: 'awaiting_admission' }, waiting, {
+          declarationIntent: true,
+          admissionIntent: true,
+        }),
+      ],
+      { schedulerState, maximumAdmissions: 10 },
+    );
+    expect(plan.attempts).toEqual([]);
+    expect(plan.checkpoint.readySet).toEqual([siblingKey]);
+    expect(plan.checkpoint.admittedInvocationKeys).not.toContain(siblingKey);
+    expect(plan.immediateContinuation).toBe(true);
+    const next = advance(
+      plan.checkpoint,
+      [control({ ...baseCall, status: 'admitted', childRunId })],
+      { schedulerState, maximumAdmissions: 10 },
+    );
+    expect(next.attempts).toEqual([
+      expect.objectContaining({ invocationKey: siblingKey, attemptNumber: 1 }),
+    ]);
+    expect(next.workflowCalls?.declarations).toEqual([]);
+    expect(next.immediateContinuation).toBeUndefined();
   });
   it('reconciles accepted admission without declaration replay, timer, event or retry', () => {
     const plan = accepted();

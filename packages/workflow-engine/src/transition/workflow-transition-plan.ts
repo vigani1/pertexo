@@ -24,6 +24,12 @@ import {
 } from './workflow-transition-state.js';
 
 function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
+  if (
+    state.workflowCallDeclarations.some(
+      ({ status }) => status === 'awaiting_admission',
+    )
+  )
+    return true;
   const { current, graph, invocations, branchSelections, loops } = state;
   if (
     graph?.deriveReadiness !== true ||
@@ -102,7 +108,13 @@ export function buildWorkflowTransitionPlan(
     .filter(({ status }) => status === 'ready')
     .map(({ invocationKey }) => invocationKey);
   const admittedKeys =
-    cancelRequested || deadlineExpired
+    // Resolve fresh durable Call admission before admitting more node attempts.
+    // Ready entries remain unadmitted for the journal-consuming continuation.
+    cancelRequested ||
+    deadlineExpired ||
+    state.workflowCallDeclarations.some(
+      ({ status }) => status === 'awaiting_admission',
+    )
       ? []
       : boundedReadyAdmissions({
           invocations: [...invocations.values()],
