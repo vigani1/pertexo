@@ -1,11 +1,20 @@
 # ADR065 — Durable same-workspace workflow calls
 
-Status: **PROPOSED — complete design review and primary acceptance required.**
+Status: **ACCEPTED — 2026-10-02.**
+Primary accepted the complete decision at commit
+`b6c2998d29408b086c289e87058f9c67d2008ff2`, tree
+`777b902351dd2a0fee2b067993ede3bc4ab1364c`, after full source review and independent
+Standards/Spec closure. Both reviews closed ancestor cancellation fencing;
+Spec also closed definitive pre-reservation refusal classification. No actionable
+delta findings remain. This is design acceptance, not executable proof.
 Release owner globally reserved ADR065 exclusively for this F08 draft on
 2026-10-02; allocation is not decision acceptance. Parent
 [F08](../feature-plans/08-subworkflows.md); binding details and current-source
 reconciliation in [the contract proposal](../feature-plans/08-subworkflow-contract-proposal.md).
-No persistent implementation is authorized by this draft.
+Primary authorized implementation after accepting the release-qualified integrated
+F07 base `0b4e0810d405ecb0b222a2e000d363ef4fbd2380`, tree
+`27c2362ba58c9eb161335d89a6665200403d8052`, and exclusive migration0136 allocation.
+Required real-service, compatibility and rollout evidence remains open.
 
 ## Context and selected direction
 
@@ -17,10 +26,11 @@ cap one. Primary selected strict independent occupancy and fail-fast admission
 for the V1 proposal on 2026-10-02; this is not acceptance of every choice below.
 Primary subsequently selected same-workspace callable pins, the bounded type and
 expansion directions, configuration-only preview, membership-revision authority
-and immutable family-deadline policy. Complete transaction/privilege review and
-ADR acceptance remain open.
+and immutable family-deadline policy. Complete transaction/privilege design was
+accepted with the independently reviewed revision above; implementation proof
+remains open.
 
-## Proposed decision
+## Decision
 
 Use same-workspace exact immutable callable-version pins and bounded typed
 input/result contracts. A logical scoped call owns one durable admitted child or
@@ -90,9 +100,9 @@ without executable source-bound readiness/write-barrier and recovery proof.
 
 The contract proposal specifies the private interface extension, transaction and
 savepoint refusal behavior, proposed non-inverting lock/FIFO order, disclosure,
-preview and exact verification obligations. Independent design review and
-primary acceptance precede persistent code; global migration allocation is
-separate.
+preview and exact verification obligations. Independent design review, primary
+acceptance and release-owned integration/migration allocation are complete;
+executable implementation and verification remain separate gates.
 
 ## Alternatives and consequences
 

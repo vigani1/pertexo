@@ -1,17 +1,24 @@
 # F08 — Durable workflow-call contract proposal
 
-Status: **PROPOSED; not an accepted ADR or persistent implementation authority.**
+Status: **ACCEPTED design contract supporting ADR065 — 2026-10-02.**
+Primary accepted exact `b6c2998d29408b086c289e87058f9c67d2008ff2`, tree
+`777b902351dd2a0fee2b067993ede3bc4ab1364c`, after full initial/revised source review
+and original independent Standards/Spec review closure. The title/path retains
+its proposal history; recommendations below are accepted design directions.
+Implementation was subsequently authorized on the release-qualified integrated
+F07 base `0b4e0810d405ecb0b222a2e000d363ef4fbd2380`, tree
+`27c2362ba58c9eb161335d89a6665200403d8052`, with exclusive migration0136 allocation.
 Primary selected strict independent occupancy/fail-fast child admission on
 2026-10-02. Primary also selected the same-workspace pins, portable closed-object
 descriptors, proposed expansion bounds, configuration-only preview, conservative
 membership-revision authority and publication-pinned family deadline directions.
-The complete ADR, transaction/privilege contract and review closure still require
-acceptance before persistent code. Baseline: accepted F07
+Complete ADR and transaction/privilege design review are accepted; executable
+race/privilege/recovery proof is still required. Design baseline: accepted F07
 `e7d25e1f85342f10ae0044aadd408d88c49ea993`, tree
 `f3a07aea3819c384928dea7dfd7394553ce4aad3`.
 Parent: [F08](08-subworkflows.md). Decision text:
-[ADR065 draft](../adr/065-durable-parent-child-workflow-calls.md), globally reserved
-by the release owner on 2026-10-02; number allocation is not acceptance.
+[ADR065](../adr/065-durable-parent-child-workflow-calls.md), globally reserved
+by the release owner and subsequently accepted on 2026-10-02.
 
 ## Product contract and selected occupancy
 
@@ -91,7 +98,7 @@ indexes of immutable pins, never competing graph or callable-contract truth.
 
 Recommend initial hard platform bounds of four child edges deep, 64 child runs
 per root execution, and 1,000 expanded node invocations across the complete pinned
-family. These are proposal values, not current accepted quotas. Count repeated
+family. These are accepted F08 bounds, not current implemented quotas. Count repeated
 call sites and For Each products, not only distinct child versions. Reject any
 ancestor workflow identity repeated on a call path, even at another version;
 shared sibling dependencies remain legal. Validate the complete immutable closure
@@ -332,8 +339,8 @@ durable work. Explicit root replay authorizes a new current context. Automated
 schedule/webhook parents carry a workspace-owned admitted-trigger authority,
 not a fabricated human actor or publisher session. Pausing the trigger does not
 cancel its already accepted root; current child lifecycle/security gates remain.
-The exact durable authority shape and bounded revocation behavior require ADR
-acceptance; existing workflow-run rows do not contain an initiating principal.
+The durable authority direction and bounded revocation behavior are accepted;
+baseline workflow-run rows do not contain an initiating principal.
 Revision pinning deliberately rejects even a promotion that still grants
 `run:start`; primary selected this conservative product tradeoff separately from
 capacity. Current role changes increment only when changed; removal/leave,
@@ -461,6 +468,7 @@ source-bound required owned CI, coverage and separate design/implementation revi
   [ADR013](../adr/013-retention-workspace-deletion-legal-hold.md):44–80:
   terminal truth, archived admission, removed-member continuation and held purge.
 
-No migration number, schema relation or runtime flag is allocated/implemented by
-this proposal. ADR065 is reserved for the draft only. Release owner allocates the
-additive migration and authoritative integration base before persistent work.
+Release allocated additive migration0136 exclusively to F08 after globally
+checking all refs/worktrees. Primary accepted the qualified immutable integration
+base above and authorized implementation. No F08 schema/runtime behavior or
+executable proof exists at this decision-recording checkpoint.
