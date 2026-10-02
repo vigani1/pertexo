@@ -12,6 +12,11 @@ import {
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import type { resolveWorkflowFailureNotificationPolicy } from '../notifications/failure-notification-policy.js';
 import {
+  reserveWorkflowCallAdmission,
+  WorkflowCallAdmissionCorruptError,
+  type WorkflowCallAdmissionProof,
+} from '../workflow-calls/workflow-call-admission.js';
+import {
   IDEMPOTENCY_STATUS,
   RUN_STATUS,
   IdempotencyRecordCorruptError,
@@ -30,12 +35,21 @@ type AcceptancePersistence = Readonly<{
   failureNotificationPolicy: Awaited<
     ReturnType<typeof resolveWorkflowFailureNotificationPolicy>
   >;
+  callAdmission?: Extract<WorkflowCallAdmissionProof, { kind: 'allowed' }>;
 }>;
+
+type CanonicalAcceptanceInput = Omit<
+  ParsedAcceptWorkflowRunInput,
+  'triggerType'
+> & {
+  readonly triggerType:
+    ParsedAcceptWorkflowRunInput['triggerType'] | 'workflow_call';
+};
 
 /** Persist a won acceptance claim on the caller's existing workspace transaction. */
 export async function persistWorkflowRunAcceptance(
   transaction: WorkspaceTransaction,
-  parsed: ParsedAcceptWorkflowRunInput,
+  parsed: CanonicalAcceptanceInput,
   prepared: AcceptancePersistence,
 ): Promise<AcceptedWorkflowRun> {
   const {
@@ -46,7 +60,14 @@ export async function persistWorkflowRunAcceptance(
     initialCheckpointHash,
     storedRunInputJson,
     failureNotificationPolicy,
+    callAdmission,
   } = prepared;
+  if (
+    (parsed.triggerType === 'workflow_call') !==
+      (callAdmission !== undefined) ||
+    (callAdmission !== undefined && callAdmission.candidateRunId !== runId)
+  )
+    throw new WorkflowCallAdmissionCorruptError();
   const resultRef = { outboxEventId, initialCheckpointHash } as const;
   let insertedRuns;
   try {
@@ -89,7 +110,7 @@ export async function persistWorkflowRunAcceptance(
         // null operands: an absent limit preserves the caller's deadline,
         // while a later caller deadline cannot extend the version's limit.
         deadlineAt: sql`least(
-          ${parsed.deadlineAt?.toISOString() ?? null}::timestamptz,
+          ${callAdmission?.deadlineAt ?? parsed.deadlineAt?.toISOString() ?? null}::timestamptz,
           (select now() +
              (version.executable_json #>> '{graph,settings,maxRunDurationMs}')::integer
                * interval '1 millisecond'
@@ -102,6 +123,7 @@ export async function persistWorkflowRunAcceptance(
       })
       .returning({ acceptedAt: workflowRuns.createdAt });
   } catch (error: unknown) {
+    if (callAdmission !== undefined) throw error;
     throwWorkflowRunAdmissionError(error);
   }
   const insertedRun = insertedRuns[0];
@@ -142,6 +164,13 @@ export async function persistWorkflowRunAcceptance(
     payload,
     payloadChecksum: canonicalOutboxPayloadChecksum(payload),
   });
+
+  if (callAdmission !== undefined)
+    await reserveWorkflowCallAdmission(
+      transaction,
+      callAdmission,
+      outboxEventId,
+    );
 
   const completedClaims = await transaction.db
     .update(idempotencyRecords)

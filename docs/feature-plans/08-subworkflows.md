@@ -215,5 +215,16 @@ build/typecheck, narrow lint/format, module-import and complexity checks. The ne
 codec is not registered with persistence owners. Migration0136 is being assembled
 outside the executable migration directory until protected admission, writer
 fences and retention are complete; no SQL or live-service qualification is claimed.
+Canonical acceptance now has a strict internal Call branch: only parent/revision/
+invocation context is caller-provided, while the narrow SQL proof derives input,
+pin and deadline. It reuses canonical ID allocation, claim, run/event/Checkpoint V3
+and outbox persistence, then reserves before completing the claim. Recorded child
+identity bypasses fresh policy and generic receipt replay. Only explicit typed
+proof outcomes become refusals; arbitrary SQL errors retain their identity for
+the outer rollback owner. All 147 focused admission/acceptance tests and all 1,277
+database unit tests across 140 files pass. These are mocked protocol tests, not
+SQL/savepoint or race qualification. The branch remains unregistered: the SQL
+proof/reservation bodies, held prerequisite locks, candidate savepoint recovery,
+durable journal and parent CAS integration are still unfinished.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.

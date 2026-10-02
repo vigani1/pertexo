@@ -1,11 +1,20 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import { idempotencyRecords, workflowRuns } from '../../schema.js';
 import { serializeStoredExecutionValueV1 } from '../stored-execution-value.js';
 import { resolveWorkflowFailureNotificationPolicy } from '../notifications/failure-notification-policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import { prepareWorkflowRunAcceptanceInput } from './execution-acceptance-input.js';
 import { persistWorkflowRunAcceptance } from './execution-acceptance-persistence.js';
+import {
+  allocateWorkflowRunAcceptanceIdentifiers,
+  claimWorkflowRunAcceptance,
+} from './execution-acceptance-claim.js';
+import {
+  acceptCanonicalWorkflowCallRun,
+  acceptWorkflowCallRunInputSchema,
+  type AcceptWorkflowCallRunInput,
+} from './workflow-call-acceptance.js';
+import { z } from 'zod';
 import {
   acceptWorkflowRunInputSchema,
   acceptanceReplayInputSchema,
@@ -134,9 +143,13 @@ export async function readWorkflowRunAcceptanceReplay(
 
 export async function acceptWorkflowRun(
   transaction: WorkspaceTransaction,
-  input: AcceptWorkflowRunInput,
+  input: AcceptWorkflowRunInput | AcceptWorkflowCallRunInput,
 ): Promise<AcceptedWorkflowRun> {
-  const parsed = acceptWorkflowRunInputSchema.parse(input);
+  const parsed = z
+    .union([acceptWorkflowRunInputSchema, acceptWorkflowCallRunInputSchema])
+    .parse(input);
+  if (parsed.triggerType === 'workflow_call')
+    return acceptCanonicalWorkflowCallRun(transaction, parsed);
   const storedRunInputJson =
     parsed.runInput === undefined
       ? null
@@ -166,34 +179,8 @@ export async function acceptWorkflowRun(
       transaction,
       parsed.workflowId,
     );
-  const idempotencyRecordId = generatePersistedId();
-  const runId = generatePersistedId();
-  const outboxEventId = generatePersistedId();
-
-  const insertedClaim = await transaction.db
-    .insert(idempotencyRecords)
-    .values({
-      id: idempotencyRecordId,
-      workspaceId: transaction.workspaceId,
-      operation: parsed.operation,
-      scope: parsed.scope,
-      keyHash: parsed.keyHash,
-      requestHash: parsed.requestHash,
-      status: IDEMPOTENCY_STATUS.inProgress,
-      resourceId: runId,
-      resultRef: {},
-    })
-    .onConflictDoNothing({
-      target: [
-        idempotencyRecords.workspaceId,
-        idempotencyRecords.operation,
-        idempotencyRecords.scope,
-        idempotencyRecords.keyHash,
-      ],
-    })
-    .returning({ id: idempotencyRecords.id });
-
-  if (insertedClaim.length === 0) {
+  const identifiers = allocateWorkflowRunAcceptanceIdentifiers();
+  if (!(await claimWorkflowRunAcceptance(transaction, parsed, identifiers))) {
     const racedAcceptance = await readExistingAcceptance(transaction, parsed, {
       kind: 'exact_initial_checkpoint',
       hash: initialCheckpointHash,
@@ -203,9 +190,7 @@ export async function acceptWorkflowRun(
   }
 
   return persistWorkflowRunAcceptance(transaction, parsed, {
-    idempotencyRecordId,
-    runId,
-    outboxEventId,
+    ...identifiers,
     initialCheckpointJson,
     initialCheckpointHash,
     storedRunInputJson,
