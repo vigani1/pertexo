@@ -109,7 +109,8 @@ export function parseCompatibilityReleaseExpectationHistory(
   return Object.freeze(releases);
 }
 
-function expectedSetJson(
+/** Internal wire projection shared by canonical SQL compatibility owners. */
+export function expectedSetJson(
   expectations: CompatibilityReleaseExpectationSet,
 ): string {
   return JSON.stringify(

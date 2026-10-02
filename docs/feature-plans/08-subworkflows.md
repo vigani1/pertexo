@@ -283,6 +283,18 @@ files after additive integration of verified main `ed9116b9`. Build/typecheck,
 narrow lint/format, complexity and architecture checks pass. This helper is also
 unregistered; real prerequisite-lock retention and rollback behavior require the
 unfinished SQL owner and owned PostgreSQL race qualification.
+The private coordinator admission pass now validates one bounded parent/revision
+context, reuses the existing compatibility wire projection, acquires prerequisite
+locks once before all candidate savepoints, and journals each definite outcome
+after candidate release. Candidates run sequentially on the same tenant-scoped
+transaction; later operational or journal failures escape without a partial
+result or seal. A separate post-CAS adapter supplies only parent/revision and
+continuation identifiers to the SQL seal. All 22 focused orchestration tests and
+1,332 database unit tests across 142 files pass, with database build/typecheck,
+narrow lint/format, architecture and complexity checks. These are mocked adapter
+tests, not serving-role, savepoint-retention or race qualification. The existing
+coordinator commit owner is not yet wired to these operations, and no SQL grants,
+migration registration or runtime enablement changed.
 Fresh Call declaration plans now request an immediate durable continuation and
 leave other ready attempts unadmitted until the journal fact is consumed. The
 following advance reconciles the existing Call and admits ordinary ready work
