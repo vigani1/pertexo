@@ -18,25 +18,31 @@ import { WorkflowNotFoundError } from '../src/authoring/workflow-authoring-error
 import { createWorkflowAuthoringFixtureDatabase } from './support/workflow-authoring-admission.fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { createArtifactMigrationConfig } from './support/artifact-migration-fixture.js';
+import {
+  recheckCuratedFixtureOwnership,
+  verifyCuratedFixtureOwnership,
+} from '../../../infrastructure/testing/curated-template-owned-fixture.mjs';
 
-// This owned-only metadata suite deliberately has no environment/default
-// fallback to the user's 5432 instance and never enables the template writer.
-const host = '127.0.0.1:55438';
+// Explicit role URLs must match canonical task ownership; there is no default
+// or local-port fallback and this metadata suite never enables the writer.
+const enabled = process.env.F06_ORIGIN_BOUNDARY_OWNED_FIXTURE === 'true';
+const owned = enabled ? await verifyCuratedFixtureOwnership() : undefined;
 const databaseName = `pertexo_test_f06_origin_${randomUUID().replaceAll('-', '').slice(0, 24)}`;
 const fixture = createDisposableDatabaseFixture({
-  adminUrl: `postgresql://postgres:pertexo-local-superuser@${host}/postgres`,
+  adminUrl:
+    owned?.adminUrl ?? 'postgresql://disabled:disabled@invalid:1/postgres',
   connectRoles: ['pertexo_migration', 'pertexo_api', 'pertexo_worker'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
 const migrationUrl = fixture.databaseUrl(
-  `postgresql://pertexo_migration:pertexo-local-migration@${host}/pertexo`,
+  owned?.migrationUrl ?? 'postgresql://disabled:disabled@invalid:1/pertexo',
 );
 const apiUrl = fixture.databaseUrl(
-  `postgresql://pertexo_api:pertexo-local-api@${host}/pertexo`,
+  owned?.apiUrl ?? 'postgresql://disabled:disabled@invalid:1/pertexo',
 );
 const workerUrl = fixture.databaseUrl(
-  `postgresql://pertexo_worker:pertexo-local-worker@${host}/pertexo`,
+  owned?.workerUrl ?? 'postgresql://disabled:disabled@invalid:1/pertexo',
 );
 const candidateDigest =
   '2b2a99f8237d64dd64a19b0b12551ccf72338205de8f360e4d4c6f883356a393';
@@ -123,6 +129,9 @@ async function cleanup() {
   }
   if (created) {
     try {
+      if (owned === undefined)
+        throw new Error('Curated boundary ownership missing');
+      await recheckCuratedFixtureOwnership(owned);
       await fixture.drop();
       created = false;
     } catch (error) {
@@ -136,7 +145,7 @@ async function cleanup() {
     );
 }
 
-describe.skipIf(process.env.F06_ORIGIN_BOUNDARY_OWNED_FIXTURE !== 'true')(
+describe.skipIf(!enabled)(
   `0133 owned PostgreSQL metadata boundaries (${candidateDigest.slice(0, 12)}; owner-seeded origin; writer OFF)`,
   () => {
     beforeAll(async () => {

@@ -1,25 +1,46 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { migrateDatabase } from '@pertexo/database/testing';
+import {
+  curatedDatabaseUrl,
+  recheckCuratedFixtureOwnership,
+  verifyCuratedFixtureOwnership,
+  type CuratedOwnedFixture,
+} from '../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
 
 /** Opt-in caller only. Never consults DATABASE_URL or a default/user port. */
 export function createCuratedOriginOwnedDatabase() {
   const name = `pertexo_test_f06_guard_${randomUUID().replaceAll('-', '').slice(0, 24)}`;
-  const host = '127.0.0.1:55438';
-  const adminUrl = `postgresql://postgres:pertexo-local-superuser@${host}/postgres`;
-  const migrationUrl = `postgresql://pertexo_migration:pertexo-local-migration@${host}/${name}`;
-  const apiUrl = `postgresql://pertexo_api:pertexo-local-api@${host}/${name}`;
-  const workerUrl = `postgresql://pertexo_worker:pertexo-local-worker@${host}/${name}`;
-  const inspectorUrl = `postgresql://postgres:pertexo-local-superuser@${host}/${name}`;
+  let owned: CuratedOwnedFixture | undefined;
+  const connection = (
+    role: 'adminUrl' | 'migrationUrl' | 'apiUrl' | 'workerUrl',
+  ) => {
+    if (owned === undefined)
+      throw new Error('Curated database ownership has not been attested');
+    return curatedDatabaseUrl(owned[role], name);
+  };
   let created = false;
   return {
     name,
-    migrationUrl,
-    apiUrl,
-    workerUrl,
-    inspectorUrl,
+    get migrationUrl() {
+      return connection('migrationUrl');
+    },
+    get apiUrl() {
+      return connection('apiUrl');
+    },
+    get workerUrl() {
+      return connection('workerUrl');
+    },
+    get inspectorUrl() {
+      return connection('adminUrl');
+    },
     async create() {
-      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      owned = await verifyCuratedFixtureOwnership();
+      const admin = new Pool({
+        connectionString: owned.adminUrl,
+        max: 1,
+        connectionTimeoutMillis: 3000,
+      });
       try {
         await admin.query(`create database "${name}" owner pertexo_owner`);
         created = true;
@@ -31,7 +52,7 @@ export function createCuratedOriginOwnedDatabase() {
         await admin.end();
       }
       await migrateDatabase({
-        connectionString: migrationUrl,
+        connectionString: connection('migrationUrl'),
         ownerRole: 'pertexo_owner',
         apiRuntimeRole: 'pertexo_api',
         workerRuntimeRole: 'pertexo_worker',
@@ -42,7 +63,13 @@ export function createCuratedOriginOwnedDatabase() {
       });
     },
     async drop() {
-      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      if (!created || owned === undefined) return;
+      await recheckCuratedFixtureOwnership(owned);
+      const admin = new Pool({
+        connectionString: owned.adminUrl,
+        max: 1,
+        connectionTimeoutMillis: 3000,
+      });
       try {
         if (created) {
           const deadline = Date.now() + 10_000;

@@ -2,19 +2,23 @@ import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {
+  curatedDatabaseUrl,
+  curatedRedisUrl,
+  verifyCuratedFixtureOwnership,
+} from './curated-template-owned-fixture.mjs';
 
 // Test-owned process adapter, deliberately using the compiled full API app and
 // the established Better Auth real fixture composition (not a parallel auth).
 const [source, apiUrl, redisUrl] = process.argv.slice(2);
 const databaseUrl = new URL(apiUrl),
   redis = new URL(redisUrl);
+const owned = await verifyCuratedFixtureOwnership();
 if (
-  databaseUrl.hostname !== '127.0.0.1' ||
-  databaseUrl.port !== '55438' ||
   !/^\/pertexo_test_f06_cutover_[a-f0-9]{24}$/u.test(databaseUrl.pathname) ||
-  redis.hostname !== '127.0.0.1' ||
-  redis.port !== '56382' ||
-  redis.pathname !== '/12'
+  curatedDatabaseUrl(owned.apiUrl, databaseUrl.pathname.slice(1)) !== apiUrl ||
+  redis.pathname !== '/12' ||
+  curatedRedisUrl(owned.redisUrl, 12) !== redisUrl
 )
   throw new Error('Cutover child refuses non-owned resources');
 const require = createRequire(path.join(source, 'apps/api/package.json'));

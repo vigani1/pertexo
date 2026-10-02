@@ -1,7 +1,12 @@
-import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import {
+  curatedDatabaseUrl,
+  curatedRedisUrl,
+  recheckCuratedFixtureOwnership,
+  verifyCuratedFixtureOwnership,
+} from './curated-template-owned-fixture.mjs';
 
 export async function createCuratedCutoverResources(repository) {
   // pg/ioredis are declared by apps/api, the explicit fixture dependency owner.
@@ -10,40 +15,9 @@ export async function createCuratedCutoverResources(repository) {
   const require = createRequire(path.join(repository, 'apps/api/package.json'));
   const { Pool } = require('pg'),
     Redis = require('ioredis').default;
-  const project = 'pertexo-f06-20261002';
-  for (const [service, port] of [
-    ['postgres', '55438'],
-    ['redis', '56382'],
-  ]) {
-    const item = JSON.parse(
-      execFileSync('docker', ['inspect', `${project}-${service}-1`], {
-        encoding: 'utf8',
-      }),
-    )[0];
-    if (
-      item.Config.Labels['com.docker.compose.project'] !== project ||
-      !item.State.Running
-    )
-      throw new Error('Cutover refuses unowned service');
-    const bindings = Object.values(item.NetworkSettings.Ports)
-      .flat()
-      .filter(Boolean);
-    if (
-      !bindings.some(
-        (binding) =>
-          binding.HostIp === '127.0.0.1' && binding.HostPort === port,
-      )
-    )
-      throw new Error('Cutover service loopback identity mismatch');
-    const expectedId =
-      service === 'postgres'
-        ? 'beaa5da4f35218122f2f262fbfc984c82f8860545b975add22d13fc42c3e3255'
-        : '7848913853c19c3d9d069fa1f641e6b475963ce75f37ba191b2ad661b7e2f5f5';
-    if (item.Id !== expectedId)
-      throw new Error(`Cutover ${service} identity changed`);
-  }
+  const owned = await verifyCuratedFixtureOwnership();
   const name = `pertexo_test_f06_cutover_${randomUUID().replaceAll('-', '').slice(0, 24)}`;
-  const redisUrl = 'redis://:pertexo-local-redis@127.0.0.1:56382/12';
+  const redisUrl = curatedRedisUrl(owned.redisUrl, 12);
   const redis = new Redis(redisUrl, {
     lazyConnect: true,
     connectTimeout: 3000,
@@ -55,26 +29,32 @@ export async function createCuratedCutoverResources(repository) {
   let acquired = false,
     created = false;
   const admin = new Pool({
-    connectionString:
-      'postgresql://postgres:pertexo-local-superuser@127.0.0.1:55438/postgres',
+    connectionString: owned.adminUrl,
     max: 1,
     connectionTimeoutMillis: 3000,
   });
-  const apiUrl = `postgresql://pertexo_api:pertexo-local-api@127.0.0.1:55438/${name}`;
-  const migrationUrl = `postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:55438/${name}`;
+  const apiUrl = curatedDatabaseUrl(owned.apiUrl, name);
+  const migrationUrl = curatedDatabaseUrl(owned.migrationUrl, name);
   const inspector = new Pool({
-    connectionString: `postgresql://postgres:pertexo-local-superuser@127.0.0.1:55438/${name}`,
+    connectionString: curatedDatabaseUrl(owned.adminUrl, name),
     max: 1,
     connectionTimeoutMillis: 3000,
   });
   async function close() {
     const failures = [];
+    let stillOwned = true;
+    try {
+      await recheckCuratedFixtureOwnership(owned);
+    } catch (error) {
+      stillOwned = false;
+      failures.push(error);
+    }
     try {
       await inspector.end();
     } catch (error) {
       failures.push(error);
     }
-    if (created)
+    if (created && stillOwned)
       try {
         const deadline = Date.now() + 10000;
         for (;;) {
@@ -103,7 +83,7 @@ export async function createCuratedCutoverResources(repository) {
       } catch (error) {
         failures.push(error);
       }
-    if (acquired)
+    if (acquired && stillOwned)
       try {
         const removed = await redis.eval(
           "if redis.call('GET',KEYS[1])~=ARGV[1] then return redis.error_reply('owner fence mismatch') end; local keys=redis.call('KEYS','*'); for _,key in ipairs(keys) do if key~=KEYS[1] and string.sub(key,1,17)~='pertexo:abuse:v1:' then return redis.error_reply('unexpected owned namespace key') end end; for _,key in ipairs(keys) do redis.call('DEL',key) end; return #keys",
