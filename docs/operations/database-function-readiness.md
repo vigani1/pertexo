@@ -174,6 +174,14 @@ flags are excluded. Worker gains no descriptor SELECT/DML or descriptor-lock
 execution. Qualification of new-head compatible/off, owned enablement and
 compatible/off rollback remains required; inventory code alone is not cutover proof.
 
+All startup roles retain the exact curated schema, helper-body and ACL metadata
+checks. After that audit, API/worker alone invoke the bounded inventory witness
+on the same connection, selected by the database's actual `current_user`.
+Dispatcher and other roles receive no helper execution grant. Their metadata
+query must not reference the confined helper, even inside `CASE`: PostgreSQL can
+require execution permission before evaluating that branch. Missing, false,
+malformed or errored API/worker inventory results fail readiness closed.
+
 1. Treat any body edit, including formatting, as a forward-only database
    compatibility change. Do not edit a published migration.
 2. Prefer a new function signature or name when a zero-downtime rolling overlap
