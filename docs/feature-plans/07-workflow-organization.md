@@ -2,6 +2,8 @@
 
 Status: ADR064/contract and qualified F06 handoff accepted; persistent continuation
 authorized on allocated exact integration base; implementation/qualification open.
+Backend and frontend are implemented with local slice evidence; whole-feature
+independent review, final clean-source owned qualification and release remain open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Metadata backend + frontend. Relative size: **M**, not a calendar estimate.
 
@@ -493,3 +495,31 @@ for empty/singleton and malformed arrays; both outcomes are measured rather than
 adding unreachable nullish-fallback exclusions. No thresholds or exclusion counts
 were relaxed. Producer reports, the source witness and strict risk report are
 preserved outside the checkout in the dated local F07 evidence directory.
+
+Required F07 CI ownership is registered separately from accepted F06: the exact
+four gates require database 95 (94 core cases plus the existing sparse-maintenance
+EXPLAIN case), API 20, compiled process 6 and live browser 4, all with zero skips.
+The shared evidence engine retains fresh exclusive reports, stable clean source,
+owned process barriers, rechecked service attestation and actual report-byte hashes.
+F06 commands and minimum-count behavior are unchanged. The F07 process gate pins
+its compiled compatible artifact to the actual qualification HEAD, never a stale
+source-equivalence claim. Required CI history, frozen dependency preparation,
+normal build, Chromium installation, explicit owned role URLs including
+maintenance, always-cleanup and complete strict report upload are policy checked.
+Ordinary integration excludes exactly these dedicated opt-in suites, retaining
+ordinary HTTP/lifecycle tests. Policy and evidence unit checks pass 67/67; lint,
+format, complexity and unchanged duplication checks pass. This registers the lane;
+it is not evidence that hosted CI has run or that the final clean-source local
+four-gate qualification has completed.
+
+The updated compiled-source checkpoint `a2a8172c` independently passes actual
+restart/OFF qualification 6/6, including rebuilt contracts, with all process
+barriers before zero-connection database removal and token-fenced Redis DB12
+cleanup. The older 74826 observation remains historical, not evidence for later
+contracts. An expanded role/archive/populated-OFF browser matrix locally passes
+4/4, but its startup/cleanup regression repair and final source freeze remain open.
+Earlier failed matrix attempts preserved four databases and did not emit creation
+witnesses sufficient for authorized automated recovery; they remain preserved.
+The positively identified stale owned preview process was disposed through the
+canonical group barrier. No unknown listener was killed, no broad database drop
+occurred, and no missing failed raw report or creation witness is fabricated.

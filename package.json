@@ -58,7 +58,7 @@
   "scripts": {
     "build": "tsc --build --pretty false && pnpm --filter @pertexo/web build",
     "built-exports:check": "node --test infrastructure/checks/validate-built-package-exports.test.mjs && node infrastructure/checks/validate-built-package-exports.mjs",
-    "ci:gates:check": "node --test infrastructure/checks/validate-ci-gates.test.mjs && node infrastructure/checks/validate-ci-gates.mjs",
+    "ci:gates:check": "node --test infrastructure/checks/validate-ci-gates.test.mjs infrastructure/testing/curated-template-gates.test.mjs infrastructure/testing/workflow-organization-gates.test.mjs && node infrastructure/checks/validate-ci-gates.mjs",
     "architecture:check": "node --test infrastructure/checks/validate-project-references.test.mjs infrastructure/checks/validate-module-imports.test.mjs && node infrastructure/checks/validate-project-references.mjs && node infrastructure/checks/validate-module-imports.mjs",
     "check": "pnpm format:check && pnpm docs:check && pnpm ci:gates:check && pnpm runtime:check && pnpm quality:local:check && pnpm architecture:check && pnpm dependencies:check && pnpm database:schema:check && pnpm build && pnpm built-exports:check && pnpm lint && pnpm complexity:check && pnpm duplication:check && pnpm contracts:check && pnpm typecheck && pnpm test",
     "complexity:check": "node infrastructure/quality/validate-complexity.mjs && node --test infrastructure/quality/validate-complexity.test.mjs",

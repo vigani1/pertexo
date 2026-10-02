@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -17,7 +18,6 @@ import {
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const oldRef = '936612f26567f760c83e41c13e4c7fc7b620e69f';
-const compatibleRef = '74826ea1c5d2aa8c07d1d0c70edff1889a3fcf71';
 async function moduleOf(artifact, specifier) {
   const require = createRequire(
     path.join(artifact.source, 'apps/api/package.json'),
@@ -75,6 +75,19 @@ test(
     timeout: 600000,
   },
   async () => {
+    const compatibleRef = process.env.F07_PROCESS_COMPATIBLE_SOURCE;
+    assert.match(
+      compatibleRef ?? '',
+      /^[a-f0-9]{40}$/u,
+      'Root must supply exact frozen organization-compatible source',
+    );
+    assert.equal(
+      execFileSync('git', ['rev-parse', `${compatibleRef}^{commit}`], {
+        cwd: repository,
+        encoding: 'utf8',
+      }).trim(),
+      compatibleRef,
+    );
     await verifyCuratedFixtureOwnership();
     const artifacts = [],
       processes = [];
