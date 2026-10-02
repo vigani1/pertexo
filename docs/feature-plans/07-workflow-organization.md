@@ -2,8 +2,9 @@
 
 Status: ADR064/contract and qualified F06 handoff accepted; persistent continuation
 authorized on allocated exact integration base; implementation/qualification open.
-Backend and frontend are implemented with local slice evidence; whole-feature
-independent review, final clean-source owned qualification and release remain open.
+Backend and frontend are implemented with local slice evidence and closed
+whole-feature independent review. Local acceptance requires the final frozen
+source-bound four-gate receipt; release/merge and postmerge CI remain separate.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Metadata backend + frontend. Relative size: **M**, not a calendar estimate.
 
@@ -136,8 +137,8 @@ This context informs the outcome, not Pertexo's implementation or billing policy
       name/uniqueness/command decisions remain required before its later slice.
 - [x] Slice-1 contracts and failure/security model reviewed; concrete folder/bulk
       implementation reviews and all execution evidence remain open.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
+- [x] Backend behavior implemented and independently verified where needed.
+- [x] Frontend behavior implemented and independently verified where needed.
 - [ ] Real integrated acceptance evidence recorded.
 - [ ] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
@@ -601,7 +602,9 @@ retirement, filter sequencing, Weft and confirmation-snapshot findings. Its only
 remaining specification finding is the tag-delete confirmation's omission of
 archived assignments; the confirmation now explicitly says deletion also removes
 assignments from archived workflows, with a focused rendered-copy assertion.
-This final wording delta still requires exact-source reviewer closure.
+The specification reviewer closes this last P2 at
+`02a026e128053659113f8629131b54f705d2be68`: both axes now have zero remaining
+actionable findings. This is source review, not qualification or release acceptance.
 
 The clean-source four-gate attempt at `657ecca5` stops at database 94/95: the
 populated 0134-to-0135 upgrade case exceeds its unchanged five-second deadline.
@@ -613,3 +616,12 @@ not a proven root cause or permission to weaken the deadline. Full web tests on
 `657ecca5` separately pass 1,080/1,080 with zero skips; lint, typecheck, CI policy
 67/67 and unchanged complexity/duplication ratchets pass. Final owned qualification
 must run alone on a new frozen clean candidate and remains open.
+
+Final qualification disposition is external to the frozen Git source: the owned
+runner's immutable `qualification.json` must identify the same clean start/end
+HEAD and source fingerprint, all four passing producer reports with verified byte
+hashes and exact database/API/process/browser counts 95/20/6/4 without skips.
+The final handoff receipt records that candidate and disposition, rather than
+rebinding any historical report to a later commit. Until that receipt passes,
+integrated acceptance remains unchecked above. Hosted required checks, merge,
+natural postmerge evidence and deployment are not local qualification claims.
