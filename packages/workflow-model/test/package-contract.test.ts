@@ -70,6 +70,7 @@ describe('workflow-model package contract', () => {
       'workflowDraftRepresentationTag',
       'workflowExecutableChecksum',
       'workflowExecutableProjection',
+      'workflowForEachBoundsV2',
       'workflowIntegrationUsage',
       'workflowRetainedExecutableChecksum',
     ]);

@@ -29,6 +29,7 @@ export {
   workflowCompatibilityReport,
   workflowControlOutputKind,
   workflowControlOutputNodeIdsV2,
+  workflowForEachBoundsV2,
   workflowDefinitionPlacementIssues,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,

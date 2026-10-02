@@ -661,6 +661,7 @@ export async function loadCoordinatorAdvanceState(
         runId,
         checkpoint,
         freshSemanticFacts(observations),
+        row.executable_json,
       );
       const hasFreshCancellation = assertPersistedControlState(
         checkpoint,

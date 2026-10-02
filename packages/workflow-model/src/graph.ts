@@ -47,6 +47,7 @@ export {
 export {
   workflowControlOutputKind,
   workflowControlOutputNodeIdsV2,
+  workflowForEachBoundsV2,
   type WorkflowControlOutputKind,
 } from './graph/control-output-selection.js';
 export {
