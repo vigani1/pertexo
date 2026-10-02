@@ -18,6 +18,20 @@ export type WorkspaceTransaction = Readonly<{
   workspaceId: WorkspaceId;
 }>;
 
+/**
+ * Adapt an already tenant-scoped transaction without owning its lifecycle.
+ * The caller must have established this workspace on this exact client; this
+ * adapter does not begin, commit, roll back, change scope or release it.
+ * Keep internal: possession of a workspace identifier is not tenant authority.
+ */
+export function workspaceTransactionFromClient(
+  client: PoolClient,
+  workspaceId: WorkspaceId,
+): WorkspaceTransaction {
+  const db = drizzle(client, { schema: databaseSchema });
+  return Object.freeze({ db, workspaceId });
+}
+
 export type WorkspaceTransactionOptions = Readonly<{
   signal?: AbortSignal;
   statementTimeoutMillis?: number;
@@ -368,10 +382,7 @@ export async function withWorkspaceTransaction<T>(
   return withTenantScopedClient(
     pool,
     { workspaceId },
-    async (client) => {
-      const db = drizzle(client, { schema: databaseSchema });
-      return operation(Object.freeze({ db, workspaceId }));
-    },
+    (client) => operation(workspaceTransactionFromClient(client, workspaceId)),
     options,
   );
 }
@@ -387,10 +398,7 @@ export async function withWorkspaceReadTransaction<T>(
   return withTenantScopedReadClient(
     pool,
     { workspaceId },
-    async (client) => {
-      const db = drizzle(client, { schema: databaseSchema });
-      return operation(Object.freeze({ db, workspaceId }));
-    },
+    (client) => operation(workspaceTransactionFromClient(client, workspaceId)),
     options,
   );
 }

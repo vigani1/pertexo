@@ -132,7 +132,12 @@ traversal pass. The exact browser allowlist exposes only the descriptor contract
 runtime validation remains behind the server model facade. Post-staging React
 Doctor is unchanged at 89/100 with 12 existing F07 advisories and no new callable
 diagnostics. This field is not yet wired into a callable workflow graph and does
-not expose a runnable placeholder. No persistent F08 schema, child execution,
-restart proof or live UI evidence exists at this checkpoint.
+not expose a runnable placeholder. The internal same-client transaction adapter
+now supplies both existing workspace transaction wrappers without owning scope
+or connection lifecycle. Its focused regression and transaction engine tests
+pass (35 tests), as do all 1,032 database unit tests across 135 files, database
+build/typecheck and narrow lint/format checks. It is not yet connected to child
+acceptance and grants no public client-adaptation API. No persistent F08 schema,
+child execution, restart proof or live UI evidence exists at this checkpoint.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
