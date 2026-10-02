@@ -25,8 +25,19 @@ import {
   assertCuratedQualification,
   validateCuratedQualificationDirectory,
 } from '../testing/curated-template-gates.mjs';
+import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-gates.mjs';
 
 export { terminateProcessTree };
+
+function organizationExclusions(workspace) {
+  return WORKFLOW_ORGANIZATION_GATES.filter(
+    ({ command }) => command[command.indexOf('--filter') + 1] === workspace,
+  ).flatMap(({ command }) =>
+    command
+      .filter((argument) => argument.endsWith('.test.ts'))
+      .flatMap((file) => ['--exclude', file]),
+  );
+}
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -107,6 +118,7 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
       '--coverage',
       '--exclude',
       'test/workflow-template-origin-boundary.integration.test.ts',
+      ...organizationExclusions('@pertexo/database'),
     ],
     after: [
       ['pnpm', '--filter', '@pertexo/database', 'test:coverage'],
@@ -151,6 +163,7 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
       'test/connection-health-browser.integration.test.ts',
       '--exclude',
       'test/curated-template-origin-guard.integration.test.ts',
+      ...organizationExclusions('@pertexo/api'),
       '--reporter=default',
     ],
   }),
@@ -462,16 +475,28 @@ export function assertCiLocalQualityContract(source) {
     throw new Error(
       `CI/local quality service lifecycle diverged: expected ${JSON.stringify(expectedCiServiceLifecycleCommands)}, found ${JSON.stringify(actualLifecycleCommands)}`,
     );
-  const cleanupCommands = Object.values(parsed.jobs ?? {})
-    .flatMap((job) => job.steps ?? [])
-    .filter(
-      (step) =>
-        step.name?.startsWith('Stop disposable') &&
-        step.if === 'always()' &&
-        step.run === 'docker compose down -v --remove-orphans',
-    );
-  if (cleanupCommands.length !== 5)
-    throw new Error('CI service jobs must retain five exact owned cleanups');
+  const cleanupJobs = Object.entries(parsed.jobs ?? {})
+    .flatMap(([name, job]) =>
+      (job.steps ?? [])
+        .filter(
+          (step) =>
+            step.name?.startsWith('Stop disposable') &&
+            step.if === 'always()' &&
+            step.run === 'docker compose down -v --remove-orphans',
+        )
+        .map(() => name),
+    )
+    .sort();
+  const expectedCleanupJobs = [
+    'browser',
+    'curated-templates',
+    'workflow-organization-qualification',
+    'integration',
+    'recovery',
+    'compatibility',
+  ].sort();
+  if (JSON.stringify(cleanupJobs) !== JSON.stringify(expectedCleanupJobs))
+    throw new Error('CI service jobs must retain their exact owned cleanups');
   return Object.fromEntries(
     Object.entries(parsed.env).map(([name, value]) => [name, String(value)]),
   );

@@ -32,7 +32,8 @@ integration and labels those reviews `referenced-only`; it does not claim they
 ran.
 The manifest includes unit/static quality, coverage, a repeated isolated local
 performance baseline, real-service integration, SSE resilience, worker
-transport resilience, API and database compatibility, deployment, image, and
+transport resilience, API and database compatibility, owned curated-template
+qualification, deployment, image, and
 exercise checks. The performance evidence is written beside the manifest, uses
 the same owned services, and is validated against the schema-v5 evidence
 contract before its exclusive output file is accepted. The full runner validates
@@ -45,6 +46,7 @@ For investigation, select cohorts explicitly:
 ```bash
 pnpm quality:local -- --partial quality
 pnpm quality:local -- --partial integration-api,sse-resilience
+pnpm quality:local -- --partial curated-template-qualification
 ```
 
 A partial run starts required service prerequisites automatically, records all

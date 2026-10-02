@@ -29,6 +29,28 @@ export function nodeSummaryGateReport(summary) {
   };
 }
 
+export function sanitizedCutoverFailure(error, depth = 0) {
+  if (depth > 4 || error === null || typeof error !== 'object') return [];
+  // Never emit arbitrary messages, stacks, arguments, endpoints or environment.
+  // Artifact failures expose only fixed stage names and compiler/package codes.
+  const codes =
+    typeof error.message === 'string'
+      ? (error.message.match(
+          /\b(?:CURATED_ARTIFACT_(?:ARCHIVE|EXTRACT|OFFLINE_INSTALL|COMPILE)_FAILED|ERR_PNPM_[A-Z_]+|TS[0-9]{4,5}|ENOENT|EACCES|EPERM)\b/gu,
+        ) ?? [])
+      : [];
+  return [
+    ...new Set([
+      ...codes,
+      ...sanitizedCutoverFailure(error.cause, depth + 1),
+      ...(Array.isArray(error.errors)
+        ? error.errors
+            .slice(0, 8)
+            .flatMap((failure) => sanitizedCutoverFailure(failure, depth + 1))
+        : []),
+    ]),
+  ].slice(0, 8);
+}
 /** CLI reporter consumes the real test stream, never console-derived pass markers. */
 export default async function* curatedCutoverGateReporter(events) {
   const output = process.env.CURATED_CUTOVER_GATE_REPORT;
@@ -39,8 +61,10 @@ export default async function* curatedCutoverGateReporter(events) {
     if (event.type === 'test:summary') summary = event.data;
     if (event.type === 'test:stdout' || event.type === 'test:stderr')
       yield event.data.message;
-    if (event.type === 'test:fail')
-      yield `Cutover test failed: ${event.data.name}\n`;
+    if (event.type === 'test:fail') {
+      const diagnostics = sanitizedCutoverFailure(event.data.details?.error);
+      yield `Cutover test failed: ${event.data.name}; diagnostics=${diagnostics.join(',') || 'unclassified'}\n`;
+    }
   }
   const report = nodeSummaryGateReport(summary);
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, {

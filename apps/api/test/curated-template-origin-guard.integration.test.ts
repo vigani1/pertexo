@@ -522,11 +522,18 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
           )
             throw new Error('Invalid constraint metadata');
           const client = await inspector.connect();
-          // Readiness is a pool-owned API; this test proxy routes all its queries
-          // to the same real transaction to observe uncommitted DDL and SET ROLE.
+          // Readiness checks out a connection for metadata and the role-owned
+          // inventory probe. Reuse this real transaction for both APIs; this
+          // fixture alone owns rollback and release of its already-held lease.
           const transactionPool = new Proxy(inspector, {
             get(pool, key, receiver) {
               if (key === 'query') return client.query.bind(client);
+              if (key === 'connect')
+                return () =>
+                  Promise.resolve({
+                    query: client.query.bind(client),
+                    release: () => undefined,
+                  });
               const value: unknown = Reflect.get(pool, key, receiver);
               return value;
             },

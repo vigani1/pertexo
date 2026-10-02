@@ -92,7 +92,6 @@ describe('browser template setup versus registered server policy', () => {
     ['https://@example.test', true],
     ['https://example.test#', true],
     ['https://\u200D.example', false],
-    ['https://xn--a.example', false],
     ['https://example.test?%FF=value', true],
     ['https://example.test?%00=value', true],
     ['https://example.test?%C5%BFecret=value', false],
@@ -112,6 +111,27 @@ describe('browser template setup versus registered server policy', () => {
       ).toBe(false);
     },
   );
+
+  it('keeps the ordinary IDNA oracle runtime-owned while curated v1 rejects punycode', () => {
+    const value = 'https://xn--a.example';
+    // Node 24.15 rejects this IDNA input; 24.21 accepts it. The existing
+    // registered policy delegates URL syntax to WHATWG, not curated grammar.
+    let accepted = false;
+    try {
+      accepted = new URL(value).protocol === 'https:';
+    } catch {
+      // Invalid WHATWG input remains invalid for the registered node.
+    }
+    expect(
+      HTTP_REQUEST_DEFINITION_REGISTRATION.configSchema.safeParse({
+        ...httpConfig,
+        url: value,
+      }).success,
+    ).toBe(accepted);
+    expect(
+      validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value).ok,
+    ).toBe(false);
+  });
 
   it.each([
     'https://example.test',
