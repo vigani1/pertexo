@@ -46,6 +46,7 @@ import type {
   WorkflowCheckpointV3,
   WorkflowCallStateV1,
 } from './workflow-call-state.js';
+import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 
 /** Immutable physical attempt output; retained V1/V2 only admit these references. */
 export type AttemptOutputReference =
@@ -311,6 +312,21 @@ export interface WorkflowTransitionPlan {
   readonly events: readonly EngineEventPlan[];
   readonly nodeRunAdmissions: readonly NodeRunAdmissionPlan[];
   readonly attempts: readonly AttemptAdmissionPlan[];
+  /** V3 terminal value is transient; persistence uses the existing protected codec. */
+  readonly callableResult?:
+    | Readonly<{
+        kind: 'succeeded';
+        value: Readonly<Record<string, JsonValue>>;
+        sources: readonly Readonly<{
+          invocationKey: string;
+          output: OutputReference;
+        }>[];
+      }>
+    | Readonly<{
+        kind: 'failed';
+        reasonCode:
+          'workflow.child_result_invalid' | 'workflow.child_result_missing';
+      }>;
   /** V3 only: commit with the same parent CAS, durable journal and canonical outbox. */
   readonly workflowCalls?: Readonly<{
     readonly declarations: readonly WorkflowCallStateV1[];

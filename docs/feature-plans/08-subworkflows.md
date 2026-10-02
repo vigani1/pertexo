@@ -218,6 +218,21 @@ persisted-outcome binding remains mandatory. Retained V1/V2 batch bounds are
 unchanged. All 667 engine tests across 47 files pass, including exact-limit
 advance, oversized-source rejection, bounded metadata and hostile containers.
 This does not register callable result persistence or terminal settlement.
+Authenticated V3 advance now completes callable success through the existing
+explicit selector/type owner before returning its one terminal transition. A
+selected root node must have one successful durable scoped invocation/output;
+zero/multiple matches fail definitely, including equal-valued scopes. Source
+hydration must match the exact invocation/output reference; missing hydration or
+reference mismatch remains operational, not fabricated child failure. Result
+values are transient, independently bounded and absent from the checkpoint;
+physical successful attempts remain unchanged when typed result validation
+instead fails the run. Existing expression ownership now inspects bounded AST
+dependencies: static paths/lookups select their root outputs, while whole/dynamic
+context access requires all root outputs to be unambiguous. Run-input-only
+expressions do not reject unrelated ambiguous outputs. All 687 engine tests
+across 48 files and 1,533 model tests across 23 files pass. Protected result
+persistence, actual terminal/wakeup wiring, coordinator V3 registration and
+source-bound service qualification remain unfinished.
 The standalone database Checkpoint V3 codec now validates the persisted wire
 format independently of the engine, retaining the existing whole-checkpoint
 256 KiB limit and strict physical-input/child-result separation. Its V2 projection

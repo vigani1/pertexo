@@ -28,7 +28,6 @@ import { executableNodes } from './compilation/executable-graph.js';
 import {
   normalizeBoundedEngineJson,
   type WorkflowExecutableNodeV2,
-  type WorkflowExecutableGraphV2,
 } from './executable-workflow.js';
 import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint/checkpoint.js';
@@ -55,6 +54,12 @@ import { isAuthenticExecutableIdentityV3 } from './compilation/executable-v3.js'
 import type { WorkflowCallableDeclarationV1 } from '@pertexo/workflow-model/callable-graph-contract';
 import type { WorkflowCallDeclarationMaterialV1 } from './workflow-call-control.js';
 import { workflowCallCoordinatorControls } from './observation/workflow-call-observations.js';
+import { projectSchedulerState } from './compilation/executable-scheduler.js';
+export { projectSchedulerState } from './compilation/executable-scheduler.js';
+import {
+  completeCallableTransition,
+  type WorkflowCallableCompletionMaterial,
+} from './observation/workflow-call-completion.js';
 import {
   validateCallDeclarationAttemptInput,
   validateCallDeclarationAttemptResult,
@@ -79,6 +84,7 @@ export interface AdvanceWorkflowInput {
   readonly checkpoint: unknown;
   readonly observations?: unknown;
   readonly completedOutputs?: unknown;
+  readonly callableCompletion?: WorkflowCallableCompletionMaterial;
   readonly workflowCalls?: Readonly<{
     readonly declarations: readonly WorkflowCallDeclarationMaterialV1[];
     readonly facts: readonly unknown[];
@@ -99,42 +105,6 @@ function assertIdentity(
 ): void {
   if (value.length === 0 || value.length > 256)
     operationError(code, `${label} is invalid`);
-}
-
-export function projectSchedulerState(
-  graph: WorkflowExecutableGraphV2,
-): SchedulerState {
-  const projectGraph = (graph: WorkflowExecutableGraphV2): SchedulerState => {
-    const nodes = graph.nodes.map(
-      ({
-        id,
-        definition,
-        config,
-        disabled,
-        sideEffectClass: pinnedSideEffectClass,
-      }) => ({
-        id,
-        definition,
-        config,
-        disabled,
-        sideEffectClass: pinnedSideEffectClass,
-      }),
-    );
-    const edges = graph.edges.map(({ source, target }) => ({
-      source: { nodeId: source.nodeId, port: source.port },
-      target: { nodeId: target.nodeId, port: target.port },
-    }));
-    const structuredBodies = graph.nodes.flatMap((node) => {
-      if (node.structured === undefined) return [];
-      const body = projectGraph(node.structured.body);
-      return [
-        { loopNodeId: node.id, nodes: body.nodes, edges: body.edges },
-        ...(body.structuredBodies ?? []),
-      ];
-    });
-    return { deriveReadiness: true, nodes, edges, structuredBodies };
-  };
-  return projectGraph(graph);
 }
 
 function schedulerState(
@@ -166,6 +136,14 @@ export async function advanceWorkflow(
     operationError(
       'observation_invalid',
       'Call materials require executable V3',
+    );
+  if (
+    input.callableCompletion !== undefined &&
+    (!callExecutable || input.executable.envelope.graph.callable === undefined)
+  )
+    operationError(
+      'observation_invalid',
+      'callable completion requires a callable V3 executable',
     );
   if (checkpoint.workflowVersionId !== input.workflowVersionId)
     operationError(
@@ -287,7 +265,16 @@ export async function advanceWorkflow(
     workflowCallControls: calls.controls,
   });
   assertNotAborted(input.signal);
-  return withPlanProviderKeys(plan, nodesById, input.runId);
+  const completedPlan = callExecutable
+    ? await completeCallableTransition(
+        input.executable,
+        plan,
+        input.callableCompletion,
+        input.signal,
+      )
+    : plan;
+  assertNotAborted(input.signal);
+  return withPlanProviderKeys(completedPlan, nodesById, input.runId);
 }
 
 function assertNotAborted(signal: AbortSignal): void {
