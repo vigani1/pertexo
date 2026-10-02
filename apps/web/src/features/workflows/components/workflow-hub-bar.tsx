@@ -185,7 +185,7 @@ export function WorkflowHubBar({
           </Link>
         ))}
       </nav>
-      <div className="flex items-center gap-1.5 xl:justify-self-end">
+      <div className="flex max-w-full flex-wrap items-center gap-1.5 xl:justify-self-end">
         {workflow === undefined ? null : (
           <WorkflowExportAction
             apiClient={apiClient}

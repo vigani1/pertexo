@@ -192,13 +192,14 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
     },
   );
   await page.goto(`/w/${workspaceId}/workflows`);
-  await page.getByRole('button', { name: 'Import workflow…' }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.getByRole('button', { name: 'Import workflow…' }).focus();
+  await page.keyboard.press('Enter');
   const importing = page.getByRole('dialog', {
     name: 'Import workflow',
     exact: true,
   });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
   await importing.getByLabel('Workflow JSON file').setInputFiles({
     name: 'portable.json',
     mimeType: 'application/json',

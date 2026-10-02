@@ -355,6 +355,19 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
       .locator('header')
       .filter({ has: page.getByRole('link', { name: 'Back to workflows' }) });
     const barBox = await bar.boundingBox();
+    await expect(bar.getByRole('button', { name: 'Export…' })).toBeVisible();
+    await expect(
+      bar.getByRole('button', { name: 'Input cases' }),
+    ).toBeVisible();
+    for (const action of await bar.getByRole('button').all()) {
+      if (!(await action.isVisible())) continue;
+      const actionBox = await action.boundingBox();
+      expect(actionBox).not.toBeNull();
+      expect(actionBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+      expect((actionBox?.x ?? 0) + (actionBox?.width ?? 0)).toBeLessThanOrEqual(
+        width,
+      );
+    }
     if (width === 1440) expect(barBox?.height).toBeLessThanOrEqual(64);
     if (width === 390) expect(barBox?.height).toBeLessThanOrEqual(200);
     // Phones fold undo, redo and shortcuts into ⋯ so Publish never clips.
