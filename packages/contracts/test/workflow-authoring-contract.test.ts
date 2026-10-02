@@ -125,6 +125,12 @@ describe('workflow-authoring public contracts', () => {
       '/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/tags',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite',
+      '/v1/workspaces/{workspaceId}/workflow-folders',
+      '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/rename',
+      '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/move',
+      '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/delete',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/folder',
+      '/v1/workspaces/{workspaceId}/workflows/organization/bulk',
     ]);
     expect(
       paths[

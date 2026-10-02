@@ -99,7 +99,7 @@ describe('additive organization projection contracts', () => {
       { favoritesOnly: 'false' },
       { include: 'templateOrigin' },
       { userId: id },
-      { folderId: id },
+      { folderId: 'ROOT' },
       { unknown: true },
     ])
       expect(

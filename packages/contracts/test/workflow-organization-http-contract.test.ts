@@ -42,13 +42,20 @@ type OperationShape = Readonly<{
 }>;
 
 describe('organization HTTP manifest and generated structural contracts', () => {
-  it('registers exactly the accepted eight GET/POST operations without executable or graph endpoints', () => {
+  it('preserves the original eight tag/favorite operations without executable or graph endpoints', () => {
     const operations = Object.entries(
       workflowOrganizationContractPaths,
     ).flatMap(([path, methods]) =>
       Object.keys(methods).map((method) => `${method.toUpperCase()} ${path}`),
     );
-    expect(operations).toEqual([
+    expect(
+      operations.filter(
+        (operation) =>
+          !operation.includes('workflow-folders') &&
+          !operation.endsWith('/folder') &&
+          !operation.endsWith('/organization/bulk'),
+      ),
+    ).toEqual([
       'GET /v1/workspaces/{workspaceId}/workflow-tags',
       'POST /v1/workspaces/{workspaceId}/workflow-tags',
       'POST /v1/workspaces/{workspaceId}/workflow-tags/cleanup/detach',
@@ -148,6 +155,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
       'query',
       'view',
       'tagId',
+      'folderId',
       'favoritesOnly',
       'include',
     ]);
@@ -233,7 +241,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
   });
 
   it('centralizes exactly the accepted sanitized problems without private extension fields', () => {
-    expect(WORKFLOW_ORGANIZATION_PROBLEM_CODES).toHaveLength(7);
+    expect(WORKFLOW_ORGANIZATION_PROBLEM_CODES).toHaveLength(13);
     for (const code of WORKFLOW_ORGANIZATION_PROBLEM_CODES) {
       const entry = API_PROBLEM_MANIFEST[code];
       expect(entry.status).toBe(

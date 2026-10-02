@@ -293,8 +293,7 @@ export const workflowOrganizationSchema = z
           new Set(tags.map((tag) => tag.key)).size === tags.length,
       ),
     organizationRevision: workflowOrganizationRevisionSchema,
-    // Slice 1 does not claim folder storage or support enabled placeholders.
-    folderId: z.null(),
+    folderId: z.uuid().nullable(),
     isFavorite: z.boolean(),
     favoriteRevision: workflowFavoriteRevisionSchema,
   })

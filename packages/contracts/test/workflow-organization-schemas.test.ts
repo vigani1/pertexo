@@ -445,7 +445,7 @@ describe('ADR064 workflow organization public schemas', () => {
         ).toBe(false);
     }
     for (const extension of [
-      { folderId: firstId },
+      { folderId: 'not-a-uuid' },
       { actorId: firstId },
       { favoriteCount: 1 },
       { favorites: [firstId] },

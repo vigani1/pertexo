@@ -4,6 +4,8 @@ export type { WorkflowTemplateOrigin } from '@pertexo/workflow-model/curated-tem
 export * from './workflow-auto-pause.js';
 export * from './workflow-concurrency.js';
 export * from './workflow-organization.js';
+export * from './workflow-organization-folders.js';
+import { workflowOrganizationFolderFilterSchema } from './workflow-organization-folders.js';
 import {
   workflowOrganizationNameQuerySchema,
   workflowOrganizationSchema,
@@ -244,6 +246,7 @@ export const workflowOrganizationListQuerySchema = workflowListQuerySchema
       .uuid()
       .overwrite((id) => id.toLowerCase())
       .optional(),
+    folderId: workflowOrganizationFolderFilterSchema.optional(),
     favoritesOnly: z.literal('true').optional(),
     include: z.literal('organization').optional(),
   })

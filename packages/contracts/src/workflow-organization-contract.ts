@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import * as organization from './http/workflow-organization.js';
+import * as folders from './http/workflow-organization-folders.js';
 import {
   workflowOrganizationListQuerySchema,
   workflowOrganizationListResponseSchema,
@@ -90,6 +91,56 @@ const definitions = {
     'output',
   ],
   WorkflowGetQuery: [workflowGetQuerySchema, 'input'],
+  WorkflowFolderListQuery: [folders.workflowFolderListQuerySchema, 'input'],
+  WorkflowFolderListResponse: [
+    folders.workflowFolderListResponseSchema,
+    'output',
+  ],
+  WorkflowFolderCreateRequest: [
+    folders.workflowFolderCreateRequestSchema,
+    'input',
+  ],
+  WorkflowFolderCreateResponse: [
+    folders.workflowFolderCreateResponseSchema,
+    'output',
+  ],
+  WorkflowFolderRenameRequest: [
+    folders.workflowFolderRenameRequestSchema,
+    'input',
+  ],
+  WorkflowFolderRenameResponse: [
+    folders.workflowFolderRenameResponseSchema,
+    'output',
+  ],
+  WorkflowFolderMoveRequest: [folders.workflowFolderMoveRequestSchema, 'input'],
+  WorkflowFolderMoveResponse: [
+    folders.workflowFolderMoveResponseSchema,
+    'output',
+  ],
+  WorkflowFolderDeleteRequest: [
+    folders.workflowFolderDeleteRequestSchema,
+    'input',
+  ],
+  WorkflowFolderDeleteResponse: [
+    folders.workflowFolderDeleteResponseSchema,
+    'output',
+  ],
+  WorkflowFolderPlacementRequest: [
+    folders.workflowFolderPlacementRequestSchema,
+    'input',
+  ],
+  WorkflowFolderPlacementResponse: [
+    folders.workflowFolderPlacementResponseSchema,
+    'output',
+  ],
+  WorkflowOrganizationBulkRequest: [
+    folders.workflowOrganizationBulkRequestSchema,
+    'input',
+  ],
+  WorkflowOrganizationBulkResponse: [
+    folders.workflowOrganizationBulkResponseSchema,
+    'output',
+  ],
 } as const;
 
 export function workflowOrganizationContractSchemas<Projected>(
@@ -149,6 +200,34 @@ const commandProblems = {
     'Known organization, revision, idempotency or lifecycle conflict; retain uncertain commands for explicit exact recovery',
   ),
 };
+
+const folderParameters = [
+  ...workspaceParameters,
+  uuidPathParameter('folderId', 'Folder identifier'),
+];
+function folderCommand(
+  operationId: string,
+  description: string,
+  parameters: typeof workspaceParameters,
+  request: keyof typeof definitions,
+  response: keyof typeof definitions,
+  created = false,
+) {
+  return {
+    operationId,
+    description,
+    security: [{ cookieSession: [] }],
+    parameters: [...parameters, ...commandHeaders],
+    requestBody: jsonRequest(request),
+    responses: {
+      [created ? '201' : '200']: privateResponse(
+        'Original committed metadata and replay marker; reread current state',
+        response,
+      ),
+      ...commandProblems,
+    },
+  };
+}
 
 export const workflowOrganizationContractPaths = {
   '/v1/workspaces/{workspaceId}/workflow-tags': {
@@ -283,6 +362,75 @@ export const workflowOrganizationContractPaths = {
       },
     },
   },
+  '/v1/workspaces/{workspaceId}/workflow-folders': {
+    get: {
+      operationId: 'listWorkflowFolders',
+      description:
+        'Current workflow:read in an active workspace. At most 256 folders in ascending UUID order with derived depth at most 4; no total count or recursive workflow inventory. Folders never grant authority.',
+      security: [{ cookieSession: [] }],
+      parameters: workspaceParameters,
+      responses: {
+        '200': privateResponse(
+          'Bounded folder hierarchy',
+          'WorkflowFolderListResponse',
+        ),
+        ...readProblems,
+      },
+    },
+    post: folderCommand(
+      'createWorkflowFolder',
+      'Current owner/admin in an active workspace, without broadening workspace:manage. U+0020-trimmed display name; ASCII-only sibling identity is internal. Maximum depth 4 and 256 live folders.',
+      workspaceParameters,
+      'WorkflowFolderCreateRequest',
+      'WorkflowFolderCreateResponse',
+      true,
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/rename': {
+    post: folderCommand(
+      'renameWorkflowFolder',
+      'Current owner/admin; expectedFolderRevision checked. New no-op commands advance once; exact authorized replay does not. Descendants, workflow organization revisions and timestamps remain unchanged.',
+      folderParameters,
+      'WorkflowFolderRenameRequest',
+      'WorkflowFolderRenameResponse',
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/move': {
+    post: folderCommand(
+      'moveWorkflowFolder',
+      'Current owner/admin; expectedFolderRevision checked. Current destination existence, cycles and entire subtree depth are checked, without a historical destination revision. No-op advances once; replay does not.',
+      folderParameters,
+      'WorkflowFolderMoveRequest',
+      'WorkflowFolderMoveResponse',
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/delete': {
+    post: folderCommand(
+      'deleteWorkflowFolder',
+      'Current owner/admin; expectedFolderRevision checked. Any immediate child or assigned workflow, including archived workflows, conflicts with zero changes. No recursive delete or implicit unfiling. Missing/foreign folders are generic 404.',
+      folderParameters,
+      'WorkflowFolderDeleteRequest',
+      'WorkflowFolderDeleteResponse',
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/workflows/{workflowId}/folder': {
+    post: folderCommand(
+      'placeWorkflowInFolder',
+      'Current workflow:update for active workflows; archived placement/unfiling requires owner/admin. Independent expectedOrganizationRevision; new no-op advances once, exact authorized replay does not. Current lifecycle and role are rechecked. Graph and workflow timestamps are unchanged.',
+      workflowParameters,
+      'WorkflowFolderPlacementRequest',
+      'WorkflowFolderPlacementResponse',
+    ),
+  },
+  '/v1/workspaces/{workspaceId}/workflows/organization/bulk': {
+    post: folderCommand(
+      'updateWorkflowOrganizationBulk',
+      'One move or replace_tags operation over 1–50 explicit ordered unique workflows, never select-all. Active workflows require workflow:update; archived move requires owner/admin, archived tag replacement is forbidden. Full-parent identity is admitted before independent sequential item transactions; admission is not atomic completion. Retain the entire frozen body/key on unknown outcomes; exact recovery is bounded to 24 hours. Recheck current authority per item/replay; forbidden stops processing and remaining items are not_processed. Historical replay is not current projection; no internal hash, proof or actor selectors.',
+      workspaceParameters,
+      'WorkflowOrganizationBulkRequest',
+      'WorkflowOrganizationBulkResponse',
+    ),
+  },
 };
 
 export const workflowOrganizationListReadContract = {
@@ -291,7 +439,7 @@ export const workflowOrganizationListReadContract = {
   ),
   response: {
     description:
-      'Default or filtered workflow summaries; include=organization explicitly requests private organization metadata. Filters apply before bounded pagination; unknown/foreign tag filters return an empty scoped page. Live pagination is not a snapshot and has no total count.',
+      'Default or filtered workflow summaries; include=organization explicitly requests private organization metadata. Filters apply before bounded pagination; unknown/foreign tag or folder filters return an empty scoped page. folderId selects an exact UUID without descendants, root selects unfiled, and omission includes all placements. Live pagination is not a snapshot and has no total count.',
     headers: {
       'Cache-Control': {
         schema: { type: 'string', const: 'private, no-store' },
