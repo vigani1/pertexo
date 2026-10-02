@@ -27,6 +27,7 @@ export type {
 export type { ArtifactCapacityObservation } from './execution/artifacts/artifacts.js';
 export { prepareInlineWorkflowExecutionValueV3 } from './execution/artifacts/execution-value-representation.js';
 export type { StoredExecutionValueV1 } from './execution/stored-execution-value.js';
+export { serializeWorkflowExecutionJsonValueV3 } from './execution/stored-execution-value.js';
 export {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,

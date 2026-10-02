@@ -2,9 +2,15 @@ import { createHash } from 'node:crypto';
 import { getEventListeners } from 'node:events';
 import { Readable } from 'node:stream';
 import type { ArtifactMetadata } from '@pertexo/artifact-store';
-import { prepareInlineWorkflowExecutionValueV3 } from '@pertexo/database/execution';
+import {
+  createDatabaseRuntime,
+  createNodeAttemptRunStore,
+  prepareInlineWorkflowExecutionValueV3,
+  serializeWorkflowExecutionJsonValueV3,
+} from '@pertexo/database/execution';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { NODE_JSON_LIMITS_V1 } from '@pertexo/node-sdk';
-import { canonicalJson } from '@pertexo/workflow-model';
+import { Pool, type PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 import {
   createWorkflowExecutionValueCodec,
@@ -97,6 +103,127 @@ function harness(initial?: Buffer) {
 }
 
 describe('framework execution value codec', () => {
+  it('round-trips producer bytes through actual record/read adapters and hydration (mocked SQL, not role proof)', async () => {
+    const config = parseDatabaseConfig({
+      connectionString:
+        'postgresql://pertexo_worker:unused@invalid.invalid/pertexo',
+      max: 1,
+    });
+    let scoped = false;
+    let snapshot: unknown = null;
+    const recordedBytes: string[] = [];
+    const query = vi.fn((sql: string, args?: readonly unknown[]) => {
+      if (sql.includes("set_config('app.workspace_id'")) scoped = true;
+      if (sql === 'commit' || sql === 'rollback') scoped = false;
+      if (sql.includes('current_setting'))
+        return Promise.resolve({
+          rows: [
+            {
+              workspace_id: scoped ? WORKSPACE_ID : null,
+              actor_id: null,
+              discovery_scope: null,
+            },
+          ],
+        });
+      if (sql.includes('app.record_workflow_call_declaration_input')) {
+        const [, reference, sha, bytes, serialized] = args ?? [];
+        recordedBytes.push(serialized as string);
+        snapshot = {
+          reference: JSON.parse(reference as string) as unknown,
+          sha256: sha,
+          byteLength: bytes,
+        };
+      }
+      if (sql.includes('app.read_workflow_call_declaration_input'))
+        return Promise.resolve({ rows: [{ snapshot }] });
+      return Promise.resolve({ rows: [] });
+    });
+    const release = vi.fn();
+    const client = { query, release } as unknown as PoolClient;
+    const checkout = vi
+      .spyOn(Pool.prototype, 'connect')
+      .mockReturnValue(Promise.resolve(client) as never);
+    const runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
+    const store = createNodeAttemptRunStore(config, runtime);
+    try {
+      if (
+        store.recordCallDeclarationInput === undefined ||
+        store.readCallDeclarationInput === undefined
+      )
+        throw new Error('Required Call input adapters are missing');
+      const h = harness();
+      const values = [
+        { '2': 'two', '10': 'ten', nested: { '2': -0, '10': '界😀\n\t"\\' } },
+        [Number.MIN_VALUE, Number.MAX_VALUE, 1e-7, 1e-6, 1e20, 1e21, -0],
+      ];
+      for (const value of values) {
+        const prepared = await h.codec.prepare({
+          owner,
+          value,
+          signal: signal(),
+        });
+        await store.recordCallDeclarationInput({
+          lease: owner.lease,
+          ...prepared,
+          signal: signal(),
+        });
+        const recovered = await store.readCallDeclarationInput({
+          lease: { ...owner.lease, fenceToken: owner.lease.fenceToken + 1 },
+          signal: signal(),
+        });
+        expect(recovered).toEqual(prepared);
+        if (recovered === undefined)
+          throw new Error('Committed Call input is missing');
+        const hydrated = await h.codec.hydrate({
+          owner,
+          reference: recovered.reference,
+          signal: signal(),
+        });
+        const bytes = serializeWorkflowExecutionJsonValueV3(hydrated);
+        expect(recordedBytes.at(-1)).toBe(bytes);
+        expect(sha256(Buffer.from(bytes))).toBe(prepared.sha256);
+      }
+      expect(release).toHaveBeenCalledTimes(values.length * 2);
+      expect(h.reserve).not.toHaveBeenCalled();
+    } finally {
+      checkout.mockRestore();
+      await store.close();
+      await runtime.close();
+    }
+  });
+  it.each([false, true])(
+    'uses persisted-value byte order through prepare and hydrate (artifact=%s)',
+    async (artifact) => {
+      const h = harness();
+      if (artifact) h.chooseInline.mockReturnValue(undefined);
+      const value = {
+        '2': 'two',
+        '10': 'ten',
+        nested: {
+          '2': -0,
+          '10': [Number.MIN_VALUE, Number.MAX_VALUE, 1e-7, 1e-6, 1e20, 1e21],
+        },
+        text: '界😀\n\t"\\',
+      };
+      const expected =
+        '{"10":"ten","2":"two","nested":{"10":[5e-324,1.7976931348623157e+308,1e-7,0.000001,100000000000000000000,1e+21],"2":0},"text":"界😀\\n\\t\\"\\\\"}';
+      const prepared = await h.codec.prepare({
+        owner,
+        value,
+        signal: signal(),
+      });
+      expect(prepared.reference.kind).toBe(artifact ? 'artifact' : 'inline');
+      expect(prepared.sha256).toBe(sha256(Buffer.from(expected)));
+      expect(prepared.byteLength).toBe(Buffer.byteLength(expected));
+      if (artifact) expect(h.bytes().toString()).toBe(expected);
+      const hydrated = await h.codec.hydrate({
+        owner,
+        reference: prepared.reference,
+        signal: signal(),
+      });
+      expect(serializeWorkflowExecutionJsonValueV3(hydrated)).toBe(expected);
+    },
+  );
   it('keeps inline values IO-free and independently normalized/frozen', async () => {
     const h = harness();
     const value = { z: [1, -0], a: 'small' };
@@ -146,7 +273,9 @@ describe('framework execution value codec', () => {
     const prepared = await h.codec.prepare({ owner, value, signal: signal() });
     expect(prepared.reference).toEqual(artifactRef);
     expect(prepared.byteLength).toBe(NODE_JSON_LIMITS_V1.bytes);
-    expect(prepared.sha256).toBe(sha256(Buffer.from(canonicalJson(value))));
+    expect(prepared.sha256).toBe(
+      sha256(Buffer.from(serializeWorkflowExecutionJsonValueV3(value))),
+    );
     expect(h.writeReserved.mock.calls[0]?.[0].owner).toBe(owner);
     expect(h.writeReserved.mock.calls[0]?.[0].maxBytes).toBe(
       NODE_JSON_LIMITS_V1.bytes,
@@ -237,7 +366,9 @@ describe('framework execution value codec', () => {
   });
   it('reuses available reservation without writing or recharging', async () => {
     const value = 'x'.repeat(300_000);
-    const h = harness(Buffer.from(canonicalJson(value)));
+    const h = harness(
+      Buffer.from(serializeWorkflowExecutionJsonValueV3(value)),
+    );
     h.reserve.mockResolvedValue({ ...h.descriptor(), available: true });
     expect(
       (await h.codec.prepare({ owner, value, signal: signal() })).reference,

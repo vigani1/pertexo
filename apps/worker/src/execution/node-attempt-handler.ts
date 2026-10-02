@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 import {
   canonicalOutboxPayloadChecksum,
+  serializeWorkflowExecutionJsonValueV3,
   NodeAttemptOutputInvalidError,
   type NodeAttemptInputs,
   type NodeAttemptLease,
@@ -497,7 +497,7 @@ export function createNodeAttemptHandler(
             reference: snapshot.reference,
             signal: context.signal,
           });
-          const canonical = canonicalJson(value);
+          const canonical = serializeWorkflowExecutionJsonValueV3(value);
           if (
             Buffer.byteLength(canonical, 'utf8') !== snapshot.byteLength ||
             createHash('sha256').update(canonical).digest('hex') !==

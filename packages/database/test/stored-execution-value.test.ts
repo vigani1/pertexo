@@ -6,6 +6,8 @@ import {
   EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1,
   parseStoredExecutionValueV1,
   serializeStoredExecutionValueV1,
+  serializeStoredExecutionJsonValue,
+  serializeWorkflowExecutionJsonValueV3,
   STORED_EXECUTION_VALUE_LIMITS_V1,
   StoredExecutionValueInvalidError,
 } from '../src/execution/stored-execution-value.js';
@@ -49,6 +51,37 @@ function seededJsonCases(seed: number, count: number): unknown[] {
 }
 
 describe('StoredExecutionValueV1', () => {
+  it('shares exact retained byte encoding under the native byte policy', () => {
+    const values = [
+      ...seededJsonCases(0x12345678, 500),
+      { '2': 'two', '10': 'ten', nested: { '2': -0, '10': '界😀\n\t"\\' } },
+      [Number.MIN_VALUE, Number.MAX_VALUE, 1e-7, 1e-6, 1e20, 1e21, -0],
+    ];
+    for (const value of values) {
+      expect(serializeWorkflowExecutionJsonValueV3(value)).toBe(
+        canonicalJsonOracle(value),
+      );
+      expect(serializeWorkflowExecutionJsonValueV3(value)).toBe(
+        serializeStoredExecutionJsonValue(value),
+      );
+    }
+  });
+  it('keeps native artifact byte policy separate from retained inline eligibility', () => {
+    const value = 'x'.repeat(1_048_576 - 2);
+    expect(
+      Buffer.byteLength(serializeWorkflowExecutionJsonValueV3(value)),
+    ).toBe(1_048_576);
+    expect(() => serializeWorkflowExecutionJsonValueV3(`${value}x`)).toThrow(
+      StoredExecutionValueInvalidError,
+    );
+    expect(() => serializeStoredExecutionJsonValue(value)).toThrow(
+      StoredExecutionValueInvalidError,
+    );
+    expect(serializeWorkflowExecutionJsonValueV3('\u0000')).toBe('"\\u0000"');
+    expect(() => serializeStoredExecutionJsonValue('\u0000')).toThrow(
+      StoredExecutionValueInvalidError,
+    );
+  });
   it('round-trips inline JSON at the exact encoded-value byte limit', () => {
     const value = 'x'.repeat(STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes - 2);
     const stored = parseStoredExecutionValueV1({

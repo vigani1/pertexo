@@ -5,6 +5,7 @@ import { types as nodeTypes } from 'node:util';
 import type { ArtifactStore } from '@pertexo/artifact-store';
 import {
   prepareInlineWorkflowExecutionValueV3,
+  serializeWorkflowExecutionJsonValueV3,
   type CoordinatorAdvanceDelivery,
   type NodeAttemptLease,
   type StoredExecutionValueV1,
@@ -14,7 +15,6 @@ import {
   NODE_JSON_LIMITS_V1,
   type SchemaJson,
 } from '@pertexo/node-sdk';
-import { canonicalJson } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 export const WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 =
@@ -268,7 +268,10 @@ async function hydrateStream(
       invalid('Execution value artifact is not UTF8 JSON');
     }
     const value = normalize(decoded);
-    const canonical = Buffer.from(canonicalJson(value), 'utf8');
+    const canonical = Buffer.from(
+      serializeWorkflowExecutionJsonValueV3(value),
+      'utf8',
+    );
     try {
       if (
         canonical.byteLength !== metadata.byteLength ||
@@ -303,7 +306,10 @@ async function prepareValue(
 ): Promise<PreparedWorkflowExecutionValue> {
   assertActive(input.signal);
   const value = normalize(input.value);
-  const bytes = Buffer.from(canonicalJson(value), 'utf8');
+  const bytes = Buffer.from(
+    serializeWorkflowExecutionJsonValueV3(value),
+    'utf8',
+  );
   try {
     const sha256 = digest(bytes);
     const byteLength = bytes.byteLength;
@@ -313,7 +319,8 @@ async function prepareValue(
       const reference = parseReference(inline);
       if (
         reference.kind !== 'inline' ||
-        canonicalJson(reference.value) !== canonicalJson(value)
+        serializeWorkflowExecutionJsonValueV3(reference.value) !==
+          serializeWorkflowExecutionJsonValueV3(value)
       )
         invalid('Inline execution value does not match normalized input');
       return Object.freeze({ reference, sha256, byteLength });
