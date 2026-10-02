@@ -444,3 +444,35 @@ checkpoint; exact committed-head rerun, role/archive/privacy and partial-outcome
 browser matrices, process/OFF integration, independent whole-feature review and
 release evidence remain open. No production enablement, push or F07 completion
 is claimed.
+
+Compiled process/OFF qualification: the frozen pre-organization API at
+`936612f26567f760c83e41c13e4c7fc7b620e69f` refuses migrated 0135 before listening,
+classified only by the exact migration-head readiness error. The compatible
+compiled API at `74826ea1c5d2aa8c07d1d0c70edff1889a3fcf71` runs its complete
+application/bootstrap/readiness path. Its production API, database, contracts,
+package and lock sources are unchanged at browser checkpoint `9d945090`; this
+is a scoped source-equivalence observation, not a rebuilt whole-tree artifact.
+One real process case and five focused safety cases pass with no skips. An
+explicit tenant-scoped lock proves the second workflow exists and is blocked;
+the parent and first item are independently observed committed before SIGKILL.
+A distinct restarted API replays the first item and freshly completes the second
+under the unchanged full request/key, preserving folder, tag and private favorite.
+
+A further compatible process with writers OFF retains current organization
+reads and completed shared/private replay, rejects new folder/parent admission,
+and cannot execute an admitted-only parent's new item. Frozen older contracts
+strictly parse default legacy summary/list responses with unchanged workflow IDs.
+Export, independent duplicate/import without inherited organization, and
+archive/restore also pass. The optional 0134 compiled image was not separately
+built. Existing hold/expired-receipt/bounded purge evidence remains in the owned
+SQL suites rather than being relabeled as process evidence.
+
+The new test-only owner reuses the established cutover resource helper: its
+temporary database retains the historical `pertexo_test_f06_cutover_` name and
+its Redis DB12 is initially empty and token-fenced. This is explicitly F07
+evidence, not new F06 acceptance. Process-group shutdown must be confirmed before
+database/Redis/artifact cleanup; barrier failures preserve resources. The final
+run confirms zero connections, database removal and Redis DB12 empty after twelve
+owned keys are removed. Ordinary shared services stay running. Production writers
+remain disabled outside these owned fixtures. Whole-feature browser matrices,
+coverage evidence reconciliation, independent review and release remain open.
