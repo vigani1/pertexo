@@ -7,6 +7,7 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
+  WorkflowTemplateOriginUnavailableError,
 } from '@pertexo/database/api';
 import {
   WorkflowIdempotencyConflictError,
@@ -31,6 +32,14 @@ import { AuthorizationError } from '../../src/workspaces/index.js';
 const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 
 describe('workflow authoring error mapping', () => {
+  it('maps unsupported historical origin readers to a dedicated sanitized unavailable problem', () => {
+    expect(
+      mapWorkflowAuthoringError(new WorkflowTemplateOriginUnavailableError()),
+    ).toEqual({
+      code: 'workflow.template_origin_unavailable',
+      safeDetail: 'Historical template origin is temporarily unavailable.',
+    });
+  });
   it('projects operational conflicts without losing bigint revision precision', () => {
     expect(
       mapWorkflowAuthoringError(

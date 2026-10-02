@@ -215,6 +215,7 @@ export {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   WorkflowPortabilityUnavailableError,
+  WorkflowTemplateOriginUnavailableError,
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,

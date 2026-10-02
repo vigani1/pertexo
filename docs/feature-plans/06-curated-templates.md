@@ -53,21 +53,49 @@ That foundation preceded the combined-base handoff recorded below.
 Persistent continuation update (2026-10-02, unqualified working tree): the exact
 reviewed F02/F05 base `f543283825887165889f7520655558b2a3f9229c` is integrated by
 normal merge `69c10d3b`, preserving all six F06 foundation commits through
-`7b8839f4`. This remains an unmerged local dependency, not a natural-main or
-hosted-CI claim. The release owner allocated additive migration 0133 to F06.
+`7b8839f4`. This historical integration is not itself a natural-main or hosted-CI
+claim. The dependency was subsequently released through PR145 on exact natural
+main `c8a59b09`; reviewed UI descendants `9cde7e7e`/`15251084` are integrated
+additively by `35182e7`. Migration 0133 remains allocated to F06.
 The combined merge passed the TypeScript build, 160 contract tests, generated
 OpenAPI checks and focused API/web checks. The release owner's historical 160
 database tests belong to its frozen `af76b53e` tree, not an F06 rerun at `f5432838`.
 
-Uncommitted continuation prepares generated owner descriptors, child origin/RLS
+Initial uncommitted continuation prepared generated owner descriptors, child origin/RLS
 schema, atomic creator/inheritance changes, scoped origin reading, origin-aware
 runtime verification/replay, and an explicit owned-build browser gate. Descriptor
 drift/schema checks and focused runtime unit checks pass; they are not real
-PostgreSQL or browser/worker qualification. Migration 0133 is unfinished: its
+PostgreSQL or browser/worker qualification. At that snapshot migration 0133 was unfinished: its
 HTTPS SQL validator and synchronized readiness inventory are not implemented.
 No migration has been applied outside disposable owned qualification databases,
 no template writer enabled, and no real template journey has run. Do not deploy
-or commit this partial migration as a usable checkpoint.
+or commit that partial migration as a usable checkpoint.
+
+Current continuation (2026-10-02): primary accepted grammar delta `fdfc5699`,
+recorded in `167d1432`; the confined readiness-only boolean inventory seam was
+accepted and documented before code in `bd0dacd8`. Shared browser/model/catalog
+grammar, versioned descriptor kind and generator/corpus are committed in
+`6eab6e2a`: model 1,178 and catalog 1,227 focused tests, 934 web unit tests, and
+six descriptor golden tests pass. Ordinary HTTP/F05 semantics and all three base
+manifest digests are unchanged. The immutable inventory digest is
+`b2c003431f093031cdaebb97b78f8a9ddae81f8ce5fa14efd4035b639a3e9f75`.
+The implemented SQL/runtime candidate has 2,340 genuine owned PostgreSQL guard
+tests plus 16 retained-metadata boundary tests passing; four raw NUL cases are
+explicitly native PostgreSQL transport rejections, not validator evaluations.
+The browser creates/configures all three examples and verifies edit/rename/copy/
+export/reimport semantics (one browser case passed). Complete worker execution
+remains unqualified: a minimal real resolver/validator regression fixed an extra
+fixture payload wrapper without asset/assertion changes; both webhook branches now
+pass, but the schedule start fails with `execution.attempt_invalid`, under investigation.
+Independent source review found missing readiness CHECK-constraint pins; exact
+validated pins and actual-role drop/weaken/rollback regressions are now added and
+the full guard suite passes. Database 910 and API 1,898 unit tests pass, along with
+75 existing real migration/portability/duplication/RLS regressions. An initial API
+artifact-runtime five-second timeout is retained; isolated and full unchanged
+reruns pass, without a timeout increase or claim of freedom from timing flakes.
+Default production chooser/presentation and SQL
+writer gates remain off; fixture writer enablement is confined to attested
+disposable databases. Cutover/rollback, complete live proof and final review remain open.
 
 Independent partial-candidate qualification at migration SHA-256
 `29d3d434fa146e720ee414881ddff13f7d45bc0fe42fcd068113ea2435c4f99e`:

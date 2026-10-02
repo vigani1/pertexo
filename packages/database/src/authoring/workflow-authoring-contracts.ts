@@ -13,7 +13,10 @@ import type {
 import type { GraphValidationResult } from '@pertexo/workflow-model/graph';
 import type { WorkflowAutoPauseDatabase } from './workflow-auto-pause.js';
 import type { WorkflowConcurrencyDatabase } from './workflow-concurrency.js';
-import type { WorkflowTemplateOriginRequest } from '@pertexo/workflow-model/curated-templates';
+import type {
+  WorkflowTemplateOriginRequest,
+  WorkflowTemplateOrigin,
+} from '@pertexo/workflow-model/curated-templates';
 import type {
   WorkflowPortableManifest,
   PortableConnectionBinding,
@@ -208,6 +211,14 @@ export type WorkflowAuthoringDatabase = Readonly<{
     workflowId: string,
     actorId: string,
   ): Promise<WorkflowRecord | null>;
+  getWorkflowWithTemplateOrigin(
+    workspaceId: string,
+    workflowId: string,
+    actorId: string,
+  ): Promise<Readonly<{
+    workflow: WorkflowRecord;
+    templateOrigin: WorkflowTemplateOrigin | null;
+  }> | null>;
   getDraft(
     workspaceId: string,
     workflowId: string,

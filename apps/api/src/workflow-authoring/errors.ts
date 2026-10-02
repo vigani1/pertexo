@@ -15,6 +15,7 @@ import {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
   WorkflowPortabilityUnavailableError,
+  WorkflowTemplateOriginUnavailableError,
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,
@@ -64,6 +65,10 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof WorkflowTemplateOriginUnavailableError)
+    return applicationError('workflow.template_origin_unavailable', {
+      safeDetail: 'Historical template origin is temporarily unavailable.',
+    });
   if (error instanceof WorkflowPortabilityUnavailableError)
     return applicationError('workflow.portability_unavailable', {
       safeDetail:

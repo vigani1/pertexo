@@ -7,6 +7,11 @@ import {
   oidcLoginTransactions,
 } from './schema/authentication.js';
 import {
+  curatedTemplateDescriptors,
+  curatedTemplateRollout,
+  workflowTemplateOrigins,
+} from './schema/curated-template-origin.js';
+import {
   workflowInputCaseRollout,
   workflowManualStartRejections,
 } from './schema/manual-start.js';
@@ -160,6 +165,9 @@ export {
 } from './schema/compatibility.js';
 
 export const databaseSchema = {
+  curatedTemplateDescriptors,
+  curatedTemplateRollout,
+  workflowTemplateOrigins,
   workflowInputCaseRollout,
   workflowManualStartRejections,
   workflowInputCases,

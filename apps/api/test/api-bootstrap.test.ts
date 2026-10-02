@@ -200,6 +200,7 @@ function workflowAuthoringDatabase(
     createWorkflow: () => Promise.reject(new Error('not used')),
     listWorkflows: () => Promise.resolve({ items: [] }),
     getWorkflow: () => Promise.resolve(null),
+    getWorkflowWithTemplateOrigin: () => Promise.reject(new Error('not used')),
     getDraft: () => Promise.resolve(null),
     validateDraft: () => Promise.resolve(null),
     getVersion: () => Promise.resolve(null),
