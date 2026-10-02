@@ -1,7 +1,7 @@
 # F07 folder and general-bulk follow-on
 
-Status: folder policy accepted by primary full-source review on 2026-10-02;
-general-bulk parent-identity guard below proposed for follow-up review.
+Status: folder policy and concrete general-bulk parent-identity guard accepted by
+primary full-source reviews on 2026-10-02; migration allocation remains provisional.
 Builds on [ADR064](../adr/064-workflow-organization-metadata.md) and the accepted
 [organization contract](07-organization-contract-proposal.md). No folder SQL or
 runtime code precedes acceptance. Migration 0134 remains unchanged; a subsequent
@@ -89,7 +89,7 @@ Retry the frozen entire request, not regenerated revisions/keys. Completed known
 items replay; unprocessed items execute only with current authority. Parent
 admission never represents atomic completion or hides partial results.
 
-### Proposed bounded parent identity guard
+### Accepted bounded parent identity guard
 
 Reuse `app.workflow_organization_receipts`, not a new batch history table. A
 confined security-definer helper claims operation `organization.batch.identity`,
@@ -118,6 +118,12 @@ claim and no automatic new key. Concurrent identical parent commands can replay
 admission and independently converge through item receipts; different bodies
 serialize to one accepted identity. Existing 24-hour shared receipt retention,
 legal-hold preservation, indexed bounded maintenance and purge apply unchanged.
+The item helper must verify the committed matching parent admission in the same
+actor/workspace authority scope before NEW item work, checking purpose, derived
+key and full parent hash. It must not accept a client-supplied hash or proof
+boolean as evidence of admission. The constant parent operation intentionally
+shares one namespace between tag cleanup and general bulk. The 24-hour recovery
+horizon is not an indefinite key fence; retained hold bytes never authorize work.
 
 This guard also closes the same whole-request identity gap in tag cleanup. It
 needs a reviewed additive helper/migration and adapter before either batch route
@@ -162,6 +168,6 @@ codes: `workflow.folder_name_conflict`, `workflow.folder_limit_exceeded`,
 `workflow.folder_not_empty`, `workflow.folder_not_visible`. Acceptance also needs
 race tests for sibling uniqueness, cycles/subtree depth, stale rename/move versus
 archive, partial recovery/authority loss, restart and actual accessible browser
-navigation retaining exact filters and selection. Only the concrete parent
-identity guard above remains under review; migration 0135 is provisional pending
+navigation retaining exact filters and selection. The concrete parent
+identity guard above is accepted; migration 0135 is provisional pending
 global reservation and the exact 0134 integration-base audit.

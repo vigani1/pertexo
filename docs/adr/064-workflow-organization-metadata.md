@@ -93,7 +93,10 @@ full-source review on 2026-10-02 accepts the folder policies and concrete routes
 display names bounded to 128 UTF-8 bytes without C0/DEL, ASCII-only lowercase
 sibling identity under PostgreSQL `COLLATE "C"` including root siblings, stable
 folder revisions, exact root/UUID filters, and owner/admin archived placement for
-explicit cleanup. General-bulk whole-parent idempotency requires the separately
-proposed immutable admission guard to be reviewed before batch implementation;
-item receipts alone cannot bind a disjoint changed request. No folder migration
+explicit cleanup. A subsequent full-source review accepts general-bulk whole-parent
+idempotency through the existing scoped receipt owner: constant shared batch
+operation, full canonical parent-body hash, admitted-only marker committed before
+independent item transactions, and matching committed admission verified by each
+NEW item helper. Item receipts alone cannot bind a disjoint changed request;
+parent admission never promises atomic completion. No folder migration
 number is final until allocation and integration-base audit complete.

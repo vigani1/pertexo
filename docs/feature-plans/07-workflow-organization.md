@@ -38,8 +38,8 @@ order, signed cursor integrity and compatible reader/writer rollback. Folders
 and general bulk are required later slices, not omitted from F07 completion.
 Folder name/sibling uniqueness and command schemas need a reviewed follow-on.
 A [concrete folder/general-bulk proposal](07-folders-bulk-follow-on-proposal.md)
-has received primary full-source acceptance of folder policy. Its concrete
-whole-parent batch identity guard remains under review and no folder persistence
+has received primary full-source acceptance of folder policy and its concrete
+whole-parent batch identity guard. No folder persistence
 is implemented yet; migration 0135 is provisional pending global reservation.
 Migration 0134 is allocated exclusively to F07 against release-owner verified
 base `936612f26567f760c83e41c13e4c7fc7b620e69f`, whose tree is identical to accepted
