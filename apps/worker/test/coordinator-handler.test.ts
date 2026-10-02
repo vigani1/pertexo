@@ -135,6 +135,25 @@ function handlerFixture(
 }
 
 describe('coordinator handler', () => {
+  it('passes an explicit V3 projection to the engine without a V2 downgrade', async () => {
+    const native = {
+      ...projection(),
+      schemaVersion: 2,
+      executableSchemaVersion: 3,
+      checksum: `wf:v3:sha256:${'1'.repeat(64)}`,
+      executableJson: { schemaVersion: 3 },
+    };
+    const fixture = handlerFixture({
+      published: { kind: 'v3_projection', workflowVersion: native },
+    });
+    await fixture.handler.handle(delivery(), {
+      signal: new AbortController().signal,
+    });
+    expect(fixture.advance).toHaveBeenCalledWith(
+      expect.objectContaining({ projection: native }),
+    );
+    expect(fixture.commitAdvancePlan).toHaveBeenCalledOnce();
+  });
   it.each([
     'not_found',
     'not_executable',

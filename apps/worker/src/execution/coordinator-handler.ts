@@ -1,7 +1,7 @@
 import type {
   CoordinatorRunStore,
   PublishedWorkflowReader,
-  PublishedWorkflowV2Projection,
+  PublishedWorkflowExecutableProjection,
 } from '@pertexo/database/execution';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/execution';
 import type {
@@ -23,7 +23,7 @@ export interface CoordinatorAdvanceEngine {
     input: Readonly<{
       runId: string;
       workflowVersionId: string;
-      projection: PublishedWorkflowV2Projection;
+      projection: PublishedWorkflowExecutableProjection;
       checkpoint: unknown;
       observations: readonly unknown[];
       completedOutputs?: readonly unknown[];
@@ -106,7 +106,10 @@ export function createCoordinatorHandler(
         workflowVersionId: loaded.state.workflowVersionId,
         signal: context.signal,
       });
-      if (published.kind !== 'v2_projection') {
+      if (
+        published.kind !== 'v2_projection' &&
+        published.kind !== 'v3_projection'
+      ) {
         throw new CoordinatorHandlerStateError(
           published.kind === 'not_found'
             ? 'workflow_not_found'

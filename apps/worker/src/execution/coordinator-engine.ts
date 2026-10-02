@@ -45,6 +45,10 @@ export function createCoordinatorAdvanceEngine(
         plan.events.length === 0 &&
         plan.nodeRunAdmissions.length === 0 &&
         plan.attempts.length === 0 &&
+        plan.callableResult === undefined &&
+        (plan.workflowCalls === undefined ||
+          (plan.workflowCalls.declarations.length === 0 &&
+            plan.workflowCalls.cancelChildren.length === 0)) &&
         isDeepStrictEqual(previousAtNextRevision, plan.checkpoint)
       ) {
         return Object.freeze({
