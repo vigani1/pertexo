@@ -32,6 +32,7 @@ import {
   validatePostgresEvidence,
 } from './postgres-evidence.mjs';
 import { validateBenchmarkEvidence } from './compare-local-benchmark.mjs';
+import { isolatedGitEnvironment } from '../support/git-environment.mjs';
 import {
   createStandaloneBenchmarkWorkspace,
   readProductionBenchmarkRunner,
@@ -1590,10 +1591,24 @@ test('the standalone benchmark fixture owns its source and compiled output', asy
       await readFile(workspace.runnerPath, 'utf8'),
       copiedRunnerBeforeBuild,
     );
-    const status = await run('git', ['status', '--porcelain=v1'], {
-      cwd: workspace.root,
-    });
-    assert.equal(status.stdout, '');
+    for (const inheritedEnvironment of [
+      process.env,
+      {
+        ...process.env,
+        GIT_DIR: workspace.gitDirectory,
+        GIT_WORK_TREE: root,
+        GIT_INDEX_FILE: path.join(workspace.gitDirectory, 'index'),
+        GIT_CONFIG_COUNT: '1',
+        GIT_CONFIG_KEY_0: 'core.worktree',
+        GIT_CONFIG_VALUE_0: root,
+      },
+    ]) {
+      const status = await run('git', ['status', '--porcelain=v1'], {
+        cwd: workspace.root,
+        env: isolatedGitEnvironment(inheritedEnvironment),
+      });
+      assert.equal(status.stdout, '');
+    }
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
