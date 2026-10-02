@@ -127,29 +127,17 @@ jobs:
         run: pnpm ci:gates:check
       - name: Build workspace
         run: pnpm build
-      - name: Run quality checks
+      - name: Run joined quality and isolated runner contracts
         run: |
           set -o pipefail
           mkdir -p artifacts
-          {
-            pnpm docs:check
-            pnpm format:check
-            pnpm runtime:check
-            pnpm network-registry:check
-            pnpm dependencies:check
-            pnpm database:schema:check
-            pnpm lint
-            pnpm complexity:check
-            pnpm duplication:check
-            pnpm contracts:check
-            pnpm typecheck
-          } 2>&1 | tee artifacts/quality.log
+          node infrastructure/quality/run-ci-quality.mjs \
+            --quality docs:check format:check runtime:check network-registry:check dependencies:check database:schema:check lint complexity:check duplication:check contracts:check typecheck \
+            --contracts quality:local:check 2>&1 | tee artifacts/quality.log
       - name: Validate architecture boundaries
         run: pnpm architecture:check
       - name: Validate built package exports
         run: pnpm built-exports:check
-      - name: Validate local quality runner contracts
-        run: pnpm quality:local:check
       - name: Upload quality log
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
