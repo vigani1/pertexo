@@ -625,3 +625,22 @@ The final handoff receipt records that candidate and disposition, rather than
 rebinding any historical report to a later commit. Until that receipt passes,
 integrated acceptance remains unchecked above. Hosted required checks, merge,
 natural postmerge evidence and deployment are not local qualification claims.
+
+The next exact-source attempt at `2acbb156` passes database 95/95, API 20/20
+and process 6/6, including real process death/restart and owned cleanup, but fails
+all three enabled-role browser journeys at the same folder confirmation step;
+populated default-OFF passes. This failed manifest is also preserved. The screenshot
+and two sequential create-to-delete regressions reproduce a concrete frontend
+defect: a fresh confirmation inherits the preceding completed command's success
+feedback and disables its confirm button. Opening a new folder/tag confirmation
+now resets only definitive old feedback through the existing hook; that hook
+still refuses reset while pending or unresolved. Neither exact recovery identity
+nor confirmation's displayed target ID/revision changes. The bounded delta and
+new frozen owned qualification require fresh verification.
+Both new regressions first fail on the inherited success notice; the corrected
+manager, command hook and workflow/favorite controls then pass 60/60 focused tests.
+The bounded standards reviewer independently passes both new cases and confirms
+reset refusal, opener locking, unchanged frozen delete snapshots and exact retry;
+no new finding remains. Web typecheck and scoped lint pass, with unchanged passing
+complexity and duplication ratchets. The next required four-gate receipt owns the
+final clean-source outcome; none of the failed attempts is relabeled.

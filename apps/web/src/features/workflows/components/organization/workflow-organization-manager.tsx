@@ -265,6 +265,7 @@ function FolderManagement({
       ? undefined
       : 'Enter a folder name of 1–128 UTF-8 bytes without control characters.';
   const changeConfirmation = (open: boolean) => {
+    if (open) command.reset();
     setConfirmDelete(open);
     setDeleteTarget(open ? current : undefined);
     onConfirmationChange(open);
@@ -512,6 +513,7 @@ function TagManagement({
       ? undefined
       : 'Enter a tag key of 1–32 bytes using letters, numbers and single hyphens.';
   const changeConfirmation = (open: boolean) => {
+    if (open) command.reset();
     setConfirmDelete(open);
     setDeleteTarget(open ? current : undefined);
     onConfirmationChange(open);

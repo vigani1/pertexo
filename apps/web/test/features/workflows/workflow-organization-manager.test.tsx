@@ -87,6 +87,56 @@ function renderManager(
 
 describe('workflow organization manager', () => {
   it.each(['folder', 'tag'] as const)(
+    'does not inherit a completed create command in a new %s deletion confirmation',
+    async (kind) => {
+      installVocabulary();
+      const deleted = vi.fn();
+      const id = kind === 'folder' ? folder.id : tag.id;
+      const name = kind === 'folder' ? folder.name : tag.key;
+      mockServer.use(
+        http.post(`${api}/workflow-${kind}s`, () =>
+          HttpResponse.json(
+            kind === 'folder'
+              ? { folder, replayed: false }
+              : { tag, replayed: false },
+          ),
+        ),
+        http.post(`${api}/workflow-${kind}s/${id}/delete`, () => {
+          deleted();
+          return HttpResponse.json({ deleted: true, replayed: false });
+        }),
+      );
+      renderManager();
+      const event = userEvent.setup();
+      await screen.findByRole('button', { name: `Edit ${kind} ${name}` });
+      await event.type(
+        screen.getByLabelText(kind === 'folder' ? 'Folder name' : 'Tag key'),
+        kind === 'folder' ? 'New folder' : 'new-tag',
+      );
+      await event.click(screen.getByRole('button', { name: `Create ${kind}` }));
+      await screen.findByText(/Command completed/);
+      await event.click(
+        screen.getByRole('button', { name: `Edit ${kind} ${name}` }),
+      );
+      await event.click(screen.getByRole('button', { name: `Delete ${kind}` }));
+      const confirmation = screen.getByRole('dialog', {
+        name: `Delete ${name}?`,
+      });
+      expect(
+        within(confirmation).queryByText(/Command completed/),
+      ).not.toBeInTheDocument();
+      const confirm = within(confirmation).getByRole('button', {
+        name: `Confirm delete ${kind}`,
+      });
+      expect(confirm).toBeEnabled();
+      expect(deleted).not.toHaveBeenCalled();
+      await event.click(confirm);
+      await waitFor(() => {
+        expect(deleted).toHaveBeenCalledTimes(1);
+      });
+    },
+  );
+  it.each(['folder', 'tag'] as const)(
     'binds %s deletion to the displayed snapshot across a background rename',
     async (kind) => {
       installVocabulary();
