@@ -95,6 +95,8 @@ async function openImport(
     name: 'Import workflow',
     exact: true,
   });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Workflow JSON file')).toHaveCount(1);
   await dialog.getByLabel('Workflow JSON file').setInputFiles({
     name: 'portable.json',
     mimeType: 'application/json',

@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
@@ -98,6 +98,89 @@ async function prepareImport(event: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Portable workflow review and import', () => {
+  it.each([403, 404])(
+    'retains import intent after unrelated Inbox %i',
+    async (status) => {
+      const { event, queryClient } = openImport();
+      await event.upload(
+        await screen.findByLabelText('Workflow JSON file'),
+        new File([JSON.stringify(manifest)], 'workflow.json', {
+          type: 'application/json',
+        }),
+      );
+      await screen.findByLabelText('Complete imported graph');
+      await event.type(
+        screen.getByLabelText('New workflow name'),
+        'Independent draft',
+      );
+      await act(async () => {
+        await queryClient
+          .query({
+            queryKey: [
+              'identity',
+              userId,
+              'workspace',
+              workspaceId,
+              'inbox',
+              'unread',
+            ],
+            queryFn: () =>
+              Promise.reject(
+                new ApiError({
+                  kind: 'problem',
+                  message: 'Inbox unavailable',
+                  status,
+                }),
+              ),
+            retry: false,
+          })
+          .catch(() => undefined);
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('New workflow name')).toHaveValue(
+          'Independent draft',
+        );
+      });
+      expect(
+        screen.getByLabelText('Complete imported graph'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Access changed/u)).not.toBeInTheDocument();
+    },
+  );
+
+  it('clears import intent on authentication loss observed by another feature', async () => {
+    const { event, queryClient } = openImport();
+    await event.type(
+      await screen.findByLabelText('New workflow name'),
+      'Private name',
+    );
+    await queryClient
+      .query({
+        queryKey: [
+          'identity',
+          userId,
+          'workspace',
+          workspaceId,
+          'inbox',
+          'unread',
+        ],
+        queryFn: () =>
+          Promise.reject(
+            new ApiError({
+              kind: 'problem',
+              message: 'Session expired',
+              status: 401,
+            }),
+          ),
+        retry: false,
+      })
+      .catch(() => undefined);
+    await screen.findByText(/Access changed/u);
+    expect(
+      screen.queryByLabelText('New workflow name'),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows full source configuration and requires the exact graph acknowledgement and draft ETag', async () => {
     const graph = graphOf([
       { id: 'source', key: 'core.manual', label: 'Private label', x: 0 },

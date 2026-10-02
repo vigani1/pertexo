@@ -42,7 +42,12 @@ export function usePortabilityLifetime(
         key[2] === 'workspace' &&
         key[3] === workspaceId &&
         isApiError(event.query.state.error) &&
-        [401, 403, 404].includes(event.query.state.error.status ?? 0)
+        [401, 403, 404].includes(event.query.state.error.status ?? 0) &&
+        // An unrelated feature's denial/not-found is not workspace authority
+        // loss. Authentication loss still retires the whole scoped lifetime.
+        (event.query.state.error.status === 401 ||
+          key.length === 4 ||
+          key[4] === 'workflows')
       )
         retire();
     });
