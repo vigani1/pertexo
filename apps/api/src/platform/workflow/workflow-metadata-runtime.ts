@@ -3,6 +3,8 @@ import {
   createWorkflowTagDatabase,
   createWorkflowFavoriteDatabase,
   createWorkflowOrganizationReadDatabase,
+  createWorkflowFolderDatabase,
+  createWorkflowOrganizationBatchDatabase,
   type DatabaseConfig,
   type DatabaseRuntime,
   type WorkflowInputCaseDatabase,
@@ -86,10 +88,16 @@ export async function createApiWorkflowMetadataRuntime(
         absenceTokens,
       });
       resources.push(reader);
+      const folders = createWorkflowFolderDatabase(config, lease);
+      resources.push(folders);
+      const batches = createWorkflowOrganizationBatchDatabase(config, lease);
+      resources.push(batches);
       organization = Object.freeze({
         tags,
         favorites,
         reader,
+        folders,
+        batches,
         cursors: Object.freeze({
           workflows: createWorkflowOrganizationCursorCodec(key),
           pages: createWorkflowOrganizationPageCursorCodec(key),

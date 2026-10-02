@@ -20,8 +20,10 @@ import {
   WorkspaceAutoPauseReadGuard,
 } from './guards.js';
 import { WorkflowAuthoringController } from './controllers.js';
-import { WorkflowOrganizationController } from './organization-controller.js';
-import { workflowOrganizationProviders } from './organization-providers.js';
+import {
+  workflowOrganizationProviders,
+  workflowOrganizationControllers,
+} from './organization-providers.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from './rename-use-case.js';
 import { DuplicateWorkflowUseCase } from './duplicate-use-case.js';
@@ -217,7 +219,7 @@ export class WorkflowAuthoringModule {
       imports: [identityModule],
       controllers: [
         WorkflowAuthoringController,
-        WorkflowOrganizationController,
+        ...workflowOrganizationControllers,
         ...(dependencies.portabilityPersistence === undefined
           ? []
           : [WorkflowPortabilityController]),

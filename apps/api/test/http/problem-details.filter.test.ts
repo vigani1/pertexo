@@ -21,6 +21,8 @@ import { IdentityError } from '../../src/identity/index.js';
 import { mapIdentityWorkspaceError } from '../../src/identity-workspace/index.js';
 import { APPLICATION_ERROR_MAPPERS } from '../../src/application-error-mappers.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
+import { WorkflowTagConflictError } from '@pertexo/database/api';
+import { mapWorkflowOrganizationError } from '../../src/workflow-authoring/organization-errors.js';
 
 interface ResponseMock {
   body?: unknown;
@@ -60,6 +62,40 @@ function hostFor(
 }
 
 describe('RFC 9457 problem details filter', () => {
+  it('renders the accepted generic organization lifecycle conflict without fabricating a lifecycle revision', () => {
+    const mapped = mapWorkflowOrganizationError(
+      new WorkflowTagConflictError('lifecycle'),
+    );
+    expect(mapped?.code).toBe('workflow.lifecycle_conflict');
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      mapped,
+      hostFor(
+        { url: '/v1/workspaces/workspace-a/workflows/workflow-a/folder' },
+        response,
+      ),
+    );
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.body).toMatchObject({
+      code: 'workflow.lifecycle_conflict',
+    });
+    expect(apiProblemSchema.safeParse(response.body).success).toBe(true);
+    expect(response.body).not.toHaveProperty('currentLifecycleRevision');
+    expect(response.body).not.toHaveProperty('details');
+  });
+  it('retains lifecycle revision validation even with an organization discriminator', () => {
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      applicationError('workflow.lifecycle_conflict', {
+        details: {
+          conflictProjection: 'organization',
+          currentLifecycleRevision: 0,
+        },
+      }),
+      hostFor({}, response),
+    );
+    expect(response.status).toHaveBeenCalledWith(500);
+  });
   it('renders authoring admission failures as safe 503 with Retry-After, never raw causes or graph input', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(

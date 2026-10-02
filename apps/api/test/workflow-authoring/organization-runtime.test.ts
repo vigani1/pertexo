@@ -46,8 +46,10 @@ describe('organization metadata runtime ownership', () => {
       if (organization === undefined)
         throw new Error('Missing configured organization capability');
       expect(Object.keys(organization).sort()).toEqual([
+        'batches',
         'cursors',
         'favorites',
+        'folders',
         'reader',
         'tags',
       ]);

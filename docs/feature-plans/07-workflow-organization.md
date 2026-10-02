@@ -40,8 +40,8 @@ Folder name/sibling uniqueness and command schemas need a reviewed follow-on.
 A [concrete folder/general-bulk proposal](07-folders-bulk-follow-on-proposal.md)
 has received primary full-source acceptance of folder policy and its concrete
 whole-parent batch identity guard. Additive folder persistence and batch admission
-are being qualified in owned disposable databases; folder/bulk HTTP and browser
-behavior are not yet registered or accepted. Release-owner global reservation/base audit allocates
+are locally qualified in owned disposable databases, with folder/bulk HTTP now
+registered and qualified below; browser behavior remains open. Release-owner global reservation/base audit allocates
 additive migration 0135 exclusively to this follow-on, preserving 0134 unchanged.
 Migration 0134 is allocated exclusively to F07 against release-owner verified
 base `936612f26567f760c83e41c13e4c7fc7b620e69f`, whose tree is identical to accepted
@@ -344,11 +344,11 @@ query, since stored PostgreSQL names cannot contain NUL; owned reader and actual
 HTTP regressions pass without narrowing the accepted query contract.
 All 2,220 API unit cases/155 files, build/typecheck, scoped lint, architecture,
 dependency inventory, complexity and unchanged duplication ratchets pass.
-Tag cleanup and general bulk are not registered/qualified yet: their accepted
-parent-admission guard requires additive 0135 implementation. Folders, restart,
+At this individual-HTTP checkpoint, tag cleanup and general bulk were not yet
+registered/qualified: their parent-admission guard required additive 0135. Restart,
 real browser behavior, rollout and whole-feature acceptance remain open.
 
-Folder/batch database foundation (0135 draft): 87 owned PostgreSQL cases pass
+Folder/batch database foundation (`f93760e`): 87 owned PostgreSQL cases pass
 with no skips across folder/batch behavior (13), organization SQL (28), scoped
 reader (7), readiness/upgrade drift (36), and public folder/batch adapters (3).
 The adapter tests exercise real committed admission, item key derivation,
@@ -367,6 +367,46 @@ preserves workflow timestamps, and participates in bounded leaf-first purge and
 legal-hold retention. Exact folder/root filters run before keyset pagination and
 are bound into signed continuation identity. Existing compiled tag/favorite HTTP
 and actual MAC/public-adapter qualification passes 15 cases against the draft.
-These are source-as-run proofs, not a frozen 0135 release receipt, frozen old-image
+The subsequent local exact-head rerun records 94/94 cases across six files,
+including all seven existing tag adapter integrations, with zero skips. Its
+external receipt is
+`/Users/vigan/.codex/evidence/pertexo-f07-2026-10-02/folders-f93760e/receipt.md`.
+This is local foundation evidence, not a hosted release receipt, frozen old-image
 qualification, process restart, folder/bulk HTTP registration, or browser proof.
 Those gates and whole-feature acceptance remain open.
+
+Folder/bulk HTTP slice: all eight folder/placement, general-bulk and tag-cleanup
+routes now use the configured metadata runtime, current session/workspace guards,
+CSRF, mutation rate policy and private no-store responses. Individual placement
+looks up editor authority afresh rather than reusing the read guard's capability;
+SQL owns the current archived-workflow role fence. Parent admission commits before
+ordered serial item transactions, each with fresh authorization. A SQL visibility
+denial triggers a fresh authority check; authority loss produces `forbidden` and
+stops remaining targets as `not_processed`, without retained item revisions.
+No client parent hash, item key or proof flag is accepted. Recovery retains the
+full ordered request and key; historical receipts do not become current metadata.
+
+Sixty-two folder use-case, 30 batch use-case and 47 controlled Nest/Fastify
+controller cases pass. The controller suite registers old and new controllers
+to cover static routing collisions, but its fake session/persistence is not live
+authority proof. Separately, five new real-session/compiled API/PostgreSQL cases
+qualify folder CRUD and exact filtering, placement CAS, ordered partial bulk and
+changed/disjoint full-parent conflicts, cleanup's shared namespace and retained
+archived placement, builder archived replay fences, and writer-OFF reads/recovery
+versus new admission. All six prior organization HTTP and nine actual application
+MAC/public-adapter cases pass too: 20/20 across three files with zero skips.
+Application-owned rate counters are isolated per HTTP suite, retaining the real
+per-origin limit rather than weakening production policy.
+
+The archived replay regression also exercised the complete mapper/filter chain:
+generic organization lifecycle conflicts now carry a private internal discriminator
+so the shared filter does not demand or fabricate lifecycle CAS revision metadata.
+Existing lifecycle/name commands still validate their typed revision extensions;
+177 mapper/filter cases and all 2,380 API unit cases/158 files pass. The generic
+organization contract is unchanged, and the internal discriminator is never on
+the wire. Invalid route workspace UUIDs now fail as `request.invalid` before actor
+construction, with a focused guard regression. API build/typecheck, scoped
+lint/format, architecture, complexity and unchanged duplication ratchets pass.
+The folder/bulk HTTP slice is locally verified, not hosted, merged, rolled out,
+process-restart-qualified or a real browser acceptance result. Whole F07 remains
+open, including the user-facing organization controls and rollout gates.

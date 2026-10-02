@@ -6,6 +6,8 @@ import type {
   WorkflowTagDatabase,
   WorkflowFavoriteDatabase,
   WorkflowOrganizationReadDatabase,
+  WorkflowFolderDatabase,
+  WorkflowOrganizationBatchDatabase,
 } from '@pertexo/database/api';
 import type {
   ActorContext,
@@ -58,6 +60,9 @@ export type WorkflowAuthoringDependencies = Readonly<{
     tags: WorkflowTagDatabase;
     favorites: WorkflowFavoriteDatabase;
     reader: WorkflowOrganizationReadDatabase;
+    /** Missing follow-on adapters stay unavailable in explicit older test seams. */
+    folders?: WorkflowFolderDatabase;
+    batches?: WorkflowOrganizationBatchDatabase;
     cursors: Readonly<{
       workflows: WorkflowOrganizationCursorCodec;
       pages: WorkflowOrganizationPageCursorCodec;
