@@ -258,6 +258,13 @@ function acceptRunningCompletion(
     return true;
   }
   return (
+    acceptDeclaredEmptyLoopCompletion(
+      context,
+      previous,
+      next,
+      terminalEvent,
+      observation,
+    ) ||
     acceptLoopBarrier(context, previous, next, observation) ||
     acceptPersistedCompletion(
       context,
@@ -267,6 +274,48 @@ function acceptRunningCompletion(
       observation,
     )
   );
+}
+
+function acceptDeclaredEmptyLoopCompletion(
+  context: TransitionContext,
+  previous: Invocation,
+  next: Invocation,
+  terminalEvent: string,
+  observation: Readonly<Record<string, unknown>> | undefined,
+): boolean {
+  if (
+    next.status !== 'succeeded' ||
+    observation?.kind !== 'outcome' ||
+    !isDeclaredLoopBarrier(context.current, context.plan, next.invocationKey) ||
+    !acceptPersistedCompletion(
+      context,
+      previous,
+      next,
+      terminalEvent,
+      observation,
+    )
+  )
+    return false;
+  const loop = context.plan.checkpoint.loops.find(
+    ({ controlInvocationKey }) => controlInvocationKey === next.invocationKey,
+  );
+  const eventKey = nodeEventKey(next, terminalEvent);
+  if (
+    loop?.loopId !== next.nodeId ||
+    loop.collectionSize !== 0 ||
+    loop.nextOrdinal !== 0 ||
+    loop.activeOrdinals.length !== 0 ||
+    loop.terminalOrdinals.length !== 0 ||
+    loop.terminalStatus !== undefined ||
+    !sameStoredValue(loop.collection, next.output ?? null)
+  )
+    return false;
+  // An empty declaration settles its newly created loop barrier in this pass.
+  // Only that derived event accompanies the exact persisted executor outcome;
+  // ordinary completions must not acquire duplicate planned terminal events.
+  assertPlan(context.plannedNodeEvents.has(eventKey));
+  context.expectedNodeEvents.add(eventKey);
+  return true;
 }
 
 function acceptUnstartedTerminal(
