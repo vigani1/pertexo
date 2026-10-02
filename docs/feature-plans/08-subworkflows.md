@@ -295,6 +295,26 @@ narrow lint/format, architecture and complexity checks. These are mocked adapter
 tests, not serving-role, savepoint-retention or race qualification. The existing
 coordinator commit owner is not yet wired to these operations, and no SQL grants,
 migration registration or runtime enablement changed.
+
+The unregistered SQL0136 draft now includes an atomic native child-terminal
+parent identifier wakeup, retained-graph/checkpoint negative writer fences, and
+fresh advance-outbox envelope/deliverability checks before reservation, journal
+and seal. Isolated PostgreSQL18 development installation exposed and repaired
+PL/pgSQL predicate syntax and forced-RLS receipt visibility; differential checks
+also reject zero trace/parent IDs exactly as the existing queue contract does.
+The full candidate at SHA256
+`09fab7230eea62796c04b3f787366e188870a569e87ec2281744b7575d7277d3`
+installs atop registered SQL0000–0135, and all 22 actual definer outbox-helper
+cases pass using the existing canonical checksum and queue parser. Actual
+catalog checks show 17 draft routines with no EXECUTE for any of the six serving
+roles; rollout remains OFF. Every exclusively owned network-none/no-port/tmpfs
+development database was removed, including failed runs. These are development
+install/helper checks, not serving-role admission, reservation/journal/CAS whole-
+transaction rollback, restart/race or usable-feature qualification. The draft
+remains untracked outside the migration registry. Full native writer/retention/
+readiness boundaries and coordinator/runtime/API/editor integration remain open;
+none of the backend or integrated acceptance tracker items is complete.
+
 Fresh Call declaration plans now request an immediate durable continuation and
 leave other ready attempts unadmitted until the journal fact is consumed. The
 following advance reconciles the existing Call and admits ordinary ready work
