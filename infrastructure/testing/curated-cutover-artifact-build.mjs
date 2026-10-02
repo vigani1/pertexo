@@ -4,6 +4,9 @@ import { mkdir, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+export const CURATED_PRE_ORIGIN_SOURCE =
+  'f543283825887165889f7520655558b2a3f9229c';
+
 async function command(stage, executable, args, cwd, timeout = 180_000) {
   const child = spawn(executable, args, {
     cwd,
@@ -69,8 +72,7 @@ async function filesDigest(root, relative = '') {
   await visit(relative);
   return hash.digest('hex');
 }
-/** Frozen committed source; offline installs never fall back to a registry. */
-export async function buildCuratedCutoverArtifact({ repository, ref, label }) {
+async function archiveSource({ repository, ref, label }) {
   if (!/^[a-f0-9]{40}$/u.test(ref) || !/^[a-z][a-z0-9-]{0,40}$/u.test(label))
     throw new Error('Invalid source-bound artifact identity');
   const directory = await mkdtemp(
@@ -91,6 +93,44 @@ export async function buildCuratedCutoverArtifact({ repository, ref, label }) {
     const lockDigest = createHash('sha256')
       .update(await readFile(path.join(source, 'pnpm-lock.yaml')))
       .digest('hex');
+    return { directory, source, sourceDigest, lockDigest };
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+/** Explicit online preparation, separate from every independently built artifact. */
+export async function prepareCuratedCutoverCache(identity) {
+  const archived = await archiveSource(identity);
+  try {
+    await command(
+      'CACHE_PREPARE',
+      'pnpm',
+      ['fetch', '--ignore-scripts', '--frozen-lockfile'],
+      archived.source,
+    );
+    const lockDigest = createHash('sha256')
+      .update(await readFile(path.join(archived.source, 'pnpm-lock.yaml')))
+      .digest('hex');
+    if (lockDigest !== archived.lockDigest)
+      throw new Error('Frozen cache preparation changed the source lockfile');
+    return {
+      ref: identity.ref,
+      sourceDigest: archived.sourceDigest,
+      lockDigest,
+    };
+  } finally {
+    await rm(archived.directory, { recursive: true, force: true });
+  }
+}
+
+/** Frozen committed source; offline installs never fall back to a registry. */
+export async function buildCuratedCutoverArtifact(identity) {
+  const { ref, label } = identity;
+  const { directory, source, sourceDigest, lockDigest } =
+    await archiveSource(identity);
+  try {
     await command(
       'OFFLINE_INSTALL',
       'pnpm',

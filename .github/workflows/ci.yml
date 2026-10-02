@@ -417,6 +417,14 @@ jobs:
           cache: pnpm
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
+      - name: Prepare exact archived dependencies for offline cutover builds
+        run: |
+          set -euo pipefail
+          export PNPM_CONFIG_STORE_DIR="$(pnpm store path --silent)"
+          export PNPM_CONFIG_CACHE_DIR="$RUNNER_TEMP/curated-cutover-pnpm-cache"
+          printf 'PNPM_CONFIG_STORE_DIR=%s\nPNPM_CONFIG_CACHE_DIR=%s\n' \
+            "$PNPM_CONFIG_STORE_DIR" "$PNPM_CONFIG_CACHE_DIR" >> "$GITHUB_ENV"
+          node infrastructure/testing/prepare-curated-cutover-cache.mjs
       - name: Build workspace
         run: pnpm build
       - name: Install Playwright Chromium

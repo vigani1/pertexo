@@ -71,6 +71,15 @@ reports. It writes reports outside the checkout so evidence cannot dirty the
 qualified source. Never enable the owned flags against discovered/shared
 services or substitute a passing file wrapper for actual cutover test counts.
 
+Before offline compiled cutover builds, prepare both exact source refs with
+`node infrastructure/testing/prepare-curated-cutover-cache.mjs`. Set absolute
+`PNPM_CONFIG_STORE_DIR` to `pnpm store path --silent` and an owned absolute
+`PNPM_CONFIG_CACHE_DIR`; retain both for qualification. Preparation archives each
+ref separately and runs pinned pnpm's frozen, script-free fetch, recording source
+and unchanged lock hashes. Package content alone is insufficient: fresh installs
+also need metadata for pnpm's supply-chain verification. Every artifact build
+still starts from a fresh archive and installs offline without network fallback.
+
 Ordinary PR CI keeps its stable `quality` check name and runs the service-free
 `architecture:check`, `built-exports:check`, and `quality:local:check` gates.
 The build step precedes built-export validation. A semantic policy validator
