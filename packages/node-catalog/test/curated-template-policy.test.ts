@@ -70,6 +70,26 @@ describe('browser template setup versus registered server policy', () => {
   ).config;
 
   it.each([
+    ['https://é.example.test/path', true],
+    ['https:example.test', true],
+    ['https://@example.test', true],
+    ['https://example.test#', true],
+    ['https://\u200D.example', false],
+    ['https://xn--a.example', false],
+    ['https://example.test?%FF=value', true],
+    ['https://example.test?%00=value', true],
+    ['https://example.test?%C5%BFecret=value', false],
+    ['https://example.test?api-Key=value', false],
+  ] as const)(
+    'pins the URL guard decision oracle for %s',
+    (value, accepted) => {
+      expect(
+        validateCuratedTemplateSetupValue('https_endpoint', value).ok,
+      ).toBe(accepted);
+    },
+  );
+
+  it.each([
     'https://example.test',
     'https://example.test?q=value',
     'https://example.test/?key=value',
@@ -77,6 +97,26 @@ describe('browser template setup versus registered server policy', () => {
     endpointOfBytes(2049),
     'https://example.test/' + 'a'.repeat(2049),
     'https://é.example.test/path',
+    // WHATWG/IDNA boundary evidence for the independent SQL guard decision.
+    'https://faß.example',
+    'https://\u200D.example',
+    'https://xn--a.example',
+    'https:example.test',
+    'https:/example.test',
+    'https://@example.test',
+    'https://example.test#',
+    'https://example.test:#',
+    'https://127.1',
+    'https://0xffffffff',
+    'https://09',
+    'https://[::1]',
+    'https://[::1%25eth0]',
+    'https://example.test:65536',
+    'https://example.test?%FF=value',
+    'https://example.test?%00=value',
+    'https://example.test?ſecret=value',
+    'https://example.test?%C5%BFecret=value',
+    'https://example.test?api-Key=value',
     'HTTPS://example.test/path',
     'http://example.test',
     'ftp://example.test',
