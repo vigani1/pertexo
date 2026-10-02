@@ -1,6 +1,6 @@
 # F06 — Curated workflow templates and guided setup
 
-Status: ADR063/contract accepted after primary and independent review; implementation authorized, qualification/release open.
+Status: ADR063/contract accepted; implementation locally qualified and independently reviewed; primary final review/release open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Frontend-led over portable authoring. Relative size: **M**, not a calendar estimate.
 
@@ -71,7 +71,8 @@ No migration has been applied outside disposable owned qualification databases,
 no template writer enabled, and no real template journey has run. Do not deploy
 or commit that partial migration as a usable checkpoint.
 
-Current continuation (2026-10-02): primary accepted grammar delta `fdfc5699`,
+Current continuation (2026-10-02): persistence checkpoint `1433780b` is committed;
+primary accepted grammar delta `fdfc5699`,
 recorded in `167d1432`; the confined readiness-only boolean inventory seam was
 accepted and documented before code in `bd0dacd8`. Shared browser/model/catalog
 grammar, versioned descriptor kind and generator/corpus are committed in
@@ -83,10 +84,40 @@ The implemented SQL/runtime candidate has 2,340 genuine owned PostgreSQL guard
 tests plus 16 retained-metadata boundary tests passing; four raw NUL cases are
 explicitly native PostgreSQL transport rejections, not validator evaluations.
 The browser creates/configures all three examples and verifies edit/rename/copy/
-export/reimport semantics (one browser case passed). Complete worker execution
-remains unqualified: a minimal real resolver/validator regression fixed an extra
+export/reimport semantics (one browser case passed). Initial worker qualification
+was incomplete: a minimal real resolver/validator regression fixed an extra
 fixture payload wrapper without asset/assertion changes; both webhook branches now
-pass, but the schedule start fails with `execution.attempt_invalid`, under investigation.
+pass. The registered Schedule@3 trigger contract exposed a second synthetic
+fixture error; supplying that exact existing envelope now makes the two-item
+batch pass. The independently edited empty batch exposed a status-validator
+rejection of the engine's immediate empty-loop completion. Fix `b0d9fdf2` permits
+only the exact derived empty-loop completion: nine focused tests, 919 database
+unit tests and a genuine owned queue/worker empty-batch pass. The four-item batch
+then exposed a separate bounded-declaration rejection persistence mismatch.
+Repair `17c50546` independently derives immutable compiled bounds and
+matches the exact persisted executor success/attempt/output before settling only
+the rejected control node, retaining the successful executor attempt for audit.
+The proof/status suite passes 51 tests and the database unit suite passes 961.
+Eight genuine PostgreSQL tests pass, covering engine-derived settlement, fresh
+retained load/replay, wrong attempt/output/ledger, ordinary-node and stored-bound
+adversaries, changed physical collection, and post-settlement corruption denial
+with restored successful reads. Ten existing coordinator PostgreSQL regressions
+and 40 worker coordinator tests also pass.
+The latest owned worker journey reaches all nine manual-run outcomes; its final
+provider-dispatch count assertion was corrected to use persisted binding kinds,
+not pure-node attempt totals. The next live attempt completed signed webhook
+ingress and automatic database-clock schedule delivery, then failed its final
+transport trace because a stale fixture constructor omitted the planned HTTP
+500 response. A shared qualification factory and exhaustion regression correct
+that fixture. The complete thirteen-run owned journey now passes: nine manual
+cases, three signed loopback webhook HTTP deliveries and one automatic normal
+scanner schedule run using the actual database clock. The schedule proof is an
+independently edited one-minute variation, not a modification of asset v1; normal
+API disable clears its lease afterward. Persisted dispatch kinds and bounded
+transport observations both prove HTTP 200 → Slack 200 → HTTP 204 → HTTP 500,
+with no remaining planned responses. No real provider or public-network requests
+occur. Actual ingress and schedule acceptance are not inferred from manual cases. Neither
+fixture correction changes an asset, production runtime or acceptance assertion.
 Independent source review found missing readiness CHECK-constraint pins; exact
 validated pins and actual-role drop/weaken/rollback regressions are now added and
 the full guard suite passes. Database 910 and API 1,898 unit tests pass, along with
@@ -95,7 +126,53 @@ artifact-runtime five-second timeout is retained; isolated and full unchanged
 reruns pass, without a timeout increase or claim of freedom from timing flakes.
 Default production chooser/presentation and SQL
 writer gates remain off; fixture writer enablement is confined to attested
-disposable databases. Cutover/rollback, complete live proof and final review remain open.
+disposable databases. The completed local qualification below supersedes those
+initial cutover/live gaps; primary final review and release remain open.
+
+Final local qualification (2026-10-02): runtime/UI source `53b0f5fa` passes the
+complete thirteen-run owned API/browser/queue/worker journey, including three
+signed loopback webhook HTTP deliveries and automatic normal-scanner schedule
+delivery using the actual database clock. The full independently compiled
+old/current/separate-compatible-off API cutover passes all ten cases at
+`8d84dde5`. Actual old bootstrap on 0133 rejects before listening; held traffic,
+real migration failure rollback, compatible-off readiness, writer disable before
+hold/retirement, retained origin read/replay/inherited duplication after restart,
+and current-authority non-disclosure are proven. Both fixture-only assertion reds
+are retained: strict default reads use the existing `{workflow}` envelope, and
+suspended workflow authority returns 404 rather than 403. No runtime contract,
+timeout or acceptance gate was weakened.
+
+Both independent fixed-point review axes found the same scoped origin-lifetime
+issue. Fix `53b0f5fa` moves cache/session lifetime rules into a private hook and
+ignores unrelated feature/other-workflow 403/404 denials while retaining exact
+current-workflow/workspace denials, scoped 401/session retirement and held-response
+fences. Twenty-four focused origin tests and all 951 web tests pass; both reviewers
+closed their findings after read-only delta review, with no new actionable
+findings. Large corpus/generated bodies were sampled by invariant, not claimed as
+exhaustively reviewed line-by-line. React Doctor retains the same 15 existing
+advisory identities at score 82, with no finding in the repaired files.
+
+Frozen source `e6737086` passes full `pnpm check` and `pnpm test:coverage`: 9,448
+Vitest cases across 19 package suites, all static/build/lint/type/contract and
+unchanged complexity/duplication gates, all 64 performance contract cases, and
+24 provenance-bound coverage cohorts with zero unreviewed uncovered branches.
+The intermediate lint red concerned only a fixture declaration's inline type
+import and was corrected without runtime change. Earlier PID timing/source-drift
+failures remain recorded; the frozen rerun passes without a timeout increase or
+flake-freedom claim. Ninety-one ordinary cross-browser UI cases and seven browser
+safety probes pass separately; controlled HTTP stubs in those ordinary UI cases
+do not substitute for the owned real template journey. Live evidence remains
+bound to `53b0f5fa`; its two descendants change only cutover assertions and a
+fixture type import, not production runtime/UI. These results are carried
+forward, not falsely relabeled as exact-source reruns.
+
+The source-bound receipt and preserved red/pass transcripts are retained at
+`/Users/vigan/.codex/evidence/pertexo-f06-2026-10-02/final-qualification/receipt.md`.
+All disposable fixture databases/connections and Redis DB10/11/12 keys are gone;
+task-owned PostgreSQL/Redis containers are stopped with recoverable volumes
+retained. No shared services, real providers or public-network effects were used.
+No F06 push, hosted CI, merge, production rollout or full legacy shared-service
+integration claim. The required primary final source review precedes any push.
 
 Independent partial-candidate qualification at migration SHA-256
 `29d3d434fa146e720ee414881ddff13f7d45bc0fe42fcd068113ea2435c4f99e`:
@@ -119,8 +196,10 @@ narrower curated-only HTTPS grammar. Its exact bounded v1 grammar, compatibility
 change, versioned descriptor value kind and rationale are recorded in ADR063 and
 the contract at `fdfc5699`, accepted by primary exact-source review on 2026-10-02
 before changed-policy implementation. Ordinary HTTP/F05 behavior remains unchanged.
-Consistent implementation is now authorized; no writer enablement has occurred.
-Persistent qualification, cutover, rollback and release criteria remain open.
+Consistent implementation is now authorized; writer enablement is confined to
+disposable owned qualification, never production.
+At that grammar decision, persistent qualification, cutover, rollback and release
+criteria remained open; final local qualification is recorded above.
 
 Foundation verification: 215 model and 124 catalog unit tests; 154 contract tests
 with regenerated artifact/OpenAPI checks; 113 focused API tests and two receipt
@@ -132,8 +211,9 @@ advisory identities. Fresh pure proof of the actual repository assets passes
 selected placement, authoring admission, F05 binding/reprojection and executable
 compilation for all three at epoch 38, with default-core rejection. Its bindings
 are synthetic; this does not establish database authority, execution or delivery.
-Owned HTTP/PostgreSQL/browser/worker journeys and compatible cutover tests remain
-open. The accepted feature is not complete or release-qualified.
+At the foundation checkpoint, owned HTTP/PostgreSQL/browser/worker journeys and
+compatible cutover tests remained open. The accepted feature is now locally
+qualified as recorded above, but is not release-qualified.
 
 ## Dependencies and planning gate
 
@@ -361,10 +441,10 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 - [x] Audience/examples, guided binding and durable historical provenance selected.
 - [x] Necessary persistent ADR accepted after primary and independent review.
 - [x] Contracts and failure/security model reviewed.
-- [ ] Backend behavior implemented and independently verified where needed.
-- [ ] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
+- [x] Backend behavior implemented and independently verified where needed.
+- [x] Frontend behavior implemented and independently verified where needed.
+- [x] Real integrated acceptance evidence recorded.
+- [x] Rollout/rollback and limitations documented.
 - [ ] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log: 2026-10-02 read-only preparation at F05 candidate `a0d69f57`:
@@ -375,8 +455,9 @@ and three complete normal-admission graph prototypes are recorded above. Manager
 acceptance of ADR063/contract follows primary and independent review, including
 strict held-traffic new-head/helper inventory compatibility, bounded browser-safe
 Slack input/HTTP UTF-8 validation and confined descriptor lock privileges.
-No chooser, persistent
-provenance, real API/database preview or live journey exists from this preparation.
+That initial preparation did not yet contain a chooser, persistent provenance,
+real API/database preview or live journey; current implementation and later
+qualification evidence are recorded above.
 Baseline/product-choice and ADR/contract review rows are complete; implementation,
 owned qualification and release gates remain open. No runtime or image qualification
 is implied by design acceptance.

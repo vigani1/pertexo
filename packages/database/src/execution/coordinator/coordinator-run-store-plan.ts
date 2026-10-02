@@ -298,12 +298,14 @@ export function validateStatusTransitions(
     observation: Readonly<Record<string, unknown>>;
     type: string;
   }>[],
+  rejectedForEachDeclarations: ReadonlySet<string> = new Set(),
 ): void {
   assertStatusTransitionsValid(
     current,
     plan,
     persistedFacts,
     terminalRunStatuses,
+    rejectedForEachDeclarations,
   );
 }
 
