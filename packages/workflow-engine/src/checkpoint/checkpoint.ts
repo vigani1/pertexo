@@ -1,20 +1,9 @@
-import type {
-  WorkflowCheckpoint,
-  WorkflowCheckpointV2,
-  WorkflowCheckpointV1,
-} from '../types.js';
+import type { WorkflowCheckpoint } from '../types.js';
 import { WorkflowEngineError } from '../errors.js';
-import {
-  assertBoundedCheckpointJson,
-  assertCheckpoint,
-  isRecord,
-} from './checkpoint-shared.js';
+import { assertBoundedCheckpointJson, isRecord } from './checkpoint-shared.js';
 import { parseCheckpointV1Boundary } from './checkpoint-v1.js';
 import { parseCheckpointV2Boundary } from './checkpoint-v2.js';
-import {
-  assertPersistedEngineVersion,
-  assertPersistedWorkflowVersionId,
-} from './checkpoint-identity.js';
+export { createCheckpoint, createCheckpointV2 } from './checkpoint-initial.js';
 
 export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
   try {
@@ -43,58 +32,6 @@ export function reconstructReadySet(
     .filter(({ status }) => status === 'ready')
     .map(({ invocationKey }) => invocationKey)
     .sort();
-}
-
-export function createCheckpointV2(input: {
-  readonly engineVersion: string;
-  readonly workflowVersionId: string;
-  readonly iterationBudget: number;
-  readonly nextEventSequence?: number;
-}): WorkflowCheckpointV2 {
-  return {
-    ...createCheckpoint(input),
-    schemaVersion: 2,
-    branchSelections: [],
-    initialIterationBudget: input.iterationBudget,
-  };
-}
-
-export function createCheckpoint(input: {
-  readonly engineVersion: string;
-  readonly workflowVersionId: string;
-  readonly iterationBudget: number;
-  readonly nextEventSequence?: number;
-}): WorkflowCheckpointV1 {
-  const engineVersion = assertPersistedEngineVersion(input.engineVersion);
-  const workflowVersionId = assertPersistedWorkflowVersionId(
-    input.workflowVersionId,
-  );
-  assertCheckpoint(
-    Number.isSafeInteger(input.iterationBudget) && input.iterationBudget >= 0,
-    'iterationBudget is invalid',
-  );
-  assertCheckpoint(
-    input.nextEventSequence === undefined ||
-      (Number.isSafeInteger(input.nextEventSequence) &&
-        input.nextEventSequence > 0),
-    'nextEventSequence is invalid',
-  );
-  return {
-    schemaVersion: 1,
-    engineVersion,
-    workflowVersionId,
-    revision: 0,
-    runStatus: 'queued',
-    nextEventSequence: input.nextEventSequence ?? 2,
-    readySet: [],
-    admittedInvocationKeys: [],
-    invocations: [],
-    joins: [],
-    loops: [],
-    remainingIterationBudget: input.iterationBudget,
-    cancelRequested: false,
-    deadlineExpired: false,
-  };
 }
 
 export { WORKFLOW_CHECKPOINT_LIMITS_V1 } from './checkpoint-shared.js';

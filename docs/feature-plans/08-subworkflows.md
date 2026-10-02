@@ -165,7 +165,18 @@ declaration executor performs no child admission or provider I/O and is not yet
 registered. Executable V3 is not yet accepted by advance/attempt runtime owners.
 Durable Call output must remain distinct from the immutable declaration attempt;
 existing 256 KiB inline persistence cannot silently stand in for the independent
-1 MiB callable value limit. Checkpoint V3, artifact-owner integration, durable
-admission/settlement and all live qualification remain unfinished.
+1 MiB callable value limit.
+
+Standalone Checkpoint V3 and pure Call reconciliation now preserve separate
+declaration-attempt input and child-result references, exact journal identity,
+dedicated waiting, bounded Call ledgers, monotonic stops and unknown-outcome
+precedence. All 590 engine tests across 43 files pass, with engine typecheck,
+narrow lint and complexity checks. Retained checkpoint parsers and runtime
+advance/attempt owners are not yet wired to these semantics. The existing inline
+owner supplies an independently tested representation selector; its 256 KiB
+limit is unchanged. A standalone framework artifact codec is under verification,
+but protected SQL provenance, reserved-ID writer integration and live storage
+qualification are still required. Durable admission/settlement, native runtime
+integration and all live qualification remain unfinished.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
