@@ -71,23 +71,21 @@ export function createCuratedOriginOwnedDatabase() {
         connectionTimeoutMillis: 3000,
       });
       try {
-        if (created) {
-          const deadline = Date.now() + 10_000;
-          for (;;) {
-            const remaining = await admin.query<{ count: number }>(
-              'select count(*)::int count from pg_stat_activity where datname=$1',
-              [name],
+        const deadline = Date.now() + 10_000;
+        for (;;) {
+          const remaining = await admin.query<{ count: number }>(
+            'select count(*)::int count from pg_stat_activity where datname=$1',
+            [name],
+          );
+          if (remaining.rows[0]?.count === 0) break;
+          if (Date.now() >= deadline)
+            throw new Error(
+              `Owned fixture connections did not close: ${name}`,
             );
-            if (remaining.rows[0]?.count === 0) break;
-            if (Date.now() >= deadline)
-              throw new Error(
-                `Owned fixture connections did not close: ${name}`,
-              );
-            await admin.query('select pg_sleep(0.02)');
-          }
-          await admin.query(`drop database "${name}"`);
-          created = false;
+          await admin.query('select pg_sleep(0.02)');
         }
+        await admin.query(`drop database "${name}"`);
+        created = false;
         const remaining = await admin.query(
           'select datname from pg_database where datname=$1 union all select datname from pg_stat_activity where datname=$1',
           [name],
