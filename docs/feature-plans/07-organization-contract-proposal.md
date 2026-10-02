@@ -2,16 +2,22 @@
 
 Status: **ACCEPTED CONTRACT — primary exact-source review of `a0508cd0`, 2026-10-02.**
 The qualified F06 handoff at `eed68cd6` is accepted by primary final source review.
-Persistent implementation remains gated on release-owner exact integration-base
-and migration allocation. No writer enablement or completed behavior is implied.
+Persistent implementation is authorized on the release-owner exact integration
+base and allocation recorded below. No writer enablement or completed behavior
+is implied.
 Inventory source: `1433780b8540545bea66ba9f39aff9e44f40e3c3`, 2026-10-02.
 Parent: [F07](07-workflow-organization.md), [roadmap](../product-roadmap.md).
 This inventory was read-only preparation before the F06 handoff, not runtime proof.
 At that preparation checkpoint F06 qualification was the active priority. F07
 contracts/model/frontend preparation is now authorized. The primary reserved
 ADR064; its [decision](../adr/064-workflow-organization-metadata.md) is accepted.
-Migration 0134 is provisional pending release-owner reconciliation after F06;
-this document does not allocate it or authorize persistent implementation.
+Release-owner reconciliation now allocates migration 0134 exclusively to F07
+against exact locally qualified integration base
+`936612f26567f760c83e41c13e4c7fc7b620e69f`, tree
+`45445a2deb287e7534f69b536e4415939a2ca204` (identical to accepted F06 `eed68cd6`).
+The primary authorized persistent continuation on that base; writers remain off
+until owned qualification. Historical F06 results retain their original source
+bindings, not relabeled as reruns on the integration merge.
 
 ## Current canonical owners
 
@@ -31,7 +37,7 @@ Existing workflow graph, publication, activation, archive/restore, input cases,
 portable V1/export and historical template origin remain separate domains.
 Organization is mutable metadata, not executable semantics or workflow access.
 
-## Recommended delivery scope
+## Accepted delivery scope
 
 1. Tags and private favorites, with authoritative bounded list filters and a
    useful browser list/row interaction. Include the limited owner/admin assignment
@@ -47,7 +53,7 @@ Do not create a package, worker job or external search service. Keep durable
 transactions/projections in database authoring, transport in API authoring,
 browser-safe schemas in contracts, and UI/Query/Router state in web workflows.
 
-## Proposed slice-1 semantics requiring acceptance
+## Accepted slice-1 semantics
 
 ### Shared tags
 
@@ -273,7 +279,7 @@ inaccessible workflow. Item keys are deterministic opaque derivations of the
 frozen overall command and item identity; retain frozen bytes through uncertain
 recovery, not a reconstructed “retry failed” request with new revisions/keys.
 
-## Concrete slice-1 command surface (proposed)
+## Concrete slice-1 command surface (accepted)
 
 All mutation bodies are strict, bounded JSON under existing CSRF/session rules;
 unknown/null members fail. Commands use existing idempotency-header semantics and
@@ -345,7 +351,19 @@ enforce their documented bounds, enums and unknown-member handling.
 Cursor HMAC keys must use the established secret/configuration owner with stable
 cross-instance behavior and explicit rotation/fail-closed availability. No
 process-random key, hardcoded fallback or logged filter payload is permitted.
-Finalize cursor size/expiry before its implementation. Recovery UI must disclose
+Primary accepted concrete cursor bounds before implementation on 2026-10-02:
+512 ASCII bytes maximum on the wire, version 1 canonical bounded payload and
+HMAC-SHA256, 15-minute expiry. Bind workspace, actor, order, canonical filter hash
+(not raw query text), exact timestamp/UUID position, issued-at and expiry.
+Verify bounded size/encoding/version/signature with timing-safe comparison,
+timestamp ranges/expiry and scope/filter/order before query; return generic
+invalid-cursor detail. Prove the largest legitimate payload fits 512 and overflow
+fails, cross-instance fixed algorithm vectors, tamper/expiry/key rotation and
+cross-actor/workspace/filter/order rejection. Rotation requires an explicit fresh
+first page preserving filters, not automatic retry loops. Existing unfiltered
+default cursor behavior remains unchanged. No random/hardcoded key fallback or
+logged filter payload; signing is neither privacy nor authorization.
+Recovery UI must disclose
 the favorite retry-horizon limitation and never automatically reset to a new key.
 Folder names/sibling uniqueness and exact folder commands require a reviewed
 follow-on before that slice. Folders and general bulk remain required F07 scope.

@@ -2,10 +2,11 @@
 
 Status: **ACCEPTED — primary exact-source review of `a0508cd0`, 2026-10-02.**
 The primary accepted the qualified F06 handoff at `eed68cd6` on 2026-10-02.
-Consequential persistent implementation remains gated on release-owner exact
-integration-base/migration allocation; this acceptance does not enable writers.
-Number reserved by the primary on 2026-10-02. Migration 0134 remains provisional
-pending release-owner reconciliation after F06. Parent: [F07](../feature-plans/07-workflow-organization.md).
+Release-owner reconciliation and primary authorization allocate migration 0134
+exclusively to F07 against exact qualified integration base `936612f2`, whose
+tree is identical to accepted F06 `eed68cd6`. Persistent continuation is now
+authorized, not writer enablement or completed behavior.
+Number reserved by the primary on 2026-10-02. Parent: [F07](../feature-plans/07-workflow-organization.md).
 
 Workflow discovery currently paginates saved workflow summaries but searches and
 filters lifecycle only over loaded browser pages. We propose shared workspace

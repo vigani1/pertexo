@@ -1,8 +1,7 @@
 # F07 — Folders, tags, favorites and workspace discovery
 
-Status: ADR064/contract and qualified F06 handoff accepted; contracts/model/frontend
-preparation authorized, persistent implementation gated on release-owner exact
-integration-base/migration allocation.
+Status: ADR064/contract and qualified F06 handoff accepted; persistent continuation
+authorized on allocated exact integration base; implementation/qualification open.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Metadata backend + frontend. Relative size: **M**, not a calendar estimate.
 
@@ -38,7 +37,9 @@ hold-aware departure, bounded tag deletion and archived cleanup, shared lock
 order, signed cursor integrity and compatible reader/writer rollback. Folders
 and general bulk are required later slices, not omitted from F07 completion.
 Folder name/sibling uniqueness and command schemas need a reviewed follow-on.
-Migration 0134 is provisional only; no schema or writer is installed or enabled.
+Migration 0134 is now allocated exclusively to F07 against release-owner verified
+base `936612f26567f760c83e41c13e4c7fc7b620e69f`; no schema or writer is installed
+or enabled yet. Its tree is identical to accepted F06 `eed68cd6`.
 
 Continuation authorized by primary final source review on 2026-10-02: F06
 candidate `eed68cd67b45280db3951981da7e29b3726e06c7` is accepted and its release
@@ -47,7 +48,8 @@ additively in this isolated F07 worktree, preserving accepted planning commit
 `342239d8` and all F06 features/fixes. No history rewrite or mutation of the F06
 checkout. Contracts/model/frontend preparation can proceed; persistent SQL must
 use the release owner's subsequently verified exact locally qualified integration
-base and migration allocation, not stale inventory `1433780b`. Hosted CI is not a
+base and migration allocation, not stale inventory `1433780b`. That reconciliation
+is complete and integrated additively by normal merge. Hosted CI is not a
 prerequisite to that local base decision. Folders and general bulk remain required
 F07 acceptance scope; tags/favorites slice 1 is not completion of the feature.
 
@@ -61,6 +63,17 @@ Workflow-authoring metadata/persistence/contracts and web workflows; favorites h
 Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
 These are responsibility owners, not a mandate to create empty folders/packages.
 Reuse the post-cleanup canonical owners; do not restore old duplicated paths.
+
+Preparation inventory identifies two integration constraints: owner/admin tag
+vocabulary uses an organization-specific role check, not a global broadening of
+the existing owner-only `workspace:manage` capability. Organization cache keys
+use a sibling feature prefix beneath the existing identity/workspace scope, not
+legacy summary-list keys or the F06 portability lifetime prefix. This preserves
+strict cached summary decoding and prevents organization-specific denials from
+discarding unrelated portability recovery. Targeted rename/archive/organization
+invalidation must include organized lists; root identity/workspace cancellation
+and genuine authority loss remain fenced. Unsupported readers return sanitized
+unavailable, never fabricated empty metadata.
 
 ## Frontend work
 
