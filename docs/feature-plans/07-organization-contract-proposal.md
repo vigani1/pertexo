@@ -4,9 +4,10 @@ Status: **PROPOSED — primary review required, not accepted or implementation-a
 Inventory source: `1433780b8540545bea66ba9f39aff9e44f40e3c3`, 2026-10-02.
 Parent: [F07](07-workflow-organization.md), [roadmap](../product-roadmap.md).
 This is read-only source reconciliation plus a recommendation, not runtime proof.
-F06 qualification remains the active delivery priority. No migration or ADR number
-is allocated here; the primary must reconcile the global ADR/migration inventory
-immediately before accepting consequential decisions or persistent implementation.
+F06 qualification remains the active delivery priority. The primary reserved
+ADR064; its [draft](../adr/064-workflow-organization-metadata.md) remains proposed.
+Migration 0134 is provisional pending release-owner reconciliation after F06;
+this document does not allocate it or authorize persistent implementation.
 
 ## Current canonical owners
 
@@ -29,7 +30,10 @@ Organization is mutable metadata, not executable semantics or workflow access.
 ## Recommended delivery scope
 
 1. Tags and private favorites, with authoritative bounded list filters and a
-   useful browser list/row interaction. No enabled placeholders.
+   useful browser list/row interaction. Include the limited owner/admin assignment
+   discovery and explicit bounded detach needed for overflow deletion recovery;
+   do not leave a visible delete action without its supported recovery. No enabled
+   placeholders.
 2. Folder navigation, individual moves and folder administration after its
    hierarchy/race model is accepted. Folder placement never changes permissions.
 3. Explicit bounded bulk tagging/moving, with per-item outcomes and stale-write
@@ -47,9 +51,16 @@ Recommendation: workspace-scoped stable tag IDs and unique canonical keys;
 workflow assignments reference tag IDs, not duplicated labels. Initially use
 lowercase ASCII kebab-case keys, 1–32 bytes, at most 16 tags/workflow and 256
 live tags/workspace. Accept uppercase ASCII input only through an explicitly
-specified lowercase normalization, trim ASCII outer spaces, reject any remaining
+specified lowercase normalization, trim only U+0020 outer spaces, reject any remaining
 invalid characters; never silently transliterate Unicode. Return the canonical
 key before confirmation. Bounds are server-enforced, not caller-configurable.
+
+Exact algorithm: remove leading/trailing U+0020; map ASCII A–Z to a–z; require
+`^[a-z0-9]+(-[a-z0-9]+)*$` and 1–32 UTF-8 bytes. No Unicode case fold, tab/newline
+trim, normalization or transliteration. `  Ops-2  ` becomes `ops-2`; `ops_2`,
+`-ops`, `ops--2`, `équipe` and tab-wrapped input fail. Duplicate canonical keys
+conflict workspace-locally; normalized command bytes, not original spelling,
+determine idempotency identity. SQL checks canonical ASCII with C collation.
 
 Trade-off: ASCII keys make normalization/uniqueness portable and auditable but
 restrict international labels. Alternative: Unicode display labels with a
@@ -63,21 +74,45 @@ deletion is owner/admin-only through existing workspace authority. Alternative:
 builders manage the shared vocabulary, which is simpler inline UX but allows
 team-wide edits; the primary must choose this permission, not infer it.
 
-Delete a tag by an explicit owner/admin command that atomically removes its
-assignments, without deleting/changing workflows. Lock the tag row to fence
+Delete a tag by an explicit owner/admin command that removes its
+assignments, without deleting/changing workflow graph/name/lifecycle. Lock the tag row to fence
 assignment races. Tag IDs are never reused; later recreation has a new ID.
 Rename preserves ID and assignments, rejects canonical-key collision, and uses
 its own expected revision. No hidden tag merges. Archived workflows retain tags;
 archive/restore never rewrites assignments. Global deletion affects archived
 assignments too and must say so in confirmation.
 
+Every removed assignment advances that workflow's organization revision exactly
+once, including archived workflows, in the same transaction as its removal.
+Tag rename preserves organization revisions because assignments reference stable
+IDs; tag vocabulary revision advances instead. Primary clarified bounded deletion:
+under the common organization/tag lock inspect assignments with `LIMIT 51`.
+At most 50 affected workflows are locked in UUID order, each assignment is removed
+and each organization revision advances once, then the tag is deleted atomically.
+Finding a 51st assignment returns a sanitized too-many-assignments conflict with
+zero deletion/assignment/revision changes. Never lock every matching workflow
+before this bounded preflight; do not hold locks during human confirmation.
+
+For overflow, owner/admin uses bounded authoritative assignment discovery with
+keyset pages, including archived workflows; this is scoped admin cleanup, not a
+public workflow/tag fan-out count. Explicitly selected ≤50 IDs can be detached in
+bulk with each expected organization revision, then a fresh confirmed delete is
+submitted after reread. Admin cleanup deliberately permits archived targets:
+ordinary editor tag replacement remains active-only, but cleanup must not require
+restoring archived workflows or leave undeletable tags. No implicit “detach all,”
+tag-degree quota, worker job or tombstoned-tag cleanup protocol is added. Keep each
+bulk item's current authority/replay/visibility checks and revision outcomes.
+The delete command is frozen during recovery; after cleanup changes the intended
+operation, use a fresh confirmed command/key, not the finalized old identity.
+Failed/uncertain attempts retain the existing receipt and exact-retry policy.
+
 Workflow tag-set replacement is bounded and revision-checked. Use one independent
 organization revision and an exact normalized command identity; concurrent
 changes from the same revision yield one winner and a stale conflict, never a
 silent lost update. Replaying a committed identical command returns its recorded
 outcome after current authority; same key/different command conflicts. Name,
-graph and lifecycle revisions are independent. Lock ordering and archive/update
-race outcomes must be specified alongside the concrete migration design.
+graph and lifecycle revisions are independent. The shared lock order below
+governs tag replacement/deletion, archive and hierarchy changes.
 
 ### Private favorites
 
@@ -99,9 +134,24 @@ and outcome-unknown recovery; accept that weaker semantics explicitly if chosen.
 Do not increment shared organization revision or workflow.updated_at for a
 personal bookmark, and do not emit tag/favorite literals in telemetry.
 
+Proposed concrete token: `favoriteRevision` is `absent` when no current state
+exists, otherwise an opaque server-generated UUID refreshed on every committed
+favorite command. A false state is a tombstone, not immediate physical deletion.
+It persists through the existing 24-hour terminal-command retry horizon; matching
+receipt replay precedes revision checks and does not renew its expiry. Keep at
+most one state/tombstone per actor/workflow, never one row per toggle; reap expired
+false rows in existing bounded maintenance batches, respecting holds. After
+expiry a new command requires a current read, not automatic retry/reset; the
+contract does not promise deduplication or stale-token fencing beyond that horizon.
+The concrete migration must prove cleanup indexing and API-rate-limit composition;
+time-bounded retention alone is not a claim of a hard row-count quota.
+
 Suspension denies access immediately but preserves bookmarks for reactivation.
-Recommendation: permanent membership removal deletes that membership's private
-favorites atomically; rejoining starts without old private state. User deletion
+Recommendation: permanent membership removal invalidates that membership's private
+favorites atomically; rejoining starts without old private state. Physical deletion
+obeys existing legal-hold/deletion orchestration. Held rows are inaccessible
+retained evidence, explicitly not bookmarks restored by a later rejoin; use a
+membership generation/tombstone fence, not user/workspace identity alone. User deletion
 and actual workflow/workspace purge also remove them, respecting existing holds
 and deletion orchestration. Alternative retaining favorites after removal needs
 explicit retention/rejoin disclosure and bounded purge rules. RLS alone is not
@@ -115,8 +165,12 @@ active/archived/all, one tag ID and favorites-only initially. Filters intersect;
 favorites always use current actor. Later folder filter must distinguish exact
 folder from descendants; recommend exact folder only in V1. Unknown/deleted tag
 or folder filters return an empty scoped result, not cross-tenant existence detail.
-Escape SQL wildcard metacharacters so name search is a literal substring;
-document actual database case semantics, not unspecified JS-locale equivalence.
+Escape SQL wildcard metacharacters so name search is a literal substring.
+Proposed exact name-search semantics are case-sensitive PostgreSQL `LIKE` with
+explicit C collation and escaped `%`, `_` and escape character, no Unicode fold
+or normalization. The browser sends the exact bounded query (no locale-lowercase
+postfilter); a case-insensitive Unicode search would require a separate accepted
+algorithm. Trim only outer U+0020 and omit empty query from canonical filters.
 No exact global counters or total-results claim unless separately implemented.
 
 Preserve default list order, page limits and old response shapes. Add an explicit
@@ -129,6 +183,13 @@ combined GET include grammar needs exact contracts rather than an arbitrary
 field-name list. Default and unsupported-reader responses never imply fabricated
 empty metadata. Prefer a sanitized unavailable error to pretending no tags exist.
 
+Proposed strict query addition: list `include=organization`; GET accepts exactly
+`include=organization`, existing `include=templateOrigin`, or canonical
+`include=templateOrigin,organization`. List metadata has `tags` (ID/key/tag revision),
+`organizationRevision`, `folderId` (null in slice 1), `isFavorite`, and opaque
+`favoriteRevision`. No user identity or other person's favorite data is returned.
+Absent metadata is server-established default revision, not unsupported storage.
+
 Cursor binds version, workspace, actor, order and canonical filter identity plus
 timestamp/UUID position; reject changed-filter cursor reuse. Existing unfiltered
 cursor semantics remain accepted on the old path. Query keys include the same
@@ -138,6 +199,38 @@ Keyset pagination is live, not a snapshot: concurrent workflow edits may move
 items; clients deduplicate IDs and refresh explicitly, with no completeness
 claim from loaded-page counts. Prefer existing ordering timestamps unchanged by
 tag/favorite-only writes, so discovery actions do not reshuffle recent workflows.
+
+New filtered/projected cursors are opaque bounded versioned base64url payloads
+with a server HMAC over exact canonical payload bytes; reject signature/version/
+scope/filter mismatches before database work with generic invalid-cursor detail.
+Signing is integrity, not authorization or encryption: current membership and
+workflow visibility are checked on every page. Do not place names/query literals
+or favorite identities in logs. Key rotation may invalidate cursors and require
+a fresh first page; no cursor permits skipping authority. Old unfiltered cursors
+remain only on the unchanged unfiltered/default response path.
+
+## Shared transaction order and race outcomes
+
+Use the existing workspace admission/lifecycle lock first, then active actor and
+membership authority locks, then the scoped command receipt, then one workspace
+organization-coordination row, then tag/folder rows in UUID order, then workflow
+rows in UUID order, then assignment/personal-state rows. Shared organization
+mutation takes the coordination row UPDATE; archive takes SHARE at that same
+position before its workflow lock. Tag replace/delete, hierarchy mutation and
+workflow folder move use the same order. Favoriting takes SHARE before workflow
+visibility/state locks. No path locks workflow first and then coordination/tag.
+
+The archive helper must be additively upgraded to this order; do not assume
+existing lifecycle code already participates. Existing workspace purge retains
+its workspace-first order and must be reconciled against these locks. Completed
+receipt replay rechecks current authority and visible workflow, but skips current
+tag/folder existence and writer policy; it must not acquire locks backward.
+If archive wins, ordinary new shared metadata commands fail lifecycle conflict
+(explicit owner/admin cleanup detachment remains allowed on archived targets); if
+metadata wins, archive retains its committed assignments. Opposite hierarchy
+moves serialize before recursive cycle/depth validation. Member removal winning
+first denies processing/replay. Do not introduce automatic new-key retries for
+serialization/deadlock/outcome-unknown failures.
 
 ## Folder and bulk follow-on decisions (not silently deferred from F07)
 
@@ -165,6 +258,40 @@ items. Alternative all-or-nothing is simpler recovery but makes one stale item
 block an entire batch. Primary must accept atomicity/privacy/race semantics;
 no blanket success result. Bulk archive should reuse archive semantics rather
 than inventing organization-specific lifecycle behavior.
+
+Each item independently checks current actor/membership/capability and workflow
+visibility at processing **and replay** time, not only at batch admission. Only
+visible authorized items can return revision conflict/current revision. Missing,
+foreign-workspace and otherwise nonvisible targets share a sanitized not-visible
+outcome; no lookup confirms cross-tenant existence. Membership loss stops remaining
+items with generic forbidden results and never exposes a retained receipt for an
+inaccessible workflow. Item keys are deterministic opaque derivations of the
+frozen overall command and item identity; retain frozen bytes through uncertain
+recovery, not a reconstructed “retry failed” request with new revisions/keys.
+
+## Concrete slice-1 command surface (proposed)
+
+All mutation bodies are strict, bounded JSON under existing CSRF/session rules;
+unknown/null members fail. Commands use existing idempotency-header semantics and
+sanitized unavailable/forbidden/not-found/conflict errors. No actor selector.
+
+| Existing authoring transport extension | Strict command / projection |
+| --- | --- |
+| Workspace tag collection GET / POST | Bounded keyset vocabulary list; create `{key}` with normalized identity. |
+| Workspace tag resource rename / delete | `{key, expectedTagRevision}` or `{expectedTagRevision}`; atomic delete ≤50 assignments, `LIMIT 51` overflow conflicts without change. |
+| Workspace tag assignment discovery | Owner/admin-only bounded keyset pages of assigned workflow IDs and organization revisions, including archived targets for explicit cleanup. |
+| Workflow organization GET | Opt-in existing workflow GET projection described above, same workflow-read authority. |
+| Workflow tag replacement POST | `{tagIds, expectedOrganizationRevision}`; unique UUID array, at most 16, canonical UUID sort, atomic replacement and one revision advance. |
+| Admin tag cleanup detach POST | `{tagId, items: [{workflowId, expectedOrganizationRevision}]}`; unique ≤50 explicit workflow IDs, current owner/admin per-item authority, archived allowed, independent ordered outcomes and frozen per-item identities. |
+| Workflow favorite POST | `{favorite, expectedFavoriteRevision}`; explicit boolean and `absent`/opaque UUID token; current read authority including viewers. |
+| Existing workflow list GET | `query` ≤128 UTF-8 bytes, `view=active|archived|all`, optional `tagId`, `favoritesOnly=true`, `include=organization`, existing `order/limit/after`; exact query names finalized by primary before schemas. |
+
+Proposed successful metadata command returns only its scoped metadata outcome and
+`replayed` flag, not changed strict workflow summaries or a graph. Revisions use
+existing safe-integer positive revision conventions where numerical; untouched
+organization starts at revision 1. Favorite tokens are not shared revisions.
+No-op replacement still advances once for a new accepted command, avoiding an
+ambiguous concurrent same-revision winner; exact replay never advances again.
 
 ## Additive rollout, rollback and evidence gates
 
@@ -202,6 +329,12 @@ source presence do not close persistence or live gates.
 - Authoritative filter/projection/cursor contract and live-pagination guarantees.
 - Folder hierarchy lock/depth/delete/move semantics and bulk atomicity/outcomes.
 - Additive compatible reader/writer rollout, retention/purge and exact-source gates.
+
+Primary clarification incorporated: bounded atomic tag deletion ≤50 affected
+workflows, zero-change overflow discovered with LIMIT 51, explicit authorized
+archived cleanup and fresh confirmation after changing the intended operation.
+These are proposed documents pending exact-source ADR/contract review, not an
+accepted-state declaration by their drafter.
 
 These are candidates for one coherent next-free ADR, not several routine ADRs or
 an accepted decision. Numerical proposals and transport shapes remain reviewable.
