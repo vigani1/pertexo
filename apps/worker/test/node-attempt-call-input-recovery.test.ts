@@ -29,6 +29,7 @@ function fixture(recovered = true) {
   const runStore = executionStore({
     loadInputs,
     complete,
+    completeCallDeclaration: complete,
     readCallDeclarationInput: read,
     recordCallDeclarationInput: record,
   });
@@ -83,6 +84,30 @@ function fixture(recovered = true) {
   };
 }
 describe('required Call declaration input recovery orchestration', () => {
+  it('completes an artifact-backed large Call by alias without sending output through legacy completion', async () => {
+    const f = fixture();
+    const large = 'x'.repeat(300_000);
+    const bytes = JSON.stringify(large);
+    f.read.mockResolvedValue({
+      reference: {
+        schemaVersion: 1,
+        kind: 'artifact',
+        artifactId: '88888888-8888-4888-8888-888888888888',
+      },
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      byteLength: Buffer.byteLength(bytes),
+    });
+    f.hydrate.mockResolvedValue(large);
+    await expect(
+      f.handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).resolves.toMatchObject({ kind: 'committed' });
+    expect(f.complete).toHaveBeenCalledOnce();
+    const request: unknown = f.complete.mock.calls[0]?.[0];
+    expect(request).toHaveProperty('lease');
+    expect(request).not.toHaveProperty('outcome');
+    expect(request).not.toHaveProperty('output');
+    expect(request).not.toHaveProperty('reference');
+  });
   it('reuses whitespace-bearing original bytes without rehashing normalized value', async () => {
     const f = fixture();
     const serializedValue = '{ "name" : "immutable" }';

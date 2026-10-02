@@ -23,7 +23,7 @@ type Request = Parameters<
   NonNullable<NodeAttemptRunStore['recordCallDeclarationInput']>
 >[0];
 
-function authorityJson(
+export function workflowCallAttemptAuthorityJson(
   lease: Pick<
     NodeAttemptLease,
     | 'runId'
@@ -78,7 +78,7 @@ export async function readWorkflowCallDeclarationInput(
       ]);
       const result = await client.query<{ snapshot: unknown }>(
         'select app.read_workflow_call_declaration_input($1::jsonb) as snapshot',
-        [authorityJson(input.lease)],
+        [workflowCallAttemptAuthorityJson(input.lease)],
       );
       assertNotAborted(input.signal);
       if (result.rows.length !== 1)
@@ -144,7 +144,7 @@ export async function recordWorkflowCallDeclarationInput(
       throw new TypeError('Call declaration input metadata does not match');
   }
   const { lease } = input;
-  const authority = authorityJson(lease);
+  const authority = workflowCallAttemptAuthorityJson(lease);
   await withWorkspaceWriteClient(
     pool,
     lease.workspaceId,

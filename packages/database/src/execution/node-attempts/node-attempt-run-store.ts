@@ -79,6 +79,16 @@ export function createNodeAttemptRunStore(
     ) => readWorkflowCallDeclarationInput(pool, input),
     complete: (input: Parameters<NodeAttemptRunStore['complete']>[0]) =>
       completeNodeAttempt(pool, input),
+    completeCallDeclaration: (
+      input: Parameters<
+        NonNullable<NodeAttemptRunStore['completeCallDeclaration']>
+      >[0],
+    ) =>
+      completeNodeAttempt(
+        pool,
+        { ...input, outcome: { status: 'succeeded', output: null } },
+        'workflow_call_input_alias',
+      ),
     close: () => lease.close(),
   });
 }

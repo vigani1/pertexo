@@ -113,6 +113,7 @@ async function duplicateCompletion(
   receipt: CompletionReceiptRow,
   serializedOutput: string | null,
   fields: CompletionFields,
+  outputFromCallInput: boolean,
 ): Promise<CompleteNodeAttemptResult | undefined> {
   if (
     ![
@@ -126,8 +127,9 @@ async function duplicateCompletion(
     return undefined;
   }
   await assertConnectionHealthReplay(client, input);
-  const persistedOutput =
-    row.output_ref === null
+  const persistedOutput = outputFromCallInput
+    ? serializedOutput
+    : row.output_ref === null
       ? null
       : serializeStoredExecutionValueV1(row.output_ref);
   const executorMismatch =
@@ -141,6 +143,7 @@ async function duplicateCompletion(
     row.attempt_status !== fields.durableStatus ||
     (fields.executorOutcome === undefined &&
       input.outcome.status !== 'suspended' &&
+      !outputFromCallInput &&
       row.node_status !== fields.durableStatus) ||
     (input.outcome.status === 'suspended' && !row.suspension_recorded) ||
     persistedOutput !== serializedOutput ||
@@ -362,6 +365,7 @@ export async function applyNodeAttemptCompletion(
   receipt: CompletionReceiptRow,
   serializedOutput: string | null,
   controlActive: boolean,
+  outputFromCallInput = false,
 ): Promise<CompleteNodeAttemptResult> {
   const fields = completionFields(input);
   const duplicate = await duplicateCompletion(
@@ -371,6 +375,7 @@ export async function applyNodeAttemptCompletion(
     receipt,
     serializedOutput,
     fields,
+    outputFromCallInput,
   );
   if (duplicate !== undefined) return duplicate;
   if (fields.suspendedOutcome !== undefined && controlActive)

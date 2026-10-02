@@ -392,6 +392,22 @@ async function persistPreparedOutcome(
   contextSignal: AbortSignal,
   environment: NodeExecutionEnvironment,
 ): Promise<NodeAttemptHandlerResult> {
+  if (prepared.inputPersistence === 'workflow_call_declaration') {
+    const complete = dependencies.runStore.completeCallDeclaration?.bind(
+      dependencies.runStore,
+    );
+    if (
+      complete === undefined ||
+      prepared.suspensionDurationSeconds !== undefined
+    )
+      throw new TypeError('Native Call input alias completion is unavailable');
+    const completed = await complete({
+      lease,
+      ...traceContext,
+      signal: contextSignal,
+    });
+    return completionResult(dependencies, lease, completed.kind);
+  }
   try {
     const completed = await dependencies.runStore.complete({
       ...connectionHealthCompletionFields(dependencies, environment),

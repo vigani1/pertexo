@@ -24,10 +24,12 @@ import {
   withWorkspaceWriteClient,
 } from './node-attempt-run-store-transactions.js';
 import { serializeStoredExecutionValueV1 } from '../stored-execution-value.js';
+import { workflowCallAttemptAuthorityJson } from './node-attempt-call-input-record.js';
 
 export async function completeNodeAttempt(
   pool: Pool,
   inputValue: Parameters<NodeAttemptRunStore['complete']>[0],
+  outputSource: 'legacy_inline' | 'workflow_call_input_alias' = 'legacy_inline',
 ): Promise<CompleteNodeAttemptResult> {
   assertNotAborted(inputValue.signal);
   let input: z.output<typeof completionSchema>;
@@ -38,8 +40,9 @@ export async function completeNodeAttempt(
   }
   let serializedOutput: string | null = null;
   if (
-    input.outcome.status === 'succeeded' ||
-    input.outcome.status === 'suspended'
+    outputSource === 'legacy_inline' &&
+    (input.outcome.status === 'succeeded' ||
+      input.outcome.status === 'suspended')
   ) {
     try {
       serializedOutput = serializeStoredExecutionValueV1({
@@ -142,6 +145,24 @@ export async function completeNodeAttempt(
         );
         const row = locked.rows[0];
         if (row === undefined) throw new NodeAttemptStateCorruptError();
+        if (outputSource === 'workflow_call_input_alias') {
+          if (input.outcome.status !== 'succeeded')
+            throw new NodeAttemptStateCorruptError();
+          const alias = await client.query<{ reference: string | null }>(
+            'select app.workflow_call_declaration_completion_reference($1::jsonb) as reference',
+            [workflowCallAttemptAuthorityJson(input.lease)],
+          );
+          const reference = alias.rows[0]?.reference;
+          if (
+            alias.rows.length !== 1 ||
+            typeof reference !== 'string' ||
+            Buffer.byteLength(reference, 'utf8') > 4_194_304
+          )
+            throw new NodeAttemptStateCorruptError();
+          // Preserve PostgreSQL's first immutable projection, not its rounded
+          // driver object. The protected getter proves source and replay identity.
+          serializedOutput = reference;
+        }
         return applyNodeAttemptCompletion(
           client,
           input,
@@ -149,6 +170,7 @@ export async function completeNodeAttempt(
           receiptRow,
           serializedOutput,
           run.rows[0]?.abort_requested === true,
+          outputSource === 'workflow_call_input_alias',
         );
       },
     );

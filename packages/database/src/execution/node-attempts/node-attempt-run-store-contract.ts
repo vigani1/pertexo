@@ -390,6 +390,14 @@ export interface NodeAttemptRunStore {
       signal: AbortSignal;
     }>,
   ): Promise<CompleteNodeAttemptResult>;
+  /** Native physical declaration success aliases protected input; no caller output. */
+  completeCallDeclaration?(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      signal: AbortSignal;
+      traceparent?: string;
+    }>,
+  ): Promise<CompleteNodeAttemptResult>;
   close(): Promise<void>;
 }
 
