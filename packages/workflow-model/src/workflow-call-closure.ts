@@ -88,9 +88,17 @@ export interface PublishedCallableVersionV1 extends WorkflowCallPinV1 {
 }
 
 export interface WorkflowCallClosureV1 {
+  /** Work belonging to this version only, including its own loop products. */
+  readonly ownExpandedInvocations: number;
   readonly expandedInvocations: number;
   readonly childRuns: number;
   readonly maxDepth: number;
+  /** Direct sites only; transitive sites remain with their immutable version. */
+  readonly sites: readonly Readonly<{
+    nodeId: string;
+    invocationMultiplier: number;
+    pin: Readonly<WorkflowCallPinV1>;
+  }>[];
   /** Derived pins only. Immutable version graphs remain with their existing owner. */
   readonly dependencies: readonly Readonly<WorkflowCallPinV1>[];
 }
@@ -139,6 +147,8 @@ export function validateWorkflowCallClosureV1(input: {
   const limits = WORKFLOW_CALL_FAMILY_POLICY_V1;
   const dependencies = new Map<string, Readonly<WorkflowCallPinV1>>();
   const versions = new Map<string, WorkflowCallableGraphV2>();
+  const sites: WorkflowCallClosureV1['sites'][number][] = [];
+  let ownExpandedInvocations = 0;
   let expandedInvocations = 0;
   let childRuns = 0;
   let maxDepth = 0;
@@ -189,6 +199,7 @@ export function validateWorkflowCallClosureV1(input: {
     path: readonly string[],
   ): void {
     for (const node of graph.nodes) {
+      if (path.length === 1) ownExpandedInvocations += multiplier;
       expandedInvocations += multiplier;
       if (expandedInvocations > limits.maxExpandedInvocations)
         throw new WorkflowCallClosureError('expansion_limit');
@@ -199,6 +210,14 @@ export function validateWorkflowCallClosureV1(input: {
         if (!parsedPin.success)
           throw new WorkflowCallClosureError('invalid_pin');
         const pin = parsedPin.data;
+        if (path.length === 1)
+          sites.push(
+            Object.freeze({
+              nodeId: node.id,
+              invocationMultiplier: multiplier,
+              pin: Object.freeze({ ...pin }),
+            }),
+          );
         if (path.includes(pin.workflowId))
           throw new WorkflowCallClosureError('recursive_call');
         const depth = path.length;
@@ -221,9 +240,15 @@ export function validateWorkflowCallClosureV1(input: {
 
   walk(parseGraph(input.graph), 1, [rootId]);
   return Object.freeze({
+    ownExpandedInvocations,
     expandedInvocations,
     childRuns,
     maxDepth,
+    sites: Object.freeze(
+      sites.sort((left, right) =>
+        left.nodeId < right.nodeId ? -1 : left.nodeId > right.nodeId ? 1 : 0,
+      ),
+    ),
     dependencies: Object.freeze(
       [...dependencies.values()].sort((left, right) =>
         left.versionId < right.versionId

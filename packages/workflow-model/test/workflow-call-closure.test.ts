@@ -288,22 +288,81 @@ describe('bounded immutable workflow call closure', () => {
     expect(resolutions).toBe(1);
     expect(result).toEqual({
       childRuns: 2,
+      ownExpandedInvocations: 2,
       expandedInvocations: 4,
       maxDepth: 1,
+      sites: [
+        { nodeId: 'first', invocationMultiplier: 1, pin: pin(child) },
+        { nodeId: 'second', invocationMultiplier: 1, pin: pin(child) },
+      ],
       dependencies: [pin(child)],
     });
     expect(Object.isFrozen(result)).toBe(true);
     expect(Object.isFrozen(result.dependencies)).toBe(true);
     expect(Object.isFrozen(result.dependencies[0])).toBe(true);
+    expect(Object.isFrozen(result.sites)).toBe(true);
+    expect(Object.isFrozen(result.sites[0])).toBe(true);
+    expect(Object.isFrozen(result.sites[0]?.pin)).toBe(true);
   });
   it('returns sorted transitive pins only, never copied version graphs', () => {
     const leaf = version(1);
     const parent = version(2, graph([call('leaf', leaf)]));
     const result = check(graph([call('parent', parent)]), [parent, leaf]);
     expect(result.dependencies).toEqual([pin(leaf), pin(parent)]);
+    expect(result.ownExpandedInvocations).toBe(1);
+    expect(result.sites).toEqual([
+      { nodeId: 'parent', invocationMultiplier: 1, pin: pin(parent) },
+    ]);
     expect(
       result.dependencies.every((item) => !Object.hasOwn(item, 'graph')),
     ).toBe(true);
+  });
+  it('derives direct site multipliers and own work without copying child sites', () => {
+    const leaf = version(1);
+    const child = version(2, graph([loop(3, call('leaf', leaf))]));
+    const result = check(
+      graph([loop(2, call('z-child', child)), call('a-child', child)]),
+      [child, leaf],
+    );
+    expect(result).toMatchObject({
+      ownExpandedInvocations: 4,
+      expandedInvocations: 25,
+      childRuns: 12,
+      maxDepth: 2,
+      sites: [
+        { nodeId: 'a-child', invocationMultiplier: 1, pin: pin(child) },
+        { nodeId: 'z-child', invocationMultiplier: 2, pin: pin(child) },
+      ],
+    });
+    expect(result.sites.every((site) => !Object.hasOwn(site, 'graph'))).toBe(
+      true,
+    );
+    expect(
+      result.sites.every((site) => !Object.hasOwn(site.pin, 'graph')),
+    ).toBe(true);
+  });
+  it('returns no sites for a non-calling version and counts only its loop work', () => {
+    expect(
+      check(graph([loop(4, node('body')), node('after')], false)),
+    ).toMatchObject({
+      ownExpandedInvocations: 6,
+      expandedInvocations: 6,
+      childRuns: 0,
+      maxDepth: 0,
+      sites: [],
+      dependencies: [],
+    });
+  });
+  it('multiplies nested root loop sites without including callee-owned work', () => {
+    const child = version(1);
+    const outer = { ...loop(2, loop(3, call('child', child))), id: 'outer' };
+    expect(check(graph([outer]), [child])).toMatchObject({
+      ownExpandedInvocations: 9,
+      expandedInvocations: 15,
+      childRuns: 6,
+      maxDepth: 1,
+      sites: [{ nodeId: 'child', invocationMultiplier: 6, pin: pin(child) }],
+    });
   });
   it('rejects missing, malformed, mismatched and noncallable version rows', () => {
     const child = version(1);

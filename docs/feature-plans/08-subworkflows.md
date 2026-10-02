@@ -242,5 +242,14 @@ without declaring another child. All 660 engine tests across 46 files pass,
 including that sequencing regression and retained grammars, with build/typecheck,
 repository-root package lint/format, complexity and architecture checks. This is
 pure scheduling evidence; the SQL continuation/CAS seal remains unqualified.
+The existing closure verifier now derives root-owned expanded work and sorted,
+immutable direct Call-site pin/multiplier metadata during the same bounded
+traversal. Transitive child sites stay with their retained versions; no graphs or
+callable types are copied into this metadata. Repeated/loop-multiplied sites and
+callee-owned work remain independently accounted. All 1,491 workflow-model tests
+across 22 files pass, including the direct/nested-loop and transitive separation
+regressions, with model build/typecheck and narrow lint/format. Publication and
+SQL persistence have not yet registered this derived metadata; these tests are
+not publication, privilege, migration or usable-product qualification.
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
