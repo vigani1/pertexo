@@ -517,7 +517,19 @@ restart/OFF qualification 6/6, including rebuilt contracts, with all process
 barriers before zero-connection database removal and token-fenced Redis DB12
 cleanup. The older 74826 observation remains historical, not evidence for later
 contracts. An expanded role/archive/populated-OFF browser matrix locally passes
-4/4, but its startup/cleanup regression repair and final source freeze remain open.
+4/4 with zero skips after the startup/cleanup repair. Five default-discovery
+unit regressions exercise occupied listeners, exited and live real children,
+exit during pending readiness and every child cleanup attempt despite a rejected
+browser proof. Each selected browser receipt requires exactly one expected
+passing test, plus opened/disposed receipts. Viewer, builder and admin use ordinary
+public registration/invitations/acceptance and isolated real API fixtures; canonical
+worker delivery handler/store/envelope composition captures only external mail.
+This is not a full worker/Redis dispatch claim. The matrix verifies private
+favorite isolation, explicit ordered updated/conflict feedback, archived role
+boundaries, archived placement/tag cleanup and restoration. A normal production
+OFF build retains real folder/tag/favorite state with zero UI organization reads.
+Public HTTP and persisted metadata corroborate each case. Final exact committed
+source qualification and whole-feature independent review remain open.
 Earlier failed matrix attempts preserved four databases and did not emit creation
 witnesses sufficient for authorized automated recovery; they remain preserved.
 The positively identified stale owned preview process was disposed through the
