@@ -34,6 +34,13 @@ export async function reapTransientData(
       Math.min(options.pageSize, 100),
     ]);
   });
+  // Separate transaction: organization cleanup owns the same destructive
+  // coordination before locking its one workspace, with one shared row budget.
+  await inRetentionTransaction(pool, options, signal, async (client) => {
+    await client.query('select * from app.reap_workflow_organization($1)', [
+      Math.min(options.pageSize, 100),
+    ]);
+  });
   return inRetentionTransaction(pool, options, signal, async (client) => {
     const result = await client.query<{
       idempotency_records_deleted: number;

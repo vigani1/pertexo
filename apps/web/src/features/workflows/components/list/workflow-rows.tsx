@@ -1,4 +1,5 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { ReactNode } from 'react';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import { LoadMore } from '@/components/patterns/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
@@ -49,12 +50,14 @@ export function WorkflowRows({
   workspace,
   workflows,
   actions,
+  organizationControls,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflows: readonly WorkflowSummary[];
   actions: WorkflowRowActions;
+  organizationControls?: (workflowId: string) => ReactNode;
 }>) {
   return (
     <div>
@@ -81,6 +84,7 @@ export function WorkflowRows({
             workspace={workspace}
             workflow={workflow}
             actions={actions}
+            organizationControls={organizationControls?.(workflow.id)}
           />
         ))}
       </ul>

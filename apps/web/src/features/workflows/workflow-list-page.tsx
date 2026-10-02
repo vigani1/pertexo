@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentProps } from 'react';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -35,7 +35,9 @@ import {
 import {
   WORKFLOW_ORDER_BY_SORT,
   updateWorkflowListSearch,
+  parseWorkflowListSearch,
   type WorkflowListSearch,
+  type WorkflowListSearchUpdate,
 } from './model/workflow-list-view';
 import { availableStarters } from './model/workflow-starters';
 import { curatedTemplateChooserEnabled } from '@/features/workflows/model/template-feature-gates';
@@ -43,6 +45,10 @@ import { useListShortcuts } from './use-list-shortcuts';
 import { useRunWorkflow } from './use-run-workflow';
 import type { StarterDraftWriter } from './workflows.mutations';
 import { workflowsInfiniteQueryOptions } from './workflows.queries';
+import { useOrganizationList } from './use-organization-list';
+import { workflowOrganizationControlsEnabled } from '@/features/workflows/model/organization-feature-gates';
+import { WorkflowOrganizationFilters } from './components/organization/workflow-organization-filters';
+import { WorkflowOrganizedResults } from './components/organization/workflow-organized-results';
 
 type LifecycleTarget = Readonly<{
   workflow: WorkflowSummary;
@@ -92,19 +98,29 @@ type ListScope = Readonly<{
  */
 function useWorkflowList(
   { apiClient, userId, workspace }: ListScope,
-  sort: keyof typeof WORKFLOW_ORDER_BY_SORT,
+  search: WorkflowListSearch,
   starterDraftWriter: StarterDraftWriter | undefined,
 ) {
   const canCreate = workspace.capabilities.includes('workflow:create');
-  const workflows = useInfiniteQuery({
+  const organized = workflowOrganizationControlsEnabled();
+  const legacy = useInfiniteQuery({
     ...workflowsInfiniteQueryOptions(
       apiClient,
       userId,
       workspace.id,
-      WORKFLOW_ORDER_BY_SORT[sort],
+      WORKFLOW_ORDER_BY_SORT[search.sort ?? 'updated'],
     ),
     placeholderData: keepPreviousData,
+    enabled: !organized,
   });
+  const organization = useOrganizationList(
+    apiClient,
+    userId,
+    workspace.id,
+    search,
+    organized,
+  );
+  const workflows = organized ? organization : legacy;
   const catalog = useQuery({
     ...authoringCatalogQueryOptions(apiClient, userId),
     enabled: canCreate && starterDraftWriter !== undefined,
@@ -118,6 +134,9 @@ function useWorkflowList(
     starters:
       starterDraftWriter === undefined ? [] : startersFrom(catalog.data),
     shown: listState(workflows.isPending, workflows.data !== undefined, empty),
+    organizations: organized
+      ? (organization.data?.pages.flatMap((page) => page.organizations) ?? [])
+      : [],
   } as const;
 }
 
@@ -167,7 +186,7 @@ function WorkflowDialogs({
   );
 }
 
-export function WorkflowListPage({
+function WorkflowListContent({
   apiClient,
   user,
   workspace,
@@ -183,19 +202,16 @@ export function WorkflowListPage({
   search: WorkflowListSearch;
   /** Saves starter steps; without it the lens offers Blank only. */
   starterDraftWriter?: StarterDraftWriter | undefined;
-  onSearchChange: (search: WorkflowListSearch) => void;
+  onSearchChange: (search: WorkflowListSearchUpdate) => void;
   onCreated: (workflowId: string) => void;
   /** Opens a run started from a row. */
   onRunStarted: (runId: string) => void;
 }>) {
   const canCreate = workspace.capabilities.includes('workflow:create');
+  const organized = workflowOrganizationControlsEnabled();
   const scope = { apiClient, userId: user.id, workspace };
   const templatesEnabled = curatedTemplateChooserEnabled();
-  const list = useWorkflowList(
-    scope,
-    search.sort ?? 'updated',
-    starterDraftWriter,
-  );
+  const list = useWorkflowList(scope, search, starterDraftWriter);
   const { workflows } = list;
   const filterRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -245,7 +261,7 @@ export function WorkflowListPage({
               >
                 Import workflow…
               </Button>
-              {!list.empty ? (
+              {organized || !list.empty ? (
                 <NewWorkflowButton
                   onClick={() => {
                     openCreate('blank');
@@ -256,6 +272,16 @@ export function WorkflowListPage({
           ) : undefined
         }
       />
+      {organized ? (
+        <WorkflowOrganizationFilters
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          search={search}
+          filterRef={filterRef}
+          onSearchChange={onSearchChange}
+        />
+      ) : null}
       {refreshingInBackground(workflows) ? (
         <SkeletonThread
           role="status"
@@ -271,14 +297,34 @@ export function WorkflowListPage({
           onRetry={() => void workflows.refetch()}
         />
       ) : null}
-      {list.shown === 'empty' ? (
+      {list.shown === 'empty' && !organized ? (
         <WorkflowListEmpty
           canCreate={canCreate}
           starters={list.starters}
           onStart={openCreate}
         />
       ) : null}
-      {list.shown === 'results' ? (
+      {organized && (list.shown === 'results' || list.shown === 'empty') ? (
+        <WorkflowOrganizedResults
+          key={JSON.stringify(search)}
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          items={list.organizations}
+          workflows={workflows}
+          actions={{
+            onRename: setRenaming,
+            onDuplicate: setDuplicating,
+            onExport: setExporting,
+            onLifecycle: (workflow) => {
+              setLifecycle({ workflow, intent: lifecycleIntentFor(workflow) });
+            },
+            onRun: (workflow) => void runner.run(workflow),
+            runningId: runner.pendingId,
+          }}
+        />
+      ) : null}
+      {list.shown === 'results' && !organized ? (
         <WorkflowListResults
           apiClient={apiClient}
           userId={user.id}
@@ -390,5 +436,18 @@ export function WorkflowListPage({
         }}
       />
     </div>
+  );
+}
+
+/** Changing actor, workspace or role retires every private dialog/attempt. */
+export function WorkflowListPage(
+  props: ComponentProps<typeof WorkflowListContent>,
+) {
+  return (
+    <WorkflowListContent
+      key={`${props.user.id}:${props.workspace.id}:${props.workspace.role}:${props.workspace.status}`}
+      {...props}
+      search={parseWorkflowListSearch(props.search)}
+    />
   );
 }

@@ -21,6 +21,7 @@ import {
 } from './workflows.api';
 import type { LifecycleAction } from './model/workflow-lifecycle';
 import { workflowKeys } from './workflows.queries';
+import { workflowOrganizationKeys } from './organization.queries';
 
 /**
  * Saves a starter graph into a new workflow's draft with the ETag returned by
@@ -77,9 +78,14 @@ export function useCreateWorkflow(
       }
     },
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: workflowKeys.scope(userId, workspaceId),
-      }),
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workflowKeys.scope(userId, workspaceId),
+        }),
+      ]),
   });
 }
 
@@ -139,6 +145,9 @@ export function useWorkflowLifecycleCommand({
         exactCommand,
       );
       commandRef.current = undefined;
+      void queryClient.invalidateQueries({
+        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+      });
       await queryClient.invalidateQueries({
         queryKey: workflowKeys.scope(userId, workspaceId),
       });
@@ -249,6 +258,9 @@ export function useWorkflowRename({
         attempt,
       );
       queryClient.setQueryData(detailKey, workflow);
+      void queryClient.invalidateQueries({
+        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+      });
       void queryClient.invalidateQueries({
         queryKey: workflowKeys.lists(userId, workspaceId),
       });

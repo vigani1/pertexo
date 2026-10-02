@@ -15,6 +15,7 @@ import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
 import { normalizeWorkflowAuthoringCompatibility } from './workflow-authoring-compatibility.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
+import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
 import { createWorkflowVersionRestoreStore } from './workflow-authoring-version-restore.js';
 import { createWorkflowDuplicationStore } from './workflow-authoring-duplication.js';
@@ -149,19 +150,12 @@ async function requireWorkspaceAuthor(
   workspaceId: string,
   actorId: string,
 ): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-     join app.users actor on actor.id = membership.user_id
-     join app.workspaces workspace on workspace.id = membership.workspace_id
-     where membership.workspace_id = $1 and membership.user_id = $2
-       and membership.status = 'active' and membership.role = any($3::text[])
-       and actor.status = 'active'
-       and workspace.status = 'active'
-     for share of membership, actor, workspace`,
-    [workspaceId, actorId, [...rolesForCapability('workflow:update')]],
+  await lockWorkflowAuthoringAuthority(
+    client,
+    workspaceId,
+    actorId,
+    rolesForCapability('workflow:update'),
   );
-  if (result.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
 }
 
 async function requireWorkspaceReader(

@@ -121,6 +121,8 @@ describe('auto pause controls prior-head migration and readiness', () => {
         '0131_checked_manual_start.sql',
         '0132_workflow_portability.sql',
         '0133_curated_template_origin.sql',
+        '0134_workflow_organization.sql',
+        '0135_workflow_folders_batch_identity.sql',
       ]);
       expect(await migrateDatabase(config)).toEqual([]);
       expect(
@@ -149,7 +151,7 @@ describe('auto pause controls prior-head migration and readiness', () => {
       await expect(
         checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
       ).resolves.toMatchObject({
-        migrationHead: '0133_curated_template_origin.sql',
+        migrationHead: '0135_workflow_folders_batch_identity.sql',
       });
       await expect(fold.checkReadiness()).resolves.toBeUndefined();
       const foldSignature =

@@ -1,0 +1,87 @@
+import { randomBytes } from 'node:crypto';
+import { Pool } from 'pg';
+import { migrateDatabase } from '@pertexo/database/testing';
+import {
+  verifyCuratedFixtureOwnership,
+  recheckCuratedFixtureOwnership,
+  type CuratedOwnedFixture,
+} from '../../../../infrastructure/testing/curated-template-owned-fixture.mjs';
+
+/** F07 owns its own fresh namespace; canonical attestation never supplies a
+ * default port, shared database, or authority to reuse F06 fixture databases. */
+export function createWorkflowOrganizationOwnedDatabase() {
+  const name = `pertexo_test_f07_organization_${randomBytes(12).toString('hex')}`;
+  let attestation: CuratedOwnedFixture | undefined;
+  let created = false;
+  function connection(role: 'adminUrl' | 'migrationUrl' | 'apiUrl') {
+    if (attestation === undefined)
+      throw new Error('F07 database ownership has not been attested');
+    const url = new URL(attestation[role]);
+    url.pathname = `/${name}`;
+    return url.toString();
+  }
+  return {
+    get apiUrl() {
+      return connection('apiUrl');
+    },
+    get inspectorUrl() {
+      return connection('adminUrl');
+    },
+    async create() {
+      if (process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')
+        throw new Error('Explicit F07 ownership flag is required');
+      if (created) throw new Error('F07 fixture already exists');
+      attestation = await verifyCuratedFixtureOwnership();
+      const admin = new Pool({
+        connectionString: attestation.adminUrl,
+        max: 1,
+      });
+      try {
+        await admin.query(`create database "${name}" owner pertexo_owner`);
+        created = true;
+        await admin.query(`revoke all on database "${name}" from public`);
+        await admin.query(
+          `grant connect on database "${name}" to pertexo_migration,pertexo_api`,
+        );
+      } finally {
+        await admin.end();
+      }
+      await migrateDatabase({
+        connectionString: connection('migrationUrl'),
+        ownerRole: 'pertexo_owner',
+        apiRuntimeRole: 'pertexo_api',
+        workerRuntimeRole: 'pertexo_worker',
+        dispatcherRole: 'pertexo_dispatcher',
+        maintenanceRole: 'pertexo_maintenance',
+        lifecycleCommandRole: 'pertexo_lifecycle_command',
+        operatorRole: 'pertexo_operator',
+      });
+    },
+    async drop() {
+      if (!created || attestation === undefined) return;
+      await recheckCuratedFixtureOwnership(attestation);
+      const admin = new Pool({
+        connectionString: attestation.adminUrl,
+        max: 1,
+      });
+      try {
+        const state = await admin.query<{ owner: string; sessions: number }>(
+          `select pg_get_userbyid(datdba) owner,
+            (select count(*)::int from pg_stat_activity where datname=$1) sessions
+           from pg_database where datname=$1`,
+          [name],
+        );
+        if (
+          state.rows[0]?.owner !== 'pertexo_owner' ||
+          state.rows[0].sessions !== 0
+        )
+          throw new Error('F07 fixture cleanup ownership/session check failed');
+        // No force: any leaked connection blocks destruction instead of being killed.
+        await admin.query(`drop database "${name}"`);
+        created = false;
+      } finally {
+        await admin.end();
+      }
+    },
+  };
+}

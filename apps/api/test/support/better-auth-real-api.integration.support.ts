@@ -123,6 +123,9 @@ export function useBetterAuthRealApi(
   options: Readonly<{
     publicWebOrigin?: string;
     nodeCompatibilityCohort?: ApiConfig['nodeCompatibilityCohort'];
+    workflowOrganization?: ApiConfig['workflowOrganization'];
+    /** F07-owned qualification namespace, never a shared database selection. */
+    databaseNamespace?: 'f07_organization';
     redisUrl?: string;
     schedules?: boolean;
     /** Compose the real workspace inbox runtime (ADR 055). */
@@ -142,7 +145,7 @@ export function useBetterAuthRealApi(
   const owner = new FixtureResourceOwner();
   let disposableDatabase: object | undefined;
   let databaseCleanupLabel: DatabaseCleanupFailure | undefined;
-  const databaseName = `pertexo_test_ba_${suite}_${randomUUID().replaceAll('-', '')}`;
+  const databaseName = `${options.databaseNamespace === undefined ? `pertexo_test_ba_${suite}` : 'pertexo_test_f07_organization'}_${randomUUID().replaceAll('-', '')}`;
   const databaseUrl = (base: string) => {
     const parsed = new URL(base);
     parsed.pathname = `/${databaseName}`;
@@ -216,6 +219,9 @@ export function useBetterAuthRealApi(
       identity,
       nodeCompatibilityCohort: options.nodeCompatibilityCohort ?? 'core',
       redisUrl: options.redisUrl ?? redisUrl,
+      ...(options.workflowOrganization === undefined
+        ? {}
+        : { workflowOrganization: options.workflowOrganization }),
       ...(options.connections === undefined
         ? {}
         : { connections: options.connections.config }),

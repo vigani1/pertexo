@@ -10,9 +10,7 @@ import {
   strongEtagSchema,
   workflowRevisionConflictProblemSchema,
   workflowLifecycleConflictProblemSchema,
-  workflowLifecycleRevisionSchema,
   workflowNameConflictProblemSchema,
-  workflowNameRevisionSchema,
   type WorkflowLifecycleConflictProblem,
   type WorkflowNameConflictProblem,
   type WorkflowRevisionConflictProblem,
@@ -37,6 +35,7 @@ import {
   setResponseHeader,
 } from './request-context.js';
 import { firstRequestHeader } from './request-headers.js';
+import { normalizeWorkflowMetadataConflict } from './workflow-metadata-conflict.js';
 import {
   normalizeAutoPauseConflict,
   projectAutoPauseConflict,
@@ -227,22 +226,9 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
   const concurrencyConflict = normalizeConcurrencyConflict(error);
   if (concurrencyConflict !== undefined)
     return { ...base, concurrencyConflict };
-  if (error.code === 'workflow.lifecycle_conflict') {
-    const parsed = workflowLifecycleRevisionSchema.safeParse(
-      error.details?.currentLifecycleRevision,
-    );
-    return parsed.success
-      ? { ...base, currentLifecycleRevision: parsed.data }
-      : unexpectedProblem(error);
-  }
-  if (error.code === 'workflow.name_conflict') {
-    const parsed = workflowNameRevisionSchema.safeParse(
-      error.details?.currentNameRevision,
-    );
-    return parsed.success
-      ? { ...base, currentNameRevision: parsed.data }
-      : unexpectedProblem(error);
-  }
+  const metadataConflict = normalizeWorkflowMetadataConflict(error);
+  if (metadataConflict === 'invalid') return unexpectedProblem(error);
+  if (metadataConflict !== undefined) return { ...base, ...metadataConflict };
   if (error.code !== 'workflow.revision_conflict') return base;
   const currentRevision = error.details?.currentRevision;
   const currentEtag = error.details?.currentEtag;

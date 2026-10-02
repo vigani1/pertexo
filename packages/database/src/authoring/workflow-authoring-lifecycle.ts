@@ -97,8 +97,17 @@ async function transitionWorkflowLifecycle(
     await context.requireAuthor(client, workspaceId, actorId);
     const claim = await claimLifecycle(client, input, context);
     await context.testHooks?.afterLifecycleStep?.('claim');
-    if (claim.replay !== null)
+    if (claim.replay !== null) {
+      const visible = await client.query(
+        `select 1 from app.workflows where workspace_id=$1 and id=$2 for share`,
+        [workspaceId, workflowId],
+      );
+      if (visible.rowCount !== 1)
+        throw new WorkflowNotFoundError('Workflow is not visible');
       return Object.freeze({ replayed: true, workflow: claim.replay });
+    }
+
+    await client.query('select app.lock_workflow_organization_for_lifecycle()');
 
     const currentResult = await client.query<Record<string, unknown>>(
       `select ${workflowRowSelection} from app.workflows

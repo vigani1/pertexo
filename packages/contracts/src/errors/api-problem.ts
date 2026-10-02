@@ -7,6 +7,11 @@ import {
   checkedStartProblems,
   workflowInputCaseProblems,
 } from './workflow-input-case-problems.js';
+import {
+  WORKFLOW_ORGANIZATION_PROBLEM_CODES,
+  workflowOrganizationProblems,
+} from './workflow-organization-problems.js';
+import { workflowConcurrencyProblems } from './workflow-concurrency-problems.js';
 
 export const API_PROBLEM_CODES = [
   'auth.unauthenticated',
@@ -48,6 +53,7 @@ export const API_PROBLEM_CODES = [
   'workflow.input_case_revision_conflict',
   'workflow.input_case_limit_exceeded',
   'workflow.input_cases_unavailable',
+  ...WORKFLOW_ORGANIZATION_PROBLEM_CODES,
   'workspace.auto_pause_settings_conflict',
   'workflow.invalid',
   ...WORKFLOW_PORTABILITY_PROBLEM_CODES,
@@ -314,25 +320,9 @@ const apiProblemDetails = {
     severity: 'warn',
     exposeDetail: true,
   },
-  'workflow.concurrency_revision_conflict': {
-    status: 409,
-    title: 'Workflow concurrency revision conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.concurrency_limit_exceeded': {
-    status: 409,
-    title: 'Workflow concurrency limit exceeded',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.concurrency_limit_unavailable': {
-    status: 409,
-    title: 'Workflow concurrency limit unavailable',
-    severity: 'warn',
-    exposeDetail: true,
-  },
+  ...workflowConcurrencyProblems,
   ...workflowInputCaseProblems,
+  ...workflowOrganizationProblems,
   'workspace.auto_pause_settings_conflict': {
     status: 409,
     title: 'Workspace auto-pause settings conflict',

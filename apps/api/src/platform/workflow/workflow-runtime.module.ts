@@ -19,6 +19,11 @@ import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/authoring-validation';
 
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
+import type { WorkflowOrganizationConfig } from '../config/workflow-organization-config.js';
+import {
+  createApiWorkflowMetadataRuntime,
+  type ApiWorkflowMetadataRuntime,
+} from './workflow-metadata-runtime.js';
 import {
   createPostgresRunEventReader,
   RedisRunEventPublisher,
@@ -61,6 +66,7 @@ export type ApiWorkflowRuntime = Readonly<{
 }>;
 
 export type ApiWorkflowRuntimeOverrides = Readonly<{
+  organization?: WorkflowOrganizationConfig;
   authoring?: Readonly<{
     database?: WorkflowAuthoringDatabase;
     databaseFactory?: typeof createWorkflowAuthoringDatabase;
@@ -107,7 +113,7 @@ export async function createApiWorkflowRuntime(
   const { readinessSupport, variants } =
     createCoreWorkflowCompatibility(releaseCohort);
   let database: WorkflowAuthoringDatabase | undefined;
-  let inputCaseDatabase: WorkflowInputCaseDatabase | undefined;
+  let metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
   let runAdapter:
     ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined;
@@ -135,18 +141,12 @@ export async function createApiWorkflowRuntime(
         },
       );
     }
-    // Test-owned authoring adapters opt into the additional feature seam explicitly.
-    // Production always registers routes; the database rollout gate fails closed.
-    inputCaseDatabase =
-      authoring.inputCasePersistence ??
-      ((authoring.database !== undefined ||
-        authoring.databaseFactory !== undefined) &&
-      authoring.inputCasePersistenceFactory === undefined
-        ? undefined
-        : (
-            authoring.inputCasePersistenceFactory ??
-            createWorkflowInputCaseDatabase
-          )(databaseConfig, { ...(runtime === undefined ? {} : { runtime }) }));
+    metadataRuntime = await createApiWorkflowMetadataRuntime(
+      databaseConfig,
+      authoring,
+      overrides.organization,
+      runtime,
+    );
     if (persistence.runs === undefined) {
       notifications =
         persistence.notifications ??
@@ -198,7 +198,7 @@ export async function createApiWorkflowRuntime(
     expressionEvaluator =
       authoring.expressionEvaluatorFactory?.() ?? new JsonataEvaluator();
     const acquiredDatabase = database;
-    const acquiredInputCaseDatabase = inputCaseDatabase;
+    const acquiredMetadataRuntime = metadataRuntime;
     const acquiredRunAdapter = runAdapter;
     const acquiredEventDatabase = eventDatabase;
     const acquiredNotifications = notifications;
@@ -209,9 +209,12 @@ export async function createApiWorkflowRuntime(
       dependencies: Object.freeze({
         persistence: database,
         portabilityPersistence: database,
-        ...(inputCaseDatabase === undefined
+        ...(metadataRuntime.inputCases === undefined
           ? {}
-          : { inputCasePersistence: inputCaseDatabase }),
+          : { inputCasePersistence: metadataRuntime.inputCases }),
+        ...(metadataRuntime.organization === undefined
+          ? {}
+          : { organization: metadataRuntime.organization }),
         ...(database.concurrency === undefined
           ? {}
           : { concurrencyPersistence: database.concurrency }),
@@ -247,7 +250,7 @@ export async function createApiWorkflowRuntime(
           acquiredNotifications,
           acquiredExpressionEvaluator,
           acquiredAuthoringValidator,
-          acquiredInputCaseDatabase,
+          acquiredMetadataRuntime,
         );
         return closePromise;
       },
@@ -260,7 +263,7 @@ export async function createApiWorkflowRuntime(
       notifications,
       expressionEvaluator,
       authoringValidator,
-      inputCaseDatabase,
+      metadataRuntime,
     );
     if (cleanupFailures.length > 0)
       throw new AggregateError(
@@ -278,7 +281,7 @@ async function closeWorkflowResources(
   notifications: RunEventNotificationPublisher | undefined,
   expressionEvaluator: JsonataEvaluator,
   authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
-  inputCases: WorkflowInputCaseDatabase | undefined,
+  metadata: ApiWorkflowMetadataRuntime | undefined,
 ): Promise<void> {
   const failures = await collectWorkflowCloseFailures(
     authoring,
@@ -287,7 +290,7 @@ async function closeWorkflowResources(
     notifications,
     expressionEvaluator,
     authoringValidator,
-    inputCases,
+    metadata,
   );
   if (failures.length > 0)
     throw new AggregateError(failures, 'Workflow resource shutdown failed');
@@ -300,7 +303,7 @@ async function collectWorkflowCloseFailures(
   notifications: RunEventNotificationPublisher | undefined,
   expressionEvaluator: JsonataEvaluator | undefined,
   authoringValidator: Pick<WorkflowAuthoringValidator, 'shutdown'> | undefined,
-  inputCases: WorkflowInputCaseDatabase | undefined,
+  metadata: ApiWorkflowMetadataRuntime | undefined,
 ): Promise<unknown[]> {
   const failures: unknown[] = [];
   try {
@@ -310,7 +313,7 @@ async function collectWorkflowCloseFailures(
   }
   const results = await Promise.allSettled([
     Promise.resolve().then(() => authoring?.close()),
-    Promise.resolve().then(() => inputCases?.close()),
+    Promise.resolve().then(() => metadata?.close()),
     Promise.resolve().then(() => runs?.close()),
     Promise.resolve().then(() => events?.close()),
     Promise.resolve().then(() => notifications?.close()),

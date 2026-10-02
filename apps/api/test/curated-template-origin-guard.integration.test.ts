@@ -408,7 +408,7 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
                 profile.compatibilityReleaseDescription,
             })
           ).migrationHead,
-        ).toBe('0133_curated_template_origin.sql');
+        ).toBe('0135_workflow_folders_batch_identity.sql');
     });
     it('readiness rejects confined worker descriptor privilege drift and recovers after owner restoration', async () => {
       try {

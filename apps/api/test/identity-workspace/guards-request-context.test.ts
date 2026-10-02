@@ -70,6 +70,25 @@ function authorizationReader() {
 }
 
 describe('identity/workspace guard request correlation', () => {
+  it('rejects an invalid route workspace before actor construction or authority lookup', async () => {
+    const contexts = new RequestContextStore();
+    const authorization = authorizationReader();
+    const httpRequest = request('invalid-workspace');
+    const sessionGuard = new SessionAuthenticationGuard(
+      authenticatedSessions(),
+      contexts,
+    );
+    const workspaceGuard = new WorkspaceManageGuard(authorization, contexts);
+    await contexts.run('request-guard-context', async () => {
+      await sessionGuard.canActivate(executionContext(httpRequest));
+      await expect(
+        workspaceGuard.canActivate(executionContext(httpRequest)),
+      ).rejects.toMatchObject({ code: 'request.invalid' });
+    });
+    expect(authorization.findAccess).not.toHaveBeenCalled();
+    expect(httpRequest.authorizedWorkspace).toBeUndefined();
+  });
+
   it('sets an immutable validated actor/session only after authentication', async () => {
     const contexts = new RequestContextStore();
     const authenticateSession = vi.fn().mockResolvedValue(

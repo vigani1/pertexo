@@ -1,47 +1,12 @@
-type Environment = Readonly<Record<string, string | undefined>>;
+import { ownedBrowserQualificationBuild } from './owned-browser-build-qualification';
 
 /** Build-time attestation only: no values become browser environment variables. */
 export function curatedTemplateQualificationBuild(
   mode: string,
-  env: Environment,
+  env: Readonly<Record<string, string | undefined>>,
 ): boolean {
-  if (mode !== 'curated-template-qualification') return false;
-  if (
-    env.EDITOR_BROWSER_INTEGRATION !== 'true' ||
-    env.EDITOR_BROWSER_CASE !== 'curated-templates' ||
-    env.EDITOR_BROWSER_OWNED_FIXTURE !== 'true'
-  )
-    throw new Error(
-      'Curated qualification build requires its explicitly owned browser fixture',
-    );
-  const manifest: unknown = JSON.parse(
-    env.EDITOR_BROWSER_OWNERSHIP_MANIFEST ?? 'null',
-  );
-  if (
-    typeof manifest !== 'object' ||
-    manifest === null ||
-    !('project' in manifest) ||
-    typeof manifest.project !== 'string' ||
-    !/^pertexo-[a-z0-9-]+$/u.test(manifest.project)
-  )
-    throw new Error(
-      'Curated qualification build requires the approved ownership manifest',
-    );
-  for (const name of ['PERTEXO_API_PROXY_TARGET', 'PERTEXO_LIVE_MAIL_ORIGIN']) {
-    const origin = new URL(env[name] ?? '');
-    if (
-      origin.protocol !== 'http:' ||
-      origin.hostname !== '127.0.0.1' ||
-      origin.port === '' ||
-      origin.username !== '' ||
-      origin.password !== '' ||
-      origin.pathname !== '/' ||
-      origin.search !== '' ||
-      origin.hash !== ''
-    )
-      throw new Error(
-        'Curated qualification build requires explicit loopback fixture origins',
-      );
-  }
-  return true;
+  return ownedBrowserQualificationBuild(mode, env, {
+    mode: 'curated-template-qualification',
+    scenario: 'curated-templates',
+  });
 }

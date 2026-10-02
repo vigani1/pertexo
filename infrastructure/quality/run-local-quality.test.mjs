@@ -33,6 +33,7 @@ import {
 } from './run-local-quality.mjs';
 import { isolatedGitEnvironment } from '../support/git-environment.mjs';
 import { CURATED_TEMPLATE_GATES } from '../testing/curated-template-gates.mjs';
+import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-gates.mjs';
 import {
   OwnedProcessSupervisor,
   processGroupExists,
@@ -45,6 +46,31 @@ import {
 } from '../support/test-process-observation.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
+
+test('ordinary integration cohorts exclude every dedicated organization Vitest file', () => {
+  for (const gate of WORKFLOW_ORGANIZATION_GATES) {
+    if (!gate.command.includes('vitest')) continue;
+    const workspace = gate.command[gate.command.indexOf('--filter') + 1];
+    const cohort = LOCAL_QUALITY_COHORTS.find(
+      ({ id }) =>
+        id ===
+        (workspace === '@pertexo/database'
+          ? 'integration-database'
+          : 'integration-api'),
+    );
+    assert.ok(cohort);
+    for (const file of gate.command.filter((argument) =>
+      argument.endsWith('.test.ts'),
+    )) {
+      const index = cohort.command.indexOf(file);
+      assert.ok(
+        index > 0,
+        `${gate.id}: ${file} must have a dedicated exclusion`,
+      );
+      assert.equal(cohort.command[index - 1], '--exclude');
+    }
+  }
+});
 
 test('an EPERM zero-signal probe means the process group still exists', () => {
   const permissionError = Object.assign(new Error('not permitted'), {
@@ -142,6 +168,16 @@ test('current CI supplies the shared local service and specialized-suite contrac
     'utf8',
   );
   assert.doesNotThrow(() => assertCiLocalQualityContract(source));
+  assert.throws(
+    () =>
+      assertCiLocalQualityContract(
+        source.replaceAll(
+          'run: docker compose down -v --remove-orphans',
+          'run: docker compose down --remove-orphans',
+        ),
+      ),
+    /exact owned cleanup/u,
+  );
   assert.throws(
     () =>
       assertCiLocalQualityContract(
