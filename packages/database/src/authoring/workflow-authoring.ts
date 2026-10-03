@@ -62,6 +62,7 @@ export {
   WorkflowLifecycleRevisionConflictError,
   WorkflowNameRevisionConflictError,
   WorkflowPortabilityUnavailableError,
+  WorkflowDraftOperationUnavailableError,
   WorkflowTemplateOriginUnavailableError,
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,

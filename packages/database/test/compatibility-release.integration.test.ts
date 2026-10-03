@@ -287,7 +287,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+        migrationHead: '0136_workflow_draft_graph_v2.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -410,7 +410,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+        migrationHead: '0136_workflow_draft_graph_v2.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -575,7 +575,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0135_workflow_folders_batch_identity.sql',
+          migrationHead: '0136_workflow_draft_graph_v2.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -607,7 +607,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+        migrationHead: '0136_workflow_draft_graph_v2.sql',
       });
     } finally {
       await pool.end();

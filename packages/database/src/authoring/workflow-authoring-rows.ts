@@ -5,6 +5,8 @@ import {
 } from '@pertexo/workflow-model/lifecycle';
 import {
   parseWorkflowGraphDraft,
+  workflowCallableDraftRepresentationTagV2,
+  workflowDraftRepresentationTag,
   workflowCompatibilityReport,
   workflowRetainedExecutableChecksum,
   type WorkflowDefinitionCatalogV1,
@@ -142,6 +144,23 @@ export function mapDraft(
     ),
     updatedBy: parsed.updated_by,
     updatedAt: parsed.updated_at,
+  });
+}
+
+/** Full editable representation identity; never a structural graph projection. */
+export function draftRepresentationTag(
+  workflowId: string,
+  draft: WorkflowDraftRecord,
+): string {
+  const tag =
+    draft.schemaVersion === 2
+      ? workflowCallableDraftRepresentationTagV2
+      : workflowDraftRepresentationTag;
+  return tag({
+    workflowId,
+    revision: draft.revision,
+    graph: draft.graphJson,
+    compatibilityFingerprint: draft.compatibility.fingerprint,
   });
 }
 

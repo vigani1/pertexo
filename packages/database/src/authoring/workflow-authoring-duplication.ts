@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
-  workflowDraftRepresentationTag,
   type WorkflowGraph,
   type WorkflowDefinitionCatalogV1,
 } from '@pertexo/workflow-model/graph';
@@ -19,8 +18,9 @@ import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
+  WorkflowDraftOperationUnavailableError,
 } from './workflow-authoring-errors.js';
-import { mapDraft } from './workflow-authoring-rows.js';
+import { mapDraft, draftRepresentationTag } from './workflow-authoring-rows.js';
 
 const uuid = z.uuid();
 const inputSchema = z
@@ -35,7 +35,7 @@ const inputSchema = z
     ]),
     representationTag: z
       .string()
-      .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u)
+      .regex(/^"draft-v[12]\.[A-Za-z0-9_-]{43}"$/u)
       .optional(),
     idempotencyKey: z.string(),
     requestId: z.string().optional(),
@@ -132,14 +132,11 @@ async function selectedGraph(
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow source is not visible');
   const draft = mapDraft(row, catalog);
-  const tag = workflowDraftRepresentationTag({
-    workflowId: input.workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: draft.compatibility.fingerprint,
-  });
+  const tag = draftRepresentationTag(input.workflowId, draft);
   if (tag !== input.representationTag)
     throw new WorkflowRevisionConflictError(draft.revision, tag);
+  if (draft.schemaVersion === 2)
+    throw new WorkflowDraftOperationUnavailableError();
   return draft.graphJson;
 }
 

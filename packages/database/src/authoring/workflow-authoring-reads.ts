@@ -22,6 +22,7 @@ import type {
 } from './workflow-authoring-records.js';
 import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/graph';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
+import { WorkflowDraftOperationUnavailableError } from './workflow-authoring-errors.js';
 import type { WorkflowAuthoringGraphValidator } from './workflow-authoring-types.js';
 import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 
@@ -85,6 +86,8 @@ export function createWorkflowAuthoringReadStore(
           const row = result.rows[0];
           if (row === undefined) return null;
           const draft = mapDraft(row, variant.definitionCatalog);
+          if (draft.schemaVersion === 2)
+            throw new WorkflowDraftOperationUnavailableError();
           const validation = await admitWorkflowAuthoring(
             client,
             variant.validateAuthoringGraph,

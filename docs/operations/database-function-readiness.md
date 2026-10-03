@@ -253,3 +253,27 @@ guard and Phase 3 non-removal guard, full preactivation authority validation,
 the bounded one-predecessor compatibility-release overlap, and zero/prior-head
 migration suites. Every future supported rolling release must add its own
 prior-head fixture before the predecessor is admitted.
+
+## Ordinary draft format cutover
+
+The registered `0136_workflow_draft_graph_v2.sql` migration enables editable
+Graph V2 source only. Startup readiness separately checks draft support `[1, 2]`,
+the exact validated schema/header constraints, and the registered head. Published
+graphs remain V1; executable graphs remain V2. No native runtime routines,
+catalog entries, grants or writer activation are included.
+
+Do not use this change as a zero-downtime or mixed-image compatibility release.
+The exact-head check does not fence already-running older processes. An
+authorized operator must hold writes/traffic closed, drain old API/worker and
+other serving cohorts, apply the registered migration through the normal runner,
+and start synchronized compatible images. Reopen only after all serving startup
+checks pass and ordinary retained/native draft GET/conditional-save checks pass.
+Keep native execution/catalog/writers and native Publish/Run disabled. A failing
+constraint validation is a failed cutover, not permission to use `NOT VALID`,
+rewrite source, drop checks or weaken readiness.
+
+After V2 drafts exist, rollback must retain a reader/image supporting both draft
+formats and this exact head, or use a reviewed forward repair. Do not deploy an
+older V1-only reader or downgrade stored drafts to make it start. This procedure
+documents a release requirement; the local draft-storage checkpoint does not
+authorize deployment or qualify the paused native security/runtime gates.

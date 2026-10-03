@@ -260,7 +260,7 @@ have also been extracted without changing legacy triggers, receipt replay,
 notification locking, deadlines or inline persistence; 11 orchestration regressions
 cover that seam. All 1,130 database unit tests across 138 files pass, with database
 build/typecheck, narrow lint/format, module-import and complexity checks. The new
-codec is not registered with persistence owners. Migration0136 is being assembled
+codec is not registered with persistence owners. The historical native SQL draft was being assembled
 outside the executable migration directory until protected admission, writer
 fences and retention are complete; no SQL or live-service qualification is claimed.
 Canonical acceptance now has a strict internal Call branch: only parent/revision/
@@ -677,3 +677,42 @@ and cannot change a pin. Behavior-first regressions demonstrated the stale
 respective fixes. Existing source-only browser journeys still pass at desktop
 and phone widths. These are focused source-inspection corrections, not F08
 completion or security qualification; native gates remain OFF.
+
+### Ordinary editable Graph V2 draft storage
+
+The registered migration allocation is now `0136_workflow_draft_graph_v2.sql`
+for ordinary draft storage only; future native execution work reserves 0137.
+This supersedes the earlier exclusive native-0136 allocation recorded above.
+The historical `src/execution/workflow-calls/0136-durable-workflow-calls.draft.sql`
+keeps its original bytes and name as quarantined, unregistered evidence. It must
+not be discovered, installed or registered by the migration runner.
+
+The ordinary migration accepts draft schema versions 1 and 2 and validates a
+numeric JSON header equal to the stored schema version, including rejection of
+missing headers through an explicit `IS TRUE`. It does not rewrite drafts,
+change grants/functions, or enable native published/executable formats. Readiness
+requires the exact validated draft constraints and registered head; published
+graph support remains V1 and executable support remains V2.
+
+Normal authenticated HTTP GET/conditional PUT preserves complete Graph V2
+source, callable declaration, positions, retained mappings and revision/ETag
+truth. Native validate, publish, duplicate, export and version restore deliberately
+return `workflow.draft_operation_unavailable` (409, no Retry-After) after existing
+scope/resource checks and applicable missing/stale preconditions. A visible
+retained version cannot silently replace a native draft. The frontend describes
+this limitation explicitly and does not review a native graph as a retained
+portable export. This is editable source storage, not callable target eligibility.
+
+The owned local HTTP fixture uses normal registered migrations and API roles,
+without constraint-drop bootstrap or native catalog injection. A separate normal
+0135-to-0136 upgrade fixture preserves the prior draft graph/revision/metadata.
+The restore fixture publishes a normal retained V1 version through its existing
+HTTP contract before storing V2 source; it never publishes a native version.
+Browser export feedback is checked separately against a mocked read boundary;
+it does not qualify real browser-to-database save/reload or native execution.
+
+Rollout is a coordinated drain/cutover, not a mixed-image rolling promise; see
+[draft-storage cutover](../operations/database-function-readiness.md#ordinary-draft-format-cutover).
+No deployment is authorized by this checkpoint. Native execution, catalog,
+writers, Publish/Run and full F08 remain OFF/incomplete. Security qualification
+remains platform-screened and paused; these ordinary checks do not replace it.

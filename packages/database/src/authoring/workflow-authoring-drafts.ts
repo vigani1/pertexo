@@ -5,8 +5,6 @@ import {
   EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
   parseWorkflowAuthoringGraphDraft,
-  workflowCallableDraftRepresentationTagV2,
-  workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/graph';
 
 import { canonicalApplicationPayloadChecksum } from '../execution/transport/outbox.js';
@@ -18,6 +16,7 @@ import {
 import {
   createdWorkflowRowSchema,
   mapDraft,
+  draftRepresentationTag,
   mapWorkflow,
 } from './workflow-authoring-rows.js';
 import type {
@@ -215,22 +214,6 @@ function throwRevisionConflict(
     draft.revision,
     draftRepresentationTag(workflowId, draft),
   );
-}
-
-function draftRepresentationTag(
-  workflowId: string,
-  draft: WorkflowDraftRecord,
-): string {
-  const tag =
-    draft.schemaVersion === 2
-      ? workflowCallableDraftRepresentationTagV2
-      : workflowDraftRepresentationTag;
-  return tag({
-    workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: draft.compatibility.fingerprint,
-  });
 }
 
 export function createWorkflowAuthoringDraftStore(
