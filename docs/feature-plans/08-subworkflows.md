@@ -716,3 +716,13 @@ Rollout is a coordinated drain/cutover, not a mixed-image rolling promise; see
 No deployment is authorized by this checkpoint. Native execution, catalog,
 writers, Publish/Run and full F08 remain OFF/incomplete. Security qualification
 remains platform-screened and paused; these ordinary checks do not replace it.
+
+The later focused live-browser journey now qualifies ordinary UI draft storage:
+existing UI registration/verification/sign-in and workflow creation, a retained
+Set-fields literal mapping, callable source authoring, actual API saves and a
+full-page reload whose fresh network draft response equals the complete saved
+graph/revision/native ETag. Existing process ownership and normal registered
+migrations/API roles are reused; the draft-only scenario starts no worker and
+uses only the core cohort. Native Publish/Run controls remain absent and no such
+command is dispatched. This supersedes only the real-browser save/reload gap
+above, not target eligibility, execution, full F08 or paused security gates.
