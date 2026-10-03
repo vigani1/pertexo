@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { workflowCallableDeclarationSchemaV1 } from '@pertexo/workflow-model/callable-graph-contract';
 import {
   workflowControlOutputNodeIdsV2,
   workflowControlOutputNodeIdsV3,
@@ -27,7 +28,6 @@ import {
   type PendingFailureRow,
 } from './coordinator-pending-failure-observations.js';
 import { loadCoordinatorCallMaterials } from './coordinator-call-materials.js';
-import { loadCoordinatorCallableMaterials } from './coordinator-callable-materials.js';
 import {
   completedInlineOutput,
   mapEvent,
@@ -134,7 +134,6 @@ interface CoordinatorAdvanceSnapshot {
   graph_schema_version: number;
   executable_checksum: string;
   executable_json: unknown;
-  input_ref: unknown;
   event_high_water: number;
 }
 
@@ -150,7 +149,7 @@ async function readCoordinatorAdvanceSnapshot(
                 checkpoint.revision, checkpoint.engine_version,
                 checkpoint.scheduler_state,
                 version.executable_schema_version,version.executable_json,
-                version.schema_version as graph_schema_version,version.checksum as executable_checksum,run.input_ref,
+                version.schema_version as graph_schema_version,version.checksum as executable_checksum,
                 coalesce((select max(event.sequence) from app.run_events event
                           where event.workspace_id = run.workspace_id
                             and event.workflow_run_id = run.id), 0)::int as event_high_water
@@ -372,24 +371,15 @@ export async function loadCoordinatorAdvanceState(
         )),
       );
       assertCoordinatorNotAborted(input.signal);
-      const callableCompletion =
-        checkpoint.schemaVersion === 3
-          ? await loadCoordinatorCallableMaterials(client, {
-              workspaceId,
-              runId,
-              executableJson: row.executable_json,
-              inputRef: row.input_ref,
-              facts: workflowCalls?.facts ?? [],
-              controls: {
-                cancelRequested:
-                  checkpoint.cancelRequested || hasFreshCancellation,
-                deadlineExpired:
-                  checkpoint.deadlineExpired ||
-                  (row.deadline_at !== null &&
-                    row.deadline_at <= row.database_now),
-              },
-            })
-          : undefined;
+      // Preserve declaration validation, but successful callable value material
+      // belongs only to the later engine demand scope, not this SQL snapshot.
+      if (checkpoint.schemaVersion === 3) {
+        const executable = row.executable_json as object;
+        const graph = Reflect.get(executable, 'graph') as object;
+        const callable = Reflect.get(graph, 'callable') as unknown;
+        if (callable !== undefined)
+          workflowCallableDeclarationSchemaV1.parse(callable);
+      }
       return Object.freeze({
         kind: 'ready',
         state: Object.freeze({
@@ -399,7 +389,6 @@ export async function loadCoordinatorAdvanceState(
           observations: Object.freeze(observations.map(Object.freeze)),
           completedOutputs: Object.freeze(completedOutputs.map(Object.freeze)),
           ...(workflowCalls === undefined ? {} : { workflowCalls }),
-          ...(callableCompletion === undefined ? {} : { callableCompletion }),
         }),
       });
     },

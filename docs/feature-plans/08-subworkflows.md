@@ -1015,3 +1015,14 @@ accepted candidate association, native artifact-aware retention and real-service
 recovery/end-to-end gates remain open. No old 0136 is copied, registered or installed;
 no SQL/role/security probes or native activation are authorized by this evidence.
 Screened qualification stays PAUSED and full F08 stays incomplete.
+
+The first focused persistence prerequisite now removes eager native callable
+result projection and unused run-input selection from `loadAdvanceState`, while
+preserving declaration validation and retained behavior. Eight ordinary tests
+exercise the actual tenant transaction/read adapter (not an installed SQL owner),
+including selector, control, malformed declaration and retained cleanup cases;
+54 focused database tests/build/typechecks/narrow lint pass. This source awaits
+separate review. Existing logical Call physical-state validation still fetches a
+protected original result reference before demand; that payload-bearing validation
+must also become bounded without weakening accepted-fact integrity. The source
+read/atomic acceptance/retention/readiness prerequisites remain unimplemented.

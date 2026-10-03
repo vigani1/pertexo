@@ -230,6 +230,16 @@ Independent precommit computation/result candidate preparation, exact receipt/fu
 plan CAS truth, atomic accepted association, retention and real-service end-to-end
 qualification remain unfinished. Native remains OFF; screened checks remain PAUSED.
 
+The next focused persistent prerequisite suppresses native eager callable result
+material from the actual `loadAdvanceState` read adapter, removes its unused
+run-input column and retains callable declaration validation. Eight adapter tests
+cover selectors, validated controls, malformed declaration and retained cleanup;
+54 focused database tests, build/typecheck and narrow lint pass. This does not
+remove existing physical/fact/control or Call-declaration validation. Logical
+Call physical-state validation still reads the protected original result
+reference before demand, so total bounded persistent state loading remains open.
+The suppression awaits separate review; no native read owners or SQL are installed.
+
 ### F02 — run-input cases and version-checked manual start
 
 The manager accepted the product owner's version-checked explicit real-start
