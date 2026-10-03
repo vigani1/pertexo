@@ -28,6 +28,9 @@ No node or preview artifact capability receives this framework-only dependency.
       source-reference hydration, coordinator result integration and retention.
 - [x] Accept the concrete ADR065 native artifact owner amendment and contract
       delta through primary and independent design review before persistent code.
+- [x] Separate producer slots and coordinator pre/post-CAS result identity from
+      consuming authority; recheck uploaded candidates without accepted-source
+      authorization before acceptance.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
@@ -46,6 +49,21 @@ and contract delta are accepted implementation guidance. Existing owners must
 gain artifact-aware exact comparison/projection while retaining accepted-fact,
 receipt, completion/current-authority and inline invariants, not weakened seals.
 Persistent implementation and executable qualification remain unfinished.
+
+The ordinary producer/candidate slice now requires `call_input` or
+`physical_output` for attempts and distinct coordinator expected/result revisions
+with a bounded result identity. Call preparation names its input slot. Upload
+preparation reuses the exact reserve request to recheck current candidate proof;
+accepted-source authorization remains hydration-only. Real codec/writer/spool
+tests with external adapters reject hydration before simulated acceptance and
+verify candidate disagreement fails preparation and exact available retries do
+not upload again. These callbacks do not establish SQL authority or quota proof.
+Focused tests pass (128 across five files), and all 1,057 worker tests across 85
+files pass on the final rerun. The first broad run timed out in the unchanged
+compiled-process bootstrap-failure case with no child output; its isolated rerun
+passed all five cases without changing timeouts or assertions. Worker build,
+typecheck, narrow lint/format and architecture checks pass. Persistent native
+source projection, candidate ownership and full F08 qualification remain open.
 
 ### F02 — run-input cases and version-checked manual start
 

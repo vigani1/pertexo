@@ -757,3 +757,31 @@ unit tests across 85 files, narrow lint/format, repository architecture checks a
 documentation validation. The ordinary queue dependency regression has observed
 red/green evidence; the object-store and persistence adapters are not real-service
 qualification. No assertion, timeout, rollout gate or authority check was weakened.
+
+### Ordinary producer slots and candidate recheck — 2026-10-03
+
+Preparation now distinguishes attempt `call_input`/`physical_output` slots and
+coordinator pre-CAS expected revision from post-CAS result revision and result
+identity. Missing attempt slots and invalid coordinator revision relationships
+fail before inline selection or reservation; both had meaningful failing tests
+before implementation. The fresh Call caller explicitly uses `call_input`.
+These routing checks are not persistence authority or independent result proof.
+
+After upload, preparation rechecks the same candidate through the exact reserve
+request, rather than authorizing an accepted source before acceptance. Recheck
+disagreement or unavailable status fails preparation. Accepted-source authorization
+remains on hydration only. A test first failed because preparation called
+accepted-source authorization for an unaccepted candidate, then passed with the
+candidate recheck. Real codec/writer/spool integration with external persistence
+and object-store adapters rejects hydration until explicit simulated acceptance,
+and preserves one upload on an exact available retry. Both attempt slots reach
+the reserved writer without changing its reservation or charge ownership.
+
+Focused verification passes 128 tests across five files; the final broad worker
+run passes 1,057 tests across 85 files. The initial broad run had one unchanged
+compiled-process bootstrap-failure timeout with no child output; all five process
+cases passed in isolation and the subsequent broad run passed without tolerance
+changes. Build, source/test typecheck, narrow lint/format and architecture pass.
+No persistent candidate SQL, accepted-parent association, real quota/retention
+proof or explicit source loader is qualified by these adapter tests. Native
+execution remains OFF; screened security qualification remains PAUSED.

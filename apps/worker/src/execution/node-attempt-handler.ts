@@ -211,7 +211,7 @@ async function executePreparedNodeAttempt(
         if (prepare === undefined || record === undefined)
           throw new TypeError('Native Call input persistence is unavailable');
         const value = await prepare({
-          owner: { kind: 'attempt', lease },
+          owner: { kind: 'attempt', slot: 'call_input', lease },
           value: resolved,
           signal: heartbeat.executionSignal,
         });

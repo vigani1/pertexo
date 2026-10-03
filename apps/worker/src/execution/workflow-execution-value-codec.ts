@@ -36,6 +36,37 @@ export type WorkflowExecutionValueOwner =
       delivery: CoordinatorAdvanceDelivery;
     }>;
 
+/** Production identity is distinct from the authority consuming an accepted value. */
+export type WorkflowExecutionValueProducerOwner =
+  | Readonly<{
+      kind: 'attempt';
+      slot: 'call_input' | 'physical_output';
+      lease: NodeAttemptLease;
+    }>
+  | (Extract<WorkflowExecutionValueOwner, { kind: 'run_result' }> &
+      Readonly<{ resultRevision: number; resultIdentity: string }>);
+
+/** Validate routing metadata only; persistence still proves actual owner authority. */
+export function assertWorkflowExecutionValueProducer(
+  owner: WorkflowExecutionValueProducerOwner,
+): void {
+  if (owner.kind === 'attempt') {
+    const slot: unknown = owner.slot;
+    if (slot !== 'call_input' && slot !== 'physical_output')
+      throw new TypeError('Execution value producer slot is required');
+    return;
+  }
+  if (
+    !Number.isSafeInteger(owner.expectedRevision) ||
+    owner.expectedRevision < 0 ||
+    !Number.isSafeInteger(owner.resultRevision) ||
+    owner.resultRevision !== owner.expectedRevision + 1 ||
+    typeof owner.resultIdentity !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(owner.resultIdentity)
+  )
+    throw new TypeError('Execution value result producer identity is invalid');
+}
+
 const metadataSchema = z
   .object({
     artifactId: z.uuid(),
@@ -62,10 +93,10 @@ export interface WorkflowExecutionValueCodecDependencies {
   readonly chooseInline: (
     value: SchemaJson,
   ) => Extract<WorkflowStoredExecutionValueV1, { kind: 'inline' }> | undefined;
-  /** Must prove the actual lease or coordinator delivery in SQL, and reuse reservations. */
+  /** Prove current producer authority in SQL; exact retries reuse the same candidate without another charge. */
   readonly reserve: (
     input: Readonly<{
-      owner: WorkflowExecutionValueOwner;
+      owner: WorkflowExecutionValueProducerOwner;
       byteLength: number;
       sha256: string;
       mediaType: typeof WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1;
@@ -75,14 +106,14 @@ export interface WorkflowExecutionValueCodecDependencies {
   /** Adapter MUST delegate the existing node-artifact-runtime writer: no second put/quota/spool owner. */
   readonly writeReserved: (
     input: Readonly<{
-      owner: WorkflowExecutionValueOwner;
+      owner: WorkflowExecutionValueProducerOwner;
       reserved: WorkflowExecutionValueArtifact;
       body: AsyncIterable<Uint8Array>;
       maxBytes: number;
       signal: AbortSignal;
     }>,
   ) => Promise<unknown>;
-  /** Must prove immutable, same-workspace execution provenance and availability before a read. */
+  /** Prove accepted, immutable, same-workspace execution provenance before a read; candidate availability is insufficient. */
   readonly authorize: (
     input: Readonly<{
       owner: WorkflowExecutionValueOwner;
@@ -290,7 +321,7 @@ async function hydrateStream(
 }
 
 type PrepareInput = Readonly<{
-  owner: WorkflowExecutionValueOwner;
+  owner: WorkflowExecutionValueProducerOwner;
   value: unknown;
   signal: AbortSignal;
 }>;
@@ -305,6 +336,7 @@ async function prepareValue(
   input: PrepareInput,
 ): Promise<PreparedWorkflowExecutionValue> {
   assertActive(input.signal);
+  assertWorkflowExecutionValueProducer(input.owner);
   const value = normalize(input.value);
   const bytes = Buffer.from(
     serializeWorkflowExecutionJsonValueV3(value),
@@ -325,14 +357,15 @@ async function prepareValue(
         invalid('Inline execution value does not match normalized input');
       return Object.freeze({ reference, sha256, byteLength });
     }
+    const reservationInput = Object.freeze({
+      owner: input.owner,
+      byteLength,
+      sha256,
+      mediaType: WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
+      signal: input.signal,
+    });
     const reserved = parseMetadata(
-      await dependencies.reserve({
-        owner: input.owner,
-        byteLength,
-        sha256,
-        mediaType: WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
-        signal: input.signal,
-      }),
+      await dependencies.reserve(reservationInput),
       reservationSchema,
     );
     assertActive(input.signal);
@@ -367,11 +400,10 @@ async function prepareValue(
       assertActive(input.signal);
       assertMatching(uploaded, reserved);
       const available = parseMetadata(
-        await dependencies.authorize({
-          owner: input.owner,
-          reference,
-          signal: input.signal,
-        }),
+        // This is still a candidate: accepted-source authorization cannot
+        // precede the actual input/completion/coordinator acceptance transaction.
+        // The owner must reuse this exact reservation without inserting/charging.
+        await dependencies.reserve(reservationInput),
         reservationSchema,
       );
       assertActive(input.signal);

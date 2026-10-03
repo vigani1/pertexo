@@ -16,7 +16,7 @@ import {
   createWorkflowExecutionValueCodec,
   WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
   type WorkflowExecutionValueCodecDependencies,
-  type WorkflowExecutionValueOwner,
+  type WorkflowExecutionValueProducerOwner,
 } from '../src/execution/workflow-execution-value-codec.js';
 import {
   lease,
@@ -28,8 +28,9 @@ import {
 
 const artifactId = '88888888-8888-4888-8888-888888888888';
 const signal = () => new AbortController().signal;
-const owner: WorkflowExecutionValueOwner = Object.freeze({
+const owner: WorkflowExecutionValueProducerOwner = Object.freeze({
   kind: 'attempt',
+  slot: 'call_input',
   lease: lease(),
 });
 const artifactRef = { schemaVersion: 1, kind: 'artifact', artifactId };
@@ -48,6 +49,7 @@ function harness(initial?: Buffer) {
   let bytes =
     initial === undefined ? Buffer.from('null') : Buffer.from(initial);
   let descriptor = metadata(bytes);
+  let available = false;
   let lastBody: Readable | undefined;
   const reserve = vi.fn<WorkflowExecutionValueCodecDependencies['reserve']>(
     (input) => {
@@ -57,7 +59,7 @@ function harness(initial?: Buffer) {
         sha256: input.sha256,
         mediaType: input.mediaType,
       };
-      return Promise.resolve({ ...descriptor, available: false });
+      return Promise.resolve({ ...descriptor, available });
     },
   );
   const writeReserved = vi.fn<
@@ -66,6 +68,7 @@ function harness(initial?: Buffer) {
     const chunks: Buffer[] = [];
     for await (const chunk of input.body) chunks.push(Buffer.from(chunk));
     bytes = Buffer.concat(chunks);
+    available = true;
     return { ...descriptor };
   });
   const authorize = vi.fn<WorkflowExecutionValueCodecDependencies['authorize']>(
@@ -103,6 +106,56 @@ function harness(initial?: Buffer) {
 }
 
 describe('framework execution value codec', () => {
+  it('rechecks an uploaded candidate without requiring accepted-source authorization before acceptance', async () => {
+    const h = harness();
+    h.authorize.mockRejectedValue(
+      new Error('Candidate has no accepted provenance'),
+    );
+    await expect(
+      h.codec.prepare({ owner, value: 'x'.repeat(300_000), signal: signal() }),
+    ).resolves.toMatchObject({ reference: artifactRef });
+    expect(h.reserve).toHaveBeenCalledTimes(2);
+    expect(h.reserve.mock.calls[1]?.[0]).toBe(h.reserve.mock.calls[0]?.[0]);
+    expect(h.authorize).not.toHaveBeenCalled();
+  });
+  it('requires an explicit attempt producer slot before choosing a representation', async () => {
+    const h = harness();
+    await expect(
+      h.codec.prepare({
+        owner: {
+          kind: 'attempt',
+          lease: lease(),
+        } as unknown as WorkflowExecutionValueProducerOwner,
+        value: 'ordinary input',
+        signal: signal(),
+      }),
+    ).rejects.toThrow('Execution value producer slot is required');
+    expect(h.chooseInline).not.toHaveBeenCalled();
+    expect(h.reserve).not.toHaveBeenCalled();
+  });
+  it('requires distinct pre-CAS and post-CAS result revisions before preparation', async () => {
+    const h = harness();
+    await expect(
+      h.codec.prepare({
+        owner: {
+          kind: 'run_result',
+          workspaceId: WORKSPACE_ID,
+          runId: RUN_ID,
+          workflowVersionId: VERSION_ID,
+          expectedRevision: 4,
+          resultRevision: 4,
+          resultIdentity: 'b'.repeat(64),
+          delivery: {
+            outboxEventId: OUTBOX_EVENT_ID,
+            payloadChecksum: 'a'.repeat(64),
+          },
+        },
+        value: 'result',
+        signal: signal(),
+      }),
+    ).rejects.toThrow('Execution value result producer identity is invalid');
+    expect(h.chooseInline).not.toHaveBeenCalled();
+  });
   it('round-trips producer bytes through actual record/read adapters and hydration (mocked SQL, not role proof)', async () => {
     const config = parseDatabaseConfig({
       connectionString:
@@ -272,7 +325,7 @@ describe('framework execution value codec', () => {
         })
       ).reference.kind,
     ).toBe('artifact');
-    expect(h.reserve).toHaveBeenCalledTimes(1);
+    expect(h.reserve).toHaveBeenCalledTimes(2);
   });
   it('spills and hydrates exactly 1MiB source JSON without envelope overhead', async () => {
     const h = harness();
@@ -295,16 +348,18 @@ describe('framework execution value codec', () => {
       }),
     ).toBe(value);
     expect(h.body()?.destroyed).toBe(true);
-    expect(h.authorize).toHaveBeenCalledTimes(2);
+    expect(h.authorize).toHaveBeenCalledTimes(1);
   });
   it('passes actual coordinator delivery proof and revision for run result ownership', async () => {
     const h = harness();
-    const runOwner: WorkflowExecutionValueOwner = {
+    const runOwner: WorkflowExecutionValueProducerOwner = {
       kind: 'run_result',
       workspaceId: WORKSPACE_ID,
       runId: RUN_ID,
       workflowVersionId: VERSION_ID,
       expectedRevision: 3,
+      resultRevision: 4,
+      resultIdentity: 'b'.repeat(64),
       delivery: {
         outboxEventId: OUTBOX_EVENT_ID,
         payloadChecksum: 'a'.repeat(64),
@@ -407,7 +462,7 @@ describe('framework execution value codec', () => {
     ).rejects.toThrow();
     expect(h.writeReserved).not.toHaveBeenCalled();
   });
-  it('rejects writer mismatches and requires post-write resolver availability proof', async () => {
+  it('rejects writer mismatches and requires post-write candidate availability proof', async () => {
     const h = harness();
     h.writeReserved.mockImplementation(() =>
       Promise.resolve({
@@ -419,12 +474,19 @@ describe('framework execution value codec', () => {
       h.codec.prepare({ owner, value: 'x'.repeat(300_000), signal: signal() }),
     ).rejects.toThrow(/integrity/);
     const unavailable = harness();
-    unavailable.authorize.mockImplementation(() =>
-      Promise.resolve({
-        ...unavailable.descriptor(),
-        available: false,
-      }),
-    );
+    const initialReservation = unavailable.reserve.getMockImplementation();
+    if (initialReservation === undefined)
+      throw new Error('Reservation adapter is missing');
+    unavailable.reserve
+      .mockImplementationOnce(initialReservation)
+      .mockImplementation((input) =>
+        Promise.resolve({
+          ...unavailable.descriptor(),
+          byteLength: input.byteLength,
+          sha256: input.sha256,
+          available: false,
+        }),
+      );
     await expect(
       unavailable.codec.prepare({
         owner,
@@ -433,6 +495,37 @@ describe('framework execution value codec', () => {
       }),
     ).rejects.toThrow(/unavailable/);
   });
+  it.each([
+    { artifactId: '99999999-9999-4999-8999-999999999999' },
+    { workspaceId: RUN_ID },
+    { byteLength: 1 },
+    { sha256: 'b'.repeat(64) },
+    { mediaType: 'application/json' },
+  ])(
+    'fails preparation when the candidate recheck disagrees %j',
+    async (patch) => {
+      const h = harness();
+      const initialReservation = h.reserve.getMockImplementation();
+      if (initialReservation === undefined)
+        throw new Error('Reservation adapter is missing');
+      h.reserve
+        .mockImplementationOnce(initialReservation)
+        .mockImplementation(() =>
+          Promise.resolve({ ...h.descriptor(), available: true, ...patch }),
+        );
+      await expect(
+        h.codec.prepare({
+          owner,
+          value: 'x'.repeat(300_000),
+          signal: signal(),
+        }),
+      ).rejects.toThrow();
+      expect(h.writeReserved).toHaveBeenCalledOnce();
+      expect(h.reserve).toHaveBeenCalledTimes(2);
+      expect(h.authorize).not.toHaveBeenCalled();
+      expect(h.getStream).not.toHaveBeenCalled();
+    },
+  );
   it('clears the producer-owned copy even if a writer abandons its iterator', async () => {
     const h = harness();
     let chunk: Uint8Array | undefined;

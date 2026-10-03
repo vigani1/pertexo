@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
   type WorkflowExecutionValueArtifact,
-  type WorkflowExecutionValueOwner,
+  type WorkflowExecutionValueProducerOwner,
 } from '../src/execution/workflow-execution-value-codec.js';
 import {
   createWorkflowExecutionValueWriter,
@@ -26,16 +26,19 @@ import {
 } from './support/node-attempt-handler.fixture.js';
 
 const artifactId = '88888888-8888-4888-8888-888888888888';
-const attemptOwner: WorkflowExecutionValueOwner = {
+const attemptOwner: WorkflowExecutionValueProducerOwner = {
   kind: 'attempt',
+  slot: 'call_input',
   lease: lease(),
 };
-const runOwner: WorkflowExecutionValueOwner = {
+const runOwner: WorkflowExecutionValueProducerOwner = {
   kind: 'run_result',
   workspaceId: WORKSPACE_ID,
   runId: RUN_ID,
   workflowVersionId: VERSION_ID,
   expectedRevision: 4,
+  resultRevision: 5,
+  resultIdentity: 'b'.repeat(64),
   delivery: { outboxEventId: OUTBOX_EVENT_ID, payloadChecksum: 'a'.repeat(64) },
 };
 const temporaryDirectories: string[] = [];
@@ -152,7 +155,11 @@ async function harness() {
 }
 
 describe('reserved execution-value artifact writer', () => {
-  it.each([attemptOwner, runOwner])(
+  it.each([
+    attemptOwner,
+    { kind: 'attempt', slot: 'physical_output', lease: lease() } as const,
+    runOwner,
+  ])(
     'delegates the reserved ID and actual $kind proof without a second pending reservation',
     async (owner) => {
       const h = await harness();

@@ -10,6 +10,7 @@ import {
 import { assertUploadedArtifactMatches } from './node-artifact-policy.js';
 import {
   WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
+  assertWorkflowExecutionValueProducer,
   type WorkflowExecutionValueCodecDependencies,
 } from './workflow-execution-value-codec.js';
 
@@ -50,6 +51,7 @@ export function createWorkflowExecutionValueWriter(
 ): WorkflowExecutionValueCodecDependencies['writeReserved'] {
   return async (input) => {
     assertActive(input.signal);
+    assertWorkflowExecutionValueProducer(input.owner);
     const reserved = Object.freeze({ ...input.reserved });
     const mediaType: unknown = reserved.mediaType;
     const workspaceId =

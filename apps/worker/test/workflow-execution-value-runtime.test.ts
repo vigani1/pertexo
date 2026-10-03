@@ -42,6 +42,8 @@ describe('framework execution value runtime', () => {
       let download: Readable | undefined;
       let uploadBody: Readable | undefined;
       let uploads = 0;
+      let accepted = false;
+      let authorizations = 0;
       const controller = new AbortController();
       const uploadFailure = new Error('Object storage is unavailable');
       const store: Pick<ArtifactStore, 'put' | 'getStream'> = {
@@ -97,18 +99,25 @@ describe('framework execution value runtime', () => {
             reservation = { ...reservation, available: true };
             return Promise.resolve();
           },
-          authorize: () => Promise.resolve(reservation),
+          authorize: () => {
+            authorizations++;
+            if (!accepted)
+              throw new Error('Candidate has no accepted provenance');
+            return Promise.resolve(reservation);
+          },
         },
       });
       const owner =
         kind === 'attempt'
-          ? { kind, lease: lease() }
+          ? { kind, slot: 'call_input' as const, lease: lease() }
           : {
               kind,
               workspaceId: WORKSPACE_ID,
               runId: RUN_ID,
               workflowVersionId: VERSION_ID,
               expectedRevision: 4,
+              resultRevision: 5,
+              resultIdentity: 'b'.repeat(64),
               delivery: {
                 outboxEventId: OUTBOX_EVENT_ID,
                 payloadChecksum: 'a'.repeat(64),
@@ -129,9 +138,16 @@ describe('framework execution value runtime', () => {
       }
       const prepared = await preparing;
       expect(prepared.reference.kind).toBe('artifact');
+      expect(authorizations).toBe(0);
       expect(uploaded?.toString('utf8')).toBe(
         '{"text":"' + 'x'.repeat(256 * 1024) + '"}',
       );
+      await expect(
+        runtime.hydrate({ owner, reference: prepared.reference, signal }),
+      ).rejects.toThrow('Candidate has no accepted provenance');
+      expect(download).toBeUndefined();
+      // Simulate the external acceptance transaction, not upload finalization.
+      accepted = true;
       expect(
         await runtime.hydrate({ owner, reference: prepared.reference, signal }),
       ).toEqual(value);
