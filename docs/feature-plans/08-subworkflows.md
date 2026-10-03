@@ -894,3 +894,31 @@ The required literal-preparation cancellation/stalled-upload regression remains
 open with that preparation slice. Ordinary engine/worker tests, builds,
 typechecks and narrow lint pass; eight inherited complexity findings remain.
 Native execution/catalog/writers remain OFF and screened qualification PAUSED.
+
+### Coordinator value-work lifetime — ordinary source, 2026-10-03
+
+The new callback-scoped worker module borrows an external current-owner inspector.
+It snapshots canonical routing, serializes pre/post/watch reads, bounds complete
+reads by the parsed control policy and aborts active work on read timeout. A single
+monotonic value-work budget starts before the first owner read and never resets
+between sources. Database time/deadline metadata conservatively caps this budget
+from read start, independent of local wall-clock changes. Local deadline expiry
+stops work as unavailable; a separate bounded, joined control confirmation can
+classify a durable timeout only from a fresh actual-owner reply.
+
+The scope owns its context listener, timers, watcher, pending owner inspections and
+all operation promises, including promises dropped by the callback. It aborts and
+joins cancellation-aware read and stream cleanup before returning. Unexpected
+integrity errors, including watcher errors discovered during exit, remain errors.
+Callbacks with no value operation do not inspect or watch; literal precommit
+preparation is an operation and therefore requires the same precheck/watcher.
+Ordinary regressions use actual Node pipelines and cancellation-aware external
+adapter fakes. They do not prove artifact-writer or persistent owner authority.
+
+This module is unwired. Actual source/control SQL adapters, existing configuration
+owner integration, engine/provider composition, incremental context hydration,
+native persistent preparation and the actual literal stalled-upload regression
+remain open. Final CAS integration is gated on the actual owner's exact canonical
+delivery, receipt and full-plan fingerprint truth; this module cannot classify an
+accepted result. No persistent SQL is changed or activated. Native remains OFF,
+screened qualification PAUSED, and full F08 incomplete.

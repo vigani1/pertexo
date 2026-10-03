@@ -38,8 +38,10 @@ No node or preview artifact capability receives this framework-only dependency.
       existing native encoder; leave authority and integration gates open.
 - [x] Accept the coordinator demand ADR amendment and implement its first ordinary
       engine/wrapper/handler interface with typed stops and retryable queue behavior.
-- [ ] Implement actual demand source/control adapters, joined bounded value-work
-      lifetime and independent native persistent commit preparation/rechecks.
+- [x] Implement the ordinary callback-scoped value-work lifetime with serial owner
+      inspections, a whole-scope budget, deadline cancellation and joined cleanup.
+- [ ] Wire actual demand source/control adapters and the value-work lifetime, then
+      implement independent native persistent commit preparation/rechecks.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
@@ -138,6 +140,24 @@ The existing database eager loader is unchanged. Actual source/control SQL,
 watcher/deadline/abort-join policy, incremental context hydration, independent
 persistent native commit preparation/final rechecks and literal stalled-upload
 cancellation proof remain open; native stays OFF and screened qualification PAUSED.
+
+The separate ordinary value-work lifetime now owns serial external owner reads,
+a single monotonic whole-scope budget and an actual-owner deadline cap. It aborts
+active streams on cancellation, context shutdown or a stalled control read, and
+joins watcher, read and operation cleanup, including dropped operation promises.
+Local deadline expiry is unavailable until a fresh owner read supplies a durable
+stop; it cannot invent a timeout fact. Literal demand callbacks with no operation
+do no inspection, while preparation operations use the same precheck and watcher.
+The module is unwired and cannot classify accepted receipts or final CAS results.
+Ordinary lifecycle tests cover real Node streams with injected external adapters,
+not persistent codec uploads or SQL authority. Actual adapters, configuration and
+engine/provider composition, incremental context, final-CAS exact receipt/full-plan
+truth and the actual literal-preparation stalled-upload regression remain open.
+All 1,165 ordinary worker tests across 88 files pass, including 32 lifecycle cases.
+Worker build/typecheck, narrow lint/format, documentation, architecture and
+duplication checks pass; full complexity still fails on the same eight inherited
+findings, with no new lifecycle hotspot or baseline change.
+Native execution/catalog/writers remain OFF; screened qualification remains PAUSED.
 
 ### F02 — run-input cases and version-checked manual start
 
