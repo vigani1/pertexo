@@ -176,6 +176,24 @@ async function replayCommand(overrides: Partial<ReplayWorkflowRunInput> = {}) {
 }
 
 describe('workflow run application seams', () => {
+  it('preserves native child provenance through authorized detail, list and cancellation responses', async () => {
+    const fixture = persistence();
+    const child = { ...run(), triggerType: 'workflow_call' as const };
+    fixture.get.mockResolvedValue({ run: child, nodes: [] });
+    fixture.list.mockResolvedValue({ items: [child] });
+    fixture.cancel.mockResolvedValue({ run: child, alreadyRequested: false });
+    const access = authorization();
+    const input = { actor, routeWorkspaceId: workspaceId, runId };
+    await expect(
+      new GetWorkflowRunUseCase(fixture.store, access).execute(input),
+    ).resolves.toMatchObject({ run: { triggerType: 'workflow_call' } });
+    await expect(
+      new ListWorkflowRunsUseCase(fixture.store, access).execute(input),
+    ).resolves.toMatchObject({ items: [{ triggerType: 'workflow_call' }] });
+    await expect(
+      new CancelWorkflowRunUseCase(fixture.store, access).execute(input),
+    ).resolves.toMatchObject({ run: { triggerType: 'workflow_call' } });
+  });
   it('binds exact-precision pagination cursors to workspace and normalized filters', async () => {
     const fixture = persistence();
     fixture.list
