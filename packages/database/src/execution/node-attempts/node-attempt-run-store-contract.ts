@@ -269,6 +269,7 @@ export const completionSchema = ownedLeaseSchema
 
 export type NodeAttemptClaimResult =
   | Readonly<{ kind: 'duplicate' }>
+  | Readonly<{ kind: 'control_settled'; outboxEventId: string }>
   | Readonly<{ kind: 'claimed'; lease: NodeAttemptLease }>;
 
 export type NodeAttemptInputs = Readonly<{

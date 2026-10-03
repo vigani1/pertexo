@@ -381,8 +381,8 @@ fence rejects successful callable checkpoints without their result. Protected
 child-result aliases now hydrate downstream inline inputs without rewriting the
 declaration. Original input byte checksums and raw PostgreSQL references survive
 the admission handoff. Retained codecs and old compatibility manifests remain
-unchanged. Cancellation plans and artifact result production fail closed until
-their persistence owners are wired.
+unchanged. At that milestone, cancellation plans and artifact result production
+failed closed until their persistence owners were wired.
 
 An exclusively owned PostgreSQL18 inline development flow on 2026-10-03 passed
 parent→child→result→parent downstream→terminal with the actual runtime login,
@@ -429,3 +429,28 @@ result rollback checks. These are narrow repair evidence, not serving-role or
 full-feature qualification; nonliteral evaluation remains owned by the runtime's
 existing restricted evaluator and must stay inside the authenticated coordinator
 path. The unregistered writer remains OFF and all earlier carveouts remain.
+
+Accepted-child cancellation and deadline propagation now use a narrow protected
+column owner inside the existing parent CAS/receipt transaction. Existing run
+event and outbox owners produce the child audit/wakeup; a private deferred seal
+requires the parent next checkpoint, completed receipt and real fresh child
+wakeup. Independently canceled or terminal children are unchanged. Deadline
+propagation uses the existing deadline-wakeup marker, never cancellation columns.
+Native plan validation rejects omitted propagation for any still-admitted child.
+
+Chronological owned execution exposed a never-claimed scheduled-attempt gap:
+the retained claim guard correctly blocked start after control, leaving the
+logical running invocation waiting without terminal evidence. The existing
+claim owner now has an explicit native-only control-settled outcome, proving
+accepted native member/version authority and ready, fence-zero, never-started,
+unleased, undispatched physical state under its existing locks/receipt. It records
+truthful canceled/timed-out attempt/node facts through the existing event/outbox
+owners without inventing a lease, start, dispatch or attempt. CP1/2 guards, live
+and expired claims, and unresolved effects retain their existing behavior.
+Owned cancellation, deadline, live independent-child cancellation and
+child-terminal-first variants pass development checks, including duplicate
+claims/commits/acknowledgments and unsealed-control rollback. Full qualification,
+full concurrent races/restarts, permanent serving/root/publication/artifact/
+retention/runtime/readiness/API/editor owners remain unfinished; no acceptance
+row is complete from these controls. Raw nonliteral result-writer authority
+remains explicitly open before any permanent grants or activation.

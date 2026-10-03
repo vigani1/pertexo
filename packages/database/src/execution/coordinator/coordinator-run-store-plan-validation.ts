@@ -109,6 +109,13 @@ function validateNativePlanEnvelope(plan: ParsedTransitionPlan): void {
       ),
     );
   }
+  if (
+    plan.checkpoint.schemaVersion === 3 &&
+    (plan.checkpoint.cancelRequested || plan.checkpoint.deadlineExpired)
+  ) {
+    for (const call of plan.checkpoint.calls)
+      if (call.status === 'admitted') assertPlan(children.has(call.childRunId));
+  }
 }
 
 function validateAttempt(

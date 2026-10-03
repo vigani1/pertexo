@@ -24,6 +24,7 @@ import {
   withWorkspaceWriteClient,
 } from './node-attempt-run-store-transactions.js';
 import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
+import { settleNativeUnclaimedControl } from './node-attempt-unclaimed-control.js';
 
 async function appendStartedEvent(
   client: PoolClient,
@@ -102,12 +103,15 @@ export async function claimNodeAttemptDelivery(
           control_active: boolean;
           deadline_at: Date | null;
           workflow_version_id: string;
+          checkpoint_schema_version: string | null;
         }>(
           `select workflow_version_id,cancel_requested_at,deadline_at,
+                      (select checkpoint.scheduler_state->>'schemaVersion' from app.run_checkpoints checkpoint
+                       where checkpoint.workspace_id=run.workspace_id and checkpoint.workflow_run_id=run.id) checkpoint_schema_version,
                       (cancel_requested_at is not null or
                        (deadline_at is not null and
                         deadline_at <= clock_timestamp())) control_active
-               from app.workflow_runs
+               from app.workflow_runs run
                where workspace_id=$1 and id=$2 for update`,
           [input.workspaceId, input.runId],
         );
@@ -179,7 +183,35 @@ export async function claimNodeAttemptDelivery(
         }
         if (row.attempt_status !== 'ready' || row.node_status !== 'ready')
           throw new NodeAttemptStateCorruptError();
-        if (runRow.control_active) throw new NodeAttemptControlActiveError();
+        if (runRow.control_active) {
+          if (
+            runRow.checkpoint_schema_version === '3' &&
+            row.fence_token === '0' &&
+            row.lease_expires_at === null &&
+            row.dispatch_marked_at === null &&
+            !row.provider_dispatch_unresolved
+          ) {
+            const outboxEventId = await settleNativeUnclaimedControl(client, {
+              workspaceId: input.workspaceId,
+              runId: input.runId,
+              workflowVersionId: runRow.workflow_version_id,
+              nodeRunId: input.nodeRunId,
+              attemptId: input.attemptId,
+              invocationKey: row.invocation_key,
+              nodeId: row.node_id,
+              attemptNumber: row.attempt_number,
+              cancellationRequested: runRow.cancel_requested_at !== null,
+            });
+            if (outboxEventId !== undefined) {
+              await completeReceipt(client, input.workspaceId, input.delivery);
+              return Object.freeze({
+                kind: 'control_settled' as const,
+                outboxEventId,
+              });
+            }
+          }
+          throw new NodeAttemptControlActiveError();
+        }
         if (
           row.side_effect_class !== 'safe' &&
           row.side_effect_class !== 'idempotent_with_key' &&

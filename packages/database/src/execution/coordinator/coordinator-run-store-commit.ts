@@ -43,6 +43,7 @@ import {
 import { persistCoordinatorCallTransitions } from './coordinator-call-transitions.js';
 import { persistCoordinatorCallResult } from './coordinator-call-result.js';
 import { authenticateCoordinatorCallResult } from './coordinator-call-result-authentication.js';
+import { persistCoordinatorCallControls } from './coordinator-call-controls.js';
 
 class NativeAdmissionPassAbandoned extends Error {
   public constructor(readonly result: CommitAdvancePlanResult) {
@@ -80,10 +81,6 @@ export async function commitCoordinatorAdvancePlan(
   }
   const plan = parseTransitionPlan(input.plan);
   validateTransitionPlan(plan, workflowVersionId);
-  // The native cohort stays OFF until its child-control persistence owner is
-  // wired. Never acknowledge a cancellation plan while dropping its intent.
-  if ((plan.workflowCalls?.cancelChildren.length ?? 0) > 0)
-    throw new TypeError('Native child cancellation persistence is unavailable');
   const checkpointJson = serializeCoordinatorCheckpoint(plan.checkpoint);
   const planFingerprint = transitionFingerprint({
     plan,
@@ -181,6 +178,13 @@ export async function commitCoordinatorAdvancePlan(
         }
 
         await callAdmission?.admit();
+        await persistCoordinatorCallControls(client, {
+          workspaceId,
+          runId,
+          plan,
+          delivery,
+          ...(traceparent === undefined ? {} : { traceparent }),
+        });
         await persistCoordinatorCallTransitions(client, {
           workspaceId,
           runId,

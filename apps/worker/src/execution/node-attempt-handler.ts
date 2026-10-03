@@ -472,6 +472,11 @@ export function createNodeAttemptHandler(
       });
       if (claimed.kind === 'duplicate')
         return Object.freeze({ kind: 'duplicate' });
+      if (claimed.kind === 'control_settled')
+        return Object.freeze({
+          kind: 'committed',
+          outboxEventId: claimed.outboxEventId,
+        });
       const published = await dependencies.reader.readForExecution({
         workspaceId: delivery.data.workspaceId,
         workflowVersionId: claimed.lease.workflowVersionId,
