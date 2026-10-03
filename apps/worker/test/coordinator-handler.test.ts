@@ -5,6 +5,8 @@ import type {
 } from '@pertexo/database/testing';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
+import { createWorkflowCheckpointV3 } from '@pertexo/workflow-engine';
+import { COORDINATOR_VALUE_WORK_POLICY_DEFAULTS } from '../src/execution/coordinator-value-work-lifetime.js';
 import { describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
@@ -65,6 +67,7 @@ function handlerFixture(
     acknowledgeFailure?: unknown;
     notificationFailure?: unknown;
     loadCallableCompletion?: CoordinatorCallableCompletionLoader;
+    nativeValueWork?: { policy: typeof COORDINATOR_VALUE_WORK_POLICY_DEFAULTS };
   } = {},
 ) {
   const loadAdvanceState = vi.fn().mockResolvedValue(
@@ -106,6 +109,9 @@ function handlerFixture(
       ? vi.fn().mockResolvedValue(undefined)
       : vi.fn().mockRejectedValue(overrides.notificationFailure);
   const handler = createCoordinatorHandler({
+    ...(overrides.nativeValueWork === undefined
+      ? {}
+      : { nativeValueWork: overrides.nativeValueWork }),
     ...(overrides.loadCallableCompletion === undefined
       ? {}
       : { loadCallableCompletion: overrides.loadCallableCompletion }),
@@ -140,6 +146,60 @@ function handlerFixture(
 }
 
 describe('coordinator handler', () => {
+  it('uses the native lifetime and fails closed on missing current-owner ports before any source or commit', async () => {
+    const selected = handlerFixture({
+      nativeValueWork: { policy: COORDINATOR_VALUE_WORK_POLICY_DEFAULTS },
+      published: {
+        kind: 'v3_projection',
+        workflowVersion: {
+          ...projection(),
+          schemaVersion: 2,
+          executableSchemaVersion: 3,
+        },
+      },
+      loaded: {
+        kind: 'ready',
+        state: {
+          runId: RUN_ID,
+          workflowVersionId: VERSION_ID,
+          checkpoint: createWorkflowCheckpointV3({
+            engineVersion: 'phase3-engine-v1',
+            workflowVersionId: VERSION_ID,
+            iterationBudget: 0,
+          }),
+          observations: [],
+        },
+      },
+    });
+    selected.advance.mockImplementation(
+      async (input: Parameters<CoordinatorAdvanceEngine['advance']>[0]) => {
+        if (!input.loadCallableCompletion)
+          throw new Error('Missing demand loader');
+        const result = await input.loadCallableCompletion(
+          {
+            expectedRevision: 0,
+            resultSelector: { kind: 'run_input', path: '$' },
+            requiresRunInput: true,
+            sources: [],
+          },
+          input.signal,
+        );
+        if (result.kind !== 'stopped')
+          throw new Error('Expected stopped demand');
+        return { kind: 'value_work_stopped', stop: result.stop };
+      },
+    );
+    await expect(
+      selected.handler.handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({
+      name: 'CoordinatorValueWorkStoppedError',
+      stop: { kind: 'unavailable', reason: 'control_read_failed' },
+    });
+    expect(selected.commitAdvancePlan).not.toHaveBeenCalled();
+    expect(selected.acknowledgeAdvanceDelivery).not.toHaveBeenCalled();
+  });
   it.each([false, true])(
     'binds native demand to actual delivery scope and fails closed without an adapter (%s)',
     async (configured) => {

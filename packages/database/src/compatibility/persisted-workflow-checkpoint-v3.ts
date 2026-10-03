@@ -27,6 +27,10 @@ const resultReference = z
     childRunId: uuid,
   })
   .strict();
+export const persistedWorkflowOutputReferenceSchemaV3 = z.union([
+  physicalReference,
+  resultReference,
+]);
 const declaration = {
   invocationKey: z.string().min(1).max(256),
   nodeId: z.string().min(1).max(128),

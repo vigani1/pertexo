@@ -1,4 +1,5 @@
 import type { ArtifactStore } from '@pertexo/artifact-store';
+import { WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 } from '@pertexo/database/execution';
 import type {
   CoordinatorAdvanceDelivery,
   NodeAttemptLease,
@@ -8,8 +9,7 @@ import type {
 import { NODE_JSON_LIMITS_V1, type SchemaJson } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
-export const WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 =
-  'application/vnd.pertexo.execution-value+json;version=1';
+export { WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 };
 
 export type WorkflowStoredExecutionValueV1 = StoredExecutionValueV1;
 type ArtifactReference = Extract<

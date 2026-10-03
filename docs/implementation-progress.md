@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-10-03
+Last updated: 2026-10-04
 
 This is the mutable delivery tracker for
 [`workflow-platform-backend-plan.md`](./workflow-platform-backend-plan.md).
@@ -42,12 +42,14 @@ No node or preview artifact capability receives this framework-only dependency.
       inspections, a whole-scope budget, deadline cancellation and joined cleanup.
 - [x] Implement the unwired sequential decoded-expression helper with incremental
       existing-context bounds and owner-preserving cancellation composition.
+- [x] Wire ordinary lazy native demand composition through the actual handler,
+      runtime policy, codec and engine evaluator using external owner read ports.
 - [ ] Wire actual demand source/control adapters and the value-work lifetime, then
       implement independent native persistent commit preparation/rechecks.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
-documentation checks pass. All 1,196 worker unit tests across 91 files pass. The
+documentation checks pass. All 1,216 worker unit tests across 92 files pass. The
 [F08 plan](./feature-plans/08-subworkflows.md) records this limited application
 evidence. Native execution remains OFF; security qualification remains
 platform-screened and PAUSED. This does not qualify durable artifact ownership,
@@ -150,7 +152,8 @@ joins watcher, read and operation cleanup, including dropped operation promises.
 Local deadline expiry is unavailable until a fresh owner read supplies a durable
 stop; it cannot invent a timeout fact. Literal demand callbacks with no operation
 do no inspection, while preparation operations use the same precheck and watcher.
-The module is unwired and cannot classify accepted receipts or final CAS results.
+At that standalone checkpoint the module was unwired; it cannot classify accepted
+receipts or final CAS results.
 Ordinary lifecycle tests cover real Node streams with injected external adapters,
 not persistent codec uploads or SQL authority. Actual adapters, configuration and
 engine/provider composition, incremental context, final-CAS exact receipt/full-plan
@@ -163,8 +166,8 @@ Native execution/catalog/writers remain OFF; screened qualification remains PAUS
 
 The existing worker configuration now parses the three accepted native value-work
 policy fields, freezes one policy and forwards it into coordinator runtime options.
-This is parsing/forwarding only: the runtime does not yet consume it in native
-pipeline composition, and it adds no activation flag or persistent inspector.
+That foundation provided parsing/forwarding only; operative demand consumption is
+recorded below. It adds no activation flag or persistent inspector.
 A separate ordinary composition regression now combines the actual execution-value
 codec/writer, real spool files and a cancellation-aware stalled upload with the
 value-work lifetime for an above-inline literal. It verifies precheck before reserve,
@@ -183,7 +186,7 @@ inherited findings; no baseline or verification timeout is weakened.
 
 Verified ordinary editor/CI release changes were reconciled through additive merge
 `39740c8`, preserving the exact released blobs and accepted native stop contracts.
-The new decoded-expression helper remains unwired: external reads must establish
+At its standalone checkpoint, the decoded-expression helper was unwired: external reads must establish
 source and current consumption authority. It reads selected sources sequentially,
 checks the existing final record/context bounds after each decode, and stops before
 the next read once invalid. Exact byte/depth/member boundaries agree with the actual
@@ -195,6 +198,37 @@ All 16 helper tests and all 1,196 worker tests across 91 files pass, with worker
 build/typecheck and narrow lint/format passing. This is ordinary external-port
 qualification, not SQL authority, runtime policy consumption or final-CAS proof.
 Those integration gates remain open; native stays OFF and screened checks PAUSED.
+
+The ordinary native demand pipeline now consumes the parsed policy in the actual
+runtime/handler and keeps one lazy scope through source hydration and engine-owned
+isolated evaluation. Its callback-scoped signal is cancellation, not a grant.
+Literal/non-success engine-demand advances do no new owner/source inspection; demanded work checks
+current owner before I/O and rechecks after evaluation before a plan escapes.
+The existing run-store contract has optional actual-owner/inventory/per-source read
+ports; production deliberately omits them, so demanded native work fails closed.
+An unscoped decoded-loader dependency cannot bypass this lifetime at runtime.
+
+The reviewed source-port refinement returns only bounded source identity metadata,
+never all inline snapshots up front. One protected original snapshot is fetched,
+validated and hydrated before incremental context validation permits the next.
+Ordinary real engine/codec/evaluator tests observe only two of three over-bound
+snapshot fetches; six whitespace-heavy original inline snapshots remain eligible.
+Cancellation joins a stalled fetch or actual isolated worker termination, and late
+owner revision change discards an already evaluated success plan. Missing ports or
+codec fail closed; payload-bearing inventory and differing fetched identity fail
+before object reads. All 1,216 worker tests across 92 files and 128 affected database
+unit tests pass, plus package builds/typechecks. These external adapters prove
+composition, not persistent authorization, quota/provenance or SQL resource cleanup.
+The existing database `loadAdvanceState` still eagerly invokes the native callable
+material loader before this scope and can decode selected original snapshots in
+pages. Removing that native eager projection (while preserving retained behavior)
+is a prerequisite for a bounded, lazy persistent path; these adapter tests do not
+qualify that earlier database state-loading stage.
+The generic abortable checkout's late-disposal hook is not proof that a pending
+checkout has joined; actual read-owner implementation must own that resource.
+Independent precommit computation/result candidate preparation, exact receipt/full
+plan CAS truth, atomic accepted association, retention and real-service end-to-end
+qualification remain unfinished. Native remains OFF; screened checks remain PAUSED.
 
 ### F02 — run-input cases and version-checked manual start
 

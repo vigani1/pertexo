@@ -74,6 +74,13 @@ const upstreamOutputSchema = z
     snapshot: z.unknown(),
   })
   .strict();
+
+/** Routing metadata only, shared with coordinator inventory; contains no payload. */
+export const nativeRunInputSourceMetadataSchema = runInputSchema.omit({
+  snapshot: true,
+});
+export const nativeUpstreamOutputSourceMetadataSchema =
+  upstreamOutputSchema.omit({ snapshot: true });
 const resumeOutputSchema = z
   .object({
     slot: z.literal('wait_resume_output'),
@@ -115,6 +122,18 @@ export type NativeNodeAttemptValueSources = Readonly<{
     { slot: 'upstream_output' }
   >[];
 }>;
+
+/** Validate one protected source at its selected read, never an aggregate payload. */
+export function parseNativeNodeAttemptValueSource(
+  value: unknown,
+): NativeNodeAttemptValueSource {
+  const source = sourceSchema.parse(value);
+  Object.freeze(source.source);
+  return Object.freeze({
+    ...source,
+    snapshot: parseWorkflowExecutionValueSnapshot(source.snapshot),
+  });
+}
 
 /**
  * Parse protected loader projections, not arbitrary decoded input values.

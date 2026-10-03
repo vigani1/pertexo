@@ -6,6 +6,9 @@ import {
   type StoredExecutionValueV1,
 } from '../stored-execution-value.js';
 
+export const WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 =
+  'application/vnd.pertexo.execution-value+json;version=1';
+
 /**
  * Representation selection only: the framework first admits the value through
  * the independent node JSON policy. This does not make invalid data eligible

@@ -39,7 +39,11 @@ import {
 } from '@pertexo/workflow-engine';
 
 import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
-import type { CoordinatorValueWorkPolicy } from './coordinator-value-work-lifetime.js';
+import {
+  COORDINATOR_VALUE_WORK_POLICY_DEFAULTS,
+  type CoordinatorValueWorkPolicy,
+} from './coordinator-value-work-lifetime.js';
+import type { CoordinatorNativeValueWork } from './coordinator-native-demand-advance.js';
 import {
   createCoordinatorTelemetry,
   type CoordinatorTelemetry,
@@ -69,7 +73,7 @@ export type CoordinatorRuntimeOptions = Readonly<{
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
-  /** Parsed ADR065 policy, borrowed by subsequent native value-work composition. */
+  /** Parsed ADR065 policy, borrowed by the lazy native demand lifetime. */
   valueWorkPolicy?: CoordinatorValueWorkPolicy;
   runTimeoutFailureContextEnabled?: boolean;
   workspaceInboxProducerEnabled?: boolean;
@@ -92,6 +96,7 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   telemetry?: CoordinatorTelemetry;
   logger?: StructuredLogger;
   loadCallableCompletion?: CoordinatorCallableCompletionLoader;
+  hydrateCallableSource?: CoordinatorNativeValueWork['hydrateSource'];
 }>;
 
 export type CoordinatorCompositionFactories = Readonly<{
@@ -151,6 +156,18 @@ export async function createCoordinatorRuntime(
   dependencies: CoordinatorRuntimeDependencies = {},
   factories: CoordinatorCompositionFactories = productionFactories,
 ): Promise<CoordinatorRuntime> {
+  if (dependencies.loadCallableCompletion !== undefined)
+    throw new TypeError(
+      'Unscoped coordinator material loading cannot bypass the native value lifetime',
+    );
+  const nativeValueWork: CoordinatorNativeValueWork = Object.freeze({
+    policy: Object.freeze({
+      ...(options.valueWorkPolicy ?? COORDINATOR_VALUE_WORK_POLICY_DEFAULTS),
+    }),
+    ...(dependencies.hydrateCallableSource === undefined
+      ? {}
+      : { hydrateSource: dependencies.hydrateCallableSource }),
+  });
   if (
     !Number.isSafeInteger(options.maximumAdmissions) ||
     options.maximumAdmissions < 1 ||
@@ -250,9 +267,7 @@ export async function createCoordinatorRuntime(
       reader,
       runStore,
       telemetry,
-      ...(dependencies.loadCallableCompletion === undefined
-        ? {}
-        : { loadCallableCompletion: dependencies.loadCallableCompletion }),
+      nativeValueWork,
     });
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.workflowCoordinator,

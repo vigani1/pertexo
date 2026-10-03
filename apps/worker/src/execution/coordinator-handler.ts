@@ -18,6 +18,10 @@ import type { CallableValueWorkStop } from '@pertexo/workflow-model/workflow-cal
 import type { CoordinatorAdvanceDelivery } from '@pertexo/database/execution';
 
 import type { CoordinatorTelemetry } from './coordinator-telemetry.js';
+import {
+  advanceNativeCoordinator,
+  type CoordinatorNativeValueWork,
+} from './coordinator-native-demand-advance.js';
 
 type AdvanceWorkflowDelivery = Extract<
   QueueDelivery,
@@ -113,6 +117,7 @@ export type CoordinatorHandlerDependencies = Readonly<{
   runStore: CoordinatorRunStore;
   telemetry?: CoordinatorTelemetry;
   loadCallableCompletion?: CoordinatorCallableCompletionLoader;
+  nativeValueWork?: CoordinatorNativeValueWork;
 }>;
 
 export function createCoordinatorHandler(
@@ -178,7 +183,7 @@ export function createCoordinatorHandler(
           throw new CoordinatorHandlerStateError('workflow_non_executable');
         calleeProjections.push(callee.workflowVersion);
       }
-      const advanced = await dependencies.engine.advance({
+      const advanceInput: Parameters<CoordinatorAdvanceEngine['advance']>[0] = {
         runId: loaded.state.runId,
         workflowVersionId: loaded.state.workflowVersionId,
         projection: published.workflowVersion,
@@ -212,7 +217,19 @@ export function createCoordinatorHandler(
         occurredAt: dependencies.clock.now(),
         maximumAdmissions: dependencies.maximumAdmissions,
         signal: context.signal,
-      });
+      };
+      const advanced =
+        published.kind === 'v3_projection' &&
+        dependencies.nativeValueWork !== undefined
+          ? await advanceNativeCoordinator({
+              engine: dependencies.engine,
+              advance: advanceInput,
+              workspaceId: delivery.data.workspaceId,
+              delivery: durableDelivery,
+              runStore: dependencies.runStore,
+              valueWork: dependencies.nativeValueWork,
+            })
+          : await dependencies.engine.advance(advanceInput);
       if (advanced.kind === 'value_work_stopped')
         throw new CoordinatorValueWorkStoppedError(advanced.stop);
       if (advanced.kind === 'no_change') {

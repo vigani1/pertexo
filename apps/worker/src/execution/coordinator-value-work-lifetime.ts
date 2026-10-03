@@ -1,4 +1,8 @@
-import type { CoordinatorAdvanceDelivery } from '@pertexo/database/execution';
+import type {
+  NativeCoordinatorValueOwner,
+  NativeCoordinatorValueOwnerInspection,
+  InspectCoordinatorValueReadOwner,
+} from '@pertexo/database/execution';
 import {
   callableValueWorkStopSchema,
   type CallableValueWorkStop,
@@ -6,13 +10,7 @@ import {
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 import { z } from 'zod';
 
-export type CoordinatorValueWorkOwner = Readonly<{
-  workspaceId: string;
-  runId: string;
-  workflowVersionId: string;
-  delivery: CoordinatorAdvanceDelivery;
-  expectedRevision: number;
-}>;
+export type CoordinatorValueWorkOwner = NativeCoordinatorValueOwner;
 
 export type CoordinatorValueWorkPolicy = Readonly<{
   controlPollMillis: number;
@@ -28,8 +26,7 @@ export const COORDINATOR_VALUE_WORK_POLICY_DEFAULTS = Object.freeze({
 });
 
 export type CoordinatorValueOwnerInspection =
-  | Readonly<{ kind: 'active'; databaseNow: string; deadlineAt: string | null }>
-  | Readonly<{ kind: 'stopped'; stop: CallableValueWorkStop }>;
+  NativeCoordinatorValueOwnerInspection;
 
 const ownerInspectionSchema = z.discriminatedUnion('kind', [
   z
@@ -45,15 +42,11 @@ const ownerInspectionSchema = z.discriminatedUnion('kind', [
 ]);
 
 /** Must dispose/cancel and settle on abort; typed stops classify known outages only. */
-export type InspectCoordinatorValueOwner = (
-  input: Readonly<{
-    owner: CoordinatorValueWorkOwner;
-    signal: AbortSignal;
-    readTimeoutMillis: number;
-  }>,
-) => Promise<CoordinatorValueOwnerInspection>;
+export type InspectCoordinatorValueOwner = InspectCoordinatorValueReadOwner;
 
 export type CoordinatorValueWorkSession = Readonly<{
+  /** Callback-scoped cancellation only; never a source or acceptance grant. */
+  signal: AbortSignal;
   perform<T>(work: (signal: AbortSignal) => Promise<T>): Promise<T>;
 }>;
 
@@ -344,6 +337,7 @@ class CoordinatorValueScope {
       this.assertRunning();
       const value = await work(
         Object.freeze({
+          signal: this.executionAbort.signal,
           perform: <U>(operation: (signal: AbortSignal) => Promise<U>) =>
             this.track(operation),
         }),

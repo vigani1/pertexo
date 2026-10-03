@@ -915,7 +915,7 @@ preparation is an operation and therefore requires the same precheck/watcher.
 Ordinary regressions use actual Node pipelines and cancellation-aware external
 adapter fakes. They do not prove artifact-writer or persistent owner authority.
 
-This module is unwired. Actual source/control SQL adapters, existing configuration
+At this standalone checkpoint the module was unwired. Actual source/control SQL adapters, existing configuration
 owner integration, engine/provider composition, incremental context hydration,
 native persistent preparation and the actual literal stalled-upload regression
 remain open. Final CAS integration is gated on the actual owner's exact canonical
@@ -973,3 +973,45 @@ These external-port tests do not establish actual source/control SQL projections
 engine/provider wiring, runtime policy consumption, independent persistent result
 preparation or actual-owner accepted final-CAS truth. Native remains OFF, screened
 qualification PAUSED, and F08 incomplete.
+
+### Operative ordinary coordinator demand composition — 2026-10-04
+
+The actual coordinator runtime now consumes its borrowed parsed policy and the
+handler wraps native engine advance in one lazy callback-scoped lifetime. The
+session's owned signal reaches both source codec work and engine-owned isolated
+evaluation; returning hydrated material does not close the watcher. No operation
+is performed at engine-demand advance entry, so literal and non-success paths do
+no new owner/source inspection there. Once demand starts, each source step is pre/post checked
+and a final owner check discards an interrupted/stale computed plan before handler
+commit or acknowledgement. Unscoped decoded-loader runtime injection is refused.
+
+The accepted source contract is clarified to metadata-only bounded inventory plus
+one protected snapshot read per selected source. It reuses existing source/output
+grammar, snapshot parser and fixed media policy; closed metadata cannot carry an
+inline payload, serialized original or locator. Source inventory is identity, not
+authority. Snapshot fetch, validation and actual codec hydration remain sequential;
+incremental invalid-context rejection precedes another fetch, without imposing an
+aggregate original-byte cap. Production run-store owner ports and source codec are
+still omitted, therefore first demanded native work fails closed.
+
+Ordinary real engine/codec/evaluator tests prove two of three over-bound snapshot
+fetches, six whitespace-heavy eligible sources, declared direct-node selection,
+lazy pure paths, required-port/codec refusal, payload/byte-identity rejection,
+joined stalled-fetch cancellation, actual worker termination and late-owner stale
+discard. The actual queue test observes the configured 1,337 ms inspector timeout,
+owner cancellation and no commit/ack. All 1,216 worker tests across 92 files and 128
+affected database units pass, with package builds/typechecks. This is not actual
+SQL source/current authority or pending checkout cleanup qualification.
+
+The persistent `loadAdvanceState` still invokes the earlier native eager callable
+loader before this scope, including paged original-snapshot decode. The adapter
+qualification above does not establish bounded or lazy database state loading.
+The next real persistence prerequisite starts by removing that native eager
+projection without changing retained behavior, followed by existing-owner current control/source
+inspection and per-source protected snapshot projection through a fresh reviewed
+0137 candidate, with actual pending checkout/query/disposal ownership. Independent
+precommit recomputation/preparation/final-CAS exact receipt/full-plan truth, atomic
+accepted candidate association, native artifact-aware retention and real-service
+recovery/end-to-end gates remain open. No old 0136 is copied, registered or installed;
+no SQL/role/security probes or native activation are authorized by this evidence.
+Screened qualification stays PAUSED and full F08 stays incomplete.

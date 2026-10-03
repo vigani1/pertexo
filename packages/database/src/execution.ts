@@ -25,7 +25,10 @@ export type {
   FinalizeArtifactUploadInput,
 } from './execution/artifacts/artifact-upload.js';
 export type { ArtifactCapacityObservation } from './execution/artifacts/artifacts.js';
-export { prepareInlineWorkflowExecutionValueV3 } from './execution/artifacts/execution-value-representation.js';
+export {
+  prepareInlineWorkflowExecutionValueV3,
+  WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
+} from './execution/artifacts/execution-value-representation.js';
 export type { StoredExecutionValueV1 } from './execution/stored-execution-value.js';
 export { serializeWorkflowExecutionJsonValueV3 } from './execution/stored-execution-value.js';
 export { NODE_ATTEMPT_INPUT_LIMITS } from './execution/node-attempts/node-attempt-run-store-contract.js';
@@ -34,6 +37,8 @@ export type {
   NativeNodeAttemptValueSource,
   NativeNodeAttemptValueSources,
 } from './execution/node-attempts/native-node-attempt-value-sources.js';
+export { parseNativeNodeAttemptValueSource } from './execution/node-attempts/native-node-attempt-value-sources.js';
+export { parseCoordinatorNativeSourceInventory } from './execution/coordinator/coordinator-native-source-inventory.js';
 export {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,
@@ -52,6 +57,17 @@ export type {
   CoordinatorRunStore,
   CoordinatorRunStoreOptions,
 } from './execution/coordinator/coordinator-run-store.js';
+export type {
+  NativeCoordinatorValueOwner,
+  NativeCoordinatorMaterialDemand,
+  NativeCallableSourceProjection,
+  NativeCallableValueDescriptor,
+  NativeCallableValueIdentity,
+  NativeCoordinatorValueOwnerInspection,
+  InspectCoordinatorValueReadOwner,
+  LoadCallableCompletionSources,
+  ReadCallableCompletionSource,
+} from './execution/coordinator/coordinator-native-value-read-contract.js';
 export type { DatabaseConfig } from './config.js';
 export { createAuthenticationMailDeliveryStore } from './identity/authentication-mail.js';
 export type {

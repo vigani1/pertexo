@@ -81,17 +81,36 @@ type LoadCallableCompletion = (
   signal: AbortSignal,
 ) => Promise<CallableMaterialDemandResult>;
 
-type NativeCallableValueSource = Extract<
-  NativeNodeAttemptValueSource,
-  { slot: 'run_input' | 'upstream_output' }
->;
+// Correlated fixed slot/source variants reuse the existing source grammar.
+// valueIdentity has only reference kind/ID, SHA/length and fixed media type.
+// No snapshot, decoded value, original serialized bytes, buffer or locator.
+type NativeCallableValueIdentity = Readonly<{
+  reference:
+    | Readonly<{ schemaVersion: 1; kind: 'inline' }>
+    | Readonly<{ schemaVersion: 1; kind: 'artifact'; artifactId: string }>;
+  sha256: string;
+  byteLength: number;
+  mediaType: typeof WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1;
+}>;
+
+type NativeCallableValueDescriptor =
+  | Readonly<{
+      slot: 'run_input';
+      source: Extract<NativeNodeAttemptValueSource, { slot: 'run_input' }>['source'];
+      valueIdentity: NativeCallableValueIdentity;
+    }>
+  | Readonly<{
+      slot: 'upstream_output';
+      source: Extract<NativeNodeAttemptValueSource, { slot: 'upstream_output' }>['source'];
+      valueIdentity: NativeCallableValueIdentity;
+    }>;
 
 type NativeCallableSourceProjection = Readonly<{
-  runInput: Extract<NativeCallableValueSource, { slot: 'run_input' }> | null;
+  runInput: Extract<NativeCallableValueDescriptor, { slot: 'run_input' }> | null;
   outputs: readonly Readonly<{
     invocationKey: string;
     output: OutputReference;
-    valueSource: Extract<NativeCallableValueSource, { slot: 'upstream_output' }>;
+    valueSource: Extract<NativeCallableValueDescriptor, { slot: 'upstream_output' }>;
   }>[];
 }>;
 ```
@@ -99,11 +118,26 @@ type NativeCallableSourceProjection = Readonly<{
 The source read interface belongs to the existing coordinator run-store owner:
 `loadCallableCompletionSources({owner, demand, signal})`. It independently derives
 the actual version's immutable declaration/selector scope and accepted sources,
-then checks demand agreement. It returns bounded exact native projection or typed
-stop after a short read transaction. IDs, original bytes and physical/logical
-versions come from protected owners; the engine's output wrappers cannot mint
-them. Run-input null means actual absence, never omitted descriptor. Only the
+then checks demand agreement. It returns a bounded exact **metadata-only** native
+projection or typed stop after a short read transaction. Protected identity includes
+fixed slot, actual source scope/provenance, reference kind/ID, SHA/length and fixed
+media type, with at most 1,000 descriptors and the existing whole 1 MiB metadata
+identity bound. Snapshot/value/original-byte/locator fields are rejected, not merely
+parsed later. Run-input null means actual absence, never omitted descriptor. Only the
 exact Graph2/executable3/Checkpoint3 path supplies this projection.
+
+The accepted implementation clarification on 2026-10-04 adds the existing owner's
+`readCallableCompletionSource({owner, source, signal, readTimeoutMillis})`: independently
+recheck canonical current consumer/revision/controls and exact accepted source
+eligibility, then return **one** protected original snapshot or typed stop. Descriptor
+possession is identity, not a grant. Exact source/slot/reference/SHA/length must agree
+with the private inventory before codec work. Each short tenant read is released
+before hydration. Only after this decoded value passes incremental context bounds
+may the next protected snapshot be fetched. A snapshot-bearing aggregate projection
+would allocate all inline payloads before those bounds and is not accepted. No
+aggregate original-byte cap is introduced; whitespace-rich sources with eligible
+decoded context remain eligible. These ports also receive the parsed control-read
+timeout covering checkout/query/reply, and must join pending reads and disposal.
 
 Current-owner inspection is a distinct real read, not fake value loading:
 `inspectCoordinatorValueReadOwner({owner, signal, readTimeoutMillis})`. It proves
@@ -192,8 +226,11 @@ dependency, not a second independently chosen set of defaults. Proposed fields:
 | `WORKFLOW_NATIVE_VALUE_CONTROL_READ_TIMEOUT_MILLIS` | 2,000 ms | integer 100–5,000 ms | Entire checkout/query/response budget, also applied through existing abortable checkout and tenant statement timeout. |
 | `WORKFLOW_NATIVE_VALUE_OPERATION_TIMEOUT_MILLIS` | 30,000 ms | integer 1,000–60,000 ms | Whole active value scope, not a per-source allowance multiplied by 1,000. |
 
-These accepted F08 options now have ordinary worker parsing and forwarding into
-runtime options; operative native pipeline consumption remains unfinished. They
+These accepted F08 options now have ordinary worker parsing, forwarding and operative
+consumption by the lazy engine demand scope. The current production run store still
+omits actual owner/inventory/per-source ports and the source codec dependency, so
+first demanded native work fails closed. Independent precommit consumption and
+actual persistent owner implementation/qualification remain unfinished. They
 are not an activation flag. Native remains OFF. Use the smaller of remaining
 scope budget and actual remaining execution deadline for every operation; further
 deadline checks may shorten, never extend it. Derive remaining deadline from the

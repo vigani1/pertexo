@@ -35,6 +35,28 @@ function abortError(signal: AbortSignal): Error {
 }
 
 describe('callback-scoped coordinator value work', () => {
+  it('exposes one scoped cancellation signal without initializing value work on a lazy path', async () => {
+    const inspectOwner = vi.fn().mockResolvedValue(active);
+    const lifetime = createCoordinatorValueWorkLifetime({
+      policy: COORDINATOR_VALUE_WORK_POLICY_DEFAULTS,
+      inspectOwner,
+    });
+    const context = new AbortController();
+    let scopedSignal: AbortSignal | undefined;
+    await expect(
+      lifetime.withValueWork(owner, context.signal, (session) => {
+        scopedSignal = session.signal;
+        expect(scopedSignal).toBeInstanceOf(AbortSignal);
+        expect(session.signal).toBe(scopedSignal);
+        expect(scopedSignal).not.toBe(context.signal);
+        expect(scopedSignal.aborted).toBe(false);
+        return Promise.resolve('literal');
+      }),
+    ).resolves.toEqual({ kind: 'completed', value: 'literal' });
+    expect(inspectOwner).not.toHaveBeenCalled();
+    expect(scopedSignal?.aborted).toBe(true);
+    expect(getEventListeners(context.signal, 'abort')).toHaveLength(0);
+  });
   it('aborts active preparation when a watcher read stalls and joins both cleanup paths', async () => {
     vi.useFakeTimers();
     const started = Promise.withResolvers<undefined>();

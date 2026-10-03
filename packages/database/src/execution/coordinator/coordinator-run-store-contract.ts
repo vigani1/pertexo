@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 import type { CoordinatorCallMaterials } from './coordinator-call-materials.js';
 import type { CoordinatorCallableMaterials } from './coordinator-callable-materials.js';
+import type {
+  InspectCoordinatorValueReadOwner,
+  LoadCallableCompletionSources,
+  ReadCallableCompletionSource,
+} from './coordinator-native-value-read-contract.js';
 
 export const coordinatorIdentitySchema = z.uuid();
 const checksumSchema = sha256HexSchema;
@@ -59,6 +64,10 @@ export type AcknowledgeAdvanceDeliveryResult = Readonly<{
 }>;
 
 export interface CoordinatorRunStore {
+  /** Omitted until actual native read owners exist; consumers must fail closed. */
+  inspectCoordinatorValueReadOwner?: InspectCoordinatorValueReadOwner;
+  loadCallableCompletionSources?: LoadCallableCompletionSources;
+  readCallableCompletionSource?: ReadCallableCompletionSource;
   loadAdvanceState(
     input: Readonly<{
       workspaceId: string;
