@@ -380,6 +380,14 @@ export async function loadCoordinatorAdvanceState(
               executableJson: row.executable_json,
               inputRef: row.input_ref,
               facts: workflowCalls?.facts ?? [],
+              controls: {
+                cancelRequested:
+                  checkpoint.cancelRequested || hasFreshCancellation,
+                deadlineExpired:
+                  checkpoint.deadlineExpired ||
+                  (row.deadline_at !== null &&
+                    row.deadline_at <= row.database_now),
+              },
             })
           : undefined;
       return Object.freeze({

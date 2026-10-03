@@ -49,11 +49,76 @@ function client(query: ReturnType<typeof vi.fn>) {
 }
 
 describe('native callable inline completion hydration', () => {
+  it.each(['canceled', 'timed_out'] as const)(
+    'does not load result values for an established %s control stop',
+    async (reason) => {
+      const query = vi.fn(() => {
+        throw new Error('Control settlement must not read result values');
+      });
+      const source = {
+        ...input(),
+        inputRef: { schemaVersion: 1, kind: 'artifact', artifactId: attempt },
+        controls: {
+          cancelRequested: reason === 'canceled',
+          deadlineExpired: reason === 'timed_out',
+        },
+      };
+      await expect(
+        loadCoordinatorCallableMaterials(client(query), source),
+      ).resolves.toBeUndefined();
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
   it('loads run-input results without unrelated physical output queries', async () => {
     const query = vi.fn();
     await expect(
       loadCoordinatorCallableMaterials(client(query), input()),
     ).resolves.toEqual({ runInput: { name: 'input' }, outputs: [] });
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('still loads result material when both validated controls are clear', async () => {
+    const query = vi.fn();
+    await expect(
+      loadCoordinatorCallableMaterials(client(query), {
+        ...input(),
+        controls: { cancelRequested: false, deadlineExpired: false },
+      }),
+    ).resolves.toEqual({ runInput: { name: 'input' }, outputs: [] });
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('does not read selected physical or child-result material on cancellation', async () => {
+    const query = vi.fn(() => {
+      throw new Error('Control settlement must not read result values');
+    });
+    await expect(
+      loadCoordinatorCallableMaterials(client(query), {
+        ...input({ kind: 'node_output', nodeId: 'result', path: '$' }),
+        controls: { cancelRequested: true, deadlineExpired: false },
+      }),
+    ).resolves.toBeUndefined();
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('still rejects unavailable artifact result material with clear controls', async () => {
+    const query = vi.fn();
+    await expect(
+      loadCoordinatorCallableMaterials(client(query), {
+        ...input(),
+        inputRef: { schemaVersion: 1, kind: 'artifact', artifactId: attempt },
+        controls: { cancelRequested: false, deadlineExpired: false },
+      }),
+    ).rejects.toThrow('artifact hydration is unavailable');
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('does not hide malformed callable declarations behind a control stop', async () => {
+    const query = vi.fn();
+    const source = input();
+    source.executableJson.graph.callable.schemaVersion = 99;
+    await expect(
+      loadCoordinatorCallableMaterials(client(query), {
+        ...source,
+        controls: { cancelRequested: true, deadlineExpired: false },
+      }),
+    ).rejects.toThrow();
     expect(query).not.toHaveBeenCalled();
   });
   it('leaves literal results with the pure existing completion owner', async () => {

@@ -38,6 +38,10 @@ export async function loadCoordinatorCallableMaterials(
     executableJson: unknown;
     inputRef: unknown;
     facts: readonly PersistedWorkflowCallStateV1[];
+    controls?: Readonly<{
+      cancelRequested: boolean;
+      deadlineExpired: boolean;
+    }>;
   }>,
 ): Promise<CoordinatorCallableMaterials | undefined> {
   const envelope = input.executableJson;
@@ -55,6 +59,10 @@ export async function loadCoordinatorCallableMaterials(
   const declaration = workflowCallableDeclarationSchemaV1.parse(raw);
   const selector = declaration.resultSelector;
   if (selector.kind === 'literal') return undefined;
+  // Validated coordinator controls produce no successful callable result.
+  // Keep declaration validation, but do not read or hydrate unused values.
+  if (input.controls?.cancelRequested || input.controls?.deadlineExpired)
+    return undefined;
   const runInput =
     selector.kind === 'run_input' || selector.kind === 'expression'
       ? input.inputRef === null
