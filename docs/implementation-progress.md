@@ -40,12 +40,14 @@ No node or preview artifact capability receives this framework-only dependency.
       engine/wrapper/handler interface with typed stops and retryable queue behavior.
 - [x] Implement the ordinary callback-scoped value-work lifetime with serial owner
       inspections, a whole-scope budget, deadline cancellation and joined cleanup.
+- [x] Implement the unwired sequential decoded-expression helper with incremental
+      existing-context bounds and owner-preserving cancellation composition.
 - [ ] Wire actual demand source/control adapters and the value-work lifetime, then
       implement independent native persistent commit preparation/rechecks.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
-documentation checks pass. All 1,048 worker unit tests across 85 files pass. The
+documentation checks pass. All 1,196 worker unit tests across 91 files pass. The
 [F08 plan](./feature-plans/08-subworkflows.md) records this limited application
 evidence. Native execution remains OFF; security qualification remains
 platform-screened and PAUSED. This does not qualify durable artifact ownership,
@@ -178,6 +180,21 @@ duplication. Config-file growth briefly introduced an owned complexity regressio
 moving its unchanged scalar-environment normalization into a focused config helper
 removed that growth. Full complexity still fails only on the original eight
 inherited findings; no baseline or verification timeout is weakened.
+
+Verified ordinary editor/CI release changes were reconciled through additive merge
+`39740c8`, preserving the exact released blobs and accepted native stop contracts.
+The new decoded-expression helper remains unwired: external reads must establish
+source and current consumption authority. It reads selected sources sequentially,
+checks the existing final record/context bounds after each decode, and stops before
+the next read once invalid. Exact byte/depth/member boundaries agree with the actual
+evaluator; original inline whitespace bytes remain independent of decoded limits.
+A meaningful lifetime-composition regression caught invented `context_aborted`
+classification after owner cancellation. The helper now reports ordinary abort and
+joins the pending decode; the lifetime preserves the actual owner's typed stop.
+All 16 helper tests and all 1,196 worker tests across 91 files pass, with worker
+build/typecheck and narrow lint/format passing. This is ordinary external-port
+qualification, not SQL authority, runtime policy consumption or final-CAS proof.
+Those integration gates remain open; native stays OFF and screened checks PAUSED.
 
 ### F02 — run-input cases and version-checked manual start
 

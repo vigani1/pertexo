@@ -948,3 +948,28 @@ This closes the ordinary actual codec/writer composition regression, not native
 persistent preparation or handler integration. Real owner projections, source
 authorization, configuration consumption, incremental context and accepted final
 CAS proof remain unfinished. Native remains OFF; screened qualification PAUSED.
+
+### Incremental decoded expression material — ordinary source, 2026-10-03
+
+The separate unwired worker helper consumes only the engine's exact selected
+expression inventory through external read ports. It snapshots request metadata,
+refuses duplicate node/invocation keys, reads run input and one selected output at
+a time, and reuses the existing node JSON, final record and expression context
+byte/depth/member validators after every decode. An invalid accumulated context
+returns before another source is read. No new serializer or raw-byte admission
+policy is introduced; original source bytes and provenance remain external-owner
+responsibilities. Read integrity/authority errors stay errors, not invalid context.
+
+Six exact/over-bound byte, depth and member fixtures agree with the actual evaluator.
+Additional ordinary tests cover source order, detached metadata, JSON edge values,
+whitespace-heavy original inline bytes, early rejection, duplicate inventory and
+joined context cancellation. A meaningful regression through the actual value-work
+lifetime proves a decode settling after owner cancellation retains its typed stop:
+the helper emits ordinary abort, never fabricates a durable or context stop.
+
+Against additive reconciliation base `39740c8`, all 16 helper cases and all 1,196
+worker tests across 91 files pass, with worker build/typecheck and narrow lint/format.
+These external-port tests do not establish actual source/control SQL projections,
+engine/provider wiring, runtime policy consumption, independent persistent result
+preparation or actual-owner accepted final-CAS truth. Native remains OFF, screened
+qualification PAUSED, and F08 incomplete.
