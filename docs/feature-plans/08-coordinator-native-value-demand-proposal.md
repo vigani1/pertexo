@@ -363,3 +363,50 @@ receipt/CAS and retention/hold/root-parent-child/replay/purge proof through the
 fresh 0137 candidate after review and safe qualification approval. Ordinary external
 adapters do not close those gates. No historical 0136 install, screened retry,
 attestation implementation, new production activation or full F08 claim.
+
+## Accepted native read operation / cleanup clarification — 2026-10-04
+
+The [ADR065 clarification](../adr/065-durable-parent-child-workflow-calls.md#native-read-operation-and-joined-cleanup-clarification--accepted-2026-10-04)
+is ACCEPTED by primary after full two-file source review and focused pinned-driver
+consistency closure. This is an implementation contract, not qualified runtime
+behavior. It supersedes complete-read latency language: readTimeoutMillis bounds usable operation from
+before checkout; stopped return waits for a distinct joined-cleanup deadline.
+No late reply resumes value work, commits or acknowledges. Actual configured
+shared-pool K must be positive and <= actual remaining read budget R before any
+checkout; otherwise fail closed without SQL. Default pool 5,000 ms versus native
+read 2,000 ms is incompatible without explicit existing operator configuration.
+No pool-option mutation, private queue manipulation or shadow pool is introduced.
+
+For configured control-read P, one provisional cleanup C=2P+2,000 ms begins at
+first stop/abort and never resets across resources/confirmation. Default C=6,000,
+maximum 12,000 ms; nominal read R+C=8,000/default and 17,000/max, scope active
+budget+C=36,000/default and 72,000/max. These are feasibility requirements, not
+proven driver-termination bounds. Exhaustion retains resource ownership, raises
+operational failure and blocks qualification; timeout/detached rejection is not
+joined cleanup. One classification-only deadline confirmation is admitted only
+after prior read joins and if remaining C contains operation/disposal; late
+confirmation cannot upgrade unavailable or mint durable timed_out.
+
+Before delivery, construction is shared-pool-owned, cannot run native/tenant SQL
+and is not a read-owned socket. Pinned pg-pool can time out a queued request after
+dequeue into newClient, internally releasing a late client without delivering it.
+Join raw checkout settlement without claiming that construction's socket closed.
+A delivered late client is read-owned and must be destroyed/joined exactly once.
+Checked-out original query, client terminal event and CancelRequest socket/event/
+timer are all joined. Register terminal ownership before disposal; remaining SQL
+statement time is monotonic; no SQL after abort or on destroyed/released client.
+
+Keep lifecycle behind the existing tenant transaction interface: narrowly selected
+native mode in packages/database/src/tenant-access/workspace.ts, existing platform
+abortable-pool-checkout.ts / pool-client-disposal.ts and coordinator-run-store-
+transactions.ts / coordinator-run-store.ts / coordinator-native-value-read-contract.ts.
+The existing worker coordinator-value-work-lifetime.ts owns the single scope
+deadline/confirmation rule. Ordinary read/write mode and worker defaults remain
+unchanged. Test through actual tenant/coordinator read adapters and existing
+abortable-pool-checkout.test.ts, workspace-client-adapter.test.ts, focused native
+read lifecycle cases and coordinator-value-work-lifetime.test.ts. Required REDs:
+late delivered checkout/client disposal, queued rejection and queued-to-newClient
+timeout ownership race, query/cancel-socket terminal join, config refusal before
+checkout, no late success/new SQL/commit/ack, all timer/listener removal, one cleanup
+deadline and mixed errors. Separately reviewed safe actual-resource qualification
+is required before native readiness; no screened probes or SQL installation.

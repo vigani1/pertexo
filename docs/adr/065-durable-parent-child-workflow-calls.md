@@ -345,3 +345,50 @@ capacity framework, at the cost of product-visible call failures under capacity
 pressure and inability to nest at workspace cap one. Durable callable pinning,
 authority and retention still add necessary cross-package state and qualification;
 bounded scopes and reuse do not remove those obligations.
+
+## Native read operation and joined-cleanup clarification — ACCEPTED, 2026-10-04
+
+Primary accepted this exact amendment after focused pinned-driver consistency and
+full two-file source review. This is an accepted implementation contract, not
+qualified runtime behavior. It explicitly
+changes the complete-read latency contract, not existing qualified behavior.
+`readTimeoutMillis` bounds usable checkout/query/reply from before acquisition.
+At expiry, abort and latch the existing stop; a late reply cannot restore success,
+start further value work or authorize commit/ack. Return waits for joined cleanup
+under a separate single deadline beginning at the first stop/abort, never reset.
+
+Let P be configured control-read timeout, R its actual remaining requested budget,
+and K the established shared pool's positive configured acquisition timeout.
+Native admission requires K <= R before checkout, otherwise fails closed without
+SQL. Do not mutate shared pool options or add a shadow pool. Existing default
+K=5,000 ms does not satisfy P=2,000 ms; usable native qualification requires an
+explicit compatible existing operator configuration. Ordinary read/write behavior
+and the three existing worker policy defaults/ranges remain unchanged.
+
+Proposed cleanup allowance C=2P+2,000 ms (default 6,000, maximum 12,000) is a
+feasibility requirement, NOT inferred or proven worst-case ownership. Nominal
+read R+C is default 8,000/max 17,000 ms; whole active value budget plus the same C
+is default 36,000/max 72,000 ms. No timer establishes resource termination.
+Cleanup exhaustion retains ownership, surfaces operational failure and blocks
+qualification; detaching pending work or returning an ordinary joined stop is
+forbidden. These bounds require actual pinned-driver closure proof.
+
+Before a client is delivered, construction remains shared-pool-owned and cannot
+run native/tenant SQL. A queued request can time out after dequeue into newClient;
+the pool internally releases its late client without delivering it to this caller.
+Join raw checkout settlement but do not claim read-owned socket closure for that
+construction. A delivered late client becomes read-owned and must be destroyed
+exactly once and its terminal event joined. Do not modify private queues or tear
+down the shared pool; existing runtime retains pool lifecycle ownership.
+
+Join checked-out original query settlement, client terminal event and the owned
+CancelRequest socket/event/timer, registering ownership before disposal. Use
+remaining monotonic SQL operation time; no query after abort or on released client.
+One actual deadline-confirmation read may run only for classification, after the
+prior read joins and if remaining cleanup budget contains operation and disposal;
+otherwise preserve unavailable. It cannot mint timed_out from local time or accept
+late confirmation. Preserve original/mixed cleanup errors. Implement at the existing
+tenant transaction module with a narrowly selected native mode, not utility families.
+The companion specifies exact source/test seams, including the queued-to-newClient
+race. No SQL install, screened probes, attestation crypto or native activation is
+authorized by this clarification; full F08 remains incomplete.
