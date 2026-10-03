@@ -11,9 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
 import { versionSourceWorkflowPageState } from '../../model/inspector/version-source-pagination';
-import type { VersionSourceScope } from '../../workflow-version-sources.queries';
+import {
+  workflowSourcesInfiniteQueryOptions,
+  type VersionSourceScope,
+} from '../../workflow-version-sources.queries';
 
 export function WorkflowSourcePicker({
   scope,
@@ -24,14 +26,9 @@ export function WorkflowSourcePicker({
   selected: string | null;
   onSelect: (workflowId: string) => void;
 }>) {
-  const workflows = useInfiniteQuery({
-    ...workflowsInfiniteQueryOptions(
-      scope.apiClient,
-      scope.userId,
-      scope.workspaceId,
-    ),
-    retry: false,
-  });
+  const workflows = useInfiniteQuery(
+    workflowSourcesInfiniteQueryOptions(scope),
+  );
   const pages = workflows.data?.pages ?? [];
   const options = [
     ...new Map(

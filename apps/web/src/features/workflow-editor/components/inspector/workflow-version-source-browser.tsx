@@ -96,33 +96,25 @@ function VersionSources({
         Loading published version sources…
       </p>
     );
-  if (versions.isError)
-    return (
-      <Notice
-        tone="destructive"
-        action={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void versions.refetch();
-            }}
-          >
-            Retry version sources
-          </Button>
-        }
-      >
-        Version discovery is incomplete: the read failed or reached its bounded
-        page limit. This does not mean the pinned version is absent or that no
-        newer source exists.
-      </Notice>
-    );
+  const failure = versions.isError ? (
+    <VersionSourceReadFailure
+      stale={versions.data !== undefined}
+      pending={versions.isFetching}
+      retry={() => {
+        void versions.refetch();
+      }}
+    />
+  ) : null;
+  if (versions.data === undefined) return failure;
   const items = versions.data.items;
   if (items.length === 0)
     return (
-      <Notice>
-        No published version sources were returned for this workflow.
-      </Notice>
+      <FieldGroup>
+        {failure}
+        <Notice>
+          No published version sources were returned for this workflow.
+        </Notice>
+      </FieldGroup>
     );
   const selected = items.find((version) => version.id === versionId);
   const options = items.map((version) => ({
@@ -131,6 +123,7 @@ function VersionSources({
   }));
   return (
     <FieldGroup className="gap-4">
+      {failure}
       <LabelledField
         id="version-source-version"
         label="Published version source"
@@ -167,5 +160,28 @@ function VersionSources({
         <VersionSourcePreview key={selected.id} version={selected} />
       )}
     </FieldGroup>
+  );
+}
+
+function VersionSourceReadFailure({
+  stale,
+  pending,
+  retry,
+}: Readonly<{ stale: boolean; pending: boolean; retry: () => void }>) {
+  return (
+    <Notice
+      tone={stale ? 'warning' : 'destructive'}
+      title={stale ? 'Source may be stale' : undefined}
+      action={
+        <Button variant="outline" size="sm" disabled={pending} onClick={retry}>
+          Retry version sources
+        </Button>
+      }
+    >
+      {stale ? 'Showing the last successfully read source. ' : null}
+      Version discovery is incomplete: the read failed or reached its bounded
+      page limit. This does not mean the pinned version is absent or that no
+      newer source exists.
+    </Notice>
   );
 }

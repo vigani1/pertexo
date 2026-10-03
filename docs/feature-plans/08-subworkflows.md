@@ -662,3 +662,18 @@ architecture and source formatting pass. Staged-source Doctor checks 52 changed
 files at 100/100 without diagnostics. This is usable source inspection, not
 automatic target eligibility or explicit executable upgrade qualification.
 Native execution/catalog/writers remain OFF and F08/security gates remain open.
+
+Review of source `57d9aed3` found that the workflow picker shared the ordinary
+workflow-list cache and enforced pagination limits only in its UI. Source
+discovery now has a separately scoped Query key using the existing public HTTP
+adapter; the actual pagination/refetch owner stops at 40 pages or a repeated
+cursor. The last non-null cursor is retained so a stopped read remains visibly
+incomplete. It neither seeds from nor mutates the ordinary workflow-list cache.
+A failed background version-source refresh now retains the selected version and
+last successfully read details with a stale/retry notice; initial failures
+without source data still block. Stale source carries no executable eligibility
+and cannot change a pin. Behavior-first regressions demonstrated the stale
+45-page cache reuse, unbounded refetch, cursor loop and lost source before their
+respective fixes. Existing source-only browser journeys still pass at desktop
+and phone widths. These are focused source-inspection corrections, not F08
+completion or security qualification; native gates remain OFF.

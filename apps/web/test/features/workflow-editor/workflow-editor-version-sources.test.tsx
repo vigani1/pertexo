@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { workflowVersionResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowVersionSourcesQueryOptions } from '@/features/workflow-editor/workflow-version-sources.queries';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import {
@@ -10,6 +11,7 @@ import {
   editorHandlers,
   editorPath,
   findCanvas,
+  userId,
   workspaceId,
 } from '../../support/workflow-editor-fixtures';
 import {
@@ -39,6 +41,74 @@ async function chooseSource(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Call version source browser', { timeout: 30_000 }, () => {
+  it('retains the selected last-good source and unchanged pin after a failed background refetch', async () => {
+    let fail = false;
+    const save = vi.fn();
+    mockServer.use(
+      ...editorHandlers(save, { graph: nativeCallGraph() }),
+      http.get(listPath, () =>
+        HttpResponse.json({
+          items: [versionSourceWorkflow(workspaceId)],
+          nextCursor: null,
+        }),
+      ),
+      http.get(versionsPath, () =>
+        fail
+          ? HttpResponse.json({}, { status: 500 })
+          : HttpResponse.json({
+              items: [callableVersionSource],
+              nextCursor: null,
+            }),
+      ),
+    );
+    const { apiClient, queryClient } = renderApp(editorPath);
+    const user = userEvent.setup();
+    fireEvent.click((await findCanvas()).getByText('Call child'));
+    const dialog = await chooseSource(user);
+    await user.click(
+      await within(dialog).findByLabelText('Published version source'),
+    );
+    await user.click(
+      await screen.findByRole('option', {
+        name: `v2 — ${callableVersionSource.id}`,
+      }),
+    );
+    expect(
+      within(dialog).getByRole('region', { name: 'Inspected version source' }),
+    ).toBeVisible();
+    fail = true;
+    const options = workflowVersionSourcesQueryOptions(
+      { apiClient, userId, workspaceId },
+      workflowCallPin.workflowId,
+    );
+    await queryClient.refetchQueries({ queryKey: options.queryKey });
+    await waitFor(() => {
+      expect(queryClient.getQueryState(options.queryKey)?.status).toBe('error');
+    });
+    expect(
+      within(dialog).getByRole('region', { name: 'Inspected version source' }),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByLabelText('Published version source'),
+    ).toHaveTextContent('v2');
+    expect(within(dialog).getByText('Source may be stale')).toBeVisible();
+    expect(
+      within(dialog).getByRole('button', { name: 'Retry version sources' }),
+    ).toBeEnabled();
+    expect(
+      within(dialog).getByLabelText('Callable result declaration'),
+    ).toHaveTextContent('answer');
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Close source browser' }),
+    );
+    expect(screen.getByLabelText('Pinned version ID')).toHaveValue(
+      workflowCallPin.versionId,
+    );
+    expect(screen.getByLabelText('Callable contract identity')).toHaveValue(
+      workflowCallPin.callableContractIdentity,
+    );
+    expect(save).not.toHaveBeenCalled();
+  });
   it('uses a contract-valid source fixture', () => {
     expect(
       workflowVersionResponseSchema.safeParse(callableVersionSource),
