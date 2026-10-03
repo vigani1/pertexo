@@ -500,3 +500,15 @@ OFF with no permanent serving grants. Existing native publication/root, editor,
 artifact/retention, raw nonliteral writer trust and full qualification gates remain
 open. The repository complexity gate additionally reports owned F08 execution
 hotspots; no waiver or full closure is claimed from passing this authoring slice.
+
+Primary selected purpose-separated process semantic HMAC capability direction
+for the unresolved ordinary-database-login native writer forgery fence and release
+owner allocated ADR066. [ADR066](../adr/066-native-workflow-semantic-attestations.md)
+and its [concrete contract](08-native-semantic-attestation-contract-proposal.md)
+are **proposed**, awaiting full primary acceptance before trust implementation.
+No key, extension, environment configuration or positive grant is provisioned.
+An owned read-only PG18.6 probe found pgcrypto available but uninstalled; availability
+is not readiness or authorization to install. New writers remain OFF, and accepted
+native continuation needs a currently permitted compatible signer rather than a
+historical token dependency under the proposal. This is decision preparation, not
+completion of any F08 acceptance row.
