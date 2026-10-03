@@ -161,6 +161,17 @@ jobs:
   workflow.jobs.quality.steps.splice(2, 0, {
     run: `set -o pipefail\nmkdir -p artifacts\nnode infrastructure/quality/run-ci-quality.mjs --quality ${qualityBundleScripts.join(' ')} --contracts quality:local:check 2>&1 | tee artifacts/quality.log`,
   });
+  const ownership = [
+    'set -euo pipefail',
+    'postgres_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q postgres)")',
+    'redis_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q redis)")',
+    'export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \'{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}\')',
+  ].join('\n');
+  for (const step of workflow.jobs.integration.steps) {
+    if (!/artifacts\/(?:api|database)-gates\.json/u.test(step.run)) continue;
+    step.env = { EDITOR_BROWSER_OWNED_FIXTURE: 'true' };
+    step.run = `${ownership}\n${step.run}`;
+  }
   return { packageManifest, workflow };
 }
 
@@ -654,6 +665,47 @@ test('rejects missing, optional or incorrectly owned concurrency browser proof r
     assert.throws(() =>
       assertRequiredLiveBrowserGate(workflow, concurrencyBrowserGate),
     );
+  }
+});
+
+test('rejects missing or weakened ordinary draft integration ownership', () => {
+  for (const report of ['api', 'database']) {
+    for (const mutate of [
+      (step) => delete step.env.EDITOR_BROWSER_OWNED_FIXTURE,
+      (step) => (step.env.EDITOR_BROWSER_OWNED_FIXTURE = 'false'),
+      (step) => (step.if = 'false'),
+      (step) => (step['continue-on-error'] = true),
+      (step) => (step.run = step.run.replace('set -euo pipefail', 'set -e')),
+      (step) =>
+        (step.run = step.run.replace(
+          'export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn',
+          'export OTHER_MANIFEST=$(jq -cn',
+        )),
+      (step) =>
+        (step.run = step.run.replace('docker inspect', 'echo fake-container')),
+      (step) =>
+        (step.run = step.run.replace(
+          '$COMPOSE_PROJECT_NAME',
+          'pertexo-shared',
+        )),
+      (step) => (step.run = step.run.replace('$POSTGRES_PORT', '55435')),
+      (step) => (step.run = step.run.replace('$REDIS_PORT', '56379')),
+      (step) => {
+        const lines = step.run.split('\n');
+        const manifest = lines.splice(3, 1)[0];
+        step.run = [...lines, manifest].join('\n');
+      },
+    ]) {
+      const input = fixture();
+      const step = input.workflow.jobs.integration.steps.find((candidate) =>
+        candidate.run.includes(`artifacts/${report}-gates.json`),
+      );
+      mutate(step);
+      assert.throws(
+        () => validateCiGatePolicy(input),
+        /ordinary draft integration/u,
+      );
+    }
   }
 });
 

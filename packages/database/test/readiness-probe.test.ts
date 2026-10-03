@@ -256,6 +256,12 @@ describe('database readiness capability probe', () => {
 
   it('rejects unsupported graph, checksum, and executable contracts', () => {
     expect(() => {
+      assertReadinessSupport({ supportedDraftGraphSchemaVersions: [1] });
+    }).toThrow('Workflow draft graph schema support is incompatible');
+    expect(() => {
+      assertReadinessSupport({ supportedDraftGraphSchemaVersions: [1, 2] });
+    }).not.toThrow();
+    expect(() => {
       assertReadinessSupport({});
     }).not.toThrow();
     expect(() => {

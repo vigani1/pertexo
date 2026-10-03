@@ -41,6 +41,9 @@ describe('workflow authoring HTTP preconditions', () => {
   it('accepts exactly one generated strong tag in scalar and array form', () => {
     expect(parseStrongIfMatch(tag)).toBe(tag);
     expect(parseStrongIfMatch([tag])).toBe(tag);
+    const native = tag.replace('draft-v1', 'draft-v2');
+    expect(parseStrongIfMatch(native)).toBe(native);
+    expect(parseStrongIfMatch([native])).toBe(native);
   });
 
   it.each([

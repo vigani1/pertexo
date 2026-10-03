@@ -8,6 +8,7 @@ import { useEditorStore } from '../../model/editor-store-context';
 import { CompactHistoryMenu, HistoryControls } from './history-controls';
 import { LiveVersion } from './live-version';
 import { SaveState } from './save-state';
+import { Button } from '@/components/ui/button';
 import { ShortcutSheet } from './shortcut-sheet';
 
 /**
@@ -28,6 +29,7 @@ export function EditorCommandBar({
   onReviewConflict,
   onUndo,
   onRedo,
+  onInspectWorkflow,
   commands,
 }: Readonly<{
   apiClient: ApiClient;
@@ -41,6 +43,7 @@ export function EditorCommandBar({
   onReviewConflict: () => void;
   onUndo: () => void;
   onRedo: () => void;
+  onInspectWorkflow: () => void;
   commands: ReactNode;
 }>) {
   const graph = useEditorStore((state) => state.graph);
@@ -80,6 +83,15 @@ export function EditorCommandBar({
       }
       actions={
         <>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={onInspectWorkflow}
+          >
+            Callable contract
+          </Button>
           <HistoryControls
             onUndo={onUndo}
             onRedo={onRedo}
@@ -92,6 +104,7 @@ export function EditorCommandBar({
             fallbackAnchor={moreRef}
           />
           <CompactHistoryMenu
+            onInspectWorkflow={onInspectWorkflow}
             triggerRef={moreRef}
             className="sm:hidden"
             onUndo={onUndo}

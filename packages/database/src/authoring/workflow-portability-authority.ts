@@ -2,7 +2,6 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   parseWorkflowGraphDraft,
-  workflowDraftRepresentationTag,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 import type {
@@ -15,8 +14,9 @@ import { rolesForCapability } from '../tenant-access/workspace-policy.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
+  WorkflowDraftOperationUnavailableError,
 } from './workflow-authoring-errors.js';
-import { mapDraft } from './workflow-authoring-rows.js';
+import { mapDraft, draftRepresentationTag } from './workflow-authoring-rows.js';
 
 /** Never rely on a joined SELECT's planner to choose the authority lock order. */
 export async function requirePortabilityAuthority(
@@ -92,14 +92,11 @@ export function reviewedSourceGraph(
   if (input.source.kind === 'version')
     return parseWorkflowGraphDraft(row.graph_json);
   const draft = mapDraft(row, selection.definitionCatalog);
-  const tag = workflowDraftRepresentationTag({
-    workflowId: input.workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: draft.compatibility.fingerprint,
-  });
+  const tag = draftRepresentationTag(input.workflowId, draft);
   if (tag !== input.representationTag)
     throw new WorkflowRevisionConflictError(draft.revision, tag);
+  if (draft.schemaVersion === 2)
+    throw new WorkflowDraftOperationUnavailableError();
   return draft.graphJson;
 }
 

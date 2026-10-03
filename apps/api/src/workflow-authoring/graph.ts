@@ -3,5 +3,6 @@ export {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
   parseWorkflowGraphDraft,
+  parseWorkflowAuthoringGraphDraft,
   validateWorkflowGraph,
 } from '@pertexo/workflow-model/graph';

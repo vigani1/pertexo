@@ -30,7 +30,7 @@ describe.skipIf(!organizationFixtureEnabled)(
 
     it('accepts the exact installed default-off schema through real API startup readiness', async () => {
       expect(await checkDatabaseReadiness(fixture.api)).toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+        migrationHead: '0136_workflow_draft_graph_v2.sql',
         role: 'pertexo_api',
         postgresMajor: 18,
       });
@@ -88,6 +88,7 @@ describe.skipIf(!organizationFixtureEnabled)(
         ).rows;
         expect(await previous.upgrade()).toEqual([
           '0135_workflow_folders_batch_identity.sql',
+          '0136_workflow_draft_graph_v2.sql',
         ]);
         expect(
           (
@@ -115,7 +116,7 @@ describe.skipIf(!organizationFixtureEnabled)(
           replayed: true,
         });
         expect(await checkDatabaseReadiness(previous.api)).toMatchObject({
-          migrationHead: '0135_workflow_folders_batch_identity.sql',
+          migrationHead: '0136_workflow_draft_graph_v2.sql',
         });
         expect(await previous.upgrade()).toEqual([]);
       } finally {

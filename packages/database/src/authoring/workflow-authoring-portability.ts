@@ -81,7 +81,7 @@ const exportInput = scope
     reviewedGraphDigest: z.string().regex(/^[a-f0-9]{64}$/u),
     representationTag: z
       .string()
-      .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u)
+      .regex(/^"draft-v[12]\.[A-Za-z0-9_-]{43}"$/u)
       .optional(),
   })
   .strict()

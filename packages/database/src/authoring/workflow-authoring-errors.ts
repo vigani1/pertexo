@@ -2,6 +2,13 @@ export class WorkflowNotFoundError extends Error {
   public override readonly name = 'WorkflowNotFoundError';
 }
 
+export class WorkflowDraftOperationUnavailableError extends Error {
+  public override readonly name = 'WorkflowDraftOperationUnavailableError';
+  public constructor() {
+    super('This operation is not enabled for native workflow drafts.');
+  }
+}
+
 export class WorkflowRevisionConflictError extends Error {
   public override readonly name = 'WorkflowRevisionConflictError';
   public constructor(

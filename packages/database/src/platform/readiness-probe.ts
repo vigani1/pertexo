@@ -149,7 +149,15 @@ export function assertReadinessSupport(input: {
   readonly supportedChecksumAlgorithms?: readonly string[];
   readonly supportedExecutableSchemaVersions?: readonly number[];
   readonly supportedGraphSchemaVersions?: readonly number[];
+  readonly supportedDraftGraphSchemaVersions?: readonly number[];
 }): void {
+  const draftVersions = input.supportedDraftGraphSchemaVersions ?? [1, 2];
+  if (
+    draftVersions.length !== 2 ||
+    draftVersions[0] !== 1 ||
+    draftVersions[1] !== 2
+  )
+    throw new Error('Workflow draft graph schema support is incompatible');
   const graphVersions = input.supportedGraphSchemaVersions ?? [1];
   if (graphVersions.length !== 1 || graphVersions[0] !== 1)
     throw new Error('Workflow graph schema support is incompatible');

@@ -8,6 +8,7 @@ import {
   WorkflowConcurrencyLimitExceededError,
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
+  WorkflowDraftOperationUnavailableError,
   WorkflowRevisionConflictError,
   WorkflowLifecycleRevisionConflictError,
   WorkflowNameRevisionConflictError,
@@ -73,6 +74,10 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
       safeDetail: error.message,
     });
   if (isApplicationError(error)) return error;
+  if (error instanceof WorkflowDraftOperationUnavailableError)
+    return applicationError('workflow.draft_operation_unavailable', {
+      safeDetail: error.message,
+    });
   if (
     error instanceof WorkflowHeaderError &&
     error.code === 'precondition_required'
