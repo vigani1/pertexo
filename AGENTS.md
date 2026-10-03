@@ -46,7 +46,8 @@
   the plan or ADRs.
 - Use `typescript-advanced-types` only for genuinely complex compile-time type
   contracts. Prefer ordinary TypeScript for routine code.
-- Use `tdd` only when the user asks for test-first development. Infer an
+- Use `tdd` selectively for consequential new behavior and bug fixes under the
+  approved testing workflow below. Infer an
   established test seam from the plan, ADRs, public contracts, and nearby tests;
   ask only when selecting a seam would create or change a consequential
   architectural contract.
@@ -59,6 +60,28 @@
   ownership when parallelism is likely to improve speed or coverage after
   accounting for coordination and token cost. Keep tightly coupled decisions,
   cross-package invariants, and final integration with the primary agent.
+
+## Testing workflow
+
+- Use selective test-first development at established plan, ADR, public-contract
+  and nearby-test seams: one meaningful behavior test, demonstrate failure for
+  the intended missing behavior, implement minimally, then verify that behavior.
+  Ask only when a new seam would change a consequential architectural contract.
+- Derive expectations from requirements or independent known values, not from
+  implementation calculations. Mock only external boundaries, never the behavior
+  under test. Favor high-value behavior, negative and boundary coverage over
+  duplicate helper or mock-interaction checks.
+- During iteration, run changed/affected tests and narrow relevant checks. Group
+  coherent slice verification; run the broader relevant suite, build, lint and
+  required browser/Doctor checks at handoff. After a fix, rerun affected checks;
+  widen verification when the change's consequences justify it.
+- Batching does not waive mandatory plan, release, integration or security gates.
+  Do not repeat unchanged audits, retrofit completed work to claim TDD, or start
+  broad test cleanup without authorization.
+- Never weaken assertions, skip cases or widen tolerances/timeouts merely for
+  green. Explain expectation changes against the independent contract and retain
+  before/after evidence. Report behavior protected and limitations, not counts as
+  the primary success measure.
 
 ## Git discipline
 
