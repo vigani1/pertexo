@@ -132,6 +132,8 @@ async function capturedHandler(
     engine: NodeAttemptExecutionEngine;
     registry: NodeExecutionRegistry;
     callDeclarationValues?: NodeAttemptHandlerDependencies['callDeclarationValues'];
+    nativeInputValues?: NodeAttemptHandlerDependencies['nativeInputValues'];
+    nativeProjection?: boolean;
   }>,
 ): Promise<
   Readonly<{ handler: QueueJobHandler; runtime: NodeAttemptRuntime }>
@@ -163,8 +165,15 @@ async function capturedHandler(
       reader: {
         close: vi.fn().mockResolvedValue(undefined),
         readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: projection(),
+          kind: input.nativeProjection ? 'v3_projection' : 'v2_projection',
+          workflowVersion: input.nativeProjection
+            ? {
+                ...projection(),
+                schemaVersion: 2,
+                executableSchemaVersion: 3,
+                checksum: `wf:v3:sha256:${'a'.repeat(64)}`,
+              }
+            : projection(),
         }),
       },
       registry: input.registry,
@@ -172,6 +181,9 @@ async function capturedHandler(
       ...(input.callDeclarationValues === undefined
         ? {}
         : { callDeclarationValues: input.callDeclarationValues }),
+      ...(input.nativeInputValues === undefined
+        ? {}
+        : { nativeInputValues: input.nativeInputValues }),
     },
   );
   if (handler === undefined)
@@ -180,6 +192,81 @@ async function capturedHandler(
 }
 
 describe('node-attempt runtime', () => {
+  it('forwards explicit native source hydration from the queue runtime', async () => {
+    const source = {
+      slot: 'run_input' as const,
+      source: {
+        kind: 'run_input' as const,
+        workspaceId: WORKSPACE_ID,
+        runId: RUN_ID,
+        workflowVersionId: VERSION_ID,
+        provenanceId: WORKFLOW_ID,
+      },
+      snapshot: {
+        reference: {
+          schemaVersion: 1 as const,
+          kind: 'inline' as const,
+          value: null,
+        },
+        byteLength: 4,
+        sha256:
+          '74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b',
+        serializedValue: 'null',
+      },
+    };
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: OUTBOX_EVENT_ID });
+    const { handler, runtime } = await capturedHandler({
+      nativeProjection: true,
+      runStore: {
+        claimDelivery: () =>
+          Promise.resolve({ kind: 'claimed', lease: lease() }),
+        close: () => Promise.resolve(),
+        complete,
+        heartbeat: vi.fn().mockResolvedValue({
+          abortRequested: false,
+          leaseExpiresAt: lease().leaseExpiresAt,
+        }),
+        markDispatched: vi.fn(),
+        loadInputs: () =>
+          Promise.resolve({
+            runInput: 'unhydrated',
+            completedNodeOutputs: [],
+            abortRequested: false,
+            nativeValueSources: { runInput: source, completedNodeOutputs: [] },
+          }),
+      },
+      nativeInputValues: {
+        hydrateSource: (input) => {
+          expect(input.source).toBe(source);
+          return Promise.resolve(null);
+        },
+      },
+      engine: {
+        prepare: () => ({
+          ...registryPreparedAttempt(),
+          execute: (input) => {
+            expect(input.runInput).toBeNull();
+            return registryPreparedAttempt().execute(input);
+          },
+        }),
+      },
+      registry: {
+        execute: () => Promise.resolve({ kind: 'succeeded', output: null }),
+      },
+    });
+    try {
+      await handler(delivery(), { signal: new AbortController().signal });
+      expect(complete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outcome: { status: 'succeeded', output: null },
+        }),
+      );
+    } finally {
+      await runtime.close();
+    }
+  });
   it('delivers a committed Call snapshot through the framework value runtime without preparing it again', async () => {
     const value = { name: 'immutable' };
     const serializedValue = '{ "name" : "immutable" }';
@@ -212,7 +299,10 @@ describe('node-attempt runtime', () => {
         byteLength: Buffer.byteLength(serializedValue),
         sha256: createHash('sha256').update(serializedValue).digest('hex'),
       }),
-      heartbeat: vi.fn(),
+      heartbeat: vi.fn().mockResolvedValue({
+        abortRequested: false,
+        leaseExpiresAt: lease().leaseExpiresAt,
+      }),
       markDispatched: vi.fn().mockResolvedValue(undefined),
       loadInputs: vi.fn().mockResolvedValue({
         abortRequested: false,

@@ -6,6 +6,11 @@ import {
 } from '@pertexo/database/execution';
 import type { createWorkflowExecutionValueCodec } from './workflow-execution-value-codec.js';
 
+function assertActive(signal: AbortSignal): void {
+  if (signal.aborted)
+    throw new DOMException('The operation was aborted', 'AbortError');
+}
+
 /** Reuse committed creation provenance under independently authenticated recovery. */
 export async function recoverNodeAttemptCallInput(
   input: Readonly<{
@@ -18,17 +23,20 @@ export async function recoverNodeAttemptCallInput(
     >;
   }>,
 ): Promise<Readonly<{ value: unknown }> | undefined> {
+  assertActive(input.signal);
   const read = input.runStore.readCallDeclarationInput?.bind(input.runStore);
   const hydrate = input.values?.hydrate;
   if (read === undefined || hydrate === undefined)
     throw new TypeError('Native Call snapshot recovery is unavailable');
   const snapshot = await read({ lease: input.lease, signal: input.signal });
+  assertActive(input.signal);
   if (snapshot === undefined) return undefined;
   const value = await hydrate({
     owner: { kind: 'attempt', lease: input.lease },
     reference: snapshot.reference,
     signal: input.signal,
   });
+  assertActive(input.signal);
   const integrityBytes =
     snapshot.reference.kind === 'inline'
       ? snapshot.serializedValue

@@ -31,6 +31,9 @@ No node or preview artifact capability receives this framework-only dependency.
 - [x] Separate producer slots and coordinator pre/post-CAS result identity from
       consuming authority; recheck uploaded candidates without accepted-source
       authorization before acceptance.
+- [x] Implement ordinary typed source projection and sequential worker hydration
+      interfaces with source-aware authorization, required-descriptor checks and
+      control/heartbeat ownership through native input and Call recovery reads.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
@@ -64,6 +67,43 @@ compiled-process bootstrap-failure case with no child output; its isolated rerun
 passed all five cases without changing timeouts or assertions. Worker build,
 typecheck, narrow lint/format and architecture checks pass. Persistent native
 source projection, candidate ownership and full F08 qualification remain open.
+
+The explicit source parser now preserves fixed native slots, immutable original
+inline bytes, requested upstream scope order and physical-attempt versus logical
+child-result identity. It requires the exact native grammar and distinguishes
+absent stored run input from a missing descriptor. The framework's source-aware
+codec requires accepted-source authorization even for inline values, checks exact
+byte/reference agreement and delegates artifact reads to its existing bounded
+stream codec. The worker hydrates sequentially under current consumption authority,
+leaves retained JSON and structured/coordinator inputs unchanged, and fails closed
+on missing source authorization or required descriptors.
+
+The existing heartbeat owner now checks native controls/lease before value loading
+or Call recovery and remains owned through reads, hydration and execution. A
+regression first showed canceled recovery still reading a committed snapshot;
+the correction refuses cancellation/timeout before read/hydration, aborts either
+phase on lease loss, joins heartbeat cleanup, preserves original recovered bytes
+and never remaps upstream inputs or hydrates unrelated native input sources when
+a snapshot exists. The source integration passes all 1,477 database unit tests
+across 160 files and 1,089 worker unit tests
+across 86 files, package builds/typechecks, narrow lint/format and architecture.
+These are ordinary adapter/parser/worker tests, not SQL role or durable provenance
+qualification. The existing persistent input loader supplies no descriptors;
+source-aware SQL authorization, candidate association, coordinator integration,
+retention and usable persistent native activation remain unfinished. No SQL was
+installed or registered; native execution is OFF and screened qualification PAUSED.
+Prepared execution/control handling and shared value contracts now have cohesive
+modules with unchanged public interfaces and one policy owner. This removes the
+slice's new handler/codec file hotspots. Duplication qualification passes; full
+complexity qualification still fails on eight inherited findings in six unchanged
+coordinator/claim/input-loader files. No complexity baseline was weakened, and
+this is not a full repository quality-gate pass.
+
+Primary/Spec review also caught a missing-projection native fallback. Meaningful
+regressions reproduced successful ordinary/retry/Wait completion without source
+descriptors. Native handling now rejects that absence before dispatch, successful
+completion or hydration, while preserving retained v2 behavior and the explicitly
+authorized committed-Call snapshot exception. Fresh native Calls cannot use it.
 
 ### F02 — run-input cases and version-checked manual start
 

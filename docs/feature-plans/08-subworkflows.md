@@ -785,3 +785,61 @@ changes. Build, source/test typecheck, narrow lint/format and architecture pass.
 No persistent candidate SQL, accepted-parent association, real quota/retention
 proof or explicit source loader is qualified by these adapter tests. Native
 execution remains OFF; screened security qualification remains PAUSED.
+
+### Explicit native source interfaces and worker hydration — 2026-10-03
+
+An ordinary source-projection parser and framework hydration interface now model
+fixed `run_input`, scoped `upstream_output` and `wait_resume_output` slots. The
+projection binds accepted-source IDs, original byte identity and actual physical
+attempt versus logical accepted child-result identity; it preserves requested
+scope order and rejects duplicates, missing descriptors and partial/retained
+grammars. Absent stored run input is explicit, not a missing inline descriptor.
+Parser/metadata checks do not prove accepted provenance or grant consumption.
+
+The codec's distinct source-aware hydration method requires the existing owner's
+accepted-source callback for inline as well as artifact material, compares original
+byte/reference identity and reuses bounded artifact stream verification. It cannot
+fall back to candidate possession or legacy artifact authorization. Its composed
+runtime forwards this optional framework-only callback; absent source authority
+fails closed. Sequential worker hydration preserves structured/coordinator inputs,
+retained decoded JSON resembling wrappers, scope order and heartbeat cancellation.
+No source work occurs after an initial control refusal, and native Wait resume
+hydrates under its consuming lease without executing or preparing again.
+
+A pre-existing Call recovery ordering gap was found during this slice: protected
+snapshot read/hydration previously preceded control checks and heartbeat startup.
+The meaningful regression observed snapshot read despite canceled recovery.
+The corrected native path uses the existing control-and-lease heartbeat operation
+before reads, then owns and joins its heartbeat through input loading, snapshot
+authorization/read/hydration and execution. Lease loss during either recovery phase
+aborts it; cancellation during hydration settles without dispatch or remapping.
+Committed original bytes and snapshot-first identity remain unchanged. Fresh
+resolution occurs only when no snapshot exists; retained ordinary/Wait ordering
+and behavior remain unchanged. No new input-loading mode or SQL authority was added.
+Recovered Calls use only their committed mapped snapshot, without hydrating
+unrelated native input sources; that behavior also has observed regression evidence.
+
+Final ordinary qualification: all 1,477 database unit tests across 160 files and
+1,089 worker unit tests across 86 files pass; both package builds/typechecks, narrow
+lint/format and architecture checks pass. Tests use actual parser/codec/worker
+interfaces, a real composed bounded artifact stream, and external store/persistence
+or lease-control adapters. They are not real SQL authority or retention evidence.
+The existing persistent input loader still emits no explicit source descriptors;
+source-aware persistent authorization, candidate association, coordinator results,
+retention and full F08 qualification remain open. There is no usable persistent
+native activation claim. Native execution is OFF, screened qualification is PAUSED,
+and no quarantined SQL was modified, registered or installed.
+Focused cohesive extraction keeps prepared execution/control handling and shared
+value contracts with one owner each, preserving public interfaces and behavior
+while removing both new file hotspots. Duplication checks pass. The full complexity
+gate remains failed on eight inherited findings in six unchanged coordinator,
+claim and input-loader files; exact baseline/delta evidence is retained separately.
+No ratchet baseline changed and no full repository quality pass is claimed.
+
+Primary and independent Spec review found a native handler fallback: absent source
+projections could reach ordinary execution or retained Wait completion. Regression
+tests reproduced successful completion for native execute, retry and Wait without
+descriptors. The repaired handler rejects missing projections before dispatch,
+completion or source hydration. Only an already-authorized committed Call snapshot
+may bypass unrelated projections; a fresh Call receives no such exception.
+Retained v2 execution/Wait and committed native Call recovery remain covered.

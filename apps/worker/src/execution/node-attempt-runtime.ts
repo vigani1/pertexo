@@ -108,6 +108,7 @@ export type NodeAttemptRuntimeOptions = Readonly<{
 }>;
 
 export type NodeAttemptRuntimeDependencies = Readonly<{
+  nativeInputValues?: NodeAttemptHandlerDependencies['nativeInputValues'];
   /** Borrowed framework value runtime; never exposed to preview/node capabilities. */
   callDeclarationValues?: NodeAttemptHandlerDependencies['callDeclarationValues'];
   capabilityFactory?: typeof createWorkerNodeRuntimeCapabilities;
@@ -327,6 +328,9 @@ async function createProductionNodeAttemptRuntime(
       ...(dependencies.callDeclarationValues === undefined
         ? {}
         : { callDeclarationValues: dependencies.callDeclarationValues }),
+      ...(dependencies.nativeInputValues === undefined
+        ? {}
+        : { nativeInputValues: dependencies.nativeInputValues }),
       connectionRunHealthMode: options.connectionRunHealthMode ?? 'off',
       engine,
       heartbeatIntervalMillis: options.heartbeatIntervalMillis,

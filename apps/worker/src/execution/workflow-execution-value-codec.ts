@@ -2,13 +2,11 @@ import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { types as nodeTypes } from 'node:util';
-import type { ArtifactStore } from '@pertexo/artifact-store';
 import {
   prepareInlineWorkflowExecutionValueV3,
   serializeWorkflowExecutionJsonValueV3,
-  type CoordinatorAdvanceDelivery,
-  type NodeAttemptLease,
-  type StoredExecutionValueV1,
+  type NativeNodeAttemptValueSource,
+  parseWorkflowExecutionValueSnapshot,
 } from '@pertexo/database/execution';
 import {
   boundedNodeJsonSchema,
@@ -17,112 +15,35 @@ import {
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
-export const WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 =
-  'application/vnd.pertexo.execution-value+json;version=1';
+import {
+  WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
+  assertWorkflowExecutionValueProducer,
+  metadataSchema,
+  reservationSchema,
+  type WorkflowStoredExecutionValueV1,
+  type WorkflowExecutionValueOwner,
+  type WorkflowExecutionValueProducerOwner,
+  type WorkflowExecutionValueCodecDependencies,
+  type PreparedWorkflowExecutionValue,
+} from './workflow-execution-value-contract.js';
 
-export type WorkflowStoredExecutionValueV1 = StoredExecutionValueV1;
+export {
+  WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
+  assertWorkflowExecutionValueProducer,
+} from './workflow-execution-value-contract.js';
+export type {
+  WorkflowStoredExecutionValueV1,
+  WorkflowExecutionValueOwner,
+  WorkflowExecutionValueProducerOwner,
+  WorkflowExecutionValueArtifact,
+  PreparedWorkflowExecutionValue,
+  WorkflowExecutionValueCodecDependencies,
+} from './workflow-execution-value-contract.js';
+
 type ArtifactReference = Extract<
   WorkflowStoredExecutionValueV1,
   { kind: 'artifact' }
 >;
-export type WorkflowExecutionValueOwner =
-  | Readonly<{ kind: 'attempt'; lease: NodeAttemptLease }>
-  | Readonly<{
-      kind: 'run_result';
-      workspaceId: string;
-      runId: string;
-      workflowVersionId: string;
-      expectedRevision: number;
-      delivery: CoordinatorAdvanceDelivery;
-    }>;
-
-/** Production identity is distinct from the authority consuming an accepted value. */
-export type WorkflowExecutionValueProducerOwner =
-  | Readonly<{
-      kind: 'attempt';
-      slot: 'call_input' | 'physical_output';
-      lease: NodeAttemptLease;
-    }>
-  | (Extract<WorkflowExecutionValueOwner, { kind: 'run_result' }> &
-      Readonly<{ resultRevision: number; resultIdentity: string }>);
-
-/** Validate routing metadata only; persistence still proves actual owner authority. */
-export function assertWorkflowExecutionValueProducer(
-  owner: WorkflowExecutionValueProducerOwner,
-): void {
-  if (owner.kind === 'attempt') {
-    const slot: unknown = owner.slot;
-    if (slot !== 'call_input' && slot !== 'physical_output')
-      throw new TypeError('Execution value producer slot is required');
-    return;
-  }
-  if (
-    !Number.isSafeInteger(owner.expectedRevision) ||
-    owner.expectedRevision < 0 ||
-    !Number.isSafeInteger(owner.resultRevision) ||
-    owner.resultRevision !== owner.expectedRevision + 1 ||
-    typeof owner.resultIdentity !== 'string' ||
-    !/^[0-9a-f]{64}$/u.test(owner.resultIdentity)
-  )
-    throw new TypeError('Execution value result producer identity is invalid');
-}
-
-const metadataSchema = z
-  .object({
-    artifactId: z.uuid(),
-    workspaceId: z.uuid(),
-    byteLength: z.number().int().min(1).max(NODE_JSON_LIMITS_V1.bytes),
-    sha256: z.string().regex(/^[0-9a-f]{64}$/u),
-    mediaType: z.literal(WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1),
-  })
-  .strict();
-const reservationSchema = metadataSchema
-  .extend({ available: z.boolean() })
-  .strict();
-export type WorkflowExecutionValueArtifact = Readonly<
-  z.infer<typeof reservationSchema>
->;
-export interface PreparedWorkflowExecutionValue {
-  readonly reference: WorkflowStoredExecutionValueV1;
-  readonly sha256: string;
-  readonly byteLength: number;
-}
-
-export interface WorkflowExecutionValueCodecDependencies {
-  /** The existing 256KiB inline persistence owner decides eligibility. */
-  readonly chooseInline: (
-    value: SchemaJson,
-  ) => Extract<WorkflowStoredExecutionValueV1, { kind: 'inline' }> | undefined;
-  /** Prove current producer authority in SQL; exact retries reuse the same candidate without another charge. */
-  readonly reserve: (
-    input: Readonly<{
-      owner: WorkflowExecutionValueProducerOwner;
-      byteLength: number;
-      sha256: string;
-      mediaType: typeof WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1;
-      signal: AbortSignal;
-    }>,
-  ) => Promise<unknown>;
-  /** Adapter MUST delegate the existing node-artifact-runtime writer: no second put/quota/spool owner. */
-  readonly writeReserved: (
-    input: Readonly<{
-      owner: WorkflowExecutionValueProducerOwner;
-      reserved: WorkflowExecutionValueArtifact;
-      body: AsyncIterable<Uint8Array>;
-      maxBytes: number;
-      signal: AbortSignal;
-    }>,
-  ) => Promise<unknown>;
-  /** Prove accepted, immutable, same-workspace execution provenance before a read; candidate availability is insufficient. */
-  readonly authorize: (
-    input: Readonly<{
-      owner: WorkflowExecutionValueOwner;
-      reference: ArtifactReference;
-      signal: AbortSignal;
-    }>,
-  ) => Promise<unknown>;
-  readonly store: Pick<ArtifactStore, 'getStream'>;
-}
 
 function invalid(message: string): never {
   throw new TypeError(message);
@@ -330,6 +251,11 @@ type HydrateInput = Readonly<{
   reference: unknown;
   signal: AbortSignal;
 }>;
+type HydrateSourceInput = Readonly<{
+  owner: WorkflowExecutionValueOwner;
+  source: NativeNodeAttemptValueSource;
+  signal: AbortSignal;
+}>;
 
 async function prepareValue(
   dependencies: WorkflowExecutionValueCodecDependencies,
@@ -480,6 +406,71 @@ async function hydrateValue(
   }
 }
 
+async function hydrateSourceValue(
+  dependencies: WorkflowExecutionValueCodecDependencies,
+  input: HydrateSourceInput,
+): Promise<SchemaJson> {
+  assertActive(input.signal);
+  const requested = parseWorkflowExecutionValueSnapshot(input.source.snapshot);
+  const authorize = dependencies.authorizeSource;
+  if (authorize === undefined)
+    invalid('Native accepted-source authorization is unavailable');
+  const envelope = ownEnvelope(
+    await authorize(input),
+    2,
+    'Native accepted-source authorization is invalid',
+  );
+  assertActive(input.signal);
+  if (
+    Object.keys(envelope).some(
+      (key) => key !== 'snapshot' && key !== 'artifact',
+    )
+  )
+    invalid('Native accepted-source authorization is invalid');
+  const accepted = parseWorkflowExecutionValueSnapshot(
+    ownEnvelope(
+      envelope.snapshot,
+      4,
+      'Native accepted-source snapshot is invalid',
+    ),
+  );
+  if (
+    accepted.sha256 !== requested.sha256 ||
+    accepted.byteLength !== requested.byteLength ||
+    accepted.serializedValue !== requested.serializedValue ||
+    accepted.reference.kind !== requested.reference.kind
+  )
+    invalid('Native accepted-source byte identity does not agree');
+  const reference = accepted.reference;
+  if (reference.kind === 'inline') {
+    if (
+      requested.reference.kind !== 'inline' ||
+      serializeWorkflowExecutionJsonValueV3(reference.value) !==
+        serializeWorkflowExecutionJsonValueV3(requested.reference.value) ||
+      Object.hasOwn(envelope, 'artifact')
+    )
+      invalid('Native accepted-source reference does not agree');
+    return normalize(reference.value);
+  }
+  if (
+    requested.reference.kind !== 'artifact' ||
+    reference.artifactId !== requested.reference.artifactId
+  )
+    invalid('Native accepted-source reference does not agree');
+  const artifact = parseMetadata(envelope.artifact, reservationSchema);
+  if (
+    artifact.sha256 !== accepted.sha256 ||
+    artifact.byteLength !== accepted.byteLength
+  )
+    invalid('Native accepted-source artifact integrity does not agree');
+  // Reuse the actual bounded stream codec after the exact source owner has
+  // authorized this descriptor. Never fall back to legacy artifact possession.
+  return hydrateValue(
+    { ...dependencies, authorize: () => Promise.resolve(artifact) },
+    { owner: input.owner, reference, signal: input.signal },
+  );
+}
+
 /** Stateless codec seam. Callbacks own authority, reservations and artifact lifecycle. */
 export function createWorkflowExecutionValueCodec(
   dependencies: WorkflowExecutionValueCodecDependencies,
@@ -487,5 +478,7 @@ export function createWorkflowExecutionValueCodec(
   return Object.freeze({
     prepare: (input: PrepareInput) => prepareValue(dependencies, input),
     hydrate: (input: HydrateInput) => hydrateValue(dependencies, input),
+    hydrateSource: (input: HydrateSourceInput) =>
+      hydrateSourceValue(dependencies, input),
   });
 }

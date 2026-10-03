@@ -12,7 +12,7 @@ import {
   WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
   assertWorkflowExecutionValueProducer,
   type WorkflowExecutionValueCodecDependencies,
-} from './workflow-execution-value-codec.js';
+} from './workflow-execution-value-contract.js';
 
 type WriteReservedInput = Parameters<
   WorkflowExecutionValueCodecDependencies['writeReserved']

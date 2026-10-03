@@ -28,6 +28,12 @@ export type { ArtifactCapacityObservation } from './execution/artifacts/artifact
 export { prepareInlineWorkflowExecutionValueV3 } from './execution/artifacts/execution-value-representation.js';
 export type { StoredExecutionValueV1 } from './execution/stored-execution-value.js';
 export { serializeWorkflowExecutionJsonValueV3 } from './execution/stored-execution-value.js';
+export { NODE_ATTEMPT_INPUT_LIMITS } from './execution/node-attempts/node-attempt-run-store-contract.js';
+export { parseWorkflowExecutionValueSnapshot } from './execution/node-attempts/node-attempt-call-input-record.js';
+export type {
+  NativeNodeAttemptValueSource,
+  NativeNodeAttemptValueSources,
+} from './execution/node-attempts/native-node-attempt-value-sources.js';
 export {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,

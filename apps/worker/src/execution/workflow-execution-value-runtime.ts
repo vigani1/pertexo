@@ -19,7 +19,10 @@ import {
 export function createWorkflowExecutionValueRuntime(
   input: Readonly<{
     persistence: WorkflowExecutionValueWriterPersistence &
-      Pick<WorkflowExecutionValueCodecDependencies, 'reserve' | 'authorize'>;
+      Pick<
+        WorkflowExecutionValueCodecDependencies,
+        'reserve' | 'authorize' | 'authorizeSource'
+      >;
     store: Pick<ArtifactStore, 'put' | 'getStream'>;
     retentionMillis: number;
     now?: () => Date;
@@ -27,12 +30,14 @@ export function createWorkflowExecutionValueRuntime(
     spoolOperations?: ArtifactSpoolOperations;
   }>,
 ) {
+  const authorizeSource = input.persistence.authorizeSource;
   return createWorkflowExecutionValueCodec({
     // These policies are owned here, rather than selected by each producer.
     chooseInline: prepareInlineWorkflowExecutionValueV3,
     writeReserved: createWorkflowExecutionValueWriter(input),
     reserve: (request) => input.persistence.reserve(request),
     authorize: (request) => input.persistence.authorize(request),
+    ...(authorizeSource === undefined ? {} : { authorizeSource }),
     store: input.store,
   });
 }

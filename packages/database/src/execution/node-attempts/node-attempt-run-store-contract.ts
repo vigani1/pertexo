@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { SAFE_EXECUTOR_ERROR_CODE_PATTERN } from '@pertexo/workflow-model/attempt-failure';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 import type { StoredExecutionValueV1 } from '../stored-execution-value.js';
+import type { NativeNodeAttemptValueSources } from './native-node-attempt-value-sources.js';
 
 const identitySchema = z
   .string()
@@ -273,6 +274,8 @@ export type NodeAttemptClaimResult =
   | Readonly<{ kind: 'claimed'; lease: NodeAttemptLease }>;
 
 export type NodeAttemptInputs = Readonly<{
+  /** Exact native loader projection only; retained decoded JSON never populates this field. */
+  nativeValueSources?: NativeNodeAttemptValueSources;
   runInput: unknown;
   completedNodeOutputs: unknown;
   structuredCollection?: Readonly<{
