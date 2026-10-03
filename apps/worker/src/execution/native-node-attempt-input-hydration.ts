@@ -13,6 +13,26 @@ export type NativeNodeAttemptSourceHydrator = (
   }>,
 ) => Promise<unknown>;
 
+/** Executable grammar owns routing; absence never selects a retained fallback. */
+export function assertNativeNodeAttemptInputProjection(
+  input: Readonly<{
+    inputs: NodeAttemptInputs;
+    nativeExecutable: boolean;
+    recoveredCallInput: boolean;
+  }>,
+): void {
+  if (input.inputs.nativeValueSources !== undefined && !input.nativeExecutable)
+    throw new TypeError(
+      'Native input sources require the exact native executable',
+    );
+  if (
+    input.nativeExecutable &&
+    input.inputs.nativeValueSources === undefined &&
+    !input.recoveredCallInput
+  )
+    throw new TypeError('Native input source projection is unavailable');
+}
+
 /**
  * Framework-only explicit source hydration after control checks, using the
  * heartbeat execution signal. The adapter must independently authorize each

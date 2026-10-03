@@ -23,6 +23,7 @@ import {
   type NodeAttemptHeartbeat,
 } from './node-attempt-heartbeat.js';
 import { recoverNodeAttemptCallInput } from './node-attempt-call-input-recovery.js';
+import { assertNativeNodeAttemptInputProjection } from './native-node-attempt-input-hydration.js';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import {
   createNodeExecutionEnvironment,
@@ -232,19 +233,11 @@ export function createNodeAttemptHandler(
             hasProviderDispatchUncertainty(claimed.lease, false),
           );
         }
-        if (
-          inputs.nativeValueSources !== undefined &&
-          published.kind !== 'v3_projection'
-        )
-          throw new TypeError(
-            'Native input sources require the exact native executable',
-          );
-        if (
-          published.kind === 'v3_projection' &&
-          inputs.nativeValueSources === undefined &&
-          recordedWorkflowCallInput === undefined
-        )
-          throw new TypeError('Native input source projection is unavailable');
+        assertNativeNodeAttemptInputProjection({
+          inputs,
+          nativeExecutable: published.kind === 'v3_projection',
+          recoveredCallInput: recordedWorkflowCallInput !== undefined,
+        });
         if (
           claimed.lease.admissionKind === 'wait_resume' &&
           inputs.nativeValueSources === undefined
