@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 import type { CoordinatorCallMaterials } from './coordinator-call-materials.js';
+import type { CoordinatorCallableMaterials } from './coordinator-callable-materials.js';
 
 export const coordinatorIdentitySchema = z.uuid();
 const checksumSchema = sha256HexSchema;
@@ -28,6 +29,7 @@ export type LoadAdvanceStateResult =
         observations: readonly unknown[];
         completedOutputs?: readonly unknown[];
         workflowCalls?: CoordinatorCallMaterials;
+        callableCompletion?: CoordinatorCallableMaterials;
       }>;
     }>;
 

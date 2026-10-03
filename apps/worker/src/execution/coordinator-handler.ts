@@ -33,6 +33,10 @@ export interface CoordinatorAdvanceEngine {
         { kind: 'ready' }
       >['state']['workflowCalls'];
       calleeProjections?: readonly PublishedWorkflowV3Projection[];
+      callableCompletion?: Extract<
+        Awaited<ReturnType<CoordinatorRunStore['loadAdvanceState']>>,
+        { kind: 'ready' }
+      >['state']['callableCompletion'];
       occurredAt: string;
       maximumAdmissions: number;
       signal: AbortSignal;
@@ -159,6 +163,9 @@ export function createCoordinatorHandler(
         ...(loaded.state.completedOutputs === undefined
           ? {}
           : { completedOutputs: loaded.state.completedOutputs }),
+        ...(loaded.state.callableCompletion === undefined
+          ? {}
+          : { callableCompletion: loaded.state.callableCompletion }),
         occurredAt: dependencies.clock.now(),
         maximumAdmissions: dependencies.maximumAdmissions,
         signal: context.signal,

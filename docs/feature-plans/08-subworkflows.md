@@ -399,5 +399,19 @@ qualification of publication/root, permanent serving access/readiness, artifacts
 retention, cancellation propagation, API/editor, process restart or races. No
 backend or integrated acceptance row is complete from this milestone.
 
+Native coordinator completion now hydrates inline run-input, selected physical
+node outputs and protected child-result aliases through the existing owners,
+outside commit locks. It uses the established expression dependency inspector and
+worker-supplied restricted evaluator, not a second selector grammar. Ambiguous
+physical sources retain the engine's typed result failure; selected value reads
+are paged. A child that becomes terminal before its parent's next advance can
+supply a Call result during that same parent terminal transition. Owned
+development runs passed run-input, node-output, restricted-expression and
+parent-call-result variants, including result-omission rollback and duplicate
+deliveries. These extend only the inline execution milestone above; the same
+publication/root/visibility/grant carveouts apply. Normal native runtime lifecycle,
+artifact hydration/ownership, child controls, permanent serving/readiness,
+retention, API/editor and full qualification remain unfinished.
+
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.

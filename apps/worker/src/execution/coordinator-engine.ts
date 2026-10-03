@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 
 import {
   advanceWorkflow,
@@ -14,7 +15,8 @@ import {
 } from './persisted-workflow-projection.js';
 
 export type CoordinatorAdvanceEngineOptions =
-  PersistedWorkflowProjectionVerificationOptions;
+  PersistedWorkflowProjectionVerificationOptions &
+    Readonly<{ expressionEvaluator?: ExpressionEvaluator }>;
 
 export function createCoordinatorAdvanceEngine(
   options: CoordinatorAdvanceEngineOptions,
@@ -44,6 +46,16 @@ export function createCoordinatorAdvanceEngine(
         checkpoint: input.checkpoint,
         observations: input.observations,
         completedOutputs: input.completedOutputs,
+        ...(input.callableCompletion === undefined
+          ? {}
+          : {
+              callableCompletion: {
+                ...input.callableCompletion,
+                ...(options.expressionEvaluator === undefined
+                  ? {}
+                  : { expressionEvaluator: options.expressionEvaluator }),
+              },
+            }),
         ...(input.workflowCalls === undefined
           ? {}
           : {

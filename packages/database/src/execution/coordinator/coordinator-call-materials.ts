@@ -4,6 +4,7 @@ import type { CoordinatorCheckpoint } from './coordinator-checkpoint.js';
 import type { CoordinatorEventRow } from './coordinator-run-store-fact-physical-state.js';
 import { loadCoordinatorCallFacts } from './coordinator-call-facts.js';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
+import type { PersistedWorkflowCallStateV1 } from '../../compatibility/persisted-workflow-checkpoint-v3.js';
 
 export type CoordinatorCallMaterials = Readonly<{
   declarations: readonly Readonly<{
@@ -15,7 +16,7 @@ export type CoordinatorCallMaterials = Readonly<{
     value: unknown;
     calleeVersionId: string;
   }>[];
-  facts: readonly unknown[];
+  facts: readonly PersistedWorkflowCallStateV1[];
 }>;
 
 /** Fresh succeeded declaration events, not arbitrary node-output-shaped JSON. */

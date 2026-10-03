@@ -39,6 +39,7 @@ import {
   type PendingFailureRow,
 } from './coordinator-pending-failure-observations.js';
 import { loadCoordinatorCallMaterials } from './coordinator-call-materials.js';
+import { loadCoordinatorCallableMaterials } from './coordinator-callable-materials.js';
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -560,6 +561,7 @@ export async function loadCoordinatorAdvanceState(
         graph_schema_version: number;
         executable_checksum: string;
         executable_json: unknown;
+        input_ref: unknown;
         event_high_water: number;
       }>(
         `select run.id as run_id, run.workflow_version_id, run.status,
@@ -568,7 +570,7 @@ export async function loadCoordinatorAdvanceState(
                     checkpoint.revision, checkpoint.engine_version,
                     checkpoint.scheduler_state,
                     version.executable_schema_version,version.executable_json,
-                    version.schema_version as graph_schema_version,version.checksum as executable_checksum,
+                    version.schema_version as graph_schema_version,version.checksum as executable_checksum,run.input_ref,
                     coalesce((select max(event.sequence) from app.run_events event
                               where event.workspace_id = run.workspace_id
                                 and event.workflow_run_id = run.id), 0)::int as event_high_water
@@ -753,6 +755,16 @@ export async function loadCoordinatorAdvanceState(
         }),
       );
       assertCoordinatorNotAborted(input.signal);
+      const callableCompletion =
+        checkpoint.schemaVersion === 3
+          ? await loadCoordinatorCallableMaterials(client, {
+              workspaceId,
+              runId,
+              executableJson: row.executable_json,
+              inputRef: row.input_ref,
+              facts: workflowCalls?.facts ?? [],
+            })
+          : undefined;
       return Object.freeze({
         kind: 'ready',
         state: Object.freeze({
@@ -762,6 +774,7 @@ export async function loadCoordinatorAdvanceState(
           observations: Object.freeze(observations.map(Object.freeze)),
           completedOutputs: Object.freeze(completedOutputs.map(Object.freeze)),
           ...(workflowCalls === undefined ? {} : { workflowCalls }),
+          ...(callableCompletion === undefined ? {} : { callableCompletion }),
         }),
       });
     },
