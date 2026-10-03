@@ -1531,7 +1531,8 @@
                   "manual",
                   "replay",
                   "schedule",
-                  "webhook"
+                  "webhook",
+                  "workflow_call"
                 ]
               },
               "createdAt": {
@@ -1663,7 +1664,8 @@
               "manual",
               "replay",
               "schedule",
-              "webhook"
+              "webhook",
+              "workflow_call"
             ]
           },
           "createdAt": {
@@ -1785,7 +1787,8 @@
               "manual",
               "replay",
               "schedule",
-              "webhook"
+              "webhook",
+              "workflow_call"
             ]
           },
           "createdAt": {
@@ -1959,7 +1962,8 @@
               "manual",
               "replay",
               "schedule",
-              "webhook"
+              "webhook",
+              "workflow_call"
             ]
           },
           "createdAt": {
@@ -2199,7 +2203,8 @@
                     "manual",
                     "replay",
                     "schedule",
-                    "webhook"
+                    "webhook",
+                    "workflow_call"
                   ]
                 },
                 "createdAt": {
@@ -2807,7 +2812,8 @@
                   "manual",
                   "replay",
                   "schedule",
-                  "webhook"
+                  "webhook",
+                  "workflow_call"
                 ]
               },
               "createdAt": {
@@ -3107,7 +3113,8 @@
                   "manual",
                   "replay",
                   "schedule",
-                  "webhook"
+                  "webhook",
+                  "workflow_call"
                 ]
               },
               "createdAt": {

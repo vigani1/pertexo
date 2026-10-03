@@ -42,6 +42,7 @@ export const workflowRunTriggerTypeSchema = z.enum([
   'replay',
   'schedule',
   'webhook',
+  'workflow_call',
 ]);
 export const workflowRunPageLimitSchema = z.coerce
   .number()

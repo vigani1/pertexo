@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   workflowRunCancelRequestSchema,
+  workflowRunTriggerTypeSchema,
   workflowRunListQuerySchema,
   workflowRunReplayRequestSchema,
   workflowRunListResponseSchema,
@@ -16,6 +17,22 @@ import {
 } from '../src/workflow-runs.js';
 
 describe('workflow-run public contracts', () => {
+  it('reads native child provenance without accepting a caller-supplied trigger', () => {
+    expect(workflowRunTriggerTypeSchema.parse('workflow_call')).toBe(
+      'workflow_call',
+    );
+    expect(
+      workflowRunStartRequestSchema.safeParse({ triggerType: 'workflow_call' })
+        .success,
+    ).toBe(false);
+    expect(
+      workflowRunReplayRequestSchema.safeParse({
+        workflowVersionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        input: {},
+        triggerType: 'workflow_call',
+      }).success,
+    ).toBe(false);
+  });
   it('accepts explicit public commands without exposing engine state', () => {
     expect(
       workflowRunStartRequestSchema.safeParse({

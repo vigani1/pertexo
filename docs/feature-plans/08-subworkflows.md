@@ -454,3 +454,16 @@ full concurrent races/restarts, permanent serving/root/publication/artifact/
 retention/runtime/readiness/API/editor owners remain unfinished; no acceptance
 row is complete from these controls. Raw nonliteral result-writer authority
 remains explicitly open before any permanent grants or activation.
+
+The existing database run-read/cancellation owner and public run response schema
+now recognize native `workflow_call` provenance. Start/replay commands still
+reject caller-supplied trigger provenance. The existing browser trigger label,
+URL filter and local loaded-page filtering render Workflow call without new
+queries, routes or duplicated state. A frozen owned API-role child read and
+independent cancellation pass, as do 1,100 full web unit tests, five run-history
+Chromium journeys, builds/types/lint and generated contract checks. The 390px
+rendered filter/row was inspected, and keyboard filter removal restores retained
+runs. React Doctor 0.9.14 changed-scope scans report no diagnostics (100/100);
+this is not a full-app cleanup baseline. Parent/child navigation and family read
+projections, native publication/root acceptance and all earlier remaining gates
+are still unfinished.

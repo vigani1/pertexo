@@ -285,6 +285,65 @@ test('filters and paginates workspace history, then opens the exact run', async 
   );
 });
 
+test('renders and filters workflow-call provenance without hiding retained runs', async ({
+  page,
+}, testInfo) => {
+  await installRoutes(page);
+  await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          run(firstRunId, 'succeeded'),
+          { ...run(secondRunId, 'succeeded'), triggerType: 'workflow_call' },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.goto(`/w/${workspaceId}/runs`);
+  const childTrigger = page
+    .getByRole('list', { name: /^Runs from/u })
+    .getByText('Workflow call', { exact: true });
+  await expect(childTrigger).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toBeVisible();
+  await page.getByRole('combobox', { name: 'Trigger' }).click();
+  await page.getByRole('option', { name: 'Workflow call' }).click();
+  await expect(page).toHaveURL(/trigger=workflow_call/u);
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID ffff…ffff' }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(childTrigger).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  const screenshot = await page.screenshot({ fullPage: true });
+  await testInfo.attach('workflow-call-trigger-390', {
+    body: screenshot,
+    contentType: 'image/png',
+  });
+  if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+    await page.screenshot({
+      path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/workflow-call-trigger-390.png`,
+      fullPage: true,
+    });
+  await page
+    .getByRole('button', { name: 'Remove filter Trigger: Workflow call' })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(page).not.toHaveURL(/trigger=workflow_call/u);
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toBeVisible();
+});
+
 test('replays the exact displayed version from its own input', async ({
   context,
   page,
