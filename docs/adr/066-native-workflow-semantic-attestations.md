@@ -53,6 +53,14 @@ when new-publication/root writes are OFF. Disabling new writers is not permissio
 to strand accepted families. Retained nonnative workflows need no signer and
 keep their existing formats and behavior.
 
+Authorization expiry is checked at the required final SQL-clock seal, not at
+physical COMMIT. SET CONSTRAINTS IMMEDIATE may fire that seal early; immutable
+truth and a protected transaction denial marker must forbid alteration, reconsume
+or reopening afterward. The unchanged closed facts may commit later. Key-fact
+locks persist to outer transaction completion, so held transactions can delay
+rotation/drain beyond expiry; controlled drain or held native traffic addresses
+that operational condition, without a wall-clock retirement guarantee.
+
 ## Alternatives and consequences
 
 A separate trusted database role alone would weaken the required ordinary-login

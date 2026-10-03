@@ -74,7 +74,14 @@ mints it in the current transaction after actual tenant/work identity checks;
 it is not a client nonce or a self-asserted GUC. It adds no ancestor/run lock and
 does not delegate admission. Existing ordered locks remain authoritative.
 Protocol1 challenges expire at SQL clock issuance plus 30 seconds, never extend,
-and are checked again at consume and the final deferred seal. Changing this bound
+and are checked again at consume and the required final seal's SQL-clock
+authorization linearization. This is not a physical-COMMIT expiry guarantee:
+serving SQL can use SET CONSTRAINTS IMMEDIATE to fire a deferred seal early and
+hold the outer transaction past expiry. All authenticated native writes must be
+complete at that seal; immutable truth plus a protected transaction denial marker
+prevent later alteration, reconsume or reopening. A self-asserted serving GUC
+cannot supply that marker. An early valid sealed transaction may commit later
+only with the same closed facts. Changing the authorization bound
 requires a new protocol/policy, not an ambient timeout override. Supported native
 proof transactions use READ COMMITTED; a different isolation level fails before
 challenge issuance/consume instead of trusting a stale key snapshot.
@@ -184,11 +191,15 @@ and disappear after bounded transaction drain. No indefinite previous-key ring.
 Rotation never accepts a caller's old key selection: only an actual still-valid
 server challenge issued under that key before activation can overlap. SQL key
 fact locking serializes consume with revocation; key lifecycle operations never
-take workspace/workflow/run locks. The hard validity bound is the final SQL clock
-seal, not a client-configurable timeout. An expired transaction holding a lock is
-an operational/DoS condition, not extended signing authority or a reason to retain
-previous keys indefinitely; qualify controlled-process transaction drain and
-failure recovery before rollout. No foreign process termination is authorized.
+take workspace/workflow/run locks. The authorization validity bound is checked
+at the required final SQL-clock seal, which may fire before physical COMMIT;
+it is not a client-configurable timeout. Key-fact locks last until outer
+transaction completion. An early sealed transaction can hold those locks beyond
+expiry and delay rotation or retiring-key removal; there is no guaranteed
+wall-clock key drain while such a transaction is held. This is an operational/DoS
+condition, not authority for fresh writes or reopening sealed facts. Qualify
+controlled-process transaction drain, held native traffic and failure recovery
+before rollout, without weakening timeout checks or forced foreign termination.
 If a rotation cannot preserve permitted in-flight work, hold native traffic
 explicitly; never reinterpret signature failure as a typed child failure.
 
@@ -234,6 +245,10 @@ rotation and active-ID/readiness mismatch; unknown/revoked keys; deployment OFF
 and compatible accepted continuation; restore replay; retained nonnative flow;
 privilege inventory, log redaction and bounded proof cleanup. No successful
 normal-code-only or mocked verifier test closes the raw-role fence.
+Include adversarial SET CONSTRAINTS IMMEDIATE followed by mutation/reconsume/
+reopening attempts, clock crossing and rotation waiting on held outer transactions.
+An early valid seal followed by later COMMIT is permitted only for its unchanged
+closed facts; no test may claim a physical-COMMIT deadline or wall-clock key drain.
 
 Primary must fully read and accept ADR066 plus this contract before trust
 implementation. Permanent grants, registration, provisioning and activation need
