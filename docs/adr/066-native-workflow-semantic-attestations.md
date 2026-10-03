@@ -1,9 +1,13 @@
 # ADR066 — Native workflow semantic attestations
 
-Status: **PROPOSED — 2026-10-03.** Primary selected this bounded direction and
-release owner exclusively allocated ADR066 after checking 15 trees and 189
-references. Allocation/direction selection is not acceptance of this document,
-implementation authorization, provisioning, permanent grants or activation.
+Status: **ACCEPTED — 2026-10-03.** Primary fully read the original proposal and
+seal-expiry refinement, and accepted exact commit a6f555d0 after both independent
+reviews closed the seal clarification. Bounded implementation and owned-local
+qualification are authorized; registration, permanent serving activation, real
+key provisioning and deployment remain separately gated. Release owner exclusively
+allocated ADR066 after checking 15 trees and 189 references. That allocation and
+direction selection alone did not authorize implementation or activation;
+the separate acceptance above authorizes only the bounded scope below.
 Parent [F08](../feature-plans/08-subworkflows.md), existing execution decision
 [ADR065](065-durable-parent-child-workflow-calls.md), concrete proposed interfaces
 and qualification [contract](../feature-plans/08-native-semantic-attestation-contract-proposal.md).
@@ -78,6 +82,12 @@ PostgreSQL documents bytea HMAC and explicitly limits pgcrypto's side-channel
 claims; do not imply constant-time SQL comparison or unqualified cryptographic
 protection. [PostgreSQL18 pgcrypto documentation](https://www.postgresql.org/docs/18/pgcrypto.html).
 
-Primary must fully read and accept this ADR and its concrete contract before
-trust implementation. No new key, extension, environment configuration, SQL
-grant, serving registration or rollout mutation is authorized by this proposal.
+The accepted contract authorizes two existing-owner trust implementations and
+owned-local qualification with disposable generated fixtures. Source extension,
+grant and configuration definitions may be prepared for review. Only exclusively
+owned disposable databases may install approved pgcrypto schema, ephemeral purpose
+keys and temporary test-role grants; remove them after qualification and never
+put secrets in argv, logs, evidence, repository or committed environment files.
+Migration registration, permanent serving activation, human development database
+changes, real key provisioning and deployment require separate exact-source
+inventory, primary review and full F08 gates. Acceptance is not activation.

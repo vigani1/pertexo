@@ -505,10 +505,13 @@ Primary selected purpose-separated process semantic HMAC capability direction
 for the unresolved ordinary-database-login native writer forgery fence and release
 owner allocated ADR066. [ADR066](../adr/066-native-workflow-semantic-attestations.md)
 and its [concrete contract](08-native-semantic-attestation-contract-proposal.md)
-are **proposed**, awaiting full primary acceptance before trust implementation.
+were accepted at exact a6f555d0 after primary full read and two independent
+reviews. Bounded implementation and owned-local disposable qualification are
+authorized; registration, permanent activation, real key provisioning and
+deployment remain separately gated.
 No key, extension, environment configuration or positive grant is provisioned.
 An owned read-only PG18.6 probe found pgcrypto available but uninstalled; availability
 is not readiness or authorization to install. New writers remain OFF, and accepted
 native continuation needs a currently permitted compatible signer rather than a
-historical token dependency under the proposal. This is decision preparation, not
+historical token dependency under the accepted contract. This records a decision, not
 completion of any F08 acceptance row.

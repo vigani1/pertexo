@@ -1,8 +1,11 @@
-# F08 native semantic attestation — proposed concrete contract
+# F08 native semantic attestation — accepted concrete contract
 
-Status: **PROPOSED**, paired with [ADR066](../adr/066-native-workflow-semantic-attestations.md).
+Status: **ACCEPTED — 2026-10-03**, paired with [ADR066](../adr/066-native-workflow-semantic-attestations.md).
 Prepared against e13ba9ed and full unregistered SQL80b339ad. Direction and ADR
-allocation are authorized; implementation/provisioning/grants remain unapproved.
+allocation are authorized. Primary accepted exact a6f555d0 after full original
+read, seal-refinement read and two independent reviews. Bounded implementation
+and owned-local qualification are authorized; permanent provisioning/grants,
+registration, activation and deployment remain unapproved.
 The current draft remains OFF and all earlier F08 qualification gates remain open.
 
 ## Two closed interfaces, inside existing owners
@@ -250,7 +253,12 @@ reopening attempts, clock crossing and rotation waiting on held outer transactio
 An early valid seal followed by later COMMIT is permitted only for its unchanged
 closed facts; no test may claim a physical-COMMIT deadline or wall-clock key drain.
 
-Primary must fully read and accept ADR066 plus this contract before trust
-implementation. Permanent grants, registration, provisioning and activation need
-separate executable readiness/source review and full F08 gates. No accepted
-family is made dependent on a historical signer token by this proposal.
+Accepted scope permits the two bounded trust implementations and owned-local
+qualification with disposable generated fixtures. Source extension/grant/config
+definitions may be authored for review; exclusively owned disposable databases
+may install approved pgcrypto schema, ephemeral purpose keys and temporary
+test-role grants, with explicit removable fixture ownership and no human resource
+changes. Never put secrets in argv, logs, evidence, repository or committed
+environment files. Permanent grants, registration, real key provisioning and
+activation/deployment need separate exact-source inventory, primary review and
+full F08 gates. No accepted family becomes dependent on a historical signer token.
