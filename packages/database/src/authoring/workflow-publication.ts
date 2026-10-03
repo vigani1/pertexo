@@ -3,8 +3,6 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   parseWorkflowGraphForPublish,
   InvalidWorkflowGraphError,
-  workflowCompatibilityReport,
-  workflowDraftRepresentationTag,
   workflowExecutableChecksum,
   workflowIntegrationUsage,
   type WorkflowDefinitionCatalogV1,
@@ -21,6 +19,7 @@ import {
   WorkflowNotFoundError,
   WorkflowIdempotencyConflictError,
   WorkflowRevisionConflictError,
+  WorkflowDraftOperationUnavailableError,
 } from './workflow-authoring-errors.js';
 import type {
   PublishWorkflowInput,
@@ -34,6 +33,7 @@ import type {
 import type { WorkflowVersionRecord } from './workflow-authoring-records.js';
 import {
   mapDraft,
+  draftRepresentationTag,
   mapVersion,
   workflowVersionRowSelection,
 } from './workflow-authoring-rows.js';
@@ -49,7 +49,7 @@ const digestSchema = sha256HexSchema;
 const checksumSchema = z.string().regex(/^wf:v[12]:sha256:[0-9a-f]{64}$/u);
 const workflowDraftTagSchema = z
   .string()
-  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+  .regex(/^"draft-v[12]\.[A-Za-z0-9_-]{43}"$/u);
 const providerKeySchema = z
   .string()
   .min(1)
@@ -201,17 +201,11 @@ async function lockAndCompilePublication(
     throw new Error('Workflow is missing its required draft');
   const draft = mapDraft(draftRow, variant.definitionCatalog);
   await dependencies.testHooks?.afterPublishDraftLock?.();
-  const currentEtag = workflowDraftRepresentationTag({
-    workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: workflowCompatibilityReport(
-      draft.graphJson,
-      variant.definitionCatalog,
-    ).fingerprint,
-  });
+  const currentEtag = draftRepresentationTag(workflowId, draft);
   if (currentEtag !== workflowDraftTagSchema.parse(input.representationTag))
     throw new WorkflowRevisionConflictError(draft.revision, currentEtag);
+  if (draft.schemaVersion === 2)
+    throw new WorkflowDraftOperationUnavailableError();
   const validation = await admitWorkflowAuthoring(
     client,
     variant.validateAuthoringGraph,

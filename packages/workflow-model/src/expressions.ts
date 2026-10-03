@@ -21,3 +21,7 @@ export {
   type ExpressionWorkerFactory,
 } from './expressions/policy.js';
 export { JsonataEvaluator } from './expressions/evaluator.js';
+export {
+  inspectExpressionNodeOutputReferences,
+  type ExpressionNodeOutputReferences,
+} from './expressions/output-references.js';

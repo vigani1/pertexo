@@ -241,7 +241,7 @@ function draftBody(remote: RemoteDraft) {
   return {
     workflowId,
     revision: remote.revision,
-    schemaVersion: 1,
+    schemaVersion: remote.graph.schemaVersion,
     graph: remote.graph,
     compatibility: compatibility(),
     updatedAt: '2026-09-14T10:00:00.000Z',
@@ -311,7 +311,7 @@ export async function addCsrfCookie(context: BrowserContext) {
 /** A distinct opaque tag per revision, so stale tabs always conflict. */
 export function currentEtag(remote: RemoteDraft): string {
   const suffix = String(remote.revision);
-  return `"draft-v1.${'r'.repeat(43 - suffix.length)}${suffix}"`;
+  return `"draft-v${remote.graph.schemaVersion === 2 ? '2' : '1'}.${'r'.repeat(43 - suffix.length)}${suffix}"`;
 }
 
 export function runSummary(

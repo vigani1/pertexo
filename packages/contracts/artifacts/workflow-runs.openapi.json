@@ -1375,6 +1375,7 @@
               "workflow.portability_invalid",
               "workflow.template_origin_unavailable",
               "workflow.validation_unavailable",
+              "workflow.draft_operation_unavailable",
               "workflow.published_version_conflict",
               "workflow.not_published",
               "workflow.activation_failed",

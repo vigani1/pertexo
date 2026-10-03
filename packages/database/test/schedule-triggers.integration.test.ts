@@ -571,7 +571,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     await expect(
       checkDatabaseReadiness(schedule.worker),
     ).resolves.toMatchObject({
-      migrationHead: '0135_workflow_folders_batch_identity.sql',
+      migrationHead: '0136_workflow_draft_graph_v2.sql',
       role: 'pertexo_worker',
     });
     const crashed = await schedule.worker.query<{ trigger_id: string }>(

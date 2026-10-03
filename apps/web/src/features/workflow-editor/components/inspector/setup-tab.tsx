@@ -26,7 +26,18 @@ import { ParallelBranches } from './builders/parallel-branches';
 import { SwitchCases } from './builders/switch-cases';
 import { ValidateRules } from './builders/validate-rules';
 
+import { isWorkflowCallPinNode } from '../../model/inspector/workflow-call-pin';
+import { WorkflowCallSetup } from './workflow-call-setup';
+
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
+
+export function SetupTab(props: Parameters<typeof CatalogSetupTab>[0]) {
+  return isWorkflowCallPinNode(props.node) ? (
+    <WorkflowCallSetup config={props.node.config} form={props.form} />
+  ) : (
+    <CatalogSetupTab {...props} />
+  );
+}
 
 const SCHEDULE_KEY = 'core.schedule';
 
@@ -35,7 +46,7 @@ const SCHEDULE_KEY = 'core.schedule';
  * connection slots and "Edit as JSON" for everything the controls don't
  * model. Nothing a schema allows is dropped.
  */
-export function SetupTab({
+function CatalogSetupTab({
   node,
   definition,
   connections,

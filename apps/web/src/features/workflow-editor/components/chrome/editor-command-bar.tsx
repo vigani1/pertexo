@@ -1,6 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useRef, type ReactNode } from 'react';
+import { BracesIcon } from 'lucide-react';
 import { WorkflowHubBar } from '@/features/workflows/hub.public';
 import { PatternGlyph } from '@/features/workflows/shape.public';
 import type { ApiClient } from '@/lib/api/client';
@@ -8,6 +9,7 @@ import { useEditorStore } from '../../model/editor-store-context';
 import { CompactHistoryMenu, HistoryControls } from './history-controls';
 import { LiveVersion } from './live-version';
 import { SaveState } from './save-state';
+import { Button } from '@/components/ui/button';
 import { ShortcutSheet } from './shortcut-sheet';
 
 /**
@@ -28,6 +30,7 @@ export function EditorCommandBar({
   onReviewConflict,
   onUndo,
   onRedo,
+  onInspectWorkflow,
   commands,
 }: Readonly<{
   apiClient: ApiClient;
@@ -41,6 +44,7 @@ export function EditorCommandBar({
   onReviewConflict: () => void;
   onUndo: () => void;
   onRedo: () => void;
+  onInspectWorkflow: () => void;
   commands: ReactNode;
 }>) {
   const graph = useEditorStore((state) => state.graph);
@@ -80,6 +84,17 @@ export function EditorCommandBar({
       }
       actions={
         <>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="hidden sm:inline-flex"
+            title="Callable contract"
+            onClick={onInspectWorkflow}
+          >
+            <BracesIcon aria-hidden="true" className="2xl:hidden" />
+            <span className="sr-only 2xl:not-sr-only">Callable contract</span>
+          </Button>
           <HistoryControls
             onUndo={onUndo}
             onRedo={onRedo}
@@ -92,6 +107,7 @@ export function EditorCommandBar({
             fallbackAnchor={moreRef}
           />
           <CompactHistoryMenu
+            onInspectWorkflow={onInspectWorkflow}
             triggerRef={moreRef}
             className="sm:hidden"
             onUndo={onUndo}

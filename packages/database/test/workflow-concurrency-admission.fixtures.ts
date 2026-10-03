@@ -313,6 +313,7 @@ export async function proveLegacyConcurrencyUpgrade() {
       '0133_curated_template_origin.sql',
       '0134_workflow_organization.sql',
       '0135_workflow_folders_batch_identity.sql',
+      '0136_workflow_draft_graph_v2.sql',
     ]);
     expect(await migrateDatabase(config)).toEqual([]);
     const tickets = await owner.query<{ id: string; ticket: string }>(
@@ -332,7 +333,7 @@ export async function proveLegacyConcurrencyUpgrade() {
     await expect(
       checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
     ).resolves.toMatchObject({
-      migrationHead: '0135_workflow_folders_batch_identity.sql',
+      migrationHead: '0136_workflow_draft_graph_v2.sql',
     });
     await proveConcurrencyReadinessTamper(owner, api, worker, dispatcher);
   } finally {

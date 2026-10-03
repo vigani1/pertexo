@@ -163,11 +163,12 @@ describe('additive portable workflow migration', () => {
           '0133_curated_template_origin.sql',
           '0134_workflow_organization.sql',
           '0135_workflow_folders_batch_identity.sql',
+          '0136_workflow_draft_graph_v2.sql',
         ]);
         expect(await migrateDatabase(config)).toEqual([]);
         for (const role of [api, worker])
           expect((await checkDatabaseReadiness(role)).migrationHead).toBe(
-            '0135_workflow_folders_batch_identity.sql',
+            '0136_workflow_draft_graph_v2.sql',
           );
         expect(
           await authoring.getDraft(workspace.id, retained.workflowId, actorId),

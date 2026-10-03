@@ -69,6 +69,55 @@ const connection = {
   updatedAt: '2026-09-14T10:00:00.000Z',
 };
 
+test('explains native draft export is not enabled without reviewing or downloading it', async ({
+  context,
+  page,
+}) => {
+  await addCsrfCookie(context);
+  await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
+  const nativeGraph = {
+    schemaVersion: 2,
+    nodes: [],
+    edges: [],
+    settings: {},
+    callable: {
+      schemaVersion: 1,
+      input: { type: 'object', properties: {}, required: [] },
+      result: { type: 'object', properties: {}, required: [] },
+      resultSelector: { kind: 'literal', value: {} },
+    },
+  };
+  const remote = remoteDraft(nativeGraph);
+  await installEditorRoutes(page, remote);
+  let exports = 0;
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/export`,
+    (route) => {
+      exports += 1;
+      return route.fulfill({ status: 500 });
+    },
+  );
+  await page.goto(editorUrl);
+  await page.getByRole('button', { name: 'Export…', exact: true }).click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Export workflow',
+    exact: true,
+  });
+  await expect(
+    dialog.getByText(
+      'This operation is not enabled for native workflow drafts.',
+    ),
+  ).toBeVisible();
+  await expect(dialog.getByLabel('Complete saved source graph')).toHaveCount(0);
+  await expect(
+    dialog.getByRole('button', { name: 'Download workflow JSON' }),
+  ).toBeDisabled();
+  expect(exports).toBe(0);
+  await page.screenshot({
+    path: 'test-results/native-draft-export-unavailable.png',
+  });
+});
+
 test('reviews exact saved export and explicitly binds a mobile keyboard import with exact recovery', async ({
   context,
   page,

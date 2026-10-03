@@ -9,6 +9,8 @@ import type { EditorFocusTarget } from '../../use-editor-actions';
 import type { InspectorTab } from '../../use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';
 import type { ChannelLookupScope } from './slack-channel-field';
+import { WorkflowCallableInspector } from './workflow-callable-inspector';
+import type { VersionSourceScope } from '../../workflow-version-sources.queries';
 
 function stepName(
   node: Readonly<{ label?: string | undefined; definition: { key: string } }>,
@@ -27,6 +29,7 @@ export function InspectorPanel({
   definitions,
   connections,
   channelLookup,
+  versionSourceScope,
   editable,
   scratchVersion,
   tab,
@@ -39,6 +42,7 @@ export function InspectorPanel({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
+  versionSourceScope?: VersionSourceScope;
   editable: boolean;
   scratchVersion: number;
   tab: InspectorTab;
@@ -68,6 +72,7 @@ export function InspectorPanel({
         definitions={definitions}
         connections={connections}
         channelLookup={channelLookup}
+        {...(versionSourceScope === undefined ? {} : { versionSourceScope })}
         editable={editable}
         tab={tab}
         onTabChange={onTabChange}
@@ -98,11 +103,11 @@ export function InspectorPanel({
       </div>
     );
   return (
-    <div className="p-4">
-      <h2 className="font-heading text-lg font-semibold">No step selected</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Select a step on the canvas to set it up, map its inputs and test it.
-      </p>
-    </div>
+    <WorkflowCallableInspector
+      key={`workflow:${String(scratchVersion)}`}
+      editable={editable}
+      onDiscardScratch={actions.onDiscardScratch}
+      onClose={actions.onClose}
+    />
   );
 }

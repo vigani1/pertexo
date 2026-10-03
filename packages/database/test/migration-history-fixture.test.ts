@@ -17,7 +17,7 @@ describe('retained migration history fixture', () => {
       .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/u.test(name))
       .sort();
     expect(expected).toEqual(current.slice(current.indexOf(expected[0] ?? '')));
-    expect(expected.at(-1)).toBe('0135_workflow_folders_batch_identity.sql');
+    expect(expected.at(-1)).toBe('0136_workflow_draft_graph_v2.sql');
   });
 
   it('returns an exact suffix and rejects a missing start', async () => {
@@ -71,6 +71,7 @@ describe('retained migration history fixture', () => {
       '0133_curated_template_origin.sql',
       '0134_workflow_organization.sql',
       '0135_workflow_folders_batch_identity.sql',
+      '0136_workflow_draft_graph_v2.sql',
     ]);
     await expect(
       expectedMigrationHistoryFrom('9999_missing.sql'),

@@ -269,6 +269,7 @@ export {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   WorkflowPortabilityUnavailableError,
+  WorkflowDraftOperationUnavailableError,
   WorkflowTemplateOriginUnavailableError,
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,

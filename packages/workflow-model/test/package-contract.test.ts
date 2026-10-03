@@ -37,6 +37,8 @@ describe('workflow-model package contract', () => {
   it('keeps the server root facade explicit and stable', async () => {
     const publicEntry = await import('../src/index.js');
     expect(Object.keys(publicEntry).sort()).toEqual([
+      'CALLABLE_TYPE_LIMITS_V1',
+      'CALLABLE_VALUE_JSON_LIMITS_V1',
       'CANONICAL_JSON_MAX_DEPTH',
       'EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1',
       'EMPTY_DEFINITION_CATALOG_V1',
@@ -51,18 +53,24 @@ describe('workflow-model package contract', () => {
       'WORKFLOW_GRAPH_LIMITS',
       'WorkflowGraphContractError',
       'WorkflowSettingsSchemaV1',
+      'callableObjectTypeDescriptorSchemaV1',
+      'callableTypeDescriptorSchemaV1',
+      'callableTypeJsonSchemaV1',
       'canonicalJson',
       'canonicalizeJson',
       'inspectJsonValue',
       'invocationIdentity',
       'parseRetainedWorkflowVersionV1',
+      'parseWorkflowAuthoringGraphDraft',
       'parseWorkflowGraphDraft',
       'parseWorkflowGraphForPublish',
       'resolveJsonPath',
       'resolveValueSource',
       'safeParseWorkflowGraphDraft',
+      'validateCallableValueV1',
       'validateExpression',
       'validateWorkflowGraph',
+      'workflowCallableDraftRepresentationTagV2',
       'workflowCompatibilityReport',
       'workflowControlOutputKind',
       'workflowControlOutputNodeIdsV2',
@@ -116,6 +124,9 @@ describe('workflow-model package contract', () => {
         name === './assert-never' ||
         name === './failure-notification' ||
         name === './graph-contract' ||
+        name === './callable-type-contract' ||
+        name === './workflow-call-contract' ||
+        name === './callable-graph-contract' ||
         name === './portability-contract' ||
         name === './curated-templates' ||
         name === './json-path' ||
