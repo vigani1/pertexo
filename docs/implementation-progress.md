@@ -159,6 +159,26 @@ duplication checks pass; full complexity still fails on the same eight inherited
 findings, with no new lifecycle hotspot or baseline change.
 Native execution/catalog/writers remain OFF; screened qualification remains PAUSED.
 
+The existing worker configuration now parses the three accepted native value-work
+policy fields, freezes one policy and forwards it into coordinator runtime options.
+This is parsing/forwarding only: the runtime does not yet consume it in native
+pipeline composition, and it adds no activation flag or persistent inspector.
+A separate ordinary composition regression now combines the actual execution-value
+codec/writer, real spool files and a cancellation-aware stalled upload with the
+value-work lifetime for an above-inline literal. It verifies precheck before reserve,
+watched cancellation, destroyed/closed upload streams, joined spool cleanup and no
+finalization or hydration authorization. It exposed the same pipeline abort object
+being aggregated twice by upload and cleanup. The cleanup owner now preserves that
+exact signal-linked abort; independent spool cleanup failures remain observable as
+aggregates. These external adapter callbacks still do not prove SQL provenance or
+production handler/final-CAS integration, which remain open.
+The combined ordinary source candidate passes all 1,180 worker tests across 90
+files, worker build/typecheck, narrow lint/format, documentation, architecture and
+duplication. Config-file growth briefly introduced an owned complexity regression;
+moving its unchanged scalar-environment normalization into a focused config helper
+removed that growth. Full complexity still fails only on the original eight
+inherited findings; no baseline or verification timeout is weakened.
+
 ### F02 — run-input cases and version-checked manual start
 
 The manager accepted the product owner's version-checked explicit real-start

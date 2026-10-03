@@ -922,3 +922,29 @@ remain open. Final CAS integration is gated on the actual owner's exact canonica
 delivery, receipt and full-plan fingerprint truth; this module cannot classify an
 accepted result. No persistent SQL is changed or activated. Native remains OFF,
 screened qualification PAUSED, and full F08 incomplete.
+
+### Policy parsing and actual literal preparation composition — ordinary source
+
+The existing worker config parses all three accepted `WORKFLOW_NATIVE_VALUE_*`
+fields into one frozen policy, borrowing the lifetime defaults, and the existing
+provider forwards it into typed coordinator runtime options. Defaults, explicit
+values and invalid bounds/noninteger/nonfinite/blank settings are tested through
+`parseWorkerConfig`. This is parsing/forwarding, not operative native runtime
+composition; no new execution capability, SQL inspector or writer is activated.
+
+The literal preparation regression now reaches the actual value codec/writer and
+real filesystem spool, with a cancellation-aware external object-store adapter.
+Even a literal must precheck before reservation/preparation. Watched cancellation
+aborts a stalled upload, destroys and closes its owned stream, joins external
+cleanup and removes the spool before the scope returns; finalization and accepted
+source authorization never occur. This reproduced a duplicate observation of the
+same pipeline `AbortError`: upload failure and upload-stream cleanup aggregated the
+identical object, hiding its operational classification. The existing cleanup owner
+now preserves that identical error only when its cause is the aborted upload
+signal's exact reason. A mixed cancellation plus independent spool cleanup failure
+still rejects with both errors. The lifetime's integrity-error handling is unchanged.
+
+This closes the ordinary actual codec/writer composition regression, not native
+persistent preparation or handler integration. Real owner projections, source
+authorization, configuration consumption, incremental context and accepted final
+CAS proof remain unfinished. Native remains OFF; screened qualification PAUSED.

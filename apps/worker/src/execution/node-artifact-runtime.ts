@@ -62,6 +62,7 @@ async function completeWithCleanup<T>(
   operation: () => Promise<T>,
   cleanup: () => Promise<void>,
   combinedFailureMessage: string,
+  cancellation?: AbortSignal,
 ): Promise<T> {
   let result: T | undefined;
   let operationFailed = false;
@@ -75,6 +76,17 @@ async function completeWithCleanup<T>(
   try {
     await cleanup();
   } catch (cleanupError) {
+    // Upload and stream cleanup can observe the very same pipeline cancellation.
+    // Preserve that error, but never collapse an independent cleanup failure.
+    if (
+      operationFailed &&
+      cancellation?.aborted === true &&
+      cleanupError === operationError &&
+      operationError instanceof Error &&
+      operationError.name === 'AbortError' &&
+      operationError.cause === cancellation.reason
+    )
+      throw operationError;
     if (operationFailed)
       throw new AggregateError(
         [operationError, cleanupError],
@@ -302,6 +314,7 @@ export function createNodeArtifactRuntimeFactory(
                 }),
               upload.close,
               'Artifact upload and source stream cleanup both failed',
+              writeInput.signal,
             );
             assertNotAborted(writeInput.signal);
             assertUploadedArtifactMatches(uploaded, descriptor);
