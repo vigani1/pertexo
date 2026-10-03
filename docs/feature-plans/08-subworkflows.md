@@ -515,3 +515,14 @@ is not readiness or authorization to install. New writers remain OFF, and accept
 native continuation needs a currently permitted compatible signer rather than a
 historical token dependency under the accepted contract. This records a decision, not
 completion of any F08 acceptance row.
+
+The initial ADR066 private byte-framing codec distinguishes absence/empty fields,
+uses ordered count/tag/uint32-BE-length/exact-UTF8 framing, rejects PostgreSQL
+unrepresentable text and checks bounded aggregate allocation. It has no key,
+signer, verifier, database access or public package export. Eleven focused tests
+and an owned network-none/no-port PG18.6 fixture qualify 48 Node/PostgreSQL framing
+and standard HMAC differential vectors, including changed-MAC digest rejection.
+Fixture pgcrypto was installed only in its private disposable schema and removed
+with the database; no serving grant or persistent key was created. This does not
+qualify owner-specific signed field lists, timing resistance, raw-writer fences,
+readiness, rotation, early seals or full F08 behavior. Native writers remain OFF.
