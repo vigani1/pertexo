@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
+  nativeCallGraph,
+  workflowCallPin,
+} from '../test/support/workflow-call-fixtures';
+import {
   addCsrfCookie,
   editorUrl,
   installEditorRoutes,
@@ -105,4 +109,46 @@ test('keeps callable authoring accessible and bounded at phone width', async ({
   });
   await panel.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(panel).toBeHidden();
+});
+
+test('edits and reloads an exact Call pin while native execution stays unavailable', async ({
+  context,
+  page,
+}, testInfo) => {
+  const graph = nativeCallGraph();
+  const remote = remoteDraft({ ...graph, settings: { ...graph.settings } });
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remote);
+  await page.goto(editorUrl);
+  await page.getByTestId('rf__node-call').click();
+  await expect(
+    page.getByLabel('Child workflow ID', { exact: true }),
+  ).toHaveValue(workflowCallPin.workflowId);
+  const version = page.getByLabel('Pinned version ID', { exact: true });
+  await version.fill('latest');
+  await page.getByLabel('Child workflow ID', { exact: true }).click();
+  await expect(version).toHaveAttribute('aria-invalid', 'true');
+  await expect(
+    page.getByRole('button', { name: 'Edit as JSON' }),
+  ).toBeDisabled();
+  expect(remote.graph.nodes[0]).toMatchObject({ config: workflowCallPin });
+  const nextId = '33333333-3333-4333-8333-333333333333';
+  await version.fill(nextId);
+  await expect(page.getByText(/^Saved/u)).toBeVisible();
+  expect(remote.graph.nodes[0]).toMatchObject({
+    config: { ...workflowCallPin, versionId: nextId },
+    inputMappings: { name: { kind: 'run_input', path: '$.name' } },
+  });
+  await page.reload();
+  await page.getByTestId('rf__node-call').click();
+  await expect(
+    page.getByLabel('Pinned version ID', { exact: true }),
+  ).toHaveValue(nextId);
+  await page.screenshot({ path: testInfo.outputPath('call-pin-desktop.png') });
+  await page.getByRole('tab', { name: 'Test', exact: true }).click();
+  await expect(
+    page.getByText('Native step testing and execution are not enabled.'),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Publish/u })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Run/u })).toHaveCount(0);
 });

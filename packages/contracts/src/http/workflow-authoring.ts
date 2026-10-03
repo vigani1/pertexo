@@ -80,6 +80,11 @@ export const workflowAuthoringGraphSchema = z.union([
 // Browser-safe graph bounds, shared with the structural schema and admission.
 export { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model/graph-contract';
 export type WorkflowGraphContract = WorkflowGraph | WorkflowCallableGraphV2;
+/** Browser authoring uses the same exact pin format as the native Call node. */
+export {
+  workflowCallPinSchemaV1,
+  type WorkflowCallPinV1,
+} from '@pertexo/workflow-model/workflow-call-contract';
 
 export const workflowCreateRequestSchema = z
   .object({ name: workflowNameSchema })

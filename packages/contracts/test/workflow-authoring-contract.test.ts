@@ -12,6 +12,7 @@ import {
   workflowRevisionConflictProblemSchema,
   workflowVersionsQuerySchema,
   workflowValidationIssueSchema,
+  workflowCallPinSchemaV1,
 } from '../src/http/workflow-authoring.js';
 import {
   workflowAuthoringClientContract,
@@ -19,6 +20,25 @@ import {
 } from '../src/workflow-authoring.js';
 
 describe('workflow-authoring public contracts', () => {
+  it('exposes exact native Call pin admission through the browser authoring facade', () => {
+    const pin = {
+      workflowId: '11111111-1111-4111-8111-111111111111',
+      versionId: '22222222-2222-4222-8222-222222222222',
+      checksum: `wf:v3:sha256:${'a'.repeat(64)}`,
+      callableContractIdentity: `callable:v1:sha256:${'b'.repeat(64)}`,
+    };
+    expect(workflowCallPinSchemaV1.parse(pin)).toEqual(pin);
+    expect(
+      workflowCallPinSchemaV1.safeParse({ ...pin, versionId: 'latest' })
+        .success,
+    ).toBe(false);
+    expect(
+      workflowCallPinSchemaV1.safeParse({
+        ...pin,
+        checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+      }).success,
+    ).toBe(false);
+  });
   it('transports native graphs only under coherent explicit draft/version formats', () => {
     const graph = {
       schemaVersion: 2,

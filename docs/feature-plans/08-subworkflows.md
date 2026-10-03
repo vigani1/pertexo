@@ -602,3 +602,23 @@ mobile screenshots. React Doctor changed-scope scan: 100/100, no diagnostics.
 This is ordinary draft-authoring UI qualification, not full F08 or paused security
 gate closure. Exact pinned-Call configuration and remaining runtime/API readiness
 owners are still unfinished.
+
+Existing native Call nodes now have typed fields for the exact workflow/version
+UUIDs, native version checksum and callable-contract identity. The browser
+authoring facade reexports the existing shared pin schema; no new checksum,
+identity generator or target-eligibility authority exists in the UI. Valid complete
+pin formats use the same graph transaction/history/conditional save owner and
+preserve input mappings. Unsupported versions, non-string configuration or unknown
+properties stay losslessly editable as JSON. Unfinished pin text guards navigation
+and mode changes; read-only actors cannot change it. The dedicated Call setup owner
+keeps the catalog setup flow unchanged. An initial Doctor complexity warning was
+resolved by that ownership split, not suppression. Current local qualification:
+140 web unit files / 1,130 tests, 31 contract files / 229 tests, contracts build/
+typecheck and generated-artifact check, web build/typecheck/lint, 19 architecture
+checks and ten Chromium editor journeys, including pin save/reload with native
+commands unavailable; the pin screenshot was inspected. Doctor changed scope is
+again 100/100 with no diagnostics. Existing Vite chunk and mocked-browser proxy
+warnings, and the existing Redocly identity-workspace response warning, remain
+visible. This is configuration-only qualification. Native target discovery/explicit
+upgrade, publication/root authorization, artifact/readiness and all paused security
+qualification remain open; catalog/writers stay OFF.
