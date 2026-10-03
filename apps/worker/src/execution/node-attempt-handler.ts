@@ -1,8 +1,5 @@
-import { createHash } from 'node:crypto';
 import {
   canonicalOutboxPayloadChecksum,
-  serializeWorkflowExecutionJsonValueV3,
-  NodeAttemptOutputInvalidError,
   type NodeAttemptInputs,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
@@ -24,7 +21,12 @@ import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { classifyProcessError } from '@pertexo/observability/process-error-classification';
-import { waitForCancelableDelay } from '../runtime/abortable-delay.js';
+import {
+  startNodeAttemptHeartbeat,
+  type NodeAttemptHeartbeat,
+} from './node-attempt-heartbeat.js';
+import { recoverNodeAttemptCallInput } from './node-attempt-call-input-recovery.js';
+import { persistPreparedNodeAttemptOutcome } from './node-attempt-outcome-completion.js';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import {
   createNodeExecutionEnvironment,
@@ -129,71 +131,6 @@ async function completeControlOutcome(
     signal,
   });
   return completionResult(dependencies, lease, completed.kind);
-}
-
-type HeartbeatFailure =
-  Readonly<{ failed: false }> | Readonly<{ error: unknown; failed: true }>;
-
-type NodeAttemptHeartbeat = Readonly<{
-  executionSignal: AbortSignal;
-  durableAbortReason(): 'canceled' | 'timed_out' | undefined;
-  failure(): HeartbeatFailure;
-  stop(): Promise<void>;
-}>;
-
-function startNodeAttemptHeartbeat(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  contextSignal: AbortSignal,
-): NodeAttemptHeartbeat {
-  const executionAbort = new AbortController();
-  const heartbeatStop = new AbortController();
-  const heartbeatSignal = AbortSignal.any([
-    contextSignal,
-    heartbeatStop.signal,
-  ]);
-  const executionSignal = AbortSignal.any([
-    contextSignal,
-    executionAbort.signal,
-  ]);
-  let abortReason: 'canceled' | 'timed_out' | undefined;
-  let heartbeatFailure: HeartbeatFailure = Object.freeze({ failed: false });
-  const heartbeat = (async (): Promise<void> => {
-    try {
-      while (!heartbeatSignal.aborted) {
-        await waitForCancelableDelay(
-          dependencies.heartbeatIntervalMillis,
-          heartbeatSignal,
-        );
-        const result = await dependencies.runStore.heartbeat({
-          lease,
-          leaseDurationSeconds: dependencies.leaseDurationSeconds,
-          signal: heartbeatSignal,
-        });
-        if (result.abortRequested) {
-          if (result.abortReason === undefined)
-            throw new NodeAttemptHandlerStateError('control_reason_missing');
-          abortReason = result.abortReason;
-          executionAbort.abort();
-          return;
-        }
-      }
-    } catch (error: unknown) {
-      if (!heartbeatStop.signal.aborted && !contextSignal.aborted) {
-        heartbeatFailure = Object.freeze({ error, failed: true });
-        executionAbort.abort();
-      }
-    }
-  })();
-  return Object.freeze({
-    executionSignal,
-    durableAbortReason: () => abortReason,
-    failure: () => heartbeatFailure,
-    stop: async (): Promise<void> => {
-      heartbeatStop.abort();
-      await heartbeat;
-    },
-  });
 }
 
 /**
@@ -344,7 +281,7 @@ async function executePreparedNodeAttempt(
     environment,
   );
   if (interruption !== undefined) return interruption;
-  return persistPreparedOutcome(
+  return persistPreparedNodeAttemptOutcome(
     dependencies,
     lease,
     prepared,
@@ -381,63 +318,6 @@ async function resolveHeartbeatInterruption(
     : new Error('Node attempt heartbeat failed', {
         cause: heartbeatFailure.error,
       });
-}
-
-async function persistPreparedOutcome(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  prepared: PreparedNodeAttempt,
-  outcome: NodeAttemptOutcome,
-  traceContext: Readonly<{ traceparent?: string }>,
-  contextSignal: AbortSignal,
-  environment: NodeExecutionEnvironment,
-): Promise<NodeAttemptHandlerResult> {
-  if (prepared.inputPersistence === 'workflow_call_declaration') {
-    const complete = dependencies.runStore.completeCallDeclaration?.bind(
-      dependencies.runStore,
-    );
-    if (
-      complete === undefined ||
-      prepared.suspensionDurationSeconds !== undefined
-    )
-      throw new TypeError('Native Call input alias completion is unavailable');
-    const completed = await complete({
-      lease,
-      ...traceContext,
-      signal: contextSignal,
-    });
-    return completionResult(dependencies, lease, completed.kind);
-  }
-  try {
-    const completed = await dependencies.runStore.complete({
-      ...connectionHealthCompletionFields(dependencies, environment),
-      lease,
-      outcome:
-        prepared.suspensionDurationSeconds === undefined
-          ? { status: 'succeeded', output: outcome.output }
-          : {
-              status: 'suspended',
-              output: outcome.output,
-              durationSeconds: prepared.suspensionDurationSeconds,
-            },
-      ...traceContext,
-      signal: contextSignal,
-    });
-    return await completionResult(dependencies, lease, completed.kind);
-  } catch (error: unknown) {
-    if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
-    const completed = await dependencies.runStore.complete({
-      ...connectionHealthCompletionFields(dependencies, environment),
-      lease,
-      outcome: {
-        status: 'failed',
-        safeErrorCode: 'execution.output_invalid',
-      },
-      ...traceContext,
-      signal: contextSignal,
-    });
-    return completionResult(dependencies, lease, completed.kind);
-  }
 }
 
 export function createNodeAttemptHandler(
@@ -502,42 +382,14 @@ export function createNodeAttemptHandler(
       });
       let recordedWorkflowCallInput: Readonly<{ value: unknown }> | undefined;
       if (prepared.inputPersistence === 'workflow_call_declaration') {
-        const read = dependencies.runStore.readCallDeclarationInput?.bind(
-          dependencies.runStore,
-        );
-        const hydrate = dependencies.callDeclarationValues?.hydrate;
-        if (read === undefined || hydrate === undefined)
-          throw new TypeError('Native Call snapshot recovery is unavailable');
-        const snapshot = await read({
+        recordedWorkflowCallInput = await recoverNodeAttemptCallInput({
           lease: claimed.lease,
           signal: context.signal,
+          runStore: dependencies.runStore,
+          ...(dependencies.callDeclarationValues === undefined
+            ? {}
+            : { values: dependencies.callDeclarationValues }),
         });
-        if (snapshot !== undefined) {
-          const value = await hydrate({
-            owner: { kind: 'attempt', lease: claimed.lease },
-            reference: snapshot.reference,
-            signal: context.signal,
-          });
-          const integrityBytes =
-            snapshot.reference.kind === 'inline'
-              ? snapshot.serializedValue
-              : serializeWorkflowExecutionJsonValueV3(value);
-          if (integrityBytes === undefined)
-            throw new TypeError('Recovered Call inline bytes are missing');
-          if (
-            Buffer.byteLength(integrityBytes, 'utf8') !== snapshot.byteLength ||
-            createHash('sha256').update(integrityBytes).digest('hex') !==
-              snapshot.sha256 ||
-            (snapshot.reference.kind === 'inline' &&
-              serializeWorkflowExecutionJsonValueV3(
-                JSON.parse(integrityBytes) as unknown,
-              ) !== serializeWorkflowExecutionJsonValueV3(value))
-          )
-            throw new TypeError(
-              'Recovered Call snapshot metadata does not match',
-            );
-          recordedWorkflowCallInput = { value };
-        }
       }
       const inputs = await dependencies.runStore.loadInputs({
         lease: claimed.lease,
