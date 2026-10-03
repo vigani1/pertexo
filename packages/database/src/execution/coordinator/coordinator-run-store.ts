@@ -1,5 +1,6 @@
 import { acquireDatabasePool } from '../../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
@@ -34,6 +35,7 @@ export type {
 };
 export type CoordinatorRunStoreOptions = Readonly<{
   workflowCallAdmission?: CoordinatorCallAdmissionOptions;
+  callableResultEvaluator?: ExpressionEvaluator;
   runTimeoutFailureContextEnabled?: boolean;
   /** ADR 055: record terminal failures for the workspace inbox. */
   workspaceInboxProducerEnabled?: boolean;
@@ -64,6 +66,9 @@ export function createCoordinatorRunStore(
         ...(options.workflowCallAdmission === undefined
           ? {}
           : { workflowCallAdmission: options.workflowCallAdmission }),
+        ...(options.callableResultEvaluator === undefined
+          ? {}
+          : { callableResultEvaluator: options.callableResultEvaluator }),
       }),
     close: () => lease.close(),
   });

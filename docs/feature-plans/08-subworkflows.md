@@ -415,3 +415,17 @@ retention, API/editor and full qualification remain unfinished.
 
 Existing foundations are not completion of F08. Mark genuinely inapplicable rows
 with a reason rather than fabricating work.
+
+The inline result milestone's fixed-point review identified selected-result
+authentication and duplicated snapshot verification gaps. Coordinator commit now
+recomputes the pinned result through the existing mapping/expression and callable
+type validators using actual retained input/output owners before commit locks;
+it requires the exact selected source list and value. The draft protected writer
+also rejects direct literal substitutions and unexpected literal sources.
+Child-result reads reuse the existing immutable snapshot verifier. Owned frozen
+literal, run-input, node-output, expression and parent-Call-result variants passed
+changed-value, wrong-type, undeclared-field, forged/missing-source and omitted
+result rollback checks. These are narrow repair evidence, not serving-role or
+full-feature qualification; nonliteral evaluation remains owned by the runtime's
+existing restricted evaluator and must stay inside the authenticated coordinator
+path. The unregistered writer remains OFF and all earlier carveouts remain.

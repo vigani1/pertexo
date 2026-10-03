@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 
 import {
   CoordinatorPlanInvalidError,
@@ -41,6 +42,7 @@ import {
 } from './coordinator-call-admission.js';
 import { persistCoordinatorCallTransitions } from './coordinator-call-transitions.js';
 import { persistCoordinatorCallResult } from './coordinator-call-result.js';
+import { authenticateCoordinatorCallResult } from './coordinator-call-result-authentication.js';
 
 class NativeAdmissionPassAbandoned extends Error {
   public constructor(readonly result: CommitAdvancePlanResult) {
@@ -56,6 +58,7 @@ export async function commitCoordinatorAdvancePlan(
     workspaceInboxProducerEnabled: boolean;
     workflowTriggerOutcomesEnabled: boolean;
     workflowCallAdmission?: CoordinatorCallAdmissionOptions;
+    callableResultEvaluator?: ExpressionEvaluator;
   }>,
 ): Promise<CommitAdvancePlanResult> {
   if (!(input.signal instanceof AbortSignal))
@@ -94,6 +97,16 @@ export async function commitCoordinatorAdvancePlan(
       workspaceId,
       input.signal,
       async (client) => {
+        await authenticateCoordinatorCallResult(client, {
+          workspaceId,
+          runId,
+          workflowVersionId,
+          plan,
+          signal: input.signal,
+          ...(options.callableResultEvaluator === undefined
+            ? {}
+            : { expressionEvaluator: options.callableResultEvaluator }),
+        });
         const callAdmission = await prepareCoordinatorCallAdmission(
           client,
           {

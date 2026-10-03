@@ -1,10 +1,5 @@
 import type { PoolClient } from 'pg';
-import { createHash } from 'node:crypto';
-import {
-  parseStoredExecutionValueV1,
-  serializeStoredExecutionJsonValue,
-  serializeWorkflowExecutionJsonValueV3,
-} from '../stored-execution-value.js';
+import { parseWorkflowExecutionValueSnapshot } from '../node-attempts/node-attempt-call-input-record.js';
 
 /** Read immutable accepted-child result truth without child/ancestor row locks. */
 export async function readWorkflowCallResultReference(
@@ -32,28 +27,15 @@ export async function readWorkflowCallResultReference(
     Buffer.byteLength(row.reference_json, 'utf8') > 4_194_304
   )
     throw new TypeError('Workflow Call result provenance is missing');
-  const reference = parseStoredExecutionValueV1(
-    JSON.parse(row.reference_json) as unknown,
-  );
-  if (reference.kind === 'inline') {
-    const bytes = row.serialized_value;
-    if (
-      bytes === null ||
-      Buffer.byteLength(bytes, 'utf8') !== row.byte_length ||
-      Buffer.byteLength(
-        `{"kind":"inline","schemaVersion":1,"value":${bytes}}`,
-        'utf8',
-      ) > 262_144 ||
-      createHash('sha256').update(bytes).digest('hex') !== row.value_checksum ||
-      serializeWorkflowExecutionJsonValueV3(JSON.parse(bytes) as unknown) !==
-        serializeStoredExecutionJsonValue(reference.value)
-    )
-      throw new TypeError('Workflow Call result bytes do not agree');
-  } else {
-    if (row.serialized_value !== null)
-      throw new TypeError(
-        'Workflow Call artifact result contains inline bytes',
-      );
+  const { reference } = parseWorkflowExecutionValueSnapshot({
+    reference: JSON.parse(row.reference_json) as unknown,
+    sha256: row.value_checksum,
+    byteLength: row.byte_length,
+    ...(row.serialized_value === null
+      ? {}
+      : { serializedValue: row.serialized_value }),
+  });
+  if (reference.kind === 'artifact') {
     const available = await client.query(
       `select id from app.artifacts where workspace_id=$1 and id=$2 and status='available' and deleted_at is null`,
       [input.workspaceId, reference.artifactId],
