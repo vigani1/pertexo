@@ -622,3 +622,19 @@ warnings, and the existing Redocly identity-workspace response warning, remain
 visible. This is configuration-only qualification. Native target discovery/explicit
 upgrade, publication/root authorization, artifact/readiness and all paused security
 qualification remain open; catalog/writers stay OFF.
+
+Callable result authoring now offers a root-step shortcut alongside the existing
+lossless source JSON field. Choosing a non-disabled root step sets its whole-output
+`$` source through the same guarded field, graph history and conditional draft
+save. It does not traverse loop bodies, choose a default, replace a stored
+outside-root reference automatically or overwrite unfinished source text (including
+before blur). Read-only actors cannot select a replacement. The UI still explains
+that runtime requires exactly one successful invocation; this shortcut does not
+establish runtime uniqueness or executable target eligibility. Local qualification:
+141 web unit files / 1,135 tests, web build/typecheck/lint, 19 architecture checks,
+and three native-editor Chromium journeys covering desktop save/reload and
+phone-width selection. The desktop shortcut screenshot was inspected. React
+Doctor scanned 39 changed files: 100/100, no diagnostics. One initial unit failure
+queried a transitioning popup synchronously; the test now awaits the accessible
+option, and the complete suite passes. Native catalog/writers remain OFF; full
+F08 and paused security qualification are still incomplete.

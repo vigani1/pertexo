@@ -35,6 +35,14 @@ describe('workflow callable inspector', { timeout: 30_000 }, () => {
       screen.getByRole('button', { name: 'Add callable contract' }),
     );
     const panel = screen.getByRole('region', { name: 'Callable contract' });
+    await user.click(within(panel).getByLabelText('Result step shortcut'));
+    await user.click(await screen.findByRole('option', { name: 'Target' }));
+    expect(
+      JSON.parse(
+        within(panel).getByLabelText<HTMLTextAreaElement>('Result source')
+          .value,
+      ),
+    ).toEqual({ kind: 'node_output', nodeId: 'target', path: '$' });
     fireEvent.change(within(panel).getByLabelText('Input type'), {
       target: {
         value:
@@ -86,6 +94,7 @@ describe('workflow callable inspector', { timeout: 30_000 }, () => {
     const source = within(panel).getByLabelText('Result source');
     fireEvent.change(input, { target: { value: '{' } });
     fireEvent.change(source, { target: { value: '{' } });
+    expect(within(panel).getByLabelText('Result step shortcut')).toBeDisabled();
     fireEvent.change(input, {
       target: { value: '{"type":"object","properties":{},"required":[]}' },
     });

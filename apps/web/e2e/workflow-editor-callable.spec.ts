@@ -28,16 +28,15 @@ test('authors, saves and reloads a callable contract without enabling native com
     '{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}';
   await panel.getByLabel('Input type', { exact: true }).fill(descriptor);
   await panel.getByLabel('Result type', { exact: true }).fill(descriptor);
-  await panel
-    .getByLabel('Result source', { exact: true })
-    .fill('{"kind":"run_input","path":"$"}');
+  await panel.getByLabel('Result step shortcut', { exact: true }).click();
+  await page.getByRole('option', { name: 'Target', exact: true }).click();
   await expect(page.getByText(/^Saved/u)).toBeVisible();
   expect(remote.graph).toMatchObject({
     schemaVersion: 2,
     callable: {
       input: { required: ['name'] },
       result: { required: ['name'] },
-      resultSelector: { kind: 'run_input', path: '$' },
+      resultSelector: { kind: 'node_output', nodeId: 'target', path: '$' },
     },
   });
   expect(remote.graph.nodes).toHaveLength(2);
@@ -56,8 +55,11 @@ test('authors, saves and reloads a callable contract without enabling native com
     JSON.parse(
       await panel.getByLabel('Result source', { exact: true }).inputValue(),
     ),
-  ).toEqual({ kind: 'run_input', path: '$' });
+  ).toEqual({ kind: 'node_output', nodeId: 'target', path: '$' });
   await panel.getByLabel('Result source', { exact: true }).fill('{');
+  await expect(
+    panel.getByLabel('Result step shortcut', { exact: true }),
+  ).toBeDisabled();
   await panel.getByLabel('Input type', { exact: true }).click();
   await expect(
     panel.getByLabel('Result source', { exact: true }),
@@ -68,6 +70,12 @@ test('authors, saves and reloads a callable contract without enabling native com
   ).toBeVisible();
   await page.getByRole('button', { name: 'Stay', exact: true }).click();
   await panel.getByRole('button', { name: 'Discard unapplied text' }).click();
+  await panel
+    .getByLabel('Result step shortcut', { exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('result-step-shortcut-desktop.png'),
+  });
   await page.screenshot({
     path: testInfo.outputPath('callable-contract-desktop.png'),
   });
@@ -95,6 +103,8 @@ test('keeps callable authoring accessible and bounded at phone width', async ({
   await page.getByRole('button', { name: 'Add callable contract' }).click();
   const panel = page.getByRole('region', { name: 'Callable contract' });
   await expect(panel.getByLabel('Input type', { exact: true })).toBeVisible();
+  await panel.getByLabel('Result step shortcut', { exact: true }).click();
+  await page.getByRole('option', { name: 'Target', exact: true }).click();
   await panel
     .getByLabel('Result source', { exact: true })
     .fill('{"kind":"literal","value":{}}');
