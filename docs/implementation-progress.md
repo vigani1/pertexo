@@ -26,6 +26,8 @@ No node or preview artifact capability receives this framework-only dependency.
       object-store adapter and persistence callbacks (not real SQL authority).
 - [ ] Implement and qualify native persistent artifact reservation/provenance,
       source-reference hydration, coordinator result integration and retention.
+- [x] Accept the concrete ADR065 native artifact owner amendment and contract
+      delta through primary and independent design review before persistent code.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
@@ -34,6 +36,16 @@ documentation checks pass. All 1,048 worker unit tests across 85 files pass. The
 evidence. Native execution remains OFF; security qualification remains
 platform-screened and PAUSED. This does not qualify durable artifact ownership,
 real-service recovery, retention or full F08 completion.
+
+Primary selected non-authoritative artifact candidates with atomic association
+to accepted native provenance, distinct value slots and existing retention
+extensions on 2026-10-03. Primary and independent Spec/Standards review closed
+premature accepted-parent creation and abandoned-candidate family pinning. The
+[ADR065 amendment](./adr/065-durable-parent-child-workflow-calls.md#native-artifact-ownership-amendment--accepted-2026-10-03)
+and contract delta are accepted implementation guidance. Existing owners must
+gain artifact-aware exact comparison/projection while retaining accepted-fact,
+receipt, completion/current-authority and inline invariants, not weakened seals.
+Persistent implementation and executable qualification remain unfinished.
 
 ### F02 — run-input cases and version-checked manual start
 

@@ -209,6 +209,281 @@ Exact bytes stay within existing inline 256 KiB eligibility and
 wrapper/backstop policies, with existing provenance retention/hold/purge and no
 duplicate reservation or hidden unbounded payload.
 
+## Native artifact owner contract delta — accepted, 2026-10-03
+
+**Accepted by primary after independent Spec/Standards closure.**
+This is design acceptance, not executable qualification. It extends
+[ADR065](../adr/065-durable-parent-child-workflow-calls.md#native-artifact-ownership-amendment--accepted-2026-10-03).
+It does not supersede accepted inline bytes, native semantic verification or
+screened security gates. The quarantined historical SQL remains untouched,
+unregistered and unexecuted; future native migration work is separate from the
+registered ordinary draft-storage migration0136.
+
+### Relation and value identity
+
+Add `workflow_execution_value_artifacts` under the existing artifact owner.
+Before acceptance it records a **non-authoritative candidate**; after atomic
+acceptance its nullable provenance association makes it a child of the existing
+accepted value fact. No parent provenance is created by reserve or finalize.
+It is not a new blob/quota/history owner:
+
+| Field | Type and invariant |
+| --- | --- |
+| `workspace_id` | UUID, part of every key and foreign key |
+| `candidate_id` | UUID from the existing persisted ID owner, stable across exact retries |
+| `value_slot` | Exactly `call_input`, `physical_output` or `run_result` |
+| `run_id`, `workflow_version_id` | Immutable UUID producer run/version identities |
+| `attempt_id` | Nullable UUID; required for both attempt slots, absent for `run_result` |
+| `creator_worker_id`, `creator_fence_token` | Attempt slots only: bounded existing worker identity and positive safe-integer creation fence; historical, not current authorization |
+| `producer_outbox_event_id`, `producer_payload_checksum` | Exact canonical attempt/coordinator delivery identity; UUID and lowercase SHA256 hex `char(64)` |
+| `provenance_id` | Nullable UUID, associated once only after the accepted parent exists in the actual acceptance transaction |
+| `artifact_id` | UUID, exact existing artifact reserved for this candidate |
+| `coordinator_expected_revision` | Nullable nonnegative integer; required only for `run_result`, pre-CAS revision |
+| `coordinator_result_revision` | Nullable integer; required only for `run_result`, exactly pre-CAS revision plus one |
+| `coordinator_result_identity` | Nullable lowercase SHA256 hex `char(64)`; required only for `run_result`, immutable result-bearing transition binding |
+| `abandoned_at` | Nullable PostgreSQL timestamp, stamped once only for a definitively unaccepted candidate; mutually exclusive with non-null `provenance_id` |
+| `created_at` | Immutable PostgreSQL timestamp |
+
+Primary key is `(workspace_id, candidate_id)`. Unique
+`(workspace_id, attempt_id, value_slot)` for attempt slots, and unique
+`(workspace_id, run_id, coordinator_result_revision)` for `run_result`, enforce
+one candidate per producer slot, **not** a new candidate per different checksum.
+Unique `(workspace_id, artifact_id)` gives one owning candidate per artifact;
+unique `(workspace_id, provenance_id)` where non-null gives one artifact
+association per accepted value. Exact retries compare the same slot/run/version,
+delivery and byte identity (checksum/length/media type from immutable artifact
+metadata); mismatch is conflict, never another insert or quota charge.
+
+Restrictive composite foreign keys bind candidate run, version and nullable
+attempt to their existing same-workspace rows, and `(workspace_id, artifact_id)`
+to existing artifacts from first reservation. Add a parent unique key
+`(workspace_id, id, artifact_id)` for the restrictive, nullable `MATCH SIMPLE`
+foreign key `(workspace_id, provenance_id, artifact_id)`: null provenance permits
+only candidate storage; once non-null it must name the exact accepted parent and
+artifact. Acceptance independently checks matching run/version/value-kind and
+producer slot, then inserts the accepted parent and associates the candidate in
+one transaction. No placeholder parent, altered seal or cascade is allowed.
+Delivery columns retain historical identities without adding a new outbox-retention
+pin; current command authority is independently resolved through existing owners.
+Preview constraints remain untouched. Artifact metadata remains byte/storage/media/
+lifecycle/finite-expiry authority; candidate rows contain no payload, expiry or
+quota counters. Many accepted consumers may reference one original accepted value;
+consumption does not create another owning candidate or provenance.
+
+The existing provenance identity remains `(workspace_id, attempt_id, value_kind)`
+for `attempt_input`/`attempt_output` and `(workspace_id, run_id,
+coordinator_revision)` for `run_result`, with the latter revision the target
+post-CAS revision. Require explicit command slots: `call_input` maps only to
+`attempt_input` at an actual pinned Call declaration; `physical_output` maps only
+to `attempt_output` at an ordinary physical node; `run_result` is coordinator-only.
+Never infer a slot from bytes or a generic `attempt` owner. Call physical success
+continues to alias its committed input, without a `physical_output` reservation.
+The current codec's generic attempt owner must gain this explicit slot before
+native persistent callbacks are wired; retained runtime interfaces are unchanged.
+
+An unaccepted candidate is not input recording, physical completion or terminal
+result. Reserve/finalize never inserts accepted provenance, so existing deferred
+physical completion and terminal-result/receipt invariants retain their meaning.
+Existing seals/readers must gain artifact-aware comparison/projection of the
+exact accepted parent and associated candidate while preserving accepted-fact,
+receipt, completion and current-authority checks and existing inline checks.
+No provisional-parent exception, candidate-state filter or weakened seal. Only
+the actual slot-specific record/completion/post-CAS receipt
+transaction may insert that accepted fact and associate the candidate atomically.
+Inline producers create accepted inline provenance through their unchanged owner,
+without candidate rows. Artifact availability or a candidate alone cannot establish
+accepted input/result or authorize source consumption. Existing semantic verification
+requirements remain required and unqualified by this design.
+
+### Commands, transactions and replay
+
+Extend the existing execution-value owner behind the codec's `reserve`,
+`assertReserved`, `finalize` and `authorize` seams; these are not public commands
+and do not grant serving table writes. A reservation request names explicit slot,
+actual attempt lease/delivery or coordinator delivery/revisions, admitted bounded
+byte length/checksum/media type and (for result) its immutable result identity.
+It returns the same artifact metadata plus availability. It never trusts metadata
+or an artifact ID as execution authority.
+
+The native producer owner is a closed union: `{ kind: 'attempt', slot:
+'call_input' | 'physical_output', lease }` or `{ kind: 'run_result', workspaceId,
+runId, workflowVersionId, delivery, expectedRevision, resultRevision,
+resultIdentity }`. Every command revalidates that actual slot/owner; passing a
+coordinator owner to an attempt slot is invalid. The result identity V1 hashes the
+existing persisted native encoding of the bounded record containing workspace,
+run/version, literal slot `run_result`, pre/post revisions, exact delivery
+outbox/checksum, immutable declared result selector, existing ordered selected
+source descriptors, and value checksum/byte length/media type. No payload copy,
+trace context, retry clock or full plan is stored in this binding. Source descriptors
+retain their existing scoped physical/logical reference grammar and are limited
+to 1,000; the whole identity record must fit the existing 1 MiB encoder bound.
+The checksum is only an identity comparison: SQL must establish the actual owner,
+revisions, declaration and source facts independently, not authenticate a supplied
+label or implement another JavaScript canonical encoder.
+
+- Attempt reservation/recheck uses the actual current lease, worker, fence,
+  canonical delivery, run/version/node/invocation and allowed slot, following the
+  established Call/physical owner proof. One exact owner/slot/byte identity reuses
+  its existing reservation; disagreement is operational conflict, not a new value.
+  Reclaim proves the new current lease independently and retains historical
+  candidate creation proof and, only where already accepted, original provenance.
+  A committed input is read/hydrated, never mapped, prepared or charged
+  again; physical completion still requires its current completion authority.
+- Coordinator reservation binds actual advance delivery, `plan.expectedRevision`
+  and target `plan.checkpoint.revision`, plus the result selector's exact immutable
+  source identities and byte identity. `coordinator_result_identity` is a content
+  binding derived by the existing transition owner, not an authentication label:
+  same delivery/revisions/sources/bytes produce the same binding despite a later
+  preparation clock. It must not replace the existing full transition fingerprint
+  or independent source/selector verification at final commit. Store the actual
+  full plan fingerprint only with its existing checkpoint/receipt owner.
+- First reservation creates existing pending artifact metadata and its
+  non-authoritative candidate atomically on one owner client, **no parent provenance**.
+  Reuse performs
+  no insert/charge. `workspaceTransactionFromClient` adapts that already scoped
+  client only after tenant/native proof; no nested transaction or grant shortcut.
+  The existing artifact insert trigger remains the sole capacity charge owner.
+- Complete the short preparation transaction before spool/upload network I/O.
+  Use the existing reserved writer/storage key, byte policy and dual-region store;
+  no held execution/workspace row locks across upload. Recheck the same live proof,
+  metadata and finite expiry in a new short finalization transaction, delegating
+  `finalizeArtifactUpload` on that client without creating another reservation.
+- Acceptance uses the existing input record or physical completion transaction;
+  coordinator acceptance uses the existing authenticated transition, actual CAS,
+  terminal result record and receipt transaction. Insert accepted parent provenance
+  only there, atomically setting candidate `provenance_id` to that exact fact.
+  Both must roll back if the existing deferred seal/receipt or any acceptance
+  obligation fails. Extend existing owners with artifact-aware exact comparison,
+  not seal deferral, bypass or provisional accepted-parent reinterpretation.
+  Coordinator **pre-CAS** revision never becomes the recorded **post-CAS** result
+  revision, and a prepared reference does not authorize a stale transition.
+- Upload failure/cancellation leaves the exact pending candidate for existing
+  retention. Upload succeeded but finalization/commit response is lost: inspect
+  existing owner truth before retry; available reservation reuse does not upload
+  or recharge. A committed value/result wins even if its creation lease is old.
+  Stale/failed CAS never stamps a result or forces an obsolete plan. A changed
+  result identity cannot overwrite/reuse the candidate; retire an uncommitted
+  candidate only after the existing owner definitively resolves that its value
+  was not accepted and its old transition can no longer commit. That owner may
+  stamp `abandoned_at` only while `provenance_id` is null and shorten the existing artifact expiry, never extend it,
+  so the existing bounded retention runner can remove its bytes and candidate
+  metadata before another candidate for that still-uncommitted slot is admitted.
+  Definitive abandonment removes producer, nonterminal-family and replay protection
+  for this unaccepted candidate. Only actual independently accepted consumers or
+  legal hold can still protect its bytes; do not manufacture a consumer/parent fact
+  to keep it alive. While physical cleanup/metadata removal is outstanding, a
+  changed candidate request returns explicit retryable `preparation_unavailable`
+  (deferred), using existing delivery retry/backoff and immutable execution deadline.
+  No busy loop, new candidate/result or extra charge. Legal hold may prevent
+  replacement until that deadline: existing timeout/unknown-effect precedence and
+  truthful reconciliation determine settlement, rather than silently hanging or
+  bypassing the hold. Do not treat uncertain commit, transport loss or merely an old creator lease as
+  abandonment. Non-result/cancellation transitions need not wait for physical
+  cleanup; they cannot accept the abandoned value. Never delete a committed
+  identity to make a different plan succeed.
+
+For each short native command, lock the existing workspace lifecycle/admission
+row SHARE first, then the established ordered ancestor/run prerequisites and
+current attempt or coordinator checkpoint proof, then its candidate and, only
+when actually accepting or reading accepted truth, provenance row,
+artifact row and existing capacity row when a lifecycle mutation requires it.
+Do not upgrade an ancestor lock, prelock capacity in the reverse order, or acquire
+workspace behind artifact/provenance. Insert uses the existing artifact capacity
+trigger, not a second counter reservation. Retention holds ADR013's destructive
+advisory gate and workspace UPDATE before locking eligible candidate/provenance rows,
+then artifacts; its extension must not acquire provenance behind an artifact it
+already locked. Discovery reads are bounded and non-locking. Reuse already-held
+locks and existing parent/child coordinator ordering; no ancestor acquisition
+while holding a descendant terminal lock. The eventual exact statements remain
+subject to implementation review, not a waiver of this order. No helper grant,
+signature, attestation implementation or blocked verification bypass is supplied.
+
+### Explicit native source projection
+
+Only exact Graph2/executable3/Checkpoint3 selection may emit a typed native source
+projection alongside ordinary inputs. Each record has a fixed target slot
+(`run_input`, scoped `upstream_output`, or `wait_resume_output`), exact
+`StoredExecutionValueV1` reference, byte length/checksum and original inline
+serialized bytes where applicable. Run input binds its accepted run/value
+provenance; physical output binds run/version/node/invocation/attempt; logical
+Call result binds parent invocation and the one accepted child result provenance.
+Use protected existing snapshot/result projections, not scanning nested JSON.
+No duplicate slots, synthesized physical-attempt identity for a logical result,
+or artifact reference supplied merely by possession.
+
+Native `hydrate` supplies the explicit source descriptor separately from its
+consuming authority (actual attempt lease or actual coordinator delivery/revision).
+Its authorize adapter must resolve that exact accepted source/provenance ID and
+reference through the existing loader/read owner and prove it is eligible for
+this consumer's scoped slot. It cannot reinterpret producer creation authority
+as current consumption authority or authorize an arbitrary same-workspace artifact.
+
+The worker hydrates under the actual consuming lease after control checks, using
+heartbeat cancellation and bounded source work, preserves invocation order and
+scope, and never rewrites structured collections/coordinator inputs by guessing
+references. Each value retains 1 MiB/depth64/member10000 limits and retained inline
+256 KiB eligibility; do not aggregate source buffers with unbounded `Promise.all`.
+Retained `NodeAttemptInputs` remains decoded JSON, including JSON resembling a
+reference wrapper. Coordinator callable materials need corresponding explicit
+source descriptors, but final commit must still independently establish the
+selector and source truth through its existing owner. Worker hydration or a content
+hash cannot supply that missing authority. Recovery retains original byte identity.
+
+### Expiry, abandonment, retention and rollout
+
+SQL owns finite `artifacts.expires_at` under existing run-artifact policy (ADR013
+default 30 days), not the writer's `retentionMillis` or preview deadline. Native
+references may delay deletion while genuinely needed, not create permanent pins.
+Extend existing0080 discovery and preparation to expired pending
+`purpose='execution-value'`, accounting for a still-live producer and accepted
+dependencies; current code only discovers pending `user-upload`. Extend available
+reference checks for original provenance and nonterminal root/parent/child,
+replay-eligible history and legal hold. An uncommitted candidate alone must not
+self-pin indefinitely; after its finite expiry and producer abandonment it is
+eligible for the same existing retention owner. For a definitively abandoned
+candidate with null provenance, ignore its producer's active/nonterminal family
+and replay state; those are not accepted consumers. Legal hold and real accepted
+consumer references still prevent destructive cleanup. Remove candidate metadata
+in controlled order with existing artifact deletion only after confirmed physical
+removal; there is no unaccepted parent provenance to delete or seal to relax.
+Cleanup delay returns explicit preparation-unavailable/deferred on replacement,
+not successful preparation. Cancellation and timeout transitions without a result
+do not wait for candidate cleanup. Once associated, the accepted provenance and
+its actual parent/child/replay consumers retain their existing protection.
+
+Extend existing0055 detail-page eligibility before removing child attempts/nodes/
+events/checkpoints, source provenance or summary projections required by a
+nonterminal parent, replay window or hold. Once dependencies end, delete links and
+provenance in bounded resumable dependency order before restricted referenced
+rows; preserve normal expiry/redaction. Extend existing compatibility inventory
+and workspace purge so no residual relation blocks a tombstone or releases needed
+facts early. No new family reaper, alternate object store or retention policy owner.
+
+Preserve legal-hold/control-ledger high-water checks and ADR013's short prepare /
+external delete+head / short completion protocol with workspace destructive
+serialization. Capacity stays charged through pending/available/deleting, released
+once only after physical deletion confirmation through the existing artifact owner.
+Unavailable or uncertain deletion defers; it does not free quota or claim success.
+
+Required ordinary tests at existing seams: explicit slot routing; exact reservation
+reuse with one capacity charge; above-inline/NUL preparation and hydration using
+existing bytes; upload failure/cancellation and lost finalization response recovery;
+preparation-versus-post-CAS revision identity; no parent provenance before actual
+acceptance, association rollback with a failed existing seal/receipt; abandoned
+candidate cleanup despite an active producer family, legal-hold deferral and
+bounded replacement-unavailable/deadline settlement; retained JSON
+wrapper non-hydration; scoped physical versus logical source selection; bounded
+pending expiry, parent/replay dependency retention and resumed cleanup after holds.
+These normal tests do not retry screened adversarial/security probes or substitute
+for their still-required qualification.
+
+Native writers/catalog/execution stay OFF until reviewed migration/readiness,
+source-bound mixed-writer compatibility/cutover, actual provenance/retention,
+recovery and full F08 gates pass. Existing compatible accepted continuations remain
+truthful when OFF; old writers must fail closed on unsupported native formats.
+No down migration, destructive data rewrite, historical draft installation or
+production enablement is authorized by this accepted design alone.
+
 ## Atomic spawn, FIFO and lock contract
 
 Extend the canonical coordinator transaction and existing `acceptWorkflowRun`

@@ -79,6 +79,66 @@ Exact inline bytes remain within the existing 256 KiB inline eligibility and
 wrapper/backstop policies. They share the existing provenance retention, legal
 hold and purge owner: no duplicate quota reservation or unbounded hidden payload.
 
+## Native artifact ownership amendment — accepted, 2026-10-03
+
+Primary selected additive artifact candidate storage with atomic association to
+accepted execution provenance and explicit value slots on 2026-10-03. **This amendment's concrete contract is
+ACCEPTED by primary after independent Spec/Standards closure.**
+The previously accepted decision and byte-preservation amendment remain accepted;
+this section neither accepts a migration nor closes any F08 qualification gate.
+
+Keep `artifact_links` exclusively preview-owned, including its preview foreign
+key, owner-kind constraint and retention trigger. A narrow relation under the
+existing artifact owner records non-authoritative candidates with stable producer,
+slot and byte identity. Reservation/finalization creates no parent
+`workflow_execution_value_provenance` row. Only the existing actual input record,
+physical completion or coordinator acceptance transaction inserts that accepted
+fact and atomically associates the candidate with its exact parent/artifact.
+Existing accepted-fact, receipt, completion and current-authority invariants remain
+unchanged. Their existing owners must gain artifact-aware comparison/projection
+of the exact accepted parent and associated candidate while retaining inline
+checks; no provisional-parent exception, candidate-state filter or weakened seal.
+The association becomes a child relation only after acceptance. It stores no
+payload, charges no quota and grants neither possession authority nor a new
+history/retention owner. Retained and native inline acceptance remain unchanged.
+Distinguish Call declaration `attempt_input`, ordinary physical `attempt_output`
+and coordinator `run_result`. Call completion aliases its committed input and
+never prepares an output reservation. Creation authority remains historical;
+recovery authenticates the actual consuming lease or coordinator delivery afresh.
+
+Reservation, existing artifact insertion/finalization and provenance acceptance
+reuse the established tenant/native owner transactions. Adapt an already scoped
+client with `workspaceTransactionFromClient` only after proof is established;
+never open a nested transaction or treat that adapter as authority. Coordinator
+preparation binds actual delivery, **pre-CAS** expected revision and immutable
+result-bearing transition identity; accepted result provenance records the
+**post-CAS** checkpoint revision. Upload occurs outside execution locks and SQL
+transactions. Failure or stale CAS cannot fabricate completion, change reserved
+bytes or charge a second time; existing bounded retention owns abandoned bytes.
+Definitive abandonment removes producer/nonterminal-family/replay protection for
+an unaccepted candidate: only actual accepted consumers or legal hold may retain
+it. Replacement waiting for confirmed physical cleanup is explicitly retryable
+preparation-unavailable under the existing delivery/deadline, never a busy loop.
+Hold cannot be bypassed; cancellation/timeout settlement does not wait for cleanup.
+
+Only the exact Graph2/executable3/Checkpoint3 loader emits explicit typed native
+source references with immutable byte identity and physical/logical source
+provenance. Retained inputs stay decoded JSON. Hydration consumes those records
+under current authority, never guesses references inside arbitrary JSON or
+prepares recovered values. Coordinator commit retains independent selector and
+source verification; worker-hydrated values alone are not commit authority.
+
+Extend existing pending/available artifact discovery and preparation, execution
+detail retention, compatibility retirement and workspace purge for native
+provenance and root/parent/child/replay dependencies. Keep finite expiry and
+bounded resumable release once dependencies end; no permanent family pin. Preserve
+ADR013's legal hold, control-ledger and workspace destructive serialization,
+single artifact capacity charge and confirmed physical deletion before release.
+The [accepted contract delta](../feature-plans/08-subworkflow-contract-proposal.md#native-artifact-owner-contract-delta--accepted-2026-10-03)
+defines the fields, slots, commands, recovery and ordinary qualification slices.
+Native execution remains OFF. Platform-screened security qualification remains
+PAUSED; this amendment authorizes no retry, attestation implementation or SQL install.
+
 ## Context and selected direction
 
 F08 needs reusable typed calls without copying graphs or occupying a parent
