@@ -92,11 +92,17 @@ export async function completeNodeAttempt(
 
         const run = await client.query<{
           abort_requested: boolean;
+          native_execution: boolean;
         }>(
           `select (
              cancel_requested_at is not null or
              (deadline_at is not null and deadline_at <= clock_timestamp())
-           ) abort_requested
+           ) abort_requested,
+           exists(select 1 from app.workflow_versions version
+             where version.workspace_id=workflow_runs.workspace_id
+               and version.id=workflow_runs.workflow_version_id
+               and version.schema_version=2
+               and version.executable_schema_version=3) native_execution
            from app.workflow_runs
            where workspace_id=$1 and id=$2 and workflow_version_id=$3
            for update`,
@@ -171,6 +177,7 @@ export async function completeNodeAttempt(
           serializedOutput,
           run.rows[0]?.abort_requested === true,
           outputSource === 'workflow_call_input_alias',
+          run.rows[0]?.native_execution === true,
         );
       },
     );

@@ -84,7 +84,7 @@ beforeEach(() => {
     if (sql.includes('abort_requested'))
       return Promise.resolve({
         rowCount: 1,
-        rows: [{ abort_requested: false }],
+        rows: [{ abort_requested: false, native_execution: true }],
       });
     if (sql.includes('select attempt.status'))
       return Promise.resolve({
@@ -155,6 +155,67 @@ describe('native Call completion through existing owner (mocked SQL, not authori
         (sql as string).includes('update app.inbox_receipts'),
       ),
     ).toBe(true);
+    expect(
+      query.mock.calls.some(([sql]) =>
+        (sql as string).includes('record_native_workflow_attempt_output'),
+      ),
+    ).toBe(false);
+  });
+  it('records an ordinary native output before the first physical write', async () => {
+    await expect(
+      completeNodeAttempt(pool, {
+        lease: {
+          ...lease,
+          nodeId: 'ordinary',
+          invocationKey: 'ordinary',
+          sideEffectClass: 'safe',
+        },
+        outcome: { status: 'succeeded', output: { name: 'ordinary' } },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ kind: 'committed' });
+    const recordIndex = query.mock.calls.findIndex(([sql]) =>
+      (sql as string).includes('record_native_workflow_attempt_output'),
+    );
+    const updateIndex = query.mock.calls.findIndex(([sql]) =>
+      (sql as string).includes('update app.node_attempts'),
+    );
+    expect(recordIndex).toBeGreaterThan(-1);
+    expect(updateIndex).toBeGreaterThan(recordIndex);
+  });
+  it('does not record physical output when the current lease fence is lost', async () => {
+    await expect(
+      completeNodeAttempt(pool, {
+        lease: { ...lease, fenceToken: 2 },
+        outcome: { status: 'succeeded', output: { name: 'ordinary' } },
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow();
+    expect(
+      query.mock.calls.some(([sql]) =>
+        (sql as string).includes('record_native_workflow_attempt_output'),
+      ),
+    ).toBe(false);
+  });
+  it('does not write physical state after native provenance denial', async () => {
+    const original = query.getMockImplementation();
+    query.mockImplementation((sql: string): unknown =>
+      sql.includes('record_native_workflow_attempt_output')
+        ? Promise.reject(new Error('protected output denied'))
+        : original?.(sql),
+    );
+    await expect(
+      completeNodeAttempt(pool, {
+        lease,
+        outcome: { status: 'succeeded', output: { name: 'ordinary' } },
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('protected output denied');
+    expect(
+      query.mock.calls.some(([sql]) =>
+        (sql as string).includes('update app.node_attempts'),
+      ),
+    ).toBe(false);
   });
   it('uses sealed physical replay even after the coordinator makes the logical node wait', async () => {
     completed = true;

@@ -526,3 +526,19 @@ Fixture pgcrypto was installed only in its private disposable schema and removed
 with the database; no serving grant or persistent key was created. This does not
 qualify owner-specific signed field lists, timing resistance, raw-writer fences,
 readiness, rotation, early seals or full F08 behavior. Native writers remain OFF.
+
+The existing ordinary native physical-completion owner now records first-write
+inline value bytes/checksum/length with actual lease/fence/canonical delivery,
+before its existing physical output/event/receipt writes. Retained completion and
+native Call input-alias completion do not use this output ingress; duplicates do
+not create another provenance row. The OFF SQL draft adds the protected ingress,
+ordinary native attempt writer fence and deferred actual completion/event/receipt
+seal. Owned actual worker-role flow qualifies checksum/worker/fence/delivery and
+unsealed rollback denials, raw first-output update/successful-attempt insertion
+denials, and four mutations after an early seal fired in the actual completion
+owner. Four ordinary outputs retain their first byte identity in that fixture;
+Call input aliases have no output reservation. Attempt reparenting is separately
+denied by the existing worker column grant, not counted as a triggered fence.
+The full unregistered draft is now a38422af (36 functions, zero permanent serving
+EXECUTE, writes OFF, registered head0135/count133). This does not close artifact,
+semantic result/publication capability, native cohort/readiness or full F08 gates.

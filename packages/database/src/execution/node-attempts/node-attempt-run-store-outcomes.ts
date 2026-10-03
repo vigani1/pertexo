@@ -22,6 +22,7 @@ import {
   assertConnectionHealthReplay,
   persistConnectionHealthObservation,
 } from './node-attempt-connection-health.js';
+import { recordNativeAttemptInlineOutput } from './node-attempt-native-output-record.js';
 
 type CompletionInput = z.output<typeof completionSchema>;
 type ExecutorOutcome = Extract<
@@ -366,6 +367,7 @@ export async function applyNodeAttemptCompletion(
   serializedOutput: string | null,
   controlActive: boolean,
   outputFromCallInput = false,
+  nativeExecution = false,
 ): Promise<CompleteNodeAttemptResult> {
   const fields = completionFields(input);
   const duplicate = await duplicateCompletion(
@@ -381,6 +383,19 @@ export async function applyNodeAttemptCompletion(
   if (fields.suspendedOutcome !== undefined && controlActive)
     throw new NodeAttemptReconciliationRequiredError();
   assertActiveLease(input, row, receipt);
+  if (
+    nativeExecution &&
+    !outputFromCallInput &&
+    serializedOutput !== null &&
+    (input.outcome.status === 'succeeded' ||
+      input.outcome.status === 'suspended')
+  )
+    await recordNativeAttemptInlineOutput(
+      client,
+      input.lease,
+      input.outcome.output,
+      serializedOutput,
+    );
   await updateAttempt(client, input, serializedOutput, fields);
   await persistConnectionHealthObservation(client, input);
   if (fields.executorOutcome !== undefined) {
