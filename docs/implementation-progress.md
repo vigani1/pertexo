@@ -36,6 +36,10 @@ No node or preview artifact capability receives this framework-only dependency.
       control/heartbeat ownership through native input and Call recovery reads.
 - [x] Implement the pure bounded coordinator result-identity builder with the
       existing native encoder; leave authority and integration gates open.
+- [x] Accept the coordinator demand ADR amendment and implement its first ordinary
+      engine/wrapper/handler interface with typed stops and retryable queue behavior.
+- [ ] Implement actual demand source/control adapters, joined bounded value-work
+      lifetime and independent native persistent commit preparation/rechecks.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
@@ -118,6 +122,22 @@ Its ordinary qualification passes all 1,124 worker tests across 87 files, build,
 typecheck, narrow lint/format and architecture/duplication. The inherited eight
 complexity findings remain, no baseline is weakened, and native remains OFF with
 screened qualification PAUSED.
+
+The accepted coordinator demand design is recorded in ADR065 and its concrete
+companion. Its first ordinary interface requests exact selected material only
+after pure success/unique root selection, rejects simultaneous eager/demand
+configuration at runtime, and preserves literal/non-success no-demand and retained
+eager behavior. Provider request data does not alias checkpoint facts; ready source
+inventory/order must agree and provider-supplied evaluators are refused. Typed
+cancellation/deadline/stale/context/unavailable work stops reach wrapper/handler
+without a result plan or durable commit/acknowledgement. The actual queue adapter
+keeps these stops retryable. Framework-only adapter composition supplies actual
+canonical delivery and workspace/run/version; absent native adapter fails closed.
+Ordinary tests/builds/typechecks/narrow lint pass, not persistent authority proof.
+The existing database eager loader is unchanged. Actual source/control SQL,
+watcher/deadline/abort-join policy, incremental context hydration, independent
+persistent native commit preparation/final rechecks and literal stalled-upload
+cancellation proof remain open; native stays OFF and screened qualification PAUSED.
 
 ### F02 — run-input cases and version-checked manual start
 

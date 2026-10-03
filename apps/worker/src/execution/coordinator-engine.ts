@@ -6,6 +6,8 @@ import {
   parseCheckpoint,
   type WorkflowTransitionPlan,
   type CompiledWorkflowExecutableV3,
+  CallableCompletionStoppedError,
+  WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 
 import type { CoordinatorAdvanceEngine } from './coordinator-handler.js';
@@ -25,6 +27,14 @@ export function createCoordinatorAdvanceEngine(
     advance: async (
       input: Parameters<CoordinatorAdvanceEngine['advance']>[0],
     ): ReturnType<CoordinatorAdvanceEngine['advance']> => {
+      if (
+        input.callableCompletion !== undefined &&
+        input.loadCallableCompletion !== undefined
+      )
+        throw new WorkflowEngineError(
+          'observation_invalid',
+          'eager and demand completion conflict',
+        );
       const previous = parseCheckpoint(input.checkpoint);
       const calleeDeclarations = new Map(
         (input.calleeProjections ?? []).map((projection) => {
@@ -36,39 +46,58 @@ export function createCoordinatorAdvanceEngine(
           return [projection.id, declaration] as const;
         }),
       );
-      const plan: WorkflowTransitionPlan = await advanceWorkflow({
-        runId: input.runId,
-        workflowVersionId: input.workflowVersionId,
-        executable: verifyPersistedWorkflowProjection(
-          input.projection,
-          options,
-        ),
-        checkpoint: input.checkpoint,
-        observations: input.observations,
-        completedOutputs: input.completedOutputs,
-        ...(input.callableCompletion === undefined
-          ? {}
-          : {
-              callableCompletion: {
-                ...input.callableCompletion,
-                ...(options.expressionEvaluator === undefined
-                  ? {}
-                  : { expressionEvaluator: options.expressionEvaluator }),
-              },
-            }),
-        ...(input.workflowCalls === undefined
-          ? {}
-          : {
-              workflowCalls: {
-                declarations: input.workflowCalls.declarations,
-                facts: input.workflowCalls.facts,
-                calleeDeclarations,
-              },
-            }),
-        occurredAt: input.occurredAt,
-        maximumAdmissions: input.maximumAdmissions,
-        signal: input.signal,
-      });
+      const executable = verifyPersistedWorkflowProjection(
+        input.projection,
+        options,
+      );
+      let plan: WorkflowTransitionPlan;
+      try {
+        plan = await advanceWorkflow({
+          runId: input.runId,
+          workflowVersionId: input.workflowVersionId,
+          executable,
+          checkpoint: input.checkpoint,
+          observations: input.observations,
+          completedOutputs: input.completedOutputs,
+          ...(input.callableCompletion === undefined
+            ? {}
+            : {
+                callableCompletion: {
+                  ...input.callableCompletion,
+                  ...(options.expressionEvaluator === undefined
+                    ? {}
+                    : { expressionEvaluator: options.expressionEvaluator }),
+                },
+              }),
+          ...(!('callable' in executable.envelope.graph) ||
+          executable.envelope.graph.callable === undefined ||
+          input.loadCallableCompletion === undefined
+            ? {}
+            : { loadCallableCompletion: input.loadCallableCompletion }),
+          ...(options.expressionEvaluator === undefined
+            ? {}
+            : { callableExpressionEvaluator: options.expressionEvaluator }),
+          ...(input.workflowCalls === undefined
+            ? {}
+            : {
+                workflowCalls: {
+                  declarations: input.workflowCalls.declarations,
+                  facts: input.workflowCalls.facts,
+                  calleeDeclarations,
+                },
+              }),
+          occurredAt: input.occurredAt,
+          maximumAdmissions: input.maximumAdmissions,
+          signal: input.signal,
+        });
+      } catch (error: unknown) {
+        if (error instanceof CallableCompletionStoppedError)
+          return Object.freeze({
+            kind: 'value_work_stopped' as const,
+            stop: error.stop,
+          });
+        throw error;
+      }
       const previousAtNextRevision = Object.freeze({
         ...previous,
         revision: plan.checkpoint.revision,

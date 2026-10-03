@@ -10,7 +10,12 @@ import type {
   QueueHandlerContext,
   RunEventNotificationPublisher,
 } from '@pertexo/queue';
-import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
+import type {
+  WorkflowTransitionPlan,
+  LoadCallableCompletion,
+} from '@pertexo/workflow-engine';
+import type { CallableValueWorkStop } from '@pertexo/workflow-model/workflow-call-contract';
+import type { CoordinatorAdvanceDelivery } from '@pertexo/database/execution';
 
 import type { CoordinatorTelemetry } from './coordinator-telemetry.js';
 
@@ -37,6 +42,7 @@ export interface CoordinatorAdvanceEngine {
         Awaited<ReturnType<CoordinatorRunStore['loadAdvanceState']>>,
         { kind: 'ready' }
       >['state']['callableCompletion'];
+      loadCallableCompletion?: LoadCallableCompletion;
       occurredAt: string;
       maximumAdmissions: number;
       signal: AbortSignal;
@@ -44,6 +50,7 @@ export interface CoordinatorAdvanceEngine {
   ): Promise<
     | Readonly<{ kind: 'no_change'; revision: number }>
     | Readonly<{ kind: 'transition'; plan: WorkflowTransitionPlan }>
+    | Readonly<{ kind: 'value_work_stopped'; stop: CallableValueWorkStop }>
   >;
 }
 
@@ -71,6 +78,25 @@ export class CoordinatorHandlerStateError extends Error {
   }
 }
 
+/** Retryable queue error, not durable workflow-control or receipt authority. */
+export class CoordinatorValueWorkStoppedError extends Error {
+  public override readonly name = 'CoordinatorValueWorkStoppedError';
+  public constructor(readonly stop: CallableValueWorkStop) {
+    super(`Coordinator value work stopped: ${stop.kind}`);
+  }
+}
+
+export type CoordinatorCallableCompletionLoader = (
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    workflowVersionId: string;
+    delivery: CoordinatorAdvanceDelivery;
+    demand: Parameters<LoadCallableCompletion>[0];
+    signal: AbortSignal;
+  }>,
+) => ReturnType<LoadCallableCompletion>;
+
 export interface CoordinatorHandler {
   handle(
     delivery: AdvanceWorkflowDelivery,
@@ -86,6 +112,7 @@ export type CoordinatorHandlerDependencies = Readonly<{
   reader: PublishedWorkflowReader;
   runStore: CoordinatorRunStore;
   telemetry?: CoordinatorTelemetry;
+  loadCallableCompletion?: CoordinatorCallableCompletionLoader;
 }>;
 
 export function createCoordinatorHandler(
@@ -163,13 +190,31 @@ export function createCoordinatorHandler(
         ...(loaded.state.completedOutputs === undefined
           ? {}
           : { completedOutputs: loaded.state.completedOutputs }),
-        ...(loaded.state.callableCompletion === undefined
-          ? {}
-          : { callableCompletion: loaded.state.callableCompletion }),
+        ...(published.kind === 'v3_projection'
+          ? {
+              loadCallableCompletion: (demand, signal) =>
+                dependencies.loadCallableCompletion?.({
+                  workspaceId: delivery.data.workspaceId,
+                  runId: loaded.state.runId,
+                  workflowVersionId: loaded.state.workflowVersionId,
+                  delivery: durableDelivery,
+                  demand,
+                  signal,
+                }) ??
+                Promise.resolve({
+                  kind: 'stopped',
+                  stop: { kind: 'unavailable', reason: 'source_read_failed' },
+                }),
+            }
+          : loaded.state.callableCompletion === undefined
+            ? {}
+            : { callableCompletion: loaded.state.callableCompletion }),
         occurredAt: dependencies.clock.now(),
         maximumAdmissions: dependencies.maximumAdmissions,
         signal: context.signal,
       });
+      if (advanced.kind === 'value_work_stopped')
+        throw new CoordinatorValueWorkStoppedError(advanced.stop);
       if (advanced.kind === 'no_change') {
         await dependencies.runStore.acknowledgeAdvanceDelivery({
           workspaceId: delivery.data.workspaceId,

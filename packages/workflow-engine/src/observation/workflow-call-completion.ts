@@ -19,6 +19,12 @@ import type {
   WorkflowTransitionPlan,
 } from '../types.js';
 import { resolveWorkflowCallableResultV1 } from '../workflow-call-values.js';
+import {
+  demandCallableMaterial,
+  type LoadCallableCompletion,
+  CallableCompletionStoppedError,
+} from './workflow-call-demand.js';
+import { WorkflowEngineError } from '../errors.js';
 
 /** Hydrated by existing protected input/output owners outside commit locks. */
 export interface WorkflowCallableCompletionMaterial {
@@ -229,6 +235,8 @@ export async function completeCallableTransition(
   plan: WorkflowTransitionPlan,
   material: WorkflowCallableCompletionMaterial | undefined,
   signal: AbortSignal,
+  loadCallableCompletion?: LoadCallableCompletion,
+  expressionEvaluator?: ExpressionEvaluator,
 ): Promise<WorkflowTransitionPlan> {
   const declaration = executable.envelope.graph.callable;
   if (
@@ -246,6 +254,45 @@ export async function completeCallableTransition(
   if (sources === undefined)
     return failedResult(plan, 'workflow.child_result_invalid');
   const selector = declaration.resultSelector;
+  const requiresInput =
+    selector.kind === 'run_input' || selector.kind === 'expression';
+  if (selector.kind !== 'literal' && loadCallableCompletion !== undefined) {
+    const demanded = await demandCallableMaterial(
+      loadCallableCompletion,
+      {
+        expectedRevision: plan.expectedRevision,
+        resultSelector: selector,
+        requiresRunInput: requiresInput,
+        sources: sources.map(({ nodeId, invocationKey, output }) => ({
+          nodeId,
+          invocationKey,
+          output,
+        })),
+      },
+      signal,
+    );
+    if (demanded === undefined)
+      return failedResult(plan, 'workflow.child_result_invalid');
+    const descriptors = completionDescriptors(demanded.outputs);
+    if (
+      descriptors.length !== sources.length ||
+      descriptors.some((descriptor, index) => {
+        const source = sources[index];
+        return (
+          descriptor.invocationKey !== source?.invocationKey ||
+          canonicalJson(descriptor.output) !== canonicalJson(source.output)
+        );
+      })
+    )
+      operationError(
+        'observation_invalid',
+        'callable demand source inventory does not agree',
+      );
+    material = {
+      ...demanded,
+      ...(expressionEvaluator === undefined ? {} : { expressionEvaluator }),
+    };
+  }
   if (selector.kind !== 'literal' && material === undefined)
     operationError(
       'observation_invalid',
@@ -257,8 +304,6 @@ export async function completeCallableTransition(
     hydrated === undefined ? {} : hydrateSources(hydrated, sources, plan);
   if (outputs === undefined)
     return failedResult(plan, 'workflow.child_result_invalid');
-  const requiresInput =
-    selector.kind === 'run_input' || selector.kind === 'expression';
   const runInput = boundedNodeJsonSchema.safeParse(
     requiresInput ? hydrated?.runInput : null,
   );
@@ -272,15 +317,27 @@ export async function completeCallableTransition(
       'observation_invalid',
       'callable result evaluator is unavailable',
     );
-  const result = await resolveWorkflowCallableResultV1({
-    declaration,
-    runInput: runInput.data,
-    nodeOutputs: outputs,
-    signal,
-    ...(hydrated?.expressionEvaluator === undefined
-      ? {}
-      : { expressionEvaluator: hydrated.expressionEvaluator }),
-  });
+  let result: Awaited<ReturnType<typeof resolveWorkflowCallableResultV1>>;
+  try {
+    result = await resolveWorkflowCallableResultV1({
+      declaration,
+      runInput: runInput.data,
+      nodeOutputs: outputs,
+      signal,
+      ...(hydrated?.expressionEvaluator === undefined
+        ? {}
+        : { expressionEvaluator: hydrated.expressionEvaluator }),
+    });
+  } catch (error: unknown) {
+    if (
+      loadCallableCompletion !== undefined &&
+      signal.aborted &&
+      error instanceof WorkflowEngineError &&
+      error.code === 'attempt_aborted'
+    )
+      throw new CallableCompletionStoppedError({ kind: 'context_aborted' });
+    throw error;
+  }
   if (!result.ok)
     return failedResult(
       plan,

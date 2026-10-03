@@ -40,3 +40,28 @@ export const workflowCallFamilyPolicySchemaV1 = z
 export type WorkflowCallFamilyPolicyV1 = z.infer<
   typeof workflowCallFamilyPolicySchemaV1
 >;
+
+/** Work stopped without authority to fabricate a workflow result or control fact. */
+export const callableValueWorkStopSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('canceled') }).strict(),
+  z.object({ kind: z.literal('timed_out') }).strict(),
+  z
+    .object({
+      kind: z.literal('stale'),
+      revision: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z.object({ kind: z.literal('context_aborted') }).strict(),
+  z
+    .object({
+      kind: z.literal('unavailable'),
+      reason: z.enum([
+        'control_read_failed',
+        'value_work_timeout',
+        'source_read_failed',
+      ]),
+    })
+    .strict(),
+]);
+
+export type CallableValueWorkStop = z.infer<typeof callableValueWorkStopSchema>;

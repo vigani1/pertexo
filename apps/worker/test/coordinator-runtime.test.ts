@@ -74,6 +74,78 @@ function runtimeDependencies(
 }
 
 describe('coordinator runtime', () => {
+  it('leaves stopped value work retryable at the actual queue adapter without acknowledging it', async () => {
+    let consumerOptions: QueueConsumerOptions | undefined;
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: () => true,
+      waitUntilReady: () => Promise.resolve(),
+    };
+    const scanner = {
+      claimDueWakeups: vi.fn().mockResolvedValue(0),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const dependencies = runtimeDependencies(consumer, scanner, scanner);
+    const stop = { kind: 'canceled' as const };
+    const acknowledgeAdvanceDelivery = vi.fn();
+    const commitAdvancePlan = vi.fn();
+    const runtime = await createCoordinatorRuntime(runtimeOptions(), {
+      ...dependencies,
+      consumerFactory: (options) => {
+        consumerOptions = options;
+        return consumer;
+      },
+      engine: {
+        advance: () => Promise.resolve({ kind: 'value_work_stopped', stop }),
+      },
+      runStore: {
+        close: () => Promise.resolve(),
+        acknowledgeAdvanceDelivery,
+        commitAdvancePlan,
+        loadAdvanceState: vi.fn().mockResolvedValue({
+          kind: 'ready',
+          state: {
+            runId: RUN_ID,
+            workflowVersionId: VERSION_ID,
+            checkpoint: {},
+            observations: [],
+          },
+        }),
+      },
+      reader: {
+        close: () => Promise.resolve(),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: { id: VERSION_ID, workspaceId: WORKSPACE_ID },
+        }),
+      },
+    });
+    try {
+      if (consumerOptions === undefined) throw new Error('Missing consumer');
+      await expect(
+        consumerOptions.handler(
+          {
+            name: JOB_NAME.advanceWorkflowRun,
+            data: {
+              schemaVersion: 1,
+              workspaceId: WORKSPACE_ID,
+              runId: RUN_ID,
+              outboxEventId: OUTBOX_EVENT_ID,
+            },
+            transport: { attemptsMade: 0, jobId: `outbox-${OUTBOX_EVENT_ID}` },
+          },
+          { signal: new AbortController().signal },
+        ),
+      ).rejects.toMatchObject({
+        name: 'CoordinatorValueWorkStoppedError',
+        stop,
+      });
+      expect(acknowledgeAdvanceDelivery).not.toHaveBeenCalled();
+      expect(commitAdvancePlan).not.toHaveBeenCalled();
+    } finally {
+      await runtime.close();
+    }
+  });
   it.each([
     ['telemetry', []],
     ['traceRunner', []],

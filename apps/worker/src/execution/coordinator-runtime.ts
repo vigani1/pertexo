@@ -47,6 +47,7 @@ import {
   createCoordinatorHandler,
   type CoordinatorAdvanceEngine,
   type CoordinatorHandler,
+  type CoordinatorCallableCompletionLoader,
   CoordinatorHandlerStateError,
 } from './coordinator-handler.js';
 import {
@@ -87,6 +88,7 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   runStore?: CoordinatorRunStore;
   telemetry?: CoordinatorTelemetry;
   logger?: StructuredLogger;
+  loadCallableCompletion?: CoordinatorCallableCompletionLoader;
 }>;
 
 export type CoordinatorCompositionFactories = Readonly<{
@@ -245,6 +247,9 @@ export async function createCoordinatorRuntime(
       reader,
       runStore,
       telemetry,
+      ...(dependencies.loadCallableCompletion === undefined
+        ? {}
+        : { loadCallableCompletion: dependencies.loadCallableCompletion }),
     });
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.workflowCoordinator,

@@ -13,6 +13,7 @@ import {
   createCoordinatorHandler,
   type CoordinatorAdvanceEngine,
   CoordinatorHandlerStateError,
+  type CoordinatorCallableCompletionLoader,
 } from '../src/execution/coordinator-handler.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
@@ -63,6 +64,7 @@ function handlerFixture(
     committed?: unknown;
     acknowledgeFailure?: unknown;
     notificationFailure?: unknown;
+    loadCallableCompletion?: CoordinatorCallableCompletionLoader;
   } = {},
 ) {
   const loadAdvanceState = vi.fn().mockResolvedValue(
@@ -104,6 +106,9 @@ function handlerFixture(
       ? vi.fn().mockResolvedValue(undefined)
       : vi.fn().mockRejectedValue(overrides.notificationFailure);
   const handler = createCoordinatorHandler({
+    ...(overrides.loadCallableCompletion === undefined
+      ? {}
+      : { loadCallableCompletion: overrides.loadCallableCompletion }),
     clock: { now: () => '2026-08-21T00:00:00.000Z' },
     engine: { advance },
     maximumAdmissions: 32,
@@ -135,6 +140,111 @@ function handlerFixture(
 }
 
 describe('coordinator handler', () => {
+  it.each([false, true])(
+    'binds native demand to actual delivery scope and fails closed without an adapter (%s)',
+    async (configured) => {
+      const stop = {
+        kind: 'unavailable' as const,
+        reason: 'source_read_failed' as const,
+      };
+      const loadCallableCompletion = vi.fn(() =>
+        Promise.resolve({
+          kind: 'stopped' as const,
+          stop,
+        }),
+      );
+      const native = {
+        ...projection(),
+        schemaVersion: 2,
+        executableSchemaVersion: 3,
+        checksum: `wf:v3:sha256:${'1'.repeat(64)}`,
+        executableJson: { schemaVersion: 3 },
+      };
+      const selected = handlerFixture({
+        published: { kind: 'v3_projection', workflowVersion: native },
+        loaded: {
+          kind: 'ready',
+          state: {
+            runId: RUN_ID,
+            workflowVersionId: VERSION_ID,
+            checkpoint: { revision: 4 },
+            observations: [],
+            callableCompletion: {
+              runInput: 'must-not-reuse-eager-material',
+              outputs: [],
+            },
+          },
+        },
+        ...(configured ? { loadCallableCompletion } : {}),
+      });
+      const demand = {
+        expectedRevision: 4,
+        resultSelector: { kind: 'run_input' as const, path: '$' },
+        requiresRunInput: true,
+        sources: [],
+      };
+      selected.advance.mockImplementation(
+        async (input: Parameters<CoordinatorAdvanceEngine['advance']>[0]) => {
+          expect(input.callableCompletion).toBeUndefined();
+          if (input.loadCallableCompletion === undefined)
+            throw new Error('Missing demand adapter');
+          const material = await input.loadCallableCompletion(
+            demand,
+            input.signal,
+          );
+          if (material.kind !== 'stopped')
+            throw new Error('Expected stopped fixture');
+          return { kind: 'value_work_stopped', stop: material.stop };
+        },
+      );
+      const signal = new AbortController().signal;
+      await expect(
+        selected.handler.handle(delivery(), { signal }),
+      ).rejects.toMatchObject({
+        name: 'CoordinatorValueWorkStoppedError',
+        stop,
+      });
+      if (configured)
+        expect(loadCallableCompletion).toHaveBeenCalledExactlyOnceWith({
+          workspaceId: WORKSPACE_ID,
+          runId: RUN_ID,
+          workflowVersionId: VERSION_ID,
+          delivery: {
+            outboxEventId: OUTBOX_EVENT_ID,
+            payloadChecksum: deliveryChecksum(),
+          },
+          demand,
+          signal,
+        });
+      expect(selected.commitAdvancePlan).not.toHaveBeenCalled();
+      expect(selected.acknowledgeAdvanceDelivery).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    { kind: 'canceled' },
+    { kind: 'timed_out' },
+    { kind: 'stale', revision: 2 },
+    { kind: 'context_aborted' },
+    { kind: 'unavailable', reason: 'source_read_failed' },
+  ] as const)(
+    'rejects typed stop %j without committing, acknowledging or publishing success',
+    async (stop) => {
+      const fixture = handlerFixture({
+        advanced: { kind: 'value_work_stopped', stop },
+      });
+      await expect(
+        fixture.handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toMatchObject({
+        name: 'CoordinatorValueWorkStoppedError',
+        stop,
+      });
+      expect(fixture.commitAdvancePlan).not.toHaveBeenCalled();
+      expect(fixture.acknowledgeAdvanceDelivery).not.toHaveBeenCalled();
+      expect(fixture.resync).not.toHaveBeenCalled();
+    },
+  );
   it('passes an explicit V3 projection to the engine without a V2 downgrade', async () => {
     const native = {
       ...projection(),

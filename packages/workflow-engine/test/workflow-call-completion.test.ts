@@ -192,6 +192,286 @@ function scopedCandidate(
 }
 
 describe('callable completion through authenticated advance', () => {
+  it('rejects malformed or accessor-bearing demand envelopes without executing getters', async () => {
+    const getter = vi.fn();
+    const accessor = Object.defineProperty({ kind: 'ready' }, 'material', {
+      enumerable: true,
+      get: getter,
+    });
+    for (const result of [
+      null,
+      {},
+      { kind: 'unknown' },
+      { kind: 'invalid_context', extra: true },
+      { kind: 'stopped', stop: { kind: 'stale', revision: -1 } },
+      { kind: 'stopped', stop: { kind: 'unavailable', reason: 'invented' } },
+      { kind: 'stopped', stop: { kind: 'canceled', proof: 'not-authority' } },
+      { kind: 'ready', material: { runInput: {}, outputs: [], extra: true } },
+      accessor,
+    ]) {
+      const loadCallableCompletion = vi.fn().mockResolvedValue(result);
+      await expect(
+        advanceWorkflow({
+          ...withoutCompletion(input()),
+          loadCallableCompletion,
+        }),
+      ).rejects.toThrow(invalid);
+    }
+    expect(getter).not.toHaveBeenCalled();
+  });
+  it.each(['hydration', 'evaluation'] as const)(
+    'propagates context abort during demand %s without a result plan',
+    async (stage) => {
+      const before = input({
+        kind: 'expression',
+        language: 'jsonata',
+        policyVersion: 1,
+        expression: 'nodeOutputs.manual',
+      });
+      const controller = new AbortController();
+      await expect(
+        advanceWorkflow({
+          ...withoutCompletion(before),
+          signal: controller.signal,
+          loadCallableCompletion: () => {
+            if (stage === 'hydration') controller.abort();
+            return Promise.resolve({
+              kind: 'ready',
+              material: before.callableCompletion,
+            });
+          },
+          callableExpressionEvaluator: {
+            evaluate: () => {
+              controller.abort();
+              return Promise.resolve({
+                kind: 'value',
+                value: { name: 'accepted' },
+                canonicalBytes: 19,
+              });
+            },
+          },
+        }),
+      ).rejects.toMatchObject({
+        name: 'CallableCompletionStoppedError',
+        stop: { kind: 'context_aborted' },
+      });
+    },
+  );
+  it('refuses material for an unrequested source even if it is a valid successful output', async () => {
+    const before = input({ kind: 'run_input', path: '$' });
+    await expect(
+      advanceWorkflow({
+        ...withoutCompletion(before),
+        loadCallableCompletion: () =>
+          Promise.resolve({
+            kind: 'ready',
+            material: before.callableCompletion,
+          }),
+      }),
+    ).rejects.toThrow(invalid);
+  });
+
+  it('does not let the provider mutate checkpoint output authority through its demand', async () => {
+    const before = input();
+    const loadCallableCompletion = vi.fn(
+      (demand: {
+        sources: readonly { output: { kind: string; attemptId?: string } }[];
+      }) => {
+        const selected = demand.sources[0];
+        if (selected === undefined) throw new Error('Missing source');
+        selected.output.attemptId = declarationAttemptId;
+        return Promise.resolve({
+          kind: 'ready' as const,
+          material: {
+            runInput: null,
+            outputs: [
+              {
+                invocationKey: key,
+                output: selected.output,
+                value: { name: 'accepted' },
+              },
+            ],
+          },
+        });
+      },
+    );
+    await expect(
+      advanceWorkflow({ ...withoutCompletion(before), loadCallableCompletion }),
+    ).rejects.toThrow(invalid);
+    expect(before.observations[0]?.output).toEqual({
+      kind: 'inline',
+      attemptId: otherId,
+    });
+  });
+  it('does not demand literal or non-success completion and retains the eager path', async () => {
+    const loadCallableCompletion = vi.fn();
+    const literal = withoutCompletion(
+      input({ kind: 'literal', value: { name: 'literal' } }),
+    );
+    expect(
+      (await advanceWorkflow({ ...literal, loadCallableCompletion }))
+        .callableResult,
+    ).toEqual({ kind: 'succeeded', value: { name: 'literal' }, sources: [] });
+    expect(
+      (
+        await advanceWorkflow({
+          ...withoutCompletion(input()),
+          observations: [],
+          loadCallableCompletion,
+        })
+      ).callableResult,
+    ).toBeUndefined();
+    expect(loadCallableCompletion).not.toHaveBeenCalled();
+    expect((await advanceWorkflow(input())).callableResult).toMatchObject({
+      kind: 'succeeded',
+      value: { name: 'accepted' },
+    });
+  });
+
+  it('uses the existing invalid-context completion but preserves adapter infrastructure errors', async () => {
+    const before = withoutCompletion(input());
+    expect(
+      (
+        await advanceWorkflow({
+          ...before,
+          loadCallableCompletion: () =>
+            Promise.resolve({ kind: 'invalid_context' }),
+        })
+      ).callableResult,
+    ).toEqual({ kind: 'failed', reasonCode: 'workflow.child_result_invalid' });
+    const unavailable = new Error('source authority unavailable');
+    await expect(
+      advanceWorkflow({
+        ...before,
+        loadCallableCompletion: () => Promise.reject(unavailable),
+      }),
+    ).rejects.toBe(unavailable);
+  });
+
+  it('refuses an adapter-supplied evaluator instead of executing it', async () => {
+    const before = input({
+      kind: 'expression',
+      language: 'jsonata',
+      policyVersion: 1,
+      expression: 'nodeOutputs.manual',
+    });
+    const evaluate = vi.fn();
+    await expect(
+      advanceWorkflow({
+        ...withoutCompletion(before),
+        loadCallableCompletion: () =>
+          Promise.resolve({
+            kind: 'ready',
+            material: {
+              ...before.callableCompletion,
+              expressionEvaluator: { evaluate },
+            },
+          }),
+      }),
+    ).rejects.toThrow(invalid);
+    expect(evaluate).not.toHaveBeenCalled();
+  });
+
+  it('uses the caller-owned evaluator with exact requested input scope', async () => {
+    const before = input({
+      kind: 'expression',
+      language: 'jsonata',
+      policyVersion: 1,
+      expression: 'runInput',
+    });
+    const loadCallableCompletion = vi.fn().mockResolvedValue({
+      kind: 'ready',
+      material: { runInput: { name: 'input' }, outputs: [] },
+    });
+    const evaluate = vi.fn().mockResolvedValue({
+      kind: 'value',
+      value: { name: 'input' },
+      canonicalBytes: 16,
+    });
+    expect(
+      (
+        await advanceWorkflow({
+          ...withoutCompletion(before),
+          loadCallableCompletion,
+          callableExpressionEvaluator: { evaluate },
+        })
+      ).callableResult,
+    ).toEqual({ kind: 'succeeded', value: { name: 'input' }, sources: [] });
+    expect(loadCallableCompletion.mock.calls[0]?.[0]).toEqual({
+      expectedRevision: 0,
+      resultSelector: before.executable.envelope.graph.callable?.resultSelector,
+      requiresRunInput: true,
+      sources: [],
+    });
+  });
+  it.each([
+    { kind: 'canceled' },
+    { kind: 'timed_out' },
+    { kind: 'stale', revision: 2 },
+    { kind: 'context_aborted' },
+    { kind: 'unavailable', reason: 'control_read_failed' },
+    { kind: 'unavailable', reason: 'value_work_timeout' },
+    { kind: 'unavailable', reason: 'source_read_failed' },
+  ] as const)(
+    'propagates value work stop %j without a success or child failure plan',
+    async (stop) => {
+      await expect(
+        advanceWorkflow({
+          ...withoutCompletion(input()),
+          loadCallableCompletion: () =>
+            Promise.resolve({ kind: 'stopped', stop }),
+        }),
+      ).rejects.toMatchObject({ name: 'CallableCompletionStoppedError', stop });
+    },
+  );
+  it.each([
+    undefined,
+    { kind: 'literal', value: { name: 'literal' } },
+  ] as const)(
+    'refuses eager plus demand before any material or provider work (%j)',
+    async (selector) => {
+      const before = input(selector);
+      const loadCallableCompletion = vi.fn();
+      await expect(
+        advanceWorkflow({ ...before, loadCallableCompletion }),
+      ).rejects.toThrow('eager and demand');
+      await expect(
+        advanceWorkflow({
+          ...before,
+          observations: [],
+          loadCallableCompletion,
+        }),
+      ).rejects.toThrow('eager and demand');
+      expect(loadCallableCompletion).not.toHaveBeenCalled();
+    },
+  );
+  it('demands only the uniquely selected durable scope after success', async () => {
+    const before = input();
+    const loadCallableCompletion = vi.fn().mockResolvedValue({
+      kind: 'ready',
+      material: before.callableCompletion,
+    });
+    const activeSignal = signal();
+    const plan = await advanceWorkflow({
+      ...withoutCompletion(before),
+      loadCallableCompletion,
+      signal: activeSignal,
+    });
+    expect(plan.callableResult).toEqual({
+      kind: 'succeeded',
+      value: { name: 'accepted' },
+      sources: [{ invocationKey: key, output }],
+    });
+    expect(loadCallableCompletion).toHaveBeenCalledExactlyOnceWith(
+      {
+        expectedRevision: 0,
+        resultSelector: { kind: 'node_output', nodeId: 'manual', path: '$' },
+        requiresRunInput: false,
+        sources: [{ nodeId: 'manual', invocationKey: key, output }],
+      },
+      activeSignal,
+    );
+  });
   it('returns one bounded transient result with its immutable invocation/output identity at the existing CAS', async () => {
     const before = input();
     const plan = await advanceWorkflow(before);
@@ -310,8 +590,10 @@ describe('callable completion through authenticated advance', () => {
     const first = before.observations[0];
     if (first === undefined) throw new Error('Expected fixture observation');
     const { output: _output, ...observation } = first;
+    const loadCallableCompletion = vi.fn();
     const plan = await advanceWorkflow({
       ...withoutCompletion(before),
+      loadCallableCompletion,
       observations: [
         {
           ...observation,
@@ -322,6 +604,7 @@ describe('callable completion through authenticated advance', () => {
     expect(plan.checkpoint.runStatus).toBe('outcome_unknown');
     expect(plan.callableResult).toBeUndefined();
     expect(plan.attempts).toEqual([]);
+    expect(loadCallableCompletion).not.toHaveBeenCalled();
   });
 
   it('preserves evaluator infrastructure failures and cancellation rather than committing result failure', async () => {
@@ -365,6 +648,75 @@ describe('callable completion through authenticated advance', () => {
 });
 
 describe('single successful durable scope selection', () => {
+  it.each([0, 2])(
+    'does not demand missing or ambiguous selected scope (%i)',
+    async (count) => {
+      const { compiled, plan } = scopedCandidate(count);
+      const loadCallableCompletion = vi.fn();
+      const completed = await completeCallableTransition(
+        compiled,
+        plan,
+        undefined,
+        signal(),
+        loadCallableCompletion,
+      );
+      expect(completed.callableResult).toEqual({
+        kind: 'failed',
+        reasonCode: 'workflow.child_result_invalid',
+      });
+      expect(loadCallableCompletion).not.toHaveBeenCalled();
+    },
+  );
+
+  it('preserves existing inspected expression source order rather than checkpoint invocation order', async () => {
+    const { compiled, plan } = scopedCandidate(1, {
+      kind: 'expression',
+      language: 'jsonata',
+      policyVersion: 1,
+      expression: '[nodeOutputs.right, nodeOutputs.left]',
+    });
+    const left = plan.checkpoint.invocations[0];
+    if (left === undefined) throw new Error('Missing fixture source');
+    const right = {
+      ...left,
+      nodeId: 'right',
+      invocationKey: invocationKey({
+        workflowVersionId,
+        nodeId: 'right',
+        branchPath: (left.branchPath ?? []).map(
+          ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+        ),
+      }),
+      output: { kind: 'inline' as const, attemptId: declarationAttemptId },
+    };
+    const loadCallableCompletion = vi
+      .fn()
+      .mockResolvedValue({ kind: 'invalid_context' });
+    await completeCallableTransition(
+      compiled,
+      {
+        ...plan,
+        checkpoint: {
+          ...plan.checkpoint,
+          admittedInvocationKeys: [left.invocationKey, right.invocationKey],
+          invocations: [right, left],
+        },
+      },
+      undefined,
+      signal(),
+      loadCallableCompletion,
+    );
+    expect(loadCallableCompletion.mock.calls[0]?.[0]).toEqual({
+      expectedRevision: 0,
+      resultSelector: compiled.envelope.graph.callable?.resultSelector,
+      requiresRunInput: true,
+      sources: [left, right].map(({ nodeId, invocationKey, output }) => ({
+        nodeId,
+        invocationKey,
+        output,
+      })),
+    });
+  });
   it.each([0, 1, 2])(
     'applies the same uniqueness rule to static expression references (%i)',
     async (count) => {

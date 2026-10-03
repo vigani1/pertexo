@@ -5,6 +5,7 @@ import {
   composeExecutableCompatibilityReleaseV3,
   createCheckpoint,
   createWorkflowCheckpointV3,
+  invocationKey,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 import { createCoordinatorAdvanceEngine } from '../src/execution/coordinator-engine.js';
@@ -58,6 +59,69 @@ const input = {
 };
 
 describe('native coordinator executable/checkpoint boundary', () => {
+  it('returns a typed value-work stop instead of a transition or no-change', async () => {
+    const demandExecutable = buildWorkflowExecutableV3({
+      graph: {
+        schemaVersion: 2,
+        settings: {},
+        nodes: [graph().nodes[0]],
+        edges: [],
+        callable: {
+          schemaVersion: 1,
+          input: { type: 'object', properties: {}, required: [] },
+          result: { type: 'object', properties: {}, required: [] },
+          resultSelector: { kind: 'run_input', path: '$' },
+        },
+      },
+      release,
+    });
+    const manualKey = invocationKey({
+      workflowVersionId: VERSION_ID,
+      nodeId: 'manual',
+    });
+    const current = {
+      ...createWorkflowCheckpointV3(checkpointInput),
+      runStatus: 'running',
+      admittedInvocationKeys: [manualKey],
+      invocations: [
+        {
+          invocationKey: manualKey,
+          nodeId: 'manual',
+          attemptNumber: 1,
+          status: 'running',
+        },
+      ],
+    };
+    const stop = {
+      kind: 'unavailable' as const,
+      reason: 'control_read_failed' as const,
+    };
+    await expect(
+      createCoordinatorAdvanceEngine({ admissionRelease: release }).advance({
+        ...input,
+        checkpoint: current,
+        projection: {
+          ...projection,
+          executableJson: demandExecutable.envelope,
+          checksum: demandExecutable.checksum,
+        },
+        observations: [
+          {
+            kind: 'outcome',
+            sequence: current.nextEventSequence,
+            occurredAt: input.occurredAt,
+            invocationKey: manualKey,
+            attemptId: RUN_ID,
+            attemptNumber: 1,
+            status: 'succeeded',
+            output: { kind: 'inline', attemptId: RUN_ID },
+          },
+        ],
+        loadCallableCompletion: () =>
+          Promise.resolve({ kind: 'stopped', stop }),
+      }),
+    ).resolves.toEqual({ kind: 'value_work_stopped', stop });
+  });
   it('advances the authenticated V3 artifact and retains its checkpoint format', async () => {
     const engine = createCoordinatorAdvanceEngine({
       admissionRelease: release,

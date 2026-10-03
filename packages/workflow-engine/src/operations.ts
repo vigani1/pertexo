@@ -60,6 +60,7 @@ import {
   completeCallableTransition,
   type WorkflowCallableCompletionMaterial,
 } from './observation/workflow-call-completion.js';
+import type { LoadCallableCompletion } from './observation/workflow-call-demand.js';
 import {
   recordedCallDeclarationAttemptInput,
   validateCallDeclarationAttemptInput,
@@ -86,6 +87,8 @@ export interface AdvanceWorkflowInput {
   readonly observations?: unknown;
   readonly completedOutputs?: unknown;
   readonly callableCompletion?: WorkflowCallableCompletionMaterial;
+  readonly loadCallableCompletion?: LoadCallableCompletion;
+  readonly callableExpressionEvaluator?: ExpressionEvaluator;
   readonly workflowCalls?: Readonly<{
     readonly declarations: readonly WorkflowCallDeclarationMaterialV1[];
     readonly facts: readonly unknown[];
@@ -118,6 +121,14 @@ export async function advanceWorkflow(
   input: AdvanceWorkflowInput,
 ): Promise<WorkflowTransitionPlan> {
   assertAuthenticWorkflowExecutable(input.executable);
+  if (
+    input.callableCompletion !== undefined &&
+    input.loadCallableCompletion !== undefined
+  )
+    operationError(
+      'observation_invalid',
+      'eager and demand completion conflict',
+    );
   assertIdentity(input.runId, 'runId', 'workflow_identity_invalid');
   assertIdentity(
     input.workflowVersionId,
@@ -139,7 +150,8 @@ export async function advanceWorkflow(
       'Call materials require executable V3',
     );
   if (
-    input.callableCompletion !== undefined &&
+    (input.callableCompletion !== undefined ||
+      input.loadCallableCompletion !== undefined) &&
     (!callExecutable || input.executable.envelope.graph.callable === undefined)
   )
     operationError(
@@ -272,6 +284,8 @@ export async function advanceWorkflow(
         plan,
         input.callableCompletion,
         input.signal,
+        input.loadCallableCompletion,
+        input.callableExpressionEvaluator,
       )
     : plan;
   assertNotAborted(input.signal);

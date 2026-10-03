@@ -865,3 +865,32 @@ build/typecheck, narrow lint/format and architecture/duplication checks. The sam
 eight inherited complexity findings remain open. Coordinator demand/lifetime and
 independent artifact verification interfaces still require design review; native
 execution remains OFF and screened security qualification PAUSED.
+
+### Coordinator demand interface — ordinary source, 2026-10-03
+
+The accepted [ADR065 demand amendment](../adr/065-durable-parent-child-workflow-calls.md#coordinator-native-value-demand-amendment--accepted-2026-10-03)
+now has a bounded first ordinary interface slice. The engine requests material
+only after pure success and valid unique root selection, preserves existing
+inspected source order, and refuses eager plus demand at runtime before work.
+Literal, non-success and ambiguous/missing selection never call the provider.
+Ready material must match the exact requested output inventory; the provider
+cannot supply an evaluator or mutate checkpoint facts through its request.
+Retained eager completion remains unchanged.
+
+Shared typed value-work stops propagate through the core engine, worker wrapper
+and handler without a success plan, semantic child failure, commit or queue
+acknowledgement. Only the dedicated stop exception becomes the wrapper's stopped
+result; other integrity/infrastructure errors keep their existing behavior.
+The actual queue adapter leaves stopped work retryable. Native handler composition
+forwards canonical delivery and workspace/run/version with the engine's demand to
+a framework-only external source adapter; absence fails closed as unavailable.
+It does not reuse eager native material as demand authority.
+
+This is not persistent native execution. The database's existing eager state
+loader is unchanged; actual source/control SQL projections, the joined bounded
+watcher policy, incremental context hydration and independent native persistent
+commit hydration/evaluation/preparation/final recheck remain subsequent work.
+The required literal-preparation cancellation/stalled-upload regression remains
+open with that preparation slice. Ordinary engine/worker tests, builds,
+typechecks and narrow lint pass; eight inherited complexity findings remain.
+Native execution/catalog/writers remain OFF and screened qualification PAUSED.
