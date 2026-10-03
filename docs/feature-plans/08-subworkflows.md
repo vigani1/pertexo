@@ -480,3 +480,23 @@ OFF, with no permanent serving grants. Six run-history Chromium journeys pass,
 including 390px keyboard child→parent navigation; the rendered child page was
 inspected. Native authoring/publication/root, artifact/retention, permanent
 runtime/readiness/privilege and full concurrent/restart/process gates remain open.
+
+Native authoring transport now preserves explicit Graph V2 drafts and published
+Graph2/checksum-V3 records through the normal database readers and API serializers.
+The separate `draft-v2` strong ETag authenticates the full declaration, selector,
+exact Call pin and editor representation; retained `draft-v1` identity and Graph
+V1 parsing remain unchanged. Public draft/version schemas reject cross-format
+pairs, and generated client/OpenAPI schemas retain recursive callable descriptor
+structure rather than an unconstrained transform projection. Bounded descriptor
+admission remains the runtime authority. The existing save owner preserves its
+authorization, compatibility/placement lock, revision/ETag CAS and audit path.
+An owned actual API-role create→native save→read flow rejects the stale retained
+tag, changes the native tag with its selector, and leaves an already published
+native version unchanged. This proof explicitly prepares only the disposable
+draft schema and bootstraps publication/root; it is not normal native publication,
+HTTP/browser authoring, permanent migration/readiness or positive writer proof.
+The unregistered SQL SHA256 remains `80b339addd08c335cf99ae31bee205e6fc859ce8ebb0ee11cc8b11196f553de7`,
+OFF with no permanent serving grants. Existing native publication/root, editor,
+artifact/retention, raw nonliteral writer trust and full qualification gates remain
+open. The repository complexity gate additionally reports owned F08 execution
+hotspots; no waiver or full closure is claimed from passing this authoring slice.

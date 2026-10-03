@@ -29,6 +29,39 @@ function representation(
 }
 
 describe('workflow authoring strong draft ETag', () => {
+  it('preserves explicit native graph identity and rejects format substitution', () => {
+    const native = {
+      ...graph,
+      schemaVersion: 2,
+      callable: {
+        schemaVersion: 1,
+        input: { type: 'object', properties: {}, required: [] },
+        result: { type: 'object', properties: {}, required: [] },
+        resultSelector: { kind: 'literal', value: {} },
+      },
+    };
+    const tag = createDraftRepresentationTag(representation({ graph: native }));
+    expect(tag).toMatch(/^"draft-v2\.[A-Za-z0-9_-]{43}"$/u);
+    expect(tag).not.toBe(createDraftRepresentationTag(representation()));
+    expect(
+      createDraftRepresentationTag(
+        representation({
+          graph: {
+            ...native,
+            callable: {
+              ...native.callable,
+              resultSelector: { kind: 'literal', value: { changed: true } },
+            },
+          },
+        }),
+      ),
+    ).not.toBe(tag);
+    expect(() =>
+      createDraftRepresentationTag(
+        representation({ graph: { ...native, schemaVersion: 1 } }),
+      ),
+    ).toThrow();
+  });
   it('is deterministic for equivalent object key order and quoted as a strong tag', () => {
     const first = createDraftRepresentationTag(representation());
     const second = createDraftRepresentationTag(

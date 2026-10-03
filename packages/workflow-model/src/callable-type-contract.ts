@@ -22,6 +22,50 @@ export interface CallableObjectTypeDescriptorV1 {
   readonly required: readonly string[];
 }
 
+/** Documentation projection only; bounded admission below remains authoritative. */
+export const callableObjectTypeDescriptorStructuralSchemaV1: z.ZodType<CallableObjectTypeDescriptorV1> =
+  z.lazy(() =>
+    z
+      .object({
+        type: z.literal('object'),
+        properties: z.record(
+          z
+            .string()
+            .regex(
+              /^(?!(?:__proto__|prototype|constructor)$)[A-Za-z_][A-Za-z0-9_]{0,63}$/u,
+            ),
+          callableTypeDescriptorStructuralSchemaV1,
+        ),
+        required: z
+          .array(z.string().min(1).max(64))
+          .max(CALLABLE_TYPE_LIMITS_V1.properties),
+      })
+      .strict(),
+  );
+
+export const callableTypeDescriptorStructuralSchemaV1: z.ZodType<CallableTypeDescriptorV1> =
+  z.lazy(() =>
+    z.union([
+      z
+        .object({
+          type: z.enum(['string', 'number', 'integer', 'boolean', 'null']),
+        })
+        .strict(),
+      z
+        .object({
+          type: z.literal('array'),
+          items: callableTypeDescriptorStructuralSchemaV1,
+          maxItems: z
+            .number()
+            .int()
+            .min(1)
+            .max(CALLABLE_TYPE_LIMITS_V1.maxItems),
+        })
+        .strict(),
+      callableObjectTypeDescriptorStructuralSchemaV1,
+    ]),
+  );
+
 const propertyName = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/u;
 const forbiddenNames = new Set(['__proto__', 'prototype', 'constructor']);
 

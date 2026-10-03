@@ -80,16 +80,50 @@ describe('contract schema projection', () => {
   it('retains the structural graph projection and explicit runtime marker', () => {
     const saveRequest = workflowAuthoringClientContract.schemas
       .WorkflowDraftSaveRequest as {
-      properties?: { graph?: Record<string, unknown> };
+      properties?: { graph?: { anyOf?: Record<string, unknown>[] } };
     };
-    expect(saveRequest.properties?.graph).toMatchObject({
-      type: 'object',
-      'x-pertexo-runtime-bounds': true,
+    const branches = saveRequest.properties?.graph?.anyOf;
+    expect(branches).toHaveLength(2);
+    for (const [index, branch] of (branches ?? []).entries())
+      expect(branch).toMatchObject({
+        type: 'object',
+        'x-pertexo-runtime-bounds': true,
+        additionalProperties: false,
+        properties: {
+          schemaVersion: { const: index + 1 },
+          nodes: { type: 'array', maxItems: 1_000 },
+          edges: { type: 'array', maxItems: 4_000 },
+          settings: { type: 'object' },
+        },
+      });
+    expect(branches?.[1]).toHaveProperty('properties.callable');
+    expect(branches?.[1]).toMatchObject({
+      properties: {
+        callable: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            schemaVersion: { const: 1 },
+            input: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                type: { const: 'object' },
+                properties: { type: 'object' },
+                required: { type: 'array', maxItems: 128 },
+              },
+            },
+            result: {
+              type: 'object',
+              additionalProperties: false,
+              properties: { type: { const: 'object' } },
+            },
+          },
+        },
+      },
     });
-    expect(saveRequest.properties?.graph?.properties).toMatchObject({
-      nodes: { type: 'array', maxItems: 1_000 },
-      edges: { type: 'array', maxItems: 4_000 },
-      settings: { type: 'object' },
-    });
+    const document = { schemas: workflowAuthoringClientContract.schemas };
+    for (const reference of references(document))
+      expect(resolves(document, reference), reference).toBe(true);
   });
 });

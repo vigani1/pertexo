@@ -4,6 +4,8 @@ import { z } from 'zod';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
+  parseWorkflowAuthoringGraphDraft,
+  workflowCallableDraftRepresentationTagV2,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/graph';
 
@@ -36,7 +38,7 @@ const uuidSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(128);
 const workflowDraftTagSchema = z
   .string()
-  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+  .regex(/^"draft-v[12]\.[A-Za-z0-9_-]{43}"$/u);
 
 async function createWorkflow(
   context: WorkflowAuthoringWriteContext,
@@ -125,7 +127,7 @@ async function saveDraft(
     await context.requireAuthor(client, input.workspaceId, input.actorId);
     const { definitionCatalog, placementDefinitionCatalog } =
       await context.selectCatalogs(client);
-    const graph = parseWorkflowGraphDraft(input.graphJson);
+    const graph = parseWorkflowAuthoringGraphDraft(input.graphJson);
     const expected = z.number().int().positive().parse(input.expectedRevision);
     const workflowId = uuidSchema.parse(input.workflowId);
     const current = await client.query<Record<string, unknown>>(
@@ -219,7 +221,11 @@ function draftRepresentationTag(
   workflowId: string,
   draft: WorkflowDraftRecord,
 ): string {
-  return workflowDraftRepresentationTag({
+  const tag =
+    draft.schemaVersion === 2
+      ? workflowCallableDraftRepresentationTagV2
+      : workflowDraftRepresentationTag;
+  return tag({
     workflowId,
     revision: draft.revision,
     graph: draft.graphJson,

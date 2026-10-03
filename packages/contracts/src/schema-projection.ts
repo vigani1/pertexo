@@ -2,6 +2,14 @@ import {
   workflowGraphSchema,
   workflowGraphStructuralSchemaV1,
 } from '@pertexo/workflow-model/graph-contract';
+import {
+  workflowCallableGraphSchemaV2,
+  workflowGraphStructuralSchemaV2,
+} from '@pertexo/workflow-model/callable-graph-contract';
+import {
+  callableObjectTypeDescriptorSchemaV1,
+  callableObjectTypeDescriptorStructuralSchemaV1,
+} from '@pertexo/workflow-model/callable-type-contract';
 import { z } from 'zod';
 import {
   workflowPortableManifestSchema,
@@ -18,6 +26,29 @@ type JsonSchema = Record<string, unknown>;
 const structuralWorkflowGraph = z.toJSONSchema(
   workflowGraphStructuralSchemaV1,
   { target: 'draft-2020-12', reused: 'inline' },
+);
+const structuralCallableWorkflowGraph = z.toJSONSchema(
+  workflowGraphStructuralSchemaV2,
+  {
+    target: 'draft-2020-12',
+    reused: 'inline',
+    unrepresentable: 'any',
+    override: ({ zodSchema, jsonSchema }) => {
+      if (
+        zodSchema ===
+        (callableObjectTypeDescriptorSchemaV1 as unknown as typeof zodSchema)
+      ) {
+        replaceObject(
+          jsonSchema,
+          z.toJSONSchema(callableObjectTypeDescriptorStructuralSchemaV1, {
+            target: 'draft-2020-12',
+            reused: 'inline',
+          }),
+        );
+        jsonSchema['x-pertexo-runtime-bounds'] = true;
+      }
+    },
+  },
 );
 
 const recursiveJsonValue = z.toJSONSchema(z.json(), {
@@ -131,6 +162,15 @@ export function projectContractSchema(
       }
       if (zodSchema === (workflowGraphSchema as unknown as typeof zodSchema))
         replaceWorkflowGraph(jsonSchema);
+      if (
+        zodSchema ===
+        (workflowCallableGraphSchemaV2 as unknown as typeof zodSchema)
+      ) {
+        replaceObject(jsonSchema, structuralCallableWorkflowGraph);
+        jsonSchema.description =
+          'Native callable workflow graph V2. Runtime validation additionally enforces aggregate node/edge, nesting-depth, callable descriptor, and encoded-byte limits.';
+        jsonSchema['x-pertexo-runtime-bounds'] = true;
+      }
       if (
         zodSchema ===
         (boundedNodeTestJsonInputSchema as unknown as typeof zodSchema)
