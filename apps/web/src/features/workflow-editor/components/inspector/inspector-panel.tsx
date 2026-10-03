@@ -9,6 +9,7 @@ import type { EditorFocusTarget } from '../../use-editor-actions';
 import type { InspectorTab } from '../../use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';
 import type { ChannelLookupScope } from './slack-channel-field';
+import { WorkflowCallableInspector } from './workflow-callable-inspector';
 
 function stepName(
   node: Readonly<{ label?: string | undefined; definition: { key: string } }>,
@@ -98,11 +99,11 @@ export function InspectorPanel({
       </div>
     );
   return (
-    <div className="p-4">
-      <h2 className="font-heading text-lg font-semibold">No step selected</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Select a step on the canvas to set it up, map its inputs and test it.
-      </p>
-    </div>
+    <WorkflowCallableInspector
+      key={`workflow:${String(scratchVersion)}`}
+      editable={editable}
+      onDiscardScratch={actions.onDiscardScratch}
+      onClose={actions.onClose}
+    />
   );
 }

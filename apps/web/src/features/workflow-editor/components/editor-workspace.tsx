@@ -39,6 +39,7 @@ import { EditorInspector } from './inspector/editor-inspector';
 import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';
 
 export type EditorChrome = Readonly<{
+  onInspectWorkflow: () => void;
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;
   /** The bottom issues lens, opened from the command bar's chip. */
@@ -95,7 +96,7 @@ export function EditorWorkspace({
 }>) {
   const store = useEditorStoreApi();
   const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
-  const inspectorOpen = useEditorStore(
+  const stepInspectorOpen = useEditorStore(
     (state) => state.selectedNodeIds.length > 0,
   );
   const editable = canUpdate && !inConflict;
@@ -104,6 +105,8 @@ export function EditorWorkspace({
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const { request, navigation } = actions;
+  const inspectorOpen =
+    stepInspectorOpen || navigation.mobilePanel === 'inspector';
   const lastTest = useLastTest();
   const { setMobilePanel } = navigation;
   const addStep = useAddStepFold(editable, setMobilePanel);
@@ -143,6 +146,9 @@ export function EditorWorkspace({
 
   const overlays = useCanvasOverlays(issues, effects);
   const chrome: EditorChrome = {
+    onInspectWorkflow: () => {
+      request({ kind: 'inspect-workflow' });
+    },
     shortcutsOpen,
     onShortcutsOpenChange: setShortcutsOpen,
     issuesOpen,
@@ -238,8 +244,7 @@ export function EditorWorkspace({
             />
           )}
           onClose={() => {
-            setMobilePanel('none');
-            request({ kind: 'select', nodeIds: [] });
+            request({ kind: 'close-inspector' });
           }}
           onAddStepAfter={addAfter}
           onAddToBody={addToBody}

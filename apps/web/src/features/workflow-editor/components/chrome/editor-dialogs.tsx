@@ -88,7 +88,7 @@ export function UnfinishedEditDialog({
         if (!next) onStay();
       }}
       title="Discard the unfinished edit?"
-      description="A field in the step panel isn’t valid yet, so it hasn’t been saved. Stay to fix it, or discard it and continue."
+      description="A field in the editor panel isn’t valid yet, so it hasn’t been saved. Stay to fix it, or discard it and continue."
       tone="destructive"
       confirmLabel="Discard edit"
       cancelLabel="Stay"

@@ -558,3 +558,47 @@ relaxing source assertions or granting table access. The full OFF/unregistered
 SQL draft is now 1da1694f (38 functions; permanent serving EXECUTE remains zero).
 This is source-byte hydration evidence, not semantic attestation or artifact,
 normal native publication/root, readiness/rotation/restore or full F08 closure.
+
+Primary review found a P2 gap in the earlier attempt-only early-seal proof: an
+ordinary native logical node projection could be changed after the physical
+completion seal in the same outer transaction. The actual worker regression
+reproduced a committed logical-output forgery on SQL1da1694f; that original source
+and failure are retained. The repaired OFF draft stamps an owner-only, once-only
+outer-xid/logical-projection denial marker on the existing original value row.
+Its logical trigger rejects later changed closing facts in that same transaction;
+the dedicated provenance trigger permits only the restricted initial marker stamp
+while preserving every original value field. Changed nonnull logical outputs in
+fresh transactions must also match current protected physical output ownership.
+Earlier owned runs rejected six logical and four attempt mutations after an early seal,
+allowed an unchanged projection, checked full outer rollback and preserved native
+core.wait suspension/due wakeup/later resume, and demonstrates retained CP1/CP2
+row-fixture bypass without a broader serving grant. The current full draft is
+d2fe3165 (40 routines; permanent serving EXECUTE zero; OFF/unregistered).
+This does **not** close general native coordinator authority: an owned fresh
+transaction still committed a logical NULL clear, then restored original truth.
+NULL/state/current-pointer transitions need their established coordinator authority
+fence before full F08 completion. Same-transaction sealing is not global projection
+immutability or a semantic attestation, and the P2 repair awaits exact-source
+primary review. Final security qualification was interrupted by platform screening;
+the last launched session's result could not be recovered and is not claimed as
+passed. Further adversarial probes are paused, not retried. Ordinary product
+implementation continues with writers OFF. No artifact/native publication/root/
+readiness gate is closed.
+
+The ordinary editor now authors a root callable declaration in its existing
+workflow-scoped graph store. Input/result descriptors and the result source use
+the shared bounded browser contract, with local unfinished text, per-field scratch
+aggregation and guarded close/selection/undo. Valid values autosave through the
+existing conditional draft PUT and opaque V2 ETag; no endpoint or second form
+authority was introduced. Removal preserves Graph V2, all steps and edges; undo
+restores the declaration. Read-only actors can inspect but not change it. The
+selector explains unique successful root invocation requirements and distinguishes
+format checks from runtime evaluation/type validation. Native Publish, Run and
+step-test controls remain unavailable; the native catalog cohort and writers are
+still OFF. Local evidence: 138 web unit files / 1,120 tests, web typecheck/build/lint,
+19 architecture checks, 21 documentation checks and nine Chromium editor journeys
+(including native save/reload and phone-width authoring), plus inspected desktop/
+mobile screenshots. React Doctor changed-scope scan: 100/100, no diagnostics.
+This is ordinary draft-authoring UI qualification, not full F08 or paused security
+gate closure. Exact pinned-Call configuration and remaining runtime/API readiness
+owners are still unfinished.

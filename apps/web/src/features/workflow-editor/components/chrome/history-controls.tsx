@@ -1,10 +1,17 @@
-import { EllipsisIcon, KeyboardIcon, Redo2Icon, Undo2Icon } from 'lucide-react';
+import {
+  BracesIcon,
+  EllipsisIcon,
+  KeyboardIcon,
+  Redo2Icon,
+  Undo2Icon,
+} from 'lucide-react';
 import type { Ref } from 'react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -60,6 +67,7 @@ export function HistoryControls({
  * command bar keeps room for Run and Publish.
  */
 export function CompactHistoryMenu({
+  onInspectWorkflow,
   onUndo,
   onRedo,
   onShowShortcuts,
@@ -69,6 +77,7 @@ export function CompactHistoryMenu({
   onUndo: () => void;
   onRedo: () => void;
   onShowShortcuts: () => void;
+  onInspectWorkflow: () => void;
   triggerRef?: Ref<HTMLButtonElement>;
   className?: string;
 }>) {
@@ -87,21 +96,27 @@ export function CompactHistoryMenu({
         <EllipsisIcon />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem disabled={!undoable} onClick={onUndo}>
-          <Undo2Icon aria-hidden="true" />
-          <span className="flex-1">Undo</span>
-          <Kbd>{shortcut('Z')}</Kbd>
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={!redoable} onClick={onRedo}>
-          <Redo2Icon aria-hidden="true" />
-          <span className="flex-1">Redo</span>
-          <Kbd>{shortcut('Z', { shift: true })}</Kbd>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onShowShortcuts}>
-          <KeyboardIcon aria-hidden="true" />
-          <span className="flex-1">Keyboard shortcuts</span>
-          <Kbd>?</Kbd>
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={onInspectWorkflow}>
+            <BracesIcon aria-hidden="true" />
+            Callable contract
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={!undoable} onClick={onUndo}>
+            <Undo2Icon aria-hidden="true" />
+            <span className="flex-1">Undo</span>
+            <Kbd>{shortcut('Z')}</Kbd>
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={!redoable} onClick={onRedo}>
+            <Redo2Icon aria-hidden="true" />
+            <span className="flex-1">Redo</span>
+            <Kbd>{shortcut('Z', { shift: true })}</Kbd>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onShowShortcuts}>
+            <KeyboardIcon aria-hidden="true" />
+            <span className="flex-1">Keyboard shortcuts</span>
+            <Kbd>?</Kbd>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
