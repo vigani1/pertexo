@@ -125,6 +125,7 @@ export function EditorInspector({
       definitions={definitions}
       connections={connections}
       channelLookup={channelLookup}
+      versionSourceScope={{ apiClient, userId, workspaceId }}
       editable={editable}
       scratchVersion={actions.scratchVersion}
       tab={tab}

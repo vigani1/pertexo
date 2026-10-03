@@ -10,6 +10,7 @@ import type { InspectorTab } from '../../use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';
 import type { ChannelLookupScope } from './slack-channel-field';
 import { WorkflowCallableInspector } from './workflow-callable-inspector';
+import type { VersionSourceScope } from '../../workflow-version-sources.queries';
 
 function stepName(
   node: Readonly<{ label?: string | undefined; definition: { key: string } }>,
@@ -28,6 +29,7 @@ export function InspectorPanel({
   definitions,
   connections,
   channelLookup,
+  versionSourceScope,
   editable,
   scratchVersion,
   tab,
@@ -40,6 +42,7 @@ export function InspectorPanel({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
+  versionSourceScope?: VersionSourceScope;
   editable: boolean;
   scratchVersion: number;
   tab: InspectorTab;
@@ -69,6 +72,7 @@ export function InspectorPanel({
         definitions={definitions}
         connections={connections}
         channelLookup={channelLookup}
+        {...(versionSourceScope === undefined ? {} : { versionSourceScope })}
         editable={editable}
         tab={tab}
         onTabChange={onTabChange}

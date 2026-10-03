@@ -638,3 +638,27 @@ Doctor scanned 39 changed files: 100/100, no diagnostics. One initial unit failu
 queried a transitioning popup synchronously; the test now awaits the accessible
 option, and the complete suite passes. Native catalog/writers remain OFF; full
 F08 and paused security qualification are still incomplete.
+
+Call setup now includes a read-only "Browse version source" dialog. Existing
+current-workspace workflow/version public adapters and Query own discovery; only
+the explicitly chosen workflow's versions are read, with no default/latest
+selection or workspace-wide version fanout. Exact immutable workflow/version IDs,
+checksum/publication date and callable input/result source descriptors can be
+inspected; the three known values can be copied individually. The browser has no
+draft/form mutation interface and cannot stage or upgrade a pin. Manual pin edits,
+input mappings and unsupported JSON configuration remain owned by their existing
+editor. Read-only actors can inspect/copy without gaining editing authority.
+The UI explicitly states source-only, eligibility/compatibility/authorization
+unverified and that the response does not supply callable-contract identity.
+Loaded workflow pages remain visible on next-page failure; repeated cursors and
+the 40-page bound remain incomplete, not absence/no-newer-source conclusions.
+Existing bounded version discovery propagates failures rather than returning
+apparently complete partial results. Focused route/query/pagination and existing
+Call editor checks protect no-save/copy/preservation, scoped reads/cancellation
+and honest failure handling; 17 tests passed. Two Chromium journeys confirm exact
+clipboard values, no draft writes, unchanged graph/pin/mappings and bounded
+desktop/phone layout; both screenshots were inspected. Web build/typecheck/lint,
+architecture and source formatting pass. Staged-source Doctor checks 52 changed
+files at 100/100 without diagnostics. This is usable source inspection, not
+automatic target eligibility or explicit executable upgrade qualification.
+Native execution/catalog/writers remain OFF and F08/security gates remain open.
