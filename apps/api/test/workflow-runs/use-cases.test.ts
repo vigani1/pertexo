@@ -179,14 +179,23 @@ describe('workflow run application seams', () => {
   it('preserves native child provenance through authorized detail, list and cancellation responses', async () => {
     const fixture = persistence();
     const child = { ...run(), triggerType: 'workflow_call' as const };
-    fixture.get.mockResolvedValue({ run: child, nodes: [] });
+    const callFamily = {
+      rootRunId: workflowId,
+      parentRunId: workflowId,
+      parentInvocationKey: 'call:0',
+      children: [],
+    };
+    fixture.get.mockResolvedValue({ run: child, nodes: [], callFamily });
     fixture.list.mockResolvedValue({ items: [child] });
     fixture.cancel.mockResolvedValue({ run: child, alreadyRequested: false });
     const access = authorization();
     const input = { actor, routeWorkspaceId: workspaceId, runId };
     await expect(
       new GetWorkflowRunUseCase(fixture.store, access).execute(input),
-    ).resolves.toMatchObject({ run: { triggerType: 'workflow_call' } });
+    ).resolves.toMatchObject({
+      run: { triggerType: 'workflow_call' },
+      callFamily,
+    });
     await expect(
       new ListWorkflowRunsUseCase(fixture.store, access).execute(input),
     ).resolves.toMatchObject({ items: [{ triggerType: 'workflow_call' }] });

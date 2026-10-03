@@ -467,3 +467,16 @@ runs. React Doctor 0.9.14 changed-scope scans report no diagnostics (100/100);
 this is not a full-app cleanup baseline. Parent/child navigation and family read
 projections, native publication/root acceptance and all earlier remaining gates
 are still unfinished.
+
+The existing run-detail snapshot now adds bounded native family links through a
+tenant-bound read-only definer: accepted parent/root IDs and at most 64 immediate
+admitted children with current statuses, no callable input/result values. Retained
+checkpoints do not call the unregistered native function. The same authorized
+API use case forwards this optional projection; the existing detail page renders
+child/parent/root links without an additional query, store or event subscription.
+An owned actual API-role matrix proves parent/child links and rejects no-scope,
+wrong-workspace and direct family-table reads. The full SQL remains unregistered,
+OFF, with no permanent serving grants. Six run-history Chromium journeys pass,
+including 390px keyboard child→parent navigation; the rendered child page was
+inspected. Native authoring/publication/root, artifact/retention, permanent
+runtime/readiness/privilege and full concurrent/restart/process gates remain open.

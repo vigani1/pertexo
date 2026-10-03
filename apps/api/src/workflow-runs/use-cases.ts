@@ -487,5 +487,8 @@ function toRunResponse(result: WorkflowRunReadModel): WorkflowRunResponse {
       completedAt: iso(node.completedAt),
       resumeAt: iso(node.resumeAt),
     })),
+    ...(result.callFamily === undefined
+      ? {}
+      : { callFamily: result.callFamily }),
   });
 }

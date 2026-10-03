@@ -1,6 +1,7 @@
 import type {
   UsageCapacityResponse,
   WorkflowRunAdmissionBlockers,
+  WorkflowRunResponse,
 } from '@pertexo/contracts/workflow-runs';
 import type {
   ActorContext,
@@ -109,6 +110,7 @@ export type WorkflowNodeRunRecord = Readonly<{
 export type WorkflowRunReadModel = Readonly<{
   run: WorkflowRunReadRecord;
   nodes: readonly WorkflowNodeRunRecord[];
+  callFamily?: NonNullable<WorkflowRunResponse['callFamily']>;
 }>;
 
 export type WorkflowRunListPosition = Readonly<{

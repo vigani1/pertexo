@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   workflowRunCancelRequestSchema,
   workflowRunTriggerTypeSchema,
+  workflowRunResponseSchema,
   workflowRunListQuerySchema,
   workflowRunReplayRequestSchema,
   workflowRunListResponseSchema,
@@ -166,6 +167,38 @@ describe('workflow-run public contracts', () => {
         nextCursor: null,
       }).items[0]?.workflowName,
     ).toBeNull();
+    const callFamily = {
+      rootRunId: summary.id,
+      parentRunId: null,
+      parentInvocationKey: null,
+      children: [],
+    };
+    expect(
+      workflowRunResponseSchema.parse({ run: summary, nodes: [], callFamily })
+        .callFamily,
+    ).toEqual(callFamily);
+    expect(
+      workflowRunResponseSchema.safeParse({
+        run: summary,
+        nodes: [],
+        callFamily: { ...callFamily, input: 'not a relationship' },
+      }).success,
+    ).toBe(false);
+    expect(
+      workflowRunResponseSchema.safeParse({
+        run: summary,
+        nodes: [],
+        callFamily: {
+          ...callFamily,
+          children: Array.from({ length: 65 }, () => ({
+            runId: summary.id,
+            nodeId: 'call',
+            invocationKey: 'key',
+            status: 'waiting',
+          })),
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it('accepts only fixed statistics windows and the workflow breakdown', () => {

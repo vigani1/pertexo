@@ -8,6 +8,10 @@ import {
 } from '../../tenant-access/workspace.js';
 import { WorkflowRunReadCapacityError } from './workflow-run-errors.js';
 import {
+  readWorkflowRunCallFamily,
+  type WorkflowRunCallFamily,
+} from './workflow-run-call-family.js';
+import {
   readWorkflowRunReadRecord,
   type WorkflowRunReadRecord,
 } from './workflow-run-persistence-support.js';
@@ -63,6 +67,7 @@ export type WorkflowNodeRunRecord = Readonly<{
 export type WorkflowRunReadModel = Readonly<{
   run: WorkflowRunReadRecord;
   nodes: readonly WorkflowNodeRunRecord[];
+  callFamily?: WorkflowRunCallFamily;
 }>;
 
 /** One run and its node runs, read in a workspace-scoped snapshot. */
@@ -109,9 +114,11 @@ async function readRunModel(
     limit 1001
   `);
   if (nodes.rows.length > 1_000) throw new WorkflowRunReadCapacityError();
+  const callFamily = await readWorkflowRunCallFamily(transaction, runId);
   return Object.freeze({
     run,
     nodes: Object.freeze(nodes.rows.map(toNodeRecord)),
+    ...(callFamily === undefined ? {} : { callFamily }),
   });
 }
 

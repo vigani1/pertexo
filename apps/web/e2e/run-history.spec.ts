@@ -369,6 +369,85 @@ test('replays the exact displayed version from its own input', async ({
   await expect(page.getByText('Replay started')).toBeVisible();
 });
 
+test('follows accepted caller and child run links on mobile', async ({
+  page,
+}, testInfo) => {
+  await installRoutes(page);
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
+    (route) =>
+      route.fulfill({
+        json: {
+          run: run(firstRunId, 'succeeded'),
+          nodes: [],
+          callFamily: {
+            rootRunId: firstRunId,
+            parentRunId: null,
+            parentInvocationKey: null,
+            children: [
+              {
+                runId: secondRunId,
+                nodeId: 'call-child',
+                invocationKey: 'call-child:0',
+                status: 'succeeded',
+              },
+            ],
+          },
+        },
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${secondRunId}`,
+    (route) =>
+      route.fulfill({
+        json: {
+          run: {
+            ...run(secondRunId, 'succeeded'),
+            triggerType: 'workflow_call',
+          },
+          nodes: [],
+          callFamily: {
+            rootRunId: firstRunId,
+            parentRunId: firstRunId,
+            parentInvocationKey: 'call-child:0',
+            children: [],
+          },
+        },
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${secondRunId}/events`,
+    (route) => route.fulfill({ contentType: 'text/event-stream', body: '' }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+  const child = page.getByRole('link', { name: 'call-child: run ffff…ffff' });
+  await expect(child).toBeVisible();
+  await child.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${secondRunId}`);
+  const parent = page.getByRole('link', { name: 'Parent run eeee…eeee' });
+  await expect(parent).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await testInfo.attach('native-child-family-390', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+    await page.screenshot({
+      path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/native-child-family-390.png`,
+      fullPage: true,
+    });
+  await parent.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${firstRunId}`);
+  await expect(child).toBeVisible();
+});
+
 test('keeps a maximum-length workflow identity accessible and contained on mobile', async ({
   page,
 }) => {

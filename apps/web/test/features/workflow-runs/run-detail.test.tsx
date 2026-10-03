@@ -163,6 +163,80 @@ afterEach(() => {
 });
 
 describe('run page', () => {
+  it('navigates accepted child and parent run links through the existing detail route', async () => {
+    const childId = fixtureIds.secondRun;
+    const parent = fixtureRun(runId, 'succeeded');
+    const child = fixtureRun(childId, 'succeeded', {
+      triggerType: 'workflow_call',
+    });
+    installRun({ run: parent, nodes: [] });
+    mockServer.use(
+      http.get(`${apiBase}/runs/${runId}`, () =>
+        HttpResponse.json({
+          run: parent,
+          nodes: [],
+          callFamily: {
+            rootRunId: runId,
+            parentRunId: null,
+            parentInvocationKey: null,
+            children: [
+              {
+                runId: childId,
+                nodeId: 'call-child',
+                invocationKey: 'call-child:0',
+                status: 'succeeded',
+              },
+            ],
+          },
+        }),
+      ),
+      http.get(`${apiBase}/runs/${childId}`, () =>
+        HttpResponse.json({
+          run: child,
+          nodes: [],
+          callFamily: {
+            rootRunId: runId,
+            parentRunId: runId,
+            parentInvocationKey: 'call-child:0',
+            children: [],
+          },
+        }),
+      ),
+      http.get(
+        `${apiBase}/runs/${childId}/events`,
+        () =>
+          new HttpResponse('', {
+            headers: { 'content-type': 'text/event-stream' },
+          }),
+      ),
+    );
+    const { router } = renderApp(`/w/${workspaceId}/runs/${runId}`);
+    const link = await screen.findByRole(
+      'link',
+      { name: 'call-child: run ffff…ffff' },
+      coldStart,
+    );
+    expect(link).toHaveAttribute('href', `/w/${workspaceId}/runs/${childId}`);
+    await userEvent.setup().click(link);
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        `/w/${workspaceId}/runs/${childId}`,
+      );
+    });
+    const parentLink = await screen.findByRole('link', {
+      name: 'Parent run eeee…eeee',
+    });
+    expect(parentLink).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/runs/${runId}`,
+    );
+    await userEvent.setup().click(parentLink);
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        `/w/${workspaceId}/runs/${runId}`,
+      );
+    });
+  });
   it('updates the visible run and step status when a waiting run resumes', async () => {
     installRun({ run: fixtureRun(runId, 'waiting'), nodes: [node('waiting')] });
     let status: 'waiting' | 'running' = 'waiting';
