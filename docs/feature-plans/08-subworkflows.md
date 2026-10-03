@@ -542,3 +542,19 @@ denied by the existing worker column grant, not counted as a triggered fence.
 The full unregistered draft is now a38422af (36 functions, zero permanent serving
 EXECUTE, writes OFF, registered head0135/count133). This does not close artifact,
 semantic result/publication capability, native cohort/readiness or full F08 gates.
+
+Callable physical-source hydration now uses two narrow protected reads: bounded
+current-success metadata excludes actual pinned Call sites before value loading,
+including the pre-admission input-alias window; 16-attempt pages return protected
+original inline bytes/checksum/length bound to the actual accepted version,
+current attempt/fence and both physical refs. Existing snapshot verification
+checks byte integrity/projection agreement before using original parsed values.
+Ambiguity still belongs to the engine and requires no value hydration. Owned
+worker node-output and expression/just-terminal nested-Call fixtures qualify these
+reads and scope/bounds denials without a broader protected-table grant. Earlier
+fixture failures exposed the pre-journal Call alias and direct-table privilege
+gaps; both were fixed through the existing protected ownership seam, not by
+relaxing source assertions or granting table access. The full OFF/unregistered
+SQL draft is now 1da1694f (38 functions; permanent serving EXECUTE remains zero).
+This is source-byte hydration evidence, not semantic attestation or artifact,
+normal native publication/root, readiness/rotation/restore or full F08 closure.

@@ -16,6 +16,14 @@ const inline = (value: unknown) => ({
   kind: 'inline',
   value,
 });
+function snapshot(value: unknown, bytes = JSON.stringify(value)) {
+  return {
+    reference: inline(value),
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+    byteLength: Buffer.byteLength(bytes),
+    serializedValue: bytes,
+  };
+}
 function input(selector: unknown = { kind: 'run_input', path: '$' }) {
   return {
     workspaceId: workspace,
@@ -71,7 +79,7 @@ describe('native callable inline completion hydration', () => {
         ],
       })
       .mockResolvedValueOnce({
-        rows: [{ attempt_id: attempt, output_ref: inline({ name: 'output' }) }],
+        rows: [{ attempt_id: attempt, snapshot: snapshot({ name: 'output' }) }],
       });
     await expect(
       loadCoordinatorCallableMaterials(
@@ -88,8 +96,14 @@ describe('native callable inline completion hydration', () => {
         },
       ],
     });
-    expect(query.mock.calls[0]?.[1]).toEqual([workspace, run, ['result']]);
-    expect(query.mock.calls[1]?.[1]).toEqual([workspace, run, [attempt]]);
+    expect(query.mock.calls[0]?.[1]).toEqual([run, ['result']]);
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'app.read_native_workflow_attempt_output_facts',
+    );
+    expect(query.mock.calls[1]?.[1]).toEqual([run, [attempt]]);
+    expect(query.mock.calls[1]?.[0]).toContain(
+      'app.read_native_workflow_attempt_outputs',
+    );
   });
   it('preserves the engine-owned ambiguous-source failure without hydrating either value', async () => {
     const query = vi.fn().mockResolvedValue({
@@ -200,7 +214,7 @@ describe('native callable inline completion hydration', () => {
     }));
     const values = rows.map((row) => ({
       attempt_id: row.attempt_id,
-      output_ref: inline({ name: row.node_id }),
+      snapshot: snapshot({ name: row.node_id }),
     }));
     const source = input({
       kind: 'expression',
@@ -223,14 +237,73 @@ describe('native callable inline completion hydration', () => {
     expect(result?.outputs).toHaveLength(17);
     expect(query).toHaveBeenCalledTimes(3);
     expect(query.mock.calls[1]?.[1]).toEqual([
-      workspace,
       run,
       rows.slice(0, 16).map((row) => row.attempt_id),
     ]);
     expect(query.mock.calls[2]?.[1]).toEqual([
-      workspace,
       run,
       rows.slice(16).map((row) => row.attempt_id),
     ]);
+  });
+  it.each([
+    ['missing original bytes', { serializedValue: undefined }],
+    ['checksum mismatch', { sha256: 'a'.repeat(64) }],
+    ['byte length mismatch', { byteLength: 1 }],
+    ['projection mismatch', { reference: inline({ name: 'changed' }) }],
+  ])(
+    'rejects %s rather than hydrating the JSONB projection',
+    async (_name, changed) => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              invocation_key: 'result-key',
+              node_id: 'result',
+              attempt_id: attempt,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              attempt_id: attempt,
+              snapshot: { ...snapshot({ name: 'output' }), ...changed },
+            },
+          ],
+        });
+      await expect(
+        loadCoordinatorCallableMaterials(
+          client(query),
+          input({ kind: 'node_output', nodeId: 'result', path: '$' }),
+        ),
+      ).rejects.toThrow();
+    },
+  );
+  it('verifies original noncanonical bytes without inventing their identity from JSONB', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            invocation_key: 'result-key',
+            node_id: 'result',
+            attempt_id: attempt,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            attempt_id: attempt,
+            snapshot: snapshot({ name: 'é' }, '{ "name" : "é" }'),
+          },
+        ],
+      });
+    const result = await loadCoordinatorCallableMaterials(
+      client(query),
+      input({ kind: 'node_output', nodeId: 'result', path: '$' }),
+    );
+    expect(result?.outputs[0]?.value).toEqual({ name: 'é' });
   });
 });

@@ -6,6 +6,7 @@ import type {
   PersistedWorkflowCheckpointV3,
 } from '../../compatibility/persisted-workflow-checkpoint-v3.js';
 import { parseStoredExecutionValueV1 } from '../stored-execution-value.js';
+import { parseWorkflowExecutionValueSnapshot } from '../node-attempts/node-attempt-call-input-record.js';
 import { readWorkflowCallResultReference } from '../workflow-calls/workflow-call-result-reference.js';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
 
@@ -90,15 +91,9 @@ export async function loadCoordinatorCallableMaterials(
     node_id: string;
     attempt_id: string;
   }>(
-    `select node.invocation_key,node.node_id,attempt.id as attempt_id
-       from app.node_runs node join app.node_attempts attempt
-         on attempt.workspace_id=node.workspace_id and attempt.id=node.current_attempt_id
-        and attempt.node_run_id=node.id and attempt.attempt_number=node.current_attempt_number
-       where node.workspace_id=$1 and node.workflow_run_id=$2 and node.node_id=any($3::varchar[])
-         and node.status='succeeded' and attempt.status='succeeded'
-         and node.output_ref=attempt.output_ref
-       order by node.invocation_key limit 10001`,
-    [input.workspaceId, input.runId, nodeIds],
+    `select invocation_key,node_id,attempt_id
+       from app.read_native_workflow_attempt_output_facts($1::uuid,$2::text[])`,
+    [input.runId, nodeIds],
   );
   if (rows.rows.length > 10_000) throw new CoordinatorRunStateCorruptError();
   const calls = new Set(input.facts.map(({ invocationKey }) => invocationKey));
@@ -113,24 +108,16 @@ export async function loadCoordinatorCallableMaterials(
   if ([...counts.values()].some((count) => count > 1))
     return Object.freeze({ runInput, outputs: Object.freeze([]) });
   if (physical.length > 1_000) throw new CoordinatorRunStateCorruptError();
-  // Each retained reference has the existing 4 MiB PostgreSQL wire bound;
-  // bounded pages avoid materializing every value in one query result.
+  // The protected owner returns original inline bytes in bounded pages, rather
+  // than deriving source identity from a historical JSONB serialization.
   for (let offset = 0; offset < physical.length; offset += 16) {
     const page = physical.slice(offset, offset + 16);
     const values = await client.query<{
       attempt_id: string;
-      output_ref: unknown;
+      snapshot: unknown;
     }>(
-      `select attempt.id as attempt_id,attempt.output_ref from app.node_attempts attempt
-         join app.node_runs node on node.workspace_id=attempt.workspace_id and node.current_attempt_id=attempt.id
-          and node.id=attempt.node_run_id and node.current_attempt_number=attempt.attempt_number
-         where node.workspace_id=$1 and node.workflow_run_id=$2 and attempt.id=any($3::uuid[])
-           and node.status='succeeded' and attempt.status='succeeded' and node.output_ref=attempt.output_ref`,
-      [
-        input.workspaceId,
-        input.runId,
-        page.map(({ attempt_id }) => attempt_id),
-      ],
+      `select attempt_id,snapshot from app.read_native_workflow_attempt_outputs($1::uuid,$2::uuid[])`,
+      [input.runId, page.map(({ attempt_id }) => attempt_id)],
     );
     if (values.rows.length !== page.length)
       throw new CoordinatorRunStateCorruptError();
@@ -139,14 +126,18 @@ export async function loadCoordinatorCallableMaterials(
         ({ attempt_id }) => attempt_id === row.attempt_id,
       );
       if (value === undefined) throw new CoordinatorRunStateCorruptError();
-      const reference = parseStoredExecutionValueV1(value.output_ref);
+      const snapshot = parseWorkflowExecutionValueSnapshot(value.snapshot);
+      const reference = snapshot.reference;
       outputs.push({
         invocationKey: row.invocation_key,
         output:
           reference.kind === 'inline'
             ? { kind: 'inline', attemptId: row.attempt_id }
             : { kind: 'artifact', artifactId: reference.artifactId },
-        value: inlineValue(reference),
+        value:
+          snapshot.serializedValue === undefined
+            ? inlineValue(reference)
+            : (JSON.parse(snapshot.serializedValue) as unknown),
       });
     }
   }
