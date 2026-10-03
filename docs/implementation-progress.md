@@ -34,6 +34,8 @@ No node or preview artifact capability receives this framework-only dependency.
 - [x] Implement ordinary typed source projection and sequential worker hydration
       interfaces with source-aware authorization, required-descriptor checks and
       control/heartbeat ownership through native input and Call recovery reads.
+- [x] Implement the pure bounded coordinator result-identity builder with the
+      existing native encoder; leave authority and integration gates open.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
@@ -104,6 +106,18 @@ regressions reproduced successful ordinary/retry/Wait completion without source
 descriptors. Native handling now rejects that absence before dispatch, successful
 completion or hydration, while preserving retained v2 behavior and the explicitly
 authorized committed-Call snapshot exception. Fresh native Calls cannot use it.
+
+The separate result-identity helper binds the accepted closed metadata record to
+workspace/run/version, fixed result slot, actual delivery, pre/post revisions,
+immutable selector, ordered physical/logical source references and admitted value
+checksum/length/media type. It reuses the selected existing encoder, preserves
+source order, checks whole-record 1 MiB/1,000-source bounds, and rejects extra
+payload/clock/trace/plan fields. Identity is not authority. It is not yet wired to
+coordinator result preparation, persistence or SQL; those gates remain open.
+Its ordinary qualification passes all 1,124 worker tests across 87 files, build,
+typecheck, narrow lint/format and architecture/duplication. The inherited eight
+complexity findings remain, no baseline is weakened, and native remains OFF with
+screened qualification PAUSED.
 
 ### F02 — run-input cases and version-checked manual start
 

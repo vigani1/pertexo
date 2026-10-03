@@ -843,3 +843,25 @@ descriptors. The repaired handler rejects missing projections before dispatch,
 completion or source hydration. Only an already-authorized committed Call snapshot
 may bypass unrelated projections; a fresh Call receives no such exception.
 Retained v2 execution/Wait and committed native Call recovery remain covered.
+
+### Pure coordinator result identity — ordinary source, 2026-10-03
+
+A separate pure builder now hashes the accepted V1 bounded metadata record using
+the existing persisted native encoder: workspace/run/version, fixed run-result
+slot, actual delivery, pre/post revisions, immutable result selector, ordered
+existing physical/logical source descriptors and value checksum/length/media type.
+It requires exact next-revision routing metadata, closed source/value fields,
+unique invocation scope and matching logical invocation, at most 1,000 sources
+and a whole identity record of at most 1 MiB. No trace, clock, full plan or runtime
+source/result payload field is copied into the record. Literal selectors remain
+independent of node sources. This is identity comparison, never source/producer
+authority or semantic acceptance; actual owner verification remains required.
+
+The helper is not wired into result preparation, coordinator commit or SQL.
+An independent literal hash fixture, exact whole-record byte boundary, source
+scope/order/physical-logical distinction and hostile/incomplete metadata tests
+pass. Full ordinary worker qualification is 1,124 tests across 87 files, with
+build/typecheck, narrow lint/format and architecture/duplication checks. The same
+eight inherited complexity findings remain open. Coordinator demand/lifetime and
+independent artifact verification interfaces still require design review; native
+execution remains OFF and screened security qualification PAUSED.
