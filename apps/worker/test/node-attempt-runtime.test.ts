@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
@@ -32,6 +33,9 @@ import {
   nodeAttemptRuntimeProvider,
 } from '../src/transport/node-attempt-runtime-provider.js';
 import type { WorkerConfig } from '../src/config/worker-config.js';
+import type { NodeAttemptHandlerDependencies } from '../src/execution/node-attempt-handler.js';
+import { createWorkflowExecutionValueRuntime } from '../src/execution/workflow-execution-value-runtime.js';
+import { registryPreparedAttempt } from './support/node-attempt-handler.fixture.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '22222222-2222-4222-8222-222222222222';
@@ -127,6 +131,7 @@ async function capturedHandler(
     runStore: NodeAttemptRunStore;
     engine: NodeAttemptExecutionEngine;
     registry: NodeExecutionRegistry;
+    callDeclarationValues?: NodeAttemptHandlerDependencies['callDeclarationValues'];
   }>,
 ): Promise<
   Readonly<{ handler: QueueJobHandler; runtime: NodeAttemptRuntime }>
@@ -164,6 +169,9 @@ async function capturedHandler(
       },
       registry: input.registry,
       runStore: input.runStore,
+      ...(input.callDeclarationValues === undefined
+        ? {}
+        : { callDeclarationValues: input.callDeclarationValues }),
     },
   );
   if (handler === undefined)
@@ -172,6 +180,78 @@ async function capturedHandler(
 }
 
 describe('node-attempt runtime', () => {
+  it('delivers a committed Call snapshot through the framework value runtime without preparing it again', async () => {
+    const value = { name: 'immutable' };
+    const serializedValue = '{ "name" : "immutable" }';
+    const unavailable = (): never => {
+      throw new Error('Unexpected artifact IO or reservation');
+    };
+    const values = createWorkflowExecutionValueRuntime({
+      retentionMillis: 60_000,
+      persistence: {
+        reserve: unavailable,
+        authorize: unavailable,
+        assertReserved: unavailable,
+        finalize: unavailable,
+      },
+      store: { put: unavailable, getStream: unavailable },
+    });
+    const complete = vi.fn().mockResolvedValue({ kind: 'committed' });
+    const record = vi.fn();
+    const runStore: NodeAttemptRunStore = {
+      claimDelivery: vi
+        .fn()
+        .mockResolvedValue({ kind: 'claimed', lease: lease() }),
+      close: vi.fn().mockResolvedValue(undefined),
+      complete: vi.fn(),
+      completeCallDeclaration: complete,
+      recordCallDeclarationInput: record,
+      readCallDeclarationInput: vi.fn().mockResolvedValue({
+        reference: { schemaVersion: 1, kind: 'inline', value },
+        serializedValue,
+        byteLength: Buffer.byteLength(serializedValue),
+        sha256: createHash('sha256').update(serializedValue).digest('hex'),
+      }),
+      heartbeat: vi.fn(),
+      markDispatched: vi.fn().mockResolvedValue(undefined),
+      loadInputs: vi.fn().mockResolvedValue({
+        abortRequested: false,
+        runInput: null,
+        completedNodeOutputs: [],
+      }),
+    };
+    const execute = vi.fn<PreparedNodeAttempt['execute']>(async (input) => {
+      expect(input.recordedWorkflowCallInput).toEqual(value);
+      await input.onInputResolved?.(value);
+      return registryPreparedAttempt().execute(input);
+    });
+    const { handler, runtime } = await capturedHandler({
+      runStore,
+      callDeclarationValues: values,
+      engine: {
+        prepare: () => ({
+          inputPersistence: 'workflow_call_declaration',
+          upstreamNodeOutputs: [],
+          execute,
+        }),
+      },
+      registry: {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ kind: 'succeeded', output: value }),
+      },
+    });
+    try {
+      await handler(delivery(), { signal: new AbortController().signal });
+      expect(execute).toHaveBeenCalledWith(
+        expect.objectContaining({ recordedWorkflowCallInput: value }),
+      );
+      expect(record).not.toHaveBeenCalled();
+      expect(complete).toHaveBeenCalledOnce();
+    } finally {
+      await runtime.close();
+    }
+  });
   it.each([
     { jobs: [], expected: { preview: false, production: false } },
     {

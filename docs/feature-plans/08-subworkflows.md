@@ -726,3 +726,34 @@ migrations/API roles are reused; the draft-only scenario starts no worker and
 uses only the core cohort. Native Publish/Run controls remain absent and no such
 command is dispatched. This supersedes only the real-browser save/reload gap
 above, not target eligibility, execution, full F08 or paused security gates.
+
+### Ordinary execution-value runtime composition — 2026-10-03
+
+`createWorkflowExecutionValueRuntime` now fixes the existing retained inline
+selector and composes the native codec with the existing reserved artifact
+writer and a borrowed object store. Its persistence callbacks remain the existing
+authority seam, not an implemented SQL provenance owner. Reservation expiry,
+quota and durable cleanup ownership are not replaced by this composition.
+`createNodeAttemptRuntime` also forwards the handler's existing framework-only
+Call value dependency; a queue-to-recovery regression first failed with
+`Native Call snapshot recovery is unavailable` and passes after this correction.
+Committed whitespace-bearing inline bytes retain their identity and recovery
+does not prepare, reserve or record the input again. Native rollout and preview
+capabilities are unchanged.
+
+Behavioral integration uses the actual codec, reserved writer and owned local
+spool files with in-memory object-storage and persistence adapters. It verifies
+above-inline preparation/upload/hydration for attempt and coordinator-result
+owners, available reservation reuse without another upload, and spool/stream
+cleanup after upload failure or cancellation. This is ordinary application
+integration evidence, not actual SQL provenance, quota, retained-link or reaper
+qualification. Persistent native reservation/finalization/authorization, explicit
+source-reference hydration and coordinator result persistence remain unfinished.
+Native execution is OFF, full F08 is incomplete, and platform-screened security
+qualification remains PAUSED; no quarantined SQL was changed or installed.
+
+The final source passes worker build and source/test typecheck, all 1,048 worker
+unit tests across 85 files, narrow lint/format, repository architecture checks and
+documentation validation. The ordinary queue dependency regression has observed
+red/green evidence; the object-store and persistence adapters are not real-service
+qualification. No assertion, timeout, rollout gate or authority check was weakened.

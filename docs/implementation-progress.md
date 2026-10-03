@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-10-02
+Last updated: 2026-10-03
 
 This is the mutable delivery tracker for
 [`workflow-platform-backend-plan.md`](./workflow-platform-backend-plan.md).
@@ -9,6 +9,31 @@ vertical-slice criteria have passed. Local checks never substitute for the
 external production evidence listed under Phase 7.
 
 ## Current qualification
+
+### F08 — ordinary execution-value runtime integration (incomplete)
+
+The framework now composes the existing native execution-value codec with the
+retained inline representation owner and reserved artifact writer. The ordinary
+node-attempt runtime forwards its existing Call value dependency to the handler;
+it previously dropped this dependency and failed committed snapshot recovery.
+No node or preview artifact capability receives this framework-only dependency.
+
+- [x] Compose preparation and hydration with the existing spool/upload owner.
+- [x] Demonstrate the missing queue-runtime dependency forwarding test-first and
+      preserve committed original inline bytes without preparation or recording.
+- [x] Verify actual spool cleanup with successful upload/hydration, available
+      reservation reuse, upload failure and cancellation using an in-memory
+      object-store adapter and persistence callbacks (not real SQL authority).
+- [ ] Implement and qualify native persistent artifact reservation/provenance,
+      source-reference hydration, coordinator result integration and retention.
+- [ ] Complete all remaining F08 acceptance and rollout gates.
+
+Worker build, source/test typecheck, narrow lint, formatting, architecture and
+documentation checks pass. All 1,048 worker unit tests across 85 files pass. The
+[F08 plan](./feature-plans/08-subworkflows.md) records this limited application
+evidence. Native execution remains OFF; security qualification remains
+platform-screened and PAUSED. This does not qualify durable artifact ownership,
+real-service recovery, retention or full F08 completion.
 
 ### F02 — run-input cases and version-checked manual start
 
