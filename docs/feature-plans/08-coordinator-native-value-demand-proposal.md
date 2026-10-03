@@ -192,8 +192,9 @@ dependency, not a second independently chosen set of defaults. Proposed fields:
 | `WORKFLOW_NATIVE_VALUE_CONTROL_READ_TIMEOUT_MILLIS` | 2,000 ms | integer 100–5,000 ms | Entire checkout/query/response budget, also applied through existing abortable checkout and tenant statement timeout. |
 | `WORKFLOW_NATIVE_VALUE_OPERATION_TIMEOUT_MILLIS` | 30,000 ms | integer 1,000–60,000 ms | Whole active value scope, not a per-source allowance multiplied by 1,000. |
 
-These are accepted new F08 value-work options, not implemented environment
-variables or an activation flag. Native remains OFF. Use the smaller of remaining
+These accepted F08 options now have ordinary worker parsing and forwarding into
+runtime options; operative native pipeline consumption remains unfinished. They
+are not an activation flag. Native remains OFF. Use the smaller of remaining
 scope budget and actual remaining execution deadline for every operation; further
 deadline checks may shorten, never extend it. Derive remaining deadline from the
 owner's `deadlineAt - databaseNow` and monotonic elapsed time, not wall-clock jumps,

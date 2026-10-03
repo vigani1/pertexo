@@ -72,6 +72,11 @@ describe('parseWorkerConfig', () => {
         runTimeoutFailureContextEnabled: false,
         workspaceInboxProducerEnabled: false,
         workflowTriggerOutcomesEnabled: false,
+        valueWorkPolicy: {
+          controlPollMillis: 250,
+          controlReadTimeoutMillis: 2_000,
+          operationTimeoutMillis: 30_000,
+        },
       },
       workspaceInbox: {
         foldBatchSize: 500,

@@ -41,6 +41,7 @@ export function coordinatorRuntimeProvider(
           dueWakeupPollIntervalMillis:
             config.coordinator.dueWakeupPollIntervalMillis,
           maximumAdmissions: config.coordinator.maximumAdmissions,
+          valueWorkPolicy: config.coordinator.valueWorkPolicy,
           runTimeoutFailureContextEnabled:
             config.coordinator.runTimeoutFailureContextEnabled,
           workspaceInboxProducerEnabled:

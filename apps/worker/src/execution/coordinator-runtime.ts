@@ -39,6 +39,7 @@ import {
 } from '@pertexo/workflow-engine';
 
 import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
+import type { CoordinatorValueWorkPolicy } from './coordinator-value-work-lifetime.js';
 import {
   createCoordinatorTelemetry,
   type CoordinatorTelemetry,
@@ -68,6 +69,8 @@ export type CoordinatorRuntimeOptions = Readonly<{
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
+  /** Parsed ADR065 policy, borrowed by subsequent native value-work composition. */
+  valueWorkPolicy?: CoordinatorValueWorkPolicy;
   runTimeoutFailureContextEnabled?: boolean;
   workspaceInboxProducerEnabled?: boolean;
   /** ADR 056: record schedule and webhook run outcomes for failure streaks. */
