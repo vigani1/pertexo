@@ -139,6 +139,92 @@ defines the fields, slots, commands, recovery and ordinary qualification slices.
 Native execution remains OFF. Platform-screened security qualification remains
 PAUSED; this amendment authorizes no retry, attestation implementation or SQL install.
 
+## Coordinator native value demand amendment — ACCEPTED, 2026-10-03
+
+This amendment is **ACCEPTED by primary after independent Spec/Standards closure,
+including the literal-preparation lifetime clarification, 2026-10-03**. The accepted
+decision and amendments above remain authoritative. Concrete accepted interface
+types, policy and required tests are in the
+[coordinator demand proposal](../feature-plans/08-coordinator-native-value-demand-proposal.md).
+
+The existing engine determines a pure transition before callable completion,
+but currently receives eagerly decoded material. The commit owner independently
+recomputes result selection while its workspace transaction is open. Extending
+either loader with artifact reads would hold SQL transactions across object I/O;
+replacing independent recomputation with worker values or a content hash would
+weaken accepted source authority. We propose demand-only material after a pure
+`run.succeeded` transition and valid unique root selection, plus commit-owned
+independent accepted-source hydration, semantic recomputation and result candidate
+preparation entirely outside SQL. The final short write transaction independently
+rechecks actual current delivery/revision/controls, the whole immutable callable
+declaration and exact accepted source inventory before existing CAS/result/receipt
+acceptance. It binds previously verified object bytes to unchanged authoritative
+facts; it does not pretend SQL can compute an expression from an artifact hash.
+
+Only a typed ready material or existing typed invalid-context result may continue
+completion. Typed canceled, timed-out, stale, context-aborted and retryable
+unavailable work stops propagate through the engine wrapper, handler and commit
+without a success plan or `child_result_invalid`. Retryable stops must not be
+silently acknowledged as completed queue work. A later existing authorized advance
+observes actual controls; no new cancellation fact, child failure or second CAS
+is fabricated. Malformed state/byte/authority errors retain their own errors.
+Reject simultaneous eager/demand configuration before completion or provider work.
+Retained inline/eager parsing, byte identity and commit behavior remain unchanged.
+
+One framework value-lifetime module owns two sequential resource scopes: lazy
+success-demand/evaluation, then independent precommit hydration/evaluation/
+preparation/acceptance. Each has immediate actual-owner precheck on first value
+work, a single non-overlapping control watcher, pre/post-work checks and final
+transaction recheck; both use the same policy and actual coordinator read owner,
+not a node-attempt lease. A literal selector skips provider/control-watcher work
+only in the engine demand stage. Independent precommit literal candidate
+preparation still initializes the same immediate actual-owner inspection,
+deadline-bounded watcher and abort/join scope before any spool/upload/finalize I/O,
+even with no selected sources. Required ordinary regression evidence includes
+cancellation during stalled literal upload: owned writer/watcher cleanup is joined
+without candidate/result/receipt acceptance or fabricated success.
+Proposed worker-owned configuration defaults: 250 ms
+control polling, 2,000 ms complete control-read budget and 30,000 ms active value
+scope budget, always capped by the actual remaining database deadline. Watcher
+failure fails closed; durable controls, stale revision, context abort or work
+budget terminate owned object streams/evaluator work and cancel active reads.
+Every exit stops timers, removes listeners and joins watcher/work/adapter cleanup.
+Neither scope opens a transaction around object reads or isolated evaluation.
+This watcher policy is accepted new runtime configuration, not existing behavior.
+
+Before native value work, exact retry recovery independently checks actual
+canonical delivery plus completed receipt, post-CAS revision, entire existing
+transition fingerprint and serialized checkpoint/result binding. A matching
+receipt alone or matching result identity alone is insufficient. Existing
+`inbox_receipts` stores checksum/completion, not a historical full-plan fingerprint;
+missing fingerprint proof must not be invented. Use current checkpoint/result
+owner truth where it provides the exact binding, otherwise preserve the existing
+stale/mismatch outcome rather than claim caller-plan acceptance. Uncertain COMMIT
+is reconciled through this same owner truth, never abandonment. Same delivery with
+different checksum retains delivery-mismatch handling; a changed full plan does
+not receive `already_committed`. No new history/cache/proof token owner is added.
+
+The final transaction independently reloads whole declaration and exact accepted
+source IDs, versions, physical attempt or logical child-result scope, original
+inline bytes, reference kind/ID, checksum/length and available artifact metadata.
+Current eligibility/retention controls are re-evaluated after outside-SQL work.
+Any change invalidates the local computation, which is neither transported nor
+persisted as authority. Module-owned preparation binds the existing V1 result
+identity and exact bytes, with pre-CAS creation/recheck and post-CAS acceptance;
+the existing seal/receipt and candidate association remain atomic. Cancellation,
+timeout and other non-result advances do not wait for candidate cleanup.
+
+Expressions retain the existing bounded context contract. Validate monotonically
+growing uniquely keyed decoded output context after each source to reject excess
+before aggregate allocation, with equivalence tests to existing final validation
+and identical typed invalid-result behavior. Original whitespace bytes remain
+integrity identity, not an accidental tighter semantic input limit. No serializer,
+quota, permanent retention pin, artifact reaper or activation is introduced.
+
+No SQL registration/install, screened probe or attestation implementation is
+authorized by this amendment. Native execution remains OFF; persistent source
+projections, accepted associations, retention and full F08 qualification remain open.
+
 ## Context and selected direction
 
 F08 needs reusable typed calls without copying graphs or occupying a parent
