@@ -1,6 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useRef, type ReactNode } from 'react';
+import { BracesIcon } from 'lucide-react';
 import { WorkflowHubBar } from '@/features/workflows/hub.public';
 import { PatternGlyph } from '@/features/workflows/shape.public';
 import type { ApiClient } from '@/lib/api/client';
@@ -88,9 +89,11 @@ export function EditorCommandBar({
             variant="ghost"
             size="sm"
             className="hidden sm:inline-flex"
+            title="Callable contract"
             onClick={onInspectWorkflow}
           >
-            Callable contract
+            <BracesIcon aria-hidden="true" className="2xl:hidden" />
+            <span className="sr-only 2xl:not-sr-only">Callable contract</span>
           </Button>
           <HistoryControls
             onUndo={onUndo}

@@ -411,16 +411,45 @@ function ownedOrganizationTestFiles(...ids) {
   );
 }
 
+function requiredOrdinaryDraftFixtureOwner(step, command) {
+  if (
+    step.env?.EDITOR_BROWSER_OWNED_FIXTURE !== 'true' ||
+    step.if !== undefined ||
+    step['continue-on-error'] === true
+  )
+    fail(
+      'ordinary draft integration must require unconditional owned fixtures',
+    );
+  const manifest = 'export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn';
+  if (!command.startsWith('set -euo pipefail ') || !command.includes(manifest))
+    fail(
+      'ordinary draft integration must fail closed and construct its manifest',
+    );
+  for (const witness of [
+    'postgres_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q postgres)")',
+    'redis_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q redis)")',
+    '--arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id"',
+    '--argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT"',
+    "'{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}'",
+  ])
+    if (!command.includes(witness))
+      fail('ordinary draft integration is missing its exact fixture witness');
+  if (command.indexOf(manifest) > command.indexOf('pnpm --filter'))
+    fail('ordinary draft integration must attest ownership before its suites');
+}
+
 function requiredFeatureOrdinaryExclusions(jobs) {
   const steps = jobSteps(jobs, 'integration');
   const commandFor = (report) => {
     const output = `--outputFile=../../${report}`;
-    const matches = steps
-      .map((step) => normalizedShellCommand(step.run))
-      .filter((command) => command.includes(output));
+    const matches = steps.filter((step) =>
+      normalizedShellCommand(step.run).includes(output),
+    );
     if (matches.length !== 1)
       fail(`curated-template routing requires one ordinary ${report} owner`);
-    return matches[0];
+    const command = normalizedShellCommand(matches[0].run);
+    requiredOrdinaryDraftFixtureOwner(matches[0], command);
+    return command;
   };
   const exclusions = (command, packageName, report) => {
     const marker = `pnpm --filter ${packageName} exec vitest run`;
