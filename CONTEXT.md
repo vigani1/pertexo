@@ -15,6 +15,11 @@ its result. _Avoid_: Queue redelivery, public HTTP workaround
 **Child run**: A separate execution created by a workflow call and linked to its
 parent run. _Avoid_: Node attempt, nested loop iteration
 
+**Workflow call detail retirement**: The end of a workflow call's retained
+execution detail while its historical parent/child relationship remains
+available. It is not a new execution outcome or permission to replay. _Avoid_:
+Cancellation, new call, replacement history
+
 **Workflow organization**: Shared workspace metadata that helps people discover
 and arrange workflows without changing their behavior or access. _Avoid_:
 Workflow graph, permission inheritance

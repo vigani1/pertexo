@@ -392,3 +392,76 @@ tenant transaction module with a narrowly selected native mode, not utility fami
 The companion specifies exact source/test seams, including the queued-to-newClient
 race. No SQL install, screened probes, attestation crypto or native activation is
 authorized by this clarification; full F08 remains incomplete.
+
+## Call detail retirement clarification — ACCEPTED, 2026-10-04
+
+Primary selected the direction on 2026-10-04: preserve parent/child/root and
+pinned-version lineage through existing run-summary retention, without extending
+payload, node or attempt detail to that period. This exact schema/maintenance
+shape is **ACCEPTED by primary after full ADR/glossary delta review**. This is
+decision acceptance, not executable behavior, SQL installation authority or
+qualification.
+The existing detail period is 30 days; the existing summary period is 90 days.
+Deleting Call journals at detail expiry loses still-retained relationships;
+retaining their physical-detail foreign keys instead prevents ordinary detail
+destruction. Neither is the selected contract.
+
+Keep the existing Call journal, not a second tombstone or history relation. Add
+one nullable finite `detail_retired_at` timestamp. Make its three detail-owned
+pointers (`node_run_id`, `declaration_attempt_id` and
+`declaration_input_provenance_id`) nullable under a closed shape:
+
+- Live detail: retirement timestamp absent and all three pointers present;
+  existing exact composite provenance/declaration foreign key remains enforced.
+- Retired detail: retirement timestamp present and all three pointers absent;
+  only the protected retirement transition can detach them. No cascade or
+  `ON DELETE SET NULL` may silently establish this state.
+
+All other immutable journal identity remains unchanged: workspace, parent/root,
+parent version, node/invocation identity, pinned callee/workflow version, depth,
+deadline, definite outcome/child/version, original delivery/revision, seal and
+recorded time. Existing parent/root/child/pinned-version foreign keys survive
+detail retirement. These historical metadata fields are not payload, source,
+transport, replay or new-child authority. There is no duplicate full fingerprint.
+
+The existing bounded retention owner alone may perform the one-way transition,
+after validating its actual batch/lease/fence, workspace control high water and
+legal hold under the existing workspace-first destructive locks. Independently
+derive the bounded sealed family (at most 64 Calls/65 runs). Every required family
+run must be terminal and detail-expired at the actual batch cutoff; current replay
+dependencies must permit destruction. An unsealed/missing/ambiguous family or
+required control state fails operationally, not as expiry permission.
+
+Use resumable dependency-ordered pages: remove eligible borrowed inputs and
+accepted artifact associations; retire/detach eligible journal detail; delete
+unreferenced eligible owned provenance and completed producer-candidate mappings;
+then let existing node/attempt/event/checkpoint/detail-summary stages proceed.
+Each operation must preserve the existing page bound, including a page limit of
+one; no family-sized payload aggregate or unbounded deletion is allowed. A partly
+processed family remains safe: untouched foreign keys protect unreleased detail,
+while retired journal rows already refuse execution/source use. Hold or changed
+control high water pauses/refuses subsequent destructive work without restoring
+retired detail. Raw original bytes cannot become a hidden permanent retained copy.
+
+Removing expired detail metadata does not delete object bytes, change artifact
+status or release capacity. Those remain with the existing artifact owner, whose
+bounded physical delete/HEAD confirmation precedes quota release. The stricter
+unaccepted-candidate replacement cleanup rule still applies to replacement;
+detail-retired completed producers cannot be reclaimed as new producers.
+
+Every admission, execution/source, settlement and replay reader must explicitly
+refuse a detail-retired journal before resolving its cleared pointers. It cannot
+fabricate a missing/invalid child result, infer uncertain-COMMIT success, restore
+detail or spawn a replacement. Existing authorized historical lineage reads may
+show retained identities/outcome with detail unavailable. Final lineage deletion
+belongs to existing summary/purge work after its actual dependency/hold checks;
+its bounded deletion ordering must retain relationships for summaries still
+within their retention period. It must not reconstruct a family from incomplete
+links after deleting part of the relationship set.
+
+Implementation must preserve this exact transition and independently qualify its
+indexed eligibility/paging strategy and all reader exclusions. Required qualification
+includes held/nonterminal/replay-protected families, partial pages and limit-one
+resume, detail at 30 days with lineage at 90, summary/purge release, and no payload
+or capacity resurrection. Native execution stays OFF; no screened probe, SQL
+installation or new retention/history owner is authorized here.
