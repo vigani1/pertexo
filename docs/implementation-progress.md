@@ -423,6 +423,39 @@ role, schema-definition, process and isolation qualification remain unclosed.
 Matching observations still leave runtime admission false. No installation,
 grant, native activation or excluded-campaign execution occurred.
 
+The reviewed publication-denial tests and volatility profile are recorded in
+`a626710f` and `9a3262f3`, respectively, with no push. A subsequent bounded source
+audit leaves all five broader compatibility fact groups open: bootstrap does not
+reconcile existing roles or pin a complete membership/default-ACL baseline;
+local development output is not the separately installed production dependency
+artifact; existing resource labels/tmpfs checks do not prove creator, empty
+storage origin, exact private network or disconnected artifact transport. The
+approved candidate replaces eight shared predecessor functions, not six; their
+effective ACLs depend on predecessor state, not only candidate grants.
+
+[Callable-target discovery and explicit exact-version Upgrade preparation](./feature-plans/08-callable-target-discovery-proposal.md)
+is now accepted for bounded source-only implementation after primary full-read
+review and independent Spec/Standards closure. It identifies an
+opt-in existing version-read projection, exact immutable verified pin/contract
+identity, separate current inspect/edit/publication permissions and truthful
+target-local eligibility/unavailability, with publish-time revalidation. No new
+public contract or actionable Upgrade control is implemented. Native OFF, the
+source-only browser limitation and all outstanding runtime/security gates remain.
+The accepted design specifies one aggregate request budget, default-one
+pages, off-thread owned verification outside SQL transactions, server-owned
+default-OFF/native artifact capability, strict conditional OpenAPI/client response
+variants and bounded dependency collection → stable locks → fresh reread.
+The engine-owned fixed assessment entry and shared model-owned bounded lifecycle
+preserve package direction; the exact internal scheduler seam sketch requires
+review before code. Accepted proposal source SHA256 is
+`2aadd9274c36f9456e50614dd992252f14d2889d8f3b841120af5fef4dfb875c`.
+Design acceptance is not availability, native runtime, installation or readiness
+qualification. Owner-specific proposed regressions cover those contracts; they are not passing
+implementation evidence. The independent publication-cancellation regression is
+recorded separately in `7cf395bb`, after primary full review, zero Spec/Standards
+findings and 17 independently passing focused tests. Our same 17 tests, test
+typecheck, narrow lint/format and whitespace checks pass; production is unchanged.
+
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
 | Publication / compiler selection | WIP: actual publication owner validates callable selectors and bounded immutable closure; compiler chooses V3 for Graph2 | Ordinary public-owner positive publication, invalid selector, immutable pin/contract lookup and HTTP error-mapping tests; real V3 compiler verification | Installed format constraints, locked native release and adversarial publication authority unqualified; no real native publication qualified |
