@@ -354,6 +354,19 @@ const sourceOwners = [
     rowSecurity: true,
   },
   {
+    signature:
+      'app.native_node_accepted_output(uuid,uuid,uuid,character varying,uuid,jsonb)',
+    hash: '34ce86d2c799e180c729b5fadc509510',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
+    signature: 'app.check_native_node_logical_projection()',
+    hash: '92611bd82366a64e43c4551f7f666a82',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
     signature: 'app.wake_native_call_parent_on_terminal()',
     hash: 'ec6d808f2698baf084106feadb085346',
     securityDefiner: true,

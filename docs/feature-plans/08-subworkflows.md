@@ -589,6 +589,20 @@ are paused, not retried. Ordinary product
 implementation continues with writers OFF. No artifact/native publication/root/
 readiness gate is closed.
 
+The later [native logical projection fence](08-native-logical-projection-fence.md)
+closes this candidate source NULL/state/current-pointer gap with a defensive
+commit guard in unregistered Fresh0137. The normal merge of Claude's `ead7d27b`
+includes the reviewed new-result eligibility repair: new or changed nonnull
+results reject revoked or expired sources at the SQL clock, while historical
+OLD-value lookup still permits legitimate retention clears. Claude's reported
+14-scenario result belongs to its original source, not this repaired candidate.
+This is source closure only: installed/integrated SQL and native-runtime
+qualification remain unclosed, the first installation abort remains, writers and
+catalogs remain OFF, and the excluded campaign remains REQUIRED / UNCLOSED /
+EXCLUDED. All five broader qualification groups remain open; no campaign was
+executed or retried for this merge. The historical NULL-clear failure and receipt
+above are preserved.
+
 The ordinary editor now authors a root callable declaration in its existing
 workflow-scoped graph store. Input/result descriptors and the result source use
 the shared bounded browser contract, with local unfinished text, per-field scratch

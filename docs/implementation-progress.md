@@ -433,6 +433,17 @@ storage origin, exact private network or disconnected artifact transport. The
 approved candidate replaces eight shared predecessor functions, not six; their
 effective ACLs depend on predecessor state, not only candidate grants.
 
+[Native logical projection fence](./feature-plans/08-native-logical-projection-fence.md)
+closes the candidate source logical NULL, status and current-attempt pointer gap
+with a defensive guard, not integrated or installed qualification. The normal
+merge of Claude's `ead7d27b` source includes a review
+repair: new or changed nonnull results must remain unrevoked and unexpired at the
+SQL clock, while historical OLD-value lookup still permits legitimate retention
+clears. Claude's original reported 14-scenario result does not qualify this
+repaired source. The candidate remains unregistered with its first installation
+abort; no campaign execution, installation or native activation is claimed, and
+all five broader qualification groups remain open.
+
 [Callable-target discovery and explicit exact-version Upgrade preparation](./feature-plans/08-callable-target-discovery-proposal.md)
 is now accepted for bounded source-only implementation after primary full-read
 review and independent Spec/Standards closure. It identifies an
