@@ -4,7 +4,8 @@ import type {
 } from '@pertexo/artifact-store';
 import type { CoordinatorRunStore } from '@pertexo/database/execution';
 import { createQueueTraceRunner } from '@pertexo/observability';
-import { describe, expect, it, vi } from 'vitest';
+import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
+import { describe, expect, it, vi, type MockInstance } from 'vitest';
 import { createCoordinatorTelemetry } from '../src/execution/coordinator-telemetry.js';
 import {
   createCoordinatorRuntime,
@@ -105,6 +106,77 @@ function fixture(native: boolean) {
 }
 
 describe('coordinator framework artifact storage compatibility and ownership', () => {
+  it.each(['off', 'owned', 'borrowed', 'startup_failure'] as const)(
+    'owns the existing native evaluator lifecycle for %s only after activity joins',
+    async (kind) => {
+      const selected = fixture(kind !== 'off');
+      const borrowed = { evaluate: vi.fn(), shutdown: vi.fn() };
+      let owned: JsonataEvaluator | undefined;
+      let shutdown: MockInstance<() => Promise<void>> | undefined;
+      const evaluatorFactory = vi.fn(() => {
+        owned = new JsonataEvaluator();
+        shutdown = vi.spyOn(owned, 'shutdown');
+        return owned;
+      });
+      const nativePorts =
+        kind === 'off'
+          ? {}
+          : {
+              loadCallableCompletionSources: vi.fn(),
+              readCallableCompletionSource: vi.fn(),
+              inspectCoordinatorValueReadOwner: vi.fn(),
+            };
+      const checkReadiness = vi.fn().mockResolvedValue(undefined);
+      const runStore = { ...selected.runStore, ...nativePorts, checkReadiness };
+      if (kind === 'startup_failure')
+        checkReadiness.mockRejectedValue(new Error('owner readiness failed'));
+      const drained = Promise.withResolvers<{
+        abortedJobs: number;
+        forced: boolean;
+      }>();
+      selected.consumer.close.mockReturnValue(drained.promise);
+      try {
+        const result = createCoordinatorRuntime(
+          selected.options,
+          {
+            ...selected.dependencies,
+            runStore,
+            ...(kind === 'borrowed' || kind === 'off'
+              ? { expressionEvaluator: borrowed }
+              : {}),
+          },
+          { ...selected.factories, expressionEvaluator: evaluatorFactory },
+        );
+        if (kind === 'startup_failure') {
+          await expect(result).rejects.toThrow('owner readiness failed');
+          expect(evaluatorFactory).toHaveBeenCalledOnce();
+          expect(shutdown).toHaveBeenCalledOnce();
+          return;
+        }
+        const runtime = await result;
+        await runtime.checkReadiness();
+        const closing = runtime.close();
+        await vi.waitFor(() => {
+          expect(selected.consumer.close).toHaveBeenCalledOnce();
+        });
+        expect(shutdown?.mock.calls ?? []).toHaveLength(0);
+        drained.resolve({ abortedJobs: 0, forced: false });
+        await closing;
+        await runtime.close();
+        expect(evaluatorFactory).toHaveBeenCalledTimes(
+          kind === 'owned' ? 1 : 0,
+        );
+        expect(shutdown?.mock.calls ?? []).toHaveLength(
+          kind === 'owned' ? 1 : 0,
+        );
+        expect(borrowed.evaluate).not.toHaveBeenCalled();
+        expect(borrowed.shutdown).not.toHaveBeenCalled();
+      } finally {
+        shutdown?.mockRestore();
+        await owned?.shutdown();
+      }
+    },
+  );
   it.each(['configured', 'borrowed'] as const)(
     'retained/native-OFF startup, readiness, and drain ignore %s storage',
     async (kind) => {

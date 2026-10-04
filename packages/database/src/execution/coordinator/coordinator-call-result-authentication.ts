@@ -27,12 +27,13 @@ export async function loadCoordinatorCallResultAuthentication(
     delivery: CoordinatorAdvanceDelivery;
     expressionEvaluator?: ExpressionEvaluator;
     minimumInlineOnly?: boolean;
+    nativeSourceInventoryOnly?: boolean;
   }>,
 ) {
   const proposed = input.plan.callableResult;
   if (proposed?.kind !== 'succeeded') return;
   const columns =
-    input.minimumInlineOnly === true
+    input.minimumInlineOnly === true || input.nativeSourceInventoryOnly === true
       ? 'version.executable_json'
       : 'version.executable_json,run.input_ref';
   const rows = await client.query<{
@@ -121,14 +122,17 @@ export async function loadCoordinatorCallResultAuthentication(
     string,
     JsonValue
   >;
-  if (input.minimumInlineOnly === true) {
+  if (
+    input.minimumInlineOnly === true ||
+    input.nativeSourceInventoryOnly === true
+  ) {
     if (selector.kind === 'literal')
       return Object.freeze({
         declaration,
         proposedValue: proposed.value,
         context: { runInput: null, nodeOutputs },
       });
-    const context = await loadNativeCoordinatorResultContext(client, {
+    const selection = {
       owner: {
         workspaceId: input.workspaceId,
         runId: input.runId,
@@ -139,10 +143,19 @@ export async function loadCoordinatorCallResultAuthentication(
       demand: {
         expectedRevision: input.plan.expectedRevision,
         resultSelector: selector,
-        requiresRunInput: selector.kind === 'run_input',
+        requiresRunInput:
+          selector.kind === 'run_input' || selector.kind === 'expression',
         sources,
       },
-    });
+    };
+    if (input.nativeSourceInventoryOnly === true)
+      return Object.freeze({
+        declaration,
+        proposedValue: proposed.value,
+        nativeDemand: selection.demand,
+        nativeOwner: selection.owner,
+      });
+    const context = await loadNativeCoordinatorResultContext(client, selection);
     return Object.freeze({
       declaration,
       proposedValue: proposed.value,
@@ -199,10 +212,16 @@ export async function verifyCoordinatorCallResultAuthentication(
   >,
   signal: AbortSignal,
   expressionEvaluator?: ExpressionEvaluator,
+  nativeContext?: Readonly<{
+    runInput: JsonValue;
+    nodeOutputs: Readonly<Record<string, JsonValue>>;
+  }>,
 ): Promise<void> {
+  const context = 'nativeDemand' in prepared ? nativeContext : prepared.context;
+  if (context === undefined) throw new CoordinatorPlanInvalidError();
   const selected = await resolveValueSource(
     prepared.declaration.resultSelector,
-    prepared.context,
+    context,
     expressionEvaluator,
     signal,
   );

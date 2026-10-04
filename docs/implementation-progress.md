@@ -98,8 +98,9 @@ The shared external-pg fixture was extracted without relaxing existing tests.
 Artifact result/general selector composition and live qualification remain open.
 The installation guard/nativeOFF/SQLPAUSED state is unchanged.
 
-Native structured collection source composition is uncommitted and awaiting
-review. The actual input loader selects one slot-only collection source; the
+Native structured collection source composition is reviewed and recorded
+(`86933c1d`) but remains unqualified. The actual input loader selects one slot-only
+collection source; the
 protected read derives every enclosing loop from the current running invocation's
 iteration ancestry, branch prefix and active ordinal. It selects the nearest
 waiting For Each barrier's succeeded physical attempt, matching the checkpoint's
@@ -127,6 +128,26 @@ before any coordinator source read. Whole database unit tests pass177/1632 and
 worker tests pass101/1282. Native coordinator structured declaration material and
 independent pre-CAS validation, artifact/general result composition and required
 live qualification remain separate unfinished gates.
+
+Native coordinator result-source composition is uncommitted and awaiting review.
+The independent precommit read freshly derives the pinned declaration, selector
+and ordered selected sources, releases its short SQL read, and then hydrates
+original bytes through the same selected-read and shared-codec mechanics under
+the existing independent preparation signal. No first-pass context, result or
+success flag is reused, and no nested lifetime is created. One existing JSONata
+evaluator is allocated only for the actual release-admitted native read ports;
+both evaluation passes share that resource, not material. Retained/native-OFF
+allocates none, owned cleanup follows joined consumer activity and happens once,
+startup readiness failure cleans up, and borrowed evaluators stay caller-owned.
+Focused worker6/71 and database2/21 tests pass, covering fresh repeated original
+byte hydration, identity drift before authorization, abort joining, lifecycle
+ownership and fresh expression recomputation/contract rejection. The initial
+artifact fixture incorrectly used noncanonical bytes; the existing codec refused
+it, the fixture was corrected and the codec was not changed. General selector SQL
+acceptance, artifact result persistence and coordinator structured declaration
+material/pre-CAS validation remain unfinished. This composition is not protected
+SQL or live qualification; nativeOFF/SQLPAUSED and the first installation abort
+are unchanged.
 
 Minimum native Call executable path (source is not qualification):
 

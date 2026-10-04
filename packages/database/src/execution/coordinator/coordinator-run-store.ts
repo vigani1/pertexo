@@ -29,6 +29,7 @@ import type { CoordinatorCallAdmissionOptions } from './coordinator-call-admissi
 import type {
   NativeCoordinatorResultPreparationScope,
   NativeCoordinatorCallDeclarationHydrator,
+  NativeCoordinatorResultSourceHydrator,
 } from './coordinator-native-value-read-contract.js';
 import {
   createNativeCoordinatorValueReads,
@@ -54,6 +55,7 @@ export type CoordinatorRunStoreOptions = Readonly<{
   nativeValueControlReadTimeoutMillis?: number;
   withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
   hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
+  hydrateNativeResultSources?: NativeCoordinatorResultSourceHydrator;
   /** Exact existing release/compiler descriptions; absence means retained-only. */
   expectedCompatibilityReleases?: CompatibilityReleaseExpectationSet;
   runTimeoutFailureContextEnabled?: boolean;
@@ -172,6 +174,12 @@ export function createCoordinatorRunStore(
               nativeValueControlReadTimeoutMillis: controlReadTimeoutMillis,
               inspectNativeResultOwner:
                 nativeReads.inspectCoordinatorValueReadOwner,
+              ...(options.hydrateNativeResultSources === undefined
+                ? {}
+                : {
+                    hydrateNativeResultSources:
+                      options.hydrateNativeResultSources,
+                  }),
               ...(options.hydrateNativeCallDeclaration === undefined
                 ? {}
                 : {

@@ -10,7 +10,10 @@ import {
 } from '../src/execution/coordinator/coordinator-run-store-plan.js';
 import { canonicalOutboxPayloadChecksum } from '../src/execution/transport/outbox.js';
 import { serializeCoordinatorCheckpoint } from '../src/execution/coordinator/coordinator-checkpoint.js';
-import type { NativeCoordinatorResultPreparationScope } from '../src/execution/coordinator/coordinator-native-value-read-contract.js';
+import type {
+  NativeCoordinatorResultPreparationScope,
+  NativeCoordinatorResultSourceHydrator,
+} from '../src/execution/coordinator/coordinator-native-value-read-contract.js';
 
 const id = (n: number) =>
   `${String(n).padStart(8, '0')}-1111-4111-8111-111111111111`;
@@ -285,6 +288,7 @@ function start(
   sourceMode?: 'run_input' | 'wrong_source',
   fresh = false,
   scope?: NativeCoordinatorResultPreparationScope,
+  hydrate?: NativeCoordinatorResultSourceHydrator,
 ) {
   const client = new ResultClient(stop, wrongFingerprint, sourceMode, fresh);
   const pool = {
@@ -318,6 +322,7 @@ function start(
         }),
       withNativeResultPreparation:
         scope ?? ((_input, prepare) => prepare(_input.signal)),
+      ...(hydrate === undefined ? {} : { hydrateNativeResultSources: hydrate }),
     },
   );
   return { result, client };
@@ -332,6 +337,71 @@ async function execute(
   return { result: await run.result, client: run.client };
 }
 describe('native result precommit through actual tenant and CAS composition', () => {
+  it.each(['exact', 'changed'] as const)(
+    'independently rehydrates %s pinned result material after SQL release, before any protected write',
+    async (kind) => {
+      let called = false;
+      let scopeSignal: AbortSignal | undefined;
+      const operation = start(
+        false,
+        false,
+        'run_input',
+        true,
+        async (owner, prepare) => {
+          scopeSignal = owner.signal;
+          return prepare(owner.signal);
+        },
+        (request) => {
+          called = true;
+          expect(client.releases).toBe(2);
+          expect(request.signal).toBe(scopeSignal);
+          expect(request.owner).toMatchObject({
+            workspaceId: id(1),
+            runId: id(2),
+            workflowVersionId: id(3),
+            expectedRevision: 0,
+            delivery,
+          });
+          expect(request.demand).toMatchObject({
+            resultSelector: { kind: 'run_input', path: '$' },
+            requiresRunInput: true,
+            sources: [],
+          });
+          expect(
+            client.sql.some((sql) =>
+              sql.includes('record_workflow_call_run_result'),
+            ),
+          ).toBe(false);
+          return Promise.resolve({
+            runInput: { name: kind === 'exact' ? 'result' : 'changed' },
+            nodeOutputs: {},
+          });
+        },
+      );
+      const client = operation.client;
+      if (kind === 'exact')
+        await expect(operation.result).resolves.toMatchObject({
+          kind: 'committed',
+        });
+      else
+        await expect(operation.result).rejects.toMatchObject({
+          name: 'CoordinatorPlanInvalidError',
+        });
+      expect(called).toBe(true);
+      expect(
+        client.sql.some((sql) =>
+          sql.includes('record_workflow_call_run_result'),
+        ),
+      ).toBe(kind === 'exact');
+      expect(
+        client.sql.some(
+          (sql) =>
+            sql.includes('load_native_coordinator_value_sources') ||
+            sql.includes('read_native_coordinator_value_source'),
+        ),
+      ).toBe(false);
+    },
+  );
   it('does not enter final acceptance after scoped preparation loses its owner', async () => {
     const failure = new Error('owner lost during preparation');
     let joined = false;

@@ -73,6 +73,7 @@ export type {
   NativeCoordinatorValueOwnerInspection,
   InspectCoordinatorValueReadOwner,
   NativeCoordinatorResultPreparationScope,
+  NativeCoordinatorResultSourceHydrator,
   LoadCallableCompletionSources,
   ReadCallableCompletionSource,
   ReadCoordinatorCallDeclaration,

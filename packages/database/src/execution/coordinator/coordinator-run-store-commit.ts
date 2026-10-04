@@ -38,6 +38,7 @@ import type {
   NativeCoordinatorResultPreparationScope,
   InspectCoordinatorValueReadOwner,
   NativeCoordinatorCallDeclarationHydrator,
+  NativeCoordinatorResultSourceHydrator,
 } from './coordinator-native-value-read-contract.js';
 
 class NativeAdmissionPassAbandoned extends Error {
@@ -56,6 +57,7 @@ type CoordinatorAdvanceCommitOptions = Readonly<{
   withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
   inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
   hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
+  hydrateNativeResultSources?: NativeCoordinatorResultSourceHydrator;
 }>;
 
 export async function commitCoordinatorAdvancePlan(

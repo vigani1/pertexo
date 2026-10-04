@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import {
   CoordinatorPlanInvalidError,
   coordinatorDeliverySchema,
@@ -27,6 +28,7 @@ import type {
   NativeCoordinatorResultPreparationScope,
   InspectCoordinatorValueReadOwner,
   NativeCoordinatorCallDeclarationHydrator,
+  NativeCoordinatorResultSourceHydrator,
 } from './coordinator-native-value-read-contract.js';
 import { validateCoordinatorArtifactCallInputs } from './coordinator-call-input-validation.js';
 
@@ -35,6 +37,8 @@ type PreparationOptions = Readonly<{
   withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
   inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
   hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
+  hydrateNativeResultSources?: NativeCoordinatorResultSourceHydrator;
+  callableResultEvaluator?: ExpressionEvaluator;
 }>;
 
 /** Normalize the plan and prepare bounded detached values before the protected write.
@@ -147,7 +151,13 @@ export async function prepareCoordinatorAdvanceParameters(
                 plan,
                 signal,
                 delivery,
-                minimumInlineOnly: true,
+                minimumInlineOnly:
+                  options.hydrateNativeResultSources === undefined,
+                nativeSourceInventoryOnly:
+                  options.hydrateNativeResultSources !== undefined,
+                ...(options.callableResultEvaluator === undefined
+                  ? {}
+                  : { expressionEvaluator: options.callableResultEvaluator }),
               }),
             budget,
           );
@@ -155,7 +165,28 @@ export async function prepareCoordinatorAdvanceParameters(
           if (material === undefined) throw new CoordinatorPlanInvalidError();
           // Read releases before evaluator/codec/preparation; the same scope
           // continues watching controls and joins all owned cleanup on exit.
-          await verifyCoordinatorCallResultAuthentication(material, signal);
+          let nativeContext;
+          if ('nativeDemand' in material) {
+            const hydrate = options.hydrateNativeResultSources;
+            if (hydrate === undefined)
+              throw new Error(
+                'Native independent result source hydration is unavailable',
+              );
+            nativeContext = await hydrate({
+              owner: material.nativeOwner,
+              demand: material.nativeDemand,
+              signal,
+            });
+            if (nativeContext === undefined)
+              throw new CoordinatorPlanInvalidError();
+          }
+          assertNotAborted(signal);
+          await verifyCoordinatorCallResultAuthentication(
+            material,
+            signal,
+            options.callableResultEvaluator,
+            nativeContext,
+          );
           assertNotAborted(signal);
           return prepareCoordinatorCallResult({
             workspaceId,

@@ -6,6 +6,7 @@ import type { StoredExecutionValueV1 } from '../stored-execution-value.js';
 import type { WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 } from '../artifacts/execution-value-representation.js';
 import type { CoordinatorAdvanceDelivery } from './coordinator-run-store-contract.js';
 import type { NativeCoordinatorCallDeclarationSource } from './coordinator-call-declaration-source.js';
+import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 
 type Output = NonNullable<
   PersistedWorkflowCheckpointV3['invocations'][number]['output']
@@ -103,6 +104,23 @@ export type NativeCoordinatorResultPreparationScope = <T>(
   }>,
   prepare: (signal: AbortSignal) => Promise<T>,
 ) => Promise<T>;
+
+/** Fresh selected reads and original-byte hydration under the borrowed precommit signal.
+ * Returned context is detached material, never a semantic certificate or SQL authority.
+ */
+export type NativeCoordinatorResultSourceHydrator = (
+  input: Readonly<{
+    owner: NativeCoordinatorValueOwner;
+    demand: NativeCoordinatorMaterialDemand;
+    signal: AbortSignal;
+  }>,
+) => Promise<
+  | Readonly<{
+      runInput: JsonValue;
+      nodeOutputs: Readonly<Record<string, JsonValue>>;
+    }>
+  | undefined
+>;
 
 /**
  * Derive immutable declaration and accepted sources independently, then compare
