@@ -28,6 +28,10 @@ const pin = {
 const context = {
   parentRunId,
   expectedParentRevision: 7,
+  parentDelivery: {
+    outboxEventId: parentRunId,
+    payloadChecksum: 'c'.repeat(64),
+  },
   invocationKey: 'call/root',
 };
 const input = {
@@ -104,6 +108,8 @@ describe('locked Workflow Call admission proof', () => {
       7,
       context.invocationKey,
       candidateRunId,
+      context.parentDelivery.outboxEventId,
+      context.parentDelivery.payloadChecksum,
     ]);
     expect(compiled.params).not.toContain(workspaceId);
     expect(proof).toEqual({
@@ -393,6 +399,8 @@ describe('canonical active-admission reservation', () => {
       context.invocationKey,
       candidateRunId,
       outboxEventId,
+      context.parentDelivery.outboxEventId,
+      context.parentDelivery.payloadChecksum,
     ]);
     expect(test.execute).toHaveBeenCalledOnce();
   });

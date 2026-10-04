@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { SAFE_EXECUTOR_ERROR_CODE_PATTERN } from '@pertexo/workflow-model/attempt-failure';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 import type { StoredExecutionValueV1 } from '../stored-execution-value.js';
-import type { NativeNodeAttemptValueSources } from './native-node-attempt-value-sources.js';
+import type {
+  NativeNodeAttemptValueSource,
+  NativeNodeAttemptValueSources,
+} from './native-node-attempt-value-sources.js';
 
 const identitySchema = z
   .string()
@@ -313,6 +316,14 @@ export type CompleteNodeAttemptResult =
   | Readonly<{ kind: 'duplicate'; outboxEventId: null }>;
 
 export interface NodeAttemptRunStore {
+  /** Reauthorize one accepted native source under the actual existing lease. */
+  readNativeValueSource?(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      source: NativeNodeAttemptValueSource;
+      signal: AbortSignal;
+    }>,
+  ): Promise<NativeNodeAttemptValueSource>;
   claimDelivery(
     input: Readonly<z.input<typeof claimDeliverySchema>>,
   ): Promise<NodeAttemptClaimResult>;

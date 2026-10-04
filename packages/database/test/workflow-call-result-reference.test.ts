@@ -9,6 +9,13 @@ const input = {
   parentRunId: id,
   childRunId: id,
   invocationKey: 'call',
+  consumer: {
+    workspaceId: id,
+    runId: id,
+    workflowVersionId: id,
+    expectedRevision: 0,
+    delivery: { outboxEventId: id, payloadChecksum: 'a'.repeat(64) },
+  },
 };
 function row(bytes = '{"name":"result"}', value: unknown = { name: 'result' }) {
   return {
@@ -23,6 +30,35 @@ function fixture(value: unknown) {
   return { query, client: { query } as unknown as PoolClient };
 }
 describe('protected child result snapshot adapter', () => {
+  it('fails closed before reading bytes when a current consumer is absent or belongs to another parent', async () => {
+    const f = fixture(row());
+    const { consumer: _consumer, ...withoutConsumer } = input;
+    await expect(
+      readWorkflowCallResultReference(f.client, withoutConsumer),
+    ).rejects.toThrow('consumer authority');
+    await expect(
+      readWorkflowCallResultReference(f.client, {
+        ...input,
+        consumer: {
+          ...input.consumer,
+          runId: '00000000-0000-4000-8000-000000000102',
+        },
+      }),
+    ).rejects.toThrow('consumer scope');
+    expect(f.query).not.toHaveBeenCalled();
+  });
+
+  it('carries the exact current consumer to the protected owner without inferring authority from result metadata', async () => {
+    const f = fixture(row());
+    await readWorkflowCallResultReference(f.client, input);
+    expect(f.query).toHaveBeenCalledWith(expect.stringContaining('$4::jsonb'), [
+      input.parentRunId,
+      input.invocationKey,
+      input.childRunId,
+      JSON.stringify(input.consumer),
+    ]);
+  });
+
   it.each([
     ['{ "name": "result" }', { name: 'result' }],
     ['9007199254740993', 9007199254740992],

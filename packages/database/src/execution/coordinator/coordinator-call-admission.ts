@@ -10,7 +10,10 @@ import {
   sealWorkflowCallAdmissionPass,
 } from '../workflow-calls/workflow-call-coordinator-admission.js';
 import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
-import { CoordinatorPlanInvalidError } from './coordinator-run-store-contract.js';
+import {
+  CoordinatorPlanInvalidError,
+  type CoordinatorAdvanceDelivery,
+} from './coordinator-run-store-contract.js';
 
 export type CoordinatorCallAdmissionOptions = Readonly<{
   compatibilityReleases: CompatibilityReleaseExpectationSet;
@@ -28,12 +31,28 @@ export async function prepareCoordinatorCallAdmission(
     workspaceId: string;
     runId: string;
     plan: ParsedTransitionPlan;
+    delivery: CoordinatorAdvanceDelivery;
     traceparent?: string;
   }>,
   options: CoordinatorCallAdmissionOptions | undefined,
 ) {
   const declarations = input.plan.workflowCalls?.declarations ?? [];
-  if (declarations.length === 0) return undefined;
+  if (declarations.length === 0) {
+    if (input.plan.checkpoint.schemaVersion === 3) {
+      // Even a literal child result must fence ancestors BEFORE canonical
+      // own-run/checkpoint locks. This acquires no child admission policy or
+      // counter and does not authorize the proposed terminal result.
+      await client.query(
+        `select app.prelock_native_coordinator_lineage($1::uuid,$2::uuid,$3::text)`,
+        [
+          input.runId,
+          input.delivery.outboxEventId,
+          input.delivery.payloadChecksum,
+        ],
+      );
+    }
+    return undefined;
+  }
   const current = await client.query<{ revision: number }>(
     `select revision from app.run_checkpoints where workspace_id=$1 and workflow_run_id=$2`,
     [input.workspaceId, input.runId],
@@ -75,6 +94,7 @@ export async function prepareCoordinatorCallAdmission(
       call: {
         parentRunId: input.runId,
         expectedParentRevision: input.plan.expectedRevision,
+        parentDelivery: input.delivery,
         invocationKey: call.invocationKey,
       },
       ...(input.traceparent === undefined
@@ -89,6 +109,7 @@ export async function prepareCoordinatorCallAdmission(
   const pass = await prepareWorkflowCallAdmissionPass(transaction, {
     parentRunId: input.runId,
     expectedParentRevision: input.plan.expectedRevision,
+    parentDelivery: input.delivery,
     compatibilityReleases: options.compatibilityReleases,
     candidates,
   });
@@ -98,6 +119,7 @@ export async function prepareCoordinatorCallAdmission(
       sealWorkflowCallAdmissionPass(transaction, {
         parentRunId: input.runId,
         expectedParentRevision: input.plan.expectedRevision,
+        parentDelivery: input.delivery,
         ...(continuationOutboxEventId === undefined
           ? {}
           : { continuationOutboxEventId }),

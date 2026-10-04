@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { prepareWorkflowRunAcceptanceInput } from '../src/execution/runs/execution-acceptance-input.js';
 
 import { parsePersistedWorkflowCheckpoint } from '../src/compatibility/persisted-workflow-checkpoint.js';
 import {
@@ -39,6 +40,42 @@ function initial() {
     calls: [],
   };
 }
+
+describe('canonical root acceptance checkpoint preparation', () => {
+  it('keeps invalid data-only normalization classified by the retained checkpoint owner', () => {
+    const getter = vi.fn(() => 3);
+    const checkpoint = Object.defineProperty({}, 'schemaVersion', {
+      enumerable: true,
+      get: getter,
+    });
+    expect(() =>
+      prepareWorkflowRunAcceptanceInput({
+        engineVersion: 'engine-v3',
+        workflowVersionId: version,
+        initialCheckpoint: checkpoint,
+        triggerType: 'manual',
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        name: 'PersistedWorkflowCheckpointInvalidError',
+      }),
+    );
+    expect(getter).not.toHaveBeenCalled();
+  });
+  it('uses the existing strict native initial checkpoint owner for an explicit V3 root', () => {
+    const checkpoint = initial();
+    const prepared = prepareWorkflowRunAcceptanceInput({
+      engineVersion: checkpoint.engineVersion,
+      workflowVersionId: version,
+      initialCheckpoint: checkpoint,
+      triggerType: 'manual',
+    });
+    expect(JSON.parse(prepared.initialCheckpointJson)).toEqual(checkpoint);
+    expect(prepared.initialCheckpointJson).toBe(
+      serializePersistedWorkflowCheckpointV3(checkpoint),
+    );
+  });
+});
 function declaration() {
   return {
     invocationKey: key,

@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
 import type { CoordinatorCheckpoint as PersistedWorkflowCheckpoint } from './coordinator-checkpoint.js';
-import { readWorkflowCallResultReference } from '../workflow-calls/workflow-call-result-reference.js';
+import { assertWorkflowCallResultOutput } from '../workflow-calls/workflow-call-result-reference.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
@@ -22,11 +22,11 @@ export async function validateCheckpointOutputOwnership(
   );
   for (const invocation of checkpoint.invocations) {
     if (invocation.output?.kind !== 'workflow_call') continue;
-    await readWorkflowCallResultReference(client, {
-      workspaceId,
+    await assertWorkflowCallResultOutput(client, {
       parentRunId: runId,
       invocationKey: invocation.invocationKey,
       childRunId: invocation.output.childRunId,
+      compareLogicalNode: false,
     });
   }
   if (expected.length === 0) return;

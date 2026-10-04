@@ -65,6 +65,7 @@ export type {
   NativeCallableValueIdentity,
   NativeCoordinatorValueOwnerInspection,
   InspectCoordinatorValueReadOwner,
+  NativeCoordinatorResultPreparationScope,
   LoadCallableCompletionSources,
   ReadCallableCompletionSource,
 } from './execution/coordinator/coordinator-native-value-read-contract.js';
@@ -130,6 +131,8 @@ export {
 } from './operator/operator-run-replay.js';
 export type { OperatorRunReplayStore } from './operator/operator-run-replay.js';
 export { canonicalOutboxPayloadChecksum } from './execution/transport/outbox.js';
+export { createWorkflowExecutionResultIdentityV1 } from './execution/artifacts/workflow-execution-result-identity.js';
+export type { WorkflowExecutionResultIdentityInputV1 } from './execution/artifacts/workflow-execution-result-identity.js';
 export { acquireDatabasePool } from './platform/database-runtime.js';
 export {
   PreviewAttemptStateError,

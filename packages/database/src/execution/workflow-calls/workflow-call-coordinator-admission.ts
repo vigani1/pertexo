@@ -58,7 +58,8 @@ async function recordOutcome(
   await transaction.db.execute(sql`
     select app.record_workflow_call_outcome(
       ${context.parentRunId}::uuid,${context.expectedParentRevision}::integer,
-      ${context.invocationKey},${JSON.stringify(journal)}::jsonb
+      ${context.invocationKey},${JSON.stringify(journal)}::jsonb,
+      ${context.parentDelivery.outboxEventId}::uuid,${context.parentDelivery.payloadChecksum}::text
     )
   `);
 }
@@ -93,6 +94,7 @@ export async function prepareWorkflowCallAdmissionPass(
   const parent = parentContextSchema.parse({
     parentRunId: input.parentRunId,
     expectedParentRevision: input.expectedParentRevision,
+    parentDelivery: input.parentDelivery,
   });
   const candidates = z
     .array(acceptWorkflowCallRunInputSchema)
@@ -106,6 +108,10 @@ export async function prepareWorkflowCallAdmissionPass(
     if (
       call.parentRunId !== parent.parentRunId ||
       call.expectedParentRevision !== parent.expectedParentRevision ||
+      call.parentDelivery.outboxEventId !==
+        parent.parentDelivery.outboxEventId ||
+      call.parentDelivery.payloadChecksum !==
+        parent.parentDelivery.payloadChecksum ||
       keys.has(call.invocationKey)
     )
       throw new TypeError('Workflow Call admission pass context is invalid');
@@ -115,7 +121,8 @@ export async function prepareWorkflowCallAdmissionPass(
     await transaction.db.execute(sql`
     select app.prelock_workflow_call_parent(
       ${parent.parentRunId}::uuid,${parent.expectedParentRevision}::integer,
-      ${expectedSetJson(releases)}::jsonb
+      ${expectedSetJson(releases)}::jsonb,
+      ${parent.parentDelivery.outboxEventId}::uuid,${parent.parentDelivery.payloadChecksum}::text
     )
   `);
   let consumed = false;
@@ -153,6 +160,7 @@ export async function sealWorkflowCallAdmissionPass(
   const parent = parentContextSchema.parse({
     parentRunId: input.parentRunId,
     expectedParentRevision: input.expectedParentRevision,
+    parentDelivery: input.parentDelivery,
   });
   const continuation = z
     .uuid()
@@ -161,7 +169,8 @@ export async function sealWorkflowCallAdmissionPass(
   await transaction.db.execute(sql`
     select app.seal_workflow_call_parent(
       ${parent.parentRunId}::uuid,${parent.expectedParentRevision}::integer,
-      ${continuation ?? null}::uuid
+      ${continuation ?? null}::uuid,
+      ${parent.parentDelivery.outboxEventId}::uuid,${parent.parentDelivery.payloadChecksum}::text
     )
   `);
 }

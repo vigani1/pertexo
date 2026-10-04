@@ -12,9 +12,11 @@ import { loadCoordinatorCallFacts } from './coordinator-call-facts.js';
 import { CoordinatorPlanInvalidError } from './coordinator-run-store-contract.js';
 import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
 import { serializeWorkflowExecutionJsonValueV3 } from '../stored-execution-value.js';
+import type { CoordinatorAdvanceDelivery } from './coordinator-run-store-contract.js';
+import { loadNativeCoordinatorResultContext } from './coordinator-native-result-context.js';
 
-/** Recompute selection before commit locks; caller-supplied result is never authority. */
-export async function authenticateCoordinatorCallResult(
+/** Load bounded accepted material in a short read owner; no evaluator runs here. */
+export async function loadCoordinatorCallResultAuthentication(
   client: PoolClient,
   input: Readonly<{
     workspaceId: string;
@@ -22,16 +24,22 @@ export async function authenticateCoordinatorCallResult(
     workflowVersionId: string;
     plan: ParsedTransitionPlan;
     signal: AbortSignal;
+    delivery: CoordinatorAdvanceDelivery;
     expressionEvaluator?: ExpressionEvaluator;
+    minimumInlineOnly?: boolean;
   }>,
-): Promise<void> {
+) {
   const proposed = input.plan.callableResult;
   if (proposed?.kind !== 'succeeded') return;
+  const columns =
+    input.minimumInlineOnly === true
+      ? 'version.executable_json'
+      : 'version.executable_json,run.input_ref';
   const rows = await client.query<{
     executable_json: unknown;
     input_ref: unknown;
   }>(
-    `select version.executable_json,run.input_ref from app.workflow_runs run
+    `select ${columns} from app.workflow_runs run
        join app.workflow_versions version on version.workspace_id=run.workspace_id
         and version.id=run.workflow_version_id and version.workflow_id=run.workflow_id
        where run.workspace_id=$1 and run.id=$2 and version.id=$3
@@ -67,6 +75,15 @@ export async function authenticateCoordinatorCallResult(
   if (!validateCallableValueV1(declaration.result, proposed.value).ok)
     throw new CoordinatorPlanInvalidError();
   const selector = declaration.resultSelector;
+  if (
+    input.minimumInlineOnly === true &&
+    selector.kind !== 'literal' &&
+    !(selector.kind === 'run_input' && selector.path === '$') &&
+    !(selector.kind === 'node_output' && selector.path === '$')
+  )
+    throw new Error(
+      'Native result expression/path preparation is not implemented',
+    );
   let nodeIds: readonly string[] = [];
   if (selector.kind === 'node_output') nodeIds = [selector.nodeId];
   if (selector.kind === 'expression') {
@@ -100,6 +117,38 @@ export async function authenticateCoordinatorCallResult(
     serializeWorkflowExecutionJsonValueV3(proposed.sources)
   )
     throw new CoordinatorPlanInvalidError();
+  const nodeOutputs: Record<string, JsonValue> = Object.create(null) as Record<
+    string,
+    JsonValue
+  >;
+  if (input.minimumInlineOnly === true) {
+    if (selector.kind === 'literal')
+      return Object.freeze({
+        declaration,
+        proposedValue: proposed.value,
+        context: { runInput: null, nodeOutputs },
+      });
+    const context = await loadNativeCoordinatorResultContext(client, {
+      owner: {
+        workspaceId: input.workspaceId,
+        runId: input.runId,
+        workflowVersionId: input.workflowVersionId,
+        expectedRevision: input.plan.expectedRevision,
+        delivery: input.delivery,
+      },
+      demand: {
+        expectedRevision: input.plan.expectedRevision,
+        resultSelector: selector,
+        requiresRunInput: selector.kind === 'run_input',
+        sources,
+      },
+    });
+    return Object.freeze({
+      declaration,
+      proposedValue: proposed.value,
+      context,
+    });
+  }
   const facts =
     selector.kind === 'literal' || selector.kind === 'run_input'
       ? []
@@ -110,11 +159,14 @@ export async function authenticateCoordinatorCallResult(
     executableJson: envelope,
     inputRef: row.input_ref,
     facts,
+    consumer: {
+      workspaceId: input.workspaceId,
+      runId: input.runId,
+      workflowVersionId: input.workflowVersionId,
+      expectedRevision: input.plan.expectedRevision,
+      delivery: input.delivery,
+    },
   });
-  const nodeOutputs: Record<string, JsonValue> = Object.create(null) as Record<
-    string,
-    JsonValue
-  >;
   for (const source of sources) {
     const matching =
       material?.outputs.filter(
@@ -130,20 +182,49 @@ export async function authenticateCoordinatorCallResult(
       throw new CoordinatorPlanInvalidError();
     nodeOutputs[source.nodeId] = descriptor.value as JsonValue;
   }
-  const selected = await resolveValueSource(
-    selector,
-    {
+  return Object.freeze({
+    declaration,
+    proposedValue: proposed.value,
+    context: {
       runInput: (material?.runInput ?? null) as JsonValue,
       nodeOutputs,
     },
-    input.expressionEvaluator,
-    input.signal,
+  });
+}
+
+/** Detached material is not commit authority: the protected writer rederives it. */
+export async function verifyCoordinatorCallResultAuthentication(
+  prepared: NonNullable<
+    Awaited<ReturnType<typeof loadCoordinatorCallResultAuthentication>>
+  >,
+  signal: AbortSignal,
+  expressionEvaluator?: ExpressionEvaluator,
+): Promise<void> {
+  const selected = await resolveValueSource(
+    prepared.declaration.resultSelector,
+    prepared.context,
+    expressionEvaluator,
+    signal,
   );
   if (
     selected.kind !== 'value' ||
-    !validateCallableValueV1(declaration.result, selected.value).ok ||
+    !validateCallableValueV1(prepared.declaration.result, selected.value).ok ||
     serializeWorkflowExecutionJsonValueV3(selected.value) !==
-      serializeWorkflowExecutionJsonValueV3(proposed.value)
+      serializeWorkflowExecutionJsonValueV3(prepared.proposedValue)
   )
     throw new CoordinatorPlanInvalidError();
+}
+
+/** Existing focused interface; actual commit composition releases its read first. */
+export async function authenticateCoordinatorCallResult(
+  client: PoolClient,
+  input: Parameters<typeof loadCoordinatorCallResultAuthentication>[1],
+): Promise<void> {
+  const prepared = await loadCoordinatorCallResultAuthentication(client, input);
+  if (prepared !== undefined)
+    await verifyCoordinatorCallResultAuthentication(
+      prepared,
+      input.signal,
+      input.expressionEvaluator,
+    );
 }

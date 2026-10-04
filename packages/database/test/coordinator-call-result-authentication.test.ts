@@ -60,6 +60,7 @@ function fixture(
     workflowVersionId: id,
     plan,
     signal: new AbortController().signal,
+    delivery: { outboxEventId: id, payloadChecksum: 'a'.repeat(64) },
   };
   return { query, input, client: { query } as unknown as PoolClient };
 }

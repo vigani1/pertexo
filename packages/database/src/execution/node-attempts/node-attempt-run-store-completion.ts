@@ -24,7 +24,7 @@ import {
   withWorkspaceWriteClient,
 } from './node-attempt-run-store-transactions.js';
 import { serializeStoredExecutionValueV1 } from '../stored-execution-value.js';
-import { workflowCallAttemptAuthorityJson } from './node-attempt-call-input-record.js';
+import { prepareNodeAttemptCompletionOutput } from './node-attempt-completion-output-owner.js';
 
 export async function completeNodeAttempt(
   pool: Pool,
@@ -63,6 +63,7 @@ export async function completeNodeAttempt(
         await client.query('select app.lock_workspace_run_admission($1)', [
           input.lease.workspaceId,
         ]);
+        assertNotAborted(input.signal);
         await validateDelivery(client, {
           workspaceId: input.lease.workspaceId,
           runId: input.lease.runId,
@@ -73,6 +74,12 @@ export async function completeNodeAttempt(
           workerId: input.lease.workerId,
           signal: input.signal,
         });
+        serializedOutput = await prepareNodeAttemptCompletionOutput(
+          client,
+          input,
+          outputSource,
+          serializedOutput,
+        );
         const receipt = await client.query<CompletionReceiptRow>(
           `select completed_at,payload_checksum
            from app.inbox_receipts
@@ -151,24 +158,6 @@ export async function completeNodeAttempt(
         );
         const row = locked.rows[0];
         if (row === undefined) throw new NodeAttemptStateCorruptError();
-        if (outputSource === 'workflow_call_input_alias') {
-          if (input.outcome.status !== 'succeeded')
-            throw new NodeAttemptStateCorruptError();
-          const alias = await client.query<{ reference: string | null }>(
-            'select app.workflow_call_declaration_completion_reference($1::jsonb) as reference',
-            [workflowCallAttemptAuthorityJson(input.lease)],
-          );
-          const reference = alias.rows[0]?.reference;
-          if (
-            alias.rows.length !== 1 ||
-            typeof reference !== 'string' ||
-            Buffer.byteLength(reference, 'utf8') > 4_194_304
-          )
-            throw new NodeAttemptStateCorruptError();
-          // Preserve PostgreSQL's first immutable projection, not its rounded
-          // driver object. The protected getter proves source and replay identity.
-          serializedOutput = reference;
-        }
         return applyNodeAttemptCompletion(
           client,
           input,

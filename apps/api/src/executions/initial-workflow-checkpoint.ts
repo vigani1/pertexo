@@ -1,6 +1,6 @@
 import type {
   CompatibilityReleaseExpectation,
-  PublishedWorkflowV2Projection,
+  PublishedWorkflowExecutableProjection,
 } from '@pertexo/database/api';
 import {
   WorkflowEngineError,
@@ -8,6 +8,8 @@ import {
   createCheckpointV2,
   type ExecutableCompatibilityReleaseSupport,
   verifyWorkflowExecutableV2,
+  verifyWorkflowExecutableV3,
+  createWorkflowCheckpointV3,
 } from '@pertexo/workflow-engine';
 
 export const API_ENGINE_VERSION = 'phase3-engine-v1';
@@ -38,7 +40,7 @@ export class InitialWorkflowCheckpointError extends Error {
 
 /** Build the execution checkpoint shared by every API run-ingress adapter. */
 export function createInitialWorkflowCheckpoint(
-  projection: PublishedWorkflowV2Projection,
+  projection: PublishedWorkflowExecutableProjection,
   releaseSupport: ExecutableCompatibilityReleaseSupport,
   currentCompatibilityRelease: CompatibilityReleaseExpectation,
 ) {
@@ -56,22 +58,33 @@ export function createInitialWorkflowCheckpoint(
       currentCompatibilityRelease.epoch,
       currentCompatibilityRelease.fingerprint,
     );
-    const executable = verifyWorkflowExecutableV2({
+    const boundary = {
       envelope: projection.executableJson,
       checksum: projection.checksum,
       admissionRelease,
       currentRelease,
-    });
+    };
+    const native = projection.executableSchemaVersion === 3;
+    // Runtime metadata still comes from a database projection. Do not rely on
+    // the TypeScript discriminant to validate that decoded format pairing.
+    const sourceSchemaVersion: unknown = projection.schemaVersion;
+    if (native && sourceSchemaVersion !== 2)
+      throw new InitialWorkflowCheckpointError();
+    const executable = native
+      ? verifyWorkflowExecutableV3(boundary)
+      : verifyWorkflowExecutableV2(boundary);
     if (
       executable.envelope.compatibilityReleaseEpoch !==
       projection.compatibilityReleaseEpoch
     )
       throw new InitialWorkflowCheckpointError();
-    const checkpointFactory = executable.envelope.graph.nodes.some(
-      ({ definition }) => requiresStructuredCheckpoint(definition),
-    )
-      ? createCheckpointV2
-      : createCheckpoint;
+    const checkpointFactory = native
+      ? createWorkflowCheckpointV3
+      : executable.envelope.graph.nodes.some(({ definition }) =>
+            requiresStructuredCheckpoint(definition),
+          )
+        ? createCheckpointV2
+        : createCheckpoint;
     return Object.freeze({
       engineVersion: API_ENGINE_VERSION,
       checkpoint: checkpointFactory({

@@ -44,6 +44,8 @@ import {
   type CoordinatorValueWorkPolicy,
 } from './coordinator-value-work-lifetime.js';
 import type { CoordinatorNativeValueWork } from './coordinator-native-demand-advance.js';
+import { createCoordinatorSourceHydration } from './coordinator-source-hydration.js';
+import { createCoordinatorResultPreparationScope } from './coordinator-result-preparation-scope.js';
 import {
   createCoordinatorTelemetry,
   type CoordinatorTelemetry,
@@ -237,6 +239,12 @@ export async function createCoordinatorRuntime(
     runStore =
       dependencies.runStore ??
       factories.runStore(options.database, options.databaseRuntime, {
+        expectedCompatibilityReleases: currentReleaseDescriptions,
+        nativeValueControlReadTimeoutMillis:
+          nativeValueWork.policy.controlReadTimeoutMillis,
+        withNativeResultPreparation: createCoordinatorResultPreparationScope(
+          nativeValueWork.policy,
+        ),
         runTimeoutFailureContextEnabled:
           options.runTimeoutFailureContextEnabled ?? false,
         workspaceInboxProducerEnabled:
@@ -267,8 +275,17 @@ export async function createCoordinatorRuntime(
       reader,
       runStore,
       telemetry,
-      nativeValueWork,
+      nativeValueWork: {
+        ...nativeValueWork,
+        hydrateSource:
+          nativeValueWork.hydrateSource ??
+          createCoordinatorSourceHydration(
+            runStore,
+            nativeValueWork.policy.controlReadTimeoutMillis,
+          ),
+      },
     });
+    await runStore.checkReadiness?.();
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.workflowCoordinator,
       redisUrl: options.redisUrl,

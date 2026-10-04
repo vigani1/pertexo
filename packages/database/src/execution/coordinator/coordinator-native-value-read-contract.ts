@@ -93,6 +93,16 @@ export type InspectCoordinatorValueReadOwner = (
   }>,
 ) => Promise<NativeCoordinatorValueOwnerInspection>;
 
+/** Framework-owned cancellation/lifetime only; neither bytes nor commit authority. */
+export type NativeCoordinatorResultPreparationScope = <T>(
+  input: Readonly<{
+    owner: NativeCoordinatorValueOwner;
+    signal: AbortSignal;
+    inspectOwner: InspectCoordinatorValueReadOwner;
+  }>,
+  prepare: (signal: AbortSignal) => Promise<T>,
+) => Promise<T>;
+
 /**
  * Derive immutable declaration and accepted sources independently, then compare
  * exact demand, revision and ordered scope. Null means actual absent run input.

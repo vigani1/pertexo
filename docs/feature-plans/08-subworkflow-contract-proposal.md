@@ -400,6 +400,26 @@ signature, attestation implementation or blocked verification bypass is supplied
 
 ### Explicit native source projection
 
+#### Borrowed child run-input binding clarification — accepted, 2026-10-04
+
+Primary selected an explicit accepted child `run_input` binding borrowing exactly
+one immutable owned Call `attempt_input` producer. The binding stores no original
+reference/bytes, independent artifact association or quota charge; protected
+resolution returns the existing `StoredExecutionValueV1` snapshot grammar, with
+no new borrowed reference kind. A same-workspace composite foreign key and
+complete owned/borrowed shape checks must require an owned `attempt_input`
+producer, so alias chains and cycles are impossible. Any derived integrity
+metadata is checked against that producer, not new authority.
+
+The actual acceptance transaction and every authorized resolution independently
+prove the immutable declaration/journal and exact parent/child/version/invocation,
+current consuming authority, source availability and eligibility. UUID possession
+is insufficient. Producer retention accounts for still-eligible borrowed consumers,
+legal hold and bounded family/replay dependencies. Expired child input loses
+eligibility and cannot retain original bytes indefinitely. This clarification is
+implementation guidance for the fresh unregistered candidate, not installed
+schema, writer/readiness or persistent/security qualification.
+
 Only exact Graph2/executable3/Checkpoint3 selection may emit a typed native source
 projection alongside ordinary inputs. Each record has a fixed target slot
 (`run_input`, scoped `upstream_output`, or `wait_resume_output`), exact

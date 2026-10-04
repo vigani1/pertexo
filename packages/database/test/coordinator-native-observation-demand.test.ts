@@ -1,11 +1,66 @@
 import type { Pool, PoolClient } from 'pg';
+import { createHash } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 
 import { loadCoordinatorAdvanceState } from '../src/execution/coordinator/coordinator-run-store-observations.js';
+import { parseCoordinatorExecutableCapability } from '../src/execution/coordinator/coordinator-executable-capability.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const runId = '22222222-2222-4222-8222-222222222222';
 const workflowVersionId = '33333333-3333-4333-8333-333333333333';
+const delivery = {
+  outboxEventId: '44444444-4444-4444-8444-444444444444',
+  payloadChecksum: 'a'.repeat(64),
+};
+const call = { key: 'core.workflow_call', version: 1 };
+const policy = { key: 'workflow.call', version: 1 };
+const catalogJson = JSON.stringify({
+  domain: 'pertexo.node-compatibility-release',
+  schemaVersion: 1,
+  policies: [
+    ['engine.scheduler', 2],
+    ['engine.checkpoint', 2],
+    ['engine.retry', 1],
+    ['engine.timeout', 2],
+    ['engine.cancellation', 2],
+  ]
+    .map(([key, version]) => ({ key, version }))
+    .concat([policy]),
+  definitions: [
+    {
+      definition: call,
+      executor: call,
+      executorAbi: 1,
+      lifecycle: 'active',
+      policyReferences: [policy],
+    },
+  ],
+  executors: [
+    {
+      executor: call,
+      abiVersion: 1,
+      lifecycle: 'active',
+      definitions: [call],
+      policyReferences: [policy],
+    },
+  ],
+});
+const nativeRelease = {
+  epoch: 1,
+  fingerprint: `node-compat:v1:sha256:${createHash('sha256').update(catalogJson).digest('hex')}`,
+  catalogJson,
+};
+const nativeAdapter = {
+  controlReadTimeoutMillis: 250,
+  capability: parseCoordinatorExecutableCapability([nativeRelease]),
+};
+const request = () => ({
+  workspaceId,
+  runId,
+  delivery,
+  signal: new AbortController().signal,
+});
 
 function adapter(selector: unknown, native = true) {
   const format = native ? 3 : 2;
@@ -43,9 +98,15 @@ function adapter(selector: unknown, native = true) {
     },
   };
   let scoped = false;
-  function queryResult(sql: string) {
+  let timeout = 0;
+  function queryResult(sql: string, values: unknown[] = []) {
     if (sql.includes("set_config('app.workspace_id'")) scoped = true;
-    if (sql === 'commit' || sql === 'rollback') scoped = false;
+    if (sql.includes("set_config('statement_timeout'"))
+      timeout = Number.parseInt(String(values[0]), 10);
+    if (sql === 'commit' || sql === 'rollback') {
+      scoped = false;
+      timeout = 0;
+    }
     if (sql.includes("current_setting('app.workspace_id'"))
       return {
         rows: [
@@ -53,7 +114,33 @@ function adapter(selector: unknown, native = true) {
             workspace_id: scoped ? workspaceId : null,
             actor_id: null,
             discovery_scope: null,
-            statement_timeout_millis: 0,
+            statement_timeout_millis: timeout,
+          },
+        ],
+      };
+    if (sql.includes('select version.schema_version as graph_schema_version'))
+      return {
+        rows: [
+          {
+            graph_schema_version: native ? 2 : 1,
+            executable_schema_version: format,
+            executable_checksum: `wf:v${String(format)}:sha256:${'a'.repeat(64)}`,
+          },
+        ],
+      };
+    if (sql.includes('app.inspect_native_coordinator_value_owner'))
+      return {
+        rows: [
+          {
+            result: checkpoint.cancelRequested
+              ? { kind: 'stopped', stop: { kind: 'canceled' } }
+              : checkpoint.deadlineExpired
+                ? { kind: 'stopped', stop: { kind: 'timed_out' } }
+                : {
+                    kind: 'active',
+                    databaseNow: '2026-10-04T00:00:00Z',
+                    deadlineAt: '2026-10-04T01:00:00Z',
+                  },
           },
         ],
       };
@@ -79,6 +166,8 @@ function adapter(selector: unknown, native = true) {
             executable_checksum: `wf:v${String(format)}:sha256:${'a'.repeat(64)}`,
             executable_json: {
               schemaVersion: format,
+              compatibilityReleaseEpoch: nativeRelease.epoch,
+              compatibilityReleaseFingerprint: nativeRelease.fingerprint,
               graph: {
                 nodes: [
                   {
@@ -109,11 +198,25 @@ function adapter(selector: unknown, native = true) {
       );
     return { rows: [] };
   }
-  const query = vi.fn((sql: string) => Promise.resolve(queryResult(sql)));
+  const query = vi.fn((sql: string, values?: unknown[]) =>
+    Promise.resolve(queryResult(sql, values)),
+  );
   const release = vi.fn();
-  const client = { query, release } as unknown as PoolClient;
-  const connect = vi.fn(() => Promise.resolve(client));
-  const pool = { connect } as unknown as Pool;
+  const client = Object.assign(new EventEmitter(), {
+    query,
+    release,
+  }) as unknown as PoolClient;
+  const connect = vi.fn(
+    (callback?: (error: undefined, client: PoolClient) => void) => {
+      if (callback === undefined) return Promise.resolve(client);
+      callback(undefined, client);
+      return undefined;
+    },
+  );
+  const pool = {
+    connect,
+    options: { connectionTimeoutMillis: 100 },
+  } as unknown as Pool;
   return { pool, query, release, connect, decodeInput, callable, checkpoint };
 }
 
@@ -132,11 +235,11 @@ describe('actual coordinator observation read adapter before native demand', () 
     'does not fetch or decode callable result material for $kind',
     async (selector) => {
       const source = adapter(selector);
-      const result = await loadCoordinatorAdvanceState(source.pool, {
-        workspaceId,
-        runId,
-        signal: new AbortController().signal,
-      });
+      const result = await loadCoordinatorAdvanceState(
+        source.pool,
+        request(),
+        nativeAdapter,
+      );
       expect(result).toMatchObject({
         kind: 'ready',
         state: {
@@ -154,8 +257,8 @@ describe('actual coordinator observation read adapter before native demand', () 
           sql.includes('app.read_native_workflow_attempt_output'),
         ),
       ).toBe(false);
-      expect(source.connect).toHaveBeenCalledOnce();
-      expect(source.release).toHaveBeenCalledExactlyOnceWith();
+      expect(source.connect).toHaveBeenCalledTimes(2);
+      expect(source.release).toHaveBeenCalledTimes(2);
       expect(source.query.mock.calls.map(([sql]) => sql)).toContain(
         'begin isolation level repeatable read read only',
       );
@@ -178,11 +281,11 @@ describe('actual coordinator observation read adapter before native demand', () 
       });
       source.checkpoint.cancelRequested = kind === 'canceled';
       source.checkpoint.deadlineExpired = kind === 'timed_out';
-      const result = await loadCoordinatorAdvanceState(source.pool, {
-        workspaceId,
-        runId,
-        signal: new AbortController().signal,
-      });
+      const result = await loadCoordinatorAdvanceState(
+        source.pool,
+        request(),
+        nativeAdapter,
+      );
       expect(result).toMatchObject({
         kind: 'ready',
         state: { checkpoint: source.checkpoint },
@@ -191,7 +294,7 @@ describe('actual coordinator observation read adapter before native demand', () 
         throw new Error('Expected controlled ready state');
       expect(result.state).not.toHaveProperty('callableCompletion');
       expect(source.decodeInput).not.toHaveBeenCalled();
-      expect(source.release).toHaveBeenCalledExactlyOnceWith();
+      expect(source.release).toHaveBeenCalledTimes(2);
     },
   );
 
@@ -199,15 +302,11 @@ describe('actual coordinator observation read adapter before native demand', () 
     const source = adapter({ kind: 'run_input', path: '$' });
     source.callable.schemaVersion = 99;
     await expect(
-      loadCoordinatorAdvanceState(source.pool, {
-        workspaceId,
-        runId,
-        signal: new AbortController().signal,
-      }),
+      loadCoordinatorAdvanceState(source.pool, request(), nativeAdapter),
     ).rejects.toThrow();
     expect(source.decodeInput).not.toHaveBeenCalled();
     expect(source.query.mock.calls.map(([sql]) => sql)).toContain('rollback');
-    expect(source.release).toHaveBeenCalledExactlyOnceWith();
+    expect(source.release).toHaveBeenCalledTimes(2);
   });
 
   it('preserves the retained observation path and tenant cleanup', async () => {
@@ -229,6 +328,29 @@ describe('actual coordinator observation read adapter before native demand', () 
       throw new Error('Expected retained ready state');
     expect(result.state).not.toHaveProperty('workflowCalls');
     expect(result.state).not.toHaveProperty('callableCompletion');
-    expect(source.release).toHaveBeenCalledExactlyOnceWith();
+    expect(source.release).toHaveBeenCalledTimes(2);
+  });
+  it('refuses native format in a retained-only adapter before executable or fact payload reads', async () => {
+    const source = adapter({ kind: 'literal', value: {} });
+    await expect(
+      loadCoordinatorAdvanceState(source.pool, request()),
+    ).resolves.toEqual({ kind: 'not_executable' });
+    expect(
+      source.query.mock.calls.some(
+        ([sql]) =>
+          sql.includes('run.id as run_id') ||
+          sql.includes('app.read_workflow_call'),
+      ),
+    ).toBe(false);
+    expect(source.decodeInput).not.toHaveBeenCalled();
+    expect(source.connect).toHaveBeenCalledOnce();
+  });
+  it('refuses incompatible actual shared K before any native classifier checkout', async () => {
+    const source = adapter({ kind: 'literal', value: {} });
+    source.pool.options.connectionTimeoutMillis = 5_000;
+    await expect(
+      loadCoordinatorAdvanceState(source.pool, request(), nativeAdapter),
+    ).rejects.toThrow('Actual shared pool');
+    expect(source.connect).not.toHaveBeenCalled();
   });
 });

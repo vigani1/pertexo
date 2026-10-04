@@ -226,7 +226,11 @@ export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
 } from './execution/previews/preview-execution.js';
-export type { PublishedWorkflowV2Projection } from './execution/published-workflow-reader.js';
+export type {
+  PublishedWorkflowV2Projection,
+  PublishedWorkflowV3Projection,
+  PublishedWorkflowExecutableProjection,
+} from './execution/published-workflow-reader.js';
 export {
   ScheduleTriggerError,
   createScheduleTriggerDatabase,

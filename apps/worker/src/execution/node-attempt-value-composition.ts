@@ -1,0 +1,95 @@
+import { isDeepStrictEqual } from 'node:util';
+import { boundedNodeJsonSchema } from '@pertexo/node-sdk';
+import {
+  parseWorkflowExecutionValueSnapshot,
+  type NodeAttemptRunStore,
+} from '@pertexo/database/execution';
+import type { NodeAttemptHandlerDependencies } from './node-attempt-handler.js';
+import {
+  createWorkflowExecutionValueSourceHydrator,
+  createWorkflowExecutionValueInlinePreparation,
+} from './workflow-execution-value-codec.js';
+
+const active = (signal: AbortSignal) => {
+  if (signal.aborted)
+    throw new DOMException('The operation was aborted', 'AbortError');
+};
+
+/** Framework-only minimum inline composition; no node capability or fake store. */
+export function createNodeAttemptValueComposition(
+  runStore: Pick<
+    NodeAttemptRunStore,
+    'readNativeValueSource' | 'readCallDeclarationInput'
+  >,
+): {
+  nativeInputValues: NonNullable<
+    NodeAttemptHandlerDependencies['nativeInputValues']
+  >;
+  callDeclarationValues: NonNullable<
+    NodeAttemptHandlerDependencies['callDeclarationValues']
+  >;
+} {
+  const nativeInputValues = createWorkflowExecutionValueSourceHydrator({
+    authorizeSource: async ({ owner, source, signal }) => {
+      if (owner.kind !== 'attempt')
+        throw new TypeError('Native attempt consumer scope differs');
+      const read = runStore.readNativeValueSource;
+      if (read === undefined)
+        throw new Error('Native attempt source owner is unavailable');
+      const accepted = await read.call(runStore, {
+        lease: owner.lease,
+        source,
+        signal,
+      });
+      if (
+        accepted.slot !== source.slot ||
+        !isDeepStrictEqual(accepted.source, source.source)
+      )
+        throw new TypeError(
+          'Native attempt independently accepted source scope differs',
+        );
+      if (accepted.snapshot.reference.kind !== 'inline')
+        throw new Error(
+          'Native attempt artifact source hydration is not implemented',
+        );
+      return { snapshot: accepted.snapshot };
+    },
+  });
+  const callDeclarationValues: NonNullable<
+    NodeAttemptHandlerDependencies['callDeclarationValues']
+  > = {
+    prepare: ({ owner, value, signal }) => {
+      active(signal);
+      if (owner.kind !== 'attempt' || owner.slot !== 'call_input')
+        throw new TypeError('Call declaration producer scope differs');
+      return createWorkflowExecutionValueInlinePreparation().prepare({
+        owner,
+        value,
+        signal,
+      });
+    },
+    hydrate: async ({ owner, reference, signal }) => {
+      active(signal);
+      if (owner.kind !== 'attempt')
+        throw new TypeError('Call declaration consumer scope differs');
+      const read = runStore.readCallDeclarationInput;
+      if (read === undefined)
+        throw new Error('Call declaration accepted input owner is unavailable');
+      const value = await read.call(runStore, { lease: owner.lease, signal });
+      active(signal);
+      if (value === undefined)
+        throw new Error('Call declaration accepted input is unavailable');
+      const accepted = parseWorkflowExecutionValueSnapshot(value);
+      if (!isDeepStrictEqual(accepted.reference, reference))
+        throw new TypeError(
+          'Call declaration independently accepted reference differs',
+        );
+      if (accepted.reference.kind !== 'inline')
+        throw new Error(
+          'Call declaration artifact hydration is not implemented',
+        );
+      return boundedNodeJsonSchema.parse(accepted.reference.value);
+    },
+  };
+  return { nativeInputValues, callDeclarationValues };
+}

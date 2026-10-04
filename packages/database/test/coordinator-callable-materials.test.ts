@@ -28,6 +28,13 @@ function input(selector: unknown = { kind: 'run_input', path: '$' }) {
   return {
     workspaceId: workspace,
     runId: run,
+    consumer: {
+      workspaceId: workspace,
+      runId: run,
+      workflowVersionId: attempt,
+      expectedRevision: 0,
+      delivery: { outboxEventId: attempt, payloadChecksum: 'a'.repeat(64) },
+    },
     inputRef: inline({ name: 'input' }),
     facts: [],
     executableJson: {
@@ -269,7 +276,12 @@ describe('native callable inline completion hydration', () => {
     expect(query.mock.calls[1]?.[0]).toContain(
       'app.read_workflow_call_result_reference',
     );
-    expect(query.mock.calls[1]?.[1]).toEqual([run, 'call-key', run]);
+    expect(query.mock.calls[1]?.[1]).toEqual([
+      run,
+      'call-key',
+      run,
+      JSON.stringify(input().consumer),
+    ]);
   });
   it('reads selected physical values in bounded pages', async () => {
     const rows = Array.from({ length: 17 }, (_, index) => ({

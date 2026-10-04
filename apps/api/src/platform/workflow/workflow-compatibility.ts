@@ -11,6 +11,7 @@ import {
 } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
+  buildWorkflowExecutableV3,
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
@@ -201,16 +202,23 @@ export function createCoreAuthoringOptions(
           graph: WorkflowGraph,
           options: Readonly<{ signal?: AbortSignal }>,
         ) => validator.validate(graph, authoringPolicies, options),
-        executableCompiler: (
-          graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
-        ) => {
-          const compiled = buildWorkflowExecutableV2({
-            graph,
-            release: compatibilityRelease,
-          });
+        executableCompiler: (graph: WorkflowGraph) => {
+          // The existing locked release remains the authority. A retained
+          // release without native definitions/policies fails V3 compilation;
+          // this branch neither registers a native catalog nor activates it.
+          const compiled =
+            graph.schemaVersion === 2
+              ? buildWorkflowExecutableV3({
+                  graph,
+                  release: compatibilityRelease,
+                })
+              : buildWorkflowExecutableV2({
+                  graph,
+                  release: compatibilityRelease,
+                });
           return Object.freeze({
             checksum: compiled.checksum,
-            executableSchemaVersion: 2 as const,
+            executableSchemaVersion: compiled.envelope.schemaVersion,
             executableJson: compiled.envelope,
             compatibilityReleaseEpoch:
               compiled.envelope.compatibilityReleaseEpoch,

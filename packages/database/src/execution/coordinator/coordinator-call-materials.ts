@@ -5,6 +5,7 @@ import type { CoordinatorEventRow } from './coordinator-run-store-fact-physical-
 import { loadCoordinatorCallFacts } from './coordinator-call-facts.js';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
 import type { PersistedWorkflowCallStateV1 } from '../../compatibility/persisted-workflow-checkpoint-v3.js';
+import type { NativeCoordinatorValueOwner } from './coordinator-native-value-read-contract.js';
 
 export type CoordinatorCallMaterials = Readonly<{
   declarations: readonly Readonly<{
@@ -27,14 +28,27 @@ export async function loadCoordinatorCallMaterials(
     runId: string;
     checkpoint: CoordinatorCheckpoint;
     events: readonly CoordinatorEventRow[];
+    callNodeIds?: ReadonlySet<string>;
+    consumer?: NativeCoordinatorValueOwner;
+    loadDeclarations?: boolean;
   }>,
 ): Promise<CoordinatorCallMaterials | undefined> {
   if (input.checkpoint.schemaVersion !== 3) return undefined;
+  if (input.consumer === undefined || input.callNodeIds === undefined)
+    throw new CoordinatorRunStateCorruptError();
   const keys = input.events
-    .filter(({ type }) => type === 'node.succeeded')
+    .filter(
+      ({ type, node_id }) =>
+        input.loadDeclarations !== false &&
+        type === 'node.succeeded' &&
+        node_id !== null &&
+        input.callNodeIds?.has(node_id),
+    )
     .flatMap(({ invocation_key }) =>
       invocation_key === null ? [] : [invocation_key],
     );
+  if (keys.length > 64 || new Set(keys).size !== keys.length)
+    throw new CoordinatorRunStateCorruptError();
   const result =
     keys.length === 0
       ? { rows: [] }
@@ -45,11 +59,22 @@ export async function loadCoordinatorCallMaterials(
           callee_version_id: string;
           snapshot: unknown;
         }>(
-          `select invocation_key,node_id,attempt_id,callee_version_id,snapshot from app.read_workflow_call_declaration_materials($1::uuid,$2::text[])`,
-          [input.runId, keys],
+          `select invocation_key,node_id,attempt_id,callee_version_id,snapshot from app.read_workflow_call_declaration_materials($1::uuid,$2::text[],$3::jsonb)`,
+          [input.runId, keys, JSON.stringify(input.consumer)],
         );
-  if (result.rows.length > 64) throw new CoordinatorRunStateCorruptError();
+  if (result.rows.length !== keys.length)
+    throw new CoordinatorRunStateCorruptError();
+  const remaining = new Set(keys);
   const declarations = result.rows.map((row) => {
+    const event = input.events.find(
+      ({ invocation_key }) => invocation_key === row.invocation_key,
+    );
+    if (
+      !remaining.delete(row.invocation_key) ||
+      event?.node_id !== row.node_id ||
+      event.attempt_id !== row.attempt_id
+    )
+      throw new CoordinatorRunStateCorruptError();
     const snapshot = parseWorkflowExecutionValueSnapshot(row.snapshot);
     if (snapshot.reference.kind !== 'inline')
       throw new CoordinatorRunStateCorruptError();

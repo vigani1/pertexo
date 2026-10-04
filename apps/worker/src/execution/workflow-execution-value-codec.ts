@@ -1,6 +1,9 @@
+import {
+  normalize,
+  hydrateStream,
+} from './workflow-execution-value-decoding.js';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 import { types as nodeTypes } from 'node:util';
 import {
   prepareInlineWorkflowExecutionValueV3,
@@ -8,11 +11,7 @@ import {
   type NativeNodeAttemptValueSource,
   parseWorkflowExecutionValueSnapshot,
 } from '@pertexo/database/execution';
-import {
-  boundedNodeJsonSchema,
-  NODE_JSON_LIMITS_V1,
-  type SchemaJson,
-} from '@pertexo/node-sdk';
+import { NODE_JSON_LIMITS_V1, type SchemaJson } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 import {
@@ -51,13 +50,6 @@ function invalid(message: string): never {
 function assertActive(signal: AbortSignal): void {
   if (signal.aborted)
     throw new DOMException('The operation was aborted', 'AbortError');
-}
-function normalize(value: unknown): SchemaJson {
-  if (typeof value === 'object' && value !== null && nodeTypes.isProxy(value))
-    invalid('Execution value is not bounded JSON');
-  const parsed = boundedNodeJsonSchema.safeParse(value);
-  if (!parsed.success) invalid('Execution value is not bounded JSON');
-  return parsed.data;
 }
 /** Reject oversized envelopes before inspecting at most maxFields data descriptors. */
 function ownEnvelope(
@@ -162,85 +154,6 @@ async function* canonicalChunk(
   }
 }
 
-async function hydrateStream(
-  body: Readable,
-  metadata: z.infer<typeof metadataSchema>,
-  signal: AbortSignal,
-): Promise<SchemaJson> {
-  const chunks: Buffer[] = [];
-  let bytes: Buffer | undefined;
-  let byteLength = 0;
-  const hash = createHash('sha256');
-  async function* boundedChunks(
-    source: AsyncIterable<unknown>,
-  ): AsyncGenerator<Buffer> {
-    for await (const chunk of source) {
-      if (!(chunk instanceof Uint8Array))
-        invalid('Execution value artifact stream is not bytes');
-      try {
-        assertActive(signal);
-        byteLength += chunk.byteLength;
-        if (
-          byteLength > NODE_JSON_LIMITS_V1.bytes ||
-          byteLength > metadata.byteLength
-        )
-          invalid('Execution value artifact exceeds its byte limit');
-        hash.update(chunk);
-        yield Buffer.from(chunk);
-      } finally {
-        chunk.fill(0);
-      }
-    }
-  }
-  try {
-    assertActive(signal);
-    await pipeline(
-      body,
-      boundedChunks,
-      async (source: AsyncIterable<Buffer>) => {
-        for await (const chunk of source) chunks.push(chunk);
-      },
-      { signal },
-    );
-    assertActive(signal);
-    if (
-      byteLength !== metadata.byteLength ||
-      hash.digest('hex') !== metadata.sha256
-    )
-      invalid('Execution value artifact integrity mismatch');
-    bytes = Buffer.concat(chunks, byteLength);
-    let decoded: unknown;
-    try {
-      decoded = JSON.parse(
-        new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(
-          bytes,
-        ),
-      );
-    } catch {
-      invalid('Execution value artifact is not UTF8 JSON');
-    }
-    const value = normalize(decoded);
-    const canonical = Buffer.from(
-      serializeWorkflowExecutionJsonValueV3(value),
-      'utf8',
-    );
-    try {
-      if (
-        canonical.byteLength !== metadata.byteLength ||
-        digest(canonical) !== metadata.sha256
-      )
-        invalid('Execution value artifact is not canonical JSON');
-    } finally {
-      canonical.fill(0);
-    }
-    return value;
-  } finally {
-    body.destroy();
-    bytes?.fill(0);
-    for (const chunk of chunks) chunk.fill(0);
-  }
-}
-
 type PrepareInput = Readonly<{
   owner: WorkflowExecutionValueProducerOwner;
   value: unknown;
@@ -258,7 +171,10 @@ type HydrateSourceInput = Readonly<{
 }>;
 
 async function prepareValue(
-  dependencies: WorkflowExecutionValueCodecDependencies,
+  dependencies: Pick<WorkflowExecutionValueCodecDependencies, 'chooseInline'> &
+    Partial<
+      Pick<WorkflowExecutionValueCodecDependencies, 'reserve' | 'writeReserved'>
+    >,
   input: PrepareInput,
 ): Promise<PreparedWorkflowExecutionValue> {
   assertActive(input.signal);
@@ -283,6 +199,12 @@ async function prepareValue(
         invalid('Inline execution value does not match normalized input');
       return Object.freeze({ reference, sha256, byteLength });
     }
+    const reserve = dependencies.reserve;
+    const writeReserved = dependencies.writeReserved;
+    if (reserve === undefined || writeReserved === undefined)
+      throw new Error(
+        'Native execution value artifact production is not implemented',
+      );
     const reservationInput = Object.freeze({
       owner: input.owner,
       byteLength,
@@ -291,7 +213,7 @@ async function prepareValue(
       signal: input.signal,
     });
     const reserved = parseMetadata(
-      await dependencies.reserve(reservationInput),
+      await reserve(reservationInput),
       reservationSchema,
     );
     assertActive(input.signal);
@@ -311,7 +233,7 @@ async function prepareValue(
       let uploaded: z.infer<typeof metadataSchema>;
       try {
         uploaded = parseMetadata(
-          await dependencies.writeReserved({
+          await writeReserved({
             owner: input.owner,
             reserved,
             body,
@@ -329,7 +251,7 @@ async function prepareValue(
         // This is still a candidate: accepted-source authorization cannot
         // precede the actual input/completion/coordinator acceptance transaction.
         // The owner must reuse this exact reservation without inserting/charging.
-        await dependencies.reserve(reservationInput),
+        await reserve(reservationInput),
         reservationSchema,
       );
       assertActive(input.signal);
@@ -344,7 +266,10 @@ async function prepareValue(
 }
 
 async function hydrateValue(
-  dependencies: WorkflowExecutionValueCodecDependencies,
+  dependencies: Pick<
+    WorkflowExecutionValueCodecDependencies,
+    'authorize' | 'store'
+  >,
   input: HydrateInput,
 ): Promise<SchemaJson> {
   assertActive(input.signal);
@@ -407,7 +332,11 @@ async function hydrateValue(
 }
 
 async function hydrateSourceValue(
-  dependencies: WorkflowExecutionValueCodecDependencies,
+  dependencies: Pick<
+    WorkflowExecutionValueCodecDependencies,
+    'authorizeSource'
+  > &
+    Partial<Pick<WorkflowExecutionValueCodecDependencies, 'store'>>,
   input: HydrateSourceInput,
 ): Promise<SchemaJson> {
   assertActive(input.signal);
@@ -463,12 +392,38 @@ async function hydrateSourceValue(
     artifact.byteLength !== accepted.byteLength
   )
     invalid('Native accepted-source artifact integrity does not agree');
+  if (dependencies.store === undefined)
+    throw new Error('Native accepted-source artifact read is unavailable');
   // Reuse the actual bounded stream codec after the exact source owner has
   // authorized this descriptor. Never fall back to legacy artifact possession.
   return hydrateValue(
-    { ...dependencies, authorize: () => Promise.resolve(artifact) },
+    { store: dependencies.store, authorize: () => Promise.resolve(artifact) },
     { owner: input.owner, reference, signal: input.signal },
   );
+}
+
+/** Inline-only composition of the SAME preparation owner; no fake artifact callbacks. */
+export function createWorkflowExecutionValueInlinePreparation() {
+  return Object.freeze({
+    prepare: (input: PrepareInput) =>
+      prepareValue(
+        { chooseInline: prepareInlineWorkflowExecutionValueV3 },
+        input,
+      ),
+  });
+}
+
+/** Read-only composition of the SAME source codec; no fake writer/store owners. */
+export function createWorkflowExecutionValueSourceHydrator(
+  dependencies: Required<
+    Pick<WorkflowExecutionValueCodecDependencies, 'authorizeSource'>
+  > &
+    Partial<Pick<WorkflowExecutionValueCodecDependencies, 'store'>>,
+) {
+  return Object.freeze({
+    hydrateSource: (input: HydrateSourceInput) =>
+      hydrateSourceValue(dependencies, input),
+  });
 }
 
 /** Stateless codec seam. Callbacks own authority, reservations and artifact lifecycle. */

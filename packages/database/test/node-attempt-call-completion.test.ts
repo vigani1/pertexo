@@ -1,21 +1,13 @@
+import { EventEmitter } from 'node:events';
 import type { Pool, PoolClient } from 'pg';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as transactions from '../src/execution/node-attempts/node-attempt-run-store-transactions.js';
 import { completeNodeAttempt } from '../src/execution/node-attempts/node-attempt-run-store-completion.js';
 import { canonicalOutboxPayloadChecksum } from '../src/execution/transport/outbox.js';
 import type { NodeAttemptLease } from '../src/execution/node-attempts/node-attempt-run-store-contract.js';
 
-const { query, transaction } = vi.hoisted(() => ({
-  query: vi.fn(),
-  transaction: vi.fn(),
-}));
-vi.mock(
-  '../src/execution/node-attempts/node-attempt-run-store-transactions.js',
-  async (original) => ({
-    ...(await original<typeof transactions>()),
-    withWorkspaceWriteClient: transaction,
-  }),
-);
+// External pg boundary only: completion and tenant transactions are real.
+const query = vi.fn();
+const release = vi.fn();
 const id = (n: number) =>
   `${String(n).padStart(8, '0')}-1111-4111-8111-111111111111`;
 const payload = {
@@ -45,20 +37,31 @@ const lease: NodeAttemptLease = {
 };
 const rawReference =
   '{"kind":"inline","schemaVersion":1,"value":9007199254740993}';
-const pool = {} as Pool;
+let client: PoolClient;
+const pool = {
+  connect: () => Promise.resolve(client),
+} as unknown as Pool;
 let completed = false;
 beforeEach(() => {
   vi.clearAllMocks();
   completed = false;
-  transaction.mockImplementation(
-    (
-      _pool: Pool,
-      _workspace: string,
-      _signal: AbortSignal,
-      operation: (client: PoolClient) => Promise<unknown>,
-    ) => operation({ query } as unknown as PoolClient),
-  );
-  query.mockImplementation((sql: string) => {
+  const emitter = new EventEmitter();
+  client = Object.assign(emitter, { query, release }) as unknown as PoolClient;
+  release.mockImplementation((destroy?: Error | boolean) => {
+    if (destroy) emitter.emit('end');
+  });
+  let workspaceId: string | null = null;
+  query.mockImplementation((sql: string, values?: unknown[]) => {
+    if (sql.includes("set_config('app.workspace_id'")) {
+      workspaceId = values?.[0] as string;
+    }
+    if (sql.includes('current_setting'))
+      return Promise.resolve({
+        rows: [
+          { workspace_id: workspaceId, actor_id: null, discovery_scope: null },
+        ],
+      });
+    if (sql === 'commit' || sql === 'rollback') workspaceId = null;
     if (sql.includes('select aggregate_id'))
       return Promise.resolve({
         rows: [
@@ -81,10 +84,16 @@ beforeEach(() => {
           },
         ],
       });
-    if (sql.includes('abort_requested'))
+    if (sql.includes('abort_requested') || sql.includes(') native_execution'))
       return Promise.resolve({
         rowCount: 1,
-        rows: [{ abort_requested: false, native_execution: true }],
+        rows: [
+          {
+            abort_requested: false,
+            native_execution: true,
+            physical_completion_recorded: completed,
+          },
+        ],
       });
     if (sql.includes('select attempt.status'))
       return Promise.resolve({
@@ -129,7 +138,7 @@ const complete = () =>
     'workflow_call_input_alias',
   );
 
-describe('native Call completion through existing owner (mocked SQL, not authority proof)', () => {
+describe('native Call completion through real tenant owner (external pg, not SQL authority proof)', () => {
   it('aliases the original projection into physical attempt and node without a driver roundtrip', async () => {
     await expect(complete()).resolves.toMatchObject({ kind: 'committed' });
     const attemptWrite = query.mock.calls.find(([sql]) =>
@@ -160,6 +169,24 @@ describe('native Call completion through existing owner (mocked SQL, not authori
         (sql as string).includes('record_native_workflow_attempt_output'),
       ),
     ).toBe(false);
+    const statements = query.mock.calls.map(([sql]) => sql as string);
+    const alias = statements.findIndex((sql) =>
+      sql.includes('workflow_call_declaration_completion_reference'),
+    );
+    const receipt = statements.findIndex((sql) =>
+      sql.includes('select completed_at,payload_checksum'),
+    );
+    const run = statements.findIndex((sql) => sql.includes('abort_requested'));
+    const attempt = statements.findIndex((sql) =>
+      sql.includes('select attempt.status'),
+    );
+    expect(alias).toBeGreaterThan(-1);
+    expect(receipt).toBeGreaterThan(alias);
+    expect(run).toBeGreaterThan(receipt);
+    expect(attempt).toBeGreaterThan(run);
+    expect(statements).toContain('commit');
+    expect(statements).not.toContain('rollback');
+    expect(release.mock.calls).toEqual([[]]);
   });
   it('records an ordinary native output before the first physical write', async () => {
     await expect(
@@ -182,7 +209,53 @@ describe('native Call completion through existing owner (mocked SQL, not authori
     );
     expect(recordIndex).toBeGreaterThan(-1);
     expect(updateIndex).toBeGreaterThan(recordIndex);
+    const statements = query.mock.calls.map(([sql]) => sql as string);
+    const prelock = statements.findIndex((sql) =>
+      sql.includes('prelock_native_attempt_value_owner'),
+    );
+    expect(prelock).toBeGreaterThan(-1);
+    expect(prelock).toBeLessThan(
+      statements.findIndex((sql) =>
+        sql.includes('select completed_at,payload_checksum'),
+      ),
+    );
+    expect(statements[prelock]).not.toContain('coordinator');
   });
+  it.each(['denial', 'cancellation'] as const)(
+    'starts no descendant SQL after native prelock %s',
+    async (stop) => {
+      const controller = new AbortController();
+      const original = query.getMockImplementation();
+      query.mockImplementation((sql: string, values?: unknown[]): unknown => {
+        if (sql.includes('prelock_native_attempt_value_owner')) {
+          if (stop === 'cancellation') controller.abort();
+          return stop === 'denial'
+            ? Promise.reject(new Error('prelock denied'))
+            : Promise.resolve({ rows: [] });
+        }
+        return original?.(sql, values);
+      });
+      await expect(
+        completeNodeAttempt(pool, {
+          lease,
+          outcome: { status: 'succeeded', output: null },
+          signal: controller.signal,
+        }),
+      ).rejects.toThrow();
+      const statements = query.mock.calls.map(([sql]) => sql as string);
+      const prelock = statements.findIndex((sql) =>
+        sql.includes('prelock_native_attempt_value_owner'),
+      );
+      const cleanup = statements.slice(prelock + 1);
+      if (stop === 'denial') {
+        expect(cleanup).toHaveLength(2);
+        expect(cleanup[0]).toBe('rollback');
+        expect(cleanup[1]).toContain(
+          "select current_setting('app.workspace_id'",
+        );
+      } else expect(cleanup).toEqual([]);
+    },
+  );
   it('does not record physical output when the current lease fence is lost', async () => {
     await expect(
       completeNodeAttempt(pool, {
@@ -199,10 +272,10 @@ describe('native Call completion through existing owner (mocked SQL, not authori
   });
   it('does not write physical state after native provenance denial', async () => {
     const original = query.getMockImplementation();
-    query.mockImplementation((sql: string): unknown =>
+    query.mockImplementation((sql: string, values?: unknown[]): unknown =>
       sql.includes('record_native_workflow_attempt_output')
         ? Promise.reject(new Error('protected output denied'))
-        : original?.(sql),
+        : original?.(sql, values),
     );
     await expect(
       completeNodeAttempt(pool, {
@@ -226,13 +299,15 @@ describe('native Call completion through existing owner (mocked SQL, not authori
     expect(
       query.mock.calls.some(([sql]) => (sql as string).startsWith('update ')),
     ).toBe(false);
+    expect(query.mock.calls.some(([sql]) => sql === 'commit')).toBe(true);
+    expect(release.mock.calls).toEqual([[]]);
   });
   it('propagates protected alias denial without any physical output write', async () => {
     const original = query.getMockImplementation();
-    query.mockImplementation((sql: string): unknown =>
+    query.mockImplementation((sql: string, values?: unknown[]): unknown =>
       sql.includes('workflow_call_declaration_completion_reference')
         ? Promise.reject(new Error('protected alias denied'))
-        : original?.(sql),
+        : original?.(sql, values),
     );
     await expect(complete()).rejects.toThrow('protected alias denied');
     expect(
@@ -240,5 +315,8 @@ describe('native Call completion through existing owner (mocked SQL, not authori
         (sql as string).includes('update app.node_attempts'),
       ),
     ).toBe(false);
+    expect(query.mock.calls.some(([sql]) => sql === 'rollback')).toBe(true);
+    expect(query.mock.calls.some(([sql]) => sql === 'commit')).toBe(false);
+    expect(release.mock.calls).toEqual([[]]);
   });
 });

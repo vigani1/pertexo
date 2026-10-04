@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { createHash } from 'node:crypto';
 import type * as transactions from '../src/execution/node-attempts/node-attempt-run-store-transactions.js';
 import type { NodeAttemptLease } from '../src/execution/node-attempts/node-attempt-run-store-contract.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -70,7 +71,34 @@ beforeEach(() => {
       operation: (client: PoolClient) => Promise<unknown>,
     ) => operation({ query } as unknown as PoolClient),
   );
-  query.mockResolvedValue({ rows: [row] });
+  query.mockImplementation((sql: string) =>
+    Promise.resolve({
+      rows: sql.includes('read_native_attempt_value_source')
+        ? [
+            {
+              source: {
+                slot: 'run_input',
+                source: {
+                  kind: 'run_input',
+                  workspaceId: version,
+                  runId: version,
+                  workflowVersionId: version,
+                  provenanceId: version,
+                },
+                snapshot: {
+                  reference: row.input_ref,
+                  serializedValue: '{"name":"input"}',
+                  sha256: createHash('sha256')
+                    .update('{"name":"input"}')
+                    .digest('hex'),
+                  byteLength: 16,
+                },
+              },
+            },
+          ]
+        : [row],
+    }),
+  );
 });
 function load() {
   return loadNodeAttemptInputs({} as Pool, {
@@ -80,10 +108,13 @@ function load() {
   });
 }
 describe('node input checkpoint format selected by actual version (mocked read owner)', () => {
-  it('loads explicit Graph2/executable3/Checkpoint3 ordinary input', async () => {
+  it('loads explicit Graph2/executable3/Checkpoint3 protected source input', async () => {
     await expect(load()).resolves.toMatchObject({
-      runInput: { name: 'input' },
+      runInput: null,
       completedNodeOutputs: [],
+      nativeValueSources: {
+        runInput: { snapshot: { reference: row.input_ref } },
+      },
     });
     expect(query.mock.calls[0]?.[0]).toContain(
       'join app.workflow_versions version',

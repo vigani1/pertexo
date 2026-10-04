@@ -12,6 +12,7 @@ import {
   readWorkflowCallDeclarationInput,
 } from './node-attempt-call-input-record.js';
 import { loadNodeAttemptInputs } from './node-attempt-run-store-inputs.js';
+import { readNativeAttemptValueSource } from './node-attempt-native-value-read.js';
 
 import {
   NodeAttemptConnectionFenceError,
@@ -54,6 +55,11 @@ export function createNodeAttemptRunStore(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
+    readNativeValueSource: (
+      input: Parameters<
+        NonNullable<NodeAttemptRunStore['readNativeValueSource']>
+      >[0],
+    ) => readNativeAttemptValueSource(pool, input),
     claimDelivery: (
       input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
     ) => claimNodeAttemptDelivery(pool, input),

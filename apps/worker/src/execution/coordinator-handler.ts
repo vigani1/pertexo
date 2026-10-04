@@ -135,6 +135,7 @@ export function createCoordinatorHandler(
       const loaded = await dependencies.runStore.loadAdvanceState({
         workspaceId: delivery.data.workspaceId,
         runId: delivery.data.runId,
+        delivery: durableDelivery,
         signal: context.signal,
       });
       if (loaded.kind !== 'ready') {

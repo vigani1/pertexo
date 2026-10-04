@@ -432,6 +432,14 @@ run must be terminal and detail-expired at the actual batch cutoff; current repl
 dependencies must permit destruction. An unsealed/missing/ambiguous family or
 required control state fails operationally, not as expiry permission.
 
+Reuse the existing direct replay dependency and summary-teardown policy; do not
+invent recursive replay-family depth/count semantics. Detail required by a
+currently retained direct replay dependency remains protected until that existing
+owner permits teardown, rechecked under the actual retention locks. This is a
+finite policy-driven extension beyond the nominal 30-day detail period, not a
+claim of deletion exactly at day 30 or a permanent payload pin. A dependency with
+no eventual existing teardown path is a concrete retention defect to surface.
+
 Use resumable dependency-ordered pages: remove eligible borrowed inputs and
 accepted artifact associations; retire/detach eligible journal detail; delete
 unreferenced eligible owned provenance and completed producer-candidate mappings;
@@ -458,6 +466,21 @@ belongs to existing summary/purge work after its actual dependency/hold checks;
 its bounded deletion ordering must retain relationships for summaries still
 within their retention period. It must not reconstruct a family from incomplete
 links after deleting part of the relationship set.
+
+Primary selected an explicit **native-only atomic family teardown unit** on
+2026-10-04. Immutable parent/root/child foreign keys remain intact until final
+summary expiry. At most one native family is selected in a summary page, capped
+at 65 runs and 64 journals; its entire stable, locked membership is independently
+summary-eligible and free of current direct replay/hold/control dependencies
+before links and runs are deleted together. `pageLimit=1` means one native family
+unit here, not one physical run row. Ordinary summary pages keep their existing
+per-run semantics and are processed separately, never by multiplying an
+unconstrained page count by family size. Reports distinguish the native family
+unit from physical run/journal rows removed. This finite exception prevents
+partial-link reconstruction and loss of a relationship needed by any still
+retained family summary. Required qualification includes limit-one family
+teardown, interrupted detail pages, mixed ordinary/native work, changed holds and
+truthful physical-row/unit metrics; the exception is not executable qualification.
 
 Implementation must preserve this exact transition and independently qualify its
 indexed eligibility/paging strategy and all reader exclusions. Required qualification

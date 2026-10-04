@@ -411,12 +411,13 @@ checkout, no late success/new SQL/commit/ack, all timer/listener removal, one cl
 deadline and mixed errors. Separately reviewed safe actual-resource qualification
 is required before native readiness; no screened probes or SQL installation.
 
-An uncommitted selected-mode implementation now exercises the actual tenant-read
+A reviewed selected-mode implementation (`5bd2d8b5`) exercises the actual tenant-read
 adapter with external pool/client/transport fixtures. It covers incompatible
 configuration, raw checkout and late delivery, queued-to-construction pool
 ownership, operation expiry, remaining SQL time, late success, pre-disposal client
 termination, synchronous delivery/abort, CancelRequest terminal/error/timeout
 join, cleanup allowance exhaustion and mixed independent failures. This is not
-an installed native read owner or persistent authorization proof. Exact review,
-actual owner wiring, whole-value-scope cleanup/confirmation and safe real-resource
+an installed native read owner or persistent authorization proof. Primary and
+independent reviews closed the lifecycle findings. Actual
+owner wiring, whole-value-scope cleanup/confirmation and safe real-resource
 qualification remain required; ordinary coordinator reads are not opted in.

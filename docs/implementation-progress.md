@@ -12,6 +12,129 @@ external production evidence listed under Phase 7.
 
 ### F08 — ordinary execution-value runtime integration (incomplete)
 
+Minimum native Call executable path (source is not qualification):
+
+| Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
+| --- | --- | --- | --- |
+| Publication / compiler selection | WIP: actual publication owner validates callable selectors and bounded immutable closure; compiler chooses V3 for Graph2 | Ordinary public-owner positive publication, invalid selector, immutable pin/contract lookup and HTTP error-mapping tests; real V3 compiler verification | Installed format constraints, locked native release and adversarial publication authority unqualified; no real native publication qualified |
+| Root acceptance / input | WIP: actual API manual-start version selection / verified initial CP3; existing canonical acceptance captures inline bytes before projection, accepts them after canonical claim completion and derives native family deadline; fresh guarded SQL owner | Real V3 verification / initial CP3; actual tenant/Drizzle/external-pg tests for byte capture, omission, rejection rollback and unchanged retained path | Protected SQL, real native acceptance and initial publication/command authority unqualified; native replay and other ingress qualification open |
+| Call input acceptance | Fresh guarded 0137 record/read bodies | Actual tenant cancellation and JavaScript original-byte recovery tests | Protected SQL, binary64 agreement and normalized inline eligibility unqualified |
+| Child admission / borrowed input | Existing canonical TypeScript owner now forwards its exact actual coordinator delivery through all private admission calls; fresh journal/binding schema | External-pg prelock forwarding and mismatched candidate delivery refusal before any SQL | Actual fresh protected admission/outcome/seal bodies, independent canonical delivery/current-state proof and atomic borrowed binding |
+| Physical Call completion / logical result | Actual alias owner now enters before descendant locks; guarded fresh getter separates live completion from successful physical replay | Real tenant owner with external pg exercises commit, physical replay, rejection rollback and alias cancellation before descendant locks | Protected getter SQL and real concurrency unqualified; inline final-validation/COMMIT clock gap, exact nested invocation/publication authority and logical child result resolution remain open |
+| Terminal parent result | Ordinary lazy demand/evaluator lifetime; actual inline attempt/source hydration composition and bounded precommit literal/whole-value result preparation; final guarded result writer remains inside existing CAS/receipt transaction; release-derived adapter admission requires actual pool K<=P and owner readiness | External-adapter lifetime/demand behavior; actual compiler/release fixture preserves retained history; real tenant/precommit/CAS composition with external pg tests fresh commit, exact recovery, stopped payload suppression and substituted-source refusal | Native owner readiness remains refused; artifact/Wait/structured support, general result selectors, real-service final CAS/recovery and protected SQL qualification remain open |
+| Required retention | Guarded journal detail retirement, dependency-ordered detail pages and one capped atomic native-family summary unit; complete final existing retention/dry-run/purge bodies and artifact-owner extensions visible for review; latest purge wrapper preserves the registered patched delegate chain | Source-only body inventory/drift/bounds/purge-order checks; existing retention runner behavior only | Actual limit-one/partial/hold/mixed-family SQL behavior, direct replay lifecycle, native workspace purge and physical artifact cleanup qualification remain open |
+
+All rows remain open. Native catalog/execution/writers stay OFF; 0137 remains
+unregistered behind its installation-abort guard. Screened SQL qualification is
+PAUSED and is not replaced by ordinary adapter tests. No path milestone or new
+implementation commit is claimed by this checklist.
+
+Continuation evidence (2026-10-04): V3 immutable Call/control selection passes
+12 model tests without upgrading retained V2 identities; four focused database
+adapter suites pass 42 tests and typecheck. Nine additional source-contract tests
+check the fresh candidate installation guard, complete visible retention bodies,
+registered prior-body hashes, synchronized 56-function source inventory, native
+family caps and metrics. They do not execute or qualify SQL. Native readiness
+still refuses complete artifact/Wait/structured attempt sources, artifact
+hydration/general prepared-result wiring and paused SQL qualification. The separately
+authorized decision-only commit `81a5f9d` records detail retirement; subsequent
+source work and replay/family-unit clarifications remain uncommitted. No push
+was performed, and the branch has no upstream.
+
+The actual Call-material adapter additionally passes eight tests for immutable
+Call-only selection, exact current consumer forwarding, control-stop byte-read
+suppression and refusal of missing, duplicate or misbound protected replies.
+Ordinary non-Call successes do not consume the 64-declaration request bound.
+
+The subsequent existing-lease slice factors a private non-mutating attempt
+consumer/producer proof and ancestor-first lock wrapper from the Call input
+owner; immutable Call pin checks remain Call-specific. The actual input loader
+now reads selected native sources sequentially with its real lease/delivery
+carrier, preserving original snapshots rather than decoding retained columns or
+fabricating coordinator authority. Six actual tenant/external-pg tests exercise
+loading and independent hydration rereads. Minimum inline physical output now has
+its missing guarded SQL body, ancestor-first completion prelock and deferred
+distinct input/output-slot clock checks. A focused five-suite rerun passes 46
+tests, database typecheck/build and narrow lint. These adapter tests do not prove
+the new SQL semantics. Wait-resume, structured inputs and artifact sources remain
+explicit unimplemented paths; native readiness is not granted.
+
+Coordinator production inline-source hydration now composes the same existing
+codec with an independent protected current-owner reread, including inline
+values. It has no fabricated writer/store dependency, no historical-ID authority
+and no artifact-possession fallback. Five focused worker suites pass 105 tests
+and worker typecheck. The same source-aware codec now composes the production
+node-attempt runtime for inline input, Call preparation and Call recovery, without
+fake artifact writer/store dependencies or preview/node capability exposure.
+Four focused codec/input/runtime suites pass 116 tests. Complete artifact
+hydration and all paused SQL qualification remain open.
+
+Minimum literal/whole-input/whole-output terminal preparation now loads only
+selected accepted original snapshots in the existing bounded native read owner,
+releases that transaction before selector verification and encoding, then passes
+plain original-byte parameters to the existing final CAS/receipt writer. Six
+actual tenant/precommit/CAS adapter tests, simulating only external PostgreSQL,
+prove read release before write, fresh record after CAS/before receipt completion,
+exact full-plan recovery, stopped-consumer payload suppression and misbound source
+rejection before the write owner. Detached material is not authority: guarded SQL
+independently rederives the declaration, accepted sources and current controls.
+Expression/path/artifact preparation remains explicitly unsupported, not complete.
+
+The fresh source also exposes the complete latest 0135 workspace-purge wrapper,
+adding one bounded dependency page at a time: associations, borrowed provenance,
+Call journals, owned provenance, then candidate metadata. It preserves the entire
+registered folders/organization/input-case/patched-base delegate chain and the
+actual job/step lease, control high water and legal hold owner. Metadata deletion
+does not perform physical object deletion or charge quota. Prior-body and exact
+ordinary-body preservation checks are review tripwires, not executed purge or
+limit-one/hold/concurrency qualification. The first installation-abort guard is
+unchanged; no native owner, grant, release or serving cohort has been activated.
+
+The current minimum-inline precommit/Call/attempt/retention source tranche passes
+52 database tests across seven focused suites, database typecheck/build, worker
+typecheck, narrow lint, 21 documentation checks (512 links / 138 files), 19
+architecture checks and diff whitespace checks. The nine source-only retention
+checks were rerun after their lint-only regex adjustment. None of this closes
+the paused PostgreSQL authorization, lifecycle or COMMIT-clock qualification.
+
+The original 83-file minimum-inline source freeze was **not approved**. Primary
+and independent review found a truncated/duplicated SQL function tail, a mutation
+lock in the nominal read proof, the still-restrictive registered published-version
+schema constraint and missing whole-precommit lifetime composition. Its original
+receipt/tests/reviews remain immutable historical evidence, not qualification.
+
+A separate repair revision restores complete SQL grammar and removes every
+mutation lock from the private attempt read proof. The mutating wrapper now
+acquires ancestors before receipt/node/attempt locks and reruns that same proof.
+The published schema constraint now permits only the paired Graph2/envelope3
+native format with matching callable declarations; its retained schema1 arm is
+exactly the actual registered 0012 predicate. Compiled graphs deliberately have
+no authoring schema label. Constraint source expectations and catalog-readiness
+coverage are explicit, with installed expression identity still unqualified/null;
+native readiness continues to refuse admission.
+
+The actual coordinator commit caller now requires a framework-owned preparation
+scope for active native results. Runtime supplies the existing value-work lifetime
+and actual owner inspector, independently of engine demand. Even literal
+preparation initializes owner inspection, one watcher and whole-scope timeout;
+owner loss, context abort or watcher failure joins owned preparation and prevents
+any final acceptance. After preparation joins, the final short transaction does
+only the existing CAS/receipt and independent protected acceptance rechecks, not
+source hydration or evaluation. Inactive initial consumption still reads no
+payload and can recover only through existing exact full-plan CAS truth.
+Eight actual DB precommit composition tests and six framework-scope tests exercise
+these cases; real-service resource/C/COMMIT qualification remains open.
+
+Offline pglast8.4/libpg_query PostgreSQL18.4 grammar review parses the complete
+fresh candidate as 193 SQL statements and 59 function/DO bodies. Five parser/AST
+regressions reject the broken tail/checksum and malformed PLpgSQL CASE condition
+and compare the actual old/new published constraint arms. The offline parser
+expands role templates, uses a declared-return-type-only `record` shim for the
+application composite type (body unchanged), and calls its raw PL parser because
+its trigger-datum JSON dump is malformed. It does not resolve the application
+catalog, install/execute any SQL, prove runtime type/security behavior, or replace
+paused qualification. The first installation-abort guard remains intact.
+
 The framework now composes the existing native execution-value codec with the
 retained inline representation owner and reserved artifact writer. The ordinary
 node-attempt runtime forwards its existing Call value dependency to the handler;
@@ -45,8 +168,8 @@ No node or preview artifact capability receives this framework-only dependency.
 - [x] Wire ordinary lazy native demand composition through the actual handler,
       runtime policy, codec and engine evaluator using external owner read ports.
 - [x] Accept the native read operation / joined-cleanup clarification in ADR065.
-- [ ] Review and qualify the selected native tenant-read lifecycle implementation,
-      then compose it with actual native source/control owners and readiness.
+- [x] Review and qualify ordinary selected native tenant-read lifecycle behavior.
+- [ ] Compose it with actual native source/control owners and qualify readiness.
 - [ ] Wire actual demand source/control adapters and the value-work lifetime, then
       implement independent native persistent commit preparation/rechecks.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
@@ -244,17 +367,125 @@ reference before demand, so total bounded persistent state loading remains open.
 The suppression passed exact source and independent review and is recorded in
 `e2ae249`; no native read owners or SQL are installed.
 
-The next uncommitted lifecycle slice implements the accepted native-only budget
+The lifecycle slice recorded in `5bd2d8b5` implements the accepted native-only budget
 inside the existing tenant-read adapter. It refuses incompatible actual pool
 acquisition settings, uses remaining monotonic SQL time, prevents late success,
 joins raw checkout and delivered-client/CancelRequest termination, and retains
 ownership after cleanup allowance exhaustion while preserving independent errors.
 Driver delivery callbacks register client termination before promise continuation;
 ordinary transaction mode remains unchanged. Focused adapter/transport tests are
-not persistent authority or real-service socket qualification. Exact review,
-actual native owner composition, one whole-value-scope cleanup deadline and safe
+not persistent authority or real-service socket qualification. Exact primary and
+independent reviews closed the non-abort destruction and cleanup interruption
+findings; 68 focused tests, build, source/test types and narrow lint pass. Actual
+native owner composition, one whole-value-scope cleanup deadline and safe
 resource/readiness qualification remain open. Native remains OFF and screened
 security checks remain PAUSED.
+
+A fresh unregistered `0137-native-execution-values.candidate.sql` now starts from
+the actual registered schema, with an explicit installation-abort guard. Its
+source groups define complete slot/owned/borrowed shapes, exact run/node/attempt
+foreign keys, non-authoritative artifact candidates with a separate atomic
+accepted association, and a Call journal whose sealed admitted child identity
+constrains the borrowed binding. Primary selected the bounded child-input
+clarification; no duplicate original-byte store, quota or reference kind is
+introduced. An extension of the existing retention owner handles definitively
+abandoned unaccepted candidates after physical deletion; accepted or unresolved
+native values conservatively remain protected. This is source-only, not SQL
+qualification or completed consumer/family/replay eligibility. The candidate
+remains incomplete: authenticated journal ingress/seal, complete protected writer
+and reader integration, publication authority, complete retention/purge and readiness remain
+required before exact review can authorize installation. The
+quarantined 0136 draft remains excluded and unchanged.
+
+The actual Call declaration input writer/read adapters now check cancellation
+again after the awaited workspace admission lock, preventing protected SQL from
+starting on an already released client. A regression through the real tenant
+transaction owner, simulating only the PostgreSQL boundary, reproduced both
+paths before the guards and verifies no later SQL and exactly one destructive
+release. Focused adapter tests and test types pass. This fixes owner composition
+behavior only; it does not supply or qualify the missing protected SQL bodies,
+native ingress semantics or publication authority.
+
+The next source revision now implements the existing Call input record/read SQL
+signatures, deriving actual run/version/node/invocation/current lease, bounded
+sealed ancestor lineage, durable controls and canonical attempt delivery/receipt.
+Inline ingress preserves original bytes, checks PostgreSQL18 unique-key JSON
+before conversion, bounds depth/members and compares numeric leaves as binary64
+with an exact zero-underflow threshold. Artifact acceptance requires the exact
+available candidate and inserts its association in the existing transaction;
+replay preserves the first projection and immutable byte identity. The prospective
+source includes scoped owner-only RLS and just the two existing worker command
+signatures, not runtime table access. No permissions are applied: these SQL bodies
+remain unexecuted and unqualified behind the installation-abort guard.
+Structured invocation assumptions, differential numeric/platform behavior,
+normalized inline eligibility and adversarial publication/table authority remain
+explicit review gates, not solved by version labels or these source guards.
+
+Shared original-byte recovery now independently rejects duplicate object keys,
+including escaped equivalent keys, while preserving legal repeated keys in
+separate objects and JSON-looking strings. Its public recovery regression failed
+before the change despite correct SHA/length and a matching last-key projection;
+the ordinary JavaScript tests now pass. This is not a differential SQL platform
+test or a rerun of paused raw-tampering qualification.
+
+The minimum-path source now also integrates native callable/closure validation
+in the actual publication owner, actual API V3 compiler and initial-checkpoint
+selection, and manual-start version selection. It does not register a native
+release: retained serving releases still reject native graphs. Canonical root
+acceptance captures inline-or-omitted original material before JSONB projection
+and invokes its fresh protected root-input command only after the same
+transaction's run/checkpoint/outbox/idempotency completion. Native duration
+defaults derive from the immutable family policy; existing caller deadlines
+remain minimum caps. The actual tenant/Drizzle tests simulate only PostgreSQL
+and verify original-byte forwarding, absence, rollback on protected rejection
+and unchanged retained behavior. Real V3 verification / initial CP3 and ordinary
+publication tests pass. These are application/adapter qualifications, not SQL
+authority or a completed native Call path. The root command's prospective API
+and worker grants are additional unexecuted source statements; no permission,
+schema or release has been installed.
+
+The actual coordinator admission preparation now transports the existing
+`CommitAdvancePlanInput.delivery` unchanged to prelock, admission, reservation,
+outcome and seal commands. It is a private carrier, not authority: those fresh
+protected bodies must independently prove the actual canonical payload/checksum,
+receipt, current revision and controls. Candidate/context delivery disagreement
+fails before any SQL in external-pg adapter tests. Child acceptance idempotency
+and the existing full transition fingerprint owner are unchanged.
+
+Physical Call completion now enters its existing protected alias getter before
+outer receipt/current-run/node/attempt locks. A test-first external-pg regression
+demonstrates denial rolling back before those descendant locks or any physical
+write, and cancellation releasing the joined client without descending. Existing
+completion tests now use the real tenant transaction owner with only external pg
+simulated; positive completion commits and physical replay remains write-free.
+The fresh guarded getter prelocks only ancestors first, then preserves
+receipt -> current run -> node/attempt ordering. Actual successful physical
+outcome, event, canonical delivery and first-input output equality select replay;
+cleared leases and subsequent logical child results do not select live-owner
+checks. Live completion reuses current input-owner lease/control proof after
+ancestor locks are already held. The getter body and prospective existing
+getter grant have not been installed or exercised against PostgreSQL; source
+checks and ordinary adapter tests are not SQL authority/concurrency qualification.
+The final live validation still precedes the ordinary physical writes and COMMIT;
+it does not close the inline lease/deadline commit-gap qualification gate.
+Logical child result resolution and the complete native path remain unfinished.
+
+The current focused F08 responsibility cleanup removes the new/worsened owned
+complexity hotspots without changing the baseline or public execution interfaces.
+Selected native result context, immutable publication closure, bounded value
+decoding, pre-write result preparation, independently rechecked observation
+assembly, selected completed inputs, structured collections and protected
+completion prelocks now have cohesive internal owners. Exact comparison against
+`81a5f9d` reports no new/worsened hotspots. The full gate still **fails** on five
+findings already present at that commit (two coordinator files, commit-state
+locking and two attempt-claim functions), down from the pre-cleanup live 15 and
+the commit's eight. The overlapping commit/input-loader extractions also remove
+three inherited findings; this is not a full repository quality-gate pass.
+Focused external-pg/worker regressions, source/test types, narrow lint and
+architecture checks pass. The reviewed 89-file source snapshot remains unchanged;
+these later extractions are separate evidence, not an alteration of that review.
+No SQL installation, native activation, complexity waiver, commit or push is
+performed. Full F08 remains incomplete and screened SQL qualification PAUSED.
 
 ### F02 — run-input cases and version-checked manual start
 

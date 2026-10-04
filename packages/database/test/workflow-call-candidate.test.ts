@@ -24,6 +24,7 @@ const input = {
   call: {
     parentRunId: runId,
     expectedParentRevision: 4,
+    parentDelivery: { outboxEventId: runId, payloadChecksum: 'c'.repeat(64) },
     invocationKey: 'call/root',
   },
 };

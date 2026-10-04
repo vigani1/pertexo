@@ -64,7 +64,9 @@ export type AcknowledgeAdvanceDeliveryResult = Readonly<{
 }>;
 
 export interface CoordinatorRunStore {
-  /** Omitted until actual native read owners exist; consumers must fail closed. */
+  /** Actual native adapter admission; retained adapters need no native inventory. */
+  checkReadiness?(signal?: AbortSignal): Promise<void>;
+  /** Production provides bounded native reads; injected stores may omit them and fail closed. */
   inspectCoordinatorValueReadOwner?: InspectCoordinatorValueReadOwner;
   loadCallableCompletionSources?: LoadCallableCompletionSources;
   readCallableCompletionSource?: ReadCallableCompletionSource;
@@ -72,6 +74,8 @@ export interface CoordinatorRunStore {
     input: Readonly<{
       workspaceId: string;
       runId: string;
+      /** Already-known transport carrier; protected native reads verify it. */
+      delivery?: CoordinatorAdvanceDelivery;
       signal: AbortSignal;
     }>,
   ): Promise<LoadAdvanceStateResult>;

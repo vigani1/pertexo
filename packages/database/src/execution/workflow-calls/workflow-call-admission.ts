@@ -17,6 +17,12 @@ export const workflowCallAdmissionContextSchema = z
   .object({
     parentRunId: z.uuid(),
     expectedParentRevision: z.number().int().min(0).max(2_147_483_646),
+    parentDelivery: z
+      .object({
+        outboxEventId: z.uuid(),
+        payloadChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
+      })
+      .strict(),
     invocationKey: z
       .string()
       .min(1)
@@ -147,7 +153,8 @@ export async function lockWorkflowCallAdmission(
   const result = await transaction.db.execute<{ proof: unknown }>(sql`
     select app.lock_workflow_call_admission(
       ${context.parentRunId}::uuid,${context.expectedParentRevision}::integer,
-      ${context.invocationKey},${candidateRunId}::uuid
+      ${context.invocationKey},${candidateRunId}::uuid,
+      ${context.parentDelivery.outboxEventId}::uuid,${context.parentDelivery.payloadChecksum}::text
     ) as proof
   `);
   if (result.rows.length !== 1) throw new WorkflowCallAdmissionCorruptError();
@@ -206,7 +213,8 @@ export async function reserveWorkflowCallAdmission(
   const result = await transaction.db.execute<{ reserved: unknown }>(sql`
     select app.reserve_workflow_call_active_admission(
       ${proof.context.parentRunId}::uuid,${proof.context.expectedParentRevision}::integer,
-      ${proof.context.invocationKey},${proof.candidateRunId}::uuid,${outboxId}::uuid
+      ${proof.context.invocationKey},${proof.candidateRunId}::uuid,${outboxId}::uuid,
+      ${proof.context.parentDelivery.outboxEventId}::uuid,${proof.context.parentDelivery.payloadChecksum}::text
     ) as reserved
   `);
   if (result.rows.length !== 1 || typeof result.rows[0]?.reserved !== 'boolean')

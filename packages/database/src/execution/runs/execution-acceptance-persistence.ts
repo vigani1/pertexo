@@ -36,6 +36,7 @@ type AcceptancePersistence = Readonly<{
     ReturnType<typeof resolveWorkflowFailureNotificationPolicy>
   >;
   callAdmission?: Extract<WorkflowCallAdmissionProof, { kind: 'allowed' }>;
+  nativeRootInput?: Readonly<{ original: string | null }>;
 }>;
 
 type CanonicalAcceptanceInput = Omit<
@@ -61,6 +62,7 @@ export async function persistWorkflowRunAcceptance(
     storedRunInputJson,
     failureNotificationPolicy,
     callAdmission,
+    nativeRootInput,
   } = prepared;
   if (
     (parsed.triggerType === 'workflow_call') !==
@@ -112,7 +114,13 @@ export async function persistWorkflowRunAcceptance(
         deadlineAt: sql`least(
           ${callAdmission?.deadlineAt ?? parsed.deadlineAt?.toISOString() ?? null}::timestamptz,
           (select now() +
-             (version.executable_json #>> '{graph,settings,maxRunDurationMs}')::integer
+             (case when version.schema_version=2 and version.executable_schema_version=3
+               then coalesce(
+                 (version.executable_json #>> '{graph,settings,maxRunDurationMs}')::integer,
+                 (version.executable_json #>> '{familyPolicy,defaultMaxRunDurationMs}')::integer
+               )
+               else (version.executable_json #>> '{graph,settings,maxRunDurationMs}')::integer
+             end)
                * interval '1 millisecond'
            from app.workflow_versions version
            where version.workspace_id = ${transaction.workspaceId}
@@ -188,6 +196,19 @@ export async function persistWorkflowRunAcceptance(
     .returning({ id: idempotencyRecords.id });
   if (completedClaims.length !== 1) {
     throw new IdempotencyRecordCorruptError();
+  }
+  if (nativeRootInput !== undefined) {
+    if (callAdmission !== undefined)
+      throw new WorkflowCallAdmissionCorruptError();
+    // The same canonical transaction owns run/checkpoint/outbox/claim and input
+    // provenance. Any protected-source rejection rolls all of them back. The
+    // SQL owner independently verifies actual native version and acceptance;
+    // this optional captured material is not an authority flag.
+    await transaction.db.execute(sql`
+      select app.record_native_root_execution_input(
+        ${runId}::uuid,${idempotencyRecordId}::uuid,${nativeRootInput.original}::text
+      )
+    `);
   }
 
   return Object.freeze({

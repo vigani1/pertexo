@@ -4,7 +4,7 @@ import {
   workflowForEachBoundsV3,
 } from '@pertexo/workflow-model/graph';
 import { isRejectedForEachCollection } from './coordinator-rejected-loop-collection.js';
-import { readWorkflowCallResultReference } from '../workflow-calls/workflow-call-result-reference.js';
+import { assertWorkflowCallResultOutput } from '../workflow-calls/workflow-call-result-reference.js';
 
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
 import type { CoordinatorCheckpoint as PersistedWorkflowCheckpoint } from './coordinator-checkpoint.js';
@@ -382,18 +382,12 @@ export async function validateLoadedCheckpointPhysicalState(
     );
     if (artifactId !== undefined) artifactIds.add(artifactId);
     if (invocation.output?.kind === 'workflow_call') {
-      const reference = await readWorkflowCallResultReference(client, {
-        workspaceId,
+      await assertWorkflowCallResultOutput(client, {
         parentRunId: runId,
         invocationKey: invocation.invocationKey,
         childRunId: invocation.output.childRunId,
+        compareLogicalNode: true,
       });
-      corruptIf(
-        serializeStoredExecutionJsonValue(JSON.parse(reference) as unknown) !==
-          serializeStoredExecutionJsonValue(
-            rows.get(invocation.invocationKey)?.node_output_ref,
-          ),
-      );
     }
   }
   await assertAvailableArtifacts(client, workspaceId, artifactIds);

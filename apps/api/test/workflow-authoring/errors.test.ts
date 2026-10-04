@@ -1,4 +1,5 @@
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowCallClosureError } from '@pertexo/workflow-model/workflow-call-closure';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
@@ -32,6 +33,15 @@ import { AuthorizationError } from '../../src/workspaces/index.js';
 const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 
 describe('workflow authoring error mapping', () => {
+  it('maps invalid native Call closure without exposing immutable pin identities', () => {
+    expect(
+      mapWorkflowAuthoringError(new WorkflowCallClosureError('pin_mismatch')),
+    ).toEqual({
+      code: 'workflow.invalid',
+      safeDetail:
+        'The workflow Call graph cannot be published in its current form.',
+    });
+  });
   it('maps unsupported historical origin readers to a dedicated sanitized unavailable problem', () => {
     expect(
       mapWorkflowAuthoringError(new WorkflowTemplateOriginUnavailableError()),

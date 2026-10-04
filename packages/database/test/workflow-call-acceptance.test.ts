@@ -69,6 +69,10 @@ function input() {
     call: {
       parentRunId,
       expectedParentRevision: 5,
+      parentDelivery: {
+        outboxEventId: parentRunId,
+        payloadChecksum: 'c'.repeat(64),
+      },
       invocationKey: `${workflowVersionId}|call|b:|i:`,
     },
     initialCheckpoint: {
@@ -268,6 +272,8 @@ describe('canonical workflow Call child acceptance', () => {
       5,
       input().call.invocationKey,
       ids[1],
+      input().call.parentDelivery.outboxEventId,
+      input().call.parentDelivery.payloadChecksum,
     ]);
     expect(query(f.queries[1]).sql).toContain(
       'app.reserve_workflow_call_active_admission',
@@ -278,6 +284,8 @@ describe('canonical workflow Call child acceptance', () => {
       input().call.invocationKey,
       ids[1],
       ids[2],
+      input().call.parentDelivery.outboxEventId,
+      input().call.parentDelivery.payloadChecksum,
     ]);
     expect(f.select).not.toHaveBeenCalled();
     expect(f.insert).toHaveBeenCalledTimes(4);

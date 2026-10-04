@@ -9,6 +9,7 @@ import { parseStoredExecutionValueV1 } from '../stored-execution-value.js';
 import { parseWorkflowExecutionValueSnapshot } from '../node-attempts/node-attempt-call-input-record.js';
 import { readWorkflowCallResultReference } from '../workflow-calls/workflow-call-result-reference.js';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
+import type { NativeCoordinatorValueOwner } from './coordinator-native-value-read-contract.js';
 
 type Output = NonNullable<
   PersistedWorkflowCheckpointV3['invocations'][number]['output']
@@ -38,6 +39,7 @@ export async function loadCoordinatorCallableMaterials(
     executableJson: unknown;
     inputRef: unknown;
     facts: readonly PersistedWorkflowCallStateV1[];
+    consumer: NativeCoordinatorValueOwner;
     controls?: Readonly<{
       cancelRequested: boolean;
       deadlineExpired: boolean;
@@ -161,6 +163,7 @@ export async function loadCoordinatorCallableMaterials(
       parentRunId: input.runId,
       invocationKey: fact.invocationKey,
       childRunId: fact.childRunId,
+      consumer: input.consumer,
     });
     outputs.push({
       invocationKey: fact.invocationKey,

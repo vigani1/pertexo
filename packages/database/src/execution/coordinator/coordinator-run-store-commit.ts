@@ -1,13 +1,11 @@
+import { prepareCoordinatorAdvanceParameters } from './coordinator-advance-preparation.js';
 import type { Pool } from 'pg';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 
 import {
   CoordinatorPlanInvalidError,
-  coordinatorDeliverySchema,
-  coordinatorIdentitySchema as identitySchema,
   type CommitAdvancePlanInput,
   type CommitAdvancePlanResult,
-  type CoordinatorAdvanceDelivery,
 } from './coordinator-run-store-contract.js';
 import { lockCoordinatorCommitState } from './coordinator-run-store-commit-state.js';
 import {
@@ -17,13 +15,7 @@ import {
   DeliveryMismatch,
 } from './coordinator-run-store-delivery.js';
 import { persistCoordinatorExecutionTransitions } from './coordinator-run-store-execution.js';
-import {
-  parseTransitionPlan,
-  traceparentSchema,
-  transitionFingerprint,
-  validateCheckpointOutputOwnership,
-  validateTransitionPlan,
-} from './coordinator-run-store-plan.js';
+import { validateCheckpointOutputOwnership } from './coordinator-run-store-plan.js';
 import { persistCoordinatorRunTransition } from './coordinator-run-store-run-transition.js';
 import {
   persistDueReadyTransitions,
@@ -34,16 +26,18 @@ import {
   assertCoordinatorNotAborted as assertNotAborted,
   withCoordinatorWriteClient as withWorkspaceWriteClient,
 } from './coordinator-run-store-transactions.js';
-import { serializeCoordinatorCheckpoint } from './coordinator-checkpoint.js';
-import { observeScheduleToStartSeconds } from './coordinator-schedule-observation.js';
+import { observeCommittedCoordinatorSchedule } from './coordinator-schedule-observation.js';
 import {
   prepareCoordinatorCallAdmission,
   type CoordinatorCallAdmissionOptions,
 } from './coordinator-call-admission.js';
 import { persistCoordinatorCallTransitions } from './coordinator-call-transitions.js';
 import { persistCoordinatorCallResult } from './coordinator-call-result.js';
-import { authenticateCoordinatorCallResult } from './coordinator-call-result-authentication.js';
 import { persistCoordinatorCallControls } from './coordinator-call-controls.js';
+import type {
+  NativeCoordinatorResultPreparationScope,
+  InspectCoordinatorValueReadOwner,
+} from './coordinator-native-value-read-contract.js';
 
 class NativeAdmissionPassAbandoned extends Error {
   public constructor(readonly result: CommitAdvancePlanResult) {
@@ -60,33 +54,23 @@ export async function commitCoordinatorAdvancePlan(
     workflowTriggerOutcomesEnabled: boolean;
     workflowCallAdmission?: CoordinatorCallAdmissionOptions;
     callableResultEvaluator?: ExpressionEvaluator;
+    nativeValueControlReadTimeoutMillis?: number;
+    withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
+    inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
   }>,
 ): Promise<CommitAdvancePlanResult> {
-  if (!(input.signal instanceof AbortSignal))
-    throw new CoordinatorPlanInvalidError();
-  assertNotAborted(input.signal);
-  let workspaceId: string;
-  let runId: string;
-  let workflowVersionId: string;
-  let traceparent: string | undefined;
-  let delivery: CoordinatorAdvanceDelivery;
-  try {
-    workspaceId = identitySchema.parse(input.workspaceId);
-    runId = identitySchema.parse(input.runId);
-    workflowVersionId = identitySchema.parse(input.workflowVersionId);
-    traceparent = traceparentSchema.parse(input.traceparent);
-    delivery = coordinatorDeliverySchema.parse(input.delivery);
-  } catch {
-    throw new CoordinatorPlanInvalidError();
-  }
-  const plan = parseTransitionPlan(input.plan);
-  validateTransitionPlan(plan, workflowVersionId);
-  const checkpointJson = serializeCoordinatorCheckpoint(plan.checkpoint);
-  const planFingerprint = transitionFingerprint({
-    plan,
-    traceparent,
+  const {
+    workspaceId,
+    runId,
     workflowVersionId,
-  });
+    traceparent,
+    delivery,
+    plan,
+    checkpointJson,
+    planFingerprint,
+    nativeResult,
+    preparedResult,
+  } = await prepareCoordinatorAdvanceParameters(pool, input, options);
 
   try {
     const transactionResult = await withWorkspaceWriteClient(
@@ -94,22 +78,13 @@ export async function commitCoordinatorAdvancePlan(
       workspaceId,
       input.signal,
       async (client) => {
-        await authenticateCoordinatorCallResult(client, {
-          workspaceId,
-          runId,
-          workflowVersionId,
-          plan,
-          signal: input.signal,
-          ...(options.callableResultEvaluator === undefined
-            ? {}
-            : { expressionEvaluator: options.callableResultEvaluator }),
-        });
         const callAdmission = await prepareCoordinatorCallAdmission(
           client,
           {
             workspaceId,
             runId,
             plan,
+            delivery,
             ...(traceparent === undefined ? {} : { traceparent }),
           },
           options.workflowCallAdmission,
@@ -129,6 +104,10 @@ export async function commitCoordinatorAdvancePlan(
             throw new NativeAdmissionPassAbandoned(commitState.result);
           return commitState.result;
         }
+        if (nativeResult && preparedResult === undefined)
+          throw new Error(
+            'Native result current precommit material is unavailable',
+          );
 
         await validateCheckpointOutputOwnership(
           client,
@@ -190,6 +169,7 @@ export async function commitCoordinatorAdvancePlan(
           runId,
           current: commitState.currentCheckpoint,
           plan,
+          delivery,
         });
 
         const physical = await persistCoordinatorExecutionTransitions(client, {
@@ -222,7 +202,7 @@ export async function commitCoordinatorAdvancePlan(
           continuationOutboxEventId: _continuation,
           ...publicRunTransition
         } = runTransition;
-        await persistCoordinatorCallResult(client, { runId, plan, delivery });
+        await persistCoordinatorCallResult(client, preparedResult);
         await callAdmission?.seal(_continuation);
         await completeCoordinatorReceipt(client, workspaceId, delivery);
         assertNotAborted(input.signal);
@@ -245,24 +225,11 @@ export async function commitCoordinatorAdvancePlan(
         });
       },
     );
-    if (
-      transactionResult.kind !== 'committed' ||
-      !('scheduleDueAt' in transactionResult) ||
-      typeof transactionResult.scheduleDueAt !== 'string'
-    )
-      return transactionResult;
-    const { scheduleDueAt, ...committed } = transactionResult;
-    const scheduleToStartSeconds = await observeScheduleToStartSeconds(
+    return await observeCommittedCoordinatorSchedule(
       pool,
-      scheduleDueAt,
+      transactionResult,
       input.signal,
     );
-    return Object.freeze({
-      ...committed,
-      ...(scheduleToStartSeconds === undefined
-        ? {}
-        : { scheduleToStartSeconds }),
-    });
   } catch (error: unknown) {
     if (error instanceof NativeAdmissionPassAbandoned) {
       if (error.result.kind === 'deferred') throw error;

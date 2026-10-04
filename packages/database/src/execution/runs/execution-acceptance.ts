@@ -1,6 +1,9 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { idempotencyRecords, workflowRuns } from '../../schema.js';
-import { serializeStoredExecutionValueV1 } from '../stored-execution-value.js';
+import {
+  serializeStoredExecutionValueV1,
+  serializeWorkflowExecutionJsonValueV3,
+} from '../stored-execution-value.js';
 import { resolveWorkflowFailureNotificationPolicy } from '../notifications/failure-notification-policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import { prepareWorkflowRunAcceptanceInput } from './execution-acceptance-input.js';
@@ -160,6 +163,21 @@ export async function acceptWorkflowRun(
         });
   const { initialCheckpointJson, initialCheckpointHash } =
     prepareWorkflowRunAcceptanceInput(parsed);
+  const checkpoint = JSON.parse(initialCheckpointJson) as {
+    schemaVersion: number;
+  };
+  // Capture from the accepted application value BEFORE its first PostgreSQL
+  // projection. Root ingress remains inline-or-omitted; no artifact ingress or
+  // independent root acceptance/capacity/idempotency protocol is introduced.
+  const nativeRootInput =
+    checkpoint.schemaVersion === 3
+      ? {
+          original:
+            parsed.runInput === undefined
+              ? null
+              : serializeWorkflowExecutionJsonValueV3(parsed.runInput),
+        }
+      : undefined;
   const existing = await readExistingAcceptance(transaction, parsed, {
     kind: 'exact_initial_checkpoint',
     hash: initialCheckpointHash,
@@ -195,5 +213,6 @@ export async function acceptWorkflowRun(
     initialCheckpointHash,
     storedRunInputJson,
     failureNotificationPolicy,
+    ...(nativeRootInput === undefined ? {} : { nativeRootInput }),
   });
 }

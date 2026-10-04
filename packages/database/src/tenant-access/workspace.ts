@@ -440,6 +440,26 @@ export async function withPlatformTransaction<T>(
   });
 }
 
+/** Global catalog reads only; same existing readonly/budget/hygiene owner. */
+export async function withPlatformReadClient<T>(
+  pool: Pool,
+  operation: (client: PoolClient) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
+): Promise<T> {
+  return runTransaction(
+    pool,
+    undefined,
+    operation,
+    options,
+    'repeatable_read_only',
+    {
+      abort: 'Platform read aborted',
+      cleanup: 'Platform context cleanup failed',
+      rollback: 'Platform read rollback failed',
+    },
+  );
+}
+
 export async function withWorkspaceTransaction<T>(
   pool: Pool,
   workspaceIdInput: string,

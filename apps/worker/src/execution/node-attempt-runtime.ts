@@ -71,6 +71,7 @@ import {
   mapPreviewHandlerError,
   type PreviewAttemptHandler,
 } from './preview-attempt-runtime.js';
+import { createNodeAttemptValueComposition } from './node-attempt-value-composition.js';
 
 export interface NodeAttemptRuntime {
   readonly consumer: QueueConsumer;
@@ -322,15 +323,14 @@ async function createProductionNodeAttemptRuntime(
     capabilityRuntime?.close.bind(capabilityRuntime),
   );
   runtimeCapabilities ??= capabilityRuntime?.factories;
+  const values = createNodeAttemptValueComposition(runStore);
   return {
     ...(capabilityRuntime === undefined ? {} : { capabilityRuntime }),
     handler: createNodeAttemptHandler({
-      ...(dependencies.callDeclarationValues === undefined
-        ? {}
-        : { callDeclarationValues: dependencies.callDeclarationValues }),
-      ...(dependencies.nativeInputValues === undefined
-        ? {}
-        : { nativeInputValues: dependencies.nativeInputValues }),
+      callDeclarationValues:
+        dependencies.callDeclarationValues ?? values.callDeclarationValues,
+      nativeInputValues:
+        dependencies.nativeInputValues ?? values.nativeInputValues,
       connectionRunHealthMode: options.connectionRunHealthMode ?? 'off',
       engine,
       heartbeatIntervalMillis: options.heartbeatIntervalMillis,

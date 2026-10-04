@@ -60,6 +60,44 @@ const snapshotSchema = z
   })
   .strict();
 
+/** JSON.parse has already checked grammar; inspect keys before trusting its value. */
+function assertUniqueOriginalObjectKeys(original: string): void {
+  const containers: (
+    | { kind: 'object'; keys: Set<string>; expectsKey: boolean }
+    | { kind: 'array' }
+  )[] = [];
+  for (let index = 0; index < original.length; index += 1) {
+    const character = original[index];
+    if (character === '"') {
+      const start = index;
+      index += 1;
+      while (index < original.length && original[index] !== '"') {
+        if (original[index] === '\\') index += 1;
+        index += 1;
+      }
+      const container = containers.at(-1);
+      if (container?.kind === 'object' && container.expectsKey) {
+        const key = JSON.parse(original.slice(start, index + 1)) as string;
+        if (container.keys.has(key))
+          throw new TypeError(
+            'Call snapshot bytes contain duplicate object keys',
+          );
+        container.keys.add(key);
+        container.expectsKey = false;
+      }
+    } else if (character === '{') {
+      containers.push({ kind: 'object', keys: new Set(), expectsKey: true });
+    } else if (character === '[') {
+      containers.push({ kind: 'array' });
+    } else if (character === '}' || character === ']') {
+      containers.pop();
+    } else if (character === ',') {
+      const container = containers.at(-1);
+      if (container?.kind === 'object') container.expectsKey = true;
+    }
+  }
+}
+
 export async function readWorkflowCallDeclarationInput(
   pool: Pool,
   request: Parameters<
@@ -76,6 +114,7 @@ export async function readWorkflowCallDeclarationInput(
       await client.query('select app.lock_workspace_run_admission($1)', [
         input.lease.workspaceId,
       ]);
+      assertNotAborted(input.signal);
       const result = await client.query<{ snapshot: unknown }>(
         'select app.read_workflow_call_declaration_input($1::jsonb) as snapshot',
         [workflowCallAttemptAuthorityJson(input.lease)],
@@ -112,6 +151,7 @@ export function parseWorkflowExecutionValueSnapshot(snapshot: unknown) {
     )
       throw new TypeError('Call snapshot metadata does not match');
     const value: unknown = JSON.parse(original);
+    assertUniqueOriginalObjectKeys(original);
     if (
       serializeWorkflowExecutionJsonValueV3(value) !==
       serializeStoredExecutionJsonValue(reference.value)
@@ -158,6 +198,7 @@ export async function recordWorkflowCallDeclarationInput(
       await client.query('select app.lock_workspace_run_admission($1)', [
         lease.workspaceId,
       ]);
+      assertNotAborted(input.signal);
       await client.query(
         `select app.record_workflow_call_declaration_input(
           $1::jsonb,$2::jsonb,$3::text,$4::integer,$5::text

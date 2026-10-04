@@ -20,7 +20,11 @@ vi.mock('../src/execution/runs/execution-acceptance.js', () => ({
 }));
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const parent = { parentRunId: id(1), expectedParentRevision: 7 };
+const parent = {
+  parentRunId: id(1),
+  expectedParentRevision: 7,
+  parentDelivery: { outboxEventId: id(7), payloadChecksum: 'c'.repeat(64) },
+};
 const releases = [
   {
     epoch: 5,
@@ -154,6 +158,8 @@ describe('private coordinator Call admission pass', () => {
           catalog: JSON.parse(catalogJson) as unknown,
         })),
       ),
+      parent.parentDelivery.outboxEventId,
+      parent.parentDelivery.payloadChecksum,
     ]);
     expect(f.statements[3]?.params).toEqual([
       parent.parentRunId,
@@ -164,6 +170,8 @@ describe('private coordinator Call admission pass', () => {
         childRunId: accepted.runId,
         outboxEventId: accepted.outboxEventId,
       }),
+      parent.parentDelivery.outboxEventId,
+      parent.parentDelivery.payloadChecksum,
     ]);
     expect(f.order).not.toContain('seal');
   });
@@ -199,7 +207,7 @@ describe('private coordinator Call admission pass', () => {
         'release savepoint workflow_call_candidate',
         'record:first',
       ]);
-      expect(f.statements[4]?.params.at(-1)).toBe(JSON.stringify(journal));
+      expect(f.statements[4]?.params[3]).toBe(JSON.stringify(journal));
       expect(mocks.accept).toHaveBeenCalledTimes(2);
     },
   );
@@ -215,7 +223,7 @@ describe('private coordinator Call admission pass', () => {
       ...input,
       candidates: [candidate('first')],
     });
-    expect(f.statements.at(-1)?.params.at(-1)).toBe(
+    expect(f.statements.at(-1)?.params[3]).toBe(
       JSON.stringify({
         kind: 'admitted',
         childRunId: accepted.runId,
@@ -386,6 +394,8 @@ describe('private post-CAS Call admission seal', () => {
         parent.parentRunId,
         parent.expectedParentRevision,
         continuation ?? null,
+        parent.parentDelivery.outboxEventId,
+        parent.parentDelivery.payloadChecksum,
       ]);
       expect(mocks.accept).not.toHaveBeenCalled();
     },

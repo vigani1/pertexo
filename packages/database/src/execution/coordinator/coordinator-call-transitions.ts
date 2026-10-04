@@ -3,6 +3,7 @@ import type { CoordinatorCheckpoint } from './coordinator-checkpoint.js';
 import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
 import { readWorkflowCallResultReference } from '../workflow-calls/workflow-call-result-reference.js';
+import type { CoordinatorAdvanceDelivery } from './coordinator-run-store-contract.js';
 
 /** Logical Call state changes never rewrite or fabricate its succeeded physical attempt. */
 export async function persistCoordinatorCallTransitions(
@@ -12,6 +13,7 @@ export async function persistCoordinatorCallTransitions(
     runId: string;
     current: CoordinatorCheckpoint;
     plan: ParsedTransitionPlan;
+    delivery: CoordinatorAdvanceDelivery;
   }>,
 ): Promise<void> {
   if (
@@ -43,6 +45,13 @@ export async function persistCoordinatorCallTransitions(
             parentRunId: input.runId,
             invocationKey: call.invocationKey,
             childRunId: invocation.output.childRunId,
+            consumer: {
+              workspaceId: input.workspaceId,
+              runId: input.runId,
+              workflowVersionId: input.current.workflowVersionId,
+              expectedRevision: input.plan.expectedRevision,
+              delivery: input.delivery,
+            },
           })
         : null;
     const event = input.plan.events.find(

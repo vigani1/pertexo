@@ -33,9 +33,17 @@ export function workflowControlOutputNodeIdsV3(
   return controlOutputNodeIds(executableJson, 3);
 }
 
+/** Select only native Call sites using the same bounded immutable graph owner. */
+export function workflowCallNodeIdsV3(
+  executableJson: unknown,
+): ReadonlySet<string> {
+  return controlOutputNodeIds(executableJson, 3, 'call');
+}
+
 function controlOutputNodeIds(
   executableJson: unknown,
   format: 2 | 3,
+  selection: 'control' | 'call' = 'control',
 ): ReadonlySet<string> {
   if (
     typeof executableJson !== 'object' ||
@@ -88,7 +96,14 @@ function controlOutputNodeIds(
       )
         throw new TypeError('V2 executable control definition is invalid');
       seen.add(nodeId);
-      if (workflowControlOutputKind({ key, version }) !== undefined)
+      const nativeCall =
+        format === 3 && key === 'core.workflow_call' && version === 1;
+      if (
+        selection === 'call'
+          ? nativeCall
+          : nativeCall ||
+            workflowControlOutputKind({ key, version }) !== undefined
+      )
         ids.add(nodeId);
       const structured = Reflect.get(value, 'structured') as unknown;
       if (structured === undefined) continue;

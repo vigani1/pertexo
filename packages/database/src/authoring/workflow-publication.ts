@@ -1,3 +1,4 @@
+import { validateNativePublicationClosure } from './workflow-native-publication-closure.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 
 import {
@@ -8,6 +9,10 @@ import {
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
+import {
+  validateWorkflowCallableGraphV2,
+  workflowCallStructuralProjectionV1,
+} from '@pertexo/workflow-model/workflow-call-closure';
 import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -46,7 +51,7 @@ export { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliat
 
 const uuidSchema = z.uuid();
 const digestSchema = sha256HexSchema;
-const checksumSchema = z.string().regex(/^wf:v[12]:sha256:[0-9a-f]{64}$/u);
+const checksumSchema = z.string().regex(/^wf:v[123]:sha256:[0-9a-f]{64}$/u);
 const workflowDraftTagSchema = z
   .string()
   .regex(/^"draft-v[12]\.[A-Za-z0-9_-]{43}"$/u);
@@ -62,15 +67,18 @@ const operationKeySchema = z
   .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
 const executableSchema = z
   .object({
-    checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
-    executableSchemaVersion: z.literal(2),
+    checksum: z.string().regex(/^wf:v[23]:sha256:[0-9a-f]{64}$/u),
+    executableSchemaVersion: z.union([z.literal(2), z.literal(3)]),
     executableJson: z.record(z.string(), z.unknown()),
     compatibilityReleaseEpoch: z.number().int().positive(),
     compatibilityReleaseFingerprint: z
       .string()
       .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u),
   })
-  .strict();
+  .strict()
+  .refine((value) =>
+    value.checksum.startsWith(`wf:v${String(value.executableSchemaVersion)}:`),
+  );
 
 type PublicationVariant = Readonly<{
   compatibilityRelease: CompatibilityReleaseExpectation | undefined;
@@ -204,22 +212,39 @@ async function lockAndCompilePublication(
   const currentEtag = draftRepresentationTag(workflowId, draft);
   if (currentEtag !== workflowDraftTagSchema.parse(input.representationTag))
     throw new WorkflowRevisionConflictError(draft.revision, currentEtag);
-  if (draft.schemaVersion === 2)
-    throw new WorkflowDraftOperationUnavailableError();
+  const nativeGraph =
+    draft.schemaVersion === 2
+      ? validateWorkflowCallableGraphV2(draft.graphJson)
+      : undefined;
+  if (nativeGraph !== undefined)
+    await validateNativePublicationClosure(client, input, nativeGraph);
+  const structuralGraph =
+    nativeGraph === undefined
+      ? draft.graphJson
+      : workflowCallStructuralProjectionV1(nativeGraph);
   const validation = await admitWorkflowAuthoring(
     client,
     variant.validateAuthoringGraph,
-    draft.graphJson,
+    structuralGraph,
     input.signal,
   );
   if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
-  const graph = parseWorkflowGraphForPublish(
-    draft.graphJson,
+  const validatedStructure = parseWorkflowGraphForPublish(
+    structuralGraph,
     variant.definitionCatalog,
   );
+  const graph = nativeGraph ?? validatedStructure;
   const compiled = variant.executableCompiler?.(graph);
   const executable =
     compiled === undefined ? undefined : executableSchema.parse(compiled);
+  if (nativeGraph !== undefined && executable?.executableSchemaVersion !== 3)
+    throw new WorkflowDraftOperationUnavailableError();
+  if (
+    nativeGraph === undefined &&
+    executable !== undefined &&
+    executable.executableSchemaVersion !== 2
+  )
+    throw new Error('Retained publication requires executable version 2');
   if (executable !== undefined) {
     if (lockedRelease === undefined)
       throw new Error(
@@ -311,7 +336,9 @@ async function persistPublicationProjections(
   hooks: WorkflowAuthoringTestHooks | undefined,
 ): Promise<void> {
   const usage = workflowIntegrationUsage(
-    version.graphJson,
+    version.schemaVersion === 2
+      ? workflowCallStructuralProjectionV1(version.graphJson)
+      : version.graphJson,
     publication.definitionCatalog,
   ).map((item) => ({
     connection_id: uuidSchema.parse(item.connectionId),

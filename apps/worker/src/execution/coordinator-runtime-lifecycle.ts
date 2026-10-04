@@ -61,6 +61,7 @@ export function createCoordinatorRuntimeLifecycle(
     consumer: composition.consumer,
     checkReadiness: async (): Promise<void> => {
       if (closed) throw new Error('Coordinator runtime is closed');
+      await composition.runStore.checkReadiness?.();
       await firstScan.promise;
       // Close can begin while the first scan is awaiting I/O.
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
