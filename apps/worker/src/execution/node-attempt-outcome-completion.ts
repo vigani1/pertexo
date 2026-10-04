@@ -1,6 +1,7 @@
 import {
   NodeAttemptOutputInvalidError,
   type NodeAttemptLease,
+  type NodeAttemptRunStore,
 } from '@pertexo/database/execution';
 import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';
 import type {
@@ -27,6 +28,7 @@ export async function persistPreparedNodeAttemptOutcome(
   traceContext: Readonly<{ traceparent?: string }>,
   contextSignal: AbortSignal,
   environment: NodeExecutionEnvironment,
+  nativeOutput?: Parameters<NodeAttemptRunStore['complete']>[0]['nativeOutput'],
 ): Promise<NodeAttemptHandlerResult> {
   if (prepared.inputPersistence === 'workflow_call_declaration') {
     const complete = dependencies.runStore.completeCallDeclaration?.bind(
@@ -48,6 +50,7 @@ export async function persistPreparedNodeAttemptOutcome(
     const completed = await dependencies.runStore.complete({
       ...connectionHealthCompletionFields(dependencies, environment),
       lease,
+      ...(nativeOutput === undefined ? {} : { nativeOutput }),
       outcome:
         prepared.suspensionDurationSeconds === undefined
           ? { status: 'succeeded', output: outcome.output }

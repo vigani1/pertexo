@@ -109,6 +109,7 @@ export type NodeAttemptRuntimeOptions = Readonly<{
 }>;
 
 export type NodeAttemptRuntimeDependencies = Readonly<{
+  physicalOutputValues?: NodeAttemptHandlerDependencies['physicalOutputValues'];
   nativeInputValues?: NodeAttemptHandlerDependencies['nativeInputValues'];
   /** Borrowed framework value runtime; never exposed to preview/node capabilities. */
   callDeclarationValues?: NodeAttemptHandlerDependencies['callDeclarationValues'];
@@ -330,6 +331,8 @@ async function createProductionNodeAttemptRuntime(
   return {
     ...(capabilityRuntime === undefined ? {} : { capabilityRuntime }),
     handler: createNodeAttemptHandler({
+      physicalOutputValues:
+        dependencies.physicalOutputValues ?? values.physicalOutputValues,
       callDeclarationValues:
         dependencies.callDeclarationValues ?? values.callDeclarationValues,
       nativeInputValues:

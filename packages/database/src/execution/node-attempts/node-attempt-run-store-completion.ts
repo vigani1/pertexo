@@ -25,6 +25,7 @@ import {
 } from './node-attempt-run-store-transactions.js';
 import { serializeStoredExecutionValueV1 } from '../stored-execution-value.js';
 import { prepareNodeAttemptCompletionOutput } from './node-attempt-completion-output-owner.js';
+import { prepareNativeAttemptCompletionOutput } from './node-attempt-native-output-preparation.js';
 
 export async function completeNodeAttempt(
   pool: Pool,
@@ -38,9 +39,17 @@ export async function completeNodeAttempt(
   } catch {
     throw new NodeAttemptStateCorruptError();
   }
-  let serializedOutput: string | null = null;
+  if (
+    outputSource === 'workflow_call_input_alias' &&
+    input.nativeOutput !== undefined
+  )
+    throw new NodeAttemptStateCorruptError();
+  const nativeOutput = prepareNativeAttemptCompletionOutput(input);
+  let serializedOutput: string | null =
+    nativeOutput?.serializedReference ?? null;
   if (
     outputSource === 'legacy_inline' &&
+    nativeOutput === undefined &&
     (input.outcome.status === 'succeeded' ||
       input.outcome.status === 'suspended')
   ) {
@@ -167,6 +176,7 @@ export async function completeNodeAttempt(
           run.rows[0]?.abort_requested === true,
           outputSource === 'workflow_call_input_alias',
           run.rows[0]?.native_execution === true,
+          nativeOutput?.snapshot,
         );
       },
     );

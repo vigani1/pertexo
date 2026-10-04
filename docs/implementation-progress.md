@@ -36,13 +36,13 @@ exact identity/current authority/lifecycle/atomic acceptance. The stronger
 arbitrary-worker-command semantic guarantee remains unclaimed/open, not waived.
 No truth flag/certificate is introduced.
 
-The subsequent uncommitted guarded artifact Call admission delta preserves inline
+The reviewed guarded artifact Call admission slice is recorded in `6a060f05`. It preserves inline
 byte/contract guards and adds exact candidate/provenance/association/reference,
 SHA/length/media, available lifecycle and current expiry checks. Candidate SHARE
 precedes provenance SHARE, then artifact SHARE, through existing CAS/seal owners.
 It removes only the operational artifact refusal under the accepted trusted-module
-contract. Source review and live protected SQL acceptance/COMMIT qualification
-remain open; offline grammar and ordinary adapter tests do not establish them.
+contract. Live protected SQL acceptance/COMMIT qualification remains open;
+offline grammar and ordinary adapter tests do not establish it.
 
 Coordinator storage is composed once only for an actual release-admitted native
 read owner. Retained/native-OFF startup/readiness/drain do not construct or check
@@ -54,7 +54,7 @@ Native catalog/execution/writers remain OFF, protected SQL qualification remains
 PAUSED, and artifact results/physical output, Wait/structured sources, general
 result preparation and real-service qualification remain open.
 
-The subsequent Wait-read slice is also uncommitted and unqualified. The actual
+The reviewed Wait-read slice is recorded in `f4f16f9e` and remains unqualified. The actual
 input loader now selects resume metadata under its resumed lease, and the source
 adapter freshly reauthorizes that exact selection before shared-codec hydration.
 Fresh0137 derives the immediately preceding accepted physical output from actual
@@ -64,7 +64,38 @@ Common source eligibility/artifact availability and current-consumer postchecks
 remain in place. Targeted database source/parser/inventory tests pass 31 cases;
 existing worker hydration/handler tests pass 23 cases; build/typecheck/lint pass.
 These are application/external-pg and source-only checks, not live SQL authority.
-Wait artifact production/completion and structured collection loading remain open.
+Live Wait suspension/resume qualification and structured collection loading remain open.
+
+The subsequent physical-output slice remains uncommitted/unqualified, with a
+reviewed artifact-replay identity finding repaired but awaiting rereview.
+Actual native execution now prepares physical values under its heartbeat signal
+through the same framework codec/reserved writer, preserving retained outputs
+and the separate Call input alias. Completion independently reconciles the
+original producer bytes before SQL; only exact reference/SHA/length and original
+inline text enter the guarded producer. Fresh0137 rechecks actual current lease,
+native format, physical slot, exact live candidate and available artifact,
+accepting provenance/association atomically with existing completion/receipt.
+No preparation reference is authority; no decoded artifact payload enters write
+SQL. An explicit post-owner cancellation check prevents subsequent success and
+outbox writes, with the real tenant owner destroying the canceled connection.
+External-pg/storage tests exercise actual tenant/Drizzle/codec/writer/spool and
+completion for upload failure/cancellation, exact reuse without another pending
+insert/charge, completion denial/cancellation and safe retry. Focused worker
+5 files/51 tests and database 4 files/28 tests pass; builds, source/test types,
+changed lint/format and architecture19 pass. Offline grammar202/63 is source-only;
+complexity still fails the same five inherited hotspots, with no added hotspot.
+The native Wait completion branch was extracted with the same owned signals and
+post-preparation control inspection; it does not redispatch the executor.
+Durable artifact completion replay now independently matches exact accepted
+physical reference/SHA/length and scoped association under actual completed
+attempt/canonical delivery/receipt truth before returning duplicate. It requires
+no live lease, artifact hydration/availability, upload or second charge, and does
+not compare a later logical node result. Actual completion-seam regressions cover
+unchanged replay and same-ID changed bytes/length; bypassing the new guard makes
+both negative cases falsely resolve duplicate, and restoring it passes all three.
+The shared external-pg fixture was extracted without relaxing existing tests.
+Artifact result/general selector/structured composition and live qualification
+remain open. The installation guard/nativeOFF/SQLPAUSED state is unchanged.
 
 Minimum native Call executable path (source is not qualification):
 
@@ -94,8 +125,9 @@ hydration/general prepared-result wiring and paused SQL qualification. The separ
 authorized decision-only commit `81a5f9d` records detail retirement; the reviewed
 minimum-inline source work and replay/family-unit clarifications are recorded
 in `eb8c9def`. The reviewed artifact preparation/hydration follow-on is recorded in
-`c5d5a47f`; its separate authority clarification is `ab698158`. Guarded artifact
-admission follow-on source remains uncommitted and unqualified. No push was performed,
+`c5d5a47f`; its separate authority clarification is `ab698158`. Reviewed guarded
+artifact admission and Wait source reads are recorded in `6a060f05`/`f4f16f9e`.
+Physical-output follow-on source remains uncommitted and unqualified. No push was performed,
 and the branch has no upstream.
 
 The actual Call-material adapter additionally passes eight tests for immutable
@@ -113,8 +145,9 @@ loading and independent hydration rereads. Minimum inline physical output now ha
 its missing guarded SQL body, ancestor-first completion prelock and deferred
 distinct input/output-slot clock checks. A focused five-suite rerun passes 46
 tests, database typecheck/build and narrow lint. These adapter tests do not prove
-the new SQL semantics. Wait-resume, structured inputs and artifact sources remain
-explicit unimplemented paths; native readiness is not granted.
+the new SQL semantics. At that minimum-inline checkpoint, Wait-resume, structured
+inputs and artifact sources remained unimplemented; subsequent source work is
+reported above, and native readiness is still not granted.
 
 Coordinator production inline-source hydration now composes the same existing
 codec with an independent protected current-owner reread, including inline
@@ -209,10 +242,11 @@ No node or preview artifact capability receives this framework-only dependency.
 - [x] Review and record the bounded artifact attempt/coordinator source follow-on
       and accept the trusted precommit/SQL identity distinction (`c5d5a47f`,
       `ab698158`); the stronger arbitrary-worker-command guarantee remains unclaimed.
-- [ ] Review the guarded artifact Call admission source delta and independently
-      qualify protected acceptance/atomicity/COMMIT behavior when permitted.
-- [ ] Review native Wait resume source reads and qualify suspension/resume/physical
-      output behavior; complete structured collection source composition.
+- [x] Review and record guarded artifact Call admission and native Wait resume
+      source reads (`6a060f05`, `f4f16f9e`), without live SQL qualification claims.
+- [ ] Review physical-output producer/completion source and qualify protected
+      acceptance/atomicity/COMMIT and live suspension/resume behavior when permitted.
+- [ ] Complete structured collection source composition and its qualification.
 - [x] Accept the concrete ADR065 native artifact owner amendment and contract
       delta through primary and independent design review before persistent code.
 - [x] Separate producer slots and coordinator pre/post-CAS result identity from

@@ -29,6 +29,9 @@ export function createNodeAttemptValueComposition(
   >,
   artifactStore?: Pick<ArtifactStore, 'put' | 'getStream'>,
 ): {
+  physicalOutputValues: NonNullable<
+    NodeAttemptHandlerDependencies['physicalOutputValues']
+  >;
   nativeInputValues: NonNullable<
     NodeAttemptHandlerDependencies['nativeInputValues']
   >;
@@ -109,5 +112,20 @@ export function createNodeAttemptValueComposition(
       return boundedNodeJsonSchema.parse(accepted.reference.value);
     },
   };
-  return { nativeInputValues, callDeclarationValues };
+  const physicalOutputValues: NonNullable<
+    NodeAttemptHandlerDependencies['physicalOutputValues']
+  > = {
+    prepare: (input) => {
+      active(input.signal);
+      if (
+        input.owner.kind !== 'attempt' ||
+        input.owner.slot !== 'physical_output'
+      )
+        throw new TypeError('Physical output producer scope differs');
+      return (
+        artifactValues ?? createWorkflowExecutionValueInlinePreparation()
+      ).prepare(input);
+    },
+  };
+  return { nativeInputValues, callDeclarationValues, physicalOutputValues };
 }

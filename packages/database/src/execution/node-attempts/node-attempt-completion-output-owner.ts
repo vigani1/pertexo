@@ -73,6 +73,11 @@ export async function prepareNodeAttemptCompletionOutput(
     );
     assertNotAborted(input.signal);
     if (format.rows.length !== 1) throw new NodeAttemptStateCorruptError();
+    if (
+      input.nativeOutput !== undefined &&
+      format.rows[0]?.native_execution !== true
+    )
+      throw new NodeAttemptStateCorruptError();
     // Only actual durable physical success selects the existing duplicate
     // reconciliation below. It grants no new production/read authority.
     if (

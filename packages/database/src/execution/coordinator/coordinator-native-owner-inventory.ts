@@ -109,8 +109,15 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
   },
   {
     signature:
+      'app.native_attempt_artifact_output_replay_matches(jsonb,jsonb,text,integer)',
+    hash: '0accfe5dcf0cfdaf7fc094da8859070d',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
+    signature:
       'app.record_native_workflow_attempt_output(jsonb,jsonb,text,integer,text)',
-    hash: '37fa50b430d926c22f78c05cef74fd88',
+    hash: 'f1361b67a455b3fb037a330d2f0a7f93',
     securityDefiner: true,
     rowSecurity: true,
   },

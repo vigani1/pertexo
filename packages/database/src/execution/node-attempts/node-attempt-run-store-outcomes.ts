@@ -22,7 +22,13 @@ import {
   assertConnectionHealthReplay,
   persistConnectionHealthObservation,
 } from './node-attempt-connection-health.js';
-import { recordNativeAttemptInlineOutput } from './node-attempt-native-output-record.js';
+import {
+  recordNativeAttemptInlineOutput,
+  recordNativeAttemptPreparedOutput,
+  assertNativeAttemptArtifactOutputReplay,
+} from './node-attempt-native-output-record.js';
+import type { parseWorkflowExecutionValueSnapshot } from './node-attempt-call-input-record.js';
+import { assertNotAborted } from './node-attempt-run-store-transactions.js';
 
 type CompletionInput = z.output<typeof completionSchema>;
 type ExecutorOutcome = Extract<
@@ -115,6 +121,8 @@ async function duplicateCompletion(
   serializedOutput: string | null,
   fields: CompletionFields,
   outputFromCallInput: boolean,
+  nativeExecution: boolean,
+  nativeOutput?: ReturnType<typeof parseWorkflowExecutionValueSnapshot>,
 ): Promise<CompleteNodeAttemptResult | undefined> {
   if (
     ![
@@ -154,6 +162,20 @@ async function duplicateCompletion(
   ) {
     throw new NodeAttemptStateCorruptError();
   }
+  if (
+    nativeExecution &&
+    !outputFromCallInput &&
+    nativeOutput?.reference.kind === 'artifact'
+  ) {
+    if (serializedOutput === null) throw new NodeAttemptStateCorruptError();
+    await assertNativeAttemptArtifactOutputReplay(
+      client,
+      input.lease,
+      nativeOutput,
+      serializedOutput,
+    );
+  }
+  assertNotAborted(input.signal);
   if (receipt.completed_at === null) {
     await completeReceipt(
       client,
@@ -368,6 +390,7 @@ export async function applyNodeAttemptCompletion(
   controlActive: boolean,
   outputFromCallInput = false,
   nativeExecution = false,
+  nativeOutput?: ReturnType<typeof parseWorkflowExecutionValueSnapshot>,
 ): Promise<CompleteNodeAttemptResult> {
   const fields = completionFields(input);
   const duplicate = await duplicateCompletion(
@@ -378,6 +401,8 @@ export async function applyNodeAttemptCompletion(
     serializedOutput,
     fields,
     outputFromCallInput,
+    nativeExecution,
+    nativeOutput,
   );
   if (duplicate !== undefined) return duplicate;
   if (fields.suspendedOutcome !== undefined && controlActive)
@@ -389,13 +414,23 @@ export async function applyNodeAttemptCompletion(
     serializedOutput !== null &&
     (input.outcome.status === 'succeeded' ||
       input.outcome.status === 'suspended')
-  )
-    await recordNativeAttemptInlineOutput(
-      client,
-      input.lease,
-      input.outcome.output,
-      serializedOutput,
-    );
+  ) {
+    if (nativeOutput !== undefined)
+      await recordNativeAttemptPreparedOutput(
+        client,
+        input.lease,
+        nativeOutput,
+        serializedOutput,
+      );
+    else
+      await recordNativeAttemptInlineOutput(
+        client,
+        input.lease,
+        input.outcome.output,
+        serializedOutput,
+      );
+  }
+  assertNotAborted(input.signal);
   await updateAttempt(client, input, serializedOutput, fields);
   await persistConnectionHealthObservation(client, input);
   if (fields.executorOutcome !== undefined) {

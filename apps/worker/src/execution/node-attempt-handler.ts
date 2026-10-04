@@ -90,6 +90,10 @@ export interface NodeAttemptHandler {
 }
 
 export type NodeAttemptHandlerDependencies = Readonly<{
+  physicalOutputValues?: Pick<
+    ReturnType<typeof createWorkflowExecutionValueCodec>,
+    'prepare'
+  >;
   nativeInputValues?: Pick<
     ReturnType<typeof createWorkflowExecutionValueCodec>,
     'hydrateSource'

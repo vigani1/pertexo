@@ -1722,6 +1722,108 @@ REVOKE ALL ON FUNCTION app.prelock_native_attempt_value_owner(jsonb)
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
 GRANT EXECUTE ON FUNCTION app.prelock_native_attempt_value_owner(jsonb) TO {{worker_runtime_role}};
 
+-- Identity-only durable physical replay. No live lease, byte read, new
+-- acceptance, availability requirement or logical node-result substitution.
+CREATE FUNCTION app.native_attempt_artifact_output_replay_matches(
+  p_authority jsonb,p_reference jsonb,p_sha256 text,p_byte_length integer
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_workspace uuid:=nullif(current_setting('app.workspace_id',true),'')::uuid;
+  v_source app.workflow_execution_value_provenance%ROWTYPE;
+  v_delivery app.outbox_events%ROWTYPE;
+  v_payload_text text;
+BEGIN
+  IF (v_workspace IS NOT NULL AND jsonb_typeof(p_authority)='object'
+    AND p_authority ?& ARRAY['runId','workflowVersionId','nodeRunId','attemptId',
+      'attemptNumber','invocationKey','nodeId','workerId','fenceToken','delivery']
+    AND p_authority-ARRAY['runId','workflowVersionId','nodeRunId','attemptId',
+      'attemptNumber','invocationKey','nodeId','workerId','fenceToken','delivery']='{}'::jsonb
+    AND jsonb_typeof(p_authority->'delivery')='object'
+    AND p_authority->'delivery' ?& ARRAY['outboxEventId','payloadChecksum']
+    AND (p_authority->'delivery')-ARRAY['outboxEventId','payloadChecksum']='{}'::jsonb
+    AND p_authority#>>'{delivery,payloadChecksum}' ~ '^[0-9a-f]{64}$'
+    AND jsonb_typeof(p_reference)='object' AND p_reference->'schemaVersion'='1'::jsonb
+    AND p_reference->>'kind'='artifact' AND p_reference ? 'artifactId'
+    AND p_reference-ARRAY['schemaVersion','kind','artifactId']='{}'::jsonb
+    AND p_sha256 ~ '^[0-9a-f]{64}$' AND p_byte_length BETWEEN 1 AND 1048576) IS NOT TRUE THEN
+    RETURN false;
+  END IF;
+  IF app.lock_workspace_run_admission(v_workspace) IS DISTINCT FROM 'active' THEN RETURN false; END IF;
+  SELECT * INTO v_delivery FROM app.outbox_events event
+    WHERE event.workspace_id=v_workspace AND event.id=(p_authority#>>'{delivery,outboxEventId}')::uuid;
+  IF NOT FOUND OR (v_delivery.aggregate_type='node-attempt' AND v_delivery.job_name='execute-node-attempt'
+    AND v_delivery.aggregate_id=(p_authority->>'attemptId')::uuid AND v_delivery.schema_version=1
+    AND v_delivery.payload_checksum=p_authority#>>'{delivery,payloadChecksum}'
+    AND v_delivery.payload->'schemaVersion'='1'::jsonb
+    AND v_delivery.payload->>'workspaceId'=v_workspace::text
+    AND v_delivery.payload->>'runId'=p_authority->>'runId'
+    AND v_delivery.payload->>'nodeRunId'=p_authority->>'nodeRunId'
+    AND v_delivery.payload->>'attemptId'=p_authority->>'attemptId'
+    AND v_delivery.payload->>'outboxEventId'=v_delivery.id::text
+    AND v_delivery.payload-ARRAY['schemaVersion','workspaceId','runId','nodeRunId',
+      'attemptId','outboxEventId','traceparent']='{}'::jsonb) IS NOT TRUE THEN RETURN false; END IF;
+  v_payload_text:='{"attemptId":"'||(p_authority->>'attemptId')||'","nodeRunId":"'||(p_authority->>'nodeRunId')
+    ||'","outboxEventId":"'||v_delivery.id::text||'","runId":"'||(p_authority->>'runId')||'","schemaVersion":1';
+  IF v_delivery.payload ? 'traceparent' THEN
+    IF (v_delivery.payload->>'traceparent' ~ '^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$') IS NOT TRUE THEN RETURN false; END IF;
+    v_payload_text:=v_payload_text||',"traceparent":"'||(v_delivery.payload->>'traceparent')||'"';
+  END IF;
+  v_payload_text:=v_payload_text||',"workspaceId":"'||v_workspace::text||'"}';
+  IF encode(sha256(convert_to(v_payload_text,'UTF8')),'hex')<>v_delivery.payload_checksum THEN RETURN false; END IF;
+  SELECT source.* INTO v_source FROM app.workflow_execution_value_provenance source
+    JOIN app.workflow_execution_value_artifact_associations association
+      ON association.workspace_id=source.workspace_id AND association.provenance_id=source.id
+    JOIN app.node_attempts attempt ON attempt.workspace_id=source.workspace_id AND attempt.id=source.attempt_id
+    JOIN app.node_runs node ON node.workspace_id=attempt.workspace_id AND node.id=attempt.node_run_id
+    JOIN app.workflow_runs run ON run.workspace_id=node.workspace_id AND run.id=node.workflow_run_id
+    JOIN app.workflow_versions version ON version.workspace_id=run.workspace_id AND version.id=run.workflow_version_id
+    JOIN app.inbox_receipts receipt ON receipt.workspace_id=source.workspace_id
+      AND receipt.consumer_name='node-attempt-worker' AND receipt.message_id=v_delivery.id
+    WHERE source.workspace_id=v_workspace AND source.value_slot='attempt_output' AND source.byte_ownership='owned'
+      AND source.workflow_run_id=(p_authority->>'runId')::uuid
+      AND source.workflow_version_id=(p_authority->>'workflowVersionId')::uuid
+      AND source.node_run_id=(p_authority->>'nodeRunId')::uuid AND source.node_id=p_authority->>'nodeId'
+      AND source.invocation_key=p_authority->>'invocationKey' AND source.attempt_id=(p_authority->>'attemptId')::uuid
+      AND source.attempt_number=(p_authority->>'attemptNumber')::integer
+      AND source.reference_kind='artifact' AND source.original_reference::text=p_reference::text
+      AND source.artifact_id=(p_reference->>'artifactId')::uuid AND source.sha256=p_sha256
+      AND source.byte_length=p_byte_length AND source.media_type='application/vnd.pertexo.execution-value+json;version=1'
+      AND association.workflow_run_id=source.workflow_run_id AND association.workflow_version_id=source.workflow_version_id
+      AND association.value_slot=source.value_slot AND association.byte_ownership=source.byte_ownership
+      AND association.node_run_id=source.node_run_id AND association.node_id=source.node_id
+      AND association.invocation_key=source.invocation_key AND association.attempt_id=source.attempt_id
+      AND association.attempt_number=source.attempt_number AND association.reference_kind=source.reference_kind
+      AND association.artifact_id=source.artifact_id AND association.sha256=source.sha256
+      AND association.byte_length=source.byte_length AND association.media_type=source.media_type
+      AND attempt.node_run_id=source.node_run_id AND attempt.attempt_number=source.attempt_number
+      AND attempt.fence_token=(p_authority->>'fenceToken')::bigint AND attempt.status='succeeded'
+      AND attempt.completed_at IS NOT NULL AND attempt.lease_owner IS NULL AND attempt.lease_expires_at IS NULL
+      AND attempt.output_ref::text=p_reference::text AND attempt.safe_error_code IS NULL AND attempt.error_summary IS NULL
+      AND attempt.executor_failure_kind IS NULL AND attempt.executor_error_kind IS NULL
+      AND attempt.executor_possibly_dispatched IS NULL AND attempt.retry_decision IS NULL
+      AND node.workflow_run_id=source.workflow_run_id AND node.node_id=source.node_id AND node.invocation_key=source.invocation_key
+      AND run.workflow_version_id=source.workflow_version_id AND version.schema_version=2 AND version.executable_schema_version=3
+      AND receipt.payload_checksum=v_delivery.payload_checksum AND receipt.completed_at IS NOT NULL
+      AND EXISTS(SELECT 1 FROM app.run_events event
+        WHERE event.workspace_id=v_workspace AND event.workflow_run_id=source.workflow_run_id
+          AND event.type IN ('node.succeeded','node.waiting') AND event.payload->'schemaVersion'='1'::jsonb
+          AND event.payload->>'nodeRunId'=source.node_run_id::text
+          AND event.payload->>'attemptId'=source.attempt_id::text AND event.payload->>'nodeId'=source.node_id
+          AND event.payload->>'invocationKey'=source.invocation_key
+          AND event.payload->'attemptNumber'=to_jsonb(source.attempt_number)
+          AND ((event.type='node.succeeded' AND event.payload-ARRAY['schemaVersion','nodeRunId',
+            'attemptId','nodeId','invocationKey','attemptNumber']='{}'::jsonb)
+            OR (event.type='node.waiting' AND event.payload->>'waitKind'='node_wait'
+              AND event.payload-ARRAY['schemaVersion','nodeRunId','attemptId','nodeId',
+                'invocationKey','attemptNumber','dueAt','waitKind']='{}'::jsonb)))
+    FOR SHARE OF source,association;
+  RETURN FOUND;
+END $$;
+REVOKE ALL ON FUNCTION app.native_attempt_artifact_output_replay_matches(jsonb,jsonb,text,integer)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+GRANT EXECUTE ON FUNCTION app.native_attempt_artifact_output_replay_matches(jsonb,jsonb,text,integer) TO {{worker_runtime_role}};
+
 CREATE FUNCTION app.record_native_workflow_attempt_output(
   p_authority jsonb,p_reference jsonb,p_sha256 text,p_byte_length integer,p_original text
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER
@@ -1732,13 +1834,22 @@ DECLARE
   v_existing app.workflow_execution_value_provenance%ROWTYPE;
   v_version app.workflow_versions%ROWTYPE;
   v_accepted timestamptz;
+  v_eligible timestamptz;
+  v_id uuid;
+  v_candidate app.workflow_execution_value_artifact_candidates%ROWTYPE;
+  v_artifact app.artifacts%ROWTYPE;
 BEGIN
   IF (jsonb_typeof(p_reference)='object' AND p_reference->'schemaVersion'='1'::jsonb
-    AND p_reference->>'kind'='inline' AND p_reference ? 'value'
-    AND p_reference-ARRAY['schemaVersion','kind','value']='{}'::jsonb) IS NOT TRUE THEN
-    RAISE EXCEPTION 'native physical inline output envelope differs' USING ERRCODE='22023';
+    AND p_sha256 ~ '^[0-9a-f]{64}$' AND p_byte_length BETWEEN 1 AND 1048576
+    AND ((p_reference->>'kind'='inline' AND p_reference ? 'value'
+      AND p_reference-ARRAY['schemaVersion','kind','value']='{}'::jsonb)
+      OR (p_reference->>'kind'='artifact' AND p_reference ? 'artifactId' AND p_original IS NULL
+        AND p_reference-ARRAY['schemaVersion','kind','artifactId']='{}'::jsonb))) IS NOT TRUE THEN
+    RAISE EXCEPTION 'native physical output envelope differs' USING ERRCODE='22023';
   END IF;
-  PERFORM app.assert_native_inline_execution_value_bytes(p_reference->'value',p_sha256,p_byte_length,p_original);
+  IF p_reference->>'kind'='inline' THEN
+    PERFORM app.assert_native_inline_execution_value_bytes(p_reference->'value',p_sha256,p_byte_length,p_original);
+  END IF;
   SELECT * INTO STRICT v_version FROM app.workflow_versions version WHERE version.workspace_id=v_workspace
     AND version.id=(v_scope->>'workflowVersionId')::uuid;
   IF EXISTS(WITH RECURSIVE graphs(graph,depth) AS (
@@ -1750,37 +1861,88 @@ BEGIN
     WHERE node->>'id'=v_scope->>'nodeId' AND node#>>'{definition,key}'='core.workflow_call') THEN
     RAISE EXCEPTION 'native Call physical output must alias accepted declaration input' USING ERRCODE='55000';
   END IF;
+  IF p_reference->>'kind'='artifact' THEN
+    SELECT * INTO v_candidate FROM app.workflow_execution_value_artifact_candidates candidate
+      WHERE candidate.workspace_id=v_workspace AND candidate.value_slot='attempt_output'
+        AND candidate.attempt_id=(v_scope->>'attemptId')::uuid FOR UPDATE;
+    IF NOT FOUND OR (v_candidate.workflow_run_id=(v_scope->>'runId')::uuid
+      AND v_candidate.workflow_version_id=(v_scope->>'workflowVersionId')::uuid
+      AND v_candidate.node_run_id=(v_scope->>'nodeRunId')::uuid AND v_candidate.node_id=v_scope->>'nodeId'
+      AND v_candidate.invocation_key=v_scope->>'invocationKey'
+      AND v_candidate.attempt_number=(v_scope->>'attemptNumber')::integer
+      AND v_candidate.artifact_id=(p_reference->>'artifactId')::uuid
+      AND v_candidate.sha256=p_sha256 AND v_candidate.byte_length=p_byte_length
+      AND v_candidate.media_type='application/vnd.pertexo.execution-value+json;version=1'
+      AND v_candidate.abandoned_at IS NULL) IS NOT TRUE THEN
+      RAISE EXCEPTION 'native physical exact artifact candidate differs' USING ERRCODE='55000';
+    END IF;
+  END IF;
   SELECT * INTO v_existing FROM app.workflow_execution_value_provenance source
     WHERE source.workspace_id=v_workspace AND source.value_slot='attempt_output'
-      AND source.attempt_id=(v_scope->>'attemptId')::uuid;
-  IF FOUND THEN
+      AND source.attempt_id=(v_scope->>'attemptId')::uuid FOR UPDATE;
+  v_id:=v_existing.id;
+  IF p_reference->>'kind'='artifact' THEN
+    SELECT * INTO v_artifact FROM app.artifacts artifact WHERE artifact.workspace_id=v_workspace
+      AND artifact.id=v_candidate.artifact_id FOR UPDATE;
+    IF NOT FOUND OR (v_artifact.status='available' AND v_artifact.deleted_at IS NULL
+      AND v_artifact.finalized_at IS NOT NULL AND isfinite(v_artifact.expires_at)
+      AND v_artifact.expires_at>clock_timestamp() AND v_artifact.purpose='execution-value'
+      AND v_artifact.sha256=p_sha256 AND v_artifact.byte_length=p_byte_length
+      AND v_artifact.media_type=v_candidate.media_type
+      AND v_artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||v_artifact.id::text) IS NOT TRUE THEN
+      RAISE EXCEPTION 'native physical artifact is unavailable' USING ERRCODE='55000';
+    END IF;
+  END IF;
+  IF v_id IS NOT NULL THEN
     IF (v_existing.byte_ownership='owned' AND v_existing.workflow_run_id=(v_scope->>'runId')::uuid
       AND v_existing.workflow_version_id=(v_scope->>'workflowVersionId')::uuid
       AND v_existing.node_run_id=(v_scope->>'nodeRunId')::uuid AND v_existing.node_id=v_scope->>'nodeId'
       AND v_existing.invocation_key=v_scope->>'invocationKey'
       AND v_existing.attempt_number=(v_scope->>'attemptNumber')::integer
-      AND v_existing.reference_kind='inline' AND v_existing.original_reference::text=p_reference::text
-      AND v_existing.original_inline_text=p_original AND v_existing.sha256=p_sha256
+      AND v_existing.reference_kind=p_reference->>'kind' AND v_existing.original_reference::text=p_reference::text
+      AND v_existing.original_inline_text IS NOT DISTINCT FROM p_original AND v_existing.sha256=p_sha256
       AND v_existing.byte_length=p_byte_length AND v_existing.eligibility_revoked_at IS NULL
       AND v_existing.eligible_until>clock_timestamp()) IS NOT TRUE THEN
       RAISE EXCEPTION 'native physical output first immutable bytes differ' USING ERRCODE='55000';
     END IF;
+    IF p_reference->>'kind'='artifact' AND (v_existing.artifact_id IS DISTINCT FROM v_candidate.artifact_id
+      OR NOT EXISTS(SELECT 1 FROM app.workflow_execution_value_artifact_associations association
+        WHERE association.workspace_id=v_workspace AND association.provenance_id=v_id
+          AND association.candidate_id=v_candidate.id AND association.artifact_id=v_candidate.artifact_id)) THEN
+      RAISE EXCEPTION 'native physical accepted artifact association differs' USING ERRCODE='55000';
+    END IF;
   ELSE
     v_accepted:=clock_timestamp();
+    v_id:=gen_random_uuid();
+    v_eligible:=v_accepted+interval '30 days';
+    IF p_reference->>'kind'='artifact' THEN v_eligible:=least(v_eligible,v_artifact.expires_at); END IF;
     INSERT INTO app.workflow_execution_value_provenance(
       id,workspace_id,workflow_run_id,workflow_version_id,value_slot,byte_ownership,
       node_run_id,node_id,invocation_key,attempt_id,attempt_number,
-      reference_kind,original_reference,original_inline_text,sha256,byte_length,media_type,
+      reference_kind,original_reference,original_inline_text,artifact_id,sha256,byte_length,media_type,
       accepted_at,eligible_until
-    ) VALUES(gen_random_uuid(),v_workspace,(v_scope->>'runId')::uuid,(v_scope->>'workflowVersionId')::uuid,
+    ) VALUES(v_id,v_workspace,(v_scope->>'runId')::uuid,(v_scope->>'workflowVersionId')::uuid,
       'attempt_output','owned',(v_scope->>'nodeRunId')::uuid,v_scope->>'nodeId',v_scope->>'invocationKey',
       (v_scope->>'attemptId')::uuid,(v_scope->>'attemptNumber')::integer,
-      'inline',p_reference,p_original,p_sha256,p_byte_length,
-      'application/vnd.pertexo.execution-value+json;version=1',v_accepted,v_accepted+interval '30 days');
+      p_reference->>'kind',p_reference,p_original,v_candidate.artifact_id,p_sha256,p_byte_length,
+      'application/vnd.pertexo.execution-value+json;version=1',v_accepted,v_eligible);
+    IF p_reference->>'kind'='artifact' THEN
+      INSERT INTO app.workflow_execution_value_artifact_associations(
+        workspace_id,provenance_id,candidate_id,workflow_run_id,workflow_version_id,value_slot,
+        node_run_id,node_id,invocation_key,attempt_id,attempt_number,artifact_id,sha256,byte_length,media_type,accepted_at
+      ) VALUES(v_workspace,v_id,v_candidate.id,(v_scope->>'runId')::uuid,(v_scope->>'workflowVersionId')::uuid,
+        'attempt_output',(v_scope->>'nodeRunId')::uuid,v_scope->>'nodeId',v_scope->>'invocationKey',
+        (v_scope->>'attemptId')::uuid,(v_scope->>'attemptNumber')::integer,v_candidate.artifact_id,
+        p_sha256,p_byte_length,v_candidate.media_type,v_accepted);
+    END IF;
   END IF;
   -- The existing physical completion writes and receipt complete in this same
   -- transaction. This producer never settles a run, invents replay or charges quota.
   PERFORM app.native_attempt_value_owner(p_authority);
+  IF coalesce(v_existing.eligible_until,v_eligible)<=clock_timestamp()
+    OR (p_reference->>'kind'='artifact' AND v_artifact.expires_at<=clock_timestamp()) THEN
+    RAISE EXCEPTION 'native physical output expired during acceptance' USING ERRCODE='55000';
+  END IF;
 END $$;
 REVOKE ALL ON FUNCTION app.record_native_workflow_attempt_output(jsonb,jsonb,text,integer,text)
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};

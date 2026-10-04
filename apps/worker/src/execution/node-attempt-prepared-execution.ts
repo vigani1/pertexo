@@ -1,8 +1,9 @@
-import type {
-  NodeAttemptInputs,
-  NodeAttemptLease,
-  NodeAttemptRunStore,
-  PublishedWorkflowV3Projection,
+import {
+  NodeAttemptOutputInvalidError,
+  type NodeAttemptInputs,
+  type NodeAttemptLease,
+  type NodeAttemptRunStore,
+  type PublishedWorkflowV3Projection,
 } from '@pertexo/database/execution';
 import type { QueueDelivery } from '@pertexo/queue';
 import {
@@ -19,11 +20,12 @@ import type {
 } from './node-attempt-handler.js';
 import type { NodeAttemptHeartbeat } from './node-attempt-heartbeat.js';
 import type { NodeExecutionEnvironment } from './node-attempt-execution-environment.js';
-import { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error.js';
 import { persistPreparedNodeAttemptOutcome } from './node-attempt-outcome-completion.js';
 import { connectionHealthCompletionFields } from './connection-health-completion.js';
 import { completionResult } from './node-attempt-completion-result.js';
 import { hydrateNativeNodeAttemptInputs } from './native-node-attempt-input-hydration.js';
+import { prepareNodeAttemptPhysicalOutput } from './node-attempt-physical-output.js';
+import { completeNativeWaitResume } from './node-attempt-native-wait-resume.js';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -93,6 +95,9 @@ export async function executePreparedNodeAttempt(
       ? {}
       : { traceparent: delivery.data.traceparent };
   let outcome: NodeAttemptOutcome;
+  let nativeOutput: Parameters<
+    NodeAttemptRunStore['complete']
+  >[0]['nativeOutput'];
   let declarationInputRecorded = recordedWorkflowCallInput !== undefined;
   try {
     let executionInputs = inputs;
@@ -111,27 +116,23 @@ export async function executePreparedNodeAttempt(
         expectedUpstreamNodeOutputs: prepared.upstreamNodeOutputs,
       });
       if (lease.admissionKind === 'wait_resume') {
-        if (executionInputs.resumeOutput === undefined)
-          throw new NodeAttemptHandlerStateError('wait_resume_output_missing');
-        const interruption = await resolveHeartbeatInterruption(
+        return await completeNativeWaitResume({
           dependencies,
           lease,
-          delivery,
-          contextSignal,
-          heartbeat,
-          environment,
-        );
-        if (interruption !== undefined) return interruption;
-        const completed = await dependencies.runStore.complete({
-          lease,
-          outcome: {
-            status: 'succeeded',
-            output: executionInputs.resumeOutput,
-          },
-          ...traceContext,
-          signal: contextSignal,
+          value: executionInputs.resumeOutput,
+          executionSignal: heartbeat.executionSignal,
+          completionSignal: contextSignal,
+          traceContext,
+          inspectInterruption: () =>
+            resolveHeartbeatInterruption(
+              dependencies,
+              lease,
+              delivery,
+              contextSignal,
+              heartbeat,
+              environment,
+            ),
         });
-        return await completionResult(dependencies, lease, completed.kind);
       }
     }
     let pinnedCallableProjection: PublishedWorkflowV3Projection | undefined;
@@ -193,6 +194,14 @@ export async function executePreparedNodeAttempt(
       !declarationInputRecorded
     )
       throw new TypeError('Native Call did not persist its declaration input');
+    nativeOutput = await prepareNodeAttemptPhysicalOutput({
+      lease,
+      native: inputs.nativeValueSources !== undefined,
+      callAlias: prepared.inputPersistence === 'workflow_call_declaration',
+      value: outcome.output,
+      signal: heartbeat.executionSignal,
+      values: dependencies.physicalOutputValues,
+    });
   } catch (error: unknown) {
     const interruption = await resolveHeartbeatInterruption(
       dependencies,
@@ -220,15 +229,18 @@ export async function executePreparedNodeAttempt(
       return await completionResult(dependencies, lease, completed.kind);
     }
     if (
-      error instanceof WorkflowEngineError &&
-      error.code === 'attempt_invalid'
+      error instanceof NodeAttemptOutputInvalidError ||
+      (error instanceof WorkflowEngineError && error.code === 'attempt_invalid')
     ) {
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(dependencies, environment),
         lease,
         outcome: {
           status: 'failed',
-          safeErrorCode: 'execution.attempt_invalid',
+          safeErrorCode:
+            error instanceof NodeAttemptOutputInvalidError
+              ? 'execution.output_invalid'
+              : 'execution.attempt_invalid',
         },
         ...traceContext,
         signal: contextSignal,
@@ -254,6 +266,7 @@ export async function executePreparedNodeAttempt(
     traceContext,
     contextSignal,
     environment,
+    nativeOutput,
   );
 }
 

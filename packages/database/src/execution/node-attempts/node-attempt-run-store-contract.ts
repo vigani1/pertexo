@@ -270,6 +270,15 @@ export const connectionHealthObservationSchema = z.discriminatedUnion('kind', [
 export const completionSchema = ownedLeaseSchema
   .extend({
     outcome: completionOutcomeSchema,
+    /** Producer metadata only; completion independently rechecks bytes and SQL owner. */
+    nativeOutput: z
+      .object({
+        reference: z.unknown(),
+        sha256: checksumSchema,
+        byteLength: z.number().int().min(1).max(1_048_576),
+      })
+      .strict()
+      .optional(),
     traceparent: traceparentSchema,
     connectionHealthObservation: connectionHealthObservationSchema.optional(),
     connectionRunHealthMode: z.enum(['off', 'observe', 'enforce']).optional(),
@@ -411,6 +420,12 @@ export interface NodeAttemptRunStore {
     input: Readonly<{
       lease: NodeAttemptLease;
       outcome: NodeAttemptCompletion;
+      /** Framework preparation metadata, never acceptance or consumption authority. */
+      nativeOutput?: Readonly<{
+        reference: StoredExecutionValueV1;
+        sha256: string;
+        byteLength: number;
+      }>;
       connectionHealthObservation?: z.output<
         typeof connectionHealthObservationSchema
       >;
