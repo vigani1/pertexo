@@ -16,6 +16,10 @@ test('binds the actual guarded candidate and exact native inventory without qual
   assert.equal(observed.ownerCount, 67);
   assert.equal(
     observed.ownerInventorySha256,
+    'f70c0d100e7d15970f3e57233d0df6b4a8410cf67b2f9ac9ade019d2c1a1f4fa',
+  );
+  assert.equal(
+    observed.ownerBodyInventorySha256,
     'e709b9b825a659cde0e25bf0936804be8c65fedf5565cdd0434e57e023aab85b',
   );
   assert.equal(observed.installationGuardPresent, true);
@@ -561,4 +565,34 @@ test('matching known sections cannot fill unavailable installed or dedicated-iso
   assert.equal(report.installedCompatible, false);
   assert.equal(report.runtimeStartAuthorized, false);
   await owner.close();
+});
+
+test('rejects null, unknown, extra and reordered purge configuration observations exactly', async () => {
+  const signature =
+    'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)';
+  const configurations = [
+    null,
+    undefined,
+    ['search_path=pg_catalog, app, pg_temp', 'row_security=on'],
+    [
+      'search_path=pg_catalog, pg_temp',
+      'row_security=on',
+      'statement_timeout=0',
+    ],
+    ['row_security=on', 'search_path=pg_catalog, pg_temp'],
+  ];
+  for (const proconfig of configurations) {
+    const input = simulatedFixture(await observeNativeQualificationSource());
+    input.observeCatalog = async () => ({
+      nativeFunctions: NATIVE_COORDINATOR_OWNER_INVENTORY.map((row) => ({
+        ...row,
+        owner: 'pertexo_owner',
+        ...(row.signature === signature ? { proconfig } : {}),
+      })),
+    });
+    const owner = createNativeQualificationLifecycle(input);
+    const report = await owner.assess(['retention_family_resume']);
+    assert.deepEqual(report.nativeOwnerDrift, [signature]);
+    await owner.close();
+  }
 });

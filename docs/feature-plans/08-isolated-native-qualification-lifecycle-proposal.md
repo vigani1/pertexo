@@ -224,7 +224,7 @@ new native functions. These checks do not qualify the entire installed catalog.
 
 | Still unavailable expected fact | Existing owner that must close it |
 | --- | --- |
-| Exact function ACLs, volatility and reconciled proconfig/search paths for the complete shared/native set | Database native readiness / reviewed installation artifact |
+| Exact function ACLs and volatility for the complete shared/native set; actual installed configuration qualification | Database native readiness / reviewed installation artifact |
 | Complete role membership/ACL cohort including maintenance and lifecycle identities | Existing role provisioning / reviewed fixture installation |
 | Qualified constraint/policy expressions, complete index definitions and trigger bindings | Database native published constraint/catalog inventory |
 | Full emitted process/dependency bytes and compatibility cohort | Existing runtime-closure owner / qualification process manifest |
@@ -237,3 +237,12 @@ port bindings, privileged/host/container network modes; missing HostConfig facts
 remain unknown. Even matching partial observations leave `complete=false` and
 `dedicatedTargetVerified=false`. Exact missing facts above stop those subparts;
 no source-to-observation copy manufactures an expected identity or positive isolation.
+
+The per-function configuration mismatch is now corrected in reviewed source
+(primary and independent review approved the exact frozen seven-path fix):
+all 67 expected ordered `proconfig` arrays follow the reviewed candidate headers,
+including the purge owner's `pg_catalog,pg_temp` path without `app`. Readiness
+binds those exact arrays and rejects null or distinct catalog configuration; source
+header consistency and simulated drift tests do not qualify installed behavior.
+The existing four integration blockers and null published-expression identity
+still refuse readiness before catalog checkout. The guarded SQL is unchanged.

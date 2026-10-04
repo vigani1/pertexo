@@ -27,18 +27,33 @@ export async function observeNativeQualificationSource() {
     ...candidate.matchAll(
       /CREATE (?:OR REPLACE )?FUNCTION app\.(\w+)\(([\s\S]*?)\)\s*(RETURNS[\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
     ),
-  ].map((match) => ({
-    signature: `app.${match[1]}(${match[2]
-      .replace(/\bp_\w+\s+/gu, '')
-      .replace(/char\(64\)/gu, 'character')
-      .replace(/varchar\b/gu, 'character varying')
-      .replace(/\s+/gu, ' ')
-      .trim()
-      .replace(/\s*,\s*/gu, ',')})`,
-    hash: digest(match[4], 'md5'),
-    securityDefiner: match[3].includes('SECURITY DEFINER'),
-    rowSecurity: match[3].includes('SET row_security=on'),
-  }));
+  ].map((match) => {
+    const configuration = match[3].match(
+      /\bSET search_path=(pg_catalog,app,pg_temp|pg_catalog,pg_temp)(?: SET row_security=on)?\s*$/u,
+    );
+    const rowSecurity = match[3].includes('SET row_security=on');
+    if (
+      !configuration?.[1] ||
+      (match[3].match(/\bSET\b/gu)?.length ?? 0) !== (rowSecurity ? 2 : 1)
+    )
+      throw new Error('Native source function configuration is unknown');
+    return {
+      signature: `app.${match[1]}(${match[2]
+        .replace(/\bp_\w+\s+/gu, '')
+        .replace(/char\(64\)/gu, 'character')
+        .replace(/varchar\b/gu, 'character varying')
+        .replace(/\s+/gu, ' ')
+        .trim()
+        .replace(/\s*,\s*/gu, ',')})`,
+      hash: digest(match[4], 'md5'),
+      securityDefiner: match[3].includes('SECURITY DEFINER'),
+      rowSecurity,
+      proconfig: [
+        `search_path=${configuration[1].split(',').join(', ')}`,
+        ...(rowSecurity ? ['row_security=on'] : []),
+      ],
+    };
+  });
   if (!isDeepStrictEqual(owners, NATIVE_COORDINATOR_OWNER_INVENTORY))
     throw new Error('Native source and built owner inventory differ');
   const names = (
@@ -79,6 +94,16 @@ export async function observeNativeQualificationSource() {
     tree,
     candidateSha256: digest(candidate),
     ownerInventorySha256: digest(JSON.stringify(owners)),
+    ownerBodyInventorySha256: digest(
+      JSON.stringify(
+        owners.map((row) => ({
+          signature: row.signature,
+          hash: row.hash,
+          securityDefiner: row.securityDefiner,
+          rowSecurity: row.rowSecurity,
+        })),
+      ),
+    ),
     ownerCount: owners.length,
     baseHead: names.at(-1),
     migrations,
@@ -226,6 +251,7 @@ function ownerDrift(observed) {
       row.hash !== expected.hash ||
       row.securityDefiner !== expected.securityDefiner ||
       row.rowSecurity !== expected.rowSecurity ||
+      !isDeepStrictEqual(row.proconfig, expected.proconfig) ||
       row.owner !== 'pertexo_owner'
     )
       differences.push(expected.signature);
@@ -365,7 +391,7 @@ function knownCatalogDrift(catalog, source) {
 function compatibilityObservations(catalog, source, unknownIsolation) {
   const missingFacts = [
     {
-      id: 'complete_function_acl_volatility_proconfig',
+      id: 'complete_function_acl_volatility',
       owner: 'database native readiness / reviewed installation artifact',
     },
     {

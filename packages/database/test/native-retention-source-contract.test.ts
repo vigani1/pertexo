@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { beforeAll, describe, expect, it } from 'vitest';
+import type { Pool } from 'pg';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { checkNativeCoordinatorReadiness } from '../src/execution/coordinator/coordinator-native-readiness.js';
 import {
   NATIVE_COORDINATOR_OWNER_INVENTORY,
   UNFINISHED_NATIVE_OWNER_INTEGRATIONS,
@@ -55,6 +57,61 @@ describe('unregistered native retention source contracts', () => {
     ).toBeLessThan(candidate.indexOf('ALTER TABLE'));
     expect(candidate).not.toContain('ON DELETE SET NULL');
     expect(UNFINISHED_NATIVE_OWNER_INTEGRATIONS.length).toBeGreaterThan(0);
+  });
+
+  it('preserves the reviewed purge search path without adding app or inheriting configuration', () => {
+    const purge = NATIVE_COORDINATOR_OWNER_INVENTORY.find(
+      (row) =>
+        row.signature ===
+        'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)',
+    );
+    expect(purge?.proconfig).toEqual([
+      'search_path=pg_catalog, pg_temp',
+      'row_security=on',
+    ]);
+  });
+
+  it('passes exact per-function configuration to readiness without subset or null acceptance', async () => {
+    const readiness = await readFile(
+      new URL(
+        '../src/execution/coordinator/coordinator-native-readiness.ts',
+        import.meta.url,
+      ),
+      'utf8',
+    );
+    expect(readiness).toContain(
+      'expected(signature text,hash text,"securityDefiner" boolean,proconfig text[])',
+    );
+    expect(readiness).toContain('or expected.proconfig is null');
+    expect(readiness).toContain(
+      'or command.proconfig is distinct from expected.proconfig',
+    );
+    expect(readiness).not.toContain('case when expected."rowSecurity"');
+    expect(readiness).not.toMatch(/command\.proconfig\s*(?:@>|<@|&&)/u);
+    expect(readiness).toMatch(
+      /\[\s*ownerRole,\s*workerRole,\s*JSON.stringify\(NATIVE_COORDINATOR_OWNER_INVENTORY\),\s*JSON.stringify\(NATIVE_PUBLISHED_CONSTRAINT_INVENTORY\)/u,
+    );
+  });
+
+  it('still refuses before catalog checkout with all four integration blockers and the unqualified constraint', async () => {
+    const connect = vi.fn();
+    const pool = {
+      options: { connectionTimeoutMillis: 100 },
+      connect,
+    } as unknown as Pool;
+    expect(UNFINISHED_NATIVE_OWNER_INTEGRATIONS).toHaveLength(4);
+    expect(
+      NATIVE_PUBLISHED_CONSTRAINT_INVENTORY[0].qualifiedExpressionMd5,
+    ).toBeNull();
+    await expect(
+      checkNativeCoordinatorReadiness(
+        pool,
+        'pertexo_owner',
+        'pertexo_worker',
+        200,
+      ),
+    ).rejects.toThrow('Native coordinator owner inventory is incomplete');
+    expect(connect).not.toHaveBeenCalled();
   });
 
   it('widens the actual published-version constraint, not just the draft format, while refusing unqualified readiness', async () => {
@@ -173,6 +230,12 @@ describe('unregistered native retention source contracts', () => {
       hash: createHash('md5').update(group(match, 4)).digest('hex'),
       securityDefiner: group(match, 3).includes('SECURITY DEFINER'),
       rowSecurity: group(match, 3).includes('SET row_security=on'),
+      proconfig: [
+        ...group(match, 3).matchAll(/\bSET\s+([a-z_]+)=([a-z_,]+)/gu),
+      ].map(
+        (setting) =>
+          `${group(setting, 1)}=${group(setting, 2).split(',').join(', ')}`,
+      ),
     }));
     expect(NATIVE_COORDINATOR_OWNER_INVENTORY).toEqual(expected);
   });

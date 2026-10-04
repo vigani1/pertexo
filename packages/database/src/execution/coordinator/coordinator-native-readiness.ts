@@ -37,14 +37,13 @@ export async function checkNativeCoordinatorReadiness(
         and not pg_has_role(current_user,$1::name,'MEMBER')
         and not exists (
           select 1 from jsonb_to_recordset($3::jsonb)
-            expected(signature text,hash text,"securityDefiner" boolean,"rowSecurity" boolean)
+            expected(signature text,hash text,"securityDefiner" boolean,proconfig text[])
           left join pg_proc command on command.oid=to_regprocedure(expected.signature)
           where command.oid is null or pg_get_userbyid(command.proowner)<>$1
             or command.prosecdef<>expected."securityDefiner"
             or md5(command.prosrc)<>expected.hash
-            or command.proconfig is distinct from case when expected."rowSecurity"
-              then array['search_path=pg_catalog, app, pg_temp','row_security=on']
-              else array['search_path=pg_catalog, app, pg_temp'] end
+            or expected.proconfig is null
+            or command.proconfig is distinct from expected.proconfig
         )
         and not exists (
           select 1 from jsonb_to_recordset($4::jsonb)

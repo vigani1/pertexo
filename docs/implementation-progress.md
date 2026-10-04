@@ -324,6 +324,29 @@ quarantined draft without returning its content; it was disclosed to primary,
 and subsequent work uses approved exact files only. No quarantine content is used
 as a source, copied, hashed, installed or executed by this extension.
 
+The routine per-function configuration fix is source-only and approved after
+primary exact seven-path/header/hash review and independent seventeen database
+contract plus thirty-six lifecycle/ownership tests, with no findings on either
+review axis. Its frozen diff is
+`89f23cc55d8f9419021d93e0777252dda683be4d0e9372500102d7b8e4f13f1d`;
+the review receipt is
+`34178bf947229fc4630b1179a8970d78c0ef47c11510af5f2fd7e6091974dee2`.
+The existing native inventory now supplies exact ordered `proconfig` arrays
+from all 67 reviewed Fresh0137 headers; the purge owner retains its app-free
+`pg_catalog,pg_temp` path. Readiness compares each exact array instead of assuming
+a uniform path and rejects null expectations or distinct actual configuration.
+The source observer validates headers and compares rebuilt metadata; injected
+null/missing/extra/unknown/reordered configuration observations fail exact matching.
+Database build/typecheck and all 1,734 unit tests across 183 files pass, including
+seventeen source-contract tests, as do thirty-six
+lifecycle/ownership tests. The candidate hash, all original body/definer/RLS flags
+and canonical prior body-profile digest remain unchanged; the new full metadata
+digest is separately bound. Four integration blockers and the null published
+constraint still prevent catalog checkout. Function ACL/volatility, qualified
+installed expressions/definitions, complete role/process/resource manifests,
+canonical authority/admission and all runtime/security qualification remain open.
+No installation, live catalog, service or protected-campaign execution occurred.
+
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
 | Publication / compiler selection | WIP: actual publication owner validates callable selectors and bounded immutable closure; compiler chooses V3 for Graph2 | Ordinary public-owner positive publication, invalid selector, immutable pin/contract lookup and HTTP error-mapping tests; real V3 compiler verification | Installed format constraints, locked native release and adversarial publication authority unqualified; no real native publication qualified |

@@ -1,6 +1,6 @@
 // UNQUALIFIED fresh-candidate source expectations; never installation authority.
 // Catalog presence and these hashes cannot qualify unfinished execution owners.
-export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
+const sourceOwners = [
   {
     signature: 'app.capture_native_run_initiation()',
     hash: '4095d32a5ea6dc738c34dd87c0067552',
@@ -426,6 +426,23 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
     rowSecurity: true,
   },
 ] as const;
+
+// Exact reviewed SET headers: only the existing purge owner omits app.
+// Keep whole ordered arrays per function; never derive them from a catalog row.
+export const NATIVE_COORDINATOR_OWNER_INVENTORY = Object.freeze(
+  sourceOwners.map((owner) =>
+    Object.freeze({
+      ...owner,
+      proconfig: Object.freeze([
+        owner.signature ===
+        'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)'
+          ? 'search_path=pg_catalog, pg_temp'
+          : 'search_path=pg_catalog, app, pg_temp',
+        ...(owner.rowSecurity ? ['row_security=on'] : []),
+      ]),
+    }),
+  ),
+);
 
 // Concrete unfinished qualification gates keep native operational readiness false.
 // These are not installation signatures, an activation option or a certificate.
