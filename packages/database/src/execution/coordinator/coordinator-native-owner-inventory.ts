@@ -427,10 +427,10 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
   },
 ] as const;
 
-// Concrete unfinished source integrations keep native operational readiness false.
+// Concrete unfinished qualification gates keep native operational readiness false.
 // These are not installation signatures, an activation option or a certificate.
 export const UNFINISHED_NATIVE_OWNER_INTEGRATIONS: readonly string[] = [
-  'native structured coordinator declaration material and independent pre-CAS validation',
+  'native structured coordinator declaration SQL and real-service pre-CAS qualification',
   'native physical/Wait/structured execution and artifact lifecycle qualification',
   'native general/artifact result source, quota, CAS/recovery and lifetime qualification',
   'native execution and purge SQL qualification remains paused',

@@ -579,9 +579,13 @@ transaction still committed a logical NULL clear, then restored original truth.
 NULL/state/current-pointer transitions need their established coordinator authority
 fence before full F08 completion. Same-transaction sealing is not global projection
 immutability or a semantic attestation, and the P2 repair awaits exact-source
-primary review. Final security qualification was interrupted by platform screening;
-the last launched session's result could not be recovered and is not claimed as
-passed. Further adversarial probes are paused, not retried. Ordinary product
+primary review. Final security qualification was interrupted by platform screening.
+A later read-only investigation recovered session59955 exit0 for that historical
+`d2fe3165` development install only:40 routines, no permanent serving EXECUTE,
+writes disabled and the unresolved authority gap above. This supersedes the earlier
+unrecoverable-result claim, not the immutable historical receipt; it does not qualify
+current Fresh0137 source or establish full F08 acceptance. Further adversarial probes
+are paused, not retried. Ordinary product
 implementation continues with writers OFF. No artifact/native publication/root/
 readiness gate is closed.
 

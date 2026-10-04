@@ -225,8 +225,9 @@ protected SQL, real locks, concurrency, clocks or persistence. Source codec,
 precommit, replay-mismatch and handler tests remain separate ordinary evidence.
 New owned preparation/output-ownership/commit hotspots were cohesively removed;
 the five inherited complexity failures remain visible, with no waiver. Exact
-source follow-on repair review/commit and all previously listed live qualification gates
-remain open. Eight combined-chain follow-on cases now cover existing active Parallel
+source follow-on repair was independently reviewed and committed as `2a338ae1`;
+all previously listed live qualification gates remain open. Eight combined-chain
+follow-on cases now cover existing active Parallel
 joins under cancellation/deadline through later satisfied, failed and unknown branch
 truth, and admitted child Call stop/control/event/outbox ownership through unknown
 settlement and replay. They exposed two focused defects: pending stop projection
@@ -241,6 +242,18 @@ PostgreSQL I/O in the combined chain remains externally simulated, not live qual
 The same five complexity surfaces still fail (status-validation597 lines and
 commit-state220 lines/37 branches); no gate waiver or full-F08 claim. Fresh0137 is uninstalled/unregistered, screened SQL PAUSED and native
 catalogs/execution/writers OFF; no push or full-F08 completion is claimed.
+
+Current Fresh0137 source SHA256 is
+`6588f2d8a6aa3fdb3e7c40bd5a01ca94f6ec92592fbc2e4fdbf0b8e8d25be5ba`.
+Offline pglast8.4 checks parse219 top-level statements with symbolic roles
+substituted only in memory; all67 owner signatures/body MD5/security-definer/
+row-security expectations match the actual built inventory. Individual body
+checks parse61/70 units after explicit in-memory namespace/rowtype normalization;
+the nine trigger units are unverified because the parser emits malformed JSON
+datum entries. These are grammar/source checks, not SQL execution or qualification.
+Readiness remains refused before database checkout; its structured declaration
+blocker now describes outstanding SQL/real-service qualification, not the already
+integrated declaration/pre-CAS source. F08 remains incomplete.
 
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
