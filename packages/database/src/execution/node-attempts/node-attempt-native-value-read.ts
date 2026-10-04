@@ -24,11 +24,13 @@ export async function readNativeAttemptValueSource(
       ? { slot: 'run_input' }
       : requested.slot === 'wait_resume_output'
         ? { slot: 'wait_resume_output' }
-        : {
-            slot: 'upstream_output',
-            nodeId: requested.source.nodeId,
-            invocationKey: requested.source.invocationKey,
-          };
+        : requested.slot === 'structured_collection'
+          ? { slot: 'structured_collection' }
+          : {
+              slot: 'upstream_output',
+              nodeId: requested.source.nodeId,
+              invocationKey: requested.source.invocationKey,
+            };
   return withWorkspaceReadClient(
     pool,
     lease.workspaceId,

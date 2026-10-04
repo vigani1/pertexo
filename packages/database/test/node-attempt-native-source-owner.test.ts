@@ -63,12 +63,32 @@ const resumeSource = {
   },
   snapshot: source.snapshot,
 };
+const structuredLease: NodeAttemptLease = {
+  ...lease,
+  iterationPath: [{ loopNodeId: 'loop', ordinal: 1 }],
+};
+const collectionSource = {
+  ...resumeSource,
+  slot: 'structured_collection',
+  source: {
+    ...resumeSource.source,
+    nodeId: 'loop',
+    invocationKey: 'loop-scope',
+    collection: {
+      loopNodeId: 'loop',
+      ordinal: 1,
+      collectionSize: 2,
+      declaredCollectionChecksum: 'a'.repeat(64),
+    },
+  },
+};
 
 /** External pg only: actual loader, parser and tenant owner remain composed. */
 class SourceClient extends EventEmitter {
   public readonly statements: { sql: string; values: unknown[] }[] = [];
   public readonly releases: (boolean | Error | undefined)[] = [];
   public resumeProjection: unknown = resumeSource;
+  public collectionProjection: unknown = collectionSource;
   private workspace: string | null = null;
   public constructor(
     private readonly controller: AbortController,
@@ -138,9 +158,12 @@ class SourceClient extends EventEmitter {
           {
             source:
               (JSON.parse(String(values[1])) as { slot: string }).slot ===
-              'wait_resume_output'
-                ? this.resumeProjection
-                : source,
+              'structured_collection'
+                ? this.collectionProjection
+                : (JSON.parse(String(values[1])) as { slot: string }).slot ===
+                    'wait_resume_output'
+                  ? this.resumeProjection
+                  : source,
           },
         ],
       };
@@ -166,6 +189,59 @@ function run(stop?: ConstructorParameters<typeof SourceClient>[1]) {
   return { result, client };
 }
 describe('native attempt source ownership through actual tenant composition', () => {
+  it('loads collection metadata under the consumer and independently rejects changed collection identity on reread', async () => {
+    const controller = new AbortController();
+    const client = new SourceClient(controller);
+    const pool = {
+      connect: () => Promise.resolve(client as unknown as PoolClient),
+    } as unknown as Pool;
+    await expect(
+      loadNodeAttemptInputs(pool, {
+        lease: structuredLease,
+        upstreamNodeOutputs: [],
+        signal: controller.signal,
+      }),
+    ).resolves.toMatchObject({
+      nativeValueSources: { structuredCollection: collectionSource },
+    });
+    const request = {
+      lease: structuredLease,
+      source: parseNativeNodeAttemptValueSource(collectionSource),
+      signal: controller.signal,
+    };
+    await expect(readNativeAttemptValueSource(pool, request)).resolves.toEqual(
+      request.source,
+    );
+    client.collectionProjection = {
+      ...collectionSource,
+      source: {
+        ...collectionSource.source,
+        collection: {
+          ...collectionSource.source.collection,
+          declaredCollectionChecksum: 'b'.repeat(64),
+        },
+      },
+    };
+    await expect(readNativeAttemptValueSource(pool, request)).rejects.toThrow(
+      'independently accepted source scope differs',
+    );
+    const queries = client.statements.filter(({ sql }) =>
+      sql.includes('read_native_attempt_value_source'),
+    );
+    expect(queries.map(({ values }) => values[1])).toEqual([
+      '{"slot":"run_input"}',
+      '{"slot":"structured_collection"}',
+      '{"slot":"structured_collection"}',
+      '{"slot":"structured_collection"}',
+    ]);
+    expect(
+      queries.every(
+        ({ values }) =>
+          values[0] === workflowCallAttemptAuthorityJson(structuredLease),
+      ),
+    ).toBe(true);
+    expect(client.releases).toHaveLength(3);
+  });
   it('loads Wait resume metadata serially under the actual resumed lease, without decoded output', async () => {
     const controller = new AbortController();
     const client = new SourceClient(controller);

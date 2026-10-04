@@ -18,6 +18,14 @@ export class ValueClient extends EventEmitter {
   public readonly parameters: unknown[][] = [];
   public transactionOpen = false;
   public snapshot: unknown = null;
+  public nativeSource: unknown;
+  public logicalNodeStatus:
+    | 'waiting'
+    | 'failed'
+    | 'canceled'
+    | 'timed_out'
+    | 'outcome_unknown'
+    | undefined;
   public descriptor: ArtifactMetadata | undefined;
   public available = false;
   public denySource = false;
@@ -163,7 +171,7 @@ export class ValueClient extends EventEmitter {
       return {
         rows: [
           {
-            source: {
+            source: this.nativeSource ?? {
               slot: 'run_input',
               source: {
                 kind: 'run_input',
@@ -223,7 +231,9 @@ export class ValueClient extends EventEmitter {
         rows: [
           {
             attempt_status: this.completed ? 'succeeded' : 'running',
-            node_status: this.completed ? 'succeeded' : 'running',
+            node_status: this.completed
+              ? (this.logicalNodeStatus ?? 'succeeded')
+              : 'running',
             current_attempt: true,
             fence_token: current.fenceToken,
             lease_owner: this.completed ? null : current.workerId,

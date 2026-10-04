@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 import type { parsePersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
@@ -12,6 +11,7 @@ import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
 } from '../stored-execution-value.js';
+import { projectRetainedNodeAttemptCollectionValue } from './node-attempt-collection-value.js';
 
 type ParsedCheckpoint =
   | ReturnType<typeof parsePersistedWorkflowCheckpoint>
@@ -100,36 +100,15 @@ function projectStructuredCollection(
     typeof stored.value !== 'object'
   )
     throw new NodeAttemptStateCorruptError();
-  const declarationOutput = stored.value as Readonly<Record<string, unknown>>;
-  const keys = Object.keys(declarationOutput).sort();
-  const items = declarationOutput.items;
-  const iterationCount = declarationOutput.iterationCount;
-  const collectionChecksum = Array.isArray(items)
-    ? createHash('sha256')
-        .update(serializeStoredExecutionJsonValue(items))
-        .digest('hex')
-    : undefined;
-  if (
-    keys.length !== 2 ||
-    keys[0] !== 'items' ||
-    keys[1] !== 'iterationCount' ||
-    !Array.isArray(items) ||
-    typeof iterationCount !== 'number' ||
-    !Number.isSafeInteger(iterationCount) ||
-    iterationCount !== items.length ||
-    loop.collectionSize !== items.length ||
-    scope.ordinal < 0 ||
-    scope.ordinal >= items.length ||
-    loop.collectionChecksum !== collectionChecksum
-  )
-    throw new NodeAttemptStateCorruptError();
-  return Object.freeze({
-    loopNodeId: loop.loopId,
-    ordinal: scope.ordinal,
-    collection: items,
-    collectionSize: loop.collectionSize,
-    declaredCollectionChecksum: loop.collectionChecksum,
-  });
+  return projectRetainedNodeAttemptCollectionValue(
+    {
+      loopNodeId: loop.loopId,
+      ordinal: scope.ordinal,
+      collectionSize: loop.collectionSize,
+      declaredCollectionChecksum: loop.collectionChecksum,
+    },
+    stored.value,
+  );
 }
 
 /** Resolve retained structured collection declarations on the current scoped client. */

@@ -49,10 +49,11 @@ read owner. Retained/native-OFF startup/readiness/drain do not construct or chec
 configured or borrowed storage. Native owned storage closes once after consumer
 activity joins, including startup failure cleanup; borrowed storage remains
 owned by its caller. Offline parsing verifies the fresh source grammar only;
-its synchronized 59-function inventory is not installed-owner authority.
+its synchronized 60-function inventory is not installed-owner authority.
 Native catalog/execution/writers remain OFF, protected SQL qualification remains
-PAUSED, and artifact results/physical output, Wait/structured sources, general
-result preparation and real-service qualification remain open.
+PAUSED. Physical-output and Wait source slices are reviewed/recorded; structured
+source composition awaits review. Artifact/general result preparation and all
+required real-service qualification remain open.
 
 The reviewed Wait-read slice is recorded in `f4f16f9e` and remains unqualified. The actual
 input loader now selects resume metadata under its resumed lease, and the source
@@ -64,10 +65,10 @@ Common source eligibility/artifact availability and current-consumer postchecks
 remain in place. Targeted database source/parser/inventory tests pass 31 cases;
 existing worker hydration/handler tests pass 23 cases; build/typecheck/lint pass.
 These are application/external-pg and source-only checks, not live SQL authority.
-Live Wait suspension/resume qualification and structured collection loading remain open.
+Live Wait suspension/resume and structured collection qualification remain open.
 
-The subsequent physical-output slice remains uncommitted/unqualified, with a
-reviewed artifact-replay identity finding repaired but awaiting rereview.
+The physical-output source slice is reviewed and recorded (`e145fd61`), including
+the repaired artifact-replay identity finding; live qualification remains open.
 Actual native execution now prepares physical values under its heartbeat signal
 through the same framework codec/reserved writer, preserving retained outputs
 and the separate Call input alias. Completion independently reconciles the
@@ -94,8 +95,38 @@ not compare a later logical node result. Actual completion-seam regressions cove
 unchanged replay and same-ID changed bytes/length; bypassing the new guard makes
 both negative cases falsely resolve duplicate, and restoring it passes all three.
 The shared external-pg fixture was extracted without relaxing existing tests.
-Artifact result/general selector/structured composition and live qualification
-remain open. The installation guard/nativeOFF/SQLPAUSED state is unchanged.
+Artifact result/general selector composition and live qualification remain open.
+The installation guard/nativeOFF/SQLPAUSED state is unchanged.
+
+Native structured collection source composition is uncommitted and awaiting
+review. The actual input loader selects one slot-only collection source; the
+protected read derives every enclosing loop from the current running invocation's
+iteration ancestry, branch prefix and active ordinal. It selects the nearest
+waiting For Each barrier's succeeded physical attempt, matching the checkpoint's
+exact inline-attempt or artifact declaration reference and accepted provenance.
+The existing eligibility/association/availability and current-consumer postchecks
+are preserved. No historical producer selector or decoded retained declaration
+value authorizes this read. The adapter independently reauthorizes full source
+and collection metadata before serial shared-codec hydration after SQL release,
+under the same heartbeat signal. The existing retained count/checksum/ordinal
+projector was extracted unchanged; native projection uses the existing V3 byte
+owner and preserves unrelated opaque inputs outside an iteration scope.
+Focused database7/72 and worker7/118 tests pass, including inline/large artifact
+collection hydration, checksum rejection, current-consumer denial, cancellation,
+changed collection identity and retained behavior. Actual completion-seam replay
+tests also cover exact artifact physical replay after waiting/succeeded/failed/
+canceled/timed-out/outcome-unknown logical node states, while changed bytes still
+fail. Only native prepared artifact replay skips the logical-node status
+comparison; the reviewed exact completed-delivery/provenance/association proof
+must still return true. Retained/inline/Call alias replay owners are unchanged.
+Builds/types/lint/format and offline grammar202/63 pass; complexity still fails
+the same five inherited hotspots. These source/external-pg/storage tests do not
+qualify protected SQL, live structured dispatch, atomicity or native enablement.
+The coordinator hydrator explicitly rejects attempt-only Wait/collection slots
+before any coordinator source read. Whole database unit tests pass177/1632 and
+worker tests pass101/1282. Native coordinator structured declaration material and
+independent pre-CAS validation, artifact/general result composition and required
+live qualification remain separate unfinished gates.
 
 Minimum native Call executable path (source is not qualification):
 

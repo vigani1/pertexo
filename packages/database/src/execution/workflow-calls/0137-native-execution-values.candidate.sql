@@ -4105,10 +4105,17 @@ DECLARE
   v_matches integer;
   v_metadata jsonb;
   v_snapshot jsonb;
+  v_slot text:=p_selection->>'slot';
+  v_consumer jsonb;
+  v_loop jsonb;
+  v_iteration jsonb;
+  v_collection jsonb;
+  v_index integer;
 BEGIN
   IF (jsonb_typeof(p_selection)='object' AND (
     (p_selection=jsonb_build_object('slot','run_input')) OR
     (p_selection=jsonb_build_object('slot','wait_resume_output')) OR
+    (p_selection=jsonb_build_object('slot','structured_collection')) OR
     (p_selection->>'slot'='upstream_output'
       AND p_selection ?& ARRAY['slot','nodeId','invocationKey']
       AND p_selection-ARRAY['slot','nodeId','invocationKey']='{}'::jsonb
@@ -4125,6 +4132,43 @@ BEGIN
     AND v_checkpoint.scheduler_state->>'workflowVersionId'=v_version::text
     AND v_checkpoint.scheduler_state->>'runStatus'='running') IS NOT TRUE THEN
     RAISE EXCEPTION 'native attempt current checkpoint differs' USING ERRCODE='55000';
+  END IF;
+  IF v_slot='structured_collection' THEN
+    -- Derive every enclosing declaration from the ACTUAL running consumer.
+    -- The caller supplies neither a producer ID nor ancestry/ordinal selectors.
+    SELECT count(*)::integer,(jsonb_agg(invocation))->0 INTO v_matches,v_consumer
+      FROM jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation
+      WHERE invocation->>'nodeId'=v_scope->>'nodeId' AND invocation->>'invocationKey'=v_scope->>'invocationKey'
+        AND invocation->>'status'='running' AND invocation->'attemptNumber'=v_scope->'attemptNumber';
+    IF v_matches<>1 OR jsonb_typeof(v_consumer->'iterationPath') IS DISTINCT FROM 'array'
+      OR jsonb_array_length(v_consumer->'iterationPath') NOT BETWEEN 1 AND 1000 THEN
+      RAISE EXCEPTION 'native structured current consumer differs' USING ERRCODE='55000';
+    END IF;
+    FOR v_index IN 0..jsonb_array_length(v_consumer->'iterationPath')-1 LOOP
+      v_iteration:=v_consumer->'iterationPath'->v_index;
+      SELECT count(*)::integer,(jsonb_agg(declaration))->0 INTO v_matches,v_loop
+        FROM jsonb_array_elements(v_checkpoint.scheduler_state->'loops') declaration
+        WHERE declaration->>'loopId'=v_iteration->>'loopNodeId'
+          AND declaration->'iterationPath'=(SELECT coalesce(jsonb_agg(part ORDER BY ordinal),'[]'::jsonb)
+            FROM jsonb_array_elements(v_consumer->'iterationPath') WITH ORDINALITY parts(part,ordinal)
+            WHERE ordinal<=v_index)
+          AND jsonb_array_length(declaration->'branchPath')<=jsonb_array_length(coalesce(v_consumer->'branchPath','[]'::jsonb))
+          AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(declaration->'branchPath') WITH ORDINALITY branches(part,ordinal)
+            WHERE part IS DISTINCT FROM coalesce(v_consumer->'branchPath','[]'::jsonb)->(ordinal-1)::integer)
+          AND declaration->'activeOrdinals' @> jsonb_build_array(v_iteration->'ordinal');
+      IF v_matches<>1 OR (v_loop#>>'{collection,kind}' IN ('inline','artifact')
+        AND (v_iteration->>'ordinal')::integer>=0
+        AND (v_iteration->>'ordinal')::integer<(v_loop->>'collectionSize')::integer
+        AND v_loop->>'collectionChecksum' ~ '^[0-9a-f]{64}$') IS NOT TRUE THEN
+        RAISE EXCEPTION 'native structured enclosing declaration differs' USING ERRCODE='55000';
+      END IF;
+    END LOOP;
+    v_collection:=jsonb_build_object('loopNodeId',v_loop->'loopId','ordinal',v_iteration->'ordinal',
+      'collectionSize',v_loop->'collectionSize','declaredCollectionChecksum',v_loop->'collectionChecksum');
+    -- Reuse the physical accepted-source projection below, not retained decoded
+    -- declaration bytes; physical provenance proves either exact representation.
+    p_selection:=jsonb_build_object('slot','upstream_output','nodeId',v_loop->'loopId',
+      'invocationKey',v_loop->'controlInvocationKey');
   END IF;
   IF p_selection->>'slot'='run_input' THEN
     SELECT * INTO v_borrow FROM app.workflow_execution_value_provenance source
@@ -4202,11 +4246,14 @@ BEGIN
       FROM jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation
       WHERE invocation->>'nodeId'=p_selection->>'nodeId'
         AND invocation->>'invocationKey'=p_selection->>'invocationKey'
-        AND invocation->>'status'='succeeded';
+        AND ((v_slot='structured_collection' AND invocation->>'status'='waiting')
+          OR (v_slot<>'structured_collection' AND invocation->>'status'='succeeded'));
     IF v_matches<>1 THEN RAISE EXCEPTION 'native attempt selected invocation is not successful' USING ERRCODE='55000'; END IF;
     SELECT * INTO STRICT v_node FROM app.node_runs node WHERE node.workspace_id=v_workspace
       AND node.workflow_run_id=v_run AND node.node_id=p_selection->>'nodeId'
-      AND node.invocation_key=p_selection->>'invocationKey' AND node.status='succeeded';
+      AND node.invocation_key=p_selection->>'invocationKey'
+      AND ((v_slot='structured_collection' AND node.status='waiting' AND node.control_kind='for_each_barrier')
+        OR (v_slot<>'structured_collection' AND node.status='succeeded'));
     SELECT * INTO STRICT v_attempt FROM app.node_attempts attempt WHERE attempt.workspace_id=v_workspace
       AND attempt.node_run_id=v_node.id AND attempt.id=v_node.current_attempt_id
       AND attempt.attempt_number=v_node.current_attempt_number AND attempt.status='succeeded';
@@ -4252,6 +4299,16 @@ BEGIN
       OR v_borrow.eligible_until<=clock_timestamp())) THEN
     RAISE EXCEPTION 'native attempt accepted source eligibility ended' USING ERRCODE='55000';
   END IF;
+  IF v_slot='structured_collection' THEN
+    IF (v_metadata->>'kind'='physical_output' AND v_loop->'collection'=v_invocation->'output'
+      AND ((v_loop#>>'{collection,kind}'='inline' AND v_source.reference_kind='inline'
+          AND v_source.attempt_id::text=v_loop#>>'{collection,attemptId}')
+        OR (v_loop#>>'{collection,kind}'='artifact' AND v_source.reference_kind='artifact'
+          AND v_source.artifact_id::text=v_loop#>>'{collection,artifactId}'))) IS NOT TRUE THEN
+      RAISE EXCEPTION 'native structured exact physical declaration differs' USING ERRCODE='55000';
+    END IF;
+    v_metadata:=v_metadata||jsonb_build_object('collection',v_collection);
+  END IF;
   IF v_source.reference_kind='inline' THEN
     PERFORM app.assert_native_inline_execution_value_bytes(v_source.original_reference->'value',
       v_source.sha256,v_source.byte_length,v_source.original_inline_text);
@@ -4286,7 +4343,7 @@ BEGIN
     OR (v_borrow.id IS NOT NULL AND v_borrow.eligible_until<=clock_timestamp()) THEN
     RAISE EXCEPTION 'native attempt source expired during read' USING ERRCODE='55000';
   END IF;
-  RETURN jsonb_build_object('slot',p_selection->'slot','source',v_metadata,'snapshot',v_snapshot);
+  RETURN jsonb_build_object('slot',v_slot,'source',v_metadata,'snapshot',v_snapshot);
 END $$;
 REVOKE ALL ON FUNCTION app.read_native_attempt_value_source(jsonb,jsonb)
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};

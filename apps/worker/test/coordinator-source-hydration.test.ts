@@ -39,6 +39,45 @@ const request = () => ({
 });
 
 describe('production coordinator source hydration composition (external owner port)', () => {
+  it.each(['wait_resume_output', 'structured_collection'] as const)(
+    'refuses attempt-only %s slots before any coordinator read',
+    async (slot) => {
+      const physical = {
+        kind: 'physical_output' as const,
+        workspaceId: id(1),
+        runId: id(2),
+        workflowVersionId: id(3),
+        provenanceId: id(5),
+        nodeId: 'loop',
+        invocationKey: 'declaration-scope',
+        attemptId: id(6),
+      };
+      const valueSource: NativeNodeAttemptValueSource =
+        slot === 'wait_resume_output'
+          ? { slot, source: physical, snapshot: source.snapshot }
+          : {
+              slot,
+              source: {
+                ...physical,
+                collection: {
+                  loopNodeId: 'loop',
+                  ordinal: 0,
+                  collectionSize: 1,
+                  declaredCollectionChecksum: 'a'.repeat(64),
+                },
+              },
+              snapshot: source.snapshot,
+            };
+      const read = vi.fn<ReadCallableCompletionSource>();
+      await expect(
+        createCoordinatorSourceHydration(
+          { readCallableCompletionSource: read },
+          250,
+        )({ ...request(), source: valueSource }),
+      ).rejects.toThrow('Coordinator source consumer scope differs');
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
   it.each([false, true])(
     'hydrates exact accepted artifact bytes, or refuses a substituted checksum (%s) before storage',
     async (substituted) => {

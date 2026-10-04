@@ -20,6 +20,10 @@ const contextSchema = scopeSchema
     executableChecksum: z.string().regex(/^wf:v3:sha256:[0-9a-f]{64}$/u),
     checkpointSchemaVersion: z.literal(3),
     runInputPresent: z.boolean(),
+    structuredScope: z
+      .object({ loopNodeId: nodeId, ordinal: z.number().int().nonnegative() })
+      .strict()
+      .optional(),
     upstreamNodeOutputs: z
       .array(z.object({ nodeId, invocationKey }).strict())
       .max(NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs)
@@ -88,10 +92,30 @@ const resumeOutputSchema = z
     snapshot: z.unknown(),
   })
   .strict();
+const collectionSourceSchema = physicalSourceSchema
+  .extend({
+    collection: z
+      .object({
+        loopNodeId: nodeId,
+        ordinal: z.number().int().nonnegative(),
+        collectionSize: z.number().int().nonnegative(),
+        declaredCollectionChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
+      })
+      .strict(),
+  })
+  .strict();
+const collectionSchema = z
+  .object({
+    slot: z.literal('structured_collection'),
+    source: collectionSourceSchema,
+    snapshot: z.unknown(),
+  })
+  .strict();
 const sourceSchema = z.discriminatedUnion('slot', [
   runInputSchema,
   upstreamOutputSchema,
   resumeOutputSchema,
+  collectionSchema,
 ]);
 
 type Snapshot = ReturnType<typeof parseWorkflowExecutionValueSnapshot>;
@@ -110,9 +134,18 @@ export type NativeNodeAttemptValueSource =
       slot: 'wait_resume_output';
       source: Readonly<z.output<typeof physicalSourceSchema>>;
       snapshot: Snapshot;
+    }>
+  | Readonly<{
+      slot: 'structured_collection';
+      source: Readonly<z.output<typeof collectionSourceSchema>>;
+      snapshot: Snapshot;
     }>;
 export type NativeNodeAttemptValueSources = Readonly<{
   runInput: Extract<NativeNodeAttemptValueSource, { slot: 'run_input' }> | null;
+  structuredCollection?: Extract<
+    NativeNodeAttemptValueSource,
+    { slot: 'structured_collection' }
+  >;
   resumeOutput?: Extract<
     NativeNodeAttemptValueSource,
     { slot: 'wait_resume_output' }
@@ -147,18 +180,19 @@ export function parseNativeNodeAttemptValueSources(
   const context = contextSchema.parse(contextValue);
   if (
     !Array.isArray(sourcesValue) ||
-    sourcesValue.length > NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs + 2
+    sourcesValue.length > NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs + 3
   )
     throw new TypeError(
       'Native execution value sources exceed the bounded input projection',
     );
   const sources = z
     .array(sourceSchema)
-    .max(NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs + 2)
+    .max(NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs + 3)
     .parse(sourcesValue);
   let runInput:
     NonNullable<NativeNodeAttemptValueSources['runInput']> | undefined;
   let resumeOutput: NativeNodeAttemptValueSources['resumeOutput'];
+  let structuredCollection: NativeNodeAttemptValueSources['structuredCollection'];
   const outputs = new Map<
     string,
     Extract<NativeNodeAttemptValueSource, { slot: 'upstream_output' }>
@@ -198,6 +232,20 @@ export function parseNativeNodeAttemptValueSources(
       )
         throw new TypeError('Native Wait resume value source is out of scope');
       resumeOutput = projected;
+    } else if (projected.slot === 'structured_collection') {
+      const scope = context.structuredScope;
+      const collection = projected.source.collection;
+      if (
+        structuredCollection !== undefined ||
+        projected.source.nodeId !== scope?.loopNodeId ||
+        collection.loopNodeId !== scope.loopNodeId ||
+        collection.ordinal !== scope.ordinal ||
+        collection.ordinal >= collection.collectionSize
+      )
+        throw new TypeError(
+          'Native structured collection source is duplicated or out of scope',
+        );
+      structuredCollection = projected;
     } else {
       if (outputs.has(projected.source.invocationKey))
         throw new TypeError('Native execution value slot is duplicated');
@@ -221,6 +269,13 @@ export function parseNativeNodeAttemptValueSources(
     );
   if (context.admissionKind === 'wait_resume' && resumeOutput === undefined)
     throw new TypeError('Native Wait resume value source is missing');
+  if (
+    (context.structuredScope !== undefined) !==
+    (structuredCollection !== undefined)
+  )
+    throw new TypeError(
+      'Native structured collection source is missing or unexpected',
+    );
   if (context.runInputPresent !== (runInput !== undefined))
     throw new TypeError(
       'Native run input value source is missing or unexpected',
@@ -229,5 +284,6 @@ export function parseNativeNodeAttemptValueSources(
     runInput: runInput ?? null,
     completedNodeOutputs: Object.freeze(completedNodeOutputs),
     ...(resumeOutput === undefined ? {} : { resumeOutput }),
+    ...(structuredCollection === undefined ? {} : { structuredCollection }),
   });
 }

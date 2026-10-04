@@ -1,5 +1,6 @@
 import {
   NODE_ATTEMPT_INPUT_LIMITS,
+  projectNativeNodeAttemptCollectionValue,
   type NodeAttemptInputs,
   type NodeAttemptLease,
   type NativeNodeAttemptValueSource,
@@ -86,6 +87,19 @@ export async function hydrateNativeNodeAttemptInputs(
       'Native Wait resume value source is missing or unexpected',
     );
   const expected = input.expectedUpstreamNodeOutputs ?? [];
+  const nearest = input.lease.iterationPath?.at(-1);
+  const collectionSource = sources.structuredCollection;
+  if (
+    (nearest !== undefined) !== (collectionSource !== undefined) ||
+    (collectionSource !== undefined &&
+      (collectionSource.source.nodeId !== nearest?.loopNodeId ||
+        collectionSource.source.collection.loopNodeId !== nearest.loopNodeId ||
+        collectionSource.source.collection.ordinal !== nearest.ordinal)) ||
+    (nearest !== undefined && input.inputs.structuredCollection !== undefined)
+  )
+    throw new TypeError(
+      'Native structured collection source is missing or out of scope',
+    );
   if (
     sources.completedNodeOutputs.length >
       NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs ||
@@ -126,10 +140,18 @@ export async function hydrateNativeNodeAttemptInputs(
     sources.resumeOutput === undefined
       ? input.inputs.resumeOutput
       : await hydrate(sources.resumeOutput);
+  const structuredCollection =
+    collectionSource === undefined
+      ? undefined
+      : projectNativeNodeAttemptCollectionValue(
+          collectionSource.source.collection,
+          await hydrate(collectionSource),
+        );
   return Object.freeze({
     ...input.inputs,
     runInput,
     completedNodeOutputs: Object.freeze(completedNodeOutputs),
     ...(resumeOutput === undefined ? {} : { resumeOutput }),
+    ...(structuredCollection === undefined ? {} : { structuredCollection }),
   });
 }

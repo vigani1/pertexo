@@ -44,6 +44,7 @@ export type {
   NativeNodeAttemptValueSources,
 } from './execution/node-attempts/native-node-attempt-value-sources.js';
 export { parseNativeNodeAttemptValueSource } from './execution/node-attempts/native-node-attempt-value-sources.js';
+export { projectNativeNodeAttemptCollectionValue } from './execution/node-attempts/node-attempt-collection-value.js';
 export { parseCoordinatorNativeSourceInventory } from './execution/coordinator/coordinator-native-source-inventory.js';
 export {
   CONNECTION_AUTH_TYPE,

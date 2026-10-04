@@ -153,6 +153,7 @@ async function duplicateCompletion(
     (fields.executorOutcome === undefined &&
       input.outcome.status !== 'suspended' &&
       !outputFromCallInput &&
+      !(nativeExecution && nativeOutput?.reference.kind === 'artifact') &&
       row.node_status !== fields.durableStatus) ||
     (input.outcome.status === 'suspended' && !row.suspension_recorded) ||
     persistedOutput !== serializedOutput ||

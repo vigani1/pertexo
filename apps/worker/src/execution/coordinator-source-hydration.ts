@@ -18,7 +18,10 @@ export function createCoordinatorSourceHydration(
   return createWorkflowExecutionValueSourceHydrator({
     ...(store === undefined ? {} : { store }),
     authorizeSource: async ({ owner, source, signal }) => {
-      if (owner.kind !== 'run_result' || source.slot === 'wait_resume_output')
+      if (
+        owner.kind !== 'run_result' ||
+        (source.slot !== 'run_input' && source.slot !== 'upstream_output')
+      )
         throw new TypeError('Coordinator source consumer scope differs');
       const read = runStore.readCallableCompletionSource;
       if (read === undefined)

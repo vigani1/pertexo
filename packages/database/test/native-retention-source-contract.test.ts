@@ -127,6 +127,39 @@ describe('unregistered native retention source contracts', () => {
       /pg_get_functiondef|replace\(v_(?:body|definition)/u,
     );
   });
+  it('derives enclosing collection declarations from current consumer ancestry/branch/active ordinals, not supplied historical selectors', () => {
+    const read = body(candidate, 'read_native_attempt_value_source');
+    expect(read).toContain(
+      "p_selection=jsonb_build_object('slot','structured_collection')",
+    );
+    expect(read).toContain(
+      "invocation->>'status'='running' AND invocation->'attemptNumber'=v_scope->'attemptNumber'",
+    );
+    expect(read).toContain("declaration->'iterationPath'=");
+    expect(read).toContain(
+      "jsonb_array_elements(declaration->'branchPath') WITH ORDINALITY",
+    );
+    expect(read).toContain(
+      "declaration->'activeOrdinals' @> jsonb_build_array(v_iteration->'ordinal')",
+    );
+    expect(read).toContain(
+      "v_source.attempt_id::text=v_loop#>>'{collection,attemptId}'",
+    );
+    expect(read).toContain(
+      "v_source.artifact_id::text=v_loop#>>'{collection,artifactId}'",
+    );
+    expect(read).toContain(
+      "node.status='waiting' AND node.control_kind='for_each_barrier'",
+    );
+    expect(read).toContain(
+      "v_metadata:=v_metadata||jsonb_build_object('collection',v_collection)",
+    );
+    expect(
+      read.lastIndexOf('app.native_attempt_value_owner(p_authority)'),
+    ).toBeGreaterThan(
+      read.indexOf('native structured exact physical declaration differs'),
+    );
+  });
 
   it('keeps source body expectations synchronized, without granting readiness', () => {
     const expected = bodies(candidate).map((match) => ({

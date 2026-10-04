@@ -75,6 +75,54 @@ const logicalResult = {
 };
 
 describe('explicit native attempt source projection (not SQL authority)', () => {
+  it('requires one exact nearest collection source and rejects missing, duplicated and wrong ordinal/node projections', () => {
+    const structuredScope = { loopNodeId: 'loop', ordinal: 1 };
+    const scope = { ...context, runInputPresent: false, structuredScope };
+    const collection = {
+      ...physicalOutput,
+      slot: 'structured_collection',
+      source: {
+        ...physicalOutput.source,
+        nodeId: 'loop',
+        collection: {
+          ...structuredScope,
+          collectionSize: 2,
+          declaredCollectionChecksum: 'a'.repeat(64),
+        },
+      },
+    };
+    expect(
+      parseNativeNodeAttemptValueSources(scope, [collection]),
+    ).toMatchObject({ structuredCollection: collection });
+    expect(() => parseNativeNodeAttemptValueSources(scope, [])).toThrow(
+      'collection source is missing',
+    );
+    expect(() =>
+      parseNativeNodeAttemptValueSources(scope, [collection, collection]),
+    ).toThrow('duplicated or out of scope');
+    expect(() =>
+      parseNativeNodeAttemptValueSources(
+        { ...scope, structuredScope: undefined },
+        [collection],
+      ),
+    ).toThrow('out of scope');
+    for (const changed of [
+      { ordinal: 0 },
+      { loopNodeId: 'outer' },
+      { collectionSize: 1 },
+    ])
+      expect(() =>
+        parseNativeNodeAttemptValueSources(scope, [
+          {
+            ...collection,
+            source: {
+              ...collection.source,
+              collection: { ...collection.source.collection, ...changed },
+            },
+          },
+        ]),
+      ).toThrow('out of scope');
+  });
   it('projects a native run input with its exact accepted source and original bytes', () => {
     expect(parseNativeNodeAttemptValueSources(context, [runInput])).toEqual({
       runInput,

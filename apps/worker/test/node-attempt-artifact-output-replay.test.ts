@@ -11,7 +11,21 @@ import {
   current,
 } from './support/node-attempt-artifact-values.fixture.js';
 
-it.each(['same', 'changed_same_length', 'changed_length'] as const)(
+it.each([
+  'same',
+  'changed_same_length',
+  'changed_length',
+  'same_after_barrier',
+  'changed_after_barrier',
+  'same_after_failed',
+  'changed_after_failed',
+  'same_after_canceled',
+  'changed_after_canceled',
+  'same_after_timed_out',
+  'changed_after_timed_out',
+  'same_after_outcome_unknown',
+  'changed_after_outcome_unknown',
+] as const)(
   'reconciles %s artifact bytes at the actual completed run-store seam (external pg simulated)',
   async (replay) => {
     const client = new ValueClient();
@@ -50,12 +64,23 @@ it.each(['same', 'changed_same_length', 'changed_length'] as const)(
         kind: 'committed',
       });
       const before = client.statements.length;
+      client.logicalNodeStatus = replay.endsWith('_barrier')
+        ? 'waiting'
+        : replay.endsWith('_failed')
+          ? 'failed'
+          : replay.endsWith('_canceled')
+            ? 'canceled'
+            : replay.endsWith('_timed_out')
+              ? 'timed_out'
+              : replay.endsWith('_outcome_unknown')
+                ? 'outcome_unknown'
+                : undefined;
       const output =
-        replay === 'same'
+        replay === 'same' || replay.startsWith('same_after_')
           ? original
           : 'y'.repeat(replay === 'changed_same_length' ? 300_000 : 300_001);
       const result = store.complete(request(output));
-      if (replay === 'same')
+      if (replay === 'same' || replay.startsWith('same_after_'))
         await expect(result).resolves.toEqual({
           kind: 'duplicate',
           outboxEventId: null,
