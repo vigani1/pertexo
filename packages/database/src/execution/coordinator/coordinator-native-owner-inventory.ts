@@ -171,7 +171,7 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
   },
   {
     signature: 'app.native_call_admission_scope(uuid,integer,text,uuid,text)',
-    hash: 'd9c2f2c6cb2acf98be4fb0e93466140a',
+    hash: 'e88e67819e86c4495fdae565125662fc',
     securityDefiner: false,
     rowSecurity: true,
   },

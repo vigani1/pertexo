@@ -17,7 +17,8 @@ call source path`) contains the exact reviewed 100-path minimum-inline source
 tranche. This is source recording, not execution or rollout qualification.
 Branch `feat/subworkflows` has no upstream; no push was performed.
 
-The subsequent artifact follow-on remains uncommitted and unqualified. It now
+The subsequent reviewed artifact follow-on is recorded in `c5d5a47f` and remains
+unqualified. It now
 composes actual tenant/Drizzle attempt reservation/finalization, the existing
 writer/spool and shared bounded codec, including exact-candidate retry reuse and
 accepted-source rereads outside SQL transactions. Coordinator declaration reads
@@ -25,14 +26,23 @@ carry artifact identity only; serial original-byte hydration runs before actual
 engine Call control derivation in the same advance/evaluation/demand lifetime.
 Adapter tests exercise one derived child intent, current-source denial and
 cancellation/stale-owner stream destruction before engine derivation. They do
-not establish child acceptance: the protected native Call admission owner still
-refuses artifact inputs. Separate precommit validation now rereads the actual
+not establish child acceptance. Separate precommit validation now rereads the actual
 accepted declaration and exact immutable pinned callee contract, releases SQL,
 then hydrates/validates each detached value serially in the existing independent
 precommit lifetime. This is application-composed validation, not protected-command
-semantic authority. Final SQL metadata/identity postchecks and explicit design
-closure for that adversarial command-authority gap remain required before the
-artifact admission refusal can change; no truth flag/certificate is introduced.
+semantic authority. The accepted ADR065 clarification is separately recorded in
+`ab698158`: canonical trusted precommit owns external-byte semantics; SQL owns
+exact identity/current authority/lifecycle/atomic acceptance. The stronger
+arbitrary-worker-command semantic guarantee remains unclaimed/open, not waived.
+No truth flag/certificate is introduced.
+
+The subsequent uncommitted guarded artifact Call admission delta preserves inline
+byte/contract guards and adds exact candidate/provenance/association/reference,
+SHA/length/media, available lifecycle and current expiry checks. Candidate SHARE
+precedes provenance SHARE, then artifact SHARE, through existing CAS/seal owners.
+It removes only the operational artifact refusal under the accepted trusted-module
+contract. Source review and live protected SQL acceptance/COMMIT qualification
+remain open; offline grammar and ordinary adapter tests do not establish them.
 
 Coordinator storage is composed once only for an actual release-admitted native
 read owner. Retained/native-OFF startup/readiness/drain do not construct or check
@@ -71,7 +81,9 @@ still refuses complete artifact/Wait/structured attempt sources, artifact
 hydration/general prepared-result wiring and paused SQL qualification. The separately
 authorized decision-only commit `81a5f9d` records detail retirement; the reviewed
 minimum-inline source work and replay/family-unit clarifications are recorded
-in `eb8c9def`. The artifact follow-on remains uncommitted. No push was performed,
+in `eb8c9def`. The reviewed artifact preparation/hydration follow-on is recorded in
+`c5d5a47f`; its separate authority clarification is `ab698158`. Guarded artifact
+admission follow-on source remains uncommitted and unqualified. No push was performed,
 and the branch has no upstream.
 
 The actual Call-material adapter additionally passes eight tests for immutable
@@ -182,9 +194,11 @@ No node or preview artifact capability receives this framework-only dependency.
       object-store adapter and persistence callbacks (not real SQL authority).
 - [ ] Implement and qualify native persistent artifact reservation/provenance,
       source-reference hydration, coordinator result integration and retention.
-- [ ] Review the artifact attempt/coordinator source follow-on and independent
-      precommit Call validation; close the protected artifact admission semantic
-      authority gap without decoded values in write transactions or truth flags.
+- [x] Review and record the bounded artifact attempt/coordinator source follow-on
+      and accept the trusted precommit/SQL identity distinction (`c5d5a47f`,
+      `ab698158`); the stronger arbitrary-worker-command guarantee remains unclaimed.
+- [ ] Review the guarded artifact Call admission source delta and independently
+      qualify protected acceptance/atomicity/COMMIT behavior when permitted.
 - [x] Accept the concrete ADR065 native artifact owner amendment and contract
       delta through primary and independent design review before persistent code.
 - [x] Separate producer slots and coordinator pre/post-CAS result identity from

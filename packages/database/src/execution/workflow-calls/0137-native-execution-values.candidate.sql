@@ -2552,6 +2552,8 @@ DECLARE
   v_version app.workflow_versions%ROWTYPE; v_callee app.workflow_versions%ROWTYPE;
   v_input app.workflow_execution_value_provenance%ROWTYPE;
   v_path uuid[]; v_index integer; v_deadline timestamptz; v_stop text; v_pin jsonb; v_sites integer;
+  v_candidate app.workflow_execution_value_artifact_candidates%ROWTYPE;
+  v_artifact app.artifacts%ROWTYPE;
 BEGIN
   IF p_revision IS NULL OR p_revision NOT BETWEEN 0 AND 2147483646
     OR p_invocation IS NULL OR octet_length(p_invocation) NOT BETWEEN 1 AND 256 THEN
@@ -2628,6 +2630,12 @@ BEGIN
     AND version.workflow_id=(v_pin->>'workflowId')::uuid AND version.id=(v_pin->>'versionId')::uuid
     AND version.checksum=v_pin->>'checksum' AND version.schema_version=2 AND version.executable_schema_version=3;
   IF NOT FOUND THEN RAISE EXCEPTION 'native Call pinned callee is missing' USING ERRCODE='23514'; END IF;
+  -- Existing producer ordering: candidate before provenance, artifact after it.
+  -- These SHARE locks preserve accepted identity/availability through the final
+  -- CAS/seal owner; no external byte I/O or semantic attestation runs in SQL.
+  SELECT * INTO v_candidate FROM app.workflow_execution_value_artifact_candidates candidate
+    WHERE candidate.workspace_id=v_workspace AND candidate.attempt_id=v_attempt.id
+      AND candidate.value_slot='attempt_input' FOR SHARE;
   SELECT * INTO v_input FROM app.workflow_execution_value_provenance provenance
     WHERE provenance.workspace_id=v_workspace AND provenance.attempt_id=v_attempt.id
       AND provenance.value_slot='attempt_input' FOR SHARE;
@@ -2646,10 +2654,42 @@ BEGIN
     -- not the caller's declaration or an input-reference-shaped payload.
     PERFORM app.assert_native_callable_value(v_callee.executable_json#>'{graph,callable,input}',
       v_input.original_reference->'value');
+  ELSIF v_input.reference_kind='artifact' THEN
+    -- ADR065 accepted external-artifact authority: the trusted canonical
+    -- precommit module independently hydrates and validates against the exact
+    -- pinned callee. SQL binds that work to current accepted facts, not a caller
+    -- truth flag/hash, and does not prove arbitrary credential holders ran it.
+    IF (v_input.original_reference=jsonb_build_object('schemaVersion',1,'kind','artifact',
+        'artifactId',v_input.artifact_id) AND v_input.original_inline_text IS NULL
+      AND v_candidate.artifact_id=v_input.artifact_id AND v_candidate.abandoned_at IS NULL
+      AND v_candidate.workflow_run_id=p_parent AND v_candidate.workflow_version_id=v_run.workflow_version_id
+      AND v_candidate.node_run_id=v_node.id AND v_candidate.node_id=v_node.node_id
+      AND v_candidate.invocation_key=p_invocation AND v_candidate.attempt_number=1
+      AND v_candidate.sha256=v_input.sha256 AND v_candidate.byte_length=v_input.byte_length
+      AND v_candidate.media_type=v_input.media_type
+      AND EXISTS(SELECT 1 FROM app.workflow_execution_value_artifact_associations association
+        WHERE association.workspace_id=v_workspace AND association.provenance_id=v_input.id
+          AND association.candidate_id=v_candidate.id AND association.artifact_id=v_input.artifact_id
+          AND association.workflow_run_id=p_parent AND association.workflow_version_id=v_run.workflow_version_id
+          AND association.node_run_id=v_node.id AND association.node_id=v_node.node_id
+          AND association.invocation_key=p_invocation AND association.attempt_id=v_attempt.id
+          AND association.attempt_number=1 AND association.value_slot='attempt_input'
+          AND association.sha256=v_input.sha256 AND association.byte_length=v_input.byte_length
+          AND association.media_type=v_input.media_type)) IS NOT TRUE THEN
+      RAISE EXCEPTION 'native Call accepted artifact identity differs' USING ERRCODE='55000';
+    END IF;
+    SELECT * INTO v_artifact FROM app.artifacts artifact
+      WHERE artifact.workspace_id=v_workspace AND artifact.id=v_input.artifact_id FOR SHARE;
+    IF NOT FOUND OR (v_artifact.status='available' AND v_artifact.deleted_at IS NULL
+      AND v_artifact.finalized_at IS NOT NULL AND isfinite(v_artifact.expires_at)
+      AND v_artifact.expires_at>clock_timestamp() AND v_artifact.purpose='execution-value'
+      AND v_artifact.sha256=v_input.sha256 AND v_artifact.byte_length=v_input.byte_length
+      AND v_artifact.media_type=v_input.media_type
+      AND v_artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||v_artifact.id::text) IS NOT TRUE THEN
+      RAISE EXCEPTION 'native Call accepted artifact is unavailable' USING ERRCODE='55000';
+    END IF;
   ELSE
-    -- The minimum path is inline. Unsupported artifact admission is operational,
-    -- never a definite refusal or reinterpretation of the accepted producer.
-    RAISE EXCEPTION 'native Call artifact admission is unavailable' USING ERRCODE='55000';
+    RAISE EXCEPTION 'native Call accepted input reference differs' USING ERRCODE='55000';
   END IF;
   IF NOT EXISTS(SELECT 1 FROM app.run_events event WHERE event.workspace_id=v_workspace
     AND event.workflow_run_id=p_parent AND event.type='node.succeeded'
@@ -2657,6 +2697,10 @@ BEGIN
     AND event.payload->>'invocationKey'=p_invocation AND event.payload->>'nodeId'=v_node.node_id
     AND event.payload->'attemptNumber'='1'::jsonb) THEN
     RAISE EXCEPTION 'native Call physical completion fact is missing' USING ERRCODE='23514';
+  END IF;
+  IF v_input.eligible_until<=clock_timestamp()
+    OR (v_input.reference_kind='artifact' AND v_artifact.expires_at<=clock_timestamp()) THEN
+    RAISE EXCEPTION 'native Call accepted input expired during admission' USING ERRCODE='55000';
   END IF;
   RETURN jsonb_build_object('workspaceId',v_workspace,'parentRunId',p_parent,
     'parentVersionId',v_run.workflow_version_id,'rootRunId',v_path[array_length(v_path,1)],
