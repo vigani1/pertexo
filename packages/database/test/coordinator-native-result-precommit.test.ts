@@ -92,6 +92,8 @@ class ResultClient extends EventEmitter {
     private readonly wrongFingerprint = false,
     private readonly sourceMode?: 'run_input' | 'wrong_source',
     private readonly fresh = false,
+    private readonly recoveryPlan = plan,
+    private readonly recoveryDrift?: 'checkpoint' | 'version' | 'delivery',
   ) {
     super();
   }
@@ -122,7 +124,13 @@ class ResultClient extends EventEmitter {
         rows: [
           {
             result: this.stop
-              ? { kind: 'stopped', stop: { kind: 'stale', revision: 1 } }
+              ? {
+                  kind: 'stopped',
+                  stop:
+                    this.recoveryPlan === plan
+                      ? { kind: 'stale', revision: 1 }
+                      : { kind: 'unavailable', reason: 'control_read_failed' },
+                }
               : {
                   kind: 'active',
                   databaseNow: '2026-10-04T00:00:00Z',
@@ -219,7 +227,10 @@ class ResultClient extends EventEmitter {
             job_name: 'advance-workflow-run',
             schema_version: 1,
             payload,
-            payload_checksum: delivery.payloadChecksum,
+            payload_checksum:
+              this.recoveryDrift === 'delivery'
+                ? 'f'.repeat(64)
+                : delivery.payloadChecksum,
           },
         ],
       };
@@ -236,17 +247,27 @@ class ResultClient extends EventEmitter {
                   nextEventSequence: 2,
                 }
               : (JSON.parse(
-                  serializeCoordinatorCheckpoint(plan.checkpoint),
+                  serializeCoordinatorCheckpoint(
+                    this.recoveryDrift === 'checkpoint'
+                      ? {
+                          ...this.recoveryPlan.checkpoint,
+                          remainingIterationBudget: 999,
+                        }
+                      : this.recoveryPlan.checkpoint,
+                  ),
                 ) as unknown),
             last_transition_fingerprint: this.wrongFingerprint
               ? 'f'.repeat(64)
               : transitionFingerprint({
-                  plan,
+                  plan: this.recoveryPlan,
                   workflowVersionId: id(3),
                   traceparent: undefined,
                 }),
-            workflow_version_id: id(3),
-            status: this.fresh ? 'running' : 'succeeded',
+            workflow_version_id:
+              this.recoveryDrift === 'version' ? id(8) : id(3),
+            status: this.fresh
+              ? 'running'
+              : this.recoveryPlan.checkpoint.runStatus,
             cancel_requested_at: null,
             deadline_expired: false,
             trigger_type: 'manual',
@@ -293,8 +314,17 @@ function start(
   scope?: NativeCoordinatorResultPreparationScope,
   hydrate?: NativeCoordinatorResultSourceHydrator,
   prepareValue?: NativeCoordinatorResultValuePreparer,
+  recoveryPlan = plan,
+  recoveryDrift?: 'checkpoint' | 'version' | 'delivery',
 ) {
-  const client = new ResultClient(stop, wrongFingerprint, sourceMode, fresh);
+  const client = new ResultClient(
+    stop,
+    wrongFingerprint,
+    sourceMode,
+    fresh,
+    recoveryPlan,
+    recoveryDrift,
+  );
   const pool = {
     options: { connectionTimeoutMillis: 100 },
     connect: (callback?: (error: undefined, client: PoolClient) => void) => {
@@ -310,7 +340,7 @@ function start(
       runId: id(2),
       workflowVersionId: id(3),
       delivery,
-      plan,
+      plan: recoveryPlan,
       signal: new AbortController().signal,
     },
     {
@@ -619,4 +649,91 @@ describe('native result precommit through actual tenant and CAS composition', ()
     const { result } = await execute(true, true);
     expect(result).toEqual({ kind: 'stale', revision: 1 });
   });
+  it.each([
+    'exact',
+    'fingerprint',
+    'checkpoint',
+    'version',
+    'delivery',
+  ] as const)(
+    'keeps terminal artifact-bound ForEach lost-response recovery %s on the exact locked plan owner',
+    async (kind) => {
+      const rejectedPlan = parseTransitionPlan({
+        expectedRevision: 0,
+        expectedNextEventSequence: 2,
+        consumedThroughEventSequence: 2,
+        checkpoint: {
+          ...checkpoint,
+          runStatus: 'failed',
+          nextEventSequence: 5,
+          admittedInvocationKeys: ['loop'],
+          invocations: [
+            {
+              invocationKey: 'loop',
+              nodeId: 'loop',
+              status: 'failed',
+              attemptNumber: 1,
+            },
+          ],
+        },
+        events: [
+          {
+            schemaVersion: 1,
+            sequence: 3,
+            name: 'node.failed',
+            invocationKey: 'loop',
+            nodeId: 'loop',
+            attemptNumber: 1,
+            reasonCode: 'loop_limit_exceeded',
+            occurredAt: '2026-10-04T00:00:00.000Z',
+          },
+          {
+            schemaVersion: 1,
+            sequence: 4,
+            name: 'run.failed',
+            occurredAt: '2026-10-04T00:00:00.000Z',
+          },
+        ],
+        nodeRunAdmissions: [],
+        attempts: [],
+      });
+      let valueWork = false;
+      const operation = start(
+        true,
+        kind === 'fingerprint',
+        undefined,
+        false,
+        () => {
+          valueWork = true;
+          throw new Error('Terminal value work is forbidden');
+        },
+        undefined,
+        undefined,
+        rejectedPlan,
+        kind === 'checkpoint' || kind === 'version' || kind === 'delivery'
+          ? kind
+          : undefined,
+      );
+      if (kind === 'exact')
+        await expect(operation.result).resolves.toEqual({
+          kind: 'already_committed',
+          revision: 1,
+        });
+      else if (kind === 'fingerprint' || kind === 'checkpoint')
+        await expect(operation.result).resolves.toEqual({
+          kind: 'stale',
+          revision: 1,
+        });
+      else await expect(operation.result).rejects.toThrow();
+      expect(valueWork).toBe(false);
+      expect(
+        operation.client.sql.some(
+          (sql) =>
+            sql.includes('load_native_coordinator_control_sources') ||
+            sql.includes('read_native_coordinator_control_source') ||
+            sql.includes('lock_native_coordinator_control_sources'),
+        ),
+      ).toBe(false);
+    },
+  );
 });

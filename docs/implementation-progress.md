@@ -164,7 +164,8 @@ At that reviewed source-read checkpoint the final writer still refused general
 selectors and artifact-result persistence; the newer uncommitted composition below
 does not qualify them or the unfinished structured declaration/pre-CAS work.
 
-Native artifact/general result composition is now uncommitted and awaiting review.
+Native artifact/general result composition is reviewed and recorded
+(`4704b5db`) but remains unqualified.
 Current result-candidate preparation independently reproves actual delivery,
 pre/post revision and controls, preserves workspace/ancestor/current-run-checkpoint/
 existing-receipt ordering, and reserves only bytes. It does not claim a receipt or
@@ -193,12 +194,40 @@ passes only syntax. The initial result-owner fixture expected a different JSON
 key order; correcting that fixture did not change production behavior. One new
 runtime complexity hotspot was removed through cohesive evaluator-forwarding and
 storage-binding ownership; the same five inherited hotspots still fail.
-This source remains unreviewed/unqualified: protected SQL, actual quota/uncertain
+This source remains unqualified: protected SQL, actual quota/uncertain
 COMMIT/CAS recovery, final-validation/COMMIT clock behavior and structured
 coordinator declaration/pre-CAS work remain open. NativeOFF/SQLPAUSED, unregistered
 Fresh0137 and its first installation abort are unchanged.
 
 Minimum native Call executable path (source is not qualification):
+
+Native coordinator structured-control integration is now reviewable WIP after
+`4704b5db`, not a completed or qualified F08 checkpoint. Actual metadata-only
+inventory/per-source read ports, serial original-byte codec hydration, private
+bounded engine preparation, independent fresh precommit semantics and final
+exact-source fences are integrated. The accepted ADR065 control-only clarification
+separates physical success from logical ForEach cancellation/timeout, with no new
+collection/loop/join/admission or declaration budget debit. Final acceptance
+independently binds actual persisted controls/database deadline, pinned scope,
+locked current physical attempt and original output; active descendant accounting
+and unknown-effect priority remain intact. Four initial engine regression failures
+proved the cancellation stall/deadline-demand bug before the repair; native
+control regressions and active-loop reconciliation now pass.
+
+One whole source unit run passed engine49/737 and database182/1707 before the final
+physical-scope/Parallel-inline guard addition; subsequent affected database tests
+and builds/typechecks pass. The actual handler/native engine/built tenant-CAS
+adapter matrix passes20 cases for ForEach/Branch/Parallel cancellation/deadline,
+inline/artifact (Parallel inline only), simulated committed-response loss and
+repeated exact delivery, without demand, duplicate writes or declaration debit.
+Its PostgreSQL rows/clock/COMMIT reply are externally simulated; it does not prove
+protected SQL, real locks, concurrency, clocks or persistence. Source codec,
+precommit, replay-mismatch and handler tests remain separate ordinary evidence.
+New owned preparation/output-ownership/commit hotspots were cohesively removed;
+the five inherited complexity failures remain visible, with no waiver. Exact
+source freeze/review/commit and all previously listed live qualification gates
+remain open. Fresh0137 is uninstalled/unregistered, screened SQL PAUSED and native
+catalogs/execution/writers OFF; no push or full-F08 completion is claimed.
 
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |

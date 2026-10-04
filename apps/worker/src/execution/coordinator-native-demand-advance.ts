@@ -14,6 +14,8 @@ import {
   hydrateCoordinatorCallDeclarations,
   type createCoordinatorCallDeclarationHydration,
 } from './coordinator-call-declaration-hydration.js';
+import type { createCoordinatorControlSourceHydration } from './coordinator-control-source-hydration.js';
+import { createCoordinatorControlDeclarationLoader } from './coordinator-control-demand.js';
 
 export type CoordinatorNativeValueWork = Readonly<{
   policy: CoordinatorValueWorkPolicy;
@@ -23,6 +25,9 @@ export type CoordinatorNativeValueWork = Readonly<{
   hydrateSource?: ReturnType<
     typeof createWorkflowExecutionValueCodec
   >['hydrateSource'];
+  hydrateControlSource?: ReturnType<
+    typeof createCoordinatorControlSourceHydration
+  >;
 }>;
 
 /** One lazy demand scope remains owned until engine evaluation has joined. */
@@ -75,10 +80,22 @@ export async function advanceNativeCoordinator(
           valueWork.hydrateCallDeclaration,
         );
       }
+      const loadControl = createCoordinatorControlDeclarationLoader({
+        owner,
+        window: input.advance.controlDeclarations,
+        session,
+        runStore: input.runStore,
+        readTimeoutMillis: valueWork.policy.controlReadTimeoutMillis,
+        hydrate: valueWork.hydrateControlSource,
+      });
       const advanced = await input.engine.advance({
         ...input.advance,
         ...(workflowCalls === undefined ? {} : { workflowCalls }),
         signal: session.signal,
+        loadCoordinatorControlDeclaration: (identity, signal) => {
+          demandState.started = true;
+          return loadControl(identity, signal);
+        },
         loadCallableCompletion: (demand, signal) => {
           demandState.started = true;
           if (

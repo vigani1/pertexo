@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createCoordinatorResultPreparationScope } from '../src/execution/coordinator-result-preparation-scope.js';
 import { CoordinatorValueWorkStoppedError } from '../src/execution/coordinator-handler.js';
 import type { NativeCoordinatorValueOwner } from '@pertexo/database/execution';
+import { CallableCompletionStoppedError } from '@pertexo/workflow-model/workflow-call-contract';
 
 const owner: NativeCoordinatorValueOwner = {
   workspaceId: '00000000-1111-4111-8111-111111111111',
@@ -25,6 +26,20 @@ const policy = {
 };
 
 describe('actual framework precommit scope composition', () => {
+  it('propagates the shared database typed-stop through the actual worker lifetime', async () => {
+    const scope = createCoordinatorResultPreparationScope(policy);
+    const stop = { kind: 'unavailable', reason: 'source_read_failed' } as const;
+    await expect(
+      scope(
+        {
+          owner,
+          signal: new AbortController().signal,
+          inspectOwner: () => Promise.resolve(active),
+        },
+        () => Promise.reject(new CallableCompletionStoppedError(stop)),
+      ),
+    ).rejects.toMatchObject({ name: 'CoordinatorValueWorkStoppedError', stop });
+  });
   it('initializes independent owner inspection even for literal preparation and rechecks before material escapes', async () => {
     const scope = createCoordinatorResultPreparationScope(policy);
     let inspections = 0;

@@ -12,8 +12,11 @@ import type {
   ReadCallableCompletionSource,
   NativeCoordinatorValueOwner,
   ReadCoordinatorCallDeclaration,
+  LoadCoordinatorControlSources,
+  ReadCoordinatorControlSource,
 } from './coordinator-native-value-read-contract.js';
 import { parseCoordinatorArtifactCallDeclarationRow } from './coordinator-call-declaration-source.js';
+import { parseCoordinatorControlDeclarationInventory } from './coordinator-control-declaration-source.js';
 
 const ownerSchema = z
   .object({
@@ -89,6 +92,8 @@ export function createNativeCoordinatorValueReads(
   loadCallableCompletionSources: LoadCallableCompletionSources;
   readCallableCompletionSource: ReadCallableCompletionSource;
   readCoordinatorCallDeclaration: ReadCoordinatorCallDeclaration;
+  loadCoordinatorControlSources: LoadCoordinatorControlSources;
+  readCoordinatorControlSource: ReadCoordinatorControlSource;
 }> {
   parseNativeCoordinatorControlReadTimeoutMillis(controlReadTimeoutMillis);
 
@@ -146,6 +151,52 @@ export function createNativeCoordinatorValueReads(
   }
 
   return Object.freeze({
+    loadCoordinatorControlSources: async (input) => {
+      const response = await read(
+        input,
+        'select app.load_native_coordinator_control_sources($1::jsonb,$2::integer) as result',
+        [String(input.lastSequence)],
+        'source_read_failed',
+      );
+      const stopped = stoppedSchema.safeParse(response);
+      if (stopped.success) return stopped.data;
+      return Object.freeze({
+        kind: 'ready',
+        sources: parseCoordinatorControlDeclarationInventory(
+          readySchema.parse(response).projection,
+          input.owner,
+          input.expected,
+        ),
+      });
+    },
+    readCoordinatorControlSource: async (input) => {
+      const response = await read(
+        input,
+        'select app.read_native_coordinator_control_source($1::jsonb,$2::jsonb) as result',
+        [serializeWorkflowExecutionJsonValueV3(input.source)],
+        'source_read_failed',
+      );
+      const stopped = stoppedSchema.safeParse(response);
+      if (stopped.success) return stopped.data;
+      const valueSource = parseNativeNodeAttemptValueSource(
+        sourceSchema.parse(response).valueSource,
+      );
+      const expected = input.source.valueSource;
+      const snapshot = valueSource.snapshot;
+      const reference =
+        snapshot.reference.kind === 'inline'
+          ? { schemaVersion: 1, kind: 'inline' }
+          : snapshot.reference;
+      if (
+        valueSource.slot !== expected.slot ||
+        !isDeepStrictEqual(valueSource.source, expected.source) ||
+        !isDeepStrictEqual(reference, expected.valueIdentity.reference) ||
+        snapshot.sha256 !== expected.valueIdentity.sha256 ||
+        snapshot.byteLength !== expected.valueIdentity.byteLength
+      )
+        throw new TypeError('Native control accepted source identity differs');
+      return Object.freeze({ kind: 'ready', valueSource });
+    },
     readCoordinatorCallDeclaration: async (input) => {
       const response = await read(
         input,

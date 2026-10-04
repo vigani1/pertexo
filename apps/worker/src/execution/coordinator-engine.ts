@@ -67,6 +67,12 @@ export function createCoordinatorAdvanceEngine(
           checkpoint: input.checkpoint,
           observations: input.observations,
           completedOutputs: input.completedOutputs,
+          ...(input.loadCoordinatorControlDeclaration === undefined
+            ? {}
+            : {
+                loadCoordinatorControlDeclaration:
+                  input.loadCoordinatorControlDeclaration,
+              }),
           ...(input.callableCompletion === undefined
             ? {}
             : {

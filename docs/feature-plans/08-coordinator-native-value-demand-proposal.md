@@ -257,6 +257,66 @@ stale; demand scope has no complete plan proof and cannot claim already_committe
 Uncertain COMMIT does not return a fabricated control outcome: existing durable
 receipt/result truth must resolve whether acceptance won.
 
+## Native control-only settlement clarification — ACCEPTED, 2026-10-04
+
+The coordinating primary accepted the bounded direction after full review of
+this exact two-file documentation delta on 2026-10-04, with the matching
+[ADR065 clarification](../adr/065-durable-parent-child-workflow-calls.md#native-control-only-settlement-clarification--accepted-2026-10-04).
+This supersedes any reading of the retry language above that
+would leave an already-authenticated native cancellation/deadline to exhaust
+queue retries merely because declaration value reads correctly refuse it.
+
+For Graph2/executable3/Checkpoint3 only, an advance with authenticated current
+control truth consumes the exact fresh physical-success facts and cursor through
+a control-only transition, with no declaration value demand or new value scope.
+Physical success and logical declaration outcome are separate: a fresh ForEach
+declaration becomes logically `canceled` or `timed_out`, retaining its successful
+physical attempt and original output/provenance. No collection, iteration count,
+checksum, loop, reservation or budget charge is manufactured. Fresh Branch/Parallel
+selection/join/admissions that never started are suppressed; this does not erase
+existing active joins, loops, descendant work or their truthful reconciliation.
+Unknown effects retain priority, and run termination waits for existing active
+work to reconcile. Stops during genuine value work still abort/join and use the
+existing retry transport; the next authorized advance must settle actual controls
+without demanding those never-started declarations, not depend on retry exhaustion.
+
+Independent final CAS validation derives the actual immutable control pin and
+scope, current physical-success attempt/output ownership and exact authenticated
+unconsumed fact window from locked persisted state. It independently proves actual
+persisted cancellation or expiry using the database deadline/clock under existing
+workspace/ancestor/run/checkpoint and delivery fences. Proposed checkpoint status,
+summary, supplied stop or collection metadata is not authority. Wrong/future
+facts, changed attempt/scope/pin, and cancellation/deadline races fail closed.
+The control-only path adds no terminal source read, lifetime reset, pool, evaluator,
+public verification flag or framework; original physical output/provenance remains
+intact. Existing active-control validation and unknown-effect precedence remain.
+
+The native deadline projection deliberately no longer creates an unused ForEach
+loop/count/checksum or debits its iteration budget; it no longer creates an unused
+Parallel join/merge admission. Events record the logical canceled/timed-out
+declaration and, only after reconciliation, the run outcome, with exact sequence
+and cursor accounting. Native ForEach cancellation must progress rather than
+leave the successful fact consumed while declaration/run remain running. Retained
+Graph1/executable2/Checkpoint1/2 eager behavior is unchanged. Exact uncertain-COMMIT
+recovery still requires the full existing delivery/pin/version, post-revision,
+fingerprint and checkpoint binding: no old plan is silently rewritten, no receipt
+alone is proof, and no historical source read is granted. Mixed old/new native
+writers remain excluded by the existing readiness/write barrier until review and
+qualification; native execution stays OFF.
+
+Required ordinary regressions cover fresh ForEach/Branch/Parallel cancellation
+and deadline with no value demand, truthful handler/commit control settlement
+under existing ownership gates and acknowledgment semantics instead of retry
+exhaustion (never unconditional success), exact events/cursor and logical/physical outcomes, unchanged
+original output/provenance and no new declaration budget debit, no fresh admissions, and preserved active
+loops/joins/descendants including unknown effects and delayed run termination.
+Existing active work/reconciliation retains its established budget accounting.
+Final-owner negatives cover wrong/future facts, physical attempt/pin/scope drift
+and cancellation/deadline races; retained and exact-plan replay cases stay intact.
+Ordinary adapters and offline SQL parsing do not qualify protected SQL execution,
+concurrency or database-clock behavior. Fresh0137 remains uninstalled/unregistered,
+screened qualification PAUSED and full F08 incomplete.
+
 ## Receipt first, independent computation, authoritative recheck
 
 Before source I/O, parse/validate the proposed plan as today and compute the

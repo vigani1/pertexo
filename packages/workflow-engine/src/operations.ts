@@ -14,16 +14,10 @@ import {
 import { advanceWorkflowFromSchedulerState } from './transition/advance-workflow.js';
 import { WorkflowEngineError } from './errors.js';
 import { resolveAttemptFailures } from './observation/coordinator-failures.js';
-import {
-  branchSelectionObservations,
-  mergeCoordinatorObservations,
-} from './observation/coordinator-observations.js';
-import { forEachCoordinatorObservations } from './observation/coordinator-loop-observations.js';
-import {
-  indexPersistedSuccessfulOutcomes,
-  parseCompletedOutputItems,
-  parseCompletedOutputItemsV3,
-} from './observation/coordinator-output.js';
+import { mergeCoordinatorObservations } from './observation/coordinator-observations.js';
+import { prepareCoordinatorControlObservations } from './observation/control-observation-preparation.js';
+import type { LoadCoordinatorControlDeclaration } from './observation/control-declaration-demand.js';
+import { indexPersistedSuccessfulOutcomes } from './observation/coordinator-output.js';
 import { executableNodes } from './compilation/executable-graph.js';
 import {
   normalizeBoundedEngineJson,
@@ -86,6 +80,7 @@ export interface AdvanceWorkflowInput {
   readonly checkpoint: unknown;
   readonly observations?: unknown;
   readonly completedOutputs?: unknown;
+  readonly loadCoordinatorControlDeclaration?: LoadCoordinatorControlDeclaration;
   readonly callableCompletion?: WorkflowCallableCompletionMaterial;
   readonly loadCallableCompletion?: LoadCallableCompletion;
   readonly callableExpressionEvaluator?: ExpressionEvaluator;
@@ -139,6 +134,14 @@ export async function advanceWorkflow(
   assertNotAborted(input.signal);
   const checkpoint = parseCheckpoint(input.checkpoint);
   const callExecutable = isAuthenticExecutableIdentityV3(input.executable);
+  if (
+    input.loadCoordinatorControlDeclaration !== undefined &&
+    (!callExecutable || input.completedOutputs !== undefined)
+  )
+    operationError(
+      'observation_invalid',
+      'native control demand conflicts with eager or retained material',
+    );
   if (callExecutable !== (checkpoint.schemaVersion === 3))
     operationError(
       'workflow_identity_invalid',
@@ -180,17 +183,8 @@ export async function advanceWorkflow(
     input.observations,
     checkpoint,
   );
-  const completedOutputItems = callExecutable
-    ? parseCompletedOutputItemsV3(input.completedOutputs)
-    : parseCompletedOutputItems(input.completedOutputs);
   const successfulOutcomes = indexPersistedSuccessfulOutcomes(
     persistedObservations.facts,
-  );
-  const branchSelections = branchSelectionObservations(
-    completedOutputItems,
-    successfulOutcomes,
-    invocationsByKey,
-    nodesById,
   );
   const controlCanceled =
     checkpoint.cancelRequested ||
@@ -200,6 +194,20 @@ export async function advanceWorkflow(
   const controlDeadline =
     checkpoint.deadlineExpired ||
     persistedObservations.deadlineExpiration !== undefined;
+  const controls = await prepareCoordinatorControlObservations({
+    native: callExecutable,
+    completedOutputs: input.completedOutputs,
+    load: input.loadCoordinatorControlDeclaration,
+    signal: input.signal,
+    outcomes: successfulOutcomes,
+    checkpoint,
+    invocations: invocationsByKey,
+    nodes: nodesById,
+    persistedFacts: persistedObservations.facts,
+    controlCanceled,
+    controlDeadline,
+  });
+  const branchSelections = controls.branchSelections;
   const resolvedFailures = resolveAttemptFailures({
     runId: input.runId,
     failures: persistedObservations.attemptFailures,
@@ -220,15 +228,7 @@ export async function advanceWorkflow(
         }
       : {}),
   });
-  const forEach = forEachCoordinatorObservations(
-    completedOutputItems,
-    persistedObservations.facts,
-    successfulOutcomes,
-    checkpoint,
-    invocationsByKey,
-    nodesById,
-    resolvedFailures,
-  );
+  const forEach = controls.forEach(resolvedFailures);
   const calls = isAuthenticExecutableIdentityV3(input.executable)
     ? workflowCallCoordinatorControls({
         executable: input.executable,
@@ -253,6 +253,7 @@ export async function advanceWorkflow(
     checkpoint,
     [...executionObservations, ...resolvedFailures],
     nodesById,
+    callExecutable && (controlCanceled || controlDeadline),
   );
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,

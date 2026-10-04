@@ -245,12 +245,13 @@ describe('actual coordinator observation read adapter before native demand', () 
         state: {
           checkpoint: source.checkpoint,
           observations: [],
-          completedOutputs: [],
+          controlDeclarations: { lastSequence: 0, identities: [] },
           workflowCalls: { declarations: [], facts: [] },
         },
       });
       if (result.kind !== 'ready') throw new Error('Expected ready state');
       expect(result.state).not.toHaveProperty('callableCompletion');
+      expect(result.state).not.toHaveProperty('completedOutputs');
       expect(source.decodeInput).not.toHaveBeenCalled();
       expect(
         source.query.mock.calls.some(([sql]) =>

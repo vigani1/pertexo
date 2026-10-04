@@ -14,7 +14,7 @@ import type {
   NativeCoordinatorValueOwner,
 } from './coordinator-native-value-read-contract.js';
 
-const valueIdentity = z
+export const nativeCallableValueIdentitySchema = z
   .object({
     reference: z.discriminatedUnion('kind', [
       z
@@ -36,7 +36,7 @@ const valueIdentity = z
 const projectionSchema = z
   .object({
     runInput: nativeRunInputSourceMetadataSchema
-      .extend({ valueIdentity })
+      .extend({ valueIdentity: nativeCallableValueIdentitySchema })
       .strict()
       .nullable(),
     outputs: z
@@ -46,7 +46,7 @@ const projectionSchema = z
             invocationKey: z.string().min(1).max(256),
             output: persistedWorkflowOutputReferenceSchemaV3,
             valueSource: nativeUpstreamOutputSourceMetadataSchema
-              .extend({ valueIdentity })
+              .extend({ valueIdentity: nativeCallableValueIdentitySchema })
               .strict(),
           })
           .strict(),

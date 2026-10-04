@@ -1,5 +1,6 @@
 import type { ValueSource } from '@pertexo/workflow-model/graph-contract';
 import {
+  CallableCompletionStoppedError,
   callableValueWorkStopSchema,
   type CallableValueWorkStop,
 } from '@pertexo/workflow-model/workflow-call-contract';
@@ -36,12 +37,7 @@ export type LoadCallableCompletion = (
   signal: AbortSignal,
 ) => Promise<CallableMaterialDemandResult>;
 
-export class CallableCompletionStoppedError extends Error {
-  public override readonly name = 'CallableCompletionStoppedError';
-  public constructor(readonly stop: CallableValueWorkStop) {
-    super(`Callable value work stopped: ${stop.kind}`);
-  }
-}
+export { CallableCompletionStoppedError };
 
 function assertDemandNotAborted(signal: AbortSignal): void {
   if (signal.aborted)

@@ -4392,6 +4392,276 @@ REVOKE ALL ON FUNCTION app.read_native_coordinator_value_source(jsonb,jsonb)
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}};
 GRANT EXECUTE ON FUNCTION app.read_native_coordinator_value_source(jsonb,jsonb) TO {{worker_runtime_role}};
 
+-- Control declaration inventory is current unconsumed physical truth, not a
+-- callable root selector or a caller-provided prepared semantic summary.
+CREATE FUNCTION app.native_coordinator_control_inventory(p_owner jsonb,p_last_sequence integer)
+RETURNS jsonb LANGUAGE plpgsql
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_workspace uuid:=(p_owner->>'workspaceId')::uuid;
+  v_run uuid:=(p_owner->>'runId')::uuid;
+  v_version app.workflow_versions%ROWTYPE;
+  v_checkpoint app.run_checkpoints%ROWTYPE;
+  v_event app.run_events%ROWTYPE;
+  v_node app.node_runs%ROWTYPE;
+  v_attempt app.node_attempts%ROWTYPE;
+  v_source app.workflow_execution_value_provenance%ROWTYPE;
+  v_first integer; v_high_water integer; v_count integer; v_matches integer;
+  v_pin jsonb; v_invocation jsonb; v_scopes jsonb; v_scope jsonb; v_loop jsonb;
+  v_ancestor_ids jsonb; v_prefix jsonb; v_index integer; v_kind text;
+  v_output jsonb; v_identity jsonb; v_metadata jsonb;
+  v_result jsonb:='[]'::jsonb;
+BEGIN
+  SELECT * INTO STRICT v_checkpoint FROM app.run_checkpoints checkpoint
+    WHERE checkpoint.workspace_id=v_workspace AND checkpoint.workflow_run_id=v_run
+      AND checkpoint.workflow_version_id=(p_owner->>'workflowVersionId')::uuid
+      AND checkpoint.revision=(p_owner->>'expectedRevision')::integer
+      AND checkpoint.scheduler_state->'schemaVersion'='3'::jsonb;
+  SELECT * INTO STRICT v_version FROM app.workflow_versions version
+    WHERE version.workspace_id=v_workspace AND version.id=v_checkpoint.workflow_version_id
+      AND version.schema_version=2 AND version.executable_schema_version=3;
+  v_first:=(v_checkpoint.scheduler_state->>'nextEventSequence')::integer;
+  SELECT coalesce(max(event.sequence),0)::integer INTO v_high_water FROM app.run_events event
+    WHERE event.workspace_id=v_workspace AND event.workflow_run_id=v_run;
+  IF (v_first>=1 AND p_last_sequence BETWEEN v_first-1 AND v_high_water
+    AND p_last_sequence-v_first+1<=10000) IS NOT TRUE THEN
+    RAISE EXCEPTION 'native control cursor window differs' USING ERRCODE='23514';
+  END IF;
+  SELECT count(*)::integer INTO v_count FROM app.run_events event
+    WHERE event.workspace_id=v_workspace AND event.workflow_run_id=v_run
+      AND event.sequence BETWEEN v_first AND p_last_sequence;
+  IF v_count<>p_last_sequence-v_first+1 THEN
+    RAISE EXCEPTION 'native control fact window is incomplete' USING ERRCODE='23514';
+  END IF;
+  FOR v_event IN SELECT event.* FROM app.run_events event
+    WHERE event.workspace_id=v_workspace AND event.workflow_run_id=v_run
+      AND event.sequence BETWEEN v_first AND p_last_sequence AND event.type='node.succeeded'
+    ORDER BY event.sequence
+  LOOP
+    SELECT count(*)::integer,(jsonb_agg(invocation))->0 INTO v_matches,v_invocation
+      FROM jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation
+      WHERE invocation->>'invocationKey'=v_event.payload->>'invocationKey';
+    IF v_matches<>1 OR v_event.payload->'schemaVersion' IS DISTINCT FROM '1'::jsonb
+      OR v_invocation->>'nodeId' IS DISTINCT FROM v_event.payload->>'nodeId' THEN
+      RAISE EXCEPTION 'native control fact invocation differs' USING ERRCODE='23514';
+    END IF;
+    WITH RECURSIVE graphs(graph,ancestors,depth) AS (
+      SELECT v_version.executable_json->'graph','[]'::jsonb,1 UNION ALL
+      SELECT node#>'{structured,body}',graphs.ancestors||jsonb_build_array(node->'id'),graphs.depth+1
+        FROM graphs CROSS JOIN LATERAL jsonb_array_elements(graphs.graph->'nodes') node
+        WHERE graphs.depth<64 AND node#>>'{structured,kind}'='for_each'
+    ), pins AS (
+      SELECT node,ancestors FROM graphs CROSS JOIN LATERAL jsonb_array_elements(graphs.graph->'nodes') node
+        WHERE node->>'id'=v_invocation->>'nodeId'
+    ) SELECT count(*)::integer,(jsonb_agg(jsonb_build_object('node',node,'ancestors',ancestors)))->0
+      INTO v_matches,v_pin FROM pins;
+    IF v_matches<>1 THEN RAISE EXCEPTION 'native control pinned definition differs' USING ERRCODE='23514'; END IF;
+    v_ancestor_ids:=v_pin->'ancestors'; v_pin:=v_pin->'node';
+    v_kind:=CASE WHEN v_pin#>>'{definition,version}'='1' AND v_pin#>>'{definition,key}'='core.foreach' THEN 'for_each'
+      WHEN v_pin#>>'{definition,version}'='1' AND v_pin#>>'{definition,key}' IN ('core.condition','core.switch') THEN 'branch'
+      WHEN v_pin#>>'{definition,version}' IN ('1','2','3') AND v_pin#>>'{definition,key}'='core.parallel' THEN 'parallel' ELSE NULL END;
+    -- Calls retain their separate existing declaration owner; ordinary outputs
+    -- are not control material even when their JSON happens to look similar.
+    IF v_kind IS NULL THEN CONTINUE; END IF;
+    SELECT * INTO STRICT v_node FROM app.node_runs node WHERE node.workspace_id=v_workspace
+      AND node.workflow_run_id=v_run AND node.invocation_key=v_invocation->>'invocationKey';
+    SELECT * INTO STRICT v_attempt FROM app.node_attempts attempt WHERE attempt.workspace_id=v_workspace
+      AND attempt.node_run_id=v_node.id AND attempt.id=v_node.current_attempt_id;
+    IF (v_invocation->>'status'='running' AND v_node.status='succeeded'
+      AND v_node.node_id=v_pin->>'id' AND v_node.control_kind IS NULL
+      AND v_attempt.status='succeeded' AND v_attempt.completed_at IS NOT NULL
+      AND v_attempt.lease_owner IS NULL AND v_attempt.lease_expires_at IS NULL
+      AND v_attempt.attempt_number=v_node.current_attempt_number
+      AND v_invocation->'attemptNumber'=to_jsonb(v_attempt.attempt_number)
+      AND v_event.payload->>'nodeRunId'=v_node.id::text AND v_event.payload->>'attemptId'=v_attempt.id::text
+      AND v_event.payload->'attemptNumber'=to_jsonb(v_attempt.attempt_number)
+      AND coalesce(v_node.branch_context->'branchPath','[]'::jsonb)=coalesce(v_invocation->'branchPath','[]'::jsonb)
+      AND coalesce(v_node.branch_context->'iterationPath','[]'::jsonb)=coalesce(v_invocation->'iterationPath','[]'::jsonb)) IS NOT TRUE THEN
+      RAISE EXCEPTION 'native control current physical fact differs' USING ERRCODE='23514';
+    END IF;
+    v_scopes:=coalesce(v_invocation->'iterationPath','[]'::jsonb); v_prefix:='[]'::jsonb; v_index:=0;
+    IF jsonb_array_length(v_scopes)<>jsonb_array_length(v_ancestor_ids) THEN
+      RAISE EXCEPTION 'native control pinned ancestry differs' USING ERRCODE='23514';
+    END IF;
+    FOR v_scope IN SELECT scope FROM jsonb_array_elements(v_scopes) scope LOOP
+      SELECT count(*)::integer,(jsonb_agg(loop))->0 INTO v_matches,v_loop
+        FROM jsonb_array_elements(v_checkpoint.scheduler_state->'loops') loop
+        WHERE loop->>'loopId'=v_scope->>'loopNodeId' AND loop->'iterationPath'=v_prefix
+          AND loop->'activeOrdinals' @> jsonb_build_array(v_scope->'ordinal')
+          AND (SELECT coalesce(jsonb_agg(branch ORDER BY ordinal),'[]'::jsonb)
+            FROM jsonb_array_elements(coalesce(v_invocation->'branchPath','[]'::jsonb)) WITH ORDINALITY entries(branch,ordinal)
+            WHERE ordinal<=jsonb_array_length(loop->'branchPath'))=loop->'branchPath';
+      IF v_matches<>1 OR v_scope->'loopNodeId' IS DISTINCT FROM v_ancestor_ids->v_index
+        OR v_loop->'terminalStatus' IS NOT NULL THEN
+        RAISE EXCEPTION 'native control current ancestor ledger differs' USING ERRCODE='23514';
+      END IF;
+      v_prefix:=v_prefix||jsonb_build_array(v_scope); v_index:=v_index+1;
+    END LOOP;
+    SELECT * INTO STRICT v_source FROM app.workflow_execution_value_provenance source
+      WHERE source.workspace_id=v_workspace AND source.workflow_run_id=v_run
+        AND source.workflow_version_id=v_version.id AND source.value_slot='attempt_output' AND source.byte_ownership='owned'
+        AND source.node_run_id=v_node.id AND source.node_id=v_node.node_id AND source.invocation_key=v_node.invocation_key
+        AND source.attempt_id=v_attempt.id AND source.attempt_number=v_attempt.attempt_number;
+    v_output:=CASE WHEN v_source.reference_kind='inline' THEN jsonb_build_object('kind','inline','attemptId',v_attempt.id)
+      ELSE jsonb_build_object('kind','artifact','artifactId',v_source.artifact_id) END;
+    -- Existing node.succeeded facts carry attempt identity, not output payload.
+    -- Derive the reference from actual current physical projections as mapEvent
+    -- does; never invent an event output pointer or decode JSONB artifact bytes.
+    IF v_source.original_reference::text IS DISTINCT FROM v_attempt.output_ref::text
+      OR v_source.original_reference::text IS DISTINCT FROM v_node.output_ref::text
+      OR (v_kind='parallel' AND v_source.reference_kind<>'inline') THEN
+      RAISE EXCEPTION 'native control original output reference differs' USING ERRCODE='23514';
+    END IF;
+    IF v_source.eligibility_revoked_at IS NOT NULL OR v_source.eligible_until<=clock_timestamp() THEN
+      RAISE EXCEPTION 'native control accepted source is unavailable' USING ERRCODE='55000';
+    END IF;
+    IF v_source.reference_kind='artifact' AND NOT EXISTS(SELECT 1 FROM app.workflow_execution_value_artifact_associations association
+      JOIN app.workflow_execution_value_artifact_candidates candidate ON candidate.workspace_id=association.workspace_id
+        AND candidate.id=association.candidate_id AND candidate.abandoned_at IS NULL
+      JOIN app.artifacts artifact ON artifact.workspace_id=association.workspace_id AND artifact.id=association.artifact_id
+        AND artifact.status='available' AND artifact.deleted_at IS NULL AND artifact.expires_at>clock_timestamp()
+        AND artifact.sha256=v_source.sha256 AND artifact.byte_length=v_source.byte_length AND artifact.media_type=v_source.media_type
+      WHERE association.workspace_id=v_workspace AND association.provenance_id=v_source.id AND association.artifact_id=v_source.artifact_id) THEN
+      RAISE EXCEPTION 'native control accepted artifact is unavailable' USING ERRCODE='55000';
+    END IF;
+    v_identity:=jsonb_build_object('reference',CASE WHEN v_source.reference_kind='inline' THEN
+      jsonb_build_object('schemaVersion',1,'kind','inline') ELSE v_source.original_reference END,
+      'sha256',v_source.sha256,'byteLength',v_source.byte_length,'mediaType',v_source.media_type);
+    v_metadata:=jsonb_build_object('kind','physical_output','workspaceId',v_workspace,'runId',v_run,
+      'workflowVersionId',v_version.id,'provenanceId',v_source.id,'nodeId',v_node.node_id,
+      'invocationKey',v_node.invocation_key,'attemptId',v_attempt.id);
+    v_result:=v_result||jsonb_build_array(jsonb_build_object('sequence',v_event.sequence,'invocationKey',v_node.invocation_key,
+      'nodeId',v_node.node_id,'attemptId',v_attempt.id,'output',v_output,'controlKind',v_kind,
+      'branchPath',coalesce(v_invocation->'branchPath','[]'::jsonb),'iterationPath',v_scopes,
+      'valueSource',jsonb_build_object('slot','upstream_output','source',v_metadata,'valueIdentity',v_identity)));
+  END LOOP;
+  IF (SELECT count(DISTINCT entry->>'invocationKey') FROM jsonb_array_elements(v_result) entry)<>jsonb_array_length(v_result)
+    OR (SELECT count(DISTINCT entry->>'attemptId') FROM jsonb_array_elements(v_result) entry)<>jsonb_array_length(v_result)
+    OR octet_length(v_result::text)>40960000 THEN
+    RAISE EXCEPTION 'native control bounded inventory conflicts' USING ERRCODE='23514';
+  END IF;
+  RETURN v_result;
+END $$;
+REVOKE ALL ON FUNCTION app.native_coordinator_control_inventory(jsonb,integer)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+
+-- UNQUALIFIED source: exact original identities only, never hydrated summaries.
+-- Workspace/ancestor/own-run/checkpoint fences precede this established CAS seam.
+CREATE FUNCTION app.lock_native_coordinator_control_sources(p_owner jsonb,p_last_sequence integer,p_expected jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_workspace uuid:=(p_owner->>'workspaceId')::uuid;
+  v_inventory jsonb;
+BEGIN
+  PERFORM app.prelock_native_coordinator_lineage((p_owner->>'runId')::uuid,
+    (p_owner#>>'{delivery,outboxEventId}')::uuid,p_owner#>>'{delivery,payloadChecksum}');
+  PERFORM 1 FROM app.workflow_runs run WHERE run.workspace_id=v_workspace
+    AND run.id=(p_owner->>'runId')::uuid
+    AND run.workflow_version_id=(p_owner->>'workflowVersionId')::uuid FOR NO KEY UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'native control current run differs' USING ERRCODE='23514'; END IF;
+  PERFORM app.assert_native_advance_delivery((p_owner->>'runId')::uuid,
+    (p_owner#>>'{delivery,outboxEventId}')::uuid,p_owner#>>'{delivery,payloadChecksum}');
+  PERFORM 1 FROM app.run_checkpoints checkpoint
+    WHERE checkpoint.workspace_id=v_workspace AND checkpoint.workflow_run_id=(p_owner->>'runId')::uuid
+      AND checkpoint.workflow_version_id=(p_owner->>'workflowVersionId')::uuid
+      AND checkpoint.revision=(p_owner->>'expectedRevision')::integer FOR NO KEY UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'native control CAS revision differs' USING ERRCODE='23514'; END IF;
+  IF app.inspect_native_coordinator_value_owner(p_owner)->>'kind' IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'native control current consumer is unavailable' USING ERRCODE='55000';
+  END IF;
+  -- Fence only an existing receipt; this read never claims or completes one.
+  PERFORM 1 FROM app.inbox_receipts receipt WHERE receipt.workspace_id=v_workspace
+    AND receipt.consumer_name='workflow-coordinator'
+    AND receipt.message_id=(p_owner#>>'{delivery,outboxEventId}')::uuid FOR UPDATE;
+  v_inventory:=app.native_coordinator_control_inventory(p_owner,p_last_sequence);
+  IF v_inventory IS DISTINCT FROM p_expected THEN
+    RAISE EXCEPTION 'native control prepared original identity differs' USING ERRCODE='23514';
+  END IF;
+  PERFORM 1 FROM app.workflow_execution_value_artifact_candidates candidate
+    JOIN app.workflow_execution_value_artifact_associations association
+      ON association.workspace_id=candidate.workspace_id AND association.candidate_id=candidate.id
+    WHERE candidate.workspace_id=v_workspace AND association.provenance_id IN
+      (SELECT (entry#>>'{valueSource,source,provenanceId}')::uuid FROM jsonb_array_elements(v_inventory) entry)
+    ORDER BY candidate.id FOR SHARE OF candidate;
+  PERFORM 1 FROM app.workflow_execution_value_provenance source
+    WHERE source.workspace_id=v_workspace AND source.id IN
+      (SELECT (entry#>>'{valueSource,source,provenanceId}')::uuid FROM jsonb_array_elements(v_inventory) entry)
+    ORDER BY source.id FOR SHARE;
+  PERFORM 1 FROM app.workflow_execution_value_artifact_associations association
+    WHERE association.workspace_id=v_workspace AND association.provenance_id IN
+      (SELECT (entry#>>'{valueSource,source,provenanceId}')::uuid FROM jsonb_array_elements(v_inventory) entry)
+    ORDER BY association.provenance_id FOR SHARE;
+  PERFORM 1 FROM app.artifacts artifact WHERE artifact.workspace_id=v_workspace AND artifact.id IN
+    (SELECT (entry#>>'{valueSource,valueIdentity,reference,artifactId}')::uuid
+      FROM jsonb_array_elements(v_inventory) entry WHERE entry#>>'{valueSource,valueIdentity,reference,kind}'='artifact')
+    ORDER BY artifact.id FOR SHARE;
+  v_inventory:=app.native_coordinator_control_inventory(p_owner,p_last_sequence);
+  IF v_inventory IS DISTINCT FROM p_expected THEN
+    RAISE EXCEPTION 'native control locked original identity differs' USING ERRCODE='23514';
+  END IF;
+  IF app.inspect_native_coordinator_value_owner(p_owner)->>'kind' IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'native control current consumer stopped during source fences' USING ERRCODE='55000';
+  END IF;
+  RETURN v_inventory;
+END $$;
+REVOKE ALL ON FUNCTION app.lock_native_coordinator_control_sources(jsonb,integer,jsonb)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+GRANT EXECUTE ON FUNCTION app.lock_native_coordinator_control_sources(jsonb,integer,jsonb) TO {{worker_runtime_role}};
+
+CREATE FUNCTION app.load_native_coordinator_control_sources(p_owner jsonb,p_last_sequence integer)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE v_inspection jsonb; v_inventory jsonb;
+BEGIN
+  v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
+  IF v_inspection->>'kind'='stopped' THEN RETURN v_inspection; END IF;
+  v_inventory:=app.native_coordinator_control_inventory(p_owner,p_last_sequence);
+  v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
+  IF v_inspection->>'kind'='stopped' THEN RETURN v_inspection; END IF;
+  RETURN jsonb_build_object('kind','ready','projection',v_inventory);
+EXCEPTION WHEN SQLSTATE '55000' THEN
+  RETURN jsonb_build_object('kind','stopped','stop',jsonb_build_object('kind','unavailable','reason','source_read_failed'));
+END $$;
+REVOKE ALL ON FUNCTION app.load_native_coordinator_control_sources(jsonb,integer)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+GRANT EXECUTE ON FUNCTION app.load_native_coordinator_control_sources(jsonb,integer) TO {{worker_runtime_role}};
+
+CREATE FUNCTION app.read_native_coordinator_control_source(p_owner jsonb,p_descriptor jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE v_inspection jsonb; v_inventory jsonb; v_matches integer;
+  v_source app.workflow_execution_value_provenance%ROWTYPE; v_snapshot jsonb;
+BEGIN
+  v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
+  IF v_inspection->>'kind'='stopped' THEN RETURN v_inspection; END IF;
+  v_inventory:=app.native_coordinator_control_inventory(p_owner,(p_descriptor->>'sequence')::integer);
+  SELECT count(*)::integer INTO v_matches FROM jsonb_array_elements(v_inventory) descriptor WHERE descriptor=p_descriptor;
+  IF v_matches<>1 THEN RAISE EXCEPTION 'native selected control identity differs' USING ERRCODE='23514'; END IF;
+  SELECT * INTO STRICT v_source FROM app.workflow_execution_value_provenance source
+    WHERE source.workspace_id=(p_owner->>'workspaceId')::uuid AND source.id=(p_descriptor#>>'{valueSource,source,provenanceId}')::uuid;
+  v_snapshot:=jsonb_build_object('reference',v_source.original_reference,'sha256',v_source.sha256,'byteLength',v_source.byte_length);
+  IF v_source.reference_kind='inline' THEN
+    PERFORM app.assert_native_inline_execution_value_bytes(v_source.original_reference->'value',v_source.sha256,v_source.byte_length,v_source.original_inline_text);
+    v_snapshot:=v_snapshot||jsonb_build_object('serializedValue',v_source.original_inline_text);
+  END IF;
+  -- Recompute all current descriptor/availability clocks after fetching original
+  -- bytes; source identity is never a historical producer-ID read capability.
+  v_inventory:=app.native_coordinator_control_inventory(p_owner,(p_descriptor->>'sequence')::integer);
+  IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_inventory) descriptor WHERE descriptor=p_descriptor) THEN
+    RAISE EXCEPTION 'native selected control changed during read' USING ERRCODE='23514';
+  END IF;
+  v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
+  IF v_inspection->>'kind'='stopped' THEN RETURN v_inspection; END IF;
+  RETURN jsonb_build_object('kind','ready','valueSource',jsonb_build_object(
+    'slot','upstream_output','source',p_descriptor#>'{valueSource,source}','snapshot',v_snapshot));
+EXCEPTION WHEN SQLSTATE '55000' THEN
+  RETURN jsonb_build_object('kind','stopped','stop',jsonb_build_object('kind','unavailable','reason','source_read_failed'));
+END $$;
+REVOKE ALL ON FUNCTION app.read_native_coordinator_control_source(jsonb,jsonb)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+GRANT EXECUTE ON FUNCTION app.read_native_coordinator_control_source(jsonb,jsonb) TO {{worker_runtime_role}};
+
 -- One selected source per read, under the ACTUAL existing attempt consumer.
 -- Never fabricate a coordinator consumer or authorize by historical producer ID.
 CREATE FUNCTION app.read_native_attempt_value_source(p_authority jsonb,p_selection jsonb)

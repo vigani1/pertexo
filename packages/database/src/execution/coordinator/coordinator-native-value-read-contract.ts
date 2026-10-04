@@ -8,6 +8,49 @@ import type { CoordinatorAdvanceDelivery } from './coordinator-run-store-contrac
 import type { NativeCoordinatorCallDeclarationSource } from './coordinator-call-declaration-source.js';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 import type { NativeResultArtifactProducer } from '../artifacts/native-result-artifact-contract.js';
+import type {
+  NativeCoordinatorControlDeclarationIdentity,
+  NativeCoordinatorControlDeclarationSource,
+} from './coordinator-control-declaration-source.js';
+
+/** Full needed control-fact inventory, metadata only, under the current consumer. */
+export type LoadCoordinatorControlSources = (
+  input: Readonly<{
+    owner: NativeCoordinatorValueOwner;
+    lastSequence: number;
+    expected: readonly NativeCoordinatorControlDeclarationIdentity[];
+    signal: AbortSignal;
+    readTimeoutMillis: number;
+  }>,
+) => Promise<
+  | Readonly<{
+      kind: 'ready';
+      sources: readonly NativeCoordinatorControlDeclarationSource[];
+    }>
+  | Readonly<{ kind: 'stopped'; stop: CallableValueWorkStop }>
+>;
+
+/** One independently rederived original source; no payload in metadata inventory. */
+export type ReadCoordinatorControlSource = (
+  input: Readonly<{
+    owner: NativeCoordinatorValueOwner;
+    source: NativeCoordinatorControlDeclarationSource;
+    signal: AbortSignal;
+    readTimeoutMillis: number;
+  }>,
+) => Promise<
+  | Readonly<{ kind: 'ready'; valueSource: NativeNodeAttemptValueSource }>
+  | Readonly<{ kind: 'stopped'; stop: CallableValueWorkStop }>
+>;
+
+/** Borrowed original-byte hydration; no supplied summary or admission certificate. */
+export type NativeCoordinatorControlSourceHydrator = (
+  input: Readonly<{
+    owner: NativeCoordinatorValueOwner;
+    source: NativeCoordinatorControlDeclarationSource;
+    signal: AbortSignal;
+  }>,
+) => Promise<unknown>;
 
 type Output = NonNullable<
   PersistedWorkflowCheckpointV3['invocations'][number]['output']

@@ -84,8 +84,15 @@ export type {
   ReadCallableCompletionSource,
   ReadCoordinatorCallDeclaration,
   NativeCoordinatorCallDeclarationHydrator,
+  LoadCoordinatorControlSources,
+  ReadCoordinatorControlSource,
 } from './execution/coordinator/coordinator-native-value-read-contract.js';
 export type { NativeCoordinatorCallDeclarationSource } from './execution/coordinator/coordinator-call-declaration-source.js';
+export {
+  parseCoordinatorControlDeclarationInventory,
+  type NativeCoordinatorControlDeclarationIdentity,
+  type NativeCoordinatorControlDeclarationSource,
+} from './execution/coordinator/coordinator-control-declaration-source.js';
 export type { DatabaseConfig } from './config.js';
 export { createAuthenticationMailDeliveryStore } from './identity/authentication-mail.js';
 export type {

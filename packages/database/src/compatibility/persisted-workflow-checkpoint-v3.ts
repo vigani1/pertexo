@@ -20,6 +20,8 @@ const physicalReference = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('inline'), attemptId: uuid }).strict(),
   z.object({ kind: z.literal('artifact'), artifactId: uuid }).strict(),
 ]);
+export const persistedWorkflowPhysicalOutputReferenceSchemaV3 =
+  physicalReference;
 const resultReference = z
   .object({
     kind: z.literal('workflow_call'),

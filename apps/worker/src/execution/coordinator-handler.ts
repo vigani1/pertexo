@@ -13,6 +13,7 @@ import type {
 import type {
   WorkflowTransitionPlan,
   LoadCallableCompletion,
+  LoadCoordinatorControlDeclaration,
 } from '@pertexo/workflow-engine';
 import type { CallableValueWorkStop } from '@pertexo/workflow-model/workflow-call-contract';
 import type { CoordinatorAdvanceDelivery } from '@pertexo/database/execution';
@@ -37,6 +38,11 @@ export interface CoordinatorAdvanceEngine {
       checkpoint: unknown;
       observations: readonly unknown[];
       completedOutputs?: readonly unknown[];
+      controlDeclarations?: Extract<
+        Awaited<ReturnType<CoordinatorRunStore['loadAdvanceState']>>,
+        { kind: 'ready' }
+      >['state']['controlDeclarations'];
+      loadCoordinatorControlDeclaration?: LoadCoordinatorControlDeclaration;
       workflowCalls?: Extract<
         Awaited<ReturnType<CoordinatorRunStore['loadAdvanceState']>>,
         { kind: 'ready' }
@@ -196,6 +202,11 @@ export function createCoordinatorHandler(
         ...(loaded.state.completedOutputs === undefined
           ? {}
           : { completedOutputs: loaded.state.completedOutputs }),
+        ...(loaded.state.controlDeclarations === undefined
+          ? {}
+          : {
+              controlDeclarations: loaded.state.controlDeclarations,
+            }),
         ...(published.kind === 'v3_projection'
           ? {
               loadCallableCompletion: (demand, signal) =>

@@ -17,6 +17,9 @@ export async function loadRejectedForEachDeclarations(
     currentCheckpoint: PersistedWorkflowCheckpoint;
     plan: ParsedTransitionPlan;
     persistedFacts: readonly CoordinatorEventRow[];
+    nativeCollections?: Parameters<
+      typeof deriveRejectedForEachDeclarations
+    >[0]['nativeCollections'];
   }>,
 ): Promise<RejectedForEachDeclarations> {
   if (
@@ -45,5 +48,8 @@ export async function loadRejectedForEachDeclarations(
     currentCheckpoint: input.currentCheckpoint,
     plan: input.plan,
     persistedFacts: input.persistedFacts,
+    ...(input.nativeCollections === undefined
+      ? {}
+      : { nativeCollections: input.nativeCollections }),
   });
 }

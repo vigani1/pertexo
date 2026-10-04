@@ -12,7 +12,7 @@ import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
 import { sameStoredValue } from './coordinator-run-store-validation-values.js';
 
 import {
-  isRejectedForEachCollection,
+  isRejectedForEachCount,
   rejectedForEachCollectionCount as collectionCount,
 } from './coordinator-rejected-loop-collection.js';
 export { isRejectedForEachCollection } from './coordinator-rejected-loop-collection.js';
@@ -25,6 +25,11 @@ export type RejectedForEachDeclarations = ReadonlyMap<
   string,
   RejectedForEachDeclaration
 >;
+type NativeCollections = readonly Readonly<{
+  invocationKey: string;
+  collectionSize: number;
+  collectionChecksum: string;
+}>[];
 
 function assertProof(value: boolean): asserts value {
   if (!value) throw new CoordinatorPlanInvalidError();
@@ -38,6 +43,7 @@ export function deriveRejectedForEachDeclarations(
     currentCheckpoint: PersistedWorkflowCheckpoint;
     plan: ParsedTransitionPlan;
     persistedFacts: readonly CoordinatorEventRow[];
+    nativeCollections?: NativeCollections;
   }>,
 ): ReadonlyMap<string, RejectedForEachDeclaration> {
   const candidates = input.plan.events.filter(
@@ -57,6 +63,7 @@ function derive(
     currentCheckpoint: current,
     plan,
     persistedFacts,
+    nativeCollections,
   }: Parameters<typeof deriveRejectedForEachDeclarations>[0],
   candidates: ParsedTransitionPlan['events'],
 ): ReadonlyMap<string, RejectedForEachDeclaration> {
@@ -180,19 +187,29 @@ function derive(
         typeof observation.attemptId === 'string' &&
         observation.invocationKey === key,
     );
-    const stored = parseStoredExecutionValueV1(fact.attempt_output_ref);
-    assertProof(stored.kind === 'inline');
+    let count: number | undefined;
+    if (current.schemaVersion === 3) {
+      const matches =
+        nativeCollections?.filter(
+          (collection) => collection.invocationKey === key,
+        ) ?? [];
+      assertProof(matches.length === 1);
+      count = matches[0]?.collectionSize;
+    } else {
+      const stored = parseStoredExecutionValueV1(fact.attempt_output_ref);
+      assertProof(stored.kind === 'inline');
+      count = collectionCount(stored.value);
+    }
     assertProof(
-      isRejectedForEachCollection({
+      isRejectedForEachCount({
         nodeId: previous.nodeId,
         iterationPath,
-        value: stored.value,
+        count,
         bounds,
         remainingIterationBudget: current.remainingIterationBudget,
       }),
     );
     const pin = bounds.get(previous.nodeId);
-    const count = collectionCount(stored.value);
     assertProof(pin !== undefined && count !== undefined);
     if (count <= pin.maxIterations) {
       assertProof(

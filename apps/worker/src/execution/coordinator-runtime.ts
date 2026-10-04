@@ -44,13 +44,14 @@ import type {
 } from '@pertexo/artifact-store';
 
 import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
+import type { createCoordinatorControlSourceHydration } from './coordinator-control-source-hydration.js';
 import {
   COORDINATOR_VALUE_WORK_POLICY_DEFAULTS,
   type CoordinatorValueWorkPolicy,
 } from './coordinator-value-work-lifetime.js';
 import type { CoordinatorNativeValueWork } from './coordinator-native-demand-advance.js';
-import { createCoordinatorSourceHydration } from './coordinator-source-hydration.js';
-import { createCoordinatorResultSourceHydration } from './coordinator-result-source-hydration.js';
+import { createCoordinatorSourceComposition } from './coordinator-source-composition.js';
+import type { createCoordinatorResultSourceHydration } from './coordinator-result-source-hydration.js';
 import { createCoordinatorResultValuePreparation } from './coordinator-result-value-preparation.js';
 import { parseCoordinatorRuntimeTuning } from './coordinator-runtime-tuning.js';
 import {
@@ -62,7 +63,7 @@ import type {
   ExpressionEvaluator,
   JsonataEvaluator,
 } from '@pertexo/workflow-model/expressions';
-import { createCoordinatorCallDeclarationHydration } from './coordinator-call-declaration-hydration.js';
+import type { createCoordinatorCallDeclarationHydration } from './coordinator-call-declaration-hydration.js';
 import {
   createCoordinatorArtifactStorage,
   type CoordinatorArtifactStorage,
@@ -241,6 +242,9 @@ export async function createCoordinatorRuntime(
   let hydrateCallDeclaration: ReturnType<
     typeof createCoordinatorCallDeclarationHydration
   >;
+  let hydrateControlSource: ReturnType<
+    typeof createCoordinatorControlSourceHydration
+  >;
   try {
     runStore =
       dependencies.runStore ??
@@ -254,6 +258,7 @@ export async function createCoordinatorRuntime(
         hydrateNativeCallDeclaration: (request) =>
           hydrateCallDeclaration(request),
         hydrateNativeResultSources: (request) => hydrateResultSources(request),
+        hydrateNativeControlSource: (request) => hydrateControlSource(request),
         prepareNativeResultValue: (request) => prepareResultValue(request),
         callableResultEvaluator,
         runTimeoutFailureContextEnabled:
@@ -280,27 +285,20 @@ export async function createCoordinatorRuntime(
       runStore,
       artifactStorage.store,
     ).prepare;
-    hydrateCallDeclaration = createCoordinatorCallDeclarationHydration(
-      runStore,
-      artifactStorage.store,
-      nativeValueWork.policy.controlReadTimeoutMillis,
-    );
     expressionEvaluation = createCoordinatorExpressionEvaluation(
       runStore,
       dependencies.expressionEvaluator,
       factories.expressionEvaluator,
     );
-    const hydrateSource =
-      nativeValueWork.hydrateSource ??
-      createCoordinatorSourceHydration(
-        runStore,
-        nativeValueWork.policy.controlReadTimeoutMillis,
-        artifactStorage.store,
-      );
-    hydrateResultSources = createCoordinatorResultSourceHydration(runStore, {
-      ...nativeValueWork,
-      hydrateSource,
-    });
+    const sourceComposition = createCoordinatorSourceComposition(
+      runStore,
+      nativeValueWork,
+      artifactStorage.store,
+    );
+    const { hydrateSource } = sourceComposition;
+    hydrateResultSources = sourceComposition.hydrateResultSources;
+    hydrateControlSource = sourceComposition.hydrateControlSource;
+    hydrateCallDeclaration = sourceComposition.hydrateCallDeclaration;
     const engine =
       dependencies.engine ??
       createCoordinatorAdvanceEngine({
@@ -330,6 +328,7 @@ export async function createCoordinatorRuntime(
         ...nativeValueWork,
         hydrateSource,
         hydrateCallDeclaration,
+        hydrateControlSource,
       },
     });
     await runStore.checkReadiness?.();

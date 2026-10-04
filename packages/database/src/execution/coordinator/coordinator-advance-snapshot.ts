@@ -1,10 +1,6 @@
 import type { PoolClient } from 'pg';
 import { workflowCallableDeclarationSchemaV1 } from '@pertexo/workflow-model/callable-graph-contract';
-import {
-  workflowControlOutputNodeIdsV2,
-  workflowControlOutputNodeIdsV3,
-  workflowCallNodeIdsV3,
-} from '@pertexo/workflow-model/graph';
+import { workflowCallNodeIdsV3 } from '@pertexo/workflow-model/graph';
 import {
   CoordinatorRunStateCorruptError,
   coordinatorDeliverySchema,
@@ -25,8 +21,8 @@ import { loadPendingFailureObservations } from './coordinator-pending-failure-ob
 import { loadCoordinatorCallMaterials } from './coordinator-call-materials.js';
 import { parseNativeCoordinatorInspection } from './coordinator-native-value-reads.js';
 import type { CoordinatorExecutableCapability } from './coordinator-executable-capability.js';
+import { coordinatorControlObservationMaterial } from './coordinator-control-facts.js';
 import {
-  completedInlineOutput,
   mapEvent,
   maximumPersistedFacts,
   persistedFactCapacity,
@@ -334,19 +330,12 @@ export async function loadCoordinatorAdvanceSnapshot(
     throw new CoordinatorRunStateCorruptError();
   validatePersistedFactBatch(events);
   const observations = events.map(mapEvent);
-  let controlOutputNodeIds: ReadonlySet<string>;
-  try {
-    controlOutputNodeIds = (
-      checkpoint.schemaVersion === 3
-        ? workflowControlOutputNodeIdsV3
-        : workflowControlOutputNodeIdsV2
-    )(row.executable_json);
-  } catch {
-    throw new CoordinatorRunStateCorruptError();
-  }
-  const completedOutputs = events.flatMap((event) =>
-    completedInlineOutput(event, controlOutputNodeIds),
-  );
+  const { completedOutputs, controlDeclarations } =
+    coordinatorControlObservationMaterial({
+      executable: row.executable_json,
+      checkpoint,
+      events,
+    });
   const workflowCalls = await loadCoordinatorCallMaterials(client, {
     workspaceId,
     runId,
@@ -445,7 +434,14 @@ export async function loadCoordinatorAdvanceSnapshot(
       workflowVersionId: row.workflow_version_id,
       checkpoint,
       observations: Object.freeze(observations.map(Object.freeze)),
-      completedOutputs: Object.freeze(completedOutputs.map(Object.freeze)),
+      ...(completedOutputs === undefined
+        ? {}
+        : {
+            completedOutputs: Object.freeze(
+              completedOutputs.map(Object.freeze),
+            ),
+          }),
+      ...(controlDeclarations === undefined ? {} : { controlDeclarations }),
       ...(workflowCalls === undefined ? {} : { workflowCalls }),
     }),
   });

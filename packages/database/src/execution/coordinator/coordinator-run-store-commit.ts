@@ -17,11 +17,7 @@ import {
 import { persistCoordinatorExecutionTransitions } from './coordinator-run-store-execution.js';
 import { validateCheckpointOutputOwnership } from './coordinator-run-store-plan.js';
 import { persistCoordinatorRunTransition } from './coordinator-run-store-run-transition.js';
-import {
-  persistDueReadyTransitions,
-  persistLoopBarrierTransitions,
-  persistRejectedForEachDeclarations,
-} from './coordinator-run-store-settlement.js';
+import { persistCoordinatorDeclarationTransitions } from './coordinator-run-store-settlement.js';
 import {
   assertCoordinatorNotAborted as assertNotAborted,
   withCoordinatorWriteClient as withWorkspaceWriteClient,
@@ -36,6 +32,7 @@ import { persistCoordinatorCallResult } from './coordinator-call-result.js';
 import { persistCoordinatorCallControls } from './coordinator-call-controls.js';
 import type {
   NativeCoordinatorResultPreparationScope,
+  NativeCoordinatorControlSourceHydrator,
   InspectCoordinatorValueReadOwner,
   NativeCoordinatorCallDeclarationHydrator,
   NativeCoordinatorResultSourceHydrator,
@@ -59,6 +56,7 @@ type CoordinatorAdvanceCommitOptions = Readonly<{
   inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
   hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
   hydrateNativeResultSources?: NativeCoordinatorResultSourceHydrator;
+  hydrateNativeControlSource?: NativeCoordinatorControlSourceHydrator;
   prepareNativeResultValue?: NativeCoordinatorResultValuePreparer;
 }>;
 
@@ -78,6 +76,8 @@ export async function commitCoordinatorAdvancePlan(
     planFingerprint,
     nativeResult,
     preparedResult,
+    nativeControls,
+    preparedControls,
   } = await prepareCoordinatorAdvanceParameters(pool, input, options);
 
   try {
@@ -106,6 +106,7 @@ export async function commitCoordinatorAdvancePlan(
           ...(traceparent === undefined ? {} : { traceparent }),
           workflowVersionId,
           workspaceId,
+          ...(preparedControls === undefined ? {} : { preparedControls }),
         });
         if (commitState.kind === 'outcome') {
           if (callAdmission !== undefined)
@@ -115,6 +116,10 @@ export async function commitCoordinatorAdvancePlan(
         if (nativeResult && preparedResult === undefined)
           throw new Error(
             'Native result current precommit material is unavailable',
+          );
+        if (nativeControls && preparedControls === undefined)
+          throw new Error(
+            'Native control current precommit material is unavailable',
           );
 
         await validateCheckpointOutputOwnership(
@@ -128,25 +133,15 @@ export async function commitCoordinatorAdvancePlan(
               .filter(({ admissionKind }) => admissionKind === 'wait_resume')
               .map(({ invocationKey }) => invocationKey),
           ),
+          new Set(commitState.stoppedForEachDeclarations.keys()),
         );
-        await persistLoopBarrierTransitions(
-          client,
+        await persistCoordinatorDeclarationTransitions(client, {
           workspaceId,
           runId,
-          commitState.currentCheckpoint,
-          plan.checkpoint,
-        );
-        await persistDueReadyTransitions(
-          client,
-          workspaceId,
-          runId,
-          commitState.currentCheckpoint,
-          plan.checkpoint,
-        );
-        await persistRejectedForEachDeclarations(client, {
-          workspaceId,
-          runId,
-          declarations: commitState.rejectedForEachDeclarations,
+          current: commitState.currentCheckpoint,
+          next: plan.checkpoint,
+          rejected: commitState.rejectedForEachDeclarations,
+          stopped: commitState.stoppedForEachDeclarations,
         });
         assertNotAborted(input.signal);
         const receipt = await claimCoordinatorReceipt(
@@ -182,7 +177,12 @@ export async function commitCoordinatorAdvancePlan(
 
         const physical = await persistCoordinatorExecutionTransitions(client, {
           pendingFailures: commitState.pendingFailures,
-          rejectedForEachDeclarations: commitState.rejectedForEachDeclarations,
+          // Both independently proven exceptions already projected the logical
+          // node; ordinary terminal writes must not rewrite physical success.
+          rejectedForEachDeclarations: new Map([
+            ...commitState.rejectedForEachDeclarations,
+            ...commitState.stoppedForEachDeclarations,
+          ]),
           plan,
           runId,
           ...(traceparent === undefined ? {} : { traceparent }),

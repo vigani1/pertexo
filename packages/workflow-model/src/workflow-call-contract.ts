@@ -65,3 +65,10 @@ export const callableValueWorkStopSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type CallableValueWorkStop = z.infer<typeof callableValueWorkStopSchema>;
+
+export class CallableCompletionStoppedError extends Error {
+  public override readonly name = 'CallableCompletionStoppedError';
+  public constructor(readonly stop: CallableValueWorkStop) {
+    super(`Callable value work stopped: ${stop.kind}`);
+  }
+}

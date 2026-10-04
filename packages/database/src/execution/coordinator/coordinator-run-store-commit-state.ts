@@ -33,8 +33,10 @@ import {
 } from './coordinator-checkpoint.js';
 import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
 import type { RejectedForEachDeclaration } from './coordinator-rejected-loop-proof.js';
-import { loadRejectedForEachDeclarations } from './coordinator-rejected-loop-load.js';
+import { lockCoordinatorControlSettlements } from './coordinator-control-settlements.js';
 import { loadCoordinatorCallFacts } from './coordinator-call-facts.js';
+import type { prepareCoordinatorControls } from './coordinator-control-preparation.js';
+import type { StoppedForEachDeclarations } from './coordinator-stopped-loop-proof.js';
 
 export type CoordinatorCommitRow = Readonly<{
   executable_schema_version: number;
@@ -77,6 +79,7 @@ export type CoordinatorCommitState =
       currentCheckpoint: PersistedWorkflowCheckpoint;
       pendingFailures: readonly PendingCoordinatorFailure[];
       authoritativeCancellation: boolean;
+      stoppedForEachDeclarations: StoppedForEachDeclarations;
       rejectedForEachDeclarations: ReadonlyMap<
         string,
         RejectedForEachDeclaration
@@ -138,6 +141,7 @@ export async function lockCoordinatorCommitState(
     traceparent?: string;
     workflowVersionId: string;
     workspaceId: string;
+    preparedControls?: Awaited<ReturnType<typeof prepareCoordinatorControls>>;
   }>,
 ): Promise<CoordinatorCommitState> {
   const {
@@ -267,16 +271,15 @@ export async function lockCoordinatorCommitState(
     return outcome({ kind: 'stale', revision: row.revision });
   validatePersistedFactBatch(persistedFacts);
 
-  const rejectedForEachDeclarations = await loadRejectedForEachDeclarations(
-    client,
-    {
-      workspaceId,
-      workflowVersionId,
+  const { rejectedForEachDeclarations, stoppedForEachDeclarations } =
+    await lockCoordinatorControlSettlements(
+      client,
+      input,
       currentCheckpoint,
-      plan,
       persistedFacts,
-    },
-  );
+      row.cancel_requested_at !== null,
+      row.deadline_expired,
+    );
 
   const pendingFailures = await lockPendingFailures(client, workspaceId, runId);
   const callFacts =
@@ -296,6 +299,7 @@ export async function lockCoordinatorCommitState(
     ],
     new Set(rejectedForEachDeclarations.keys()),
     callFacts,
+    new Set(stoppedForEachDeclarations.keys()),
   );
   if (
     (currentCheckpoint.cancelRequested && row.cancel_requested_at === null) ||
@@ -339,5 +343,6 @@ export async function lockCoordinatorCommitState(
     pendingFailures: pendingFailures.rows,
     authoritativeCancellation,
     rejectedForEachDeclarations,
+    stoppedForEachDeclarations,
   });
 }

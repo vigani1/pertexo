@@ -1,5 +1,13 @@
 import './server-only.js';
 
+export { inspectForEachCollection } from './for-each-collection.js';
+export {
+  configuredBranchOutputPorts,
+  configuredParallelOutputPorts,
+  inspectBranchSelection,
+  inspectParallelDeclaration,
+} from './control-output-value.js';
+
 export {
   CALLABLE_TYPE_LIMITS_V1,
   callableTypeDescriptorSchemaV1,

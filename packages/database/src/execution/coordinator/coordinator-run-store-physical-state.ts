@@ -34,6 +34,7 @@ type PhysicalInvocationRow = Readonly<{
   wait_kind: 'node_wait' | 'retry_backoff' | null;
   safe_error_code: string | null;
   has_rejection_fact: boolean;
+  has_control_stop_fact: boolean;
 }>;
 
 function corruptIf(condition: boolean): void {
@@ -256,6 +257,27 @@ function validateInvocation(
     validateRejectedForEachState(row, invocation, checkpoint, executableJson);
     return undefined;
   }
+  if (
+    checkpoint.schemaVersion === 3 &&
+    (invocation.status === 'canceled' || invocation.status === 'timed_out') &&
+    row.attempt_status === 'succeeded' &&
+    !checkpoint.loops.some(
+      ({ controlInvocationKey }) =>
+        controlInvocationKey === invocation.invocationKey,
+    ) &&
+    workflowForEachBoundsV3(executableJson).has(invocation.nodeId)
+  ) {
+    corruptIf(
+      !row.has_control_stop_fact ||
+        row.control_kind !== null ||
+        row.wait_kind !== null ||
+        row.resume_at !== null ||
+        row.retry_due_at !== null ||
+        (invocation.status === 'canceled'
+          ? !checkpoint.cancelRequested
+          : checkpoint.cancelRequested || !checkpoint.deadlineExpired),
+    );
+  }
   return invocation.status === 'running' && freshFact !== undefined
     ? undefined
     : parsedPhysicalOutput(row, invocation.output);
@@ -349,6 +371,16 @@ export async function validateLoadedCheckpointPhysicalState(
                  and event.payload->>'nodeId'=node.node_id
                  and event.payload->>'attemptNumber'=node.current_attempt_number::text
              ) else false end as has_rejection_fact,
+            case when node.status in ('canceled','timed_out') and attempt.status='succeeded'
+              then exists(select 1 from app.run_events event
+                where event.workspace_id=node.workspace_id and event.workflow_run_id=node.workflow_run_id
+                  and event.type='node.' || node.status
+                  and event.payload->>'invocationKey'=node.invocation_key
+                  and event.payload->>'attemptId'=node.current_attempt_id::text
+                  and event.payload->>'nodeRunId'=node.id::text
+                  and event.payload->>'nodeId'=node.node_id
+                  and event.payload->>'attemptNumber'=node.current_attempt_number::text)
+              else false end as has_control_stop_fact,
             node.status as node_status,
             node.current_attempt_id, node.current_attempt_number,
              node.resume_at, node.retry_due_at, node.wait_kind,

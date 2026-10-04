@@ -518,3 +518,41 @@ The [companion contract](../feature-plans/08-coordinator-native-value-demand-pro
 specifies this ownership distinction. It grants no SQL installation, screened
 probe, security-work relabeling or native enablement. Native execution remains
 OFF, screened qualification PAUSED and full F08 incomplete.
+
+## Native control-only settlement clarification — ACCEPTED, 2026-10-04
+
+The coordinating primary accepted this bounded direction after full review of
+this exact two-file documentation delta on 2026-10-04. This clarifies the native Graph2/executable3/Checkpoint3 path;
+it neither changes retained paths nor authorizes installation or enablement.
+
+A completed physical attempt and its original accepted output/provenance remain
+successful even when its logical ForEach declaration settles `canceled` or
+`timed_out`. An authenticated cancellation or database-authoritative deadline
+must permit control-only settlement of a fresh, never-started declaration without
+collection demand. Do not invent a collection, count, checksum, loop, reservation
+or budget charge. Branch/Parallel likewise suppress only never-started declaration
+selection/join/admissions; existing active joins, loops and descendants retain
+their existing stop and reconciliation obligations. Unknown effects take priority
+over cancellation/timeout, and run terminal status waits for truthful reconciliation.
+
+The final CAS owner independently derives immutable pin/scope, current physical
+success, exact unconsumed facts/cursor and actual persisted cancellation or
+database deadline under existing ordered locks. Neither proposed terminal status
+nor a worker summary proves control authority. Wrong/future fact identity and
+cancellation/deadline races fail closed. Physical attempt ownership, original
+output references and provenance remain unchanged; no new terminal read, value
+lifetime, pool, evaluator or command authority is granted.
+
+This consciously changes native deadline projections: no unused ForEach loop or
+budget debit and no unused Parallel join/merge admission are created. Events
+describe logical control settlement and the reconciled run, not invented work.
+It also fixes native ForEach cancellation leaving a consumed successful declaration
+and run running. Retained eager paths remain unchanged. Exact already-computed
+plan/receipt recovery retains its full fingerprint/checkpoint contract; an old
+native plan is never silently reinterpreted as this new transition. Mixed writers
+must remain excluded by the existing native readiness/write barrier until the
+new behavior is reviewed and qualified. Native stays OFF and F08 incomplete.
+
+The [companion requirements](../feature-plans/08-coordinator-native-value-demand-proposal.md#native-control-only-settlement-clarification--accepted-2026-10-04)
+define regression and compatibility evidence. This decision does not widen the
+paused SQL/security qualification lane.

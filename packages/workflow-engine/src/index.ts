@@ -29,6 +29,7 @@ export type {
   LoadCallableCompletion,
 } from './observation/workflow-call-demand.js';
 export { CallableCompletionStoppedError } from './observation/workflow-call-demand.js';
+export type { LoadCoordinatorControlDeclaration } from './observation/control-declaration-demand.js';
 export type { EngineErrorCode } from './errors.js';
 export {
   buildWorkflowExecutableV2,

@@ -7,6 +7,67 @@ import {
   serializeStoredExecutionJsonValue,
 } from '../stored-execution-value.js';
 
+type Invocation = PersistedWorkflowCheckpoint['invocations'][number];
+
+function expectedPhysicalStatuses(
+  invocation: Invocation,
+  previous: Invocation | undefined,
+  checkpoint: PersistedWorkflowCheckpoint,
+  row:
+    | Readonly<{ control_kind: string | null; attempt_status: string | null }>
+    | undefined,
+  waitResumeKeys: ReadonlySet<string>,
+  stoppedForEachKeys: ReadonlySet<string>,
+) {
+  const isLoopControl = checkpoint.loops.some(
+    ({ controlInvocationKey }) =>
+      controlInvocationKey === invocation.invocationKey,
+  );
+  const physicalLoopStatus =
+    isLoopControl && row?.control_kind === 'for_each_barrier'
+      ? 'waiting'
+      : 'succeeded';
+  const isSuspendedNodeWait =
+    invocation.status === 'waiting' && invocation.waitKind === 'node_wait';
+  const isStoppedSuspendedNodeWait =
+    previous?.status === 'waiting' &&
+    previous.waitKind === 'node_wait' &&
+    (invocation.status === 'canceled' || invocation.status === 'timed_out');
+  const isWaitResume =
+    invocation.status === 'running' &&
+    invocation.waitKind === undefined &&
+    waitResumeKeys.has(invocation.invocationKey);
+  const isFreshStoppedDeclaration = stoppedForEachKeys.has(
+    invocation.invocationKey,
+  );
+  const isRetainedStoppedDeclaration =
+    checkpoint.schemaVersion === 3 &&
+    previous?.status === invocation.status &&
+    (invocation.status === 'canceled' || invocation.status === 'timed_out') &&
+    row?.attempt_status === 'succeeded' &&
+    !isLoopControl &&
+    serializeStoredExecutionJsonValue(previous.output) ===
+      serializeStoredExecutionJsonValue(invocation.output);
+  const expectedNodeStatus = isFreshStoppedDeclaration
+    ? 'succeeded'
+    : isSuspendedNodeWait || isStoppedSuspendedNodeWait || isWaitResume
+      ? 'waiting'
+      : isLoopControl
+        ? physicalLoopStatus
+        : invocation.status;
+  const expectedAttemptStatus =
+    isSuspendedNodeWait ||
+    isStoppedSuspendedNodeWait ||
+    isWaitResume ||
+    isFreshStoppedDeclaration ||
+    isRetainedStoppedDeclaration ||
+    isLoopControl
+      ? 'succeeded'
+      : invocation.status;
+
+  return { expectedNodeStatus, expectedAttemptStatus };
+}
+
 export async function validateCheckpointOutputOwnership(
   client: PoolClient,
   workspaceId: string,
@@ -14,6 +75,7 @@ export async function validateCheckpointOutputOwnership(
   currentCheckpoint: PersistedWorkflowCheckpoint,
   checkpoint: PersistedWorkflowCheckpoint,
   waitResumeKeys: ReadonlySet<string>,
+  stoppedForEachKeys: ReadonlySet<string> = new Set(),
 ): Promise<void> {
   const expected = checkpoint.invocations.filter(
     (invocation) =>
@@ -63,37 +125,15 @@ export async function validateCheckpointOutputOwnership(
   for (const invocation of expected) {
     const row = physical.get(invocation.invocationKey);
     const previous = currentInvocations.get(invocation.invocationKey);
-    const isLoopControl = checkpoint.loops.some(
-      ({ controlInvocationKey }) =>
-        controlInvocationKey === invocation.invocationKey,
-    );
-    const physicalLoopStatus =
-      isLoopControl && row?.control_kind === 'for_each_barrier'
-        ? 'waiting'
-        : 'succeeded';
-    const isSuspendedNodeWait =
-      invocation.status === 'waiting' && invocation.waitKind === 'node_wait';
-    const isStoppedSuspendedNodeWait =
-      previous?.status === 'waiting' &&
-      previous.waitKind === 'node_wait' &&
-      (invocation.status === 'canceled' || invocation.status === 'timed_out');
-    const isWaitResume =
-      invocation.status === 'running' &&
-      invocation.waitKind === undefined &&
-      waitResumeKeys.has(invocation.invocationKey);
-    const expectedNodeStatus =
-      isSuspendedNodeWait || isStoppedSuspendedNodeWait || isWaitResume
-        ? 'waiting'
-        : isLoopControl
-          ? physicalLoopStatus
-          : invocation.status;
-    const expectedAttemptStatus =
-      isSuspendedNodeWait ||
-      isStoppedSuspendedNodeWait ||
-      isWaitResume ||
-      isLoopControl
-        ? 'succeeded'
-        : invocation.status;
+    const { expectedNodeStatus, expectedAttemptStatus } =
+      expectedPhysicalStatuses(
+        invocation,
+        previous,
+        checkpoint,
+        row,
+        waitResumeKeys,
+        stoppedForEachKeys,
+      );
     if (
       row?.attempt_id === undefined ||
       row.attempt_id === null ||

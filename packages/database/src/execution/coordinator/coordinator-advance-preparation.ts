@@ -30,8 +30,11 @@ import type {
   NativeCoordinatorCallDeclarationHydrator,
   NativeCoordinatorResultSourceHydrator,
   NativeCoordinatorResultValuePreparer,
+  NativeCoordinatorControlSourceHydrator,
+  NativeCoordinatorValueOwner,
 } from './coordinator-native-value-read-contract.js';
 import { validateCoordinatorArtifactCallInputs } from './coordinator-call-input-validation.js';
+import { prepareCoordinatorControls } from './coordinator-control-preparation.js';
 
 type PreparationOptions = Readonly<{
   nativeValueControlReadTimeoutMillis?: number;
@@ -39,9 +42,32 @@ type PreparationOptions = Readonly<{
   inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
   hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
   hydrateNativeResultSources?: NativeCoordinatorResultSourceHydrator;
+  hydrateNativeControlSource?: NativeCoordinatorControlSourceHydrator;
   prepareNativeResultValue?: NativeCoordinatorResultValuePreparer;
   callableResultEvaluator?: ExpressionEvaluator;
 }>;
+
+async function inspectPrecommitOwner(
+  pool: Pool,
+  owner: NativeCoordinatorValueOwner,
+  signal: AbortSignal,
+  readTimeoutMillis: number,
+) {
+  return withCoordinatorReadClient(
+    pool,
+    owner.workspaceId,
+    signal,
+    async (client) => {
+      const inspected = await client.query<{ result: unknown }>(
+        'select app.inspect_native_coordinator_value_owner($1::jsonb) as result',
+        [JSON.stringify(owner)],
+      );
+      if (inspected.rows.length !== 1) throw new CoordinatorPlanInvalidError();
+      return parseNativeCoordinatorInspection(inspected.rows[0]?.result);
+    },
+    readTimeoutMillis,
+  );
+}
 
 /** Normalize the plan and prepare bounded detached values before the protected write.
  * Returned fields are parameters, never owner proof or commit authority.
@@ -81,12 +107,23 @@ export async function prepareCoordinatorAdvanceParameters(
     plan.checkpoint.schemaVersion === 3 &&
     plan.callableResult?.kind === 'succeeded';
   let preparedResult: Awaited<ReturnType<typeof prepareCoordinatorCallResult>>;
+  const nativeControlWindow =
+    plan.checkpoint.schemaVersion === 3 &&
+    (plan.consumedThroughEventSequence >= plan.expectedNextEventSequence ||
+      plan.checkpoint.loops.length > 0 ||
+      plan.checkpoint.branchSelections.length > 0);
+  const nativeControls =
+    nativeControlWindow &&
+    !plan.checkpoint.cancelRequested &&
+    !plan.checkpoint.deadlineExpired;
+  let preparedControls:
+    Awaited<ReturnType<typeof prepareCoordinatorControls>> | undefined;
   const nativeCallInputs =
     plan.checkpoint.schemaVersion === 3 &&
     plan.workflowCalls?.declarations.some(
       ({ input }) => input.kind === 'artifact',
     ) === true;
-  if (nativeResult || nativeCallInputs) {
+  if (nativeResult || nativeCallInputs || nativeControlWindow) {
     const budget = options.nativeValueControlReadTimeoutMillis;
     if (budget === undefined)
       throw new Error('Native result precommit read owner is unavailable');
@@ -97,30 +134,19 @@ export async function prepareCoordinatorAdvanceParameters(
       expectedRevision: plan.expectedRevision,
       delivery,
     });
-    const inspection = await withCoordinatorReadClient(
+    const inspection = await inspectPrecommitOwner(
       pool,
-      workspaceId,
+      consumer,
       input.signal,
-      async (client) => {
-        const inspected = await client.query<{ result: unknown }>(
-          'select app.inspect_native_coordinator_value_owner($1::jsonb) as result',
-          [
-            JSON.stringify({
-              workspaceId,
-              runId,
-              workflowVersionId,
-              expectedRevision: plan.expectedRevision,
-              delivery,
-            }),
-          ],
-        );
-        if (inspected.rows.length !== 1)
-          throw new CoordinatorPlanInvalidError();
-        return parseNativeCoordinatorInspection(inspected.rows[0]?.result);
-      },
       budget,
     );
     assertNotAborted(input.signal);
+    if (
+      nativeControlWindow &&
+      plan.checkpoint.cancelRequested &&
+      inspection.kind === 'active'
+    )
+      throw new CoordinatorPlanInvalidError();
     // Inactive consumption never starts value work. Existing locked full-plan
     // CAS below remains the only exact recovery owner; no receipt-only shortcut.
     if (inspection.kind === 'active') {
@@ -132,6 +158,14 @@ export async function prepareCoordinatorAdvanceParameters(
         { owner: consumer, signal: input.signal, inspectOwner },
         async (signal) => {
           assertNotAborted(signal);
+          if (nativeControls)
+            preparedControls = await prepareCoordinatorControls(pool, {
+              owner: consumer,
+              plan,
+              signal,
+              readTimeoutMillis: budget,
+              hydrate: options.hydrateNativeControlSource,
+            });
           if (nativeCallInputs)
             await validateCoordinatorArtifactCallInputs(pool, {
               owner: consumer,
@@ -220,5 +254,7 @@ export async function prepareCoordinatorAdvanceParameters(
     planFingerprint,
     nativeResult,
     preparedResult,
+    nativeControls,
+    preparedControls,
   };
 }

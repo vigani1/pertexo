@@ -317,6 +317,31 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
     rowSecurity: true,
   },
   {
+    signature: 'app.native_coordinator_control_inventory(jsonb,integer)',
+    hash: '2e1cdbc8fbcfef0218bbda9486ce07b8',
+    securityDefiner: false,
+    rowSecurity: true,
+  },
+  {
+    signature:
+      'app.lock_native_coordinator_control_sources(jsonb,integer,jsonb)',
+    hash: '3ca0fe55a9226096159081a025c10551',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
+    signature: 'app.load_native_coordinator_control_sources(jsonb,integer)',
+    hash: 'e8778ceb31ea7615bf8c4ce5a8f406ac',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
+    signature: 'app.read_native_coordinator_control_source(jsonb,jsonb)',
+    hash: 'b512445476069dceaf3c1a5c02759874',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
     signature: 'app.read_native_attempt_value_source(jsonb,jsonb)',
     hash: '144a2a96c11ea73dddea8b3a1eb691e2',
     securityDefiner: true,

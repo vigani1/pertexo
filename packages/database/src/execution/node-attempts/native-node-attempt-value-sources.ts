@@ -55,6 +55,8 @@ const physicalSourceSchema = scopeSchema
     attemptId: z.uuid(),
   })
   .strict();
+/** Same physical routing contract for framework-owned control declarations. */
+export const nativePhysicalOutputSourceMetadataSchema = physicalSourceSchema;
 const logicalSourceSchema = z
   .object({
     kind: z.literal('workflow_call_result'),

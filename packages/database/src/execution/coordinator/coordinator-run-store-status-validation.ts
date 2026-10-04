@@ -30,6 +30,7 @@ type TransitionContext = Readonly<{
   persisted: PersistedState;
   plannedNodeEvents: ReadonlySet<string>;
   rejectedForEachDeclarations: ReadonlySet<string>;
+  stoppedForEachDeclarations: ReadonlySet<string>;
   callFacts: ReadonlyMap<string, PersistedWorkflowCallStateV1>;
 }>;
 
@@ -71,6 +72,7 @@ function validatePersistedFact(
   current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
   rejectedForEachDeclarations: ReadonlySet<string>,
+  stoppedForEachDeclarations: ReadonlySet<string>,
 ): void {
   const observation = fact.observation;
   if (observation.kind === 'wait') {
@@ -104,6 +106,15 @@ function validatePersistedFact(
     assertPlan(next.output === undefined);
     return;
   }
+  if (stoppedForEachDeclarations.has(next.invocationKey)) {
+    assertPlan(
+      (next.status === 'canceled' || next.status === 'timed_out') &&
+        observation.status === 'succeeded',
+    );
+    assertPlan(next.attemptNumber === observation.attemptNumber);
+    assertPlan(sameStoredValue(next.output, observation.output));
+    return;
+  }
   const declaredLoopBarrier =
     next.status === 'waiting' &&
     next.resumeAt === undefined &&
@@ -120,6 +131,7 @@ function validatePersistedFacts(
   current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
   rejectedForEachDeclarations: ReadonlySet<string>,
+  stoppedForEachDeclarations: ReadonlySet<string>,
 ): void {
   for (const fact of facts) {
     if (fact.invocationKey === null) continue;
@@ -129,6 +141,7 @@ function validatePersistedFacts(
       current,
       plan,
       rejectedForEachDeclarations,
+      stoppedForEachDeclarations,
     );
   }
 }
@@ -280,6 +293,19 @@ function acceptRunningCompletion(
     return false;
   }
   const observation = context.persisted.observations.get(next.invocationKey);
+  if (context.stoppedForEachDeclarations.has(next.invocationKey)) {
+    assertPlan(next.status === 'canceled' || next.status === 'timed_out');
+    assertPlan(terminalEvent === `node.${next.status}`);
+    assertPlan(next.attemptNumber === previous.attemptNumber);
+    assertPlan(
+      observation?.kind === 'outcome' && observation.status === 'succeeded',
+    );
+    assertPlan(sameStoredValue(next.output, observation.output));
+    const key = nodeEventKey(next, terminalEvent);
+    assertPlan(context.plannedNodeEvents.has(key));
+    context.expectedNodeEvents.add(key);
+    return true;
+  }
   if (context.rejectedForEachDeclarations.has(next.invocationKey)) {
     assertPlan(next.status === 'failed' && terminalEvent === 'node.failed');
     assertPlan(next.attemptNumber === previous.attemptNumber);
@@ -515,6 +541,7 @@ export function assertStatusTransitionsValid(
   terminalRunStatuses: ReadonlySet<string>,
   rejectedForEachDeclarations: ReadonlySet<string> = new Set(),
   callFacts: readonly PersistedWorkflowCallStateV1[] = [],
+  stoppedForEachDeclarations: ReadonlySet<string> = new Set(),
 ): void {
   const currentInvocations = new Map(
     current.invocations.map((invocation) => [
@@ -540,6 +567,7 @@ export function assertStatusTransitionsValid(
     current,
     plan,
     rejectedForEachDeclarations,
+    stoppedForEachDeclarations,
   );
   const plannedNodeEvents = new Set(
     plan.events.flatMap((event) =>
@@ -556,6 +584,7 @@ export function assertStatusTransitionsValid(
     persisted,
     plannedNodeEvents,
     rejectedForEachDeclarations,
+    stoppedForEachDeclarations,
     callFacts: new Map(callFacts.map((call) => [call.invocationKey, call])),
   });
   validateRunEvents(current, plan, terminalRunStatuses);

@@ -32,6 +32,7 @@ import { loadCoordinatorAdvanceState } from './coordinator-run-store-observation
 import type { CoordinatorCallAdmissionOptions } from './coordinator-call-admission.js';
 import type {
   NativeCoordinatorResultPreparationScope,
+  NativeCoordinatorControlSourceHydrator,
   NativeCoordinatorCallDeclarationHydrator,
   NativeCoordinatorResultSourceHydrator,
   NativeCoordinatorResultValuePreparer,
@@ -61,6 +62,7 @@ export type CoordinatorRunStoreOptions = Readonly<{
   withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
   hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
   hydrateNativeResultSources?: NativeCoordinatorResultSourceHydrator;
+  hydrateNativeControlSource?: NativeCoordinatorControlSourceHydrator;
   prepareNativeResultValue?: NativeCoordinatorResultValuePreparer;
   /** Exact existing release/compiler descriptions; absence means retained-only. */
   expectedCompatibilityReleases?: CompatibilityReleaseExpectationSet;
@@ -173,6 +175,22 @@ export function createCoordinatorRunStore(
             requireNativeReadiness();
             return nativeReads.readCoordinatorCallDeclaration(input);
           },
+          loadCoordinatorControlSources: (
+            input: Parameters<
+              typeof nativeReads.loadCoordinatorControlSources
+            >[0],
+          ) => {
+            requireNativeReadiness();
+            return nativeReads.loadCoordinatorControlSources(input);
+          },
+          readCoordinatorControlSource: (
+            input: Parameters<
+              typeof nativeReads.readCoordinatorControlSource
+            >[0],
+          ) => {
+            requireNativeReadiness();
+            return nativeReads.readCoordinatorControlSource(input);
+          },
         }
       : {}),
     acknowledgeAdvanceDelivery: (input: AcknowledgeAdvanceDeliveryInput) =>
@@ -198,6 +216,12 @@ export function createCoordinatorRunStore(
               nativeValueControlReadTimeoutMillis: controlReadTimeoutMillis,
               inspectNativeResultOwner:
                 nativeReads.inspectCoordinatorValueReadOwner,
+              ...(options.hydrateNativeControlSource === undefined
+                ? {}
+                : {
+                    hydrateNativeControlSource:
+                      options.hydrateNativeControlSource,
+                  }),
               ...(options.prepareNativeResultValue === undefined
                 ? {}
                 : {

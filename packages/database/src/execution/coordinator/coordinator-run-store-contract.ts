@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 import type { CoordinatorCallMaterials } from './coordinator-call-materials.js';
 import type { CoordinatorCallableMaterials } from './coordinator-callable-materials.js';
+import type { coordinatorControlFactWindow } from './coordinator-control-facts.js';
 import type {
   NativeResultArtifactReservationInput,
   NativeResultArtifactProofInput,
@@ -12,6 +13,8 @@ import type {
   LoadCallableCompletionSources,
   ReadCallableCompletionSource,
   ReadCoordinatorCallDeclaration,
+  LoadCoordinatorControlSources,
+  ReadCoordinatorControlSource,
 } from './coordinator-native-value-read-contract.js';
 
 export const coordinatorIdentitySchema = z.uuid();
@@ -39,6 +42,7 @@ export type LoadAdvanceStateResult =
         checkpoint: unknown;
         observations: readonly unknown[];
         completedOutputs?: readonly unknown[];
+        controlDeclarations?: ReturnType<typeof coordinatorControlFactWindow>;
         workflowCalls?: CoordinatorCallMaterials;
         callableCompletion?: CoordinatorCallableMaterials;
       }>;
@@ -77,6 +81,8 @@ export interface CoordinatorRunStore {
   loadCallableCompletionSources?: LoadCallableCompletionSources;
   readCallableCompletionSource?: ReadCallableCompletionSource;
   readCoordinatorCallDeclaration?: ReadCoordinatorCallDeclaration;
+  loadCoordinatorControlSources?: LoadCoordinatorControlSources;
+  readCoordinatorControlSource?: ReadCoordinatorControlSource;
   /** Framework result producer only; all ports are gated by actual native readiness. */
   reserveNativeResultArtifact?: (
     input: NativeResultArtifactReservationInput,
