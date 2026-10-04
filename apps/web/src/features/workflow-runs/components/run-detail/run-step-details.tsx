@@ -1,4 +1,5 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkflowRunResponse } from '@pertexo/contracts/schemas/workflow-runs';
 import { Link } from '@tanstack/react-router';
 import { ChevronDownIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -14,6 +15,7 @@ import {
 import type { StepStoryEntry } from '../../model/timeline/step-replay';
 import type { RunTimelineRow } from '../../model/timeline/run-timeline-model';
 import { shortRunId } from '../../model/list/run-list';
+import { describeRunStatus } from '../../model/run-status';
 import { CopyButton } from '@/components/ui/copy-button';
 import { InfoHint } from '@/components/patterns/info-hint';
 import { StepInputData, StepOutputData, type RunDataScope } from './run-data';
@@ -103,6 +105,40 @@ function StoryEntry({
   );
 }
 
+/** The selected invocation's accepted relationship, from the existing snapshot. */
+function SelectedCalledRun({
+  row,
+  family,
+  workspaceId,
+}: Readonly<{
+  row: RunTimelineRow;
+  family: WorkflowRunResponse['callFamily'];
+  workspaceId: string;
+}>) {
+  if (row.invocationKey === undefined) return null;
+  const child = family?.children.find(
+    (candidate) =>
+      candidate.nodeId === row.nodeId &&
+      candidate.invocationKey === row.invocationKey,
+  );
+  if (child === undefined) return null;
+  const look = describeRunStatus(child.status);
+  return (
+    <StepDetailsSection title="Called run">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        <Link
+          to="/w/$workspaceId/runs/$runId"
+          params={{ workspaceId, runId: child.runId }}
+          className="min-w-0 break-all text-accent-foreground underline underline-offset-4 focus-ring rounded-sm"
+        >
+          Run {shortRunId(child.runId)}
+        </Link>
+        <Status tone={look.tone}>{look.label}</Status>
+      </div>
+    </StepDetailsSection>
+  );
+}
+
 /**
  * Everything about one step: its status, the story of its attempts with
  * errors explained, its outputs and, tucked away, its identifiers. The
@@ -114,6 +150,7 @@ export function RunStepDetails({
   upstream,
   nowMs,
   scope,
+  callFamily,
 }: Readonly<{
   row: RunTimelineRow | undefined;
   rows: readonly RunTimelineRow[];
@@ -121,6 +158,7 @@ export function RunStepDetails({
   upstream: ReadonlyMap<string, readonly string[]> | undefined;
   nowMs: number;
   scope: RunDataScope;
+  callFamily?: WorkflowRunResponse['callFamily'];
 }>) {
   const { workspace } = scope;
   if (row === undefined)
@@ -149,6 +187,11 @@ export function RunStepDetails({
           {stepTag(row, nowMs)}
         </span>
       </div>
+      <SelectedCalledRun
+        row={row}
+        family={callFamily}
+        workspaceId={workspace.id}
+      />
       <StepDetailsSection title="What happened">
         {row.story.length === 0 ? (
           <p className="text-[0.8rem] text-muted-foreground">

@@ -1,4 +1,5 @@
 import { HttpResponse, http } from 'msw';
+import type { WorkflowRunResponse } from '@pertexo/contracts/schemas/workflow-runs';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -88,6 +89,7 @@ function installRun({
   stream,
   input = { kind: 'none' },
   output = { kind: 'none' },
+  callFamily,
 }: Readonly<{
   run: ReturnType<typeof fixtureRun>;
   nodes: readonly unknown[];
@@ -95,6 +97,7 @@ function installRun({
   stream?: () => Response;
   input?: unknown;
   output?: unknown;
+  callFamily?: WorkflowRunResponse['callFamily'];
 }>) {
   let streams = 0;
   mockServer.use(
@@ -109,7 +112,11 @@ function installRun({
       HttpResponse.json({ input: { kind: 'none' } }),
     ),
     http.get(`${apiBase}/runs/${runId}`, () =>
-      HttpResponse.json({ run, nodes }),
+      HttpResponse.json({
+        run,
+        nodes,
+        ...(callFamily === undefined ? {} : { callFamily }),
+      }),
     ),
     http.get(`${apiBase}/runs/${runId}/events`, () => {
       streams += 1;
@@ -163,6 +170,197 @@ afterEach(() => {
 });
 
 describe('run page', () => {
+  it('shows only the selected invocation’s accepted child, refreshes its status and forgets denied snapshots', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === '(min-width: 48rem)',
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }),
+    });
+    const firstChild = fixtureIds.secondRun;
+    const secondChild = artifactId;
+    const nodes = [
+      node('succeeded', { completedAt: secondsAgo(30) }),
+      node('failed', {
+        id: '33333333-3333-4333-8333-333333333333',
+        invocationKey: 'send-receipt:1',
+        completedAt: secondsAgo(20),
+      }),
+    ];
+    const callFamily: NonNullable<WorkflowRunResponse['callFamily']> = {
+      rootRunId: runId,
+      parentRunId: null,
+      parentInvocationKey: null,
+      children: [
+        {
+          runId: firstChild,
+          nodeId: 'send-receipt',
+          invocationKey: 'send-receipt:0',
+          status: 'running',
+        },
+        {
+          runId: secondChild,
+          nodeId: 'send-receipt',
+          invocationKey: 'send-receipt:1',
+          status: 'outcome_unknown',
+        },
+      ],
+    };
+    const run = fixtureRun(runId, 'failed');
+    installRun({ run, nodes, callFamily });
+    const { queryClient } = renderApp(`/w/${workspaceId}/runs/${runId}`);
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole(
+        'button',
+        { name: /^Send receipt · 1: Succeeded/u },
+        coldStart,
+      ),
+    );
+    const lens = screen.getByRole('complementary', { name: 'Step details' });
+    expect(
+      within(lens).getByRole('link', { name: 'Run ffff…ffff' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/runs/${firstChild}`);
+    expect(within(lens).getByText('Running')).toBeVisible();
+    expect(
+      within(lens).queryByRole('link', { name: 'Run 5555…5555' }),
+    ).not.toBeInTheDocument();
+    await event.click(
+      screen.getByRole('button', { name: /^Send receipt · 2: Failed/u }),
+    );
+    expect(
+      within(lens).getByRole('link', { name: 'Run 5555…5555' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/runs/${secondChild}`);
+    expect(within(lens).getByText('Outcome unknown')).toBeVisible();
+    expect(
+      within(lens).queryByRole('link', { name: 'Run ffff…ffff' }),
+    ).not.toBeInTheDocument();
+    mockServer.use(
+      http.get(`${apiBase}/runs/${runId}`, () =>
+        HttpResponse.json({
+          run,
+          nodes,
+          callFamily: {
+            ...callFamily,
+            children: callFamily.children.map((child) => ({
+              ...child,
+              status: 'succeeded',
+            })),
+          },
+        }),
+      ),
+    );
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workflowRunKeys.detail(fixtureIds.user, workspaceId, runId),
+      });
+    });
+    await waitFor(() =>
+      expect(
+        within(lens).queryByText('Outcome unknown'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(within(lens).getByText('Succeeded')).toBeVisible();
+    mockServer.use(
+      http.get(`${apiBase}/runs/${runId}`, () =>
+        HttpResponse.json(
+          {
+            type: 'https://api.pertexo.test/problems/resource.not_found',
+            title: 'Unavailable',
+            status: 403,
+            code: 'resource.not_found',
+            requestId: 'selected-call-denied',
+          },
+          {
+            status: 403,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        ),
+      ),
+    );
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workflowRunKeys.detail(fixtureIds.user, workspaceId, runId),
+      });
+    });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('link', { name: 'Run 5555…5555' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      queryClient.getQueryData(
+        workflowRunKeys.detail(fixtureIds.user, workspaceId, runId),
+      ),
+    ).toBeUndefined();
+  });
+
+  it.each([
+    'missing family',
+    'no accepted child',
+    'different node',
+    'different invocation',
+    'unstarted invocation',
+  ] as const)('does not invent a selected child for %s', async (scenario) => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === '(min-width: 48rem)',
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }),
+    });
+    const callFamily: NonNullable<WorkflowRunResponse['callFamily']> = {
+      rootRunId: runId,
+      parentRunId: null,
+      parentInvocationKey: null,
+      children:
+        scenario === 'no accepted child'
+          ? []
+          : [
+              {
+                runId: fixtureIds.secondRun,
+                nodeId:
+                  scenario === 'different node' ? 'other-step' : 'send-receipt',
+                invocationKey:
+                  scenario === 'different invocation'
+                    ? 'send-receipt:1'
+                    : 'send-receipt:0',
+                status: 'succeeded',
+              },
+            ],
+    };
+    installRun({
+      run: fixtureRun(runId, 'succeeded'),
+      nodes:
+        scenario === 'unstarted invocation'
+          ? []
+          : [node('succeeded', { completedAt: secondsAgo(30) })],
+      callFamily: scenario === 'missing family' ? undefined : callFamily,
+    });
+    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await userEvent
+      .setup()
+      .click(
+        await screen.findByRole(
+          'button',
+          { name: /^Send receipt:/u },
+          coldStart,
+        ),
+      );
+    const lens = screen.getByRole('complementary', { name: 'Step details' });
+    expect(
+      within(lens).queryByRole('heading', { name: 'Called run' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(lens).queryByRole('link', { name: 'Run ffff…ffff' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('navigates accepted child and parent run links through the existing detail route', async () => {
     const childId = fixtureIds.secondRun;
     const parent = fixtureRun(runId, 'succeeded');

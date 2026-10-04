@@ -369,6 +369,123 @@ test('replays the exact displayed version from its own input', async ({
   await expect(page.getByText('Replay started')).toBeVisible();
 });
 
+for (const viewport of [
+  { width: 1440, height: 1000 },
+  { width: 390, height: 844 },
+]) {
+  test(`inspects the exact accepted child invocation at ${String(viewport.width)}px`, async ({
+    page,
+  }, testInfo) => {
+    await installRoutes(page);
+    await page.setViewportSize(viewport);
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
+      (route) =>
+        route.fulfill({
+          json: {
+            run: run(firstRunId, 'failed'),
+            nodes: [
+              {
+                id: '22222222-2222-4222-8222-222222222222',
+                nodeId: 'call-child',
+                invocationKey: 'call-child:0',
+                status: 'succeeded',
+                currentAttemptNumber: 1,
+                startedAt: timestamp,
+                completedAt: '2026-09-15T10:00:01.000Z',
+                resumeAt: null,
+                safeErrorCode: null,
+              },
+              {
+                id: '33333333-3333-4333-8333-333333333333',
+                nodeId: 'call-child',
+                invocationKey: 'call-child:1',
+                status: 'failed',
+                currentAttemptNumber: 1,
+                startedAt: timestamp,
+                completedAt: '2026-09-15T10:00:02.000Z',
+                resumeAt: null,
+                safeErrorCode: null,
+              },
+            ],
+            callFamily: {
+              rootRunId: firstRunId,
+              parentRunId: null,
+              parentInvocationKey: null,
+              children: [
+                {
+                  runId: secondRunId,
+                  nodeId: 'call-child',
+                  invocationKey: 'call-child:0',
+                  status: 'succeeded',
+                },
+                {
+                  runId: replayRunId,
+                  nodeId: 'call-child',
+                  invocationKey: 'call-child:1',
+                  status: 'outcome_unknown',
+                },
+              ],
+            },
+          },
+        }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/*/node-runs/*/input`,
+      (route) => route.fulfill({ json: { input: { kind: 'none' } } }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/*/node-runs/*/output`,
+      (route) => route.fulfill({ json: { output: { kind: 'none' } } }),
+    );
+    await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+    const lens =
+      viewport.width < 1280
+        ? page.getByRole('dialog', { name: /^call-child ·/u })
+        : page.getByRole('complementary', { name: 'Step details' });
+    await page
+      .getByRole('button', { name: /^call-child · 1: Succeeded/u })
+      .click();
+    await expect(
+      lens.getByRole('link', { name: 'Run ffff…ffff' }),
+    ).toBeVisible();
+    await expect(lens.getByRole('link', { name: 'Run 1111…1111' })).toHaveCount(
+      0,
+    );
+    if (viewport.width < 1280) await page.keyboard.press('Escape');
+    await page
+      .getByRole('button', { name: /^call-child · 2: Failed/u })
+      .click();
+    const child = lens.getByRole('link', { name: 'Run 1111…1111' });
+    await expect(child).toBeVisible();
+    await expect(
+      lens.getByText('Outcome unknown', { exact: true }),
+    ).toBeVisible();
+    await expect(lens.getByRole('link', { name: 'Run ffff…ffff' })).toHaveCount(
+      0,
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await expect(lens).toHaveCSS('opacity', '1');
+    await testInfo.attach(`selected-call-${String(viewport.width)}`, {
+      body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
+      contentType: 'image/png',
+    });
+    if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+      await page.screenshot({
+        path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/selected-call-${String(viewport.width)}.png`,
+        fullPage: true,
+        animations: 'disabled',
+      });
+    await child.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);
+  });
+}
+
 test('follows accepted caller and child run links on mobile', async ({
   page,
 }, testInfo) => {

@@ -179,6 +179,7 @@ export function RunDetailPage({
       upstream={upstream}
       nowMs={nowMs}
       scope={dataScope}
+      callFamily={snapshot.callFamily}
     />
   );
 
