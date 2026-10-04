@@ -1,7 +1,9 @@
 import type { PoolClient } from 'pg';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   validateWorkflowGraph,
+  parseWorkflowGraphDraft,
+  workflowRetainedExecutableChecksum,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 import { workflowCallableContractIdentityV1 } from '@pertexo/workflow-model/workflow-call-closure';
@@ -28,6 +30,12 @@ const graph = {
   settings: {},
   callable,
 };
+const retainedGraph = parseWorkflowGraphDraft({
+  schemaVersion: 1,
+  nodes: [],
+  edges: [],
+  settings: {},
+});
 const pin = {
   workflowId: id(4),
   versionId: id(5),
@@ -263,6 +271,86 @@ describe('native publication through the existing publication owner', () => {
     const failure = new Error('version read unavailable');
     const owner = fixture(callGraph, { lookupFailure: failure });
     await expect(owner.publish()).rejects.toBe(failure);
+    expect(owner.versionWrites()).toEqual([]);
+  });
+
+  it.each([
+    [
+      'wrong workspace',
+      'pin_mismatch',
+      { ...publishedCallee, workspace_id: id(6) },
+    ],
+    [
+      'wrong workflow',
+      'pin_mismatch',
+      { ...publishedCallee, workflow_id: id(6) },
+    ],
+    [
+      'wrong immutable version',
+      'pin_mismatch',
+      { ...publishedCallee, id: id(6) },
+    ],
+    [
+      'retained executable on native graph',
+      'pin_mismatch',
+      { ...publishedCallee, executable_schema_version: 2 },
+    ],
+    [
+      'missing executable format',
+      'pin_mismatch',
+      { ...publishedCallee, executable_schema_version: null },
+    ],
+    [
+      'retained graph with native executable',
+      'pin_mismatch',
+      {
+        ...publishedCallee,
+        schema_version: 1,
+        checksum: workflowRetainedExecutableChecksum(retainedGraph),
+        graph_json: retainedGraph,
+      },
+    ],
+    [
+      'no callable declaration',
+      'not_callable',
+      {
+        ...publishedCallee,
+        graph_json: { schemaVersion: 2, nodes: [], edges: [], settings: {} },
+      },
+    ],
+  ] as const)(
+    'rejects %s before compilation or version insertion',
+    async (_description, code, callee) => {
+      const compiler = vi.fn<WorkflowExecutableCompiler>();
+      const owner = fixture(callGraph, { callee, compiler });
+      await expect(owner.publish()).rejects.toMatchObject({
+        name: 'WorkflowCallClosureError',
+        code,
+      });
+      expect(compiler).not.toHaveBeenCalled();
+      expect(owner.versionWrites()).toEqual([]);
+      expect(
+        owner.statements.find(({ sql }) =>
+          sql.includes('executable_schema_version'),
+        )?.values,
+      ).toEqual([id(1), pin.workflowId, pin.versionId]);
+    },
+  );
+
+  it('keeps a corrupted stored graph/checksum pairing operational rather than reporting an eligible target refusal', async () => {
+    const compiler = vi.fn<WorkflowExecutableCompiler>();
+    const owner = fixture(callGraph, {
+      compiler,
+      callee: {
+        ...publishedCallee,
+        schema_version: 1,
+        graph_json: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+      },
+    });
+    await expect(owner.publish()).rejects.toThrow(
+      'Stored workflow version checksum format does not match its graph',
+    );
+    expect(compiler).not.toHaveBeenCalled();
     expect(owner.versionWrites()).toEqual([]);
   });
 });
