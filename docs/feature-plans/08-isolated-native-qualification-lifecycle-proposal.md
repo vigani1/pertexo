@@ -44,7 +44,8 @@ not an instruction to strip the first statement or splice individual functions.
 
 ## One qualification module, a closed internal seam
 
-Proposed orchestration owner: `infrastructure/testing/native-qualification-lifecycle.mts`.
+Source-only orchestration owner: `infrastructure/testing/native-qualification-lifecycle.mjs`,
+following existing infrastructure JavaScript/test conventions, not native TypeScript stripping.
 It owns fixture identity, stage admission, approved case selection, evidence and
 joined disposal. The database package owns an internal fixture admission adapter
 through its existing testing surface, never a new serving export or public config flag.
@@ -177,3 +178,32 @@ is currently executable. Only design acceptance is closed here. Native catalogs,
 execution and writers remain OFF; all operational gates remain open. No installation,
 runtime tests, authority grants, key provisioning, activation, implementation commit
 or push occurred at this proposal stage.
+
+## First source-only case matrix — runtime admission remains blocked
+
+The first tranche assesses source, ownership and compatibility observations and
+joins cleanup. It exposes no case executor, installer, native startup or readiness
+override. Injected resource/catalog/cleanup observations in its tests are simulations.
+Existing canonical fixture ownership checks and native owner inventories remain
+the source of truth, not new caller-supplied compatibility flags.
+
+Every functional row requires reviewed installation artifact, installed full
+compatibility, canonical native admission and exact approved execution scope.
+Publication/root prerequisites must be earned by their actual owners, never fixture
+rows. All those runtime prerequisites are currently unclosed; none of these rows
+can run through this tranche.
+
+| Closed case ID | Additional actual-owner prerequisites | Scoped future observation |
+| --- | --- | --- |
+| `call_wait_resume` | ADR066 semantic authority, canonical publication/root/Call admission, durable Wait/wakeup/transport | One pinned child survives wait/restart and parent resumes once |
+| `parallel_control_reconciliation` | Canonical publication/root, physical completion and authenticated controls/clock | Existing branch truth reconciles without duplicate admissions or value demand |
+| `artifact_result_lifetime` | ADR066 semantic authority, canonical publication/root, artifact preparation/association/result/quota owners | Accepted exact bytes survive result recovery and finite cleanup |
+| `retention_family_resume` | Earned accepted parent/child facts, native detail/summary/purge/hold owners | Bounded interrupted pages retain then retire lineage without capacity resurrection |
+
+The separate exclusion ledger covers `finalized_output_integrity`,
+`logical_current_result_tampering` and `raw_login_semantic_attestation` from the
+rejected campaign. They remain required/unclosed and cannot be selected, substituted
+or routed through any functional row. Unknown/duplicate IDs also fail admission.
+The matrix is source guidance, not approval of any runtime case. Source tests derive
+checks for drift, dedicated nonserving ownership, inventory mismatch, missing
+prerequisites, exclusion and cleanup failure from these requirements.

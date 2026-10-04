@@ -271,6 +271,36 @@ installation artifact, canonical qualification admission, ADR066 integration,
 supported case prerequisites and actual runtime/security evidence remain open.
 No guard, readiness, installed authority or platform restriction is changed.
 
+The first lifecycle implementation slice is reviewed source-only after full primary
+read/hash binding, Spec0, independent thirty-test verification and Standards
+confirmation that its reentrant-close P2 is closed with no new narrow finding.
+The repaired exact diff is
+`2eff6713f2fd1638df0fad4385ad7206b7cf7da42a09b26f59896d76b9ddf0b7`;
+its receipt is
+`cfb1bd3ff906b0634d3d34d249f2d3c7f15894b6fff96730e9968171dc4ad498`.
+Its closed four-case prerequisite matrix and exclusion
+ledger precede the assessor tests. The owner binds actual Git commit/tree, guarded
+candidate, registered migrations and selected source/emitted inventory artifacts;
+reuses the existing canonical resource-ownership verifier; reports partial native
+function-profile drift; and joins outstanding observations/application cleanup
+before rechecking ownership and requiring exact resource-absence observations.
+Fifteen source tests and fifteen existing ownership tests pass using injected
+catalog/container/disposal observations, not real services. Matching simulated
+function profiles still cannot establish installed compatibility or admission.
+The full installed/emitted-process manifest, nonserving isolation, artifact
+transport, installation artifact, canonical admission, ADR066 integration and
+approved runtime scope remain explicit blockers. No runnable installation/startup
+route, native-ready flag or case executor is provided; every runtime/security
+criterion remains open. Primary explicitly authorized recording this reviewed
+source slice; its tests do not authorize installation, runtime acceptance or push.
+
+The reviewed slice also corrects reentrant shutdown: the shared close promise is
+published before synchronous abort listeners can call close again. Its regression
+first failed on distinct close promises, then passed with exactly one application
+join, resource disposal and absence observation; admission still stops
+synchronously and pending observations remain joined. Source-only evidence and
+all installation/runtime restrictions are unchanged.
+
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
 | Publication / compiler selection | WIP: actual publication owner validates callable selectors and bounded immutable closure; compiler chooses V3 for Graph2 | Ordinary public-owner positive publication, invalid selector, immutable pin/contract lookup and HTTP error-mapping tests; real V3 compiler verification | Installed format constraints, locked native release and adversarial publication authority unqualified; no real native publication qualified |

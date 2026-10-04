@@ -1,0 +1,387 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+  createNativeQualificationLifecycle,
+  observeNativeQualificationSource,
+} from './native-qualification-lifecycle.mjs';
+import { NATIVE_COORDINATOR_OWNER_INVENTORY } from '../../packages/database/dist/execution/coordinator/coordinator-native-owner-inventory.js';
+
+// Source-only behavior; no SQL, Docker inspection or runtime fixture execution.
+test('binds the actual guarded candidate and exact native inventory without qualifying installation', async () => {
+  const observed = await observeNativeQualificationSource();
+  assert.equal(
+    observed.candidateSha256,
+    '6588f2d8a6aa3fdb3e7c40bd5a01ca94f6ec92592fbc2e4fdbf0b8e8d25be5ba',
+  );
+  assert.equal(observed.ownerCount, 67);
+  assert.equal(
+    observed.ownerInventorySha256,
+    'e709b9b825a659cde0e25bf0936804be8c65fedf5565cdd0434e57e023aab85b',
+  );
+  assert.equal(observed.installationGuardPresent, true);
+  assert.equal(observed.baseHead, '0136_workflow_draft_graph_v2.sql');
+  assert.equal(observed.publishedConstraintQualified, false);
+});
+
+function simulatedFixture(source) {
+  const manifest = {
+    project: 'pertexo-f08-qualification-unit',
+    postgres: { id: 'a'.repeat(64), port: 55461 },
+    redis: { id: 'b'.repeat(64), port: 56391 },
+  };
+  const environment = {
+    EDITOR_BROWSER_OWNED_FIXTURE: 'true',
+    EDITOR_BROWSER_OWNERSHIP_MANIFEST: JSON.stringify(manifest),
+    REDIS_URL: 'redis://:synthetic@127.0.0.1:56391/0',
+  };
+  for (const [name, role] of [
+    ['ADMIN', 'postgres'],
+    ['MIGRATION', 'pertexo_migration'],
+    ['API', 'pertexo_api'],
+    ['WORKER', 'pertexo_worker'],
+    ['DISPATCHER', 'pertexo_dispatcher'],
+  ])
+    environment[`DATABASE_${name}_URL`] =
+      `postgresql://${role}:synthetic@127.0.0.1:55461/${name === 'ADMIN' ? 'postgres' : 'pertexo'}`;
+  const rows = new Map(
+    [manifest.postgres, manifest.redis].map((resource, index) => [
+      resource.id,
+      {
+        Id: resource.id,
+        State: { Running: true },
+        Config: {
+          Labels: {
+            'com.docker.compose.project': manifest.project,
+            'io.pertexo.fixture-purpose': 'f08-native-qualification',
+          },
+        },
+        Mounts: [{ Type: 'tmpfs' }],
+        NetworkSettings: {
+          Ports: {
+            [index === 0 ? '5432/tcp' : '6379/tcp']: [
+              { HostIp: '127.0.0.1', HostPort: String(resource.port) },
+            ],
+          },
+        },
+      },
+    ]),
+  );
+  const disposed = [];
+  return {
+    source,
+    environment,
+    expectedResources: {
+      project: manifest.project,
+      postgresId: manifest.postgres.id,
+      redisId: manifest.redis.id,
+      postgresPort: 55461,
+      redisPort: 56391,
+    },
+    inspect: async (id) => JSON.stringify([rows.get(id)]),
+    observeCatalog: async () => ({ nativeFunctions: [] }),
+    joinApplication: async () => undefined,
+    disposeResources: async (resources) => {
+      disposed.push(resources);
+      rows.delete(resources.postgresId);
+      rows.delete(resources.redisId);
+    },
+    observeDisposal: async (resources) =>
+      [resources.postgresId, resources.redisId].map((id) => ({
+        id,
+        exists: rows.has(id),
+      })),
+    rows,
+    disposed,
+  };
+}
+
+test('source lifecycle reports exact drift and runtime prerequisites without creating admission', async () => {
+  const source = await observeNativeQualificationSource();
+  const input = simulatedFixture(source);
+  const owner = createNativeQualificationLifecycle(input);
+  const report = await owner.assess(['call_wait_resume']);
+  assert.equal(report.state, 'blocked_before_install');
+  assert.equal(report.nativeReady, false);
+  assert.equal(report.runtimeStartAuthorized, false);
+  assert.ok(report.blockers.includes('installation_artifact_unavailable'));
+  assert.ok(report.blockers.includes('canonical_admission_unavailable'));
+  assert.ok(report.blockers.includes('adr066_integration_unavailable'));
+  assert.equal(report.nativeOwnerDrift.length, 67);
+  assert.equal(report.evidence, 'source_and_injected_observations');
+  await owner.close();
+  assert.equal(input.disposed.length, 1);
+  assert.equal(owner.state, 'disposed');
+});
+
+test('rejects a partial caller ownership selector before inspection or cleanup', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  input.expectedResources = {};
+  assert.throws(
+    () => createNativeQualificationLifecycle(input),
+    /Exact native fixture resource bindings/u,
+  );
+  assert.equal(input.disposed.length, 0);
+});
+
+test('does not declare disposal when the simulated resource still exists', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  input.disposeResources = async () => undefined;
+  const owner = createNativeQualificationLifecycle(input);
+  await assert.rejects(owner.close(), /cleanup failed/u);
+  assert.equal(owner.state, 'cleanup_failed');
+});
+
+test('rejects source drift before catalog observations', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  input.source = { ...input.source, candidateSha256: '0'.repeat(64) };
+  let observed = false;
+  input.observeCatalog = async () => {
+    observed = true;
+    return { nativeFunctions: [] };
+  };
+  const owner = createNativeQualificationLifecycle(input);
+  await assert.rejects(owner.assess(['call_wait_resume']), /binding drifted/u);
+  assert.equal(observed, false);
+  await owner.close();
+});
+
+test('rejects excluded, unknown and duplicate cases before any resource observations', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  let inspected = false;
+  const inspect = input.inspect;
+  input.inspect = async (id) => {
+    inspected = true;
+    return inspect(id);
+  };
+  const owner = createNativeQualificationLifecycle(input);
+  for (const ids of [
+    ['finalized_output_integrity'],
+    ['logical_current_result_tampering'],
+    ['raw_login_semantic_attestation'],
+    ['other'],
+    [],
+    ['call_wait_resume', 'call_wait_resume'],
+  ])
+    await assert.rejects(owner.assess(ids));
+  assert.equal(inspected, false);
+  await owner.close();
+});
+
+test('joins a late catalog observation before disposal and rejects its result after close', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  const entered = Promise.withResolvers();
+  const reply = Promise.withResolvers();
+  input.observeCatalog = async (signal) => {
+    entered.resolve(signal);
+    return reply.promise;
+  };
+  const owner = createNativeQualificationLifecycle(input);
+  const assessment = assert.rejects(
+    owner.assess(['call_wait_resume']),
+    /closing/u,
+  );
+  const signal = await entered.promise;
+  const closing = owner.close();
+  assert.equal(signal.aborted, true);
+  assert.equal(input.disposed.length, 0);
+  assert.equal(owner.close(), closing);
+  reply.resolve({ nativeFunctions: [] });
+  await assessment;
+  await closing;
+  assert.equal(input.disposed.length, 1);
+  await assert.rejects(owner.assess(['call_wait_resume']), /closing/u);
+});
+
+test('reentrant close during abort shares one joined cleanup and stops admission synchronously', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  const entered = Promise.withResolvers();
+  const reply = Promise.withResolvers();
+  const counts = { join: 0, dispose: 0, absence: 0 };
+  for (const [name, counter] of [
+    ['joinApplication', 'join'],
+    ['disposeResources', 'dispose'],
+    ['observeDisposal', 'absence'],
+  ]) {
+    const adapter = input[name];
+    input[name] = async (...args) => {
+      counts[counter]++;
+      return adapter(...args);
+    };
+  }
+  let reentrant, denied;
+  // The owner snapshots adapters, so register the abort boundary before construction.
+  const catalogInput = {
+    ...input,
+    observeCatalog: async (signal) => {
+      signal.addEventListener(
+        'abort',
+        () => {
+          reentrant = lifecycle.close();
+          denied = assert.rejects(
+            lifecycle.assess(['call_wait_resume']),
+            /closing/u,
+          );
+        },
+        { once: true },
+      );
+      entered.resolve(signal);
+      return reply.promise;
+    },
+  };
+  const lifecycle = createNativeQualificationLifecycle(catalogInput);
+  const assessment = assert.rejects(
+    lifecycle.assess(['call_wait_resume']),
+    /closing/u,
+  );
+  const signal = await entered.promise;
+  const closing = lifecycle.close();
+  assert.equal(signal.aborted, true);
+  assert.deepEqual(counts, { join: 0, dispose: 0, absence: 0 });
+  reply.resolve({ nativeFunctions: [] });
+  const outcomes = await Promise.allSettled([
+    closing,
+    reentrant,
+    assessment,
+    denied,
+  ]);
+  assert.equal(reentrant, closing);
+  assert.ok(outcomes.every((outcome) => outcome.status === 'fulfilled'));
+  assert.deepEqual(counts, { join: 1, dispose: 1, absence: 1 });
+  assert.equal(lifecycle.state, 'disposed');
+});
+
+test('failed application join retains resources and preserves the cleanup cause', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  const failure = new Error('simulated process did not join');
+  input.joinApplication = async () => {
+    throw failure;
+  };
+  const owner = createNativeQualificationLifecycle(input);
+  await assert.rejects(
+    owner.close(),
+    (error) => error instanceof AggregateError && error.errors[0] === failure,
+  );
+  assert.equal(owner.state, 'cleanup_failed');
+  assert.equal(input.disposed.length, 0);
+});
+
+test('rechecks ownership after joining before destructive cleanup', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  input.joinApplication = async () => {
+    input.rows.get(input.expectedResources.postgresId).Config.Labels[
+      'com.docker.compose.project'
+    ] = 'unrelated';
+  };
+  const owner = createNativeQualificationLifecycle(input);
+  await assert.rejects(owner.close(), /cleanup failed/u);
+  assert.equal(input.disposed.length, 0);
+});
+
+test('requires exact unique resource absence observations', async () => {
+  for (const rows of [
+    [],
+    [
+      { id: 'c'.repeat(64), exists: false },
+      { id: 'd'.repeat(64), exists: false },
+    ],
+    [
+      { id: 'a'.repeat(64), exists: false },
+      { id: 'a'.repeat(64), exists: false },
+    ],
+  ]) {
+    const input = simulatedFixture(await observeNativeQualificationSource());
+    input.observeDisposal = async () => rows;
+    const owner = createNativeQualificationLifecycle(input);
+    await assert.rejects(owner.close(), /cleanup failed/u);
+    assert.equal(owner.state, 'cleanup_failed');
+  }
+});
+
+test('rejects shared, stopped, purpose-mismatched and nondisposable resource simulations', async () => {
+  const changes = [
+    (row) => {
+      row.State.Running = false;
+    },
+    (row) => {
+      row.Config.Labels['io.pertexo.fixture-purpose'] = 'ordinary-serving';
+    },
+    (row) => {
+      row.Mounts = [{ Type: 'bind' }];
+    },
+    (row) => {
+      row.NetworkSettings.Ports['5432/tcp'][0].HostIp = '0.0.0.0';
+    },
+  ];
+  for (const change of changes) {
+    const input = simulatedFixture(await observeNativeQualificationSource());
+    change(input.rows.get(input.expectedResources.postgresId));
+    let observed = false;
+    input.observeCatalog = async () => {
+      observed = true;
+      return { nativeFunctions: [] };
+    };
+    const owner = createNativeQualificationLifecycle(input);
+    await assert.rejects(owner.assess(['call_wait_resume']));
+    assert.equal(observed, false);
+    await assert.rejects(owner.close(), /cleanup failed/u);
+    assert.equal(input.disposed.length, 0);
+  }
+});
+
+test('all four functional selections remain blocked even with matching simulated function profiles', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  input.observeCatalog = async () => ({
+    nativeFunctions: NATIVE_COORDINATOR_OWNER_INVENTORY.map((row) => ({
+      ...row,
+      owner: 'pertexo_owner',
+    })),
+  });
+  const owner = createNativeQualificationLifecycle(input);
+  const report = await owner.assess([
+    'call_wait_resume',
+    'parallel_control_reconciliation',
+    'artifact_result_lifetime',
+    'retention_family_resume',
+  ]);
+  assert.equal(report.cases.length, 4);
+  assert.ok(report.cases.every((row) => row.unclosedOwners.length > 0));
+  assert.deepEqual(report.nativeOwnerDrift, []);
+  assert.equal(report.installedCompatible, false);
+  assert.equal(report.nativeReady, false);
+  assert.equal(report.runtimeStartAuthorized, false);
+  assert.ok(report.blockers.includes('installed_manifest_unreviewed'));
+  await owner.close();
+});
+
+test('duplicate and unexpected catalog rows cannot pass the partial profile observation', async () => {
+  for (const nativeFunctions of [
+    [{ signature: 'app.other()' }],
+    [{ signature: 'app.other()' }, { signature: 'app.other()' }],
+  ]) {
+    const input = simulatedFixture(await observeNativeQualificationSource());
+    input.observeCatalog = async () => ({ nativeFunctions });
+    const owner = createNativeQualificationLifecycle(input);
+    await assert.rejects(
+      owner.assess(['parallel_control_reconciliation']),
+      /unexpected functions|duplicates/u,
+    );
+    await owner.close();
+  }
+});
+
+test('snapshots caller source and resource bindings rather than adopting later mutations', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  input.source = structuredClone(input.source);
+  const owner = createNativeQualificationLifecycle(input);
+  input.source.candidateSha256 = '0'.repeat(64);
+  input.expectedResources.postgresId = 'c'.repeat(64);
+  input.environment.EDITOR_BROWSER_OWNERSHIP_MANIFEST = '{}';
+  const report = await owner.assess(['artifact_result_lifetime']);
+  assert.equal(
+    report.source.candidateSha256,
+    '6588f2d8a6aa3fdb3e7c40bd5a01ca94f6ec92592fbc2e4fdbf0b8e8d25be5ba',
+  );
+  assert.equal(report.resources.postgresId, 'a'.repeat(64));
+  assert.equal(Object.isFrozen(report.resources), true);
+  await owner.close();
+});
