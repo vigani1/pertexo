@@ -438,19 +438,28 @@ is now accepted for bounded source-only implementation after primary full-read
 review and independent Spec/Standards closure. It identifies an
 opt-in existing version-read projection, exact immutable verified pin/contract
 identity, separate current inspect/edit/publication permissions and truthful
-target-local eligibility/unavailability, with publish-time revalidation. No new
-public contract or actionable Upgrade control is implemented. Native OFF, the
-source-only browser limitation and all outstanding runtime/security gates remain.
+target-local eligibility/unavailability, with publish-time revalidation. The
+strict additive public contracts/artifacts and recursive projection correction
+are reviewed and recorded in `ba69ad96`; 240 contract tests pass. The shared
+model-owned two-slot queue/cleanup foundation is reviewed and recorded in
+`609ca0bc`; 1,572 model tests pass, including independent measured-payload
+admission and actual compiled-facade regressions. These source foundations do
+not implement the API projection, final database authority, picker or actionable
+Upgrade control. Native OFF, the source-only browser limitation and all
+outstanding runtime/security gates remain.
 The accepted design specifies one aggregate request budget, default-one
 pages, off-thread owned verification outside SQL transactions, server-owned
 default-OFF/native artifact capability, strict conditional OpenAPI/client response
 variants and bounded dependency collection → stable locks → fresh reread.
 The engine-owned fixed assessment entry and shared model-owned bounded lifecycle
-preserve package direction; the exact internal scheduler seam sketch requires
-review before code. Accepted proposal source SHA256 is
+preserve package direction; the exact internal scheduler seam was reviewed
+before implementation. The engine-owned compiled assessment worker is reviewed
+and recorded in `bfbc0b1c`, with 755 engine tests passing; its
+source/envelope verification facts are not yet whole-closure/current-authority
+discovery. Accepted proposal source SHA256 is
 `2aadd9274c36f9456e50614dd992252f14d2889d8f3b841120af5fef4dfb875c`.
 Design acceptance is not availability, native runtime, installation or readiness
-qualification. Owner-specific proposed regressions cover those contracts; they are not passing
+qualification. The remaining owner-specific proposed regressions are not passing
 implementation evidence. The independent publication-cancellation regression is
 recorded separately in `7cf395bb`, after primary full review, zero Spec/Standards
 findings and 17 independently passing focused tests. Our same 17 tests, test
@@ -628,6 +637,14 @@ No node or preview artifact capability receives this framework-only dependency.
 - [ ] Wire actual demand source/control adapters and the value-work lifetime, then
       implement independent native persistent commit preparation/rechecks.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
+- [x] Review and record additive callable-target contracts and recursive generated
+      descriptor corrections (`ba69ad96`), without claiming route availability.
+- [x] Review and record the shared bounded authoring job owner (`609ca0bc`),
+      preserving legacy validation and independently measuring queued payloads.
+- [x] Review and record the fixed engine-owned assessment worker (`bfbc0b1c`),
+      without claiming whole-closure assessment or final current authority.
+- [ ] Complete whole-closure assessment, current authority/final fencing, the
+      existing-GET projection, exact picker refresh and guarded draft-only Upgrade.
 - [x] Review and record exact selected-invocation child link/status read UI
       (`13f703f3`), with controlled browser evidence only, not native qualification.
 
