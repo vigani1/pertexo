@@ -414,6 +414,7 @@ export function validateStatusTransitions(
   rejectedForEachDeclarations: ReadonlySet<string> = new Set(),
   callFacts: readonly PersistedWorkflowCallStateV1[] = [],
   stoppedForEachDeclarations: ReadonlySet<string> = new Set(),
+  stoppedPendingInvocations: ReadonlySet<string> = new Set(),
 ): void {
   assertStatusTransitionsValid(
     current,
@@ -423,6 +424,7 @@ export function validateStatusTransitions(
     rejectedForEachDeclarations,
     callFacts,
     stoppedForEachDeclarations,
+    stoppedPendingInvocations,
   );
 }
 

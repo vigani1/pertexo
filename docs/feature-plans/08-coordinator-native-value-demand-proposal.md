@@ -311,6 +311,14 @@ exhaustion (never unconditional success), exact events/cursor and logical/physic
 original output/provenance and no new declaration budget debit, no fresh admissions, and preserved active
 loops/joins/descendants including unknown effects and delayed run termination.
 Existing active work/reconciliation retains its established budget accounting.
+For an existing native join whose pinned Merge was already canceled before its
+first attempt, retain that canceled Merge and record later actual branch truth
+in the same ledger without newly selecting or marking its never-executed Merge
+unsatisfied. Existing settled metadata and started Merge work are not changed.
+The pending-node stop proof locks and checks exact actual pending/no-attempt/no-output
+state and immutable scope under authoritative controls. Combined-chain regressions
+cover later satisfied, failed and unknown branch truth, child control/event/outbox
+ownership, save/reload and exact receipt replay without duplicate stop projection.
 Final-owner negatives cover wrong/future facts, physical attempt/pin/scope drift
 and cancellation/deadline races; retained and exact-plan replay cases stay intact.
 Ordinary adapters and offline SQL parsing do not qualify protected SQL execution,

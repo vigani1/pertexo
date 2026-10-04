@@ -11,6 +11,7 @@ import type { prepareCoordinatorControls } from './coordinator-control-preparati
 import { loadRejectedForEachDeclarations } from './coordinator-rejected-loop-load.js';
 import { deriveStoppedForEachDeclarations } from './coordinator-stopped-loop-proof.js';
 import { readPhysicalAttempts } from './coordinator-run-store-fact-physical-state.js';
+import { lockNativePendingStops } from './coordinator-pending-stop-proof.js';
 
 /** Existing locked settlement proof, with native exact-source fences before use. */
 export async function lockCoordinatorControlSettlements(
@@ -28,6 +29,7 @@ export async function lockCoordinatorControlSettlements(
   currentCancellationRequested: boolean,
   currentDeadlineExpired: boolean,
 ) {
+  let stoppedPendingInvocations: ReadonlySet<string> = new Set();
   let stoppedForEachDeclarations = new Map() as ReturnType<
     typeof deriveStoppedForEachDeclarations
   >;
@@ -62,6 +64,15 @@ export async function lockCoordinatorControlSettlements(
       version.rows[0]?.executable_schema_version !== 3
     )
       throw new CoordinatorPlanInvalidError();
+    stoppedPendingInvocations = await lockNativePendingStops(client, {
+      workspaceId: input.workspaceId,
+      runId: input.runId,
+      executable: version.rows[0].executable_json,
+      current: currentCheckpoint,
+      plan: input.plan,
+      canceled: currentCancellationRequested,
+      deadlineExpired: currentDeadlineExpired,
+    });
     const physical = await readPhysicalAttempts(
       client,
       input.workspaceId,
@@ -127,5 +138,9 @@ export async function lockCoordinatorControlSettlements(
         : { nativeCollections: input.preparedControls.collections }),
     },
   );
-  return { rejectedForEachDeclarations, stoppedForEachDeclarations };
+  return {
+    rejectedForEachDeclarations,
+    stoppedForEachDeclarations,
+    stoppedPendingInvocations,
+  };
 }

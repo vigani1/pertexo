@@ -553,6 +553,15 @@ native plan is never silently reinterpreted as this new transition. Mixed writer
 must remain excluded by the existing native readiness/write barrier until the
 new behavior is reviewed and qualified. Native stays OFF and F08 incomplete.
 
+The focused active-join repair preserves an already canceled, never-started
+native Merge (attempt zero, no output) under retained authenticated controls.
+Actual branch outcomes still update its existing scoped join ledger, but do not
+newly attach selected/unsatisfied settlement metadata for a Merge that never ran.
+Already settled joins and started Merge work are unchanged. Pending-node stop
+projection requires independently locked actual controls and exact physical
+pending/no-attempt/no-output state; a proposed terminal checkpoint is not proof.
+Later unknown branch effects still outrank the parent stop, with no parser widening.
+
 The [companion requirements](../feature-plans/08-coordinator-native-value-demand-proposal.md#native-control-only-settlement-clarification--accepted-2026-10-04)
 define regression and compatibility evidence. This decision does not widen the
 paused SQL/security qualification lane.

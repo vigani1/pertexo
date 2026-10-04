@@ -31,6 +31,7 @@ type TransitionContext = Readonly<{
   plannedNodeEvents: ReadonlySet<string>;
   rejectedForEachDeclarations: ReadonlySet<string>;
   stoppedForEachDeclarations: ReadonlySet<string>;
+  stoppedPendingInvocations: ReadonlySet<string>;
   callFacts: ReadonlyMap<string, PersistedWorkflowCallStateV1>;
 }>;
 
@@ -392,7 +393,9 @@ function acceptUnstartedTerminal(
   terminalEvent: string,
 ): boolean {
   const isTerminal =
-    (previous.status === 'ready' || previous.status === 'waiting') &&
+    (previous.status === 'ready' ||
+      previous.status === 'waiting' ||
+      context.stoppedPendingInvocations.has(next.invocationKey)) &&
     terminalStatus(terminalEvent) !== undefined &&
     context.plannedNodeEvents.has(nodeEventKey(next, terminalEvent));
   if (!isTerminal) return false;
@@ -542,6 +545,7 @@ export function assertStatusTransitionsValid(
   rejectedForEachDeclarations: ReadonlySet<string> = new Set(),
   callFacts: readonly PersistedWorkflowCallStateV1[] = [],
   stoppedForEachDeclarations: ReadonlySet<string> = new Set(),
+  stoppedPendingInvocations: ReadonlySet<string> = new Set(),
 ): void {
   const currentInvocations = new Map(
     current.invocations.map((invocation) => [
@@ -585,6 +589,7 @@ export function assertStatusTransitionsValid(
     plannedNodeEvents,
     rejectedForEachDeclarations,
     stoppedForEachDeclarations,
+    stoppedPendingInvocations,
     callFacts: new Map(callFacts.map((call) => [call.invocationKey, call])),
   });
   validateRunEvents(current, plan, terminalRunStatuses);

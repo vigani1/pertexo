@@ -271,15 +271,18 @@ export async function lockCoordinatorCommitState(
     return outcome({ kind: 'stale', revision: row.revision });
   validatePersistedFactBatch(persistedFacts);
 
-  const { rejectedForEachDeclarations, stoppedForEachDeclarations } =
-    await lockCoordinatorControlSettlements(
-      client,
-      input,
-      currentCheckpoint,
-      persistedFacts,
-      row.cancel_requested_at !== null,
-      row.deadline_expired,
-    );
+  const {
+    rejectedForEachDeclarations,
+    stoppedForEachDeclarations,
+    stoppedPendingInvocations,
+  } = await lockCoordinatorControlSettlements(
+    client,
+    input,
+    currentCheckpoint,
+    persistedFacts,
+    row.cancel_requested_at !== null,
+    row.deadline_expired,
+  );
 
   const pendingFailures = await lockPendingFailures(client, workspaceId, runId);
   const callFacts =
@@ -300,6 +303,7 @@ export async function lockCoordinatorCommitState(
     new Set(rejectedForEachDeclarations.keys()),
     callFacts,
     new Set(stoppedForEachDeclarations.keys()),
+    stoppedPendingInvocations,
   );
   if (
     (currentCheckpoint.cancelRequested && row.cancel_requested_at === null) ||

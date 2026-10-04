@@ -201,8 +201,8 @@ Fresh0137 and its first installation abort are unchanged.
 
 Minimum native Call executable path (source is not qualification):
 
-Native coordinator structured-control integration is now reviewable WIP after
-`4704b5db`, not a completed or qualified F08 checkpoint. Actual metadata-only
+Native coordinator structured-control source was reviewed and committed as
+`50b8411f`, not a completed or qualified F08 checkpoint. Actual metadata-only
 inventory/per-source read ports, serial original-byte codec hydration, private
 bounded engine preparation, independent fresh precommit semantics and final
 exact-source fences are integrated. The accepted ADR065 control-only clarification
@@ -225,8 +225,21 @@ protected SQL, real locks, concurrency, clocks or persistence. Source codec,
 precommit, replay-mismatch and handler tests remain separate ordinary evidence.
 New owned preparation/output-ownership/commit hotspots were cohesively removed;
 the five inherited complexity failures remain visible, with no waiver. Exact
-source freeze/review/commit and all previously listed live qualification gates
-remain open. Fresh0137 is uninstalled/unregistered, screened SQL PAUSED and native
+source follow-on repair review/commit and all previously listed live qualification gates
+remain open. Eight combined-chain follow-on cases now cover existing active Parallel
+joins under cancellation/deadline through later satisfied, failed and unknown branch
+truth, and admitted child Call stop/control/event/outbox ownership through unknown
+settlement and replay. They exposed two focused defects: pending stop projection
+was rejected by the database validator, and later branch truth attached unsatisfied
+metadata to a never-started canceled Merge that the engine parser correctly rejected.
+The narrow repair independently proves locked pending/no-attempt/no-output/scope
+state and preserves existing canceled native Merge identity while its ledger records
+truth, without parser widening or retained changes. Twenty-two pending-proof cases
+include forged control/status/attempt/output/scope/admission/debit negatives.
+Current source unit runs pass engine49/737, database183/1731 and worker106/1329;
+PostgreSQL I/O in the combined chain remains externally simulated, not live qualification.
+The same five complexity surfaces still fail (status-validation597 lines and
+commit-state220 lines/37 branches); no gate waiver or full-F08 claim. Fresh0137 is uninstalled/unregistered, screened SQL PAUSED and native
 catalogs/execution/writers OFF; no push or full-F08 completion is claimed.
 
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
