@@ -249,8 +249,15 @@ Offline pglast8.4 checks parse219 top-level statements with symbolic roles
 substituted only in memory; all67 owner signatures/body MD5/security-definer/
 row-security expectations match the actual built inventory. Individual body
 checks parse61/70 units after explicit in-memory namespace/rowtype normalization;
-the nine trigger units are unverified because the parser emits malformed JSON
-datum entries. These are grammar/source checks, not SQL execution or qualification.
+the nine trigger units initially remained unverified because pglast8.4 emitted
+malformed JSON datum entries. A subsequent authorized isolated offline pglast8.5
+check first returned usable valid trigger/integer control ASTs and correctly
+rejected missing-semicolon controls with ParseError, then returned usable ASTs
+for all nine unchanged normalized trigger units. Exact candidate, normalized
+source and per-unit hashes match the8.4 diagnosis. This closes the missing-AST
+tooling criterion;61 prior units and nine follow-up units are separate evidence
+across parser versions, not a whole70-unit8.5 run. These are normalized grammar/
+source checks, not embedded-SQL, database-binding, execution or live qualification.
 Readiness remains refused before database checkout; its structured declaration
 blocker now describes outstanding SQL/real-service qualification, not the already
 integrated declaration/pre-CAS source. F08 remains incomplete.
