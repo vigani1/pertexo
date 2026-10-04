@@ -17,6 +17,10 @@ call source path`) contains the exact reviewed 100-path minimum-inline source
 tranche. This is source recording, not execution or rollout qualification.
 Branch `feat/subworkflows` has no upstream; no push was performed.
 
+The reviewed retained-lineage source correction and selected-invocation read UI
+are recorded separately in `52e96187` and `13f703f3`. The latter is verified with
+controlled frontend fixtures only; installed native behavior remains unqualified.
+
 The subsequent reviewed artifact follow-on is recorded in `c5d5a47f` and remains
 unqualified. It now
 composes actual tenant/Drizzle attempt reservation/finalization, the existing
@@ -347,7 +351,7 @@ installed expressions/definitions, complete role/process/resource manifests,
 canonical authority/admission and all runtime/security qualification remain open.
 No installation, live catalog, service or protected-campaign execution occurred.
 
-The bounded lineage correction is source-only and approved after primary full
+The bounded lineage correction is recorded in `52e96187`, source-only and approved after primary full
 ten-path review, zero Standards findings and closure of the narrow Spec P2.
 The reviewed repaired diff is
 `eb15ae742f501496b2e95e0248fa9c2fd6d2a2edcf3416edf83fec3ea04eadda`;
@@ -383,6 +387,27 @@ remain unchanged. No endpoint, wire schema, frontend or maintenance-helper chang
 is introduced. Exact installed ACL/RLS/function behavior, real detail retirement,
 earned family data and all native activation/security qualification remain open;
 the first installation abort and four readiness blockers/null constraint remain.
+
+The selected-invocation read UI is recorded in `13f703f3`, tree
+`1dc21a2fed85614e5ab64a742a89c4e71b152fd2`, after primary exact four-path review,
+independent sixteen run-detail tests and zero Spec/Standards findings. Its frozen
+diff and receipt are separately bound as
+`6b759cdf7f8e0adb4c3d84f4e234a42ef593f01a68e9121f7ccd73223422cd8f` and
+`457539846643d74cc6c912ae1f1fc09763b89f8eff5c8dcd5e59bf752a27b38b`.
+The existing authorized snapshot supplies the step lens's accepted child link
+and current reported status. Both node ID and exact invocation key must match;
+absent or mismatched relationships render nothing. No new query, subscription,
+endpoint, state owner, child operation or execution authority is introduced.
+Ten workflow-run test files pass 82 tests, including repeated invocation
+selection, current status refresh, five absent/mismatched relationship cases and
+denied snapshot removal. Eight controlled Chromium history journeys pass,
+including selected child navigation at 1440px and 390px; both settled views were
+visually inspected. Build, production/test types, web lint, narrow format,
+architecture and whitespace checks pass. React Doctor remains 100/100 after
+repairing the new control-flow complexity in a private presentation component.
+These browser fixtures do not earn native runs or qualify SQL, publication,
+retention or rollout. No push occurred; native execution/catalogs/writers remain
+OFF and full F08 remains incomplete.
 
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
@@ -556,6 +581,8 @@ No node or preview artifact capability receives this framework-only dependency.
 - [ ] Wire actual demand source/control adapters and the value-work lifetime, then
       implement independent native persistent commit preparation/rechecks.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
+- [x] Review and record exact selected-invocation child link/status read UI
+      (`13f703f3`), with controlled browser evidence only, not native qualification.
 
 Worker build, source/test typecheck, narrow lint, formatting, architecture and
 documentation checks pass. All 1,216 worker unit tests across 92 files pass. The
