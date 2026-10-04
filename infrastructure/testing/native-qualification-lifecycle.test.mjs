@@ -12,19 +12,26 @@ test('binds the actual guarded candidate and exact native inventory without qual
   const observed = await observeNativeQualificationSource();
   assert.equal(
     observed.candidateSha256,
-    '2abb17d82c0ced6b6ff056d7dfc64ac4dbce636c58757913ea286edd60f5a9c3',
+    '11272b6a6a9c453d5d08c167d9e6effa508264504f979425da5e06900d82bdd3',
   );
-  assert.equal(observed.ownerCount, 68);
+  assert.equal(observed.ownerCount, 70);
   assert.equal(
     observed.ownerInventorySha256,
-    '5e4baefdc098baa4930c9f7a62acce160c23b47a6902c7e34e878ff69c5961dd',
+    '12bda1b8c6b5bdf2ff73f1268014a1b11a250afaea9dd1fe9291da4b07d2302e',
   );
   assert.equal(
     observed.ownerBodyInventorySha256,
-    'aa44bd9df9eafd4a7695c94803d04d914c0bae54ece1e9c916e633f49a3b4825',
+    '1dc61b886d6961e52079a21b8986284a087363317330e0971f5c57693e9c9ca5',
   );
+  // The reviewed baseline plus exactly these later additions: the run-family
+  // reader and the step logical-projection guard with its accepted-value lookup.
+  const additions = new Set([
+    'app.read_workflow_call_run_family(uuid)',
+    'app.native_node_accepted_output(uuid,uuid,uuid,character varying,uuid,jsonb)',
+    'app.check_native_node_logical_projection()',
+  ]);
   const previousOwners = NATIVE_COORDINATOR_OWNER_INVENTORY.filter(
-    (row) => row.signature !== 'app.read_workflow_call_run_family(uuid)',
+    (row) => !additions.has(row.signature),
   );
   assert.equal(previousOwners.length, 67);
   assert.equal(
@@ -144,7 +151,7 @@ test('source lifecycle reports exact drift and runtime prerequisites without cre
   assert.ok(report.blockers.includes('installation_artifact_unavailable'));
   assert.ok(report.blockers.includes('canonical_admission_unavailable'));
   assert.ok(report.blockers.includes('adr066_integration_unavailable'));
-  assert.equal(report.nativeOwnerDrift.length, 68);
+  assert.equal(report.nativeOwnerDrift.length, 70);
   assert.equal(report.evidence, 'source_and_injected_observations');
   await owner.close();
   assert.equal(input.disposed.length, 1);
@@ -414,7 +421,7 @@ test('snapshots caller source and resource bindings rather than adopting later m
   const report = await owner.assess(['artifact_result_lifetime']);
   assert.equal(
     report.source.candidateSha256,
-    '2abb17d82c0ced6b6ff056d7dfc64ac4dbce636c58757913ea286edd60f5a9c3',
+    '11272b6a6a9c453d5d08c167d9e6effa508264504f979425da5e06900d82bdd3',
   );
   assert.equal(report.resources.postgresId, 'a'.repeat(64));
   assert.equal(Object.isFrozen(report.resources), true);
@@ -630,7 +637,7 @@ test('rejects null, unknown, extra and reordered purge configuration observation
 test('binds a separate complete volatility profile without changing existing body/configuration identities', async () => {
   const source = await observeNativeQualificationSource();
   const profile = source.nativeFunctionVolatility;
-  assert.equal(profile.length, 68);
+  assert.equal(profile.length, 70);
   assert.deepEqual(
     profile.map((row) => row.signature),
     NATIVE_COORDINATOR_OWNER_INVENTORY.map((row) => row.signature),
@@ -649,19 +656,24 @@ test('binds a separate complete volatility profile without changing existing bod
     [
       {
         signature:
+          'app.native_node_accepted_output(uuid,uuid,uuid,character varying,uuid,jsonb)',
+        volatility: 's',
+      },
+      {
+        signature:
           'app.standard_retention_dry_run_stage_keys(uuid,character varying,character varying,timestamptz,jsonb,jsonb,boolean,integer)',
         volatility: 's',
       },
     ],
   );
-  assert.equal(profile.filter((row) => row.volatility === 'v').length, 66);
+  assert.equal(profile.filter((row) => row.volatility === 'v').length, 67);
   assert.equal(
     source.functionVolatilitySha256,
     createHash('sha256').update(JSON.stringify(profile)).digest('hex'),
   );
   assert.equal(
     source.functionVolatilitySha256,
-    '716110f6377625036757935e6c25c035aacd93306bc903da53361304ab9aaa8f',
+    '7255cb74a80d0054726f2fcf102f136bc60c5c1db7e14787047843c5553e6ba8',
   );
 });
 

@@ -4943,6 +4943,100 @@ REVOKE ALL ON FUNCTION app.guard_native_run_result_projection()
 CREATE TRIGGER native_run_result_projection_immutable BEFORE UPDATE OF output_ref ON app.workflow_runs
   FOR EACH ROW EXECUTE FUNCTION app.guard_native_run_result_projection();
 
+-- Native commit checks prove coordinator authority from its own receipts, so
+-- protected owner bodies may read (only) coordinator receipts of the scoped
+-- workspace. Runtime roles keep their existing workspace policy.
+CREATE POLICY inbox_receipts_native_coordinator_owner_select ON app.inbox_receipts
+  FOR SELECT TO {{owner_role}}
+  USING ((workspace_id)::text=NULLIF(current_setting('app.workspace_id',true),'')
+    AND consumer_name='workflow-coordinator');
+
+-- A native step's logical projection (status, result and current attempt) is
+-- coordinator-owned once its result is accepted. A new or changed nonnull
+-- result must be an accepted value of this step: its current attempt's owned
+-- output (or the Call declaration's owned input alias), or its admitted
+-- sealed child's owned run result. Leaving an accepted result needs this same
+-- transaction to complete a coordinator delivery for the run and advance its
+-- checkpoint; only retention may clear a result, after revoking its value.
+-- Both proofs are derived by the server, never supplied by a caller.
+CREATE FUNCTION app.native_node_accepted_output(
+  p_workspace uuid,p_node uuid,p_run uuid,p_invocation varchar,p_attempt uuid,p_reference jsonb
+) RETURNS app.workflow_execution_value_provenance LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+  SELECT source.* FROM app.workflow_execution_value_provenance source
+    WHERE source.workspace_id=p_workspace AND source.node_run_id=p_node AND source.attempt_id=p_attempt
+      AND source.value_slot IN ('attempt_output','attempt_input') AND source.byte_ownership='owned'
+      AND source.original_reference::text=p_reference::text
+  UNION ALL
+  SELECT result.* FROM app.workflow_calls call
+    JOIN app.workflow_execution_value_provenance result ON result.workspace_id=call.workspace_id
+      AND result.workflow_run_id=call.child_run_id AND result.value_slot='run_result'
+      AND result.byte_ownership='owned'
+    WHERE call.workspace_id=p_workspace AND call.parent_run_id=p_run AND call.invocation_key=p_invocation
+      AND call.declaration_attempt_id=p_attempt AND call.outcome_kind='admitted' AND call.sealed
+      AND result.original_reference::text=p_reference::text
+  LIMIT 1
+$$;
+REVOKE ALL ON FUNCTION app.native_node_accepted_output(uuid,uuid,uuid,varchar,uuid,jsonb)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}};
+
+CREATE FUNCTION app.check_native_node_logical_projection() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_node app.node_runs%ROWTYPE;
+  v_source app.workflow_execution_value_provenance%ROWTYPE;
+BEGIN
+  SELECT * INTO v_node FROM app.node_runs node WHERE node.workspace_id=OLD.workspace_id AND node.id=OLD.id;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  IF v_node.output_ref IS NOT NULL AND v_node.output_ref::text IS DISTINCT FROM OLD.output_ref::text
+    AND (EXISTS(SELECT 1 FROM app.workflow_execution_value_provenance source
+        WHERE source.workspace_id=v_node.workspace_id AND source.node_run_id=v_node.id)
+      OR EXISTS(SELECT 1 FROM app.workflow_runs run JOIN app.workflow_versions version
+          ON version.workspace_id=run.workspace_id AND version.id=run.workflow_version_id
+        WHERE run.workspace_id=v_node.workspace_id AND run.id=v_node.workflow_run_id
+          AND version.executable_schema_version=3)) THEN
+    v_source:=app.native_node_accepted_output(v_node.workspace_id,v_node.id,v_node.workflow_run_id,
+      v_node.invocation_key,v_node.current_attempt_id,v_node.output_ref);
+    IF v_source.id IS NULL THEN
+      RAISE EXCEPTION 'native step result is not an accepted value' USING ERRCODE='23514';
+    END IF;
+  END IF;
+  IF OLD.status<>'succeeded' OR OLD.output_ref IS NULL OR OLD.current_attempt_id IS NULL
+    OR (v_node.status,v_node.output_ref::text,v_node.current_attempt_id,v_node.current_attempt_number)
+      IS NOT DISTINCT FROM (OLD.status,OLD.output_ref::text,OLD.current_attempt_id,OLD.current_attempt_number) THEN
+    RETURN NULL;
+  END IF;
+  v_source:=app.native_node_accepted_output(OLD.workspace_id,OLD.id,OLD.workflow_run_id,
+    OLD.invocation_key,OLD.current_attempt_id,OLD.output_ref);
+  IF v_source.id IS NULL THEN RETURN NULL; END IF;
+  IF v_node.output_ref IS NULL AND v_source.eligibility_revoked_at IS NOT NULL
+    AND (v_node.status,v_node.current_attempt_id,v_node.current_attempt_number)
+      IS NOT DISTINCT FROM (OLD.status,OLD.current_attempt_id,OLD.current_attempt_number) THEN
+    RETURN NULL;
+  END IF;
+  IF EXISTS(SELECT 1 FROM app.run_checkpoints checkpoint
+      WHERE checkpoint.workspace_id=v_node.workspace_id AND checkpoint.workflow_run_id=v_node.workflow_run_id
+        AND checkpoint.xmin=pg_current_xact_id()::xid)
+    AND EXISTS(SELECT 1 FROM app.inbox_receipts receipt JOIN app.outbox_events event
+        ON event.workspace_id=receipt.workspace_id AND event.id=receipt.message_id
+      WHERE receipt.workspace_id=v_node.workspace_id AND receipt.consumer_name='workflow-coordinator'
+        AND receipt.completed_at IS NOT NULL AND receipt.xmin=pg_current_xact_id()::xid
+        AND event.job_name='advance-workflow-run' AND event.aggregate_id=v_node.workflow_run_id) THEN
+    RETURN NULL;
+  END IF;
+  RAISE EXCEPTION 'accepted native step result changed without coordinator authority' USING ERRCODE='23514';
+END $$;
+REVOKE ALL ON FUNCTION app.check_native_node_logical_projection()
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}};
+CREATE CONSTRAINT TRIGGER native_node_logical_projection_owned
+  AFTER UPDATE OF status,output_ref,current_attempt_id,current_attempt_number ON app.node_runs
+  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW
+  WHEN (OLD.status IS DISTINCT FROM NEW.status OR OLD.output_ref::text IS DISTINCT FROM NEW.output_ref::text
+    OR OLD.current_attempt_id IS DISTINCT FROM NEW.current_attempt_id
+    OR OLD.current_attempt_number IS DISTINCT FROM NEW.current_attempt_number)
+  EXECUTE FUNCTION app.check_native_node_logical_projection();
+
 -- Identifier-only parent wakeup in the EXISTING child terminal transaction.
 -- Do not acquire parent/ancestor row locks behind the already-held child lock.
 -- A failed result acceptance/deferred obligation rolls this outbox insert back.
