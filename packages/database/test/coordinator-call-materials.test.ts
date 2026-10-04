@@ -87,6 +87,34 @@ const request = (events: readonly CoordinatorEventRow[]) => ({
 });
 
 describe('actual coordinator Call material adapter', () => {
+  it('projects accepted artifact identity without decoding or substituting payloads', async () => {
+    const snapshot = {
+      reference: { schemaVersion: 1, kind: 'artifact', artifactId: id(9) },
+      sha256: 'b'.repeat(64),
+      byteLength: 300_000,
+    };
+    const { client } = adapter([{ ...declaration, snapshot }]);
+    const result = await loadCoordinatorCallMaterials(
+      client,
+      request([event()]),
+    );
+    expect(result?.declarations[0]).toEqual({
+      invocationKey: 'call',
+      nodeId: 'call',
+      declarationAttemptId: id(5),
+      calleeVersionId: id(7),
+      input: { kind: 'artifact', artifactId: id(9) },
+      inputChecksum: snapshot.sha256,
+      value: undefined,
+      artifactSource: {
+        invocationKey: 'call',
+        nodeId: 'call',
+        declarationAttemptId: id(5),
+        calleeVersionId: id(7),
+        snapshot,
+      },
+    });
+  });
   it('selects only immutable Call sites and forwards the exact current consumer', async () => {
     const { client, query } = adapter();
     const result = await loadCoordinatorCallMaterials(

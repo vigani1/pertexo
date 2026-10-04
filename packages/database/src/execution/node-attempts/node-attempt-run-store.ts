@@ -13,6 +13,10 @@ import {
 } from './node-attempt-call-input-record.js';
 import { loadNodeAttemptInputs } from './node-attempt-run-store-inputs.js';
 import { readNativeAttemptValueSource } from './node-attempt-native-value-read.js';
+import {
+  reserveNativeAttemptArtifact,
+  inspectNativeAttemptArtifact,
+} from '../artifacts/native-attempt-artifact-owner.js';
 
 import {
   NodeAttemptConnectionFenceError,
@@ -55,6 +59,15 @@ export function createNodeAttemptRunStore(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
+    reserveNativeArtifact: (
+      input: Parameters<typeof reserveNativeAttemptArtifact>[1],
+    ) => reserveNativeAttemptArtifact(pool, input),
+    assertNativeArtifactReserved: (
+      input: Parameters<typeof inspectNativeAttemptArtifact>[1],
+    ) => inspectNativeAttemptArtifact(pool, input),
+    finalizeNativeArtifact: (
+      input: Parameters<typeof inspectNativeAttemptArtifact>[1],
+    ) => inspectNativeAttemptArtifact(pool, input, true),
     readNativeValueSource: (
       input: Parameters<
         NonNullable<NodeAttemptRunStore['readNativeValueSource']>

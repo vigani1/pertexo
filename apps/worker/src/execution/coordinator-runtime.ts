@@ -37,6 +37,11 @@ import {
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
+import type {
+  createDualRegionArtifactStore,
+  ArtifactStore,
+  DualRegionArtifactStoreConfig,
+} from '@pertexo/artifact-store';
 
 import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
 import {
@@ -45,6 +50,11 @@ import {
 } from './coordinator-value-work-lifetime.js';
 import type { CoordinatorNativeValueWork } from './coordinator-native-demand-advance.js';
 import { createCoordinatorSourceHydration } from './coordinator-source-hydration.js';
+import { createCoordinatorCallDeclarationHydration } from './coordinator-call-declaration-hydration.js';
+import {
+  createCoordinatorArtifactStorage,
+  type CoordinatorArtifactStorage,
+} from './coordinator-artifact-storage.js';
 import { createCoordinatorResultPreparationScope } from './coordinator-result-preparation-scope.js';
 import {
   createCoordinatorTelemetry,
@@ -71,6 +81,7 @@ export interface CoordinatorRuntime {
 export type CoordinatorRuntimeOptions = Readonly<{
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
+  artifactStore?: DualRegionArtifactStoreConfig;
   backgroundTaskShutdownTimeoutMillis?: number;
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
@@ -99,6 +110,8 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   logger?: StructuredLogger;
   loadCallableCompletion?: CoordinatorCallableCompletionLoader;
   hydrateCallableSource?: CoordinatorNativeValueWork['hydrateSource'];
+  /** Borrowed framework storage; never exposed to workflow executors. */
+  artifactStore?: Pick<ArtifactStore, 'getStream' | 'checkReadiness'>;
 }>;
 
 export type CoordinatorCompositionFactories = Readonly<{
@@ -110,6 +123,7 @@ export type CoordinatorCompositionFactories = Readonly<{
   runStore: typeof createCoordinatorRunStore;
   telemetry: typeof createCoordinatorTelemetry;
   traceRunner: typeof createQueueTraceRunner;
+  artifactStore?: typeof createDualRegionArtifactStore;
 }>;
 
 const productionFactories: CoordinatorCompositionFactories = {
@@ -235,6 +249,10 @@ export async function createCoordinatorRuntime(
   let dueWakeupScanner: DueNodeWakeupScanner | undefined;
   let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
   let consumer: QueueConsumer | undefined;
+  let artifactStorage: CoordinatorArtifactStorage | undefined;
+  let hydrateCallDeclaration: ReturnType<
+    typeof createCoordinatorCallDeclarationHydration
+  >;
   try {
     runStore =
       dependencies.runStore ??
@@ -245,6 +263,8 @@ export async function createCoordinatorRuntime(
         withNativeResultPreparation: createCoordinatorResultPreparationScope(
           nativeValueWork.policy,
         ),
+        hydrateNativeCallDeclaration: (request) =>
+          hydrateCallDeclaration(request),
         runTimeoutFailureContextEnabled:
           options.runTimeoutFailureContextEnabled ?? false,
         workspaceInboxProducerEnabled:
@@ -259,6 +279,17 @@ export async function createCoordinatorRuntime(
         currentReleaseDescriptions,
         options.databaseRuntime,
       );
+    artifactStorage = createCoordinatorArtifactStorage(
+      runStore,
+      options.artifactStore,
+      dependencies.artifactStore,
+      factories.artifactStore,
+    );
+    hydrateCallDeclaration = createCoordinatorCallDeclarationHydration(
+      runStore,
+      artifactStorage.store,
+      nativeValueWork.policy.controlReadTimeoutMillis,
+    );
     notifications =
       dependencies.notifications ?? factories.notifications(options.redisUrl);
     dueWakeupScanner =
@@ -282,10 +313,13 @@ export async function createCoordinatorRuntime(
           createCoordinatorSourceHydration(
             runStore,
             nativeValueWork.policy.controlReadTimeoutMillis,
+            artifactStorage.store,
           ),
+        hydrateCallDeclaration,
       },
     });
     await runStore.checkReadiness?.();
+    await artifactStorage.checkReadiness();
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.workflowCoordinator,
       redisUrl: options.redisUrl,
@@ -301,6 +335,7 @@ export async function createCoordinatorRuntime(
         notifications,
         reader,
         runStore,
+        artifactStorage,
       },
       backgroundTaskShutdownTimeoutMillis,
     );
@@ -319,6 +354,7 @@ export async function createCoordinatorRuntime(
       notifications,
       reader,
       runStore,
+      artifactStorage,
     },
     {
       batchSize: dueWakeupBatchSize,

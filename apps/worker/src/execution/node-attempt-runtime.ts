@@ -323,7 +323,10 @@ async function createProductionNodeAttemptRuntime(
     capabilityRuntime?.close.bind(capabilityRuntime),
   );
   runtimeCapabilities ??= capabilityRuntime?.factories;
-  const values = createNodeAttemptValueComposition(runStore);
+  const values = createNodeAttemptValueComposition(
+    runStore,
+    capabilityRuntime?.executionValueStore,
+  );
   return {
     ...(capabilityRuntime === undefined ? {} : { capabilityRuntime }),
     handler: createNodeAttemptHandler({

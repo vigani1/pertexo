@@ -74,7 +74,8 @@ class ReadClient extends EventEmitter {
     if (
       text.includes('app.inspect_native_') ||
       text.includes('app.load_native_') ||
-      text.includes('app.read_native_')
+      text.includes('app.read_native_') ||
+      text.includes('app.read_workflow_call_declaration_materials')
     ) {
       if (this.failure !== undefined) throw this.failure;
       return { rows: [{ result: this.response }] };
@@ -109,6 +110,52 @@ function request() {
 }
 
 describe('actual native coordinator read composition (not SQL authority qualification)', () => {
+  it('freshly rereads a selected Call declaration and releases the tenant read before returning metadata', async () => {
+    const snapshot = {
+      reference: {
+        schemaVersion: 1 as const,
+        kind: 'artifact' as const,
+        artifactId: id(8),
+      },
+      sha256: 'b'.repeat(64),
+      byteLength: 300_000,
+    };
+    const source = {
+      invocationKey: 'call-key',
+      nodeId: 'call',
+      declarationAttemptId: id(9),
+      calleeVersionId: id(7),
+      snapshot,
+    };
+    const client = new ReadClient({
+      kind: 'ready',
+      projection: {
+        invocation_key: source.invocationKey,
+        node_id: 'call',
+        attempt_id: id(9),
+        callee_version_id: id(7),
+        snapshot,
+      },
+    });
+    const store = reads(client).store;
+    await expect(
+      store.readCoordinatorCallDeclaration({ ...request(), source }),
+    ).resolves.toEqual({ kind: 'ready', source });
+    expect(
+      client.statements.find(({ text }) =>
+        text.includes('app.read_workflow_call_declaration_materials'),
+      )?.values,
+    ).toEqual([expect.any(String), 'call-key']);
+    expect(client.statements.some(({ text }) => text === 'commit')).toBe(true);
+    expect(client.releases).toBe(1);
+    await expect(
+      store.readCoordinatorCallDeclaration({
+        ...request(),
+        source: { ...source, declarationAttemptId: id(10) },
+      }),
+    ).rejects.toThrow('identity differs');
+    expect(client.releases).toBe(2);
+  });
   it('owns the readonly tenant lifecycle and exact current delivery for inspection', async () => {
     const response = {
       kind: 'active',
@@ -173,7 +220,11 @@ describe('actual native coordinator read composition (not SQL authority qualific
         {
           nodeId: 'call',
           invocationKey: 'call-key',
-          output: projection.outputs[0]!.output,
+          output: {
+            kind: 'workflow_call' as const,
+            invocationKey: 'call-key',
+            childRunId: id(6),
+          },
         },
       ],
     };

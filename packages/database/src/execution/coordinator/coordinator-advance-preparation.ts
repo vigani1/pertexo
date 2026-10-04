@@ -26,12 +26,15 @@ import { parseNativeCoordinatorInspection } from './coordinator-native-value-rea
 import type {
   NativeCoordinatorResultPreparationScope,
   InspectCoordinatorValueReadOwner,
+  NativeCoordinatorCallDeclarationHydrator,
 } from './coordinator-native-value-read-contract.js';
+import { validateCoordinatorArtifactCallInputs } from './coordinator-call-input-validation.js';
 
 type PreparationOptions = Readonly<{
   nativeValueControlReadTimeoutMillis?: number;
   withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
   inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
+  hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
 }>;
 
 /** Normalize the plan and prepare bounded detached values before the protected write.
@@ -72,7 +75,12 @@ export async function prepareCoordinatorAdvanceParameters(
     plan.checkpoint.schemaVersion === 3 &&
     plan.callableResult?.kind === 'succeeded';
   let preparedResult: ReturnType<typeof prepareCoordinatorCallResult>;
-  if (nativeResult) {
+  const nativeCallInputs =
+    plan.checkpoint.schemaVersion === 3 &&
+    plan.workflowCalls?.declarations.some(
+      ({ input }) => input.kind === 'artifact',
+    ) === true;
+  if (nativeResult || nativeCallInputs) {
     const budget = options.nativeValueControlReadTimeoutMillis;
     if (budget === undefined)
       throw new Error('Native result precommit read owner is unavailable');
@@ -118,6 +126,15 @@ export async function prepareCoordinatorAdvanceParameters(
         { owner: consumer, signal: input.signal, inspectOwner },
         async (signal) => {
           assertNotAborted(signal);
+          if (nativeCallInputs)
+            await validateCoordinatorArtifactCallInputs(pool, {
+              owner: consumer,
+              declarations: plan.workflowCalls?.declarations ?? [],
+              signal,
+              readTimeoutMillis: budget,
+              hydrate: options.hydrateNativeCallDeclaration,
+            });
+          if (!nativeResult) return undefined;
           const material = await withCoordinatorReadClient(
             pool,
             workspaceId,

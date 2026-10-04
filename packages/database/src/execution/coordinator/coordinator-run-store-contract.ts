@@ -6,6 +6,7 @@ import type {
   InspectCoordinatorValueReadOwner,
   LoadCallableCompletionSources,
   ReadCallableCompletionSource,
+  ReadCoordinatorCallDeclaration,
 } from './coordinator-native-value-read-contract.js';
 
 export const coordinatorIdentitySchema = z.uuid();
@@ -70,6 +71,7 @@ export interface CoordinatorRunStore {
   inspectCoordinatorValueReadOwner?: InspectCoordinatorValueReadOwner;
   loadCallableCompletionSources?: LoadCallableCompletionSources;
   readCallableCompletionSource?: ReadCallableCompletionSource;
+  readCoordinatorCallDeclaration?: ReadCoordinatorCallDeclaration;
   loadAdvanceState(
     input: Readonly<{
       workspaceId: string;

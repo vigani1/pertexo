@@ -25,9 +25,16 @@ import {
 } from './coordinator-value-work-lifetime.js';
 import { hydrateCoordinatorExpressionMaterial } from './coordinator-expression-material-hydration.js';
 import type { createWorkflowExecutionValueCodec } from './workflow-execution-value-codec.js';
+import {
+  hydrateCoordinatorCallDeclarations,
+  type createCoordinatorCallDeclarationHydration,
+} from './coordinator-call-declaration-hydration.js';
 
 export type CoordinatorNativeValueWork = Readonly<{
   policy: CoordinatorValueWorkPolicy;
+  hydrateCallDeclaration?: ReturnType<
+    typeof createCoordinatorCallDeclarationHydration
+  >;
   hydrateSource?: ReturnType<
     typeof createWorkflowExecutionValueCodec
   >['hydrateSource'];
@@ -191,8 +198,23 @@ export async function advanceNativeCoordinator(
     input.advance.signal,
     async (session) => {
       const demandState = { started: false };
+      let workflowCalls = input.advance.workflowCalls;
+      if (
+        workflowCalls?.declarations.some(
+          ({ artifactSource }) => artifactSource !== undefined,
+        )
+      ) {
+        demandState.started = true;
+        workflowCalls = await hydrateCoordinatorCallDeclarations(
+          workflowCalls,
+          owner,
+          session,
+          valueWork.hydrateCallDeclaration,
+        );
+      }
       const advanced = await input.engine.advance({
         ...input.advance,
+        ...(workflowCalls === undefined ? {} : { workflowCalls }),
         signal: session.signal,
         loadCallableCompletion: (demand, signal) => {
           demandState.started = true;

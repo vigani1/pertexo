@@ -37,6 +37,7 @@ import { persistCoordinatorCallControls } from './coordinator-call-controls.js';
 import type {
   NativeCoordinatorResultPreparationScope,
   InspectCoordinatorValueReadOwner,
+  NativeCoordinatorCallDeclarationHydrator,
 } from './coordinator-native-value-read-contract.js';
 
 class NativeAdmissionPassAbandoned extends Error {
@@ -45,19 +46,22 @@ class NativeAdmissionPassAbandoned extends Error {
   }
 }
 
+type CoordinatorAdvanceCommitOptions = Readonly<{
+  runTimeoutFailureContextEnabled: boolean;
+  workspaceInboxProducerEnabled: boolean;
+  workflowTriggerOutcomesEnabled: boolean;
+  workflowCallAdmission?: CoordinatorCallAdmissionOptions;
+  callableResultEvaluator?: ExpressionEvaluator;
+  nativeValueControlReadTimeoutMillis?: number;
+  withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
+  inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
+  hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
+}>;
+
 export async function commitCoordinatorAdvancePlan(
   pool: Pool,
   input: CommitAdvancePlanInput,
-  options: Readonly<{
-    runTimeoutFailureContextEnabled: boolean;
-    workspaceInboxProducerEnabled: boolean;
-    workflowTriggerOutcomesEnabled: boolean;
-    workflowCallAdmission?: CoordinatorCallAdmissionOptions;
-    callableResultEvaluator?: ExpressionEvaluator;
-    nativeValueControlReadTimeoutMillis?: number;
-    withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
-    inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
-  }>,
+  options: CoordinatorAdvanceCommitOptions,
 ): Promise<CommitAdvancePlanResult> {
   const {
     workspaceId,

@@ -82,6 +82,26 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
     rowSecurity: true,
   },
   {
+    signature: 'app.lock_native_artifact_attempt_owner(jsonb,text)',
+    hash: '394c87d707bd14d58bc075f940e22d14',
+    securityDefiner: false,
+    rowSecurity: true,
+  },
+  {
+    signature:
+      'app.prepare_native_attempt_artifact_candidate(jsonb,text,text,integer,text,uuid)',
+    hash: '653d4e9fffbc1abcf8f20fe01e547f07',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
+    signature:
+      'app.register_native_attempt_artifact_candidate(jsonb,text,uuid,uuid,text,integer,text)',
+    hash: 'bd81dcb7ecb9884cfb5850212c488785',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
     signature: 'app.prelock_native_attempt_value_owner(jsonb)',
     hash: '02a38128cf73b8465e0dedaef96984d9',
     securityDefiner: true,
@@ -271,7 +291,7 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
   },
   {
     signature: 'app.read_native_attempt_value_source(jsonb,jsonb)',
-    hash: '5cdf016658a7703984e8481dd13f3d6b',
+    hash: 'cd24a3595840e184bb75be1e7f9698f4',
     securityDefiner: true,
     rowSecurity: true,
   },
@@ -302,7 +322,7 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
   {
     signature:
       'app.read_workflow_call_declaration_materials(uuid,text[],jsonb)',
-    hash: '181234770daeecbc67b900b83a570f73',
+    hash: '273d9b496d8aaaf96045111489475ab7',
     securityDefiner: true,
     rowSecurity: true,
   },

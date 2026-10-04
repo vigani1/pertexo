@@ -34,6 +34,9 @@ export function coordinatorRuntimeProvider(
       return createCoordinatorRuntime(
         {
           database: config.database,
+          ...(config.artifactStore === undefined
+            ? {}
+            : { artifactStore: config.artifactStore }),
           ...(dependencies.databaseRuntime === undefined
             ? {}
             : { databaseRuntime: dependencies.databaseRuntime }),

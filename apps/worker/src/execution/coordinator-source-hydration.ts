@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import type { ArtifactStore } from '@pertexo/artifact-store';
 import {
   parseNativeNodeAttemptValueSource,
   WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
@@ -12,8 +13,10 @@ import { createWorkflowExecutionValueSourceHydrator } from './workflow-execution
 export function createCoordinatorSourceHydration(
   runStore: Pick<CoordinatorRunStore, 'readCallableCompletionSource'>,
   controlReadTimeoutMillis: number,
+  store?: Pick<ArtifactStore, 'getStream'>,
 ) {
   return createWorkflowExecutionValueSourceHydrator({
+    ...(store === undefined ? {} : { store }),
     authorizeSource: async ({ owner, source, signal }) => {
       if (owner.kind !== 'run_result' || source.slot === 'wait_resume_output')
         throw new TypeError('Coordinator source consumer scope differs');
@@ -56,11 +59,21 @@ export function createCoordinatorSourceHydration(
         throw new TypeError(
           'Coordinator independently accepted source scope differs',
         );
-      if (accepted.snapshot.reference.kind !== 'inline')
-        throw new Error(
-          'Native coordinator artifact source hydration is not implemented',
-        );
-      return { snapshot: accepted.snapshot };
+      return {
+        snapshot: accepted.snapshot,
+        ...(accepted.snapshot.reference.kind === 'inline'
+          ? {}
+          : {
+              artifact: {
+                artifactId: accepted.snapshot.reference.artifactId,
+                workspaceId: owner.workspaceId,
+                sha256: accepted.snapshot.sha256,
+                byteLength: accepted.snapshot.byteLength,
+                mediaType: WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
+                available: true,
+              },
+            }),
+      };
     },
   }).hydrateSource;
 }

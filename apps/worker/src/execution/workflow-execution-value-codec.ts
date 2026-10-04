@@ -414,6 +414,18 @@ export function createWorkflowExecutionValueInlinePreparation() {
 }
 
 /** Read-only composition of the SAME source codec; no fake writer/store owners. */
+export function createWorkflowExecutionValueHydrator(
+  dependencies: Pick<
+    WorkflowExecutionValueCodecDependencies,
+    'authorize' | 'store'
+  >,
+) {
+  return Object.freeze({
+    hydrate: (input: HydrateInput) => hydrateValue(dependencies, input),
+  });
+}
+
+/** Read-only composition of the SAME source codec; no fake writer/store owners. */
 export function createWorkflowExecutionValueSourceHydrator(
   dependencies: Required<
     Pick<WorkflowExecutionValueCodecDependencies, 'authorizeSource'>

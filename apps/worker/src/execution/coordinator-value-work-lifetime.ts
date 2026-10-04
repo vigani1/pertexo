@@ -9,6 +9,7 @@ import {
 } from '@pertexo/workflow-model/workflow-call-contract';
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 import { z } from 'zod';
+import { CallableCompletionStoppedError } from '@pertexo/workflow-engine';
 
 export type CoordinatorValueWorkOwner = NativeCoordinatorValueOwner;
 
@@ -295,6 +296,8 @@ class CoordinatorValueScope {
     try {
       value = await work(this.executionAbort.signal);
     } catch (error: unknown) {
+      if (error instanceof CallableCompletionStoppedError)
+        throw new ValueWorkStopped(error.stop);
       if (
         this.executionAbort.signal.aborted &&
         error instanceof Error &&

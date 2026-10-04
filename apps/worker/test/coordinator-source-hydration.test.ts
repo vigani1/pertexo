@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
 import type {
   NativeNodeAttemptValueSource,
   ReadCallableCompletionSource,
@@ -37,6 +39,55 @@ const request = () => ({
 });
 
 describe('production coordinator source hydration composition (external owner port)', () => {
+  it.each([false, true])(
+    'hydrates exact accepted artifact bytes, or refuses a substituted checksum (%s) before storage',
+    async (substituted) => {
+      const value = { name: 'x'.repeat(300_000) };
+      const bytes = Buffer.from(JSON.stringify(value));
+      const metadata = {
+        artifactId: id(7),
+        workspaceId: id(1),
+        byteLength: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        mediaType: 'application/vnd.pertexo.execution-value+json;version=1',
+      };
+      const artifact: NativeNodeAttemptValueSource = {
+        ...source,
+        snapshot: {
+          reference: { schemaVersion: 1, kind: 'artifact', artifactId: id(7) },
+          sha256: metadata.sha256,
+          byteLength: bytes.length,
+        },
+      };
+      const read = vi.fn<ReadCallableCompletionSource>(() =>
+        Promise.resolve({
+          kind: 'ready',
+          valueSource: substituted
+            ? {
+                ...artifact,
+                snapshot: { ...artifact.snapshot, sha256: 'a'.repeat(64) },
+              }
+            : artifact,
+        }),
+      );
+      const getStream = vi.fn(() =>
+        Promise.resolve({ body: Readable.from([bytes]), metadata }),
+      );
+      const hydrated = createCoordinatorSourceHydration(
+        { readCallableCompletionSource: read },
+        250,
+        { getStream },
+      )({ ...request(), source: artifact });
+      if (substituted) {
+        await expect(hydrated).rejects.toThrow('byte identity does not agree');
+        expect(getStream).not.toHaveBeenCalled();
+      } else {
+        await expect(hydrated).resolves.toEqual(value);
+        expect(getStream).toHaveBeenCalledOnce();
+      }
+      expect(read).toHaveBeenCalledOnce();
+    },
+  );
   it('independently rereads even inline bytes under the exact current consumer and budget', async () => {
     const read = vi.fn<ReadCallableCompletionSource>(() =>
       Promise.resolve({ kind: 'ready', valueSource: source }),

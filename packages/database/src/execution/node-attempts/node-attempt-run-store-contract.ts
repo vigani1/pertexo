@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import type {
+  NativeAttemptArtifactReservationInput,
+  NativeAttemptArtifactProofInput,
+  NativeAttemptArtifactMetadata,
+} from '../artifacts/native-attempt-artifact-contract.js';
 import { SAFE_EXECUTOR_ERROR_CODE_PATTERN } from '@pertexo/workflow-model/attempt-failure';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 import type { StoredExecutionValueV1 } from '../stored-execution-value.js';
@@ -316,6 +321,15 @@ export type CompleteNodeAttemptResult =
   | Readonly<{ kind: 'duplicate'; outboxEventId: null }>;
 
 export interface NodeAttemptRunStore {
+  reserveNativeArtifact?(
+    input: NativeAttemptArtifactReservationInput,
+  ): Promise<NativeAttemptArtifactMetadata>;
+  assertNativeArtifactReserved?(
+    input: NativeAttemptArtifactProofInput,
+  ): Promise<void>;
+  finalizeNativeArtifact?(
+    input: NativeAttemptArtifactProofInput,
+  ): Promise<void>;
   /** Reauthorize one accepted native source under the actual existing lease. */
   readNativeValueSource?(
     input: Readonly<{

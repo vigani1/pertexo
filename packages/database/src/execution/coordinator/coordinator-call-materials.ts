@@ -6,16 +6,22 @@ import { loadCoordinatorCallFacts } from './coordinator-call-facts.js';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
 import type { PersistedWorkflowCallStateV1 } from '../../compatibility/persisted-workflow-checkpoint-v3.js';
 import type { NativeCoordinatorValueOwner } from './coordinator-native-value-read-contract.js';
+import type { NativeCoordinatorCallDeclarationSource } from './coordinator-call-declaration-source.js';
 
 export type CoordinatorCallMaterials = Readonly<{
   declarations: readonly Readonly<{
     invocationKey: string;
     nodeId: string;
     declarationAttemptId: string;
-    input: Readonly<{ kind: 'inline'; attemptId: string }>;
+    input: Readonly<
+      | { kind: 'inline'; attemptId: string }
+      | { kind: 'artifact'; artifactId: string }
+    >;
     inputChecksum: string;
     value: unknown;
     calleeVersionId: string;
+    /** Deferred original-byte hydration outside the short SQL read transaction. */
+    artifactSource?: NativeCoordinatorCallDeclarationSource;
   }>[];
   facts: readonly PersistedWorkflowCallStateV1[];
 }>;
@@ -76,16 +82,37 @@ export async function loadCoordinatorCallMaterials(
     )
       throw new CoordinatorRunStateCorruptError();
     const snapshot = parseWorkflowExecutionValueSnapshot(row.snapshot);
-    if (snapshot.reference.kind !== 'inline')
-      throw new CoordinatorRunStateCorruptError();
     return Object.freeze({
       invocationKey: row.invocation_key,
       nodeId: row.node_id,
       declarationAttemptId: row.attempt_id,
-      input: { kind: 'inline' as const, attemptId: row.attempt_id },
+      input:
+        snapshot.reference.kind === 'inline'
+          ? { kind: 'inline' as const, attemptId: row.attempt_id }
+          : {
+              kind: 'artifact' as const,
+              artifactId: snapshot.reference.artifactId,
+            },
       inputChecksum: snapshot.sha256,
-      value: snapshot.reference.value,
+      value:
+        snapshot.reference.kind === 'inline'
+          ? snapshot.reference.value
+          : undefined,
       calleeVersionId: row.callee_version_id,
+      ...(snapshot.reference.kind === 'inline'
+        ? {}
+        : {
+            artifactSource: Object.freeze({
+              invocationKey: row.invocation_key,
+              nodeId: row.node_id,
+              declarationAttemptId: row.attempt_id,
+              calleeVersionId: row.callee_version_id,
+              snapshot: Object.freeze({
+                ...snapshot,
+                reference: snapshot.reference,
+              }),
+            }),
+          }),
     });
   });
   return Object.freeze({

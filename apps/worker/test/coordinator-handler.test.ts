@@ -575,6 +575,11 @@ describe('coordinator handler', () => {
     expect(runStore.loadAdvanceState).toHaveBeenCalledWith({
       workspaceId: WORKSPACE_ID,
       runId: RUN_ID,
+      delivery: {
+        outboxEventId: OUTBOX_EVENT_ID,
+        payloadChecksum:
+          'c3cc46f05b959689b3811aae8acc862e0f3d09b976d7450090261e5ece4ff873',
+      },
       signal,
     });
     expect(reader.readForExecution).toHaveBeenCalledWith({

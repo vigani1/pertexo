@@ -70,6 +70,8 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
 
 export type WorkerNodeRuntimeCapabilities = Readonly<{
   factories: NodeExecutionCapabilityFactories;
+  /** Borrowed framework-only native value I/O; not part of executor factories. */
+  executionValueStore?: Pick<ArtifactStore, 'put' | 'getStream'>;
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }>;
@@ -279,6 +281,9 @@ export async function createWorkerNodeRuntimeCapabilities(
 
   return Object.freeze({
     factories: Object.freeze(factories),
+    ...(ownedArtifactStore === undefined
+      ? {}
+      : { executionValueStore: ownedArtifactStore }),
     checkReadiness: async (): Promise<void> => {
       assertCapabilityRuntimeOpen(lifecycle);
       await checkArtifactReadiness?.();

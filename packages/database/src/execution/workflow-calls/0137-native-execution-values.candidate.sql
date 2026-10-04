@@ -1570,6 +1570,146 @@ END $$;
 REVOKE ALL ON FUNCTION app.lock_native_call_input_owner(jsonb)
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
 
+-- Attempt artifact preparation reuses the actual slot-specific producer owner.
+-- Private helpers return bounded parameters only, never a detachable proof.
+CREATE FUNCTION app.lock_native_artifact_attempt_owner(p_authority jsonb,p_slot text)
+RETURNS jsonb LANGUAGE plpgsql
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE v_scope jsonb; v_version app.workflow_versions%ROWTYPE;
+BEGIN
+  IF p_slot='call_input' THEN
+    RETURN app.lock_native_call_input_owner(p_authority);
+  ELSIF p_slot='physical_output' THEN
+    v_scope:=app.lock_native_attempt_value_owner(p_authority);
+    SELECT * INTO STRICT v_version FROM app.workflow_versions version
+      WHERE version.workspace_id=(v_scope->>'workspaceId')::uuid
+        AND version.id=(v_scope->>'workflowVersionId')::uuid;
+    IF EXISTS(WITH RECURSIVE graphs(graph,depth) AS (
+      SELECT v_version.executable_json->'graph',1 UNION ALL
+      SELECT node->'structured'->'body',graphs.depth+1 FROM graphs
+        CROSS JOIN LATERAL jsonb_array_elements(graph->'nodes') node
+        WHERE graphs.depth<64 AND jsonb_typeof(node->'structured'->'body')='object'
+    ) SELECT 1 FROM graphs CROSS JOIN LATERAL jsonb_array_elements(graph->'nodes') node
+      WHERE node->>'id'=v_scope->>'nodeId' AND node#>>'{definition,key}'='core.workflow_call') THEN
+      RAISE EXCEPTION 'native Call physical output cannot reserve an artifact' USING ERRCODE='55000';
+    END IF;
+    RETURN v_scope;
+  END IF;
+  RAISE EXCEPTION 'native artifact producer slot differs' USING ERRCODE='22023';
+END $$;
+REVOKE ALL ON FUNCTION app.lock_native_artifact_attempt_owner(jsonb,text)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+
+CREATE FUNCTION app.prepare_native_attempt_artifact_candidate(
+  p_authority jsonb,p_slot text,p_sha256 text,p_byte_length integer,p_media_type text,p_artifact uuid
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_scope jsonb:=app.lock_native_artifact_attempt_owner(p_authority,p_slot);
+  v_workspace uuid:=(v_scope->>'workspaceId')::uuid;
+  v_value_slot text:=CASE p_slot WHEN 'call_input' THEN 'attempt_input' ELSE 'attempt_output' END;
+  v_candidate app.workflow_execution_value_artifact_candidates%ROWTYPE;
+  v_artifact app.artifacts%ROWTYPE;
+BEGIN
+  IF (p_sha256 ~ '^[0-9a-f]{64}$' AND p_byte_length BETWEEN 1 AND 1048576
+    AND p_media_type='application/vnd.pertexo.execution-value+json;version=1') IS NOT TRUE THEN
+    RAISE EXCEPTION 'native artifact admitted metadata differs' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO v_candidate FROM app.workflow_execution_value_artifact_candidates candidate
+    WHERE candidate.workspace_id=v_workspace AND candidate.attempt_id=(v_scope->>'attemptId')::uuid
+      AND candidate.value_slot=v_value_slot FOR UPDATE;
+  IF NOT FOUND THEN
+    IF p_artifact IS NOT NULL OR EXISTS(SELECT 1 FROM app.workflow_execution_value_provenance source
+      WHERE source.workspace_id=v_workspace AND source.attempt_id=(v_scope->>'attemptId')::uuid
+        AND source.value_slot=v_value_slot) THEN
+      RAISE EXCEPTION 'native artifact reservation missing or producer already accepted' USING ERRCODE='55000';
+    END IF;
+    -- Existing ADR013 run-artifact default; metadata remains the expiry owner.
+    -- No network I/O occurs while these ordered current-producer locks are held.
+    RETURN jsonb_build_object('kind','missing','expiresAt',clock_timestamp()+interval '30 days');
+  END IF;
+  IF v_candidate.abandoned_at IS NOT NULL THEN
+    RETURN jsonb_build_object('kind','preparation_unavailable');
+  END IF;
+  IF (v_candidate.workflow_run_id=(v_scope->>'runId')::uuid
+    AND v_candidate.workflow_version_id=(v_scope->>'workflowVersionId')::uuid
+    AND v_candidate.node_run_id=(v_scope->>'nodeRunId')::uuid
+    AND v_candidate.node_id=v_scope->>'nodeId' AND v_candidate.invocation_key=v_scope->>'invocationKey'
+    AND v_candidate.attempt_number=(v_scope->>'attemptNumber')::integer
+    AND v_candidate.creation_outbox_event_id=(p_authority#>>'{delivery,outboxEventId}')::uuid
+    AND v_candidate.creation_payload_checksum=p_authority#>>'{delivery,payloadChecksum}'
+    AND v_candidate.sha256=p_sha256 AND v_candidate.byte_length=p_byte_length
+    AND v_candidate.media_type=p_media_type
+    AND (p_artifact IS NULL OR v_candidate.artifact_id=p_artifact)) IS NOT TRUE THEN
+    -- Old creator worker/fence are historical; actual current lease was proven
+    -- independently above. Differing delivery/bytes cannot overwrite this slot.
+    RAISE EXCEPTION 'native artifact immutable candidate differs' USING ERRCODE='23514';
+  END IF;
+  SELECT * INTO v_artifact FROM app.artifacts artifact
+    WHERE artifact.workspace_id=v_workspace AND artifact.id=v_candidate.artifact_id FOR UPDATE;
+  IF NOT FOUND OR (v_artifact.status IN ('pending','available') AND v_artifact.deleted_at IS NULL
+    AND isfinite(v_artifact.expires_at) AND v_artifact.expires_at>clock_timestamp()
+    AND v_artifact.purpose='execution-value' AND v_artifact.sha256=p_sha256
+    AND v_artifact.byte_length=p_byte_length AND v_artifact.media_type=p_media_type
+    AND v_artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||v_artifact.id::text) IS NOT TRUE THEN
+    RAISE EXCEPTION 'native artifact lifecycle is unavailable' USING ERRCODE='55000';
+  END IF;
+  PERFORM app.native_attempt_value_owner(p_authority);
+  RETURN jsonb_build_object('kind','ready','reservation',jsonb_build_object(
+    'artifactId',v_artifact.id,'workspaceId',v_workspace,'sha256',v_artifact.sha256,
+    'byteLength',v_artifact.byte_length,'mediaType',v_artifact.media_type,
+    'available',v_artifact.status='available'));
+END $$;
+REVOKE ALL ON FUNCTION app.prepare_native_attempt_artifact_candidate(jsonb,text,text,integer,text,uuid)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+
+CREATE FUNCTION app.register_native_attempt_artifact_candidate(
+  p_authority jsonb,p_slot text,p_candidate uuid,p_artifact uuid,p_sha256 text,p_byte_length integer,p_media_type text
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_scope jsonb:=app.lock_native_artifact_attempt_owner(p_authority,p_slot);
+  v_workspace uuid:=(v_scope->>'workspaceId')::uuid;
+  v_value_slot text:=CASE p_slot WHEN 'call_input' THEN 'attempt_input' ELSE 'attempt_output' END;
+  v_prepared jsonb;
+  v_artifact app.artifacts%ROWTYPE;
+BEGIN
+  IF p_candidate IS NULL OR p_artifact IS NULL THEN
+    RAISE EXCEPTION 'native artifact registration identity is missing' USING ERRCODE='22023';
+  END IF;
+  v_prepared:=app.prepare_native_attempt_artifact_candidate(p_authority,p_slot,p_sha256,p_byte_length,p_media_type,NULL);
+  IF v_prepared->>'kind'<>'missing' THEN
+    RAISE EXCEPTION 'native artifact slot was already reserved' USING ERRCODE='23514';
+  END IF;
+  SELECT * INTO v_artifact FROM app.artifacts artifact
+    WHERE artifact.workspace_id=v_workspace AND artifact.id=p_artifact FOR UPDATE;
+  IF NOT FOUND OR (v_artifact.status='pending' AND v_artifact.deleted_at IS NULL
+    AND v_artifact.finalized_at IS NULL AND v_artifact.purpose='execution-value'
+    AND v_artifact.sha256=p_sha256 AND v_artifact.byte_length=p_byte_length
+    AND v_artifact.media_type=p_media_type AND isfinite(v_artifact.expires_at)
+    AND v_artifact.expires_at>clock_timestamp()
+    AND v_artifact.expires_at<=clock_timestamp()+interval '30 days'
+    AND v_artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||p_artifact::text) IS NOT TRUE THEN
+    RAISE EXCEPTION 'native artifact pending lifecycle metadata differs' USING ERRCODE='55000';
+  END IF;
+  INSERT INTO app.workflow_execution_value_artifact_candidates(
+    id,workspace_id,artifact_id,workflow_run_id,workflow_version_id,value_slot,
+    node_run_id,node_id,invocation_key,attempt_id,attempt_number,
+    creation_fence_token,creation_worker_id,creation_outbox_event_id,creation_payload_checksum,
+    sha256,byte_length,media_type
+  ) VALUES(p_candidate,v_workspace,p_artifact,(v_scope->>'runId')::uuid,(v_scope->>'workflowVersionId')::uuid,v_value_slot,
+    (v_scope->>'nodeRunId')::uuid,v_scope->>'nodeId',v_scope->>'invocationKey',
+    (v_scope->>'attemptId')::uuid,(v_scope->>'attemptNumber')::integer,
+    (p_authority->>'fenceToken')::bigint,p_authority->>'workerId',
+    (p_authority#>>'{delivery,outboxEventId}')::uuid,p_authority#>>'{delivery,payloadChecksum}',
+    p_sha256,p_byte_length,p_media_type);
+  -- Candidate registration creates no accepted parent or association. Existing
+  -- record/completion owners alone may accept; this owner never charges again.
+  RETURN app.prepare_native_attempt_artifact_candidate(p_authority,p_slot,p_sha256,p_byte_length,p_media_type,p_artifact);
+END $$;
+REVOKE ALL ON FUNCTION app.register_native_attempt_artifact_candidate(jsonb,text,uuid,uuid,text,integer,text)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+
 -- Existing completion caller enters this before receipt/current descendant
 -- locks; it returns no authority token or receipt and accepts only its real lease.
 CREATE FUNCTION app.prelock_native_attempt_value_owner(p_authority jsonb)
@@ -3843,8 +3983,10 @@ BEGIN
           AND source.attempt_id=v_attempt.id AND source.attempt_number=v_attempt.attempt_number
           AND source.node_run_id=v_node.id AND source.node_id=v_node.node_id
           AND source.invocation_key=v_node.invocation_key AND source.byte_ownership='owned';
-      IF v_invocation#>>'{output,kind}'<>'inline'
-        OR v_invocation#>>'{output,attemptId}' IS DISTINCT FROM v_attempt.id::text
+      IF (((v_invocation#>>'{output,kind}'='inline' AND v_source.reference_kind='inline'
+          AND v_invocation#>>'{output,attemptId}'=v_attempt.id::text)
+        OR (v_invocation#>>'{output,kind}'='artifact' AND v_source.reference_kind='artifact'
+          AND v_invocation#>>'{output,artifactId}'=v_source.artifact_id::text))) IS NOT TRUE
         OR v_attempt.output_ref::text IS DISTINCT FROM v_source.original_reference::text THEN
         RAISE EXCEPTION 'native attempt physical output identity differs' USING ERRCODE='55000';
       END IF;
@@ -3862,15 +4004,35 @@ BEGIN
       OR v_borrow.eligible_until<=clock_timestamp())) THEN
     RAISE EXCEPTION 'native attempt accepted source eligibility ended' USING ERRCODE='55000';
   END IF;
-  -- Minimum inline owner only. Artifact locator authorization remains an open
-  -- integration gate, not a fallback to artifact possession or decoded JSON.
-  IF v_source.reference_kind<>'inline' THEN
-    RAISE EXCEPTION 'native attempt artifact source authorization is unavailable' USING ERRCODE='55000';
+  IF v_source.reference_kind='inline' THEN
+    PERFORM app.assert_native_inline_execution_value_bytes(v_source.original_reference->'value',
+      v_source.sha256,v_source.byte_length,v_source.original_inline_text);
+    v_snapshot:=jsonb_build_object('reference',v_source.original_reference,
+      'sha256',v_source.sha256,'byteLength',v_source.byte_length,'serializedValue',v_source.original_inline_text);
+  ELSIF v_source.reference_kind='artifact' THEN
+    -- Accepted original producer + immutable association + available metadata,
+    -- under this CURRENT consumer proof. Candidate possession alone is never a
+    -- source grant, and borrowed run input never creates another owning record.
+    IF NOT EXISTS(SELECT 1 FROM app.workflow_execution_value_artifact_associations association
+      JOIN app.workflow_execution_value_artifact_candidates candidate
+        ON candidate.workspace_id=association.workspace_id AND candidate.id=association.candidate_id
+        AND candidate.abandoned_at IS NULL
+      JOIN app.artifacts artifact ON artifact.workspace_id=association.workspace_id
+        AND artifact.id=association.artifact_id AND artifact.status='available'
+        AND artifact.deleted_at IS NULL AND isfinite(artifact.expires_at)
+        AND artifact.expires_at>clock_timestamp() AND artifact.purpose='execution-value'
+        AND artifact.sha256=v_source.sha256 AND artifact.byte_length=v_source.byte_length
+        AND artifact.media_type=v_source.media_type
+        AND artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||artifact.id::text
+      WHERE association.workspace_id=v_workspace AND association.provenance_id=v_source.id
+        AND association.artifact_id=v_source.artifact_id) THEN
+      RAISE EXCEPTION 'native attempt accepted artifact is unavailable' USING ERRCODE='55000';
+    END IF;
+    v_snapshot:=jsonb_build_object('reference',v_source.original_reference,
+      'sha256',v_source.sha256,'byteLength',v_source.byte_length);
+  ELSE
+    RAISE EXCEPTION 'native attempt accepted source reference differs' USING ERRCODE='55000';
   END IF;
-  PERFORM app.assert_native_inline_execution_value_bytes(v_source.original_reference->'value',
-    v_source.sha256,v_source.byte_length,v_source.original_inline_text);
-  v_snapshot:=jsonb_build_object('reference',v_source.original_reference,
-    'sha256',v_source.sha256,'byteLength',v_source.byte_length,'serializedValue',v_source.original_inline_text);
   PERFORM app.native_attempt_value_owner(p_authority);
   IF v_source.eligible_until<=clock_timestamp()
     OR (v_borrow.id IS NOT NULL AND v_borrow.eligible_until<=clock_timestamp()) THEN
@@ -4150,7 +4312,7 @@ BEGIN
         AND source.workflow_version_id=v_run.workflow_version_id AND source.node_run_id=v_node.id
         AND source.node_id=v_node.node_id AND source.invocation_key=v_key AND source.attempt_id=v_attempt.id
         AND source.attempt_number=1 AND source.value_slot='attempt_input' AND source.byte_ownership='owned';
-    IF NOT FOUND OR (v_input.reference_kind='inline' AND v_input.eligibility_revoked_at IS NULL
+    IF NOT FOUND OR (v_input.reference_kind IN ('inline','artifact') AND v_input.eligibility_revoked_at IS NULL
       AND v_input.eligible_until>clock_timestamp() AND v_node.input_ref::text=v_input.original_reference::text
       AND v_attempt.output_ref::text=v_input.original_reference::text) IS NOT TRUE THEN
       RAISE EXCEPTION 'native declaration FIRST input is unavailable' USING ERRCODE='55000';
@@ -4162,16 +4324,41 @@ BEGIN
       AND event.payload->'attemptNumber'='1'::jsonb) THEN
       RAISE EXCEPTION 'native declaration physical success fact is missing' USING ERRCODE='23514';
     END IF;
-    PERFORM app.assert_native_inline_execution_value_bytes(v_input.original_reference->'value',
-      v_input.sha256,v_input.byte_length,v_input.original_inline_text);
-    PERFORM app.assert_native_callable_value(v_callee.executable_json#>'{graph,callable,input}',v_input.original_reference->'value');
+    IF v_input.reference_kind='inline' THEN
+      PERFORM app.assert_native_inline_execution_value_bytes(v_input.original_reference->'value',
+        v_input.sha256,v_input.byte_length,v_input.original_inline_text);
+      PERFORM app.assert_native_callable_value(v_callee.executable_json#>'{graph,callable,input}',v_input.original_reference->'value');
+    ELSIF NOT EXISTS(SELECT 1 FROM app.workflow_execution_value_artifact_associations association
+      JOIN app.workflow_execution_value_artifact_candidates candidate
+        ON candidate.workspace_id=association.workspace_id AND candidate.id=association.candidate_id
+        AND candidate.artifact_id=association.artifact_id AND candidate.abandoned_at IS NULL
+        AND candidate.workflow_run_id=p_parent AND candidate.workflow_version_id=v_run.workflow_version_id
+        AND candidate.node_run_id=v_node.id AND candidate.node_id=v_node.node_id
+        AND candidate.invocation_key=v_key AND candidate.attempt_id=v_attempt.id
+        AND candidate.attempt_number=1 AND candidate.value_slot='attempt_input'
+        AND candidate.sha256=v_input.sha256 AND candidate.byte_length=v_input.byte_length
+        AND candidate.media_type=v_input.media_type
+      JOIN app.artifacts artifact ON artifact.workspace_id=association.workspace_id
+        AND artifact.id=association.artifact_id AND artifact.status='available'
+        AND artifact.deleted_at IS NULL AND isfinite(artifact.expires_at)
+        AND artifact.expires_at>clock_timestamp() AND artifact.purpose='execution-value'
+        AND artifact.sha256=v_input.sha256 AND artifact.byte_length=v_input.byte_length
+        AND artifact.media_type=v_input.media_type
+        AND artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||artifact.id::text
+      WHERE association.workspace_id=v_workspace AND association.provenance_id=v_input.id
+        AND association.artifact_id=v_input.artifact_id) THEN
+      RAISE EXCEPTION 'native declaration accepted artifact is unavailable' USING ERRCODE='55000';
+    END IF;
     IF v_input.eligible_until<=clock_timestamp() OR
       app.inspect_native_coordinator_value_owner(p_consumer)->>'kind'<>'active' THEN
       RAISE EXCEPTION 'native declaration source/control expired during read' USING ERRCODE='55000';
     END IF;
     invocation_key:=v_key;node_id:=v_node.node_id;attempt_id:=v_attempt.id;callee_version_id:=v_callee.id;
     snapshot:=jsonb_build_object('reference',v_input.original_reference,'sha256',v_input.sha256,
-      'byteLength',v_input.byte_length,'serializedValue',v_input.original_inline_text);
+      'byteLength',v_input.byte_length);
+    IF v_input.reference_kind='inline' THEN
+      snapshot:=snapshot||jsonb_build_object('serializedValue',v_input.original_inline_text);
+    END IF;
     RETURN NEXT;
   END LOOP;
 END $$;
@@ -4955,7 +5142,9 @@ CREATE POLICY native_call_journal_owner_scope ON app.workflow_calls
   WITH CHECK (workspace_id::text=nullif(current_setting('app.workspace_id',true),''));
 GRANT EXECUTE ON FUNCTION app.record_workflow_call_declaration_input(jsonb,jsonb,text,integer,text),
   app.read_workflow_call_declaration_input(jsonb),
-  app.workflow_call_declaration_completion_reference(jsonb) TO {{worker_runtime_role}};
+  app.workflow_call_declaration_completion_reference(jsonb),
+  app.prepare_native_attempt_artifact_candidate(jsonb,text,text,integer,text,uuid),
+  app.register_native_attempt_artifact_candidate(jsonb,text,uuid,uuid,text,integer,text) TO {{worker_runtime_role}};
 GRANT EXECUTE ON FUNCTION app.record_native_root_execution_input(uuid,uuid,text)
   TO {{api_runtime_role}},{{worker_runtime_role}};
 

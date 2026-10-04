@@ -28,6 +28,14 @@ export function createCoordinatorAdvanceEngine(
       input: Parameters<CoordinatorAdvanceEngine['advance']>[0],
     ): ReturnType<CoordinatorAdvanceEngine['advance']> => {
       if (
+        input.workflowCalls?.declarations.some(
+          ({ artifactSource }) => artifactSource !== undefined,
+        )
+      )
+        throw new TypeError(
+          'Coordinator Call declaration requires scoped hydration',
+        );
+      if (
         input.callableCompletion !== undefined &&
         input.loadCallableCompletion !== undefined
       )

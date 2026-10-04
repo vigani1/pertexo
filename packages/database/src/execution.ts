@@ -32,6 +32,12 @@ export {
 export type { StoredExecutionValueV1 } from './execution/stored-execution-value.js';
 export { serializeWorkflowExecutionJsonValueV3 } from './execution/stored-execution-value.js';
 export { NODE_ATTEMPT_INPUT_LIMITS } from './execution/node-attempts/node-attempt-run-store-contract.js';
+export { NativeArtifactPreparationUnavailableError } from './execution/artifacts/native-attempt-artifact-contract.js';
+export type {
+  NativeAttemptArtifactReservationInput,
+  NativeAttemptArtifactProofInput,
+  NativeAttemptArtifactMetadata,
+} from './execution/artifacts/native-attempt-artifact-contract.js';
 export { parseWorkflowExecutionValueSnapshot } from './execution/node-attempts/node-attempt-call-input-record.js';
 export type {
   NativeNodeAttemptValueSource,
@@ -68,7 +74,10 @@ export type {
   NativeCoordinatorResultPreparationScope,
   LoadCallableCompletionSources,
   ReadCallableCompletionSource,
+  ReadCoordinatorCallDeclaration,
+  NativeCoordinatorCallDeclarationHydrator,
 } from './execution/coordinator/coordinator-native-value-read-contract.js';
+export type { NativeCoordinatorCallDeclarationSource } from './execution/coordinator/coordinator-call-declaration-source.js';
 export type { DatabaseConfig } from './config.js';
 export { createAuthenticationMailDeliveryStore } from './identity/authentication-mail.js';
 export type {

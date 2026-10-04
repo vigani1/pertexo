@@ -26,7 +26,10 @@ import { checkNativeCoordinatorReadiness } from './coordinator-native-readiness.
 import { acknowledgeCoordinatorDelivery } from './coordinator-run-store-delivery.js';
 import { loadCoordinatorAdvanceState } from './coordinator-run-store-observations.js';
 import type { CoordinatorCallAdmissionOptions } from './coordinator-call-admission.js';
-import type { NativeCoordinatorResultPreparationScope } from './coordinator-native-value-read-contract.js';
+import type {
+  NativeCoordinatorResultPreparationScope,
+  NativeCoordinatorCallDeclarationHydrator,
+} from './coordinator-native-value-read-contract.js';
 import {
   createNativeCoordinatorValueReads,
   parseNativeCoordinatorControlReadTimeoutMillis,
@@ -50,6 +53,7 @@ export type CoordinatorRunStoreOptions = Readonly<{
   /** Actual worker value lifetime P; no pool configuration mutation or fallback. */
   nativeValueControlReadTimeoutMillis?: number;
   withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
+  hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
   /** Exact existing release/compiler descriptions; absence means retained-only. */
   expectedCompatibilityReleases?: CompatibilityReleaseExpectationSet;
   runTimeoutFailureContextEnabled?: boolean;
@@ -135,6 +139,14 @@ export function createCoordinatorRunStore(
             requireNativeReadiness();
             return nativeReads.readCallableCompletionSource(input);
           },
+          readCoordinatorCallDeclaration: (
+            input: Parameters<
+              typeof nativeReads.readCoordinatorCallDeclaration
+            >[0],
+          ) => {
+            requireNativeReadiness();
+            return nativeReads.readCoordinatorCallDeclaration(input);
+          },
         }
       : {}),
     acknowledgeAdvanceDelivery: (input: AcknowledgeAdvanceDeliveryInput) =>
@@ -160,6 +172,12 @@ export function createCoordinatorRunStore(
               nativeValueControlReadTimeoutMillis: controlReadTimeoutMillis,
               inspectNativeResultOwner:
                 nativeReads.inspectCoordinatorValueReadOwner,
+              ...(options.hydrateNativeCallDeclaration === undefined
+                ? {}
+                : {
+                    hydrateNativeCallDeclaration:
+                      options.hydrateNativeCallDeclaration,
+                  }),
               ...(options.withNativeResultPreparation === undefined
                 ? {}
                 : {

@@ -5,6 +5,7 @@ import type { NativeNodeAttemptValueSource } from '../node-attempts/native-node-
 import type { StoredExecutionValueV1 } from '../stored-execution-value.js';
 import type { WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 } from '../artifacts/execution-value-representation.js';
 import type { CoordinatorAdvanceDelivery } from './coordinator-run-store-contract.js';
+import type { NativeCoordinatorCallDeclarationSource } from './coordinator-call-declaration-source.js';
 
 type Output = NonNullable<
   PersistedWorkflowCheckpointV3['invocations'][number]['output']
@@ -133,3 +134,25 @@ export type ReadCallableCompletionSource = (
   | Readonly<{ kind: 'ready'; valueSource: NativeNodeAttemptValueSource }>
   | Readonly<{ kind: 'stopped'; stop: CallableValueWorkStop }>
 >;
+
+/** Fresh current-owner read of one actual immutable Call declaration. */
+export type ReadCoordinatorCallDeclaration = (
+  input: Readonly<{
+    owner: NativeCoordinatorValueOwner;
+    source: NativeCoordinatorCallDeclarationSource;
+    signal: AbortSignal;
+    readTimeoutMillis: number;
+  }>,
+) => Promise<
+  | Readonly<{ kind: 'ready'; source: NativeCoordinatorCallDeclarationSource }>
+  | Readonly<{ kind: 'stopped'; stop: CallableValueWorkStop }>
+>;
+
+/** Detached original-byte hydration only; this callback is not admission authority. */
+export type NativeCoordinatorCallDeclarationHydrator = (
+  input: Readonly<{
+    owner: NativeCoordinatorValueOwner;
+    source: NativeCoordinatorCallDeclarationSource;
+    signal: AbortSignal;
+  }>,
+) => Promise<unknown>;

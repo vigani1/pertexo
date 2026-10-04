@@ -11,7 +11,9 @@ import type {
   LoadCallableCompletionSources,
   ReadCallableCompletionSource,
   NativeCoordinatorValueOwner,
+  ReadCoordinatorCallDeclaration,
 } from './coordinator-native-value-read-contract.js';
+import { parseCoordinatorArtifactCallDeclarationRow } from './coordinator-call-declaration-source.js';
 
 const ownerSchema = z
   .object({
@@ -86,6 +88,7 @@ export function createNativeCoordinatorValueReads(
   inspectCoordinatorValueReadOwner: InspectCoordinatorValueReadOwner;
   loadCallableCompletionSources: LoadCallableCompletionSources;
   readCallableCompletionSource: ReadCallableCompletionSource;
+  readCoordinatorCallDeclaration: ReadCoordinatorCallDeclaration;
 }> {
   parseNativeCoordinatorControlReadTimeoutMillis(controlReadTimeoutMillis);
 
@@ -133,6 +136,8 @@ export function createNativeCoordinatorValueReads(
       if (!knownReadOutage(error)) throw error;
       return {
         kind: 'stopped',
+        // The context may be canceled during checkout, query, or joined disposal.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         stop: input.signal.aborted
           ? { kind: 'context_aborted' }
           : { kind: 'unavailable', reason },
@@ -141,6 +146,26 @@ export function createNativeCoordinatorValueReads(
   }
 
   return Object.freeze({
+    readCoordinatorCallDeclaration: async (input) => {
+      const response = await read(
+        input,
+        `select jsonb_build_object('kind','ready','projection',to_jsonb(material)) as result
+         from app.read_workflow_call_declaration_materials(($1::jsonb->>'runId')::uuid,
+           array[$2::text],$1::jsonb) material`,
+        [input.source.invocationKey],
+        'source_read_failed',
+      );
+      const stopped = stoppedSchema.safeParse(response);
+      if (stopped.success) return stopped.data;
+      const source = parseCoordinatorArtifactCallDeclarationRow(
+        readySchema.parse(response).projection,
+      );
+      if (!isDeepStrictEqual(source, input.source))
+        throw new TypeError(
+          'Native coordinator Call declaration identity differs',
+        );
+      return Object.freeze({ kind: 'ready', source });
+    },
     inspectCoordinatorValueReadOwner: async (input) =>
       parseNativeCoordinatorInspection(
         await read(
