@@ -79,6 +79,8 @@ function fixture(
     compiler?: WorkflowExecutableCompiler;
     callee?: Record<string, unknown>;
     lookupFailure?: Error;
+    afterCalleeRead?: () => void;
+    signal?: AbortSignal;
   } = {},
 ) {
   const draftRow = {
@@ -103,6 +105,9 @@ function fixture(
         return Promise.resolve({
           rows: options.callee === undefined ? [] : [options.callee],
           rowCount: options.callee === undefined ? 0 : 1,
+        }).then((result) => {
+          options.afterCalleeRead?.();
+          return result;
         });
       }
       const rows = sql.includes('select request_hash,status,result_ref')
@@ -171,6 +176,7 @@ function fixture(
           id(2),
           mapDraft(draftRow, catalog),
         ),
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
       }),
     versionWrites: () =>
       statements.filter(({ sql }) =>
@@ -273,6 +279,41 @@ describe('native publication through the existing publication owner', () => {
     await expect(owner.publish()).rejects.toBe(failure);
     expect(owner.versionWrites()).toEqual([]);
   });
+
+  it.each(['before lookup', 'after lookup'] as const)(
+    'preserves cancellation %s instead of compiling or inserting a version',
+    async (when) => {
+      const controller = new AbortController();
+      const reason = new Error('publication request cancelled');
+      const compiler = vi.fn<WorkflowExecutableCompiler>();
+      if (when === 'before lookup') controller.abort(reason);
+      const owner = fixture(callGraph, {
+        callee: publishedCallee,
+        compiler,
+        signal: controller.signal,
+        ...(when === 'after lookup'
+          ? {
+              afterCalleeRead: () => {
+                controller.abort(reason);
+              },
+            }
+          : {}),
+      });
+      await expect(owner.publish()).rejects.toBe(reason);
+      expect(compiler).not.toHaveBeenCalled();
+      expect(owner.versionWrites()).toEqual([]);
+      const lookups = owner.statements.filter(({ sql }) =>
+        sql.includes('executable_schema_version'),
+      );
+      expect(lookups).toHaveLength(when === 'before lookup' ? 0 : 1);
+      if (when === 'after lookup')
+        expect(lookups[0]?.values).toEqual([
+          id(1),
+          pin.workflowId,
+          pin.versionId,
+        ]);
+    },
+  );
 
   it.each([
     [
