@@ -52,6 +52,11 @@
           "src/expression-worker-runtime.ts",
           "src/authoring-validation-worker-runtime.ts"
         ]
+      },
+      "packages/workflow-engine": {
+        "entry": [
+          "src/compilation/callable-target-assessment-worker.ts"
+        ]
       }
     }
   },

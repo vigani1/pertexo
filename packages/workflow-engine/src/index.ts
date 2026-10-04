@@ -74,3 +74,19 @@ export {
 } from './checkpoint/checkpoint-v3.js';
 export type * from './workflow-call-state.js';
 export type { CompiledWorkflowExecutable } from './compilation/executable-authentication.js';
+export {
+  createCallableTargetWorkerAdapter,
+  createCallableTargetAssessor,
+} from './compilation/callable-target-assessment-adapter.js';
+export {
+  CALLABLE_TARGET_ASSESSMENT_LIMITS,
+  CALLABLE_TARGET_ASSESSMENT_PURPOSE,
+} from './compilation/callable-target-assessment-contracts.js';
+export type {
+  CallableTargetAssessmentEntry,
+  CallableTargetAssessmentRelease,
+  CallableTargetAssessmentSnapshot,
+  CallableTargetAssessmentCounters,
+  CallableTargetAssessmentFact,
+  CallableTargetAssessmentReport,
+} from './compilation/callable-target-assessment-contracts.js';
