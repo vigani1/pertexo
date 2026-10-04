@@ -36,6 +36,9 @@ import {
   workflowVersionResponseSchema,
   workflowVersionsQuerySchema,
   workflowVersionsResponseSchema,
+  workflowCallableTargetsQuerySchema,
+  workflowCallableTargetsResponseSchema,
+  workflowCallableTargetsUnavailableProblemSchema,
   strongEtagSchema,
 } from './http/workflow-authoring.js';
 import { projectContractSchema } from './schema-projection.js';
@@ -151,6 +154,21 @@ function contractSchemas(target: 'client' | 'openapi') {
     WorkflowVersionsResponse: project(
       'WorkflowVersionsResponse',
       workflowVersionsResponseSchema,
+      'output',
+    ),
+    WorkflowCallableTargetsQuery: project(
+      'WorkflowCallableTargetsQuery',
+      workflowCallableTargetsQuerySchema,
+      'input',
+    ),
+    WorkflowCallableTargetsResponse: project(
+      'WorkflowCallableTargetsResponse',
+      workflowCallableTargetsResponseSchema,
+      'output',
+    ),
+    WorkflowCallableTargetsUnavailableProblem: project(
+      'WorkflowCallableTargetsUnavailableProblem',
+      workflowCallableTargetsUnavailableProblemSchema,
       'output',
     ),
   });
@@ -448,21 +466,63 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions': {
       get: {
         operationId: 'listWorkflowVersions',
+        description:
+          'Without include, returns the unchanged strict WorkflowVersionsResponse. include=callableTarget returns only WorkflowCallableTargetsResponse (default limit 1, maximum 25); versionId performs an exact refresh and is mutually exclusive with limit/after. Unknown/repeated query fields are invalid. Raw generated callers must narrow the response union; legacy typed wrappers omit include and validate only the legacy schema. The actor-scoped projection is private, no-store, not publication or runtime authority; native OFF never yields eligible.',
         security: [{ cookieSession: [] }],
         parameters: [
           ...workflowParameters,
           queryParameter('limit', workflowVersionsQuerySchema.shape.limit),
           queryParameter('after', workflowVersionsQuerySchema.shape.after),
+          {
+            name: 'include',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', const: 'callableTarget' },
+            description:
+              'Opt-in strict callable target projection. Its page limit is 1–25, default 1; omitted include retains the legacy limit contract.',
+          },
+          {
+            name: 'versionId',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', format: 'uuid' },
+            description:
+              'Requires include=callableTarget; mutually exclusive with limit and after. Exact refresh returns one item and null nextCursor or not found.',
+          },
         ],
         responses: {
-          '200': jsonResponse(
-            'Immutable workflow versions',
-            'WorkflowVersionsResponse',
-          ),
+          '200': {
+            description:
+              'Immutable workflow versions or explicitly requested actor-scoped callable targets',
+            content: {
+              'application/json': {
+                schema: {
+                  oneOf: [
+                    { $ref: '#/components/schemas/WorkflowVersionsResponse' },
+                    {
+                      $ref: '#/components/schemas/WorkflowCallableTargetsResponse',
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '500': responseReference('Unexpected'),
+          '503': {
+            description:
+              'Callable target assessment unavailable; no partially assessed page',
+            content: {
+              'application/problem+json': {
+                schema: {
+                  $ref: '#/components/schemas/WorkflowCallableTargetsUnavailableProblem',
+                },
+              },
+            },
+          },
         },
       },
     },

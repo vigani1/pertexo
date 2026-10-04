@@ -124,7 +124,9 @@ function rewriteLocalReferences(
   const definitionOwner = Object.hasOwn(record, '$defs')
     ? `${rootPrefix}${path.map((part) => `/${pointerSegment(part)}`).join('')}`
     : inheritedDefinitionOwner;
-  if (record.$ref === '#') record.$ref = rootPrefix;
+  // Independently projected recursive schemas keep their own embedded root.
+  // A nested descriptor/graph's self-reference must not resolve to its envelope.
+  if (record.$ref === '#') record.$ref = definitionOwner;
   else if (
     typeof record.$ref === 'string' &&
     record.$ref.startsWith('#/$defs/')
@@ -146,6 +148,19 @@ export function projectContractSchema(
     reused: 'inline',
     unrepresentable: 'any',
     override: ({ zodSchema, jsonSchema }) => {
+      if (
+        zodSchema ===
+        (callableObjectTypeDescriptorSchemaV1 as unknown as typeof zodSchema)
+      ) {
+        replaceObject(
+          jsonSchema,
+          z.toJSONSchema(callableObjectTypeDescriptorStructuralSchemaV1, {
+            target: 'draft-2020-12',
+            reused: 'inline',
+          }),
+        );
+        jsonSchema['x-pertexo-runtime-bounds'] = true;
+      }
       if (
         zodSchema ===
         (workflowPortableManifestSchema as unknown as typeof zodSchema)

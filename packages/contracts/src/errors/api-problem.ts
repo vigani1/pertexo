@@ -59,6 +59,7 @@ export const API_PROBLEM_CODES = [
   ...WORKFLOW_PORTABILITY_PROBLEM_CODES,
   'workflow.template_origin_unavailable',
   'workflow.validation_unavailable',
+  'workflow.callable_targets_unavailable',
   'workflow.draft_operation_unavailable',
   'workflow.published_version_conflict',
   'workflow.not_published',
@@ -340,6 +341,12 @@ const apiProblemDetails = {
   'workflow.validation_unavailable': {
     status: 503,
     title: 'Workflow validation unavailable',
+    severity: 'warn',
+    exposeDetail: true,
+  },
+  'workflow.callable_targets_unavailable': {
+    status: 503,
+    title: 'Workflow callable targets unavailable',
     severity: 'warn',
     exposeDetail: true,
   },

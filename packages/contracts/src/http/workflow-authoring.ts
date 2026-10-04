@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import {
+  workflowCallableTargetsQuerySchema,
+  workflowCallableTargetsResponseSchema,
+} from './workflow-callable-targets.js';
+export * from './workflow-callable-targets.js';
+import {
   workflowCallableGraphSchemaV2,
   type WorkflowCallableGraphV2,
 } from '@pertexo/workflow-model/callable-graph-contract';
@@ -335,6 +340,16 @@ export const workflowVersionsQuerySchema = z
     after: workflowCursorSchema.optional(),
   })
   .strict();
+
+/** Transport unions only; legacy typed callers retain the concrete schemas above. */
+export const workflowVersionsReadQuerySchema = z.union([
+  workflowVersionsQuerySchema,
+  workflowCallableTargetsQuerySchema,
+]);
+export const workflowVersionsReadResponseSchema = z.union([
+  workflowVersionsResponseSchema,
+  workflowCallableTargetsResponseSchema,
+]);
 
 export const workflowRevisionConflictProblemSchema = createApiProblemSchema({
   status: z.literal(412),
