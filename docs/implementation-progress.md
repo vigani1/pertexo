@@ -301,6 +301,29 @@ join, resource disposal and absence observation; admission still stops
 synchronously and pending observations remain joined. Source-only evidence and
 all installation/runtime restrictions are unchanged.
 
+The compatibility/isolation contract extension is reviewed source-only after
+full primary diff/test/doc/receipt read, hash verification, independent thirty-five
+test verification and both review axes reporting zero findings. Its exact diff is
+`470ab1bc13b9f654aa60bd022232afc34bbc2e3226fec4bcb1a4c155c404ad6d`;
+receipt `186dc5a81cd31df37b80f4afb6a3edbd94f2b3eaa98a231399a59f297fbb36ce`.
+Primary approved recording it without push or activation.
+It binds the existing role template, native/shared readiness and
+runtime-closure/Dockerfile sources; validates injected exact registered-base,
+four forced-RLS/native privilege and three application-role observations; and
+rejects malformed/duplicate/unknown identities and observed unsafe network modes
+or extra published endpoints. Twenty lifecycle tests plus fifteen existing
+ownership tests pass. Missing observations and five unavailable expected-fact
+groups have explicit existing owners: full function/role ACLs and configuration,
+qualified constraints/policies/indexes/triggers, full emitted process closure,
+and creator/storage/private-network/transport isolation. Those subparts stop at
+the missing facts; matching partial simulations cannot qualify installed or
+dedicated isolation, and admission remains false. No installed SQL, live resource,
+installation route or phase-completion evidence is claimed. Discovery included
+one overly broad recursive source search that may have implicitly read the
+quarantined draft without returning its content; it was disclosed to primary,
+and subsequent work uses approved exact files only. No quarantine content is used
+as a source, copied, hashed, installed or executed by this extension.
+
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
 | Publication / compiler selection | WIP: actual publication owner validates callable selectors and bounded immutable closure; compiler chooses V3 for Graph2 | Ordinary public-owner positive publication, invalid selector, immutable pin/contract lookup and HTTP error-mapping tests; real V3 compiler verification | Installed format constraints, locked native release and adversarial publication authority unqualified; no real native publication qualified |

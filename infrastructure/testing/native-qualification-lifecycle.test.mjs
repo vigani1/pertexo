@@ -385,3 +385,180 @@ test('snapshots caller source and resource bindings rather than adopting later m
   assert.equal(Object.isFrozen(report.resources), true);
   await owner.close();
 });
+
+test('unknown installed and isolation facts remain explicit owned blockers', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  const owner = createNativeQualificationLifecycle(input);
+  const report = await owner.assess(['call_wait_resume']);
+  assert.equal(report.compatibility.complete, false);
+  assert.equal(report.compatibility.dedicatedTargetVerified, false);
+  assert.ok(
+    report.compatibility.missingFacts.some(
+      (row) => row.id === 'registered_base_observation',
+    ),
+  );
+  assert.ok(
+    report.compatibility.missingFacts.some(
+      (row) => row.id === 'qualified_constraints_policies_indexes_triggers',
+    ),
+  );
+  assert.ok(
+    report.compatibility.missingFacts.every((row) => row.owner.length > 0),
+  );
+  await owner.close();
+});
+
+function simulatedInstalledCatalog(source) {
+  return {
+    nativeFunctions: [],
+    registeredBase: {
+      head: source.baseHead,
+      migrations: structuredClone(source.migrations),
+    },
+    nativeRelations: [
+      'app.workflow_calls',
+      'app.workflow_execution_value_provenance',
+      'app.workflow_execution_value_artifact_candidates',
+      'app.workflow_execution_value_artifact_associations',
+    ].map((name) => ({
+      name,
+      owner: 'pertexo_owner',
+      rowSecurity: true,
+      forceRowSecurity: true,
+      runtimePrivileges: [
+        'PUBLIC',
+        'pertexo_api',
+        'pertexo_worker',
+        'pertexo_dispatcher',
+      ].map((role) => ({ role, tablePrivileges: [], columnPrivileges: [] })),
+    })),
+    runtimeRoles: ['pertexo_api', 'pertexo_worker', 'pertexo_dispatcher'].map(
+      (name) => ({
+        name,
+        superuser: false,
+        bypassRls: false,
+        ownerMember: false,
+      }),
+    ),
+  };
+}
+
+test('retains independently bound base, forced-RLS and role privilege drift', async () => {
+  const source = await observeNativeQualificationSource();
+  const input = simulatedFixture(source);
+  const catalog = simulatedInstalledCatalog(source);
+  catalog.registeredBase.migrations[0].sha256 = '0'.repeat(64);
+  catalog.nativeRelations[0].forceRowSecurity = false;
+  catalog.nativeRelations[1].runtimePrivileges[0].columnPrivileges = [
+    'original_inline_text:SELECT',
+  ];
+  catalog.runtimeRoles[0].ownerMember = true;
+  input.observeCatalog = async () => catalog;
+  const owner = createNativeQualificationLifecycle(input);
+  const report = await owner.assess(['call_wait_resume']);
+  assert.deepEqual(report.compatibility.drift, [
+    'registered_base',
+    'relation:app.workflow_calls',
+    'relation:app.workflow_execution_value_provenance',
+    'role:pertexo_api',
+  ]);
+  assert.equal(report.installedCompatible, false);
+  await owner.close();
+});
+
+test('rejects observed host-network reuse and additional published endpoints before catalog', async () => {
+  for (const change of [
+    (row) => {
+      row.HostConfig = { Privileged: false, NetworkMode: 'host' };
+    },
+    (row) => {
+      row.HostConfig = { Privileged: true, NetworkMode: 'bridge' };
+    },
+    (row) => {
+      row.HostConfig = {
+        Privileged: false,
+        NetworkMode: `container:${'c'.repeat(64)}`,
+      };
+    },
+    (row) => {
+      row.NetworkSettings.Ports['8080/tcp'] = [
+        { HostIp: '0.0.0.0', HostPort: '8080' },
+      ];
+    },
+  ]) {
+    const input = simulatedFixture(await observeNativeQualificationSource());
+    change(input.rows.get(input.expectedResources.postgresId));
+    let observed = false;
+    input.observeCatalog = async () => {
+      observed = true;
+      return { nativeFunctions: [] };
+    };
+    const owner = createNativeQualificationLifecycle(input);
+    await assert.rejects(
+      owner.assess(['call_wait_resume']),
+      /network or endpoint isolation/u,
+    );
+    assert.equal(observed, false);
+    await assert.rejects(owner.close(), /cleanup failed/u);
+    assert.equal(input.disposed.length, 0);
+  }
+});
+
+test('rejects malformed, duplicate and unknown catalog section identities', async () => {
+  const changes = [
+    (catalog) => {
+      catalog.nativeRelations = {};
+    },
+    (catalog) => {
+      catalog.nativeRelations.push(catalog.nativeRelations[0]);
+    },
+    (catalog) => {
+      catalog.nativeRelations[0].name = 'app.other';
+    },
+    (catalog) => {
+      delete catalog.runtimeRoles[0].ownerMember;
+    },
+    (catalog) => {
+      catalog.nativeRelations[0].runtimePrivileges[0].role = 'caller_chosen';
+    },
+    (catalog) => {
+      catalog.registeredBase.migrations.push(
+        catalog.registeredBase.migrations[0],
+      );
+    },
+    (catalog) => {
+      catalog.registeredBase.migrations[0].sha256 = 'not-a-digest';
+    },
+  ];
+  const source = await observeNativeQualificationSource();
+  for (const change of changes) {
+    const input = simulatedFixture(source);
+    const catalog = simulatedInstalledCatalog(source);
+    change(catalog);
+    input.observeCatalog = async () => catalog;
+    const owner = createNativeQualificationLifecycle(input);
+    await assert.rejects(owner.assess(['call_wait_resume']), /Malformed/u);
+    await owner.close();
+  }
+});
+
+test('matching known sections cannot fill unavailable installed or dedicated-isolation facts', async () => {
+  const source = await observeNativeQualificationSource();
+  const input = simulatedFixture(source);
+  // Copy bound source into a simulated observation, never derive expectations from observations.
+  input.observeCatalog = async () => ({
+    ...simulatedInstalledCatalog(source),
+    compatible: true,
+  });
+  for (const row of input.rows.values())
+    row.HostConfig = { Privileged: false, NetworkMode: 'bridge' };
+  const owner = createNativeQualificationLifecycle(input);
+  const report = await owner.assess(['call_wait_resume']);
+  assert.deepEqual(report.compatibility.drift, []);
+  assert.equal(report.compatibility.missingFacts.length, 5);
+  assert.equal(report.compatibility.complete, false);
+  assert.equal(report.compatibility.dedicatedTargetVerified, false);
+  assert.equal(report.installedCompatible, false);
+  assert.equal(report.runtimeStartAuthorized, false);
+  await owner.close();
+});

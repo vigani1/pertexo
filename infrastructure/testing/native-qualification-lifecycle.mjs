@@ -59,6 +59,12 @@ export async function observeNativeQualificationSource() {
   const artifacts = await Promise.all(
     [
       'infrastructure/testing/native-qualification-lifecycle.mjs',
+      'infrastructure/postgres/init/10-roles.sh',
+      'infrastructure/ecs/validate-runtime-closure.mjs',
+      'Dockerfile',
+      'packages/database/src/execution/coordinator/coordinator-native-readiness.ts',
+      'packages/database/src/platform/readiness-workflow-concurrency.sql.ts',
+      'packages/database/src/migrations.ts',
       'packages/database/src/execution/coordinator/coordinator-native-owner-inventory.ts',
       'packages/database/src/execution/coordinator/coordinator-native-published-constraints.ts',
       'packages/database/dist/execution/coordinator/coordinator-native-owner-inventory.js',
@@ -147,7 +153,12 @@ function selectedCases(ids) {
   return ids.map((id) => ({ id, unclosedOwners: [...functionalCases[id]] }));
 }
 
-async function observeOwnedResources(environment, inspect, expected) {
+async function observeOwnedResources(
+  environment,
+  inspect,
+  expected,
+  unknownIsolation,
+) {
   const inspections = new Map();
   const owned = await verifyCuratedFixtureOwnership(environment, async (id) => {
     const text = await inspect(id);
@@ -166,6 +177,24 @@ async function observeOwnedResources(environment, inspect, expected) {
     throw new Error('Native fixture instances must be distinct');
   for (const id of [owned.postgresId, owned.redisId]) {
     const row = inspections.get(id);
+    const servicePort = id === owned.postgresId ? '5432/tcp' : '6379/tcp';
+    if (
+      Object.entries(row.NetworkSettings.Ports).some(
+        ([port, bindings]) => port !== servicePort && bindings?.length > 0,
+      ) ||
+      (row.HostConfig !== undefined &&
+        (row.HostConfig?.Privileged !== false ||
+          typeof row.HostConfig.NetworkMode !== 'string' ||
+          row.HostConfig.NetworkMode === '' ||
+          row.HostConfig.NetworkMode === 'host' ||
+          row.HostConfig.NetworkMode.startsWith('container:')))
+    )
+      throw new Error('Native fixture network or endpoint isolation differs');
+    if (row.HostConfig === undefined)
+      unknownIsolation?.push({
+        id: `host_configuration_observation:${id}`,
+        owner: 'fixture resource observation adapter',
+      });
     if (
       row.Config.Labels['io.pertexo.fixture-purpose'] !==
         'f08-native-qualification' ||
@@ -216,6 +245,164 @@ function verifyDisposal(rows, resources) {
     rows.some((row) => row.exists !== false)
   )
     throw new Error('Exact owned resource absence was not confirmed');
+}
+
+const nativeRelations = [
+  'app.workflow_calls',
+  'app.workflow_execution_value_provenance',
+  'app.workflow_execution_value_artifact_candidates',
+  'app.workflow_execution_value_artifact_associations',
+];
+const runtimeRoles = ['pertexo_api', 'pertexo_worker', 'pertexo_dispatcher'];
+
+function catalogRows(rows, names, keys, key = 'name') {
+  if (!Array.isArray(rows))
+    throw new Error('Malformed compatibility observation');
+  const byName = new Map();
+  for (const row of rows) {
+    if (
+      !row ||
+      !isDeepStrictEqual(Object.keys(row).sort(), [...keys].sort()) ||
+      !names.includes(row[key]) ||
+      byName.has(row[key])
+    )
+      throw new Error(
+        'Malformed, duplicate or unknown compatibility observation',
+      );
+    byName.set(row[key], row);
+  }
+  return byName;
+}
+
+function knownCatalogDrift(catalog, source) {
+  const drift = [];
+  if (catalog.registeredBase !== undefined) {
+    const base = catalog.registeredBase;
+    if (
+      !base ||
+      !isDeepStrictEqual(Object.keys(base).sort(), ['head', 'migrations']) ||
+      !Array.isArray(base.migrations)
+    )
+      throw new Error('Malformed registered base observation');
+    catalogRows(
+      base.migrations,
+      source.migrations.map((row) => row.name),
+      ['name', 'sha256'],
+    );
+    if (
+      base.migrations.some(
+        (row) =>
+          typeof row.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(row.sha256),
+      )
+    )
+      throw new Error('Malformed registered checksum observation');
+    if (
+      !isDeepStrictEqual(base, {
+        head: source.baseHead,
+        migrations: source.migrations,
+      })
+    )
+      drift.push('registered_base');
+  }
+  if (catalog.nativeRelations !== undefined) {
+    const rows = catalogRows(catalog.nativeRelations, nativeRelations, [
+      'name',
+      'owner',
+      'rowSecurity',
+      'forceRowSecurity',
+      'runtimePrivileges',
+    ]);
+    for (const name of nativeRelations) {
+      const row = rows.get(name);
+      let denied = false;
+      if (row) {
+        const privileges = catalogRows(
+          row.runtimePrivileges,
+          ['PUBLIC', ...runtimeRoles],
+          ['role', 'tablePrivileges', 'columnPrivileges'],
+          'role',
+        );
+        denied =
+          privileges.size === 4 &&
+          [...privileges.values()].every(
+            (grants) =>
+              isDeepStrictEqual(grants.tablePrivileges, []) &&
+              isDeepStrictEqual(grants.columnPrivileges, []),
+          );
+      }
+      if (
+        !row ||
+        row.owner !== 'pertexo_owner' ||
+        row.rowSecurity !== true ||
+        row.forceRowSecurity !== true ||
+        !denied
+      )
+        drift.push(`relation:${name}`);
+    }
+  }
+  if (catalog.runtimeRoles !== undefined) {
+    const rows = catalogRows(catalog.runtimeRoles, runtimeRoles, [
+      'name',
+      'superuser',
+      'bypassRls',
+      'ownerMember',
+    ]);
+    for (const name of runtimeRoles) {
+      if (
+        !isDeepStrictEqual(rows.get(name), {
+          name,
+          superuser: false,
+          bypassRls: false,
+          ownerMember: false,
+        })
+      )
+        drift.push(`role:${name}`);
+    }
+  }
+  return drift;
+}
+
+function compatibilityObservations(catalog, source, unknownIsolation) {
+  const missingFacts = [
+    {
+      id: 'complete_function_acl_volatility_proconfig',
+      owner: 'database native readiness / reviewed installation artifact',
+    },
+    {
+      id: 'complete_role_membership_acl_cohort',
+      owner: 'role provisioning / fixture installation',
+    },
+    {
+      id: 'qualified_constraints_policies_indexes_triggers',
+      owner: 'database published constraint/catalog inventory',
+    },
+    {
+      id: 'full_emitted_process_dependency_manifest',
+      owner: 'runtime closure / qualification process manifest',
+    },
+    {
+      id: 'creator_storage_origin_private_network_transport',
+      owner: 'fixture resource owner / installation contract',
+    },
+    ...unknownIsolation,
+  ];
+  for (const field of ['registeredBase', 'nativeRelations', 'runtimeRoles']) {
+    if (catalog[field] === undefined)
+      missingFacts.push({
+        id: {
+          registeredBase: 'registered_base_observation',
+          nativeRelations: 'native_relation_observation',
+          runtimeRoles: 'runtime_role_observation',
+        }[field],
+        owner: 'database catalog observation adapter',
+      });
+  }
+  return {
+    complete: false,
+    dedicatedTargetVerified: false,
+    missingFacts,
+    drift: knownCatalogDrift(catalog, source),
+  };
 }
 
 /** Source-only assessor and joined ownership disposal. No installer/case executor. */
@@ -279,10 +466,12 @@ export function createNativeQualificationLifecycle(input) {
     checkOpen();
     if (!isDeepStrictEqual(source, expectedSource))
       throw new Error('Native qualification source/build binding drifted');
+    const unknownIsolation = [];
     const resources = await observeOwnedResources(
       environment,
       inspect,
       expectedResources,
+      unknownIsolation,
     );
     checkOpen();
     const catalog = await observeCatalog(controller.signal);
@@ -297,6 +486,11 @@ export function createNativeQualificationLifecycle(input) {
       resources,
       cases,
       nativeOwnerDrift: ownerDrift(catalog),
+      compatibility: compatibilityObservations(
+        catalog,
+        source,
+        unknownIsolation,
+      ),
       blockers: [...runtimeBlockers],
     });
   }

@@ -207,3 +207,33 @@ or routed through any functional row. Unknown/duplicate IDs also fail admission.
 The matrix is source guidance, not approval of any runtime case. Source tests derive
 checks for drift, dedicated nonserving ownership, inventory mismatch, missing
 prerequisites, exclusion and cleanup failure from these requirements.
+
+## Next source-only compatibility observation contract
+
+The same assessor compares observations only with independently source-backed
+expectations. `registeredBase` is `{head,migrations}` with the exact registered
+names/source checksums already bound by the owner; the candidate stays separate.
+`nativeRelations` names exactly the four relations in native readiness, each with
+owner `pertexo_owner`, row/forced RLS true and four explicit empty table/column
+privilege lists for PUBLIC/API/worker/dispatcher. `runtimeRoles` names the three
+canonical fixture application roles, each with superuser/BYPASSRLS/owner membership
+false. Missing sections are reported, malformed/duplicate/unknown rows rejected,
+and concrete drift retained. No supplied `compatible` flag is authoritative.
+Existing 67 function-body observations include the shared replacements, not just
+new native functions. These checks do not qualify the entire installed catalog.
+
+| Still unavailable expected fact | Existing owner that must close it |
+| --- | --- |
+| Exact function ACLs, volatility and reconciled proconfig/search paths for the complete shared/native set | Database native readiness / reviewed installation artifact |
+| Complete role membership/ACL cohort including maintenance and lifecycle identities | Existing role provisioning / reviewed fixture installation |
+| Qualified constraint/policy expressions, complete index definitions and trigger bindings | Database native published constraint/catalog inventory |
+| Full emitted process/dependency bytes and compatibility cohort | Existing runtime-closure owner / qualification process manifest |
+| Approved creator, empty storage origin, exact private network membership and disconnected transport/artifact resources | Existing fixture resource owner / reviewed installation contract |
+
+Source hashes bind the existing role template, native readiness, retained shared
+readiness, Dockerfile and runtime-closure owner; they are not qualified catalog
+expressions or full emitted closure. Container observations can reject extra public
+port bindings, privileged/host/container network modes; missing HostConfig facts
+remain unknown. Even matching partial observations leave `complete=false` and
+`dedicatedTargetVerified=false`. Exact missing facts above stop those subparts;
+no source-to-observation copy manufactures an expected identity or positive isolation.
