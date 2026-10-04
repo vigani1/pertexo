@@ -44,6 +44,9 @@ No node or preview artifact capability receives this framework-only dependency.
       existing-context bounds and owner-preserving cancellation composition.
 - [x] Wire ordinary lazy native demand composition through the actual handler,
       runtime policy, codec and engine evaluator using external owner read ports.
+- [x] Accept the native read operation / joined-cleanup clarification in ADR065.
+- [ ] Review and qualify the selected native tenant-read lifecycle implementation,
+      then compose it with actual native source/control owners and readiness.
 - [ ] Wire actual demand source/control adapters and the value-work lifetime, then
       implement independent native persistent commit preparation/rechecks.
 - [ ] Complete all remaining F08 acceptance and rollout gates.
@@ -238,7 +241,20 @@ cover selectors, validated controls, malformed declaration and retained cleanup;
 remove existing physical/fact/control or Call-declaration validation. Logical
 Call physical-state validation still reads the protected original result
 reference before demand, so total bounded persistent state loading remains open.
-The suppression awaits separate review; no native read owners or SQL are installed.
+The suppression passed exact source and independent review and is recorded in
+`e2ae249`; no native read owners or SQL are installed.
+
+The next uncommitted lifecycle slice implements the accepted native-only budget
+inside the existing tenant-read adapter. It refuses incompatible actual pool
+acquisition settings, uses remaining monotonic SQL time, prevents late success,
+joins raw checkout and delivered-client/CancelRequest termination, and retains
+ownership after cleanup allowance exhaustion while preserving independent errors.
+Driver delivery callbacks register client termination before promise continuation;
+ordinary transaction mode remains unchanged. Focused adapter/transport tests are
+not persistent authority or real-service socket qualification. Exact review,
+actual native owner composition, one whole-value-scope cleanup deadline and safe
+resource/readiness qualification remain open. Native remains OFF and screened
+security checks remain PAUSED.
 
 ### F02 — run-input cases and version-checked manual start
 
