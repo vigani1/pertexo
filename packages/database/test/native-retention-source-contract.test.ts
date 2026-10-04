@@ -177,6 +177,58 @@ describe('unregistered native retention source contracts', () => {
     expect(NATIVE_COORDINATOR_OWNER_INVENTORY).toEqual(expected);
   });
 
+  it('keeps general-selector dependency inspection application-owned while rederiving each SQL source identity', () => {
+    const inventory = body(candidate, 'native_coordinator_value_inventory');
+    expect(inventory).toContain('jsonb_array_length(p_node_ids)>1000');
+    expect(inventory).toContain('count(DISTINCT entry)');
+    expect(inventory).toContain(
+      "v_selector->>'language' IS DISTINCT FROM 'jsonata'",
+    );
+    expect(inventory).toContain(
+      "v_selector->'policyVersion' IS DISTINCT FROM '1'::jsonb",
+    );
+    expect(inventory).toContain('FOR v_selection IN SELECT entry');
+    expect(inventory).toContain(
+      'v_input:=NULL; v_value:=NULL; v_call:=NULL; v_invocation:=NULL; v_source:=NULL;',
+    );
+    expect(inventory).toContain("WHERE node->>'id'=v_node_id");
+    expect(inventory).toContain(
+      "invocation->>'nodeId'=v_node_id AND invocation->>'status' IN ('succeeded','waiting')",
+    );
+    expect(inventory).toContain(
+      'source.original_reference::text=attempt.output_ref::text AND source.original_reference::text=node.output_ref::text',
+    );
+    expect(inventory).toContain('candidate.abandoned_at IS NULL');
+    expect(inventory).toContain('artifact.expires_at>clock_timestamp()');
+    expect(inventory).toContain(
+      'artifact.sha256=v_value.sha256 AND artifact.byte_length=v_value.byte_length',
+    );
+    expect(inventory).toContain('v_outputs:=v_outputs||jsonb_build_array');
+    const load = body(candidate, 'load_native_coordinator_value_sources');
+    expect(
+      load.indexOf('app.inspect_native_coordinator_value_owner(p_owner)'),
+    ).toBeLessThan(
+      load.indexOf(
+        'app.native_coordinator_value_inventory(p_owner,v_node_ids)',
+      ),
+    );
+    expect(load).toContain(
+      "'resultSelector',v_selector,'requiresRunInput',v_selector->>'kind' IN ('run_input','expression'),'sources',v_expected",
+    );
+    const read = body(candidate, 'read_native_coordinator_value_source');
+    expect(read).toContain(
+      "jsonb_build_array(p_descriptor#>'{source,nodeId}')",
+    );
+    expect(read).toContain('WHERE descriptor=p_descriptor');
+    expect(read).toContain('app.assert_native_inline_execution_value_bytes');
+    expect(candidate).toContain(
+      'REVOKE ALL ON FUNCTION app.native_coordinator_value_inventory(jsonb,jsonb)',
+    );
+    expect(candidate).not.toContain(
+      'GRANT EXECUTE ON FUNCTION app.native_coordinator_value_inventory',
+    );
+  });
+
   it('preserves the complete latest purge wrapper and its existing patched delegate chain', async () => {
     const latest = await readFile(
       new URL(

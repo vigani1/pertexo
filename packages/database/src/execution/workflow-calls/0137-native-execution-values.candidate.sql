@@ -3870,10 +3870,10 @@ REVOKE ALL ON FUNCTION app.read_workflow_call_result_reference(uuid,text,uuid,js
 GRANT EXECUTE ON FUNCTION app.read_workflow_call_result_reference(uuid,text,uuid,jsonb) TO {{worker_runtime_role}};
 
 -- Private metadata inventory derived from immutable selector/current checkpoint.
--- No original inline text/value is emitted. The minimum whole-value selector
--- path is deliberate; isolated expressions/general paths stay unavailable until
--- their actual bounded source inspection/preparation owner is composed.
-CREATE FUNCTION app.native_coordinator_value_inventory(p_owner jsonb)
+-- No original inline text/value is emitted. Canonical application AST inspection
+-- supplies expression dependencies; this is not SQL AST parsing or an attestation.
+-- SQL independently proves each bounded unique actual root/current source.
+CREATE FUNCTION app.native_coordinator_value_inventory(p_owner jsonb,p_node_ids jsonb)
 RETURNS jsonb LANGUAGE plpgsql
 SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
 DECLARE
@@ -3889,6 +3889,11 @@ DECLARE
   v_source jsonb;
   v_identity jsonb;
   v_matches integer;
+  v_node_ids jsonb;
+  v_selections jsonb:='[]'::jsonb;
+  v_selection jsonb;
+  v_node_id text;
+  v_is_run_input boolean;
   v_run_input jsonb:='null'::jsonb;
   v_outputs jsonb:='[]'::jsonb;
 BEGIN
@@ -3900,129 +3905,162 @@ BEGIN
   v_selector:=v_version.executable_json#>'{graph,callable,resultSelector}';
   IF v_selector->>'kind'='literal' THEN
     RETURN jsonb_build_object('runInput',v_run_input,'outputs',v_outputs);
-  ELSIF v_selector->>'kind'='run_input' AND v_selector->>'path'='$' THEN
-    IF v_run.input_ref IS NULL THEN RETURN jsonb_build_object('runInput',v_run_input,'outputs',v_outputs); END IF;
-    SELECT * INTO v_input FROM app.workflow_execution_value_provenance input WHERE input.workspace_id=v_workspace
-      AND input.workflow_run_id=v_run.id AND input.workflow_version_id=v_run.workflow_version_id
-      AND input.value_slot='run_input' AND input.eligibility_revoked_at IS NULL AND input.eligible_until>clock_timestamp();
-    IF NOT FOUND THEN RAISE EXCEPTION 'native inventory accepted input is unavailable' USING ERRCODE='55000'; END IF;
-    IF v_input.byte_ownership='owned' THEN v_value:=v_input;
-    ELSE
-      SELECT source.* INTO v_value FROM app.workflow_execution_value_provenance source JOIN app.workflow_calls call
-        ON call.workspace_id=v_workspace AND call.id=v_input.borrowed_workflow_call_id
-          AND call.child_run_id=v_run.id AND call.child_workflow_version_id=v_run.workflow_version_id
-          AND call.outcome_kind='admitted' AND call.sealed AND call.declaration_input_provenance_id=source.id
-        WHERE source.workspace_id=v_workspace AND source.id=v_input.borrowed_from_provenance_id
-          AND source.value_slot='attempt_input' AND source.byte_ownership='owned';
+  ELSIF v_selector->>'kind'='node_output' THEN
+    v_node_ids:=jsonb_build_array(v_selector->'nodeId');
+  ELSIF v_selector->>'kind'='expression' THEN
+    IF p_node_ids IS NULL OR jsonb_typeof(p_node_ids)<>'array'
+      OR jsonb_array_length(p_node_ids)>1000
+      OR EXISTS(SELECT 1 FROM jsonb_array_elements(p_node_ids) entry WHERE jsonb_typeof(entry)<>'string')
+      OR (SELECT count(*) FROM jsonb_array_elements(p_node_ids))<>
+         (SELECT count(DISTINCT entry) FROM jsonb_array_elements(p_node_ids) entry)
+      OR v_selector->>'language' IS DISTINCT FROM 'jsonata' OR v_selector->'policyVersion' IS DISTINCT FROM '1'::jsonb
+      OR jsonb_typeof(v_selector->'expression') IS DISTINCT FROM 'string' THEN
+      RAISE EXCEPTION 'native inventory expression dependency selection differs' USING ERRCODE='23514';
     END IF;
-    IF v_value.id IS NULL OR v_value.eligibility_revoked_at IS NOT NULL OR v_value.eligible_until<=clock_timestamp()
-      OR v_value.original_reference::text IS DISTINCT FROM v_run.input_ref::text THEN
-      RAISE EXCEPTION 'native inventory borrowed input producer is unavailable' USING ERRCODE='55000';
-    END IF;
-    v_source:=jsonb_build_object('kind','run_input','workspaceId',v_workspace,'runId',v_run.id,
-      'workflowVersionId',v_run.workflow_version_id,'provenanceId',v_input.id);
-  ELSIF v_selector->>'kind'='node_output' AND v_selector->>'path'='$' THEN
-    IF (SELECT count(*) FROM jsonb_array_elements(v_version.executable_json#>'{graph,nodes}') node
-      WHERE node->>'id'=v_selector->>'nodeId')<>1 THEN
-      RAISE EXCEPTION 'native inventory selected root node differs' USING ERRCODE='23514';
-    END IF;
-    SELECT count(*)::integer,(jsonb_agg(invocation))->0 INTO v_matches,v_invocation
-      FROM jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation
-      WHERE invocation->>'nodeId'=v_selector->>'nodeId' AND invocation->>'status' IN ('succeeded','waiting');
-    IF v_matches<>1 THEN RAISE EXCEPTION 'native inventory selected invocation differs' USING ERRCODE='23514'; END IF;
-    IF v_invocation->>'status'='waiting' THEN
-      -- Pure demand may settle a just-terminal child BEFORE the parent CAS.
-      -- Derive that logical source from sealed admitted truth/current Call wait,
-      -- never mistake its succeeded declaration attempt/input for child output.
-      SELECT call.* INTO v_call FROM app.workflow_calls call JOIN app.node_runs node
-        ON node.workspace_id=call.workspace_id AND node.id=call.node_run_id
-          AND node.workflow_run_id=call.parent_run_id AND node.node_id=call.node_id
-          AND node.invocation_key=call.invocation_key AND node.status='waiting' AND node.control_kind='workflow_call'
-        JOIN app.node_attempts attempt ON attempt.workspace_id=node.workspace_id AND attempt.id=call.declaration_attempt_id
-          AND node.current_attempt_id=attempt.id AND attempt.node_run_id=node.id AND attempt.status='succeeded'
-          AND attempt.attempt_number=call.declaration_attempt_number AND attempt.side_effect_class='unsafe'
-        WHERE call.workspace_id=v_workspace AND call.parent_run_id=v_run.id
-          AND call.parent_workflow_version_id=v_run.workflow_version_id AND call.node_id=v_selector->>'nodeId'
-          AND call.invocation_key=v_invocation->>'invocationKey' AND call.outcome_kind='admitted' AND call.sealed;
-      IF NOT FOUND THEN RAISE EXCEPTION 'native inventory logical wait differs' USING ERRCODE='23514'; END IF;
-      v_value:=app.native_workflow_call_result_provenance(v_run.id,v_call.invocation_key,v_call.child_run_id);
-      v_invocation:=v_invocation||jsonb_build_object('output',jsonb_build_object(
-        'kind','workflow_call','invocationKey',v_call.invocation_key,'childRunId',v_call.child_run_id));
-    END IF;
-    IF v_invocation#>>'{output,kind}'='workflow_call' THEN
-      SELECT * INTO v_call FROM app.workflow_calls call WHERE call.workspace_id=v_workspace AND call.parent_run_id=v_run.id
-        AND call.parent_workflow_version_id=v_run.workflow_version_id AND call.node_id=v_selector->>'nodeId'
-        AND call.invocation_key=v_invocation->>'invocationKey' AND call.outcome_kind='admitted' AND call.sealed
-        AND call.child_run_id=(v_invocation#>>'{output,childRunId}')::uuid
-        AND v_invocation#>>'{output,invocationKey}'=call.invocation_key;
-      IF NOT FOUND THEN RAISE EXCEPTION 'native inventory child journal differs' USING ERRCODE='23514'; END IF;
-      v_value:=app.native_workflow_call_result_provenance(v_run.id,v_call.invocation_key,v_call.child_run_id);
-      v_source:=jsonb_build_object('kind','workflow_call_result','workspaceId',v_workspace,'provenanceId',v_value.id,
-        'parentRunId',v_run.id,'parentWorkflowVersionId',v_run.workflow_version_id,'childRunId',v_call.child_run_id,
-        'childWorkflowVersionId',v_call.child_workflow_version_id,'nodeId',v_call.node_id,'invocationKey',v_call.invocation_key);
-    ELSE
-      SELECT source.* INTO v_value FROM app.workflow_execution_value_provenance source
-        JOIN app.node_runs node ON node.workspace_id=source.workspace_id AND node.id=source.node_run_id
-          AND node.workflow_run_id=v_run.id AND node.current_attempt_id=source.attempt_id AND node.status='succeeded'
-        JOIN app.node_attempts attempt ON attempt.workspace_id=node.workspace_id AND attempt.id=source.attempt_id
-          AND attempt.node_run_id=node.id AND attempt.status='succeeded' AND attempt.completed_at IS NOT NULL
-          AND attempt.lease_owner IS NULL AND attempt.lease_expires_at IS NULL
-        WHERE source.workspace_id=v_workspace AND source.workflow_run_id=v_run.id
-          AND source.workflow_version_id=v_run.workflow_version_id AND source.node_id=v_selector->>'nodeId'
-          AND source.invocation_key=v_invocation->>'invocationKey' AND source.value_slot='attempt_output' AND source.byte_ownership='owned'
-          AND ((v_invocation#>>'{output,kind}'='inline' AND source.reference_kind='inline'
-              AND source.attempt_id=(v_invocation#>>'{output,attemptId}')::uuid)
-            OR (v_invocation#>>'{output,kind}'='artifact' AND source.reference_kind='artifact'
-              AND source.artifact_id=(v_invocation#>>'{output,artifactId}')::uuid))
-          AND source.original_reference::text=attempt.output_ref::text AND source.original_reference::text=node.output_ref::text;
-      IF NOT FOUND THEN RAISE EXCEPTION 'native inventory physical producer differs' USING ERRCODE='55000'; END IF;
-      v_source:=jsonb_build_object('kind','physical_output','workspaceId',v_workspace,'runId',v_run.id,
-        'workflowVersionId',v_run.workflow_version_id,'provenanceId',v_value.id,'nodeId',v_value.node_id,
-        'invocationKey',v_value.invocation_key,'attemptId',v_value.attempt_id);
-    END IF;
+    v_node_ids:=p_node_ids;
+  ELSIF v_selector->>'kind'='run_input' THEN v_node_ids:='[]'::jsonb;
   ELSE RAISE EXCEPTION 'native inventory selector preparation is unavailable' USING ERRCODE='55000'; END IF;
-  IF v_value.eligibility_revoked_at IS NOT NULL OR v_value.eligible_until<=clock_timestamp() THEN
-    RAISE EXCEPTION 'native inventory accepted source is unavailable' USING ERRCODE='55000';
+  IF v_selector->>'kind' IN ('run_input','expression') THEN
+    v_selections:=jsonb_build_array(jsonb_build_object('slot','run_input'));
   END IF;
-  IF v_value.reference_kind='artifact' AND NOT EXISTS(SELECT 1 FROM app.workflow_execution_value_artifact_associations association
-    JOIN app.workflow_execution_value_artifact_candidates candidate ON candidate.workspace_id=association.workspace_id
-      AND candidate.id=association.candidate_id AND candidate.abandoned_at IS NULL
-    JOIN app.artifacts artifact ON artifact.workspace_id=association.workspace_id AND artifact.id=association.artifact_id
-      AND artifact.status='available' AND artifact.deleted_at IS NULL AND artifact.expires_at>clock_timestamp()
-      AND artifact.sha256=v_value.sha256 AND artifact.byte_length=v_value.byte_length AND artifact.media_type=v_value.media_type
-    WHERE association.workspace_id=v_workspace AND association.provenance_id=v_value.id AND association.artifact_id=v_value.artifact_id) THEN
-    RAISE EXCEPTION 'native inventory accepted artifact is unavailable' USING ERRCODE='55000';
-  END IF;
-  v_identity:=jsonb_build_object('reference',CASE WHEN v_value.reference_kind='inline' THEN
-      jsonb_build_object('schemaVersion',1,'kind','inline') ELSE
-      jsonb_build_object('schemaVersion',1,'kind','artifact','artifactId',v_value.artifact_id) END,
-    'sha256',v_value.sha256,'byteLength',v_value.byte_length,'mediaType',v_value.media_type);
-  IF v_selector->>'kind'='run_input' THEN
-    v_run_input:=jsonb_build_object('slot','run_input','source',v_source,'valueIdentity',v_identity);
-  ELSE
-    v_outputs:=jsonb_build_array(jsonb_build_object('invocationKey',v_invocation->'invocationKey',
-      'output',v_invocation->'output','valueSource',jsonb_build_object('slot','upstream_output','source',v_source,'valueIdentity',v_identity)));
-  END IF;
+  SELECT v_selections||coalesce(jsonb_agg(jsonb_build_object('slot','upstream_output','nodeId',entry)
+    ORDER BY ordinal),'[]'::jsonb) INTO v_selections
+    FROM jsonb_array_elements(v_node_ids) WITH ORDINALITY nodes(entry,ordinal);
+  FOR v_selection IN SELECT entry FROM jsonb_array_elements(v_selections) entry LOOP
+    v_is_run_input:=v_selection->>'slot'='run_input';
+    v_node_id:=v_selection->>'nodeId';
+    v_input:=NULL; v_value:=NULL; v_call:=NULL; v_invocation:=NULL; v_source:=NULL;
+    IF v_is_run_input THEN
+      IF v_run.input_ref IS NULL THEN CONTINUE; END IF;
+      SELECT * INTO v_input FROM app.workflow_execution_value_provenance input WHERE input.workspace_id=v_workspace
+        AND input.workflow_run_id=v_run.id AND input.workflow_version_id=v_run.workflow_version_id
+        AND input.value_slot='run_input' AND input.eligibility_revoked_at IS NULL AND input.eligible_until>clock_timestamp();
+      IF NOT FOUND THEN RAISE EXCEPTION 'native inventory accepted input is unavailable' USING ERRCODE='55000'; END IF;
+      IF v_input.byte_ownership='owned' THEN v_value:=v_input;
+      ELSE
+        SELECT source.* INTO v_value FROM app.workflow_execution_value_provenance source JOIN app.workflow_calls call
+          ON call.workspace_id=v_workspace AND call.id=v_input.borrowed_workflow_call_id
+            AND call.child_run_id=v_run.id AND call.child_workflow_version_id=v_run.workflow_version_id
+            AND call.outcome_kind='admitted' AND call.sealed AND call.declaration_input_provenance_id=source.id
+          WHERE source.workspace_id=v_workspace AND source.id=v_input.borrowed_from_provenance_id
+            AND source.value_slot='attempt_input' AND source.byte_ownership='owned';
+      END IF;
+      IF v_value.id IS NULL OR v_value.eligibility_revoked_at IS NOT NULL OR v_value.eligible_until<=clock_timestamp()
+        OR v_value.original_reference::text IS DISTINCT FROM v_run.input_ref::text THEN
+        RAISE EXCEPTION 'native inventory borrowed input producer is unavailable' USING ERRCODE='55000';
+      END IF;
+      v_source:=jsonb_build_object('kind','run_input','workspaceId',v_workspace,'runId',v_run.id,
+        'workflowVersionId',v_run.workflow_version_id,'provenanceId',v_input.id);
+    ELSE
+      IF (SELECT count(*) FROM jsonb_array_elements(v_version.executable_json#>'{graph,nodes}') node
+        WHERE node->>'id'=v_node_id)<>1 THEN
+        RAISE EXCEPTION 'native inventory selected root node differs' USING ERRCODE='23514';
+      END IF;
+      SELECT count(*)::integer,(jsonb_agg(invocation))->0 INTO v_matches,v_invocation
+        FROM jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation
+        WHERE invocation->>'nodeId'=v_node_id AND invocation->>'status' IN ('succeeded','waiting');
+      IF v_matches<>1 THEN RAISE EXCEPTION 'native inventory selected invocation differs' USING ERRCODE='23514'; END IF;
+      IF v_invocation->>'status'='waiting' THEN
+        -- Pure demand may settle a just-terminal child BEFORE the parent CAS.
+        -- Derive that logical source from sealed admitted truth/current Call wait,
+        -- never mistake its succeeded declaration attempt/input for child output.
+        SELECT call.* INTO v_call FROM app.workflow_calls call JOIN app.node_runs node
+          ON node.workspace_id=call.workspace_id AND node.id=call.node_run_id
+            AND node.workflow_run_id=call.parent_run_id AND node.node_id=call.node_id
+            AND node.invocation_key=call.invocation_key AND node.status='waiting' AND node.control_kind='workflow_call'
+          JOIN app.node_attempts attempt ON attempt.workspace_id=node.workspace_id AND attempt.id=call.declaration_attempt_id
+            AND node.current_attempt_id=attempt.id AND attempt.node_run_id=node.id AND attempt.status='succeeded'
+            AND attempt.attempt_number=call.declaration_attempt_number AND attempt.side_effect_class='unsafe'
+          WHERE call.workspace_id=v_workspace AND call.parent_run_id=v_run.id
+            AND call.parent_workflow_version_id=v_run.workflow_version_id AND call.node_id=v_node_id
+            AND call.invocation_key=v_invocation->>'invocationKey' AND call.outcome_kind='admitted' AND call.sealed;
+        IF NOT FOUND THEN RAISE EXCEPTION 'native inventory logical wait differs' USING ERRCODE='23514'; END IF;
+        v_value:=app.native_workflow_call_result_provenance(v_run.id,v_call.invocation_key,v_call.child_run_id);
+        v_invocation:=v_invocation||jsonb_build_object('output',jsonb_build_object(
+          'kind','workflow_call','invocationKey',v_call.invocation_key,'childRunId',v_call.child_run_id));
+      END IF;
+      IF v_invocation#>>'{output,kind}'='workflow_call' THEN
+        SELECT * INTO v_call FROM app.workflow_calls call WHERE call.workspace_id=v_workspace AND call.parent_run_id=v_run.id
+          AND call.parent_workflow_version_id=v_run.workflow_version_id AND call.node_id=v_node_id
+          AND call.invocation_key=v_invocation->>'invocationKey' AND call.outcome_kind='admitted' AND call.sealed
+          AND call.child_run_id=(v_invocation#>>'{output,childRunId}')::uuid
+          AND v_invocation#>>'{output,invocationKey}'=call.invocation_key;
+        IF NOT FOUND THEN RAISE EXCEPTION 'native inventory child journal differs' USING ERRCODE='23514'; END IF;
+        v_value:=app.native_workflow_call_result_provenance(v_run.id,v_call.invocation_key,v_call.child_run_id);
+        v_source:=jsonb_build_object('kind','workflow_call_result','workspaceId',v_workspace,'provenanceId',v_value.id,
+          'parentRunId',v_run.id,'parentWorkflowVersionId',v_run.workflow_version_id,'childRunId',v_call.child_run_id,
+          'childWorkflowVersionId',v_call.child_workflow_version_id,'nodeId',v_call.node_id,'invocationKey',v_call.invocation_key);
+      ELSE
+        SELECT source.* INTO v_value FROM app.workflow_execution_value_provenance source
+          JOIN app.node_runs node ON node.workspace_id=source.workspace_id AND node.id=source.node_run_id
+            AND node.workflow_run_id=v_run.id AND node.current_attempt_id=source.attempt_id AND node.status='succeeded'
+          JOIN app.node_attempts attempt ON attempt.workspace_id=node.workspace_id AND attempt.id=source.attempt_id
+            AND attempt.node_run_id=node.id AND attempt.status='succeeded' AND attempt.completed_at IS NOT NULL
+            AND attempt.lease_owner IS NULL AND attempt.lease_expires_at IS NULL
+          WHERE source.workspace_id=v_workspace AND source.workflow_run_id=v_run.id
+            AND source.workflow_version_id=v_run.workflow_version_id AND source.node_id=v_node_id
+            AND source.invocation_key=v_invocation->>'invocationKey' AND source.value_slot='attempt_output' AND source.byte_ownership='owned'
+            AND ((v_invocation#>>'{output,kind}'='inline' AND source.reference_kind='inline'
+                AND source.attempt_id=(v_invocation#>>'{output,attemptId}')::uuid)
+              OR (v_invocation#>>'{output,kind}'='artifact' AND source.reference_kind='artifact'
+                AND source.artifact_id=(v_invocation#>>'{output,artifactId}')::uuid))
+            AND source.original_reference::text=attempt.output_ref::text AND source.original_reference::text=node.output_ref::text;
+        IF NOT FOUND THEN RAISE EXCEPTION 'native inventory physical producer differs' USING ERRCODE='55000'; END IF;
+        v_source:=jsonb_build_object('kind','physical_output','workspaceId',v_workspace,'runId',v_run.id,
+          'workflowVersionId',v_run.workflow_version_id,'provenanceId',v_value.id,'nodeId',v_value.node_id,
+          'invocationKey',v_value.invocation_key,'attemptId',v_value.attempt_id);
+      END IF;
+    END IF;
+    IF v_value.eligibility_revoked_at IS NOT NULL OR v_value.eligible_until<=clock_timestamp() THEN
+      RAISE EXCEPTION 'native inventory accepted source is unavailable' USING ERRCODE='55000';
+    END IF;
+    IF v_value.reference_kind='artifact' AND NOT EXISTS(SELECT 1 FROM app.workflow_execution_value_artifact_associations association
+      JOIN app.workflow_execution_value_artifact_candidates candidate ON candidate.workspace_id=association.workspace_id
+        AND candidate.id=association.candidate_id AND candidate.abandoned_at IS NULL
+      JOIN app.artifacts artifact ON artifact.workspace_id=association.workspace_id AND artifact.id=association.artifact_id
+        AND artifact.status='available' AND artifact.deleted_at IS NULL AND artifact.expires_at>clock_timestamp()
+        AND artifact.sha256=v_value.sha256 AND artifact.byte_length=v_value.byte_length AND artifact.media_type=v_value.media_type
+      WHERE association.workspace_id=v_workspace AND association.provenance_id=v_value.id AND association.artifact_id=v_value.artifact_id) THEN
+      RAISE EXCEPTION 'native inventory accepted artifact is unavailable' USING ERRCODE='55000';
+    END IF;
+    v_identity:=jsonb_build_object('reference',CASE WHEN v_value.reference_kind='inline' THEN
+        jsonb_build_object('schemaVersion',1,'kind','inline') ELSE
+        jsonb_build_object('schemaVersion',1,'kind','artifact','artifactId',v_value.artifact_id) END,
+      'sha256',v_value.sha256,'byteLength',v_value.byte_length,'mediaType',v_value.media_type);
+    IF v_is_run_input THEN
+      v_run_input:=jsonb_build_object('slot','run_input','source',v_source,'valueIdentity',v_identity);
+    ELSE
+      v_outputs:=v_outputs||jsonb_build_array(jsonb_build_object('invocationKey',v_invocation->'invocationKey',
+        'output',v_invocation->'output','valueSource',jsonb_build_object('slot','upstream_output','source',v_source,'valueIdentity',v_identity)));
+    END IF;
+  END LOOP;
   RETURN jsonb_build_object('runInput',v_run_input,'outputs',v_outputs);
 END $$;
-REVOKE ALL ON FUNCTION app.native_coordinator_value_inventory(jsonb)
+REVOKE ALL ON FUNCTION app.native_coordinator_value_inventory(jsonb,jsonb)
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}};
 
 CREATE FUNCTION app.load_native_coordinator_value_sources(p_owner jsonb,p_demand jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
-DECLARE v_inspection jsonb; v_inventory jsonb; v_selector jsonb; v_expected jsonb;
+DECLARE v_inspection jsonb; v_inventory jsonb; v_selector jsonb; v_expected jsonb; v_node_ids jsonb;
 BEGIN
   v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
   IF v_inspection->>'kind'='stopped' THEN RETURN v_inspection; END IF;
   SELECT version.executable_json#>'{graph,callable,resultSelector}' INTO v_selector FROM app.workflow_versions version
     WHERE version.workspace_id=(p_owner->>'workspaceId')::uuid AND version.id=(p_owner->>'workflowVersionId')::uuid;
-  v_inventory:=app.native_coordinator_value_inventory(p_owner);
+  IF v_selector->>'kind'='expression' THEN
+    IF jsonb_typeof(p_demand->'sources') IS DISTINCT FROM 'array' OR jsonb_array_length(p_demand->'sources')>1000 THEN
+      RAISE EXCEPTION 'native coordinator expression demand sources differ' USING ERRCODE='23514';
+    END IF;
+    SELECT coalesce(jsonb_agg(entry->'nodeId' ORDER BY ordinal),'[]'::jsonb) INTO v_node_ids
+      FROM jsonb_array_elements(p_demand->'sources') WITH ORDINALITY sources(entry,ordinal);
+  END IF;
+  v_inventory:=app.native_coordinator_value_inventory(p_owner,v_node_ids);
   SELECT coalesce(jsonb_agg(jsonb_build_object('nodeId',entry#>'{valueSource,source,nodeId}',
     'invocationKey',entry->'invocationKey','output',entry->'output') ORDER BY ordinal),'[]'::jsonb)
     INTO v_expected FROM jsonb_array_elements(v_inventory->'outputs') WITH ORDINALITY entries(entry,ordinal);
   IF p_demand IS DISTINCT FROM jsonb_build_object('expectedRevision',p_owner->'expectedRevision',
-    'resultSelector',v_selector,'requiresRunInput',v_selector->>'kind'='run_input','sources',v_expected) THEN
+    'resultSelector',v_selector,'requiresRunInput',v_selector->>'kind' IN ('run_input','expression'),'sources',v_expected) THEN
     RAISE EXCEPTION 'native coordinator actual demand differs' USING ERRCODE='23514';
   END IF;
   IF (v_inspection->>'deadlineAt')::timestamptz<=clock_timestamp() THEN
@@ -4044,10 +4082,15 @@ DECLARE
   v_value app.workflow_execution_value_provenance%ROWTYPE;
   v_borrowed app.workflow_execution_value_provenance%ROWTYPE;
   v_snapshot jsonb;
+  v_node_ids jsonb;
 BEGIN
   v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
   IF v_inspection->>'kind'='stopped' THEN RETURN v_inspection; END IF;
-  v_inventory:=app.native_coordinator_value_inventory(p_owner);
+  -- A selected expression fetch reproves this exact actual root/source only;
+  -- canonical application inspection owns dependency completeness, not SQL.
+  v_node_ids:=CASE WHEN p_descriptor->>'slot'='upstream_output' THEN
+    jsonb_build_array(p_descriptor#>'{source,nodeId}') ELSE '[]'::jsonb END;
+  v_inventory:=app.native_coordinator_value_inventory(p_owner,v_node_ids);
   SELECT count(*)::integer INTO v_matches FROM (
     SELECT v_inventory->'runInput' descriptor WHERE v_inventory->'runInput'<>'null'::jsonb
     UNION ALL SELECT entry->'valueSource' FROM jsonb_array_elements(v_inventory->'outputs') entry

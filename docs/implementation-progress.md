@@ -129,7 +129,8 @@ worker tests pass101/1282. Native coordinator structured declaration material an
 independent pre-CAS validation, artifact/general result composition and required
 live qualification remain separate unfinished gates.
 
-Native coordinator result-source composition is uncommitted and awaiting review.
+Native coordinator result-source composition is reviewed and recorded
+(`73c9cbc9`) but remains unqualified.
 The independent precommit read freshly derives the pinned declaration, selector
 and ordered selected sources, releases its short SQL read, and then hydrates
 original bytes through the same selected-read and shared-codec mechanics under
@@ -148,6 +149,18 @@ acceptance, artifact result persistence and coordinator structured declaration
 material/pre-CAS validation remain unfinished. This composition is not protected
 SQL or live qualification; nativeOFF/SQLPAUSED and the first installation abort
 are unchanged.
+
+The general-selector SQL source-read extension is uncommitted and awaiting review.
+The metadata inventory accepts bounded unique application-derived expression
+dependencies, derives each actual immutable root/current invocation and accepted
+physical or sealed Call result source, and includes original run-input identity
+for expression context. General paths fetch the whole original source for existing
+application projection; SQL does not parse JSONata dependencies or certify that
+an arbitrary trusted-credential caller evaluated them. Existing borrowed-input,
+exact descriptor, provenance, association, availability and deadline guards remain.
+Offline grammar and source-contract checks are not execution qualification.
+The final writer still refuses general selectors and artifact-result persistence;
+these remain unfinished alongside coordinator structured declaration/pre-CAS work.
 
 Minimum native Call executable path (source is not qualification):
 
