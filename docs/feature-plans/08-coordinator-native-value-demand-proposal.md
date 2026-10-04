@@ -320,6 +320,41 @@ truth. Definitive abandonment and preparation-unavailable follow the accepted
 artifact/retention contract; cancel/timeout/non-result settlement does not await
 cleanup or bypass hold. No extra source pins, history, quota reservation or reaper.
 
+## External-artifact semantic authority clarification — ACCEPTED, 2026-10-04
+
+**Accepted by the coordinating primary on 2026-10-04**, with the matching
+[ADR065 clarification](../adr/065-durable-parent-child-workflow-calls.md#external-artifact-semantic-authority-clarification--accepted-2026-10-04).
+This authorizes normal trusted-module artifact admission implementation under
+this contract, not SQL installation or native enablement.
+
+The trusted canonical precommit module owns independent semantic verification of
+external bytes for both artifact Call inputs and artifact-based result selection.
+For each selected Call it rereads actual accepted declaration identity and the
+whole exact immutable pinned callee contract under the current consumer. For a
+result it independently derives the selector and selected source inventory.
+Bounded metadata reads release SQL before serial original-byte hydration,
+contract validation or restricted evaluation. Use the existing independent
+precommit lifetime through this work; first-pass engine values and executor
+outputs cannot supply its proof. Do not transport or persist a success flag,
+certificate, digest-as-authority or decoded artifact payload for SQL to trust.
+
+The final short SQL owner independently rederives and checks the whole declaration
+and pin, exact accepted provenance/artifact association/reference/SHA/length,
+current availability/eligibility, actual consumer/revision/control and existing
+lifecycle/CAS/seal/receipt invariants. Inline semantic guards remain intact.
+Artifact metadata is an identity binding, not an independent semantic computation.
+Normal trusted-module artifact admission may replace its operational refusal
+after review of those implementation checks under this accepted clarification;
+the reviewed artifact preparation/hydration slice retains the refusal.
+
+An arbitrary caller with trusted worker SQL credentials is **not** proven by SQL
+to have run the framework's semantic verification. That stronger adversarial
+command-authority guarantee remains unclaimed/open, not closed or waived by
+ordinary adapter tests. Executors/user-authored code get no database authority.
+No new role, grant, attestation, payload copy, quota owner or execution framework
+is introduced. Protected SQL/security qualification stays screened and PAUSED;
+the source installation guard and native-OFF state remain unchanged.
+
 ## Incremental context equivalence and compatibility
 
 Direct literal/run-input/node selectors do not materialize unrelated outputs.

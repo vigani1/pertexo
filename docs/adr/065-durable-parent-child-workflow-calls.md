@@ -488,3 +488,33 @@ includes held/nonterminal/replay-protected families, partial pages and limit-one
 resume, detail at 30 days with lineage at 90, summary/purge release, and no payload
 or capacity resurrection. Native execution stays OFF; no screened probe, SQL
 installation or new retention/history owner is authorized here.
+
+## External-artifact semantic authority clarification — ACCEPTED, 2026-10-04
+
+**Accepted by the coordinating primary on 2026-10-04.** This clarification
+authorizes normal trusted-module artifact admission implementation under the
+contract below. Source admission remains fail-closed until that implementation
+is reviewed; SQL installation and native enablement are not authorized.
+
+For external artifact bytes, semantic validation belongs to the trusted
+framework's canonical independent precommit module. That module freshly derives
+actual accepted sources and the whole exact immutable pinned callable contract,
+releases SQL, independently hydrates original bytes through the existing bounded
+codec, and validates/recomputes semantics before acceptance. Executor-supplied
+values, first engine-pass material, truth flags, certificates and supplied hashes
+are not substitutes. No decoded artifact payload enters the write transaction.
+
+SQL independently enforces exact identity, current delivery/revision/controls,
+accepted provenance/association, availability/eligibility, lifecycle and atomic
+CAS/seal/receipt acceptance. Preserve every existing inline semantic guard and
+artifact identity/current-consumer/seal check. This contract does **not** claim
+SQL can prove an arbitrary caller holding trusted worker SQL credentials executed
+the canonical semantic module. That stronger arbitrary-worker-command guarantee
+remains unclaimed/open; it is not solved by metadata equality or this clarification.
+Executors and user-authored code receive no database authority; no role, grant,
+attestation, payload copy, quota owner or framework is added.
+
+The [companion contract](../feature-plans/08-coordinator-native-value-demand-proposal.md#external-artifact-semantic-authority-clarification--accepted-2026-10-04)
+specifies this ownership distinction. It grants no SQL installation, screened
+probe, security-work relabeling or native enablement. Native execution remains
+OFF, screened qualification PAUSED and full F08 incomplete.
