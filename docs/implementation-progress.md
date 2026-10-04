@@ -262,6 +262,15 @@ Readiness remains refused before database checkout; its structured declaration
 blocker now describes outstanding SQL/real-service qualification, not the already
 integrated declaration/pre-CAS source. F08 remains incomplete.
 
+The isolated qualification lifecycle design is accepted after full primary and
+independent Spec/Standards review of exact diff
+`f882585c3f04ff4fdc1b3eb036d81b910b1971defd1d2b76de3d3772da858934`.
+It separates preinstall source/scope review, owned nonserving qualification and
+post-install acceptance/production rollout. This closes design review only;
+installation artifact, canonical qualification admission, ADR066 integration,
+supported case prerequisites and actual runtime/security evidence remain open.
+No guard, readiness, installed authority or platform restriction is changed.
+
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
 | Publication / compiler selection | WIP: actual publication owner validates callable selectors and bounded immutable closure; compiler chooses V3 for Graph2 | Ordinary public-owner positive publication, invalid selector, immutable pin/contract lookup and HTTP error-mapping tests; real V3 compiler verification | Installed format constraints, locked native release and adversarial publication authority unqualified; no real native publication qualified |

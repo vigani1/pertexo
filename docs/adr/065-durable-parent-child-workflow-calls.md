@@ -565,3 +565,40 @@ Later unknown branch effects still outrank the parent stop, with no parser widen
 The [companion requirements](../feature-plans/08-coordinator-native-value-demand-proposal.md#native-control-only-settlement-clarification--accepted-2026-10-04)
 define regression and compatibility evidence. This decision does not widen the
 paused SQL/security qualification lane.
+
+## Isolated qualification lifecycle — ACCEPTED DESIGN ONLY, 2026-10-04
+
+Primary accepted the exact two-path design diff SHA256
+`f882585c3f04ff4fdc1b3eb036d81b910b1971defd1d2b76de3d3772da858934`
+after full primary review and independent Spec/Standards reviews with zero
+actionable findings. This is design acceptance, not installation, execution,
+operational acceptance or platform-access resolution.
+
+Fresh0137 requires installed-behavior qualification before any installation,
+while the canonical native adapter refuses operation until that qualification
+finishes. The candidate also replaces retained concurrency/retention/purge owners
+and adds runtime grants, so native-OFF alone cannot make installation safe in a
+serving database. Separate exact-source preinstall safety review,
+an explicitly approved disposable nonserving qualification lifecycle, and
+post-install acceptance with separately authorized production rollout.
+
+The qualification module would admit only a positively owned, dedicated fixture
+after exact installed catalog/role/constraint compatibility checks, then exercise
+the existing canonical application adapter and SQL owners. It would not set public
+`nativeReady`, skip authority checks, forge readiness facts, duplicate business
+logic or provide an arbitrary SQL/callback interface. Production admission would
+retain every operational acceptance gate. Isolation removes retained-traffic
+exposure, not required semantic authority or any security assertion.
+
+The [accepted design contract](../feature-plans/08-isolated-native-qualification-lifecycle-proposal.md)
+defines ownership, stages, least privilege, cleanup and unresolved prerequisites.
+Reject merely deleting the abort/qualification labels, treating installation as
+activation, or installing an additive subset that omits the actual shared owners.
+This proposal does not modify accepted ADR065/ADR066 decisions or resolve the
+platform restriction. The rejected integrity campaign remains excluded, never
+rephrased or rerouted; its assertions remain required and unclosed. Current
+candidate abort, public readiness refusals, registered migration history and
+native-OFF remain unchanged. No implementation, SQL installation, grant, key,
+runtime execution, production registration, activation, commit or push is
+authorized by design acceptance alone. A source-only implementation tranche
+requires its separate bounded authorization; runtime prerequisites remain open.
