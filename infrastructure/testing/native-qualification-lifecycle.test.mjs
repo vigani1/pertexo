@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import {
   createNativeQualificationLifecycle,
@@ -11,18 +12,41 @@ test('binds the actual guarded candidate and exact native inventory without qual
   const observed = await observeNativeQualificationSource();
   assert.equal(
     observed.candidateSha256,
-    '6588f2d8a6aa3fdb3e7c40bd5a01ca94f6ec92592fbc2e4fdbf0b8e8d25be5ba',
+    '2abb17d82c0ced6b6ff056d7dfc64ac4dbce636c58757913ea286edd60f5a9c3',
   );
-  assert.equal(observed.ownerCount, 67);
+  assert.equal(observed.ownerCount, 68);
   assert.equal(
     observed.ownerInventorySha256,
-    'f70c0d100e7d15970f3e57233d0df6b4a8410cf67b2f9ac9ade019d2c1a1f4fa',
+    '5e4baefdc098baa4930c9f7a62acce160c23b47a6902c7e34e878ff69c5961dd',
   );
   assert.equal(
     observed.ownerBodyInventorySha256,
-    'e709b9b825a659cde0e25bf0936804be8c65fedf5565cdd0434e57e023aab85b',
+    'aa44bd9df9eafd4a7695c94803d04d914c0bae54ece1e9c916e633f49a3b4825',
+  );
+  const previousOwners = NATIVE_COORDINATOR_OWNER_INVENTORY.filter(
+    (row) => row.signature !== 'app.read_workflow_call_run_family(uuid)',
+  );
+  assert.equal(previousOwners.length, 67);
+  assert.equal(
+    createHash('sha256').update(JSON.stringify(previousOwners)).digest('hex'),
+    'f70c0d100e7d15970f3e57233d0df6b4a8410cf67b2f9ac9ade019d2c1a1f4fa',
   );
   assert.equal(observed.installationGuardPresent, true);
+  assert.equal(
+    createHash('sha256')
+      .update(
+        JSON.stringify(
+          previousOwners.map((row) => ({
+            signature: row.signature,
+            hash: row.hash,
+            securityDefiner: row.securityDefiner,
+            rowSecurity: row.rowSecurity,
+          })),
+        ),
+      )
+      .digest('hex'),
+    'e709b9b825a659cde0e25bf0936804be8c65fedf5565cdd0434e57e023aab85b',
+  );
   assert.equal(observed.baseHead, '0136_workflow_draft_graph_v2.sql');
   assert.equal(observed.publishedConstraintQualified, false);
 });
@@ -110,7 +134,7 @@ test('source lifecycle reports exact drift and runtime prerequisites without cre
   assert.ok(report.blockers.includes('installation_artifact_unavailable'));
   assert.ok(report.blockers.includes('canonical_admission_unavailable'));
   assert.ok(report.blockers.includes('adr066_integration_unavailable'));
-  assert.equal(report.nativeOwnerDrift.length, 67);
+  assert.equal(report.nativeOwnerDrift.length, 68);
   assert.equal(report.evidence, 'source_and_injected_observations');
   await owner.close();
   assert.equal(input.disposed.length, 1);
@@ -383,7 +407,7 @@ test('snapshots caller source and resource bindings rather than adopting later m
   const report = await owner.assess(['artifact_result_lifetime']);
   assert.equal(
     report.source.candidateSha256,
-    '6588f2d8a6aa3fdb3e7c40bd5a01ca94f6ec92592fbc2e4fdbf0b8e8d25be5ba',
+    '2abb17d82c0ced6b6ff056d7dfc64ac4dbce636c58757913ea286edd60f5a9c3',
   );
   assert.equal(report.resources.postgresId, 'a'.repeat(64));
   assert.equal(Object.isFrozen(report.resources), true);

@@ -246,3 +246,25 @@ binds those exact arrays and rejects null or distinct catalog configuration; sou
 header consistency and simulated drift tests do not qualify installed behavior.
 The existing four integration blockers and null published-expression identity
 still refuse readiness before catalog checkout. The guarded SQL is unchanged.
+
+The subsequent existing-summary-reader correction is a separately reviewed
+source revision, approved after primary full review and closure of the narrow
+Spec P2 with no Standards findings: Fresh0137 now supplies the missing API-only
+`read_workflow_call_run_family(uuid)` owner, bringing the inventory to 68. Its
+candidate identity is
+`2abb17d82c0ced6b6ff056d7dfc64ac4dbce636c58757913ea286edd60f5a9c3`;
+the new full metadata/body-profile digests are respectively
+`5e4baefdc098baa4930c9f7a62acce160c23b47a6902c7e34e878ff69c5961dd` and
+`aa44bd9df9eafd4a7695c94803d04d914c0bae54ece1e9c916e633f49a3b4825`.
+The original 67-owner subset and previous receipts retain their original identities.
+The reader returns summary-only links/status through existing trusted API tenant
+read authority; it neither qualifies raw-login authority nor supplies execution
+admission. Its unchanged summary helper and explicit VOLATILE wrapper use the
+existing repeatable-read read-only transaction's visibility. The TypeScript
+classifier now survives checkpoint expiry by binding the requested run's exact
+pinned version. The reviewed narrow repair replaces the lossy native boolean
+with closed decoding of actual version fields: only `1/null`, `1/2` and `2/3`
+are accepted; missing, malformed, impossible or ambiguous metadata rejects before
+family SQL. This repair does not change candidate or owner-inventory bytes.
+All observations remain source/mock evidence; installation,
+effective catalog ACLs/RLS, actual retirement and runtime admission remain blocked.

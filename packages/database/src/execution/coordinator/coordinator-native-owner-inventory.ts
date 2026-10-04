@@ -385,6 +385,12 @@ const sourceOwners = [
     rowSecurity: true,
   },
   {
+    signature: 'app.read_workflow_call_run_family(uuid)',
+    hash: 'b665ce4fb03d8b2bb48cf3207096d3ae',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
     signature: 'app.native_retention_family_eligible(uuid,timestamptz,boolean)',
     hash: '73bf07bcef21ff668cded6dd8c237ce5',
     securityDefiner: false,

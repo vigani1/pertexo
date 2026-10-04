@@ -347,6 +347,43 @@ installed expressions/definitions, complete role/process/resource manifests,
 canonical authority/admission and all runtime/security qualification remain open.
 No installation, live catalog, service or protected-campaign execution occurred.
 
+The bounded lineage correction is source-only and approved after primary full
+ten-path review, zero Standards findings and closure of the narrow Spec P2.
+The reviewed repaired diff is
+`eb15ae742f501496b2e95e0248fa9c2fd6d2a2edcf3416edf83fec3ea04eadda`;
+its narrow repair and receipt are separately bound as
+`2b202802b2e9cf918359e37efa94a40eb12e8ee6c3f370fb547a6689dbf3105b` and
+`1cbaa0103f4ee548d8d659c32c3041ef99ba15be43f8d2d864c15df518981e56`.
+The existing authorized run-detail contract previously called a family reader
+absent from Fresh0137, and its checkpoint-only classifier dropped still-retained
+native lineage when detail retention deleted the checkpoint. The classifier now
+binds the requested workspace/run to its exact immutable workflow/version; ordinary
+retained formats never call native SQL, and unavailable or malformed version
+metadata fails rather than manufacturing an empty family. Narrow Spec review
+identified that a derived boolean silently treated impossible version pairs as
+retained. The repair now reads the actual version fields and accepts only the
+closed registered/native pairs `1/null`, `1/2` and `2/3`; missing, malformed or
+ambiguous metadata rejects before family SQL. Fresh0137 now authors
+the missing API-only summary reader, with explicit owner/revokes and fixed
+configuration. It reuses the unchanged complete sealed summary-membership helper,
+checks all retained run/version and admitted child pin identities, and returns
+only the unchanged bounded links/current-status projection. It reads no payload,
+provenance or cleared execution-detail pointers and grants no execution authority.
+Both functions remain VOLATILE; stable visibility belongs to the existing
+repeatable-read read-only workspace transaction, not a new SQL stability claim.
+Database build/typecheck and 1,753 unit tests across 183 files pass, including
+twenty-five family-reader and eighteen source-contract tests. Fifty API use-case/HTTP
+tests preserve authorized forwarding, empty detail, run-only metadata and wrong
+workspace denial; thirty-six lifecycle/ownership tests pass. These use external
+database/persistence mocks and source observations, not installed SQL or earned
+native runs. The current guarded candidate is separately bound as
+`2abb17d82c0ced6b6ff056d7dfc64ac4dbce636c58757913ea286edd60f5a9c3`, with
+68 source owners; the prior 67-owner metadata/body profiles and historical receipts
+remain unchanged. No endpoint, wire schema, frontend or maintenance-helper change
+is introduced. Exact installed ACL/RLS/function behavior, real detail retirement,
+earned family data and all native activation/security qualification remain open;
+the first installation abort and four readiness blockers/null constraint remain.
+
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
 | Publication / compiler selection | WIP: actual publication owner validates callable selectors and bounded immutable closure; compiler chooses V3 for Graph2 | Ordinary public-owner positive publication, invalid selector, immutable pin/contract lookup and HTTP error-mapping tests; real V3 compiler verification | Installed format constraints, locked native release and adversarial publication authority unqualified; no real native publication qualified |

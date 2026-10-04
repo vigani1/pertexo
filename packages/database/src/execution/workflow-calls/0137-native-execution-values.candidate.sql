@@ -5312,6 +5312,90 @@ END $$;
 REVOKE ALL ON FUNCTION app.native_retention_family_runs(uuid)
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
 
+-- Existing API/session/run:read authority owns this trusted tenant-context read.
+-- Summary identities never grant execution, source, admission or result authority.
+-- VOLATILE matches the unchanged summary helper; the existing repeatable-read
+-- read-only workspace transaction, not this declaration, owns stable visibility.
+CREATE FUNCTION app.read_workflow_call_run_family(p_run uuid)
+RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_workspace uuid:=nullif(current_setting('app.workspace_id',true),'')::uuid;
+  v_trigger varchar;
+  v_runs uuid[];
+  v_root uuid;
+  v_parent uuid;
+  v_invocation varchar;
+  v_parent_count integer;
+  v_children jsonb;
+BEGIN
+  IF v_workspace IS NULL OR p_run IS NULL THEN
+    RAISE EXCEPTION 'native summary read scope is missing' USING ERRCODE='42501';
+  END IF;
+  SELECT run.trigger_type INTO v_trigger FROM app.workflow_runs run
+    JOIN app.workflow_versions version ON version.workspace_id=run.workspace_id
+      AND version.workflow_id=run.workflow_id AND version.id=run.workflow_version_id
+    WHERE run.workspace_id=v_workspace AND run.id=p_run
+      AND version.schema_version=2 AND version.executable_schema_version=3;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'native summary requested run/version is missing' USING ERRCODE='42501';
+  END IF;
+  v_runs:=app.native_retention_family_runs(p_run);
+  IF v_runs IS NULL OR cardinality(v_runs) NOT BETWEEN 1 AND 65 THEN
+    RAISE EXCEPTION 'native summary family bound differs' USING ERRCODE='55000';
+  END IF;
+  SELECT call.root_run_id INTO v_root FROM app.workflow_calls call
+    WHERE call.workspace_id=v_workspace
+      AND (call.parent_run_id=p_run OR call.child_run_id=p_run OR call.root_run_id=p_run)
+    ORDER BY call.id LIMIT 1;
+  v_root:=coalesce(v_root,p_run);
+  IF EXISTS (SELECT 1 FROM unnest(v_runs) member(id)
+    LEFT JOIN app.workflow_runs run ON run.workspace_id=v_workspace AND run.id=member.id
+    LEFT JOIN app.workflow_versions version ON version.workspace_id=run.workspace_id
+      AND version.workflow_id=run.workflow_id AND version.id=run.workflow_version_id
+    WHERE run.id IS NULL OR version.id IS NULL
+      OR (version.schema_version=2 AND version.executable_schema_version=3) IS NOT TRUE
+  ) THEN RAISE EXCEPTION 'native summary member run/version differs' USING ERRCODE='55000'; END IF;
+  IF EXISTS (SELECT 1 FROM app.workflow_calls call
+    LEFT JOIN app.workflow_versions callee ON callee.workspace_id=call.workspace_id
+      AND callee.workflow_id=call.callee_workflow_id AND callee.id=call.callee_workflow_version_id
+    LEFT JOIN app.workflow_runs child ON child.workspace_id=call.workspace_id AND child.id=call.child_run_id
+    WHERE call.workspace_id=v_workspace AND call.root_run_id=v_root
+      AND (callee.id IS NULL OR (callee.schema_version=2 AND callee.executable_schema_version=3) IS NOT TRUE
+        OR (call.outcome_kind='admitted' AND (child.id IS NULL
+          OR child.workflow_id IS DISTINCT FROM call.callee_workflow_id
+          OR child.workflow_version_id IS DISTINCT FROM call.callee_workflow_version_id
+          OR call.child_workflow_version_id IS DISTINCT FROM call.callee_workflow_version_id
+          OR child.trigger_type IS DISTINCT FROM 'workflow_call')))
+  ) THEN RAISE EXCEPTION 'native summary child pin differs' USING ERRCODE='55000'; END IF;
+  SELECT count(*)::integer INTO v_parent_count FROM (
+    SELECT call.id FROM app.workflow_calls call
+      WHERE call.workspace_id=v_workspace AND call.root_run_id=v_root
+        AND call.child_run_id=p_run AND call.outcome_kind='admitted' AND call.sealed
+      LIMIT 2
+  ) parents;
+  IF (v_trigger='workflow_call' AND v_parent_count<>1)
+    OR (v_trigger<>'workflow_call' AND (v_parent_count<>0 OR v_root<>p_run)) THEN
+    RAISE EXCEPTION 'native summary parent relationship differs' USING ERRCODE='55000';
+  END IF;
+  SELECT call.parent_run_id,call.invocation_key INTO v_parent,v_invocation
+    FROM app.workflow_calls call WHERE call.workspace_id=v_workspace AND call.root_run_id=v_root
+      AND call.child_run_id=p_run AND call.outcome_kind='admitted' AND call.sealed;
+  SELECT coalesce(jsonb_agg(jsonb_build_object('runId',child.id,'nodeId',call.node_id,
+    'invocationKey',call.invocation_key,'status',child.status) ORDER BY call.invocation_key,call.id),'[]'::jsonb)
+    INTO v_children FROM app.workflow_calls call
+    JOIN app.workflow_runs child ON child.workspace_id=call.workspace_id AND child.id=call.child_run_id
+    WHERE call.workspace_id=v_workspace AND call.root_run_id=v_root AND call.parent_run_id=p_run
+      AND call.outcome_kind='admitted' AND call.sealed;
+  RETURN jsonb_build_object('rootRunId',v_root,'parentRunId',v_parent,
+    'parentInvocationKey',v_invocation,'children',v_children);
+END $$;
+ALTER FUNCTION app.read_workflow_call_run_family(uuid) OWNER TO {{owner_role}};
+REVOKE ALL ON FUNCTION app.read_workflow_call_run_family(uuid)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},
+    {{maintenance_role}},{{lifecycle_command_role}},{{operator_role}};
+GRANT EXECUTE ON FUNCTION app.read_workflow_call_run_family(uuid) TO {{api_runtime_role}};
+
 CREATE FUNCTION app.native_retention_family_eligible(p_run uuid,p_cutoff timestamptz,p_summary boolean)
 RETURNS boolean LANGUAGE plpgsql SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
 DECLARE

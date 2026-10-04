@@ -24,17 +24,48 @@ const familySchema = z
   .strict();
 export type WorkflowRunCallFamily = Readonly<z.output<typeof familySchema>>;
 
-/** Read-only links in the existing workspace snapshot; retained checkpoints never call native SQL. */
+const versionFormatSchema = z.union([
+  z
+    .object({
+      schema_version: z.literal(1),
+      executable_schema_version: z.null(),
+    })
+    .strict(),
+  z
+    .object({
+      schema_version: z.literal(1),
+      executable_schema_version: z.literal(2),
+    })
+    .strict(),
+  z
+    .object({
+      schema_version: z.literal(2),
+      executable_schema_version: z.literal(3),
+    })
+    .strict(),
+]);
+
+/** Summary links in the existing workspace snapshot; retained formats never call native SQL. */
 export async function readWorkflowRunCallFamily(
   transaction: WorkspaceTransaction,
   runId: string,
 ): Promise<WorkflowRunCallFamily | undefined> {
-  const checkpoint = await transaction.db.execute<{ native: boolean }>(sql`
-    select scheduler_state->>'schemaVersion'='3' as native
-    from app.run_checkpoints
-    where workspace_id=${transaction.workspaceId} and workflow_run_id=${runId}
+  const version = await transaction.db.execute<{
+    schema_version: unknown;
+    executable_schema_version: unknown;
+  }>(sql`
+    select version.schema_version,version.executable_schema_version
+    from app.workflow_runs run
+    left join app.workflow_versions version on version.workspace_id=run.workspace_id
+      and version.workflow_id=run.workflow_id and version.id=run.workflow_version_id
+    where run.workspace_id=${transaction.workspaceId} and run.id=${runId}
   `);
-  if (checkpoint.rows[0]?.native !== true) return undefined;
+  if (version.rows.length > 1)
+    throw new TypeError('Native run version read is ambiguous');
+  if (version.rows.length === 0)
+    throw new TypeError('Native run version read missing');
+  const format = versionFormatSchema.parse(version.rows[0]);
+  if (format.schema_version === 1) return undefined;
   const result = await transaction.db.execute<{ family: unknown }>(sql`
     select app.read_workflow_call_run_family(${runId}::uuid) as family
   `);

@@ -59,6 +59,55 @@ describe('unregistered native retention source contracts', () => {
     expect(UNFINISHED_NATIVE_OWNER_INTEGRATIONS.length).toBeGreaterThan(0);
   });
 
+  it('supplies the existing API-only historical family reader without execution detail authority', () => {
+    const read = body(candidate, 'read_workflow_call_run_family');
+    expect(read).toContain('app.native_retention_family_runs(p_run)');
+    expect(read).toContain('version.workflow_id=run.workflow_id');
+    expect(read).toContain(
+      'child.workflow_id IS DISTINCT FROM call.callee_workflow_id',
+    );
+    expect(read).toContain("call.outcome_kind='admitted'");
+    expect(read).toContain('native summary parent relationship differs');
+    expect(read).toContain('cardinality(v_runs) NOT BETWEEN 1 AND 65');
+    expect(read).toContain("v_trigger='workflow_call' AND v_parent_count<>1");
+    expect(read).toContain('native summary member run/version differs');
+    expect(read).toContain('native summary child pin differs');
+    const membership = body(candidate, 'native_retention_family_runs');
+    expect(membership).toContain('ORDER BY call.id LIMIT 65');
+    expect(membership).toContain('v_count>64 OR NOT v_call.sealed');
+    expect(membership).toContain('native retention family is ambiguous');
+    expect(membership).toContain('native retention family is incomplete');
+    expect(membership).not.toMatch(
+      /node_runs|node_attempts|provenance|run_checkpoints|assert_native_call_detail_live/u,
+    );
+    expect(read).toContain(
+      "'invocationKey',call.invocation_key,'status',child.status",
+    );
+    expect(read).not.toMatch(
+      /run_checkpoints|node_runs|node_attempts|provenance|assert_native_call_detail_live|FOR UPDATE|FOR SHARE/u,
+    );
+    expect(read).not.toMatch(/\b(?:INSERT|UPDATE|DELETE|set_config)\b/u);
+    expect(candidate).toContain(
+      'RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER\nSET search_path=pg_catalog,app,pg_temp SET row_security=on',
+    );
+    expect(candidate).toContain(
+      'ALTER FUNCTION app.read_workflow_call_run_family(uuid) OWNER TO {{owner_role}};',
+    );
+    expect(candidate).toContain(
+      'GRANT EXECUTE ON FUNCTION app.read_workflow_call_run_family(uuid) TO {{api_runtime_role}};',
+    );
+    expect(candidate).toContain(
+      'REVOKE ALL ON FUNCTION app.read_workflow_call_run_family(uuid)\n  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},\n    {{maintenance_role}},{{lifecycle_command_role}},{{operator_role}};',
+    );
+    const readDdl = candidate.slice(
+      candidate.indexOf('CREATE FUNCTION app.read_workflow_call_run_family'),
+      candidate.indexOf('CREATE FUNCTION app.native_retention_family_eligible'),
+    );
+    expect(readDdl.match(/GRANT\s+[^;]+;/gu)).toEqual([
+      'GRANT EXECUTE ON FUNCTION app.read_workflow_call_run_family(uuid) TO {{api_runtime_role}};',
+    ]);
+  });
+
   it('preserves the reviewed purge search path without adding app or inheriting configuration', () => {
     const purge = NATIVE_COORDINATOR_OWNER_INVENTORY.find(
       (row) =>
