@@ -13,6 +13,7 @@ import { serializeCoordinatorCheckpoint } from '../src/execution/coordinator/coo
 import type {
   NativeCoordinatorResultPreparationScope,
   NativeCoordinatorResultSourceHydrator,
+  NativeCoordinatorResultValuePreparer,
 } from '../src/execution/coordinator/coordinator-native-value-read-contract.js';
 
 const id = (n: number) =>
@@ -272,7 +273,9 @@ class ResultClient extends EventEmitter {
         ],
       };
     if (sql.includes('record_workflow_call_run_result')) {
-      expect(values[6]).toBe(serializedValue);
+      const reference = JSON.parse(String(values[3])) as { kind?: unknown };
+      if (reference.kind === 'artifact') expect(values[6]).toBeNull();
+      else expect(values[6]).toBe(serializedValue);
       expect(values[4]).toBe(valueIdentity.sha256);
       expect(values[5]).toBe(valueIdentity.byteLength);
     }
@@ -289,6 +292,7 @@ function start(
   fresh = false,
   scope?: NativeCoordinatorResultPreparationScope,
   hydrate?: NativeCoordinatorResultSourceHydrator,
+  prepareValue?: NativeCoordinatorResultValuePreparer,
 ) {
   const client = new ResultClient(stop, wrongFingerprint, sourceMode, fresh);
   const pool = {
@@ -323,6 +327,9 @@ function start(
       withNativeResultPreparation:
         scope ?? ((_input, prepare) => prepare(_input.signal)),
       ...(hydrate === undefined ? {} : { hydrateNativeResultSources: hydrate }),
+      ...(prepareValue === undefined
+        ? {}
+        : { prepareNativeResultValue: prepareValue }),
     },
   );
   return { result, client };
@@ -337,6 +344,74 @@ async function execute(
   return { result: await run.result, client: run.client };
 }
 describe('native result precommit through actual tenant and CAS composition', () => {
+  it.each(['exact', 'artifact_exact', 'substituted', 'aborted'] as const)(
+    'prepares %s fresh result bytes inside the same independent S before the protected write',
+    async (kind) => {
+      const controller = new AbortController();
+      let hydrated = false;
+      let prepared = false;
+      const operation = start(
+        false,
+        false,
+        'run_input',
+        true,
+        (_request, prepare) => prepare(controller.signal),
+        (request) => {
+          expect(request.signal).toBe(controller.signal);
+          hydrated = true;
+          return Promise.resolve({
+            runInput: { name: 'result' },
+            nodeOutputs: {},
+          });
+        },
+        (request) => {
+          expect(client.releases).toBe(2);
+          expect(request.signal).toBe(controller.signal);
+          expect(hydrated).toBe(true);
+          expect(request.owner).toMatchObject({
+            kind: 'run_result',
+            expectedRevision: 0,
+            resultRevision: 1,
+            delivery,
+          });
+          expect(request.owner.resultIdentity).toMatch(/^[0-9a-f]{64}$/u);
+          expect(request.value).toEqual({ name: 'result' });
+          expect(request.value).not.toBe(
+            plan.callableResult?.kind === 'succeeded'
+              ? plan.callableResult.value
+              : undefined,
+          );
+          prepared = true;
+          if (kind === 'aborted') controller.abort();
+          return Promise.resolve({
+            reference:
+              kind === 'artifact_exact'
+                ? { schemaVersion: 1, kind: 'artifact', artifactId: id(9) }
+                : {
+                    schemaVersion: 1,
+                    kind: 'inline',
+                    value: request.value,
+                  },
+            sha256:
+              kind === 'substituted' ? 'b'.repeat(64) : valueIdentity.sha256,
+            byteLength: valueIdentity.byteLength,
+          });
+        },
+      );
+      const client = operation.client;
+      if (kind === 'exact' || kind === 'artifact_exact')
+        await expect(operation.result).resolves.toMatchObject({
+          kind: 'committed',
+        });
+      else await expect(operation.result).rejects.toBeInstanceOf(Error);
+      expect(prepared).toBe(true);
+      expect(
+        client.sql.some((sql) =>
+          sql.includes('record_workflow_call_run_result'),
+        ),
+      ).toBe(kind === 'exact' || kind === 'artifact_exact');
+    },
+  );
   it.each(['exact', 'changed'] as const)(
     'independently rehydrates %s pinned result material after SQL release, before any protected write',
     async (kind) => {

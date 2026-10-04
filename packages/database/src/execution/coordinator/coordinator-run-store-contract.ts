@@ -3,6 +3,11 @@ import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 import type { CoordinatorCallMaterials } from './coordinator-call-materials.js';
 import type { CoordinatorCallableMaterials } from './coordinator-callable-materials.js';
 import type {
+  NativeResultArtifactReservationInput,
+  NativeResultArtifactProofInput,
+} from '../artifacts/native-result-artifact-contract.js';
+import type { NativeAttemptArtifactMetadata } from '../artifacts/native-attempt-artifact-contract.js';
+import type {
   InspectCoordinatorValueReadOwner,
   LoadCallableCompletionSources,
   ReadCallableCompletionSource,
@@ -72,6 +77,16 @@ export interface CoordinatorRunStore {
   loadCallableCompletionSources?: LoadCallableCompletionSources;
   readCallableCompletionSource?: ReadCallableCompletionSource;
   readCoordinatorCallDeclaration?: ReadCoordinatorCallDeclaration;
+  /** Framework result producer only; all ports are gated by actual native readiness. */
+  reserveNativeResultArtifact?: (
+    input: NativeResultArtifactReservationInput,
+  ) => Promise<NativeAttemptArtifactMetadata>;
+  assertNativeResultArtifactReserved?: (
+    input: NativeResultArtifactProofInput,
+  ) => Promise<void>;
+  finalizeNativeResultArtifact?: (
+    input: NativeResultArtifactProofInput,
+  ) => Promise<void>;
   loadAdvanceState(
     input: Readonly<{
       workspaceId: string;

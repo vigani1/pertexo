@@ -29,6 +29,7 @@ import type {
   InspectCoordinatorValueReadOwner,
   NativeCoordinatorCallDeclarationHydrator,
   NativeCoordinatorResultSourceHydrator,
+  NativeCoordinatorResultValuePreparer,
 } from './coordinator-native-value-read-contract.js';
 import { validateCoordinatorArtifactCallInputs } from './coordinator-call-input-validation.js';
 
@@ -38,6 +39,7 @@ type PreparationOptions = Readonly<{
   inspectNativeResultOwner?: InspectCoordinatorValueReadOwner;
   hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
   hydrateNativeResultSources?: NativeCoordinatorResultSourceHydrator;
+  prepareNativeResultValue?: NativeCoordinatorResultValuePreparer;
   callableResultEvaluator?: ExpressionEvaluator;
 }>;
 
@@ -78,7 +80,7 @@ export async function prepareCoordinatorAdvanceParameters(
   const nativeResult =
     plan.checkpoint.schemaVersion === 3 &&
     plan.callableResult?.kind === 'succeeded';
-  let preparedResult: ReturnType<typeof prepareCoordinatorCallResult>;
+  let preparedResult: Awaited<ReturnType<typeof prepareCoordinatorCallResult>>;
   const nativeCallInputs =
     plan.checkpoint.schemaVersion === 3 &&
     plan.workflowCalls?.declarations.some(
@@ -181,7 +183,7 @@ export async function prepareCoordinatorAdvanceParameters(
               throw new CoordinatorPlanInvalidError();
           }
           assertNotAborted(signal);
-          await verifyCoordinatorCallResultAuthentication(
+          const freshValue = await verifyCoordinatorCallResultAuthentication(
             material,
             signal,
             options.callableResultEvaluator,
@@ -195,6 +197,11 @@ export async function prepareCoordinatorAdvanceParameters(
             plan,
             delivery,
             resultSelector: material.declaration.resultSelector,
+            signal,
+            freshValue,
+            ...(options.prepareNativeResultValue === undefined
+              ? {}
+              : { prepareValue: options.prepareNativeResultValue }),
           });
         },
       );

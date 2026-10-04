@@ -38,6 +38,11 @@ export type {
   NativeAttemptArtifactProofInput,
   NativeAttemptArtifactMetadata,
 } from './execution/artifacts/native-attempt-artifact-contract.js';
+export type {
+  NativeResultArtifactProducer,
+  NativeResultArtifactReservationInput,
+  NativeResultArtifactProofInput,
+} from './execution/artifacts/native-result-artifact-contract.js';
 export { parseWorkflowExecutionValueSnapshot } from './execution/node-attempts/node-attempt-call-input-record.js';
 export type {
   NativeNodeAttemptValueSource,
@@ -74,6 +79,7 @@ export type {
   InspectCoordinatorValueReadOwner,
   NativeCoordinatorResultPreparationScope,
   NativeCoordinatorResultSourceHydrator,
+  NativeCoordinatorResultValuePreparer,
   LoadCallableCompletionSources,
   ReadCallableCompletionSource,
   ReadCoordinatorCallDeclaration,

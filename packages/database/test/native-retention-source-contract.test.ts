@@ -177,6 +177,63 @@ describe('unregistered native retention source contracts', () => {
     expect(NATIVE_COORDINATOR_OWNER_INVENTORY).toEqual(expected);
   });
 
+  it('preserves SQL-owned value contracts and inline binary64 guards while accepting only exact artifact result candidates', () => {
+    const writer = body(candidate, 'record_workflow_call_run_result');
+    expect(writer).toContain(
+      "p_reference->>'kind'='artifact' AND p_reference ? 'artifactId' AND p_original IS NULL",
+    );
+    expect(writer).toContain('IF v_selected_inline THEN');
+    expect(writer).toContain(
+      "app.assert_native_callable_value(v_version.executable_json#>'{graph,callable,result}',v_selected)",
+    );
+    expect(
+      writer.indexOf(
+        "app.assert_native_callable_value(v_version.executable_json#>'{graph,callable,result}',v_selected)",
+      ),
+    ).toBeLessThan(
+      writer.indexOf(
+        'app.assert_native_inline_execution_value_bytes(v_selected',
+      ),
+    );
+    expect(writer).toContain(
+      'v_candidate.coordinator_result_identity=v_identity_sha',
+    );
+    expect(writer).toContain(
+      'candidate.expected_revision=p_revision-1 FOR UPDATE',
+    );
+    expect(writer).toContain('v_candidate.result_revision=p_revision');
+    expect(writer).toContain(
+      'v_existing.original_inline_text IS NOT DISTINCT FROM p_original',
+    );
+    expect(writer).toContain(
+      'INSERT INTO app.workflow_execution_value_artifact_associations',
+    );
+    expect(writer).toContain(
+      'v_source_until:=least(v_source_until,v_source_artifact_until)',
+    );
+    const producer = body(candidate, 'lock_native_result_artifact_owner');
+    expect(producer.indexOf('app.lock_workspace_run_admission')).toBeLessThan(
+      producer.indexOf('app.prelock_native_coordinator_lineage'),
+    );
+    expect(
+      producer.indexOf('FOR NO KEY UPDATE OF run,checkpoint'),
+    ).toBeLessThan(producer.indexOf('FROM app.inbox_receipts receipt'));
+    expect(
+      producer.lastIndexOf(
+        'app.inspect_native_coordinator_value_owner(p_owner)',
+      ),
+    ).toBeGreaterThan(producer.indexOf('FROM app.inbox_receipts receipt'));
+    expect(producer).not.toMatch(/\bINSERT\b/u);
+    const prepare = body(candidate, 'prepare_native_result_artifact_candidate');
+    expect(prepare).toContain(
+      "v_candidate.creation_outbox_event_id=(p_owner#>>'{delivery,outboxEventId}')::uuid",
+    );
+    expect(prepare).toContain(
+      'v_candidate.coordinator_result_identity=p_result_identity',
+    );
+    expect(prepare).not.toMatch(/\bINSERT\b/u);
+  });
+
   it('keeps general-selector dependency inspection application-owned while rederiving each SQL source identity', () => {
     const inventory = body(candidate, 'native_coordinator_value_inventory');
     expect(inventory).toContain('jsonb_array_length(p_node_ids)>1000');

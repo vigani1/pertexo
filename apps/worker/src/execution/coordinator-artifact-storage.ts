@@ -6,7 +6,8 @@ import {
 import type { CoordinatorRunStore } from '@pertexo/database/execution';
 
 export type CoordinatorArtifactStorage = Readonly<{
-  store?: Pick<ArtifactStore, 'getStream'>;
+  store?: Pick<ArtifactStore, 'getStream'> &
+    Partial<Pick<ArtifactStore, 'put'>>;
   checkReadiness(): Promise<void>;
   close(): void;
 }>;
@@ -18,7 +19,10 @@ export function createCoordinatorArtifactStorage(
     'readCoordinatorCallDeclaration' | 'readCallableCompletionSource'
   >,
   config: DualRegionArtifactStoreConfig | undefined,
-  borrowed: Pick<ArtifactStore, 'getStream' | 'checkReadiness'> | undefined,
+  borrowed:
+    | (Pick<ArtifactStore, 'getStream' | 'checkReadiness'> &
+        Partial<Pick<ArtifactStore, 'put'>>)
+    | undefined,
   factory: typeof createDualRegionArtifactStore = createDualRegionArtifactStore,
 ): CoordinatorArtifactStorage {
   const native =

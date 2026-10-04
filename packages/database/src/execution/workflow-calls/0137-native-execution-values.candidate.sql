@@ -2608,6 +2608,10 @@ DECLARE
   v_path uuid[];
   v_index integer;
 BEGIN
+  -- Existing status SHARE fence only, not admission policy/counter work.
+  IF app.lock_workspace_run_admission(v_workspace) IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'native coordinator workspace is unavailable' USING ERRCODE='55000';
+  END IF;
   PERFORM app.assert_native_advance_delivery(p_run,p_event,p_checksum);
   v_path:=app.native_call_lineage(p_run);
   FOR v_index IN REVERSE array_length(v_path,1)..2 LOOP
@@ -3433,6 +3437,136 @@ REVOKE ALL ON FUNCTION app.inspect_native_coordinator_value_owner(jsonb)
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}};
 GRANT EXECUTE ON FUNCTION app.inspect_native_coordinator_value_owner(jsonb) TO {{worker_runtime_role}};
 
+-- Result preparation is before the canonical CAS/receipt claim. Reserve bytes
+-- only: no accepted result, checkpoint, receipt insertion or semantic attestation.
+-- Existing workspace -> ancestors -> current run/checkpoint -> existing receipt
+-- ordering prevents a detached producer label from replacing current authority.
+CREATE FUNCTION app.lock_native_result_artifact_owner(p_owner jsonb,p_result_revision integer,p_result_identity text)
+RETURNS jsonb LANGUAGE plpgsql
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE v_inspection jsonb; v_workspace uuid; v_receipt app.inbox_receipts%ROWTYPE;
+BEGIN
+  v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
+  IF v_inspection->>'kind' IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'native result artifact current owner is unavailable' USING ERRCODE='55000';
+  END IF;
+  v_workspace:=(p_owner->>'workspaceId')::uuid;
+  IF (p_result_revision=(p_owner->>'expectedRevision')::integer+1
+    AND p_result_identity ~ '^[0-9a-f]{64}$') IS NOT TRUE THEN
+    RAISE EXCEPTION 'native result artifact producer identity differs' USING ERRCODE='22023';
+  END IF;
+  IF app.lock_workspace_run_admission(v_workspace) IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'native result artifact workspace is unavailable' USING ERRCODE='55000';
+  END IF;
+  PERFORM app.prelock_native_coordinator_lineage((p_owner->>'runId')::uuid,
+    (p_owner#>>'{delivery,outboxEventId}')::uuid,p_owner#>>'{delivery,payloadChecksum}');
+  -- Match lockCoordinatorCommitState: current run/checkpoint before receipt.
+  PERFORM 1 FROM app.workflow_runs run JOIN app.run_checkpoints checkpoint
+    ON checkpoint.workspace_id=run.workspace_id AND checkpoint.workflow_run_id=run.id
+    WHERE run.workspace_id=v_workspace AND run.id=(p_owner->>'runId')::uuid
+    FOR NO KEY UPDATE OF run,checkpoint;
+  SELECT * INTO v_receipt FROM app.inbox_receipts receipt WHERE receipt.workspace_id=v_workspace
+    AND receipt.consumer_name='workflow-coordinator' AND receipt.message_id=(p_owner#>>'{delivery,outboxEventId}')::uuid FOR UPDATE;
+  IF FOUND AND (v_receipt.completed_at IS NOT NULL
+    OR v_receipt.payload_checksum IS DISTINCT FROM p_owner#>>'{delivery,payloadChecksum}') THEN
+    RAISE EXCEPTION 'native result artifact delivery was already consumed' USING ERRCODE='55000';
+  END IF;
+  v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
+  IF v_inspection->>'kind' IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'native result artifact locked owner is unavailable' USING ERRCODE='55000';
+  END IF;
+  RETURN v_inspection;
+END $$;
+REVOKE ALL ON FUNCTION app.lock_native_result_artifact_owner(jsonb,integer,text)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+
+CREATE FUNCTION app.prepare_native_result_artifact_candidate(
+  p_owner jsonb,p_result_revision integer,p_result_identity text,p_sha256 text,p_byte_length integer,p_media_type text,p_artifact uuid
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_inspection jsonb:=app.lock_native_result_artifact_owner(p_owner,p_result_revision,p_result_identity);
+  v_workspace uuid:=(p_owner->>'workspaceId')::uuid;
+  v_candidate app.workflow_execution_value_artifact_candidates%ROWTYPE;
+  v_artifact app.artifacts%ROWTYPE;
+BEGIN
+  IF (p_sha256 ~ '^[0-9a-f]{64}$' AND p_byte_length BETWEEN 1 AND 1048576
+    AND p_media_type='application/vnd.pertexo.execution-value+json;version=1') IS NOT TRUE THEN
+    RAISE EXCEPTION 'native result artifact metadata differs' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO v_candidate FROM app.workflow_execution_value_artifact_candidates candidate
+    WHERE candidate.workspace_id=v_workspace AND candidate.workflow_run_id=(p_owner->>'runId')::uuid
+      AND candidate.value_slot='run_result' AND candidate.expected_revision=(p_owner->>'expectedRevision')::integer FOR UPDATE;
+  IF NOT FOUND THEN
+    IF p_artifact IS NOT NULL OR EXISTS(SELECT 1 FROM app.workflow_execution_value_provenance source
+      WHERE source.workspace_id=v_workspace AND source.workflow_run_id=(p_owner->>'runId')::uuid AND source.value_slot='run_result') THEN
+      RAISE EXCEPTION 'native result artifact candidate is missing or result already accepted' USING ERRCODE='55000';
+    END IF;
+    RETURN jsonb_build_object('kind','missing','expiresAt',clock_timestamp()+interval '30 days');
+  END IF;
+  IF v_candidate.abandoned_at IS NOT NULL THEN RETURN jsonb_build_object('kind','preparation_unavailable'); END IF;
+  IF (v_candidate.workflow_version_id=(p_owner->>'workflowVersionId')::uuid
+    AND v_candidate.result_revision=p_result_revision AND v_candidate.coordinator_result_identity=p_result_identity
+    AND v_candidate.creation_outbox_event_id=(p_owner#>>'{delivery,outboxEventId}')::uuid
+    AND v_candidate.creation_payload_checksum=p_owner#>>'{delivery,payloadChecksum}'
+    AND v_candidate.sha256=p_sha256 AND v_candidate.byte_length=p_byte_length AND v_candidate.media_type=p_media_type
+    AND (p_artifact IS NULL OR v_candidate.artifact_id=p_artifact)) IS NOT TRUE THEN
+    RAISE EXCEPTION 'native result immutable artifact candidate differs' USING ERRCODE='23514';
+  END IF;
+  SELECT * INTO v_artifact FROM app.artifacts artifact WHERE artifact.workspace_id=v_workspace AND artifact.id=v_candidate.artifact_id FOR UPDATE;
+  IF NOT FOUND OR (v_artifact.status IN ('pending','available') AND v_artifact.deleted_at IS NULL
+    AND isfinite(v_artifact.expires_at) AND v_artifact.expires_at>clock_timestamp()
+    AND v_artifact.purpose='execution-value' AND v_artifact.sha256=p_sha256 AND v_artifact.byte_length=p_byte_length
+    AND v_artifact.media_type=p_media_type
+    AND v_artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||v_artifact.id::text) IS NOT TRUE THEN
+    RAISE EXCEPTION 'native result artifact lifecycle is unavailable' USING ERRCODE='55000';
+  END IF;
+  v_inspection:=app.inspect_native_coordinator_value_owner(p_owner);
+  IF v_inspection->>'kind' IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'native result artifact owner expired during preparation' USING ERRCODE='55000';
+  END IF;
+  RETURN jsonb_build_object('kind','ready','reservation',jsonb_build_object(
+    'artifactId',v_artifact.id,'workspaceId',v_workspace,'sha256',v_artifact.sha256,
+    'byteLength',v_artifact.byte_length,'mediaType',v_artifact.media_type,'available',v_artifact.status='available'));
+END $$;
+REVOKE ALL ON FUNCTION app.prepare_native_result_artifact_candidate(jsonb,integer,text,text,integer,text,uuid)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+
+CREATE FUNCTION app.register_native_result_artifact_candidate(
+  p_owner jsonb,p_result_revision integer,p_result_identity text,p_candidate uuid,p_artifact uuid,p_sha256 text,p_byte_length integer,p_media_type text
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,app,pg_temp SET row_security=on AS $$
+DECLARE
+  v_workspace uuid:=(p_owner->>'workspaceId')::uuid;
+  v_prepared jsonb;
+  v_artifact app.artifacts%ROWTYPE;
+BEGIN
+  IF p_candidate IS NULL OR p_artifact IS NULL THEN
+    RAISE EXCEPTION 'native result artifact registration identity is missing' USING ERRCODE='22023';
+  END IF;
+  v_prepared:=app.prepare_native_result_artifact_candidate(p_owner,p_result_revision,p_result_identity,p_sha256,p_byte_length,p_media_type,NULL);
+  IF v_prepared->>'kind' IS DISTINCT FROM 'missing' THEN
+    RAISE EXCEPTION 'native result artifact slot was already reserved' USING ERRCODE='23514';
+  END IF;
+  SELECT * INTO v_artifact FROM app.artifacts artifact WHERE artifact.workspace_id=v_workspace AND artifact.id=p_artifact FOR UPDATE;
+  IF NOT FOUND OR (v_artifact.status='pending' AND v_artifact.deleted_at IS NULL AND v_artifact.finalized_at IS NULL
+    AND v_artifact.purpose='execution-value' AND v_artifact.sha256=p_sha256 AND v_artifact.byte_length=p_byte_length
+    AND v_artifact.media_type=p_media_type AND isfinite(v_artifact.expires_at) AND v_artifact.expires_at>clock_timestamp()
+    AND v_artifact.expires_at<=clock_timestamp()+interval '30 days'
+    AND v_artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||p_artifact::text) IS NOT TRUE THEN
+    RAISE EXCEPTION 'native result artifact pending lifecycle differs' USING ERRCODE='55000';
+  END IF;
+  INSERT INTO app.workflow_execution_value_artifact_candidates(
+    id,workspace_id,artifact_id,workflow_run_id,workflow_version_id,value_slot,expected_revision,result_revision,
+    coordinator_result_identity,creation_outbox_event_id,creation_payload_checksum,sha256,byte_length,media_type
+  ) VALUES(p_candidate,v_workspace,p_artifact,(p_owner->>'runId')::uuid,(p_owner->>'workflowVersionId')::uuid,'run_result',
+    (p_owner->>'expectedRevision')::integer,p_result_revision,p_result_identity,
+    (p_owner#>>'{delivery,outboxEventId}')::uuid,p_owner#>>'{delivery,payloadChecksum}',p_sha256,p_byte_length,p_media_type);
+  RETURN app.prepare_native_result_artifact_candidate(p_owner,p_result_revision,p_result_identity,p_sha256,p_byte_length,p_media_type,p_artifact);
+END $$;
+REVOKE ALL ON FUNCTION app.register_native_result_artifact_candidate(jsonb,integer,text,uuid,uuid,text,integer,text)
+  FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}},{{maintenance_role}};
+
 -- Independent bounded interpretation of the existing callable descriptor
 -- grammar, not a second JSON encoder or a caller-supplied validation label.
 -- PostgreSQL/JS differential qualification remains OPEN and mandatory.
@@ -3569,19 +3703,35 @@ DECLARE
   v_deadline timestamptz;
   v_source_until timestamptz;
   v_accepted_at timestamptz:=clock_timestamp();
+  v_eligible_until timestamptz;
+  v_candidate app.workflow_execution_value_artifact_candidates%ROWTYPE;
+  v_artifact app.artifacts%ROWTYPE;
+  v_inventory jsonb;
+  v_node_ids jsonb;
+  v_expected_sources jsonb;
+  v_descriptor jsonb;
+  v_source_check app.workflow_execution_value_provenance%ROWTYPE;
+  v_source_bytes app.workflow_execution_value_provenance%ROWTYPE;
+  v_source_artifact_until timestamptz;
+  v_selected_inline boolean:=false;
 BEGIN
   IF (p_revision BETWEEN 1 AND 2147483647 AND jsonb_typeof(p_delivery)='object'
     AND p_delivery ?& ARRAY['outboxEventId','payloadChecksum']
     AND p_delivery-ARRAY['outboxEventId','payloadChecksum']='{}'::jsonb
     AND jsonb_typeof(p_reference)='object' AND p_reference->'schemaVersion'='1'::jsonb
-    AND p_reference->>'kind'='inline' AND p_reference ? 'value'
-    AND p_reference-ARRAY['schemaVersion','kind','value']='{}'::jsonb
+    AND p_sha256 ~ '^[0-9a-f]{64}$' AND p_byte_length BETWEEN 1 AND 1048576
+    AND ((p_reference->>'kind'='inline' AND p_reference ? 'value'
+      AND p_reference-ARRAY['schemaVersion','kind','value']='{}'::jsonb)
+      OR (p_reference->>'kind'='artifact' AND p_reference ? 'artifactId' AND p_original IS NULL
+        AND p_reference-ARRAY['schemaVersion','kind','artifactId']='{}'::jsonb))
     AND jsonb_typeof(p_sources)='array' AND jsonb_array_length(p_sources)<=1000
     AND octet_length(p_identity_original) BETWEEN 1 AND 1048576
     AND p_identity_original IS JSON OBJECT WITH UNIQUE KEYS) IS NOT TRUE THEN
     RAISE EXCEPTION 'native terminal result envelope is invalid' USING ERRCODE='22023';
   END IF;
-  PERFORM app.assert_native_inline_execution_value_bytes(p_reference->'value',p_sha256,p_byte_length,p_original);
+  IF p_reference->>'kind'='inline' THEN
+    PERFORM app.assert_native_inline_execution_value_bytes(p_reference->'value',p_sha256,p_byte_length,p_original);
+  END IF;
   PERFORM app.assert_native_advance_delivery(p_run,(p_delivery->>'outboxEventId')::uuid,p_delivery->>'payloadChecksum');
   IF NOT EXISTS(SELECT 1 FROM app.inbox_receipts receipt WHERE receipt.workspace_id=v_workspace
     AND receipt.consumer_name='workflow-coordinator' AND receipt.message_id=(p_delivery->>'outboxEventId')::uuid
@@ -3626,10 +3776,13 @@ BEGIN
     v_deadline:=least(v_deadline,v_ancestor.deadline_at);
   END LOOP;
   v_selector:=v_version.executable_json#>'{graph,callable,resultSelector}';
-  PERFORM app.assert_native_callable_value(v_version.executable_json#>'{graph,callable,result}',p_reference->'value');
+  IF p_reference->>'kind'='inline' THEN
+    PERFORM app.assert_native_callable_value(v_version.executable_json#>'{graph,callable,result}',p_reference->'value');
+  END IF;
   IF v_selector->>'kind'='literal' THEN
     IF p_sources<>'[]'::jsonb THEN RAISE EXCEPTION 'native literal result source inventory differs' USING ERRCODE='23514'; END IF;
     v_selected:=v_selector->'value';
+    v_selected_inline:=true;
   ELSIF v_selector->>'kind'='run_input' AND v_selector->>'path'='$' THEN
     IF p_sources<>'[]'::jsonb THEN RAISE EXCEPTION 'native input result source inventory differs' USING ERRCODE='23514'; END IF;
     SELECT * INTO v_input FROM app.workflow_execution_value_provenance input
@@ -3653,6 +3806,7 @@ BEGIN
     END IF;
     v_source_until:=least(v_input.eligible_until,v_source.eligible_until);
     v_selected:=v_source.original_reference->'value';
+    v_selected_inline:=v_source.reference_kind='inline';
   ELSIF v_selector->>'kind'='node_output' AND v_selector->>'path'='$' THEN
     IF (SELECT count(*) FROM jsonb_array_elements(v_version.executable_json#>'{graph,nodes}') node
       WHERE node->>'id'=v_selector->>'nodeId')<>1 THEN
@@ -3697,20 +3851,87 @@ BEGIN
           AND source.workflow_version_id=v_run.workflow_version_id AND source.node_id=v_selector->>'nodeId'
           AND source.invocation_key=v_invocation->>'invocationKey'
           AND source.value_slot='attempt_output' AND source.byte_ownership='owned'
-          AND v_invocation#>>'{output,kind}'='inline'
-          AND source.attempt_id=(v_invocation#>>'{output,attemptId}')::uuid
+          AND ((v_invocation#>>'{output,kind}'='inline' AND source.reference_kind='inline'
+              AND source.attempt_id=(v_invocation#>>'{output,attemptId}')::uuid)
+            OR (v_invocation#>>'{output,kind}'='artifact' AND source.reference_kind='artifact'
+              AND source.artifact_id=(v_invocation#>>'{output,artifactId}')::uuid))
           AND source.original_reference::text=attempt.output_ref::text AND source.original_reference::text=node.output_ref::text;
     END IF;
     IF v_source.id IS NULL OR v_source.eligibility_revoked_at IS NOT NULL OR v_source.eligible_until<=clock_timestamp() THEN
       RAISE EXCEPTION 'native result selected accepted source is unavailable' USING ERRCODE='55000';
     END IF;
     v_source_until:=v_source.eligible_until; v_selected:=v_source.original_reference->'value';
+    v_selected_inline:=v_source.reference_kind='inline';
+  ELSIF v_selector->>'kind' IN ('run_input','node_output','expression') THEN
+    -- General path/expression semantic evaluation is canonical fresh precommit.
+    -- Actual whole-source identity/control/availability is independently derived
+    -- below; SQL does not decode artifact payloads or attest AST completeness.
+    IF v_selector->>'kind'='run_input' AND p_sources<>'[]'::jsonb THEN
+      RAISE EXCEPTION 'native input path result inventory differs' USING ERRCODE='23514';
+    END IF;
   ELSE RAISE EXCEPTION 'native result selector preparation is unavailable' USING ERRCODE='55000'; END IF;
-  IF v_source.id IS NOT NULL AND v_source.reference_kind<>'inline' THEN
-    RAISE EXCEPTION 'native result selected artifact preparation is unavailable' USING ERRCODE='55000';
+  -- Keep all SQL-computable immutable literal/whole-inline source contracts,
+  -- EVEN when the outgoing result is artifact-backed. Only artifact-byte
+  -- equality belongs to the canonical fresh application preparation owner.
+  IF v_selected_inline THEN
+    PERFORM app.assert_native_callable_value(v_version.executable_json#>'{graph,callable,result}',v_selected);
+    IF p_reference->>'kind'='inline' THEN
+      -- Per-leaf binary64 agreement, never SQL numeric equality/re-encoding.
+      PERFORM app.assert_native_inline_execution_value_bytes(v_selected,p_sha256,p_byte_length,p_original);
+    END IF;
   END IF;
-  -- Per-leaf binary64 agreement, not PostgreSQL numeric equality or re-encoding.
-  PERFORM app.assert_native_inline_execution_value_bytes(v_selected,p_sha256,p_byte_length,p_original);
+  -- Every selected source must be an exact succeeded post-CAS invocation.
+  -- Canonical AST derivation owns completeness; SQL owns actual immutable scope.
+  SELECT coalesce(jsonb_agg(invocation->'nodeId' ORDER BY ordinal),'[]'::jsonb) INTO v_node_ids
+    FROM jsonb_array_elements(p_sources) WITH ORDINALITY sources(entry,ordinal)
+    JOIN LATERAL jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation
+      ON invocation->>'status'='succeeded' AND invocation->'invocationKey'=entry->'invocationKey'
+        AND invocation->'output'=entry->'output';
+  IF jsonb_array_length(v_node_ids)<>jsonb_array_length(p_sources) THEN
+    RAISE EXCEPTION 'native result post-CAS source inventory differs' USING ERRCODE='23514';
+  END IF;
+  v_inventory:=app.native_coordinator_value_inventory(jsonb_build_object(
+    'workspaceId',v_workspace,'runId',p_run,'workflowVersionId',v_run.workflow_version_id,
+    'expectedRevision',p_revision-1,'delivery',p_delivery),v_node_ids);
+  SELECT coalesce(jsonb_agg(jsonb_build_object('invocationKey',entry->'invocationKey',
+    'output',entry->'output') ORDER BY ordinal),'[]'::jsonb) INTO v_expected_sources
+    FROM jsonb_array_elements(v_inventory->'outputs') WITH ORDINALITY entries(entry,ordinal);
+  IF v_expected_sources IS DISTINCT FROM p_sources THEN
+    RAISE EXCEPTION 'native result exact accepted source inventory differs' USING ERRCODE='23514';
+  END IF;
+  FOR v_descriptor IN SELECT descriptor FROM (
+    SELECT v_inventory->'runInput' descriptor WHERE v_inventory->'runInput'<>'null'::jsonb
+    UNION ALL SELECT entry->'valueSource' FROM jsonb_array_elements(v_inventory->'outputs') entry
+  ) descriptors ORDER BY descriptor#>>'{source,provenanceId}' LOOP
+    SELECT * INTO STRICT v_source_check FROM app.workflow_execution_value_provenance source
+      WHERE source.workspace_id=v_workspace AND source.id=(v_descriptor#>>'{source,provenanceId}')::uuid FOR SHARE;
+    v_source_bytes:=v_source_check;
+    IF v_source_check.byte_ownership='borrowed' THEN
+      SELECT * INTO STRICT v_source_bytes FROM app.workflow_execution_value_provenance source
+        WHERE source.workspace_id=v_workspace AND source.id=v_source_check.borrowed_from_provenance_id
+          AND source.value_slot='attempt_input' AND source.byte_ownership='owned' FOR SHARE;
+    END IF;
+    IF v_source_check.eligibility_revoked_at IS NOT NULL OR v_source_bytes.eligibility_revoked_at IS NOT NULL
+      OR v_source_check.eligible_until<=clock_timestamp() OR v_source_bytes.eligible_until<=clock_timestamp()
+      OR v_source_bytes.sha256::text IS DISTINCT FROM v_descriptor#>>'{valueIdentity,sha256}'
+      OR v_source_bytes.byte_length IS DISTINCT FROM (v_descriptor#>>'{valueIdentity,byteLength}')::integer THEN
+      RAISE EXCEPTION 'native result selected source changed during acceptance' USING ERRCODE='55000';
+    END IF;
+    v_source_until:=least(v_source_until,v_source_check.eligible_until,v_source_bytes.eligible_until);
+    IF v_source_bytes.reference_kind='artifact' THEN
+      SELECT artifact.expires_at INTO v_source_artifact_until FROM app.workflow_execution_value_artifact_associations association
+        JOIN app.workflow_execution_value_artifact_candidates candidate ON candidate.workspace_id=association.workspace_id
+          AND candidate.id=association.candidate_id AND candidate.abandoned_at IS NULL
+        JOIN app.artifacts artifact ON artifact.workspace_id=association.workspace_id AND artifact.id=association.artifact_id
+          AND artifact.status='available' AND artifact.deleted_at IS NULL AND artifact.expires_at>clock_timestamp()
+          AND artifact.sha256=v_source_bytes.sha256 AND artifact.byte_length=v_source_bytes.byte_length
+          AND artifact.media_type=v_source_bytes.media_type
+        WHERE association.workspace_id=v_workspace AND association.provenance_id=v_source_bytes.id
+          AND association.artifact_id=v_source_bytes.artifact_id FOR SHARE OF association,candidate,artifact;
+      IF NOT FOUND THEN RAISE EXCEPTION 'native result selected artifact changed during acceptance' USING ERRCODE='55000'; END IF;
+      v_source_until:=least(v_source_until,v_source_artifact_until);
+    END IF;
+  END LOOP;
   v_identity:=p_identity_original::jsonb;
   IF (v_identity ?& ARRAY['schemaVersion','slot','workspaceId','runId','workflowVersionId',
       'delivery','expectedRevision','resultRevision','resultSelector','sources','value']
@@ -3726,32 +3947,75 @@ BEGIN
     RAISE EXCEPTION 'native result original content binding differs' USING ERRCODE='23514';
   END IF;
   v_identity_sha:=encode(sha256(convert_to(p_identity_original,'UTF8')),'hex');
+  IF p_reference->>'kind'='artifact' THEN
+    SELECT * INTO v_candidate FROM app.workflow_execution_value_artifact_candidates candidate
+      WHERE candidate.workspace_id=v_workspace AND candidate.workflow_run_id=p_run
+        AND candidate.value_slot='run_result' AND candidate.expected_revision=p_revision-1 FOR UPDATE;
+    IF NOT FOUND OR (v_candidate.workflow_version_id=v_run.workflow_version_id AND v_candidate.result_revision=p_revision
+      AND v_candidate.coordinator_result_identity=v_identity_sha
+      AND v_candidate.creation_outbox_event_id=(p_delivery->>'outboxEventId')::uuid
+      AND v_candidate.creation_payload_checksum=p_delivery->>'payloadChecksum'
+      AND v_candidate.artifact_id=(p_reference->>'artifactId')::uuid AND v_candidate.sha256=p_sha256
+      AND v_candidate.byte_length=p_byte_length AND v_candidate.media_type='application/vnd.pertexo.execution-value+json;version=1'
+      AND v_candidate.abandoned_at IS NULL) IS NOT TRUE THEN
+      RAISE EXCEPTION 'native result exact artifact candidate differs' USING ERRCODE='55000';
+    END IF;
+  END IF;
   SELECT * INTO v_existing FROM app.workflow_execution_value_provenance provenance
-    WHERE provenance.workspace_id=v_workspace AND provenance.workflow_run_id=p_run AND provenance.value_slot='run_result';
-  IF FOUND THEN
+    WHERE provenance.workspace_id=v_workspace AND provenance.workflow_run_id=p_run AND provenance.value_slot='run_result' FOR UPDATE;
+  IF p_reference->>'kind'='artifact' THEN
+    SELECT * INTO v_artifact FROM app.artifacts artifact WHERE artifact.workspace_id=v_workspace AND artifact.id=v_candidate.artifact_id FOR UPDATE;
+    IF NOT FOUND OR (v_artifact.status='available' AND v_artifact.deleted_at IS NULL AND v_artifact.finalized_at IS NOT NULL
+      AND isfinite(v_artifact.expires_at) AND v_artifact.expires_at>clock_timestamp() AND v_artifact.purpose='execution-value'
+      AND v_artifact.sha256=p_sha256 AND v_artifact.byte_length=p_byte_length AND v_artifact.media_type=v_candidate.media_type
+      AND v_artifact.storage_key='workspaces/'||v_workspace::text||'/artifacts/'||v_artifact.id::text) IS NOT TRUE THEN
+      RAISE EXCEPTION 'native result artifact is unavailable at acceptance' USING ERRCODE='55000';
+    END IF;
+  END IF;
+  IF v_existing.id IS NOT NULL THEN
     IF (v_existing.workflow_version_id=v_run.workflow_version_id AND v_existing.accepted_revision=p_revision
       AND v_existing.coordinator_result_identity=v_identity_sha
       AND v_existing.delivery_outbox_event_id=(p_delivery->>'outboxEventId')::uuid
       AND v_existing.delivery_payload_checksum=p_delivery->>'payloadChecksum'
-      AND v_existing.original_inline_text=p_original AND v_existing.sha256=p_sha256 AND v_existing.byte_length=p_byte_length
+      AND v_existing.reference_kind=p_reference->>'kind' AND v_existing.original_reference::text=p_reference::text
+      AND v_existing.original_inline_text IS NOT DISTINCT FROM p_original
+      AND v_existing.sha256=p_sha256 AND v_existing.byte_length=p_byte_length
       AND v_existing.eligibility_revoked_at IS NULL AND v_existing.eligible_until>clock_timestamp()) IS NOT TRUE THEN
       RAISE EXCEPTION 'native terminal result immutable identity differs' USING ERRCODE='23514';
     END IF;
+    IF p_reference->>'kind'='artifact' AND NOT EXISTS(SELECT 1 FROM app.workflow_execution_value_artifact_associations association
+      WHERE association.workspace_id=v_workspace AND association.provenance_id=v_existing.id
+        AND association.candidate_id=v_candidate.id AND association.artifact_id=v_candidate.artifact_id) THEN
+      RAISE EXCEPTION 'native result accepted artifact association differs' USING ERRCODE='55000';
+    END IF;
   ELSE
+    v_eligible_until:=v_accepted_at+interval '30 days';
+    IF p_reference->>'kind'='artifact' THEN v_eligible_until:=least(v_eligible_until,v_artifact.expires_at); END IF;
     INSERT INTO app.workflow_execution_value_provenance (
       id,workspace_id,workflow_run_id,workflow_version_id,value_slot,byte_ownership,
       accepted_revision,coordinator_result_identity,delivery_outbox_event_id,delivery_payload_checksum,
-      reference_kind,original_reference,original_inline_text,sha256,byte_length,media_type,accepted_at,eligible_until
+      reference_kind,original_reference,original_inline_text,artifact_id,sha256,byte_length,media_type,accepted_at,eligible_until
     ) VALUES(gen_random_uuid(),v_workspace,p_run,v_run.workflow_version_id,'run_result','owned',
       p_revision,v_identity_sha,(p_delivery->>'outboxEventId')::uuid,p_delivery->>'payloadChecksum',
-      'inline',p_reference,p_original,p_sha256,p_byte_length,'application/vnd.pertexo.execution-value+json;version=1',
-      v_accepted_at,v_accepted_at+interval '30 days') RETURNING * INTO v_existing;
+      p_reference->>'kind',p_reference,p_original,v_candidate.artifact_id,p_sha256,p_byte_length,'application/vnd.pertexo.execution-value+json;version=1',
+      v_accepted_at,v_eligible_until) RETURNING * INTO v_existing;
+    IF p_reference->>'kind'='artifact' THEN
+      INSERT INTO app.workflow_execution_value_artifact_associations(
+        workspace_id,provenance_id,candidate_id,workflow_run_id,workflow_version_id,value_slot,
+        expected_revision,accepted_revision,coordinator_result_identity,delivery_outbox_event_id,delivery_payload_checksum,
+        artifact_id,sha256,byte_length,media_type,accepted_at
+      ) VALUES(v_workspace,v_existing.id,v_candidate.id,p_run,v_run.workflow_version_id,'run_result',
+        p_revision-1,p_revision,v_identity_sha,(p_delivery->>'outboxEventId')::uuid,p_delivery->>'payloadChecksum',
+        v_candidate.artifact_id,p_sha256,p_byte_length,v_candidate.media_type,v_accepted_at);
+    END IF;
   END IF;
   UPDATE app.workflow_runs run SET output_ref=v_existing.original_reference,updated_at=clock_timestamp()
     WHERE run.workspace_id=v_workspace AND run.id=p_run
       AND (run.output_ref IS NULL OR run.output_ref::text=v_existing.original_reference::text);
   IF NOT FOUND THEN RAISE EXCEPTION 'native terminal first result projection differs' USING ERRCODE='23514'; END IF;
-  IF v_deadline<=clock_timestamp() OR v_source_until<=clock_timestamp() THEN
+  IF v_deadline<=clock_timestamp() OR v_source_until<=clock_timestamp()
+    OR v_existing.eligible_until<=clock_timestamp()
+    OR (p_reference->>'kind'='artifact' AND v_artifact.expires_at<=clock_timestamp()) THEN
     RAISE EXCEPTION 'native terminal result source/control expired during acceptance' USING ERRCODE='55000';
   END IF;
 END $$;
@@ -5492,7 +5756,9 @@ GRANT EXECUTE ON FUNCTION app.record_workflow_call_declaration_input(jsonb,jsonb
   app.read_workflow_call_declaration_input(jsonb),
   app.workflow_call_declaration_completion_reference(jsonb),
   app.prepare_native_attempt_artifact_candidate(jsonb,text,text,integer,text,uuid),
-  app.register_native_attempt_artifact_candidate(jsonb,text,uuid,uuid,text,integer,text) TO {{worker_runtime_role}};
+  app.register_native_attempt_artifact_candidate(jsonb,text,uuid,uuid,text,integer,text),
+  app.prepare_native_result_artifact_candidate(jsonb,integer,text,text,integer,text,uuid),
+  app.register_native_result_artifact_candidate(jsonb,integer,text,uuid,uuid,text,integer,text) TO {{worker_runtime_role}};
 GRANT EXECUTE ON FUNCTION app.record_native_root_execution_input(uuid,uuid,text)
   TO {{api_runtime_role}},{{worker_runtime_role}};
 

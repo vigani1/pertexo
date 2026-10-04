@@ -9,6 +9,22 @@ export type CoordinatorExpressionEvaluation = Readonly<{
   close(): Promise<void>;
 }>;
 
+/** Forward to the one resource after composition; never allocate or cache material. */
+export function createCoordinatorExpressionEvaluatorForwarding(
+  current: () => CoordinatorExpressionEvaluation | undefined,
+): ExpressionEvaluator {
+  return Object.freeze<ExpressionEvaluator>({
+    evaluate: (request) => {
+      const evaluator = current()?.evaluator;
+      if (evaluator === undefined)
+        throw new Error(
+          'Native coordinator expression evaluator is unavailable',
+        );
+      return evaluator.evaluate(request);
+    },
+  });
+}
+
 /** One existing evaluator only for the actual release-admitted native ports.
  * Borrowed evaluators remain caller-owned; retained/native-OFF allocates none.
  */

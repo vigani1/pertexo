@@ -166,7 +166,7 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
   },
   {
     signature: 'app.prelock_native_coordinator_lineage(uuid,uuid,text)',
-    hash: '6b9781ce8dedfd50f0ab0d6f6ac43adf',
+    hash: 'c9a01dba54e786a04df2ede10d701377',
     securityDefiner: true,
     rowSecurity: true,
   },
@@ -248,6 +248,26 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
     rowSecurity: true,
   },
   {
+    signature: 'app.lock_native_result_artifact_owner(jsonb,integer,text)',
+    hash: '9f1660c9dc28b88690c5b278343ba2f5',
+    securityDefiner: false,
+    rowSecurity: true,
+  },
+  {
+    signature:
+      'app.prepare_native_result_artifact_candidate(jsonb,integer,text,text,integer,text,uuid)',
+    hash: '397eea2b240ad6e4f9aa0bed0e6630be',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
+    signature:
+      'app.register_native_result_artifact_candidate(jsonb,integer,text,uuid,uuid,text,integer,text)',
+    hash: '66170293f0ce98a30745190d78eed9d8',
+    securityDefiner: true,
+    rowSecurity: true,
+  },
+  {
     signature: 'app.assert_native_callable_value(jsonb,jsonb)',
     hash: '48cdbfe0f13ebe9e53c369ae8572463c',
     securityDefiner: false,
@@ -256,7 +276,7 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
   {
     signature:
       'app.record_workflow_call_run_result(uuid,integer,jsonb,jsonb,text,integer,text,jsonb,text)',
-    hash: '37c2f106761df7c88b3363ff5c3ba2c0',
+    hash: '3efb604442acb3a3d510afdf4c574dde',
     securityDefiner: true,
     rowSecurity: true,
   },
@@ -385,7 +405,8 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
 // Concrete unfinished source integrations keep native operational readiness false.
 // These are not installation signatures, an activation option or a certificate.
 export const UNFINISHED_NATIVE_OWNER_INTEGRATIONS: readonly string[] = [
-  'native artifact attempt production and complete Wait/structured source loading',
-  'complete native artifact hydration and general prepared terminal result wiring',
+  'native structured coordinator declaration material and independent pre-CAS validation',
+  'native physical/Wait/structured execution and artifact lifecycle qualification',
+  'native general/artifact result source, quota, CAS/recovery and lifetime qualification',
   'native execution and purge SQL qualification remains paused',
 ] as const;

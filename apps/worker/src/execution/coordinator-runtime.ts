@@ -51,9 +51,11 @@ import {
 import type { CoordinatorNativeValueWork } from './coordinator-native-demand-advance.js';
 import { createCoordinatorSourceHydration } from './coordinator-source-hydration.js';
 import { createCoordinatorResultSourceHydration } from './coordinator-result-source-hydration.js';
+import { createCoordinatorResultValuePreparation } from './coordinator-result-value-preparation.js';
 import { parseCoordinatorRuntimeTuning } from './coordinator-runtime-tuning.js';
 import {
   createCoordinatorExpressionEvaluation,
+  createCoordinatorExpressionEvaluatorForwarding,
   type CoordinatorExpressionEvaluation,
 } from './coordinator-expression-evaluation.js';
 import type {
@@ -121,7 +123,8 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   loadCallableCompletion?: CoordinatorCallableCompletionLoader;
   hydrateCallableSource?: CoordinatorNativeValueWork['hydrateSource'];
   /** Borrowed framework storage; never exposed to workflow executors. */
-  artifactStore?: Pick<ArtifactStore, 'getStream' | 'checkReadiness'>;
+  artifactStore?: Pick<ArtifactStore, 'getStream' | 'checkReadiness'> &
+    Partial<Pick<ArtifactStore, 'put'>>;
   /** Borrowed existing evaluator for native paths; caller retains cleanup. */
   expressionEvaluator?: ExpressionEvaluator;
 }>;
@@ -230,16 +233,11 @@ export async function createCoordinatorRuntime(
   let hydrateResultSources: ReturnType<
     typeof createCoordinatorResultSourceHydration
   >;
-  const callableResultEvaluator: ExpressionEvaluator = {
-    evaluate: (request) => {
-      const evaluator = expressionEvaluation?.evaluator;
-      if (evaluator === undefined)
-        throw new Error(
-          'Native coordinator expression evaluator is unavailable',
-        );
-      return evaluator.evaluate(request);
-    },
-  };
+  let prepareResultValue: ReturnType<
+    typeof createCoordinatorResultValuePreparation
+  >['prepare'];
+  const callableResultEvaluator =
+    createCoordinatorExpressionEvaluatorForwarding(() => expressionEvaluation);
   let hydrateCallDeclaration: ReturnType<
     typeof createCoordinatorCallDeclarationHydration
   >;
@@ -256,6 +254,7 @@ export async function createCoordinatorRuntime(
         hydrateNativeCallDeclaration: (request) =>
           hydrateCallDeclaration(request),
         hydrateNativeResultSources: (request) => hydrateResultSources(request),
+        prepareNativeResultValue: (request) => prepareResultValue(request),
         callableResultEvaluator,
         runTimeoutFailureContextEnabled:
           options.runTimeoutFailureContextEnabled ?? false,
@@ -277,6 +276,10 @@ export async function createCoordinatorRuntime(
       dependencies.artifactStore,
       factories.artifactStore,
     );
+    prepareResultValue = createCoordinatorResultValuePreparation(
+      runStore,
+      artifactStorage.store,
+    ).prepare;
     hydrateCallDeclaration = createCoordinatorCallDeclarationHydration(
       runStore,
       artifactStorage.store,

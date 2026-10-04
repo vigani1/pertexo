@@ -402,6 +402,18 @@ async function hydrateSourceValue(
   );
 }
 
+/** Preparation-only composition of the SAME codec; no fake read/authorization callbacks. */
+export function createWorkflowExecutionValuePreparation(
+  dependencies: Pick<
+    WorkflowExecutionValueCodecDependencies,
+    'chooseInline' | 'reserve' | 'writeReserved'
+  >,
+) {
+  return Object.freeze({
+    prepare: (input: PrepareInput) => prepareValue(dependencies, input),
+  });
+}
+
 /** Inline-only composition of the SAME preparation owner; no fake artifact callbacks. */
 export function createWorkflowExecutionValueInlinePreparation() {
   return Object.freeze({

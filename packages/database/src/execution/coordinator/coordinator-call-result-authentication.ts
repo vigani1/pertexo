@@ -216,7 +216,7 @@ export async function verifyCoordinatorCallResultAuthentication(
     runInput: JsonValue;
     nodeOutputs: Readonly<Record<string, JsonValue>>;
   }>,
-): Promise<void> {
+): Promise<JsonValue> {
   const context = 'nativeDemand' in prepared ? nativeContext : prepared.context;
   if (context === undefined) throw new CoordinatorPlanInvalidError();
   const selected = await resolveValueSource(
@@ -232,6 +232,7 @@ export async function verifyCoordinatorCallResultAuthentication(
       serializeWorkflowExecutionJsonValueV3(prepared.proposedValue)
   )
     throw new CoordinatorPlanInvalidError();
+  return selected.value;
 }
 
 /** Existing focused interface; actual commit composition releases its read first. */

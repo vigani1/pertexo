@@ -7,6 +7,7 @@ import type { WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 } from '../artifacts/execut
 import type { CoordinatorAdvanceDelivery } from './coordinator-run-store-contract.js';
 import type { NativeCoordinatorCallDeclarationSource } from './coordinator-call-declaration-source.js';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import type { NativeResultArtifactProducer } from '../artifacts/native-result-artifact-contract.js';
 
 type Output = NonNullable<
   PersistedWorkflowCheckpointV3['invocations'][number]['output']
@@ -120,6 +121,21 @@ export type NativeCoordinatorResultSourceHydrator = (
       nodeOutputs: Readonly<Record<string, JsonValue>>;
     }>
   | undefined
+>;
+
+/** Framework preparation under the same independent S; result remains plain parameters. */
+export type NativeCoordinatorResultValuePreparer = (
+  input: Readonly<{
+    owner: NativeResultArtifactProducer;
+    value: JsonValue;
+    signal: AbortSignal;
+  }>,
+) => Promise<
+  Readonly<{
+    reference: StoredExecutionValueV1;
+    sha256: string;
+    byteLength: number;
+  }>
 >;
 
 /**

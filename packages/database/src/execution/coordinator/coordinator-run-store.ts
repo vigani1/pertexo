@@ -3,6 +3,10 @@ import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 
 import type { DatabaseConfig } from '../../config.js';
+import {
+  reserveNativeResultArtifact,
+  inspectNativeResultArtifact,
+} from '../artifacts/native-result-artifact-owner.js';
 import type { CompatibilityReleaseExpectationSet } from '../../compatibility/compatibility-release.js';
 import {
   parseCoordinatorExecutableCapability,
@@ -30,6 +34,7 @@ import type {
   NativeCoordinatorResultPreparationScope,
   NativeCoordinatorCallDeclarationHydrator,
   NativeCoordinatorResultSourceHydrator,
+  NativeCoordinatorResultValuePreparer,
 } from './coordinator-native-value-read-contract.js';
 import {
   createNativeCoordinatorValueReads,
@@ -56,6 +61,7 @@ export type CoordinatorRunStoreOptions = Readonly<{
   withNativeResultPreparation?: NativeCoordinatorResultPreparationScope;
   hydrateNativeCallDeclaration?: NativeCoordinatorCallDeclarationHydrator;
   hydrateNativeResultSources?: NativeCoordinatorResultSourceHydrator;
+  prepareNativeResultValue?: NativeCoordinatorResultValuePreparer;
   /** Exact existing release/compiler descriptions; absence means retained-only. */
   expectedCompatibilityReleases?: CompatibilityReleaseExpectationSet;
   runTimeoutFailureContextEnabled?: boolean;
@@ -117,6 +123,24 @@ export function createCoordinatorRunStore(
     },
     ...(nativeCapable
       ? {
+          reserveNativeResultArtifact: (
+            input: Parameters<typeof reserveNativeResultArtifact>[1],
+          ) => {
+            requireNativeReadiness();
+            return reserveNativeResultArtifact(pool, input);
+          },
+          assertNativeResultArtifactReserved: (
+            input: Parameters<typeof inspectNativeResultArtifact>[1],
+          ) => {
+            requireNativeReadiness();
+            return inspectNativeResultArtifact(pool, input);
+          },
+          finalizeNativeResultArtifact: (
+            input: Parameters<typeof inspectNativeResultArtifact>[1],
+          ) => {
+            requireNativeReadiness();
+            return inspectNativeResultArtifact(pool, input, true);
+          },
           inspectCoordinatorValueReadOwner: (
             input: Parameters<
               typeof nativeReads.inspectCoordinatorValueReadOwner
@@ -174,6 +198,11 @@ export function createCoordinatorRunStore(
               nativeValueControlReadTimeoutMillis: controlReadTimeoutMillis,
               inspectNativeResultOwner:
                 nativeReads.inspectCoordinatorValueReadOwner,
+              ...(options.prepareNativeResultValue === undefined
+                ? {}
+                : {
+                    prepareNativeResultValue: options.prepareNativeResultValue,
+                  }),
               ...(options.hydrateNativeResultSources === undefined
                 ? {}
                 : {

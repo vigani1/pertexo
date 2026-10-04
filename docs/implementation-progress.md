@@ -150,7 +150,8 @@ material/pre-CAS validation remain unfinished. This composition is not protected
 SQL or live qualification; nativeOFF/SQLPAUSED and the first installation abort
 are unchanged.
 
-The general-selector SQL source-read extension is uncommitted and awaiting review.
+The general-selector SQL source-read extension is reviewed and recorded
+(`8f6b5133`) but remains unqualified.
 The metadata inventory accepts bounded unique application-derived expression
 dependencies, derives each actual immutable root/current invocation and accepted
 physical or sealed Call result source, and includes original run-input identity
@@ -159,8 +160,43 @@ application projection; SQL does not parse JSONata dependencies or certify that
 an arbitrary trusted-credential caller evaluated them. Existing borrowed-input,
 exact descriptor, provenance, association, availability and deadline guards remain.
 Offline grammar and source-contract checks are not execution qualification.
-The final writer still refuses general selectors and artifact-result persistence;
-these remain unfinished alongside coordinator structured declaration/pre-CAS work.
+At that reviewed source-read checkpoint the final writer still refused general
+selectors and artifact-result persistence; the newer uncommitted composition below
+does not qualify them or the unfinished structured declaration/pre-CAS work.
+
+Native artifact/general result composition is now uncommitted and awaiting review.
+Current result-candidate preparation independently reproves actual delivery,
+pre/post revision and controls, preserves workspace/ancestor/current-run-checkpoint/
+existing-receipt ordering, and reserves only bytes. It does not claim a receipt or
+accept provenance. Exact pending/available retries reuse the candidate without a
+second charge; shared mechanical lifecycle code delegates the existing pending
+artifact quota and finalization owners for both attempt and result producers.
+The actual runtime uses the same borrowed/owned framework storage, existing
+reserved writer/spool and shared codec after fresh semantic verification inside
+the same independent precommit signal. Verification carries the freshly recomputed
+value into preparation; the proposed plan value is only an exact-byte comparison,
+never the codec's producer value. The DB adapter derives result identity
+from actual producer bytes and rejects prepared reference/hash/length drift;
+artifact payload is never forwarded to write SQL.
+The final SQL source accepts exact artifact candidate metadata and association
+inside the existing CAS/provenance/receipt transaction. SQL-owned literal and
+whole-inline selected-value contracts remain checked even for artifact output;
+inline original-byte/binary64 comparisons remain when both values are inline.
+External artifact-byte equality remains canonical fresh application preparation,
+not arbitrary trusted-credential attestation or SQL re-encoding. General source
+inventory is rederived from exact succeeded post-CAS invocations, eligibility and
+locked accepted provenance/association/artifact identities, with final clocks.
+Existing native prelock now uses the existing workspace status SHARE fence before
+ancestor/current locks; no admission policy/counter or quota owner was added.
+Whole worker103/1293 and database178/1655 unit tests pass; offline grammar208/66
+passes only syntax. The initial result-owner fixture expected a different JSON
+key order; correcting that fixture did not change production behavior. One new
+runtime complexity hotspot was removed through cohesive evaluator-forwarding and
+storage-binding ownership; the same five inherited hotspots still fail.
+This source remains unreviewed/unqualified: protected SQL, actual quota/uncertain
+COMMIT/CAS recovery, final-validation/COMMIT clock behavior and structured
+coordinator declaration/pre-CAS work remain open. NativeOFF/SQLPAUSED, unregistered
+Fresh0137 and its first installation abort are unchanged.
 
 Minimum native Call executable path (source is not qualification):
 

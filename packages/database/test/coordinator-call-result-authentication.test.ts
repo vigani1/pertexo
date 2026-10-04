@@ -114,7 +114,8 @@ describe('immutable callable result authentication', () => {
             nodeOutputs: {},
           },
         );
-        if (kind === 'exact') await expect(result).resolves.toBeUndefined();
+        if (kind === 'exact')
+          await expect(result).resolves.toEqual({ name: 'result' });
         else
           await expect(result).rejects.toMatchObject({
             name: 'CoordinatorPlanInvalidError',
