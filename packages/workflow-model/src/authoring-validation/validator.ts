@@ -2,7 +2,8 @@ import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { z } from 'zod';
 import { canonicalizeJson } from '../canonical-json.js';
 import { parseWorkflowGraphDraft } from '../graph/preflight.js';
-import type { WorkflowGraph } from '../graph-contract.js';
+import { inspectJsonDocumentAdmission } from '../graph/admission.js';
+import { CANONICAL_JSON_MAX_DEPTH } from '../canonical-json.js';
 import type { GraphValidationResult } from '../graph/validation-contract.js';
 import {
   AUTHORING_VALIDATION_BUDGET as budget,
@@ -50,17 +51,47 @@ type Limits = Readonly<{
   parseMs: number;
   terminationMs: number;
 }>;
+export type AuthoringWorkerReply =
+  | Readonly<{ kind: 'ready' }>
+  | Readonly<{ kind: 'started'; id: number }>
+  | Readonly<{ kind: 'result'; id: number; report: unknown }>
+  | Readonly<{
+      kind: 'unavailable';
+      id: number;
+      reason: 'report_limit' | 'worker_failed';
+    }>;
+
+/** Trusted construction dependency, never supplied by a job caller. */
+export interface CallableTargetWorkerAdapter {
+  readonly purpose: 'callable-target-assessment-v1';
+  spawn(resourceLimits: NonNullable<WorkerOptions['resourceLimits']>): Worker;
+  prepare(snapshot: unknown): Readonly<{ payload: unknown; bytes: number }>;
+  decodeReply(input: unknown): AuthoringWorkerReply;
+  validateResult(report: unknown, prepared: unknown): unknown;
+}
+export interface CallableTargetJobSlot {
+  assess(
+    snapshot: unknown,
+    options?: Readonly<{ signal?: AbortSignal }>,
+  ): Promise<unknown>;
+}
+interface JobAdapter {
+  readonly retainPrepared?: boolean;
+  spawn(resourceLimits: NonNullable<WorkerOptions['resourceLimits']>): Worker;
+  decodeReply(input: unknown): AuthoringWorkerReply;
+  validateResult(report: unknown, prepared: unknown): unknown;
+}
 interface PendingBatch {
   id: number;
   bytes: number;
-  payload:
-    | { graph: WorkflowGraph; policies: WorkflowExpressionPolicyProjection }
-    | undefined;
+  payload: unknown;
+  prepared: unknown;
+  adapter: JobAdapter;
   signal: AbortSignal | undefined;
   abort: (() => void) | undefined;
   timer: ReturnType<typeof setTimeout> | undefined;
   queueDeadline: number | undefined;
-  resolve: (report: GraphValidationResult) => void;
+  resolve: (report: unknown) => void;
   reject: (error: AuthoringValidationUnavailableError) => void;
 }
 interface ActiveBatch {
@@ -70,9 +101,8 @@ interface ActiveBatch {
 }
 
 /** One runtime-owned, bounded authoring parser. Never evaluates expressions. */
-export class WorkflowAuthoringValidator {
+class BoundedAuthoringJobOwner {
   readonly #limits: Limits;
-  readonly #workerFactory: (url: URL, options: WorkerOptions) => Worker;
   readonly #queue: PendingBatch[] = [];
   readonly #active = new Map<number, ActiveBatch>();
   readonly #terminations = new WeakMap<Worker, Promise<unknown>>();
@@ -117,9 +147,6 @@ export class WorkflowAuthoringValidator {
           'Authoring validator options exceed operational bounds',
         );
     }
-    this.#workerFactory =
-      options.workerFactory ??
-      ((url, workerOptions) => new Worker(url, workerOptions));
   }
 
   diagnostics(): Readonly<{
@@ -136,34 +163,41 @@ export class WorkflowAuthoringValidator {
     };
   }
 
-  async validate(
-    graphInput: unknown,
-    policyInput: WorkflowExpressionPolicyProjection,
+  assertOpen(signal?: AbortSignal): void {
+    if (this.#closed) throw new AuthoringValidationUnavailableError('closed');
+    if (signal?.aborted)
+      throw new AuthoringValidationUnavailableError('canceled');
+  }
+
+  async submit(
+    payload: unknown,
+    bytes: number,
+    adapter: JobAdapter,
+    submittedAt: number,
     options: Readonly<{ signal?: AbortSignal }> = {},
-  ): Promise<GraphValidationResult> {
-    const submittedAt = performance.now();
+  ): Promise<unknown> {
     if (this.#closed) throw new AuthoringValidationUnavailableError('closed');
     if (options.signal?.aborted)
       throw new AuthoringValidationUnavailableError('canceled');
-    const graph = parseWorkflowGraphDraft(graphInput);
-    let policies: WorkflowExpressionPolicyProjection;
-    try {
-      policies = policyProjectionSchema.parse(canonicalizeJson(policyInput));
-      const definitions = new Set<string>();
-      for (const { definition } of policies.definitions) {
-        const identity = `${definition.key}\u0000${String(definition.version)}`;
-        if (definitions.has(identity))
-          throw new Error('Duplicate policy definition');
-        definitions.add(identity);
-      }
-    } catch {
-      throw new AuthoringValidationUnavailableError(
-        'invalid_policy_projection',
-      );
-    }
-    const bytes = Buffer.byteLength(JSON.stringify({ graph, policies }));
-    if (bytes > budget.envelopeBytes)
+    if (
+      !Number.isSafeInteger(bytes) ||
+      bytes < 0 ||
+      bytes > budget.envelopeBytes
+    )
       throw new AuthoringValidationUnavailableError('payload_limit');
+    const inspected = inspectJsonDocumentAdmission(payload, {
+      bytes: budget.envelopeBytes,
+      depth: CANONICAL_JSON_MAX_DEPTH,
+    });
+    if (
+      !inspected.ok ||
+      typeof inspected.snapshot !== 'object' ||
+      inspected.snapshot === null ||
+      Array.isArray(inspected.snapshot)
+    )
+      throw new AuthoringValidationUnavailableError('payload_limit');
+    payload = inspected.snapshot;
+    bytes = inspected.bytes;
     if (options.signal?.aborted)
       throw new AuthoringValidationUnavailableError('canceled');
     if (
@@ -172,11 +206,13 @@ export class WorkflowAuthoringValidator {
         this.#queuedBytes + bytes > this.#limits.maxQueuedBytes)
     )
       throw new AuthoringValidationUnavailableError('overloaded');
-    return new Promise<GraphValidationResult>((resolve, reject) => {
+    return new Promise<unknown>((resolve, reject) => {
       const job: PendingBatch = {
         id: ++this.#nextId,
         bytes,
-        payload: { graph, policies },
+        payload,
+        prepared: payload,
+        adapter,
         signal: options.signal,
         abort: undefined,
         timer: undefined,
@@ -228,6 +264,7 @@ export class WorkflowAuthoringValidator {
     this.#queuedBytes -= job.bytes;
     this.#clearPending(job);
     job.payload = undefined;
+    job.prepared = undefined;
     job.reject(new AuthoringValidationUnavailableError(reason));
   }
 
@@ -268,25 +305,26 @@ export class WorkflowAuthoringValidator {
       performance.now() >= job.queueDeadline
     ) {
       job.payload = undefined;
+      job.prepared = undefined;
       job.reject(new AuthoringValidationUnavailableError('queue_timeout'));
       return;
     }
     if (job.signal?.aborted) {
       job.payload = undefined;
+      job.prepared = undefined;
       job.reject(new AuthoringValidationUnavailableError('canceled'));
       return;
     }
     let worker: Worker;
     try {
-      worker = this.#workerFactory(runtimeUrl, {
-        resourceLimits: {
-          maxOldGenerationSizeMb: 64,
-          maxYoungGenerationSizeMb: 8,
-          stackSizeMb: 4,
-        },
+      worker = job.adapter.spawn({
+        maxOldGenerationSizeMb: 64,
+        maxYoungGenerationSizeMb: 8,
+        stackSizeMb: 4,
       });
     } catch {
       job.payload = undefined;
+      job.prepared = undefined;
       job.reject(new AuthoringValidationUnavailableError('worker_failed'));
       return;
     }
@@ -318,7 +356,7 @@ export class WorkflowAuthoringValidator {
     };
     const finish = (
       reason?: AuthoringValidationUnavailableReason,
-      report?: GraphValidationResult,
+      report?: unknown,
     ): Promise<void> => {
       // A received report is provisional until termination and caller settlement.
       if (
@@ -350,6 +388,7 @@ export class WorkflowAuthoringValidator {
           job.reject(
             new AuthoringValidationUnavailableError('invalid_response'),
           );
+        job.prepared = undefined;
       })();
       return finishPromise;
     };
@@ -372,12 +411,7 @@ export class WorkflowAuthoringValidator {
           void finish('report_limit');
           return;
         }
-        const parsed = replySchema.safeParse(input);
-        if (!parsed.success) {
-          void finish('invalid_response');
-          return;
-        }
-        const message = parsed.data;
+        const message = job.adapter.decodeReply(input);
         if (message.kind === 'ready') {
           if (ready) {
             void finish('invalid_response');
@@ -388,8 +422,17 @@ export class WorkflowAuthoringValidator {
           deadline = setTimeout(() => {
             void finish('parse_timeout');
           }, this.#limits.parseMs);
+          if (
+            typeof job.payload !== 'object' ||
+            job.payload === null ||
+            Array.isArray(job.payload)
+          ) {
+            void finish('invalid_response');
+            return;
+          }
           worker.postMessage({ id: job.id, ...job.payload });
           job.payload = undefined;
+          if (job.adapter.retainPrepared === false) job.prepared = undefined;
           return;
         }
         if (message.id !== job.id || !ready) {
@@ -405,8 +448,11 @@ export class WorkflowAuthoringValidator {
         } else if (!started) void finish('invalid_response');
         else if (message.kind === 'unavailable') void finish(message.reason);
         else {
-          assertReportBudget(message.report);
-          void finish(undefined, message.report);
+          const report = job.adapter.validateResult(
+            message.report,
+            job.prepared,
+          );
+          void finish(undefined, report);
         }
       } catch (error: unknown) {
         void finish(
@@ -436,4 +482,135 @@ export class WorkflowAuthoringValidator {
     job.signal?.addEventListener('abort', job.abort, { once: true });
     if (job.signal?.aborted) void finish('canceled');
   }
+}
+
+type ValidatorOptions = Partial<Limits> &
+  Readonly<{
+    workerFactory?: (url: URL, options: WorkerOptions) => Worker;
+  }>;
+
+function structuralFacade(
+  owner: BoundedAuthoringJobOwner,
+  options: ValidatorOptions,
+) {
+  const workerFactory =
+    options.workerFactory ??
+    ((url: URL, workerOptions: WorkerOptions) =>
+      new Worker(url, workerOptions));
+  const adapter: JobAdapter = {
+    retainPrepared: false,
+    spawn: (resourceLimits) => workerFactory(runtimeUrl, { resourceLimits }),
+    decodeReply: (input) => replySchema.parse(input),
+    validateResult: (report) => {
+      const parsed = validationReportSchema.parse(report);
+      assertReportBudget(parsed);
+      return parsed;
+    },
+  };
+  return {
+    async validate(
+      graphInput: unknown,
+      policyInput: WorkflowExpressionPolicyProjection,
+      validateOptions: Readonly<{ signal?: AbortSignal }> = {},
+    ): Promise<GraphValidationResult> {
+      const submittedAt = performance.now();
+      owner.assertOpen(validateOptions.signal);
+      const graph = parseWorkflowGraphDraft(graphInput);
+      let policies: WorkflowExpressionPolicyProjection;
+      try {
+        policies = policyProjectionSchema.parse(canonicalizeJson(policyInput));
+        const definitions = new Set<string>();
+        for (const { definition } of policies.definitions) {
+          const identity = `${definition.key}\u0000${String(definition.version)}`;
+          if (definitions.has(identity))
+            throw new Error('Duplicate policy definition');
+          definitions.add(identity);
+        }
+      } catch {
+        throw new AuthoringValidationUnavailableError(
+          'invalid_policy_projection',
+        );
+      }
+      const payload = { graph, policies };
+      const bytes = Buffer.byteLength(JSON.stringify(payload));
+      return validationReportSchema.parse(
+        await owner.submit(
+          payload,
+          bytes,
+          adapter,
+          submittedAt,
+          validateOptions,
+        ),
+      );
+    },
+  };
+}
+
+/** Source-compatible standalone structural validator with its own cleanup owner. */
+export class WorkflowAuthoringValidator {
+  readonly #owner: BoundedAuthoringJobOwner;
+  readonly #facade: ReturnType<typeof structuralFacade>;
+  constructor(options: ValidatorOptions = {}) {
+    this.#owner = new BoundedAuthoringJobOwner(options);
+    this.#facade = structuralFacade(this.#owner, options);
+  }
+  validate(
+    graph: unknown,
+    policies: WorkflowExpressionPolicyProjection,
+    options: Readonly<{ signal?: AbortSignal }> = {},
+  ): Promise<GraphValidationResult> {
+    return this.#facade.validate(graph, policies, options);
+  }
+  diagnostics() {
+    return this.#owner.diagnostics();
+  }
+  shutdown(): Promise<void> {
+    return this.#owner.shutdown();
+  }
+}
+
+/** Two fixed job slots share one FIFO admission and termination owner. */
+export function createAuthoringJobRuntime(
+  options: ValidatorOptions &
+    Readonly<{ callableTargetAdapter?: CallableTargetWorkerAdapter }> = {},
+) {
+  if (options.callableTargetAdapter !== undefined)
+    z.literal('callable-target-assessment-v1').parse(
+      options.callableTargetAdapter.purpose,
+    );
+  const owner = new BoundedAuthoringJobOwner(options);
+  const adapter = options.callableTargetAdapter;
+  const callableTargets: CallableTargetJobSlot | undefined =
+    adapter === undefined
+      ? undefined
+      : {
+          async assess(snapshot, assessOptions = {}) {
+            try {
+              const submittedAt = performance.now();
+              owner.assertOpen(assessOptions.signal);
+              const prepared = adapter.prepare(snapshot);
+              return await owner.submit(
+                prepared.payload,
+                prepared.bytes,
+                adapter,
+                submittedAt,
+                assessOptions,
+              );
+            } catch (error: unknown) {
+              if (
+                error instanceof AuthoringValidationUnavailableError &&
+                error.reason === 'canceled' &&
+                assessOptions.signal?.aborted
+              )
+                throw assessOptions.signal.reason;
+              throw error;
+            }
+          },
+        };
+  return {
+    validator: structuralFacade(owner, options),
+    callableTargets,
+    diagnostics: () => owner.diagnostics(),
+    shutdown: () => owner.shutdown(),
+  };
 }
