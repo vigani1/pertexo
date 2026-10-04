@@ -3946,6 +3946,7 @@ DECLARE
 BEGIN
   IF (jsonb_typeof(p_selection)='object' AND (
     (p_selection=jsonb_build_object('slot','run_input')) OR
+    (p_selection=jsonb_build_object('slot','wait_resume_output')) OR
     (p_selection->>'slot'='upstream_output'
       AND p_selection ?& ARRAY['slot','nodeId','invocationKey']
       AND p_selection-ARRAY['slot','nodeId','invocationKey']='{}'::jsonb
@@ -3993,6 +3994,47 @@ BEGIN
     END IF;
     v_metadata:=jsonb_build_object('kind','run_input','workspaceId',v_workspace,
       'runId',v_run,'workflowVersionId',v_version,'provenanceId',v_borrow.id);
+  ELSIF p_selection->>'slot'='wait_resume_output' THEN
+    -- Read the actual resumed consumer and its exact immediately preceding
+    -- physical Wait output. Neither a historical producer ID nor a supplied
+    -- reference selects the predecessor; no synthetic coordinator consumer.
+    SELECT * INTO STRICT v_node FROM app.node_runs node WHERE node.workspace_id=v_workspace
+      AND node.id=(v_scope->>'nodeRunId')::uuid AND node.workflow_run_id=v_run;
+    SELECT * INTO STRICT v_attempt FROM app.node_attempts attempt WHERE attempt.workspace_id=v_workspace
+      AND attempt.id=(v_scope->>'attemptId')::uuid AND attempt.node_run_id=v_node.id
+      AND attempt.admission_kind='wait_resume' AND attempt.attempt_number>1;
+    SELECT count(*)::integer,(jsonb_agg(invocation))->0 INTO v_matches,v_invocation
+      FROM jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation
+      WHERE invocation->>'nodeId'=v_node.node_id AND invocation->>'invocationKey'=v_node.invocation_key
+        AND invocation->>'status'='running' AND invocation->'attemptNumber'=to_jsonb(v_attempt.attempt_number);
+    IF v_matches<>1 THEN
+      RAISE EXCEPTION 'native Wait current resumed invocation differs' USING ERRCODE='55000';
+    END IF;
+    SELECT source.* INTO v_source FROM app.workflow_execution_value_provenance source
+      JOIN app.node_attempts predecessor ON predecessor.workspace_id=source.workspace_id
+        AND predecessor.id=source.attempt_id AND predecessor.node_run_id=v_node.id
+        AND predecessor.attempt_number=v_attempt.attempt_number-1 AND predecessor.status='succeeded'
+        AND predecessor.completed_at IS NOT NULL AND predecessor.safe_error_code IS NULL
+        AND predecessor.executor_failure_kind IS NULL AND predecessor.retry_decision IS NULL
+        AND predecessor.output_ref::text=source.original_reference::text
+      WHERE source.workspace_id=v_workspace AND source.workflow_run_id=v_run
+        AND source.workflow_version_id=v_version AND source.node_run_id=v_node.id
+        AND source.node_id=v_node.node_id AND source.invocation_key=v_node.invocation_key
+        AND source.attempt_number=v_attempt.attempt_number-1 AND source.value_slot='attempt_output'
+        AND source.byte_ownership='owned';
+    IF NOT FOUND OR v_node.output_ref::text IS DISTINCT FROM v_source.original_reference::text
+      OR NOT EXISTS(SELECT 1 FROM app.run_events event WHERE event.workspace_id=v_workspace
+        AND event.workflow_run_id=v_run AND event.type='node.waiting'
+        AND event.payload->>'nodeRunId'=v_node.id::text AND event.payload->>'nodeId'=v_node.node_id
+        AND event.payload->>'invocationKey'=v_node.invocation_key
+        AND event.payload->>'attemptId'=v_source.attempt_id::text
+        AND event.payload->'attemptNumber'=to_jsonb(v_source.attempt_number)
+        AND event.payload->>'waitKind'='node_wait') THEN
+      RAISE EXCEPTION 'native Wait accepted physical suspension differs' USING ERRCODE='55000';
+    END IF;
+    v_metadata:=jsonb_build_object('kind','physical_output','workspaceId',v_workspace,
+      'provenanceId',v_source.id,'runId',v_run,'workflowVersionId',v_version,
+      'nodeId',v_node.node_id,'invocationKey',v_node.invocation_key,'attemptId',v_source.attempt_id);
   ELSE
     SELECT count(*)::integer,(jsonb_agg(invocation))->0 INTO v_matches,v_invocation
       FROM jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation

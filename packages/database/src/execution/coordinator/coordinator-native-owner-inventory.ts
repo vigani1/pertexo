@@ -291,7 +291,7 @@ export const NATIVE_COORDINATOR_OWNER_INVENTORY = [
   },
   {
     signature: 'app.read_native_attempt_value_source(jsonb,jsonb)',
-    hash: 'cd24a3595840e184bb75be1e7f9698f4',
+    hash: '7ac33457b56f654f0fdb927a508861f2',
     securityDefiner: true,
     rowSecurity: true,
   },

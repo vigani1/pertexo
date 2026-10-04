@@ -19,18 +19,16 @@ export async function readNativeAttemptValueSource(
   assertNotAborted(input.signal);
   const lease = loadInputsSchema.shape.lease.parse(input.lease);
   const requested = parseNativeNodeAttemptValueSource(input.source);
-  if (requested.slot === 'wait_resume_output')
-    throw new Error(
-      'Native Wait resume source authorization is not implemented',
-    );
   const selection =
     requested.slot === 'run_input'
       ? { slot: 'run_input' }
-      : {
-          slot: 'upstream_output',
-          nodeId: requested.source.nodeId,
-          invocationKey: requested.source.invocationKey,
-        };
+      : requested.slot === 'wait_resume_output'
+        ? { slot: 'wait_resume_output' }
+        : {
+            slot: 'upstream_output',
+            nodeId: requested.source.nodeId,
+            invocationKey: requested.source.invocationKey,
+          };
   return withWorkspaceReadClient(
     pool,
     lease.workspaceId,

@@ -37,11 +37,8 @@ export async function loadNativeNodeAttemptInputs(
       : { deadlineAt: z.coerce.date().parse(row.deadline_at) }),
   };
   if (row.abort_requested) return Object.freeze(base);
-  if (
-    input.lease.admissionKind === 'wait_resume' ||
-    (input.lease.iterationPath?.length ?? 0) > 0
-  )
-    throw new Error('Native Wait/structured source loading is not implemented');
+  if ((input.lease.iterationPath?.length ?? 0) > 0)
+    throw new Error('Native structured source loading is not implemented');
   const selections = [
     { slot: 'run_input' },
     ...input.upstreamNodeOutputs.map(({ nodeId, invocationKey }) => ({
@@ -49,6 +46,9 @@ export async function loadNativeNodeAttemptInputs(
       nodeId,
       invocationKey,
     })),
+    ...(input.lease.admissionKind === 'wait_resume'
+      ? [{ slot: 'wait_resume_output' }]
+      : []),
   ];
   const sources: unknown[] = [];
   for (const selection of selections) {

@@ -41,11 +41,34 @@ const source = {
     sha256: '74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b',
   },
 };
+const waitLease: NodeAttemptLease = {
+  ...lease,
+  nodeId: 'wait',
+  invocationKey: `${id(3)}|wait|b:|i:`,
+  attemptNumber: 2,
+  admissionKind: 'wait_resume',
+  sideEffectClass: 'safe',
+};
+const resumeSource = {
+  slot: 'wait_resume_output',
+  source: {
+    kind: 'physical_output',
+    workspaceId: id(1),
+    runId: id(2),
+    workflowVersionId: id(3),
+    provenanceId: id(8),
+    nodeId: 'wait',
+    invocationKey: waitLease.invocationKey,
+    attemptId: id(9),
+  },
+  snapshot: source.snapshot,
+};
 
 /** External pg only: actual loader, parser and tenant owner remain composed. */
 class SourceClient extends EventEmitter {
   public readonly statements: { sql: string; values: unknown[] }[] = [];
   public readonly releases: (boolean | Error | undefined)[] = [];
+  public resumeProjection: unknown = resumeSource;
   private workspace: string | null = null;
   public constructor(
     private readonly controller: AbortController,
@@ -110,7 +133,17 @@ class SourceClient extends EventEmitter {
     if (sql.includes('read_native_attempt_value_source')) {
       if (this.stop === 'source') this.controller.abort();
       if (this.stop === 'denial') throw new Error('actual source owner denied');
-      return { rows: [{ source }] };
+      return {
+        rows: [
+          {
+            source:
+              (JSON.parse(String(values[1])) as { slot: string }).slot ===
+              'wait_resume_output'
+                ? this.resumeProjection
+                : source,
+          },
+        ],
+      };
     }
     return { rows: [] };
   }
@@ -133,6 +166,59 @@ function run(stop?: ConstructorParameters<typeof SourceClient>[1]) {
   return { result, client };
 }
 describe('native attempt source ownership through actual tenant composition', () => {
+  it('loads Wait resume metadata serially under the actual resumed lease, without decoded output', async () => {
+    const controller = new AbortController();
+    const client = new SourceClient(controller);
+    const pool = {
+      connect: () => Promise.resolve(client as unknown as PoolClient),
+    } as unknown as Pool;
+    await expect(
+      loadNodeAttemptInputs(pool, {
+        lease: waitLease,
+        upstreamNodeOutputs: [],
+        signal: controller.signal,
+      }),
+    ).resolves.toMatchObject({
+      runInput: null,
+      nativeValueSources: { runInput: source, resumeOutput: resumeSource },
+    });
+    expect(
+      client.statements
+        .filter(({ sql }) => sql.includes('read_native_attempt_value_source'))
+        .map(({ values }) => values),
+    ).toEqual([
+      [workflowCallAttemptAuthorityJson(waitLease), '{"slot":"run_input"}'],
+      [
+        workflowCallAttemptAuthorityJson(waitLease),
+        '{"slot":"wait_resume_output"}',
+      ],
+    ]);
+    expect(client.releases).toHaveLength(1);
+  });
+  it('reauthorizes selected Wait snapshots and rejects a substituted preceding attempt before hydration', async () => {
+    const controller = new AbortController();
+    const client = new SourceClient(controller);
+    const pool = {
+      connect: () => Promise.resolve(client as unknown as PoolClient),
+    } as unknown as Pool;
+    const request = {
+      lease: waitLease,
+      source: parseNativeNodeAttemptValueSource(resumeSource),
+      signal: controller.signal,
+    };
+    await expect(readNativeAttemptValueSource(pool, request)).resolves.toEqual(
+      request.source,
+    );
+    client.resumeProjection = {
+      ...resumeSource,
+      source: { ...resumeSource.source, attemptId: id(10) },
+    };
+    await expect(readNativeAttemptValueSource(pool, request)).rejects.toThrow(
+      'independently accepted source scope differs',
+    );
+    expect(client.statements.at(-2)?.sql).toBe('rollback');
+    expect(client.releases).toHaveLength(2);
+  });
   it('independently reauthorizes hydration with the real lease and rejects historical routing IDs', async () => {
     const controller = new AbortController();
     const client = new SourceClient(controller);

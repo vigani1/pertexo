@@ -54,6 +54,18 @@ Native catalog/execution/writers remain OFF, protected SQL qualification remains
 PAUSED, and artifact results/physical output, Wait/structured sources, general
 result preparation and real-service qualification remain open.
 
+The subsequent Wait-read slice is also uncommitted and unqualified. The actual
+input loader now selects resume metadata under its resumed lease, and the source
+adapter freshly reauthorizes that exact selection before shared-codec hydration.
+Fresh0137 derives the immediately preceding accepted physical output from actual
+`wait_resume` admission, running checkpoint invocation, predecessor success and
+the durable `node.waiting` fact; it does not accept historical producer selectors.
+Common source eligibility/artifact availability and current-consumer postchecks
+remain in place. Targeted database source/parser/inventory tests pass 31 cases;
+existing worker hydration/handler tests pass 23 cases; build/typecheck/lint pass.
+These are application/external-pg and source-only checks, not live SQL authority.
+Wait artifact production/completion and structured collection loading remain open.
+
 Minimum native Call executable path (source is not qualification):
 
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
@@ -199,6 +211,8 @@ No node or preview artifact capability receives this framework-only dependency.
       `ab698158`); the stronger arbitrary-worker-command guarantee remains unclaimed.
 - [ ] Review the guarded artifact Call admission source delta and independently
       qualify protected acceptance/atomicity/COMMIT behavior when permitted.
+- [ ] Review native Wait resume source reads and qualify suspension/resume/physical
+      output behavior; complete structured collection source composition.
 - [x] Accept the concrete ADR065 native artifact owner amendment and contract
       delta through primary and independent design review before persistent code.
 - [x] Separate producer slots and coordinator pre/post-CAS result identity from
