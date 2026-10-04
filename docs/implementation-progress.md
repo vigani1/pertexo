@@ -409,6 +409,20 @@ These browser fixtures do not earn native runs or qualify SQL, publication,
 retention or rollout. No push occurred; native execution/catalogs/writers remain
 OFF and full F08 remains incomplete.
 
+The source-only lifecycle volatility revision is approved after primary full-delta
+review, zero Spec/Standards findings and 23 independently passing lifecycle tests. The existing
+assessor now binds a separate complete 68-function header profile: one immutable
+binary64 leaf, one stable retention dry-run and 66 volatile owners, including
+omitted defaults. Its digest is
+`716110f6377625036757935e6c25c035aacd93306bc903da53361304ab9aaa8f`.
+Existing candidate/body/configuration identities and production readiness remain
+unchanged. Missing, null, unknown and changed injected volatility reports drift;
+38 lifecycle/ownership tests pass. The missing full-function fact is now precisely
+`complete_function_acl`; actual installed volatility/configuration and all ACL,
+role, schema-definition, process and isolation qualification remain unclosed.
+Matching observations still leave runtime admission false. No installation,
+grant, native activation or excluded-campaign execution occurred.
+
 | Path criterion | Implemented source | Actually exercised behavior | Remaining gate |
 | --- | --- | --- | --- |
 | Publication / compiler selection | WIP: actual publication owner validates callable selectors and bounded immutable closure; compiler chooses V3 for Graph2 | Ordinary public-owner positive publication, invalid selector, immutable pin/contract lookup and HTTP error-mapping tests; real V3 compiler verification | Installed format constraints, locked native release and adversarial publication authority unqualified; no real native publication qualified |

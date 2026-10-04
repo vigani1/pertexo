@@ -123,6 +123,16 @@ function simulatedFixture(source) {
   };
 }
 
+function simulatedNativeFunctions(source) {
+  return NATIVE_COORDINATOR_OWNER_INVENTORY.map((row) => ({
+    ...row,
+    owner: 'pertexo_owner',
+    volatility: source.nativeFunctionVolatility.find(
+      (profile) => profile.signature === row.signature,
+    )?.volatility,
+  }));
+}
+
 test('source lifecycle reports exact drift and runtime prerequisites without creating admission', async () => {
   const source = await observeNativeQualificationSource();
   const input = simulatedFixture(source);
@@ -359,10 +369,7 @@ test('rejects shared, stopped, purpose-mismatched and nondisposable resource sim
 test('all four functional selections remain blocked even with matching simulated function profiles', async () => {
   const input = simulatedFixture(await observeNativeQualificationSource());
   input.observeCatalog = async () => ({
-    nativeFunctions: NATIVE_COORDINATOR_OWNER_INVENTORY.map((row) => ({
-      ...row,
-      owner: 'pertexo_owner',
-    })),
+    nativeFunctions: simulatedNativeFunctions(input.source),
   });
   const owner = createNativeQualificationLifecycle(input);
   const report = await owner.assess([
@@ -608,15 +615,87 @@ test('rejects null, unknown, extra and reordered purge configuration observation
   for (const proconfig of configurations) {
     const input = simulatedFixture(await observeNativeQualificationSource());
     input.observeCatalog = async () => ({
-      nativeFunctions: NATIVE_COORDINATOR_OWNER_INVENTORY.map((row) => ({
+      nativeFunctions: simulatedNativeFunctions(input.source).map((row) => ({
         ...row,
-        owner: 'pertexo_owner',
         ...(row.signature === signature ? { proconfig } : {}),
       })),
     });
     const owner = createNativeQualificationLifecycle(input);
     const report = await owner.assess(['retention_family_resume']);
     assert.deepEqual(report.nativeOwnerDrift, [signature]);
+    await owner.close();
+  }
+});
+
+test('binds a separate complete volatility profile without changing existing body/configuration identities', async () => {
+  const source = await observeNativeQualificationSource();
+  const profile = source.nativeFunctionVolatility;
+  assert.equal(profile.length, 68);
+  assert.deepEqual(
+    profile.map((row) => row.signature),
+    NATIVE_COORDINATOR_OWNER_INVENTORY.map((row) => row.signature),
+  );
+  assert.deepEqual(
+    profile.filter((row) => row.volatility === 'i'),
+    [
+      {
+        signature: 'app.native_execution_value_binary64_leaf(text)',
+        volatility: 'i',
+      },
+    ],
+  );
+  assert.deepEqual(
+    profile.filter((row) => row.volatility === 's'),
+    [
+      {
+        signature:
+          'app.standard_retention_dry_run_stage_keys(uuid,character varying,character varying,timestamptz,jsonb,jsonb,boolean,integer)',
+        volatility: 's',
+      },
+    ],
+  );
+  assert.equal(profile.filter((row) => row.volatility === 'v').length, 66);
+  assert.equal(
+    source.functionVolatilitySha256,
+    createHash('sha256').update(JSON.stringify(profile)).digest('hex'),
+  );
+  assert.equal(
+    source.functionVolatilitySha256,
+    '716110f6377625036757935e6c25c035aacd93306bc903da53361304ab9aaa8f',
+  );
+});
+
+test('rejects missing, null, unknown and changed volatility observations without creating runtime admission', async () => {
+  const source = await observeNativeQualificationSource();
+  const cases = [
+    ['app.read_workflow_call_run_family(uuid)', undefined],
+    ['app.read_workflow_call_run_family(uuid)', null],
+    ['app.read_workflow_call_run_family(uuid)', 'VOLATILE'],
+    ['app.read_workflow_call_run_family(uuid)', 's'],
+    ['app.native_execution_value_binary64_leaf(text)', 'v'],
+    [
+      'app.standard_retention_dry_run_stage_keys(uuid,character varying,character varying,timestamptz,jsonb,jsonb,boolean,integer)',
+      'v',
+    ],
+  ];
+  for (const [signature, volatility] of cases) {
+    const input = simulatedFixture(source);
+    input.observeCatalog = async () => ({
+      nativeFunctions: simulatedNativeFunctions(source).map((row) =>
+        row.signature === signature ? { ...row, volatility } : row,
+      ),
+    });
+    const owner = createNativeQualificationLifecycle(input);
+    const report = await owner.assess(['retention_family_resume']);
+    assert.deepEqual(report.nativeOwnerDrift, [signature]);
+    assert.equal(report.installedCompatible, false);
+    assert.equal(report.nativeReady, false);
+    assert.equal(report.runtimeStartAuthorized, false);
+    assert.ok(
+      report.compatibility.missingFacts.some(
+        (row) => row.id === 'complete_function_acl',
+      ),
+    );
     await owner.close();
   }
 });

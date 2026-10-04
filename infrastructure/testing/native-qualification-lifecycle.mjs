@@ -23,11 +23,12 @@ export async function observeNativeQualificationSource() {
   );
   const [commit, tree] = stdout.trim().split('\n');
   const candidate = await readFile(new URL(candidatePath, repository), 'utf8');
-  const owners = [
+  const definitions = [
     ...candidate.matchAll(
       /CREATE (?:OR REPLACE )?FUNCTION app\.(\w+)\(([\s\S]*?)\)\s*(RETURNS[\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
     ),
-  ].map((match) => {
+  ];
+  const owners = definitions.map((match) => {
     const configuration = match[3].match(
       /\bSET search_path=(pg_catalog,app,pg_temp|pg_catalog,pg_temp)(?: SET row_security=on)?\s*$/u,
     );
@@ -56,6 +57,19 @@ export async function observeNativeQualificationSource() {
   });
   if (!isDeepStrictEqual(owners, NATIVE_COORDINATOR_OWNER_INVENTORY))
     throw new Error('Native source and built owner inventory differ');
+  const nativeFunctionVolatility = definitions.map((match, index) => {
+    const declarations =
+      match[3].match(/\b(?:IMMUTABLE|STABLE|VOLATILE)\b/gu) ?? [];
+    if (declarations.length > 1)
+      throw new Error('Native source function volatility is ambiguous');
+    return {
+      signature: owners[index].signature,
+      // CREATE (OR REPLACE) FUNCTION defaults to VOLATILE when omitted.
+      volatility: { IMMUTABLE: 'i', STABLE: 's', VOLATILE: 'v' }[
+        declarations[0] ?? 'VOLATILE'
+      ],
+    };
+  });
   const names = (
     await readdir(new URL('packages/database/migrations/', repository))
   )
@@ -105,6 +119,8 @@ export async function observeNativeQualificationSource() {
       ),
     ),
     ownerCount: owners.length,
+    nativeFunctionVolatility,
+    functionVolatilitySha256: digest(JSON.stringify(nativeFunctionVolatility)),
     baseHead: names.at(-1),
     migrations,
     artifacts,
@@ -234,7 +250,7 @@ async function observeOwnedResources(
   return Object.freeze(current);
 }
 
-function ownerDrift(observed) {
+function ownerDrift(observed, source) {
   if (!Array.isArray(observed?.nativeFunctions))
     throw new Error('Native catalog observation is unavailable');
   const rows = new Map();
@@ -244,6 +260,12 @@ function ownerDrift(observed) {
     rows.set(row.signature, row);
   }
   const differences = [];
+  const volatility = new Map(
+    source.nativeFunctionVolatility.map((row) => [
+      row.signature,
+      row.volatility,
+    ]),
+  );
   for (const expected of NATIVE_COORDINATOR_OWNER_INVENTORY) {
     const row = rows.get(expected.signature);
     if (
@@ -252,6 +274,7 @@ function ownerDrift(observed) {
       row.securityDefiner !== expected.securityDefiner ||
       row.rowSecurity !== expected.rowSecurity ||
       !isDeepStrictEqual(row.proconfig, expected.proconfig) ||
+      row.volatility !== volatility.get(expected.signature) ||
       row.owner !== 'pertexo_owner'
     )
       differences.push(expected.signature);
@@ -391,7 +414,7 @@ function knownCatalogDrift(catalog, source) {
 function compatibilityObservations(catalog, source, unknownIsolation) {
   const missingFacts = [
     {
-      id: 'complete_function_acl_volatility',
+      id: 'complete_function_acl',
       owner: 'database native readiness / reviewed installation artifact',
     },
     {
@@ -511,7 +534,7 @@ export function createNativeQualificationLifecycle(input) {
       source,
       resources,
       cases,
-      nativeOwnerDrift: ownerDrift(catalog),
+      nativeOwnerDrift: ownerDrift(catalog, source),
       compatibility: compatibilityObservations(
         catalog,
         source,

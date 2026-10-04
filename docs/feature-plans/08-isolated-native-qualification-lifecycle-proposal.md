@@ -224,7 +224,7 @@ new native functions. These checks do not qualify the entire installed catalog.
 
 | Still unavailable expected fact | Existing owner that must close it |
 | --- | --- |
-| Exact function ACLs and volatility for the complete shared/native set; actual installed configuration qualification | Database native readiness / reviewed installation artifact |
+| Exact function ACLs for the complete shared/native set; actual installed configuration/volatility qualification | Database native readiness / reviewed installation artifact |
 | Complete role membership/ACL cohort including maintenance and lifecycle identities | Existing role provisioning / reviewed fixture installation |
 | Qualified constraint/policy expressions, complete index definitions and trigger bindings | Database native published constraint/catalog inventory |
 | Full emitted process/dependency bytes and compatibility cohort | Existing runtime-closure owner / qualification process manifest |
@@ -268,3 +268,19 @@ are accepted; missing, malformed, impossible or ambiguous metadata rejects befor
 family SQL. This repair does not change candidate or owner-inventory bytes.
 All observations remain source/mock evidence; installation,
 effective catalog ACLs/RLS, actual retirement and runtime admission remain blocked.
+
+The bounded source-only revision is approved after primary full-delta review,
+zero Spec/Standards findings and 23 independently passing lifecycle tests. The existing assessor
+separately derives exact PostgreSQL `i`/`s`/`v` volatility expectations from all 68
+Fresh0137 headers, including omitted VOLATILE defaults, the immutable binary64
+leaf and stable retention dry-run owner. Its new profile digest is
+`716110f6377625036757935e6c25c035aacd93306bc903da53361304ab9aaa8f`;
+the existing candidate, body and ordered-configuration profile identities do not
+change. Injected missing/null/unknown/different volatility reports owner drift.
+The unavailable expected-fact identifier now names `complete_function_acl`;
+volatility source expectations are available, not installed or operationally
+qualified. Thirty-eight source-lifecycle/ownership tests pass. All five broader
+fact groups remain incomplete, including ACLs; matching profiles still cannot
+qualify compatibility, dedicated isolation, case execution or native readiness.
+This changes neither production readiness nor SQL, roles, grants or installation
+authority. No resource, process or protected-campaign execution occurred.
