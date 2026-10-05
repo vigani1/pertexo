@@ -1,5 +1,6 @@
 import {
   createWorkflowAuthoringDatabase,
+  WorkflowDraftOperationUnavailableError,
   type DatabaseConfig,
   type DatabaseRuntime,
   type WorkflowAuthoringDatabase,
@@ -18,6 +19,7 @@ import {
   composeExecutableCompatibilityReleaseV3,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
+  WORKFLOW_CALL_RUNTIME_POLICIES_V1,
 } from '@pertexo/workflow-engine';
 import {
   WorkflowAuthoringValidator,
@@ -218,8 +220,21 @@ export function createCoreAuthoringOptions(
         ) => validator.validate(graph, authoringPolicies, options),
         executableCompiler: (graph: WorkflowGraph) => {
           // The existing locked release remains the authority. A retained
-          // release without native definitions/policies fails V3 compilation;
+          // release without exact native policies cannot compile Graph2. Keep
+          // unsupported capability distinct from invalid user-authored graphs;
           // this branch neither registers a native catalog nor activates it.
+          if (
+            graph.schemaVersion === 2 &&
+            !Object.values(WORKFLOW_CALL_RUNTIME_POLICIES_V1).every(
+              (required) =>
+                compatibilityRelease.policies.some(
+                  (available) =>
+                    available.key === required.key &&
+                    available.version === required.version,
+                ),
+            )
+          )
+            throw new WorkflowDraftOperationUnavailableError();
           const compiled =
             graph.schemaVersion === 2
               ? buildWorkflowExecutableV3({
