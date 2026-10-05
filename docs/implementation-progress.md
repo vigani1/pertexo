@@ -43,7 +43,7 @@ parked notification rewrite remain out of scope.
       fixtures with the already-declared Call definition and policy.
 - [x] Repair the changed-gate routing and stale source-only lifecycle metadata
       without altering the dedicated HTTP owner or deferred SQL candidate.
-- [ ] Complete the normal local pre-push gate on the recorded repaired tree.
+- [x] Complete the normal local pre-push gate on the recorded repaired tree.
 - [ ] Run the real HTTP parent/child path in a required no-skip CI job.
 - [ ] Record coherent reviewed commits, green CI and Phase 1 merge to main.
 
@@ -115,9 +115,12 @@ now pin the unchanged candidate's SHA-256, complete/retained owner inventory
 digests and current registered migration head; count, installation guard and
 false native-qualification assertions remain intact. The frozen owner inventory
 and candidate are unchanged. Focused routing, lifecycle and CI-owner tests pass
-70 cases, plus CI policy validation, lint and formatting. Normal local pre-push
-rerun is pending; hosted CI, independent rereview and Phase 1 merge remain open.
-No baseline, timeout, migration or rollout setting is changed.
+70 cases, plus CI policy validation, lint and formatting. Full normal
+`pnpm prepush:fast` passes on repair `f7bcdbf9`: static gates, build and all 45
+built consumers, changed-package lint/tests, dependent typechecks and the final
+84 infrastructure tests (zero failures/skips). The candidate blob is rechecked
+unchanged after qualification. Hosted CI, independent rereview and Phase 1 merge
+remain open. No baseline, timeout, migration or rollout setting is changed.
 
 ### F08 — ordinary execution-value runtime integration (incomplete)
 
