@@ -41,7 +41,8 @@ parked notification rewrite remain out of scope.
       cohesive responsibilities without changing public interfaces or the baseline.
 - [x] Synchronize generated problem-code artifacts and exact nodes-core test
       fixtures with the already-declared Call definition and policy.
-- [ ] Complete the normal local pre-push gate on the recorded repaired tree.
+- [ ] Complete the normal local pre-push gate; remaining infrastructure routing
+      and stale source-only assertions require a separate authorized repair.
 - [ ] Run the real HTTP parent/child path in a required no-skip CI job.
 - [ ] Record coherent reviewed commits, green CI and Phase 1 merge to main.
 
@@ -97,9 +98,16 @@ only the already-declared `workflow.calls_unavailable` enum value to nineteen
 artifacts; freshness and built-consumer checks pass. The nodes-core fixtures now
 include the existing Call policy rather than dropping its definition, and the
 exact inventory adds only `core.workflow_call@1` while preserving the retained
-eighteen identities. All 129 nodes-core tests pass. Final normal local pre-push
-qualification is pending; hosted CI, independent rereview and Phase 1 merge
-remain open. No baseline, timeout, migration or rollout setting is changed.
+eighteen identities. All 129 nodes-core tests pass. Normal `prepush:fast` on
+`8269a609` passes static gates, changed-package lint/tests and dependent types,
+but fails its final infrastructure batch (75 passed / 3 failed): the changed
+selector runs the dedicated HTTP integration without its required owner
+environment, and two source-only lifecycle assertions expect an old candidate
+hash. The actual dedicated HTTP proof passes separately; the deferred candidate
+blob remains `d264e871dd2c96b656e3f6e8367b417344a42096`. Neither routing nor those
+assertions is changed in this repair. Normal local qualification, hosted CI,
+independent rereview and Phase 1 merge remain open. No baseline, timeout,
+migration or rollout setting is changed.
 
 ### F08 — ordinary execution-value runtime integration (incomplete)
 
