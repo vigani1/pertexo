@@ -1,6 +1,6 @@
 import {
-  PLATFORM_LOCAL_JSON_CALL_RELEASE,
-  PLATFORM_LOCAL_JSON_CALL_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED,
   type platformExecutableRegistryHistory,
 } from '@pertexo/node-catalog';
 import {
@@ -8,13 +8,13 @@ import {
   composeExecutableCompatibilityReleaseV3,
 } from '@pertexo/workflow-engine';
 
-/** Fixed development cohort only; ordinary release composition is unchanged. */
+/** Native successors use V3 composition; retained identities stay unchanged. */
 export function composeWorkerWorkflowCompatibilityRelease(
   release: ReturnType<typeof platformExecutableRegistryHistory>[number],
 ) {
   return [
-    PLATFORM_LOCAL_JSON_CALL_RELEASE.fingerprint,
-    PLATFORM_LOCAL_JSON_CALL_STAGED.fingerprint,
+    PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE.fingerprint,
+    PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED.fingerprint,
   ].includes(release.fingerprint)
     ? composeExecutableCompatibilityReleaseV3(release)
     : composeExecutableCompatibilityRelease(release);

@@ -22,7 +22,7 @@ const catalogSchema = z
           lifecycle: z.string(),
           policyReferences: z.array(identity),
         })
-        .passthrough(),
+        .loose(),
     ),
     executors: z.array(
       z
@@ -51,7 +51,11 @@ const call = (value: z.infer<typeof identity>) =>
 const callPolicy = (value: z.infer<typeof identity>) =>
   value.key === 'workflow.call' && value.version === 1;
 
-/** Release-derived adapter capability, not an activation flag or row inference. */
+/**
+ * Release-derived read capability, not activation or dispatch authority.
+ * Staging needs the exact V3 reader for preactivation; registry lifecycle and
+ * ordinary serving release selection still prohibit staged Call execution.
+ */
 export type CoordinatorExecutableCapability = Readonly<{
   nativeReleases: CompatibilityReleaseExpectationSet;
 }>;
@@ -89,14 +93,16 @@ export function parseCoordinatorExecutableCapability(
                 call(definition.definition) &&
                 call(definition.executor) &&
                 definition.executorAbi === 1 &&
-                ['active', 'retained'].includes(definition.lifecycle) &&
+                ['staged', 'active', 'retained'].includes(
+                  definition.lifecycle,
+                ) &&
                 definition.policyReferences.some(callPolicy),
             ) ||
             !catalog.executors.some(
               (executor) =>
                 call(executor.executor) &&
                 executor.abiVersion === 1 &&
-                ['active', 'retained'].includes(executor.lifecycle) &&
+                ['staged', 'active', 'retained'].includes(executor.lifecycle) &&
                 executor.definitions.some(call) &&
                 executor.policyReferences.some(callPolicy),
             )

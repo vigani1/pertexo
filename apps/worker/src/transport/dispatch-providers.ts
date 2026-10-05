@@ -117,9 +117,6 @@ export async function createOwnedOutboxDispatcher(
       factories.database(
         config.dispatcherDatabase,
         dependencies.dispatcherDatabaseRuntime,
-        config.nodeCompatibilityCohort === 'local_json_call'
-          ? { localJsonCallDevelopment: true }
-          : {},
       );
     producer =
       dependencies.queueProducer ??

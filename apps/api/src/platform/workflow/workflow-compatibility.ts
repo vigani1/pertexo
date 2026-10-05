@@ -7,8 +7,8 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
-  PLATFORM_LOCAL_JSON_CALL_RELEASE,
-  PLATFORM_LOCAL_JSON_CALL_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
@@ -115,8 +115,8 @@ export function composeApiWorkflowCompatibilityRelease(
   release: PlatformRegistryRelease,
 ) {
   return [
-    PLATFORM_LOCAL_JSON_CALL_RELEASE.fingerprint,
-    PLATFORM_LOCAL_JSON_CALL_STAGED.fingerprint,
+    PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE.fingerprint,
+    PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED.fingerprint,
   ].includes(release.fingerprint)
     ? composeExecutableCompatibilityReleaseV3(release)
     : composeExecutableCompatibilityRelease(release);
@@ -257,11 +257,7 @@ export function createCoreWorkflowAuthoringDatabase(
   const database = createWorkflowAuthoringDatabase(databaseConfig, {
     ...createCoreAuthoringOptions(
       compatibility.variants,
-      releaseCohort === 'local_json_call'
-        ? compatibility.releaseSupport.descriptions.filter(
-            ({ epoch }) => epoch === 1 || epoch === 4,
-          )
-        : compatibility.readinessSupport.descriptions,
+      compatibility.readinessSupport.descriptions,
       {
         validate: (...args) => {
           if (closed) throw new AuthoringValidationUnavailableError('closed');

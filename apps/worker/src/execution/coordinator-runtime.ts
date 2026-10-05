@@ -252,41 +252,35 @@ export async function createCoordinatorRuntime(
       dependencies.runStore ??
       factories.runStore(options.database, options.databaseRuntime, {
         expectedCompatibilityReleases: currentReleaseDescriptions,
-        ...(options.releaseCohort === 'local_json_call'
-          ? {
-              localJsonCallDevelopment: true,
-              workflowCallAdmission: {
-                compatibilityReleases: currentReleaseDescriptions,
-                createInitialCheckpoint: (projection, engineVersion) => {
-                  const admission = releaseSupport.descriptions.find(
-                    ({ epoch }) =>
-                      epoch === projection.compatibilityReleaseEpoch,
-                  );
-                  const current = currentReleaseDescriptions.at(-1);
-                  if (admission === undefined || current === undefined)
-                    throw new Error('Local child release is unsupported');
-                  verifyWorkflowExecutableV3({
-                    envelope: projection.executableJson,
-                    checksum: projection.checksum,
-                    admissionRelease: releaseSupport.resolve(
-                      admission.epoch,
-                      admission.fingerprint,
-                    ),
-                    currentRelease: releaseSupport.resolve(
-                      current.epoch,
-                      current.fingerprint,
-                    ),
-                  });
-                  return createWorkflowCheckpointV3({
-                    engineVersion,
-                    workflowVersionId: projection.id,
-                    iterationBudget: 1000,
-                    nextEventSequence: 2,
-                  });
-                },
-              },
-            }
-          : {}),
+        workflowCallAdmission: {
+          compatibilityReleases: currentReleaseDescriptions,
+          createInitialCheckpoint: (projection, engineVersion) => {
+            const admission = releaseSupport.descriptions.find(
+              ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
+            );
+            const current = currentReleaseDescriptions.at(-1);
+            if (admission === undefined || current === undefined)
+              throw new Error('Child executable release is unsupported');
+            verifyWorkflowExecutableV3({
+              envelope: projection.executableJson,
+              checksum: projection.checksum,
+              admissionRelease: releaseSupport.resolve(
+                admission.epoch,
+                admission.fingerprint,
+              ),
+              currentRelease: releaseSupport.resolve(
+                current.epoch,
+                current.fingerprint,
+              ),
+            });
+            return createWorkflowCheckpointV3({
+              engineVersion,
+              workflowVersionId: projection.id,
+              iterationBudget: 1000,
+              nextEventSequence: 2,
+            });
+          },
+        },
         nativeValueControlReadTimeoutMillis:
           nativeValueWork.policy.controlReadTimeoutMillis,
         withNativeResultPreparation: createCoordinatorResultPreparationScope(

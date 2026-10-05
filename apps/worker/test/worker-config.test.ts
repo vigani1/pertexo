@@ -15,35 +15,25 @@ const requiredEnvironment = {
 } as const;
 
 describe('parseWorkerConfig', () => {
-  it('confines the paired JSON Call opt-in to owned loopback databases and Redis', () => {
-    const local = {
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@127.0.0.1:51243/pertexo',
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@127.0.0.1:51243/pertexo',
-      REDIS_URL: 'redis://127.0.0.1:51244',
-      NODE_ENV: 'development',
-      NODE_COMPATIBILITY_COHORT: 'local_json_call',
-      PERTEXO_LOCAL_JSON_CALL: 'true',
-    };
-    expect(parseWorkerConfig(local).nodeCompatibilityCohort).toBe(
-      'local_json_call',
-    );
-    for (const patch of [
-      { NODE_ENV: 'production' },
-      { NODE_ENV: 'staging' },
-      { NODE_ENV: 'test' },
-      { PERTEXO_LOCAL_JSON_CALL: 'false' },
-      { NODE_COMPATIBILITY_COHORT: 'core' },
-      { DATABASE_WORKER_URL: 'postgresql://remote.example:51243/pertexo' },
-      { DATABASE_DISPATCHER_URL: 'postgresql://remote.example:51243/pertexo' },
-      { REDIS_URL: 'redis://remote.example:51244' },
-      {
-        DATABASE_WORKER_URL:
-          'postgresql://127.0.0.1:51243/pertexo?host=remote.example',
-      },
-    ])
-      expect(() => parseWorkerConfig({ ...local, ...patch })).toThrow();
+  it.each(['workflow_call_staging', 'workflow_call_activation'])(
+    'accepts ordinary %s without a local flag or fixed ports',
+    (cohort) => {
+      expect(
+        parseWorkerConfig({
+          ...requiredEnvironment,
+          NODE_ENV: 'test',
+          NODE_COMPATIBILITY_COHORT: cohort,
+        }).nodeCompatibilityCohort,
+      ).toBe(cohort);
+    },
+  );
+  it('rejects the retired local-only cohort', () => {
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        NODE_COMPATIBILITY_COHORT: 'local_json_call',
+      }),
+    ).toThrow();
   });
   it('parses the dedicated authentication-mail worker configuration', () => {
     expect(

@@ -1,4 +1,5 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
+export { WorkflowCallsUnavailableError } from './execution/workflow-calls/workflow-call-rollout-error.js';
 export {
   createWorkflowFolderDatabase,
   WorkflowFolderConflictError,

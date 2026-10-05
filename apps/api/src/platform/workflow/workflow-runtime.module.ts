@@ -110,7 +110,7 @@ export async function createApiWorkflowRuntime(
   const authoring = overrides.authoring ?? {};
   const persistence = overrides.persistence ?? {};
   const streaming = overrides.streaming ?? {};
-  const { readinessSupport, releaseSupport, variants } =
+  const { readinessSupport, variants } =
     createCoreWorkflowCompatibility(releaseCohort);
   let database: WorkflowAuthoringDatabase | undefined;
   let metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
@@ -134,11 +134,7 @@ export async function createApiWorkflowRuntime(
         {
           ...createCoreAuthoringOptions(
             variants,
-            releaseCohort === 'local_json_call'
-              ? releaseSupport.descriptions.filter(
-                  ({ epoch }) => epoch === 1 || epoch === 4,
-                )
-              : readinessSupport.descriptions,
+            readinessSupport.descriptions,
             validator,
           ),
           ...(runtime === undefined ? {} : { runtime }),

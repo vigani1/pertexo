@@ -55,9 +55,6 @@ function createDatabaseProvider(
       new NestWorkspaceDatabase(
         options.database ??
           createWorkspaceDatabase(config, {
-            ...(options.releaseCohort === 'local_json_call'
-              ? { localJsonCallDevelopment: true }
-              : {}),
             compatibilityReleases: createExecutableCompatibilityReleaseSupport(
               platformRegistryReleaseSupport(options.releaseCohort).map(
                 composeExecutableCompatibilityRelease,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { mapWorkflowCallRolloutError } from '../workflow-calls/workflow-call-rollout-error.js';
 import { sha256HexSchema as sha256Schema } from '../../validation/persisted-primitives.js';
 
 const traceparentSchema = z
@@ -151,7 +152,7 @@ export function throwWorkflowRunAdmissionError(error: unknown): never {
   if (code === 'PTA02') throw new WorkspaceRunQuotaExceededError();
   if (code === 'PTA03') throw new RegionalWriteAdmissionPausedError();
   if (code === 'PTA01') throw new WorkspaceRunAdmissionDeniedError();
-  throw error;
+  throw mapWorkflowCallRolloutError(error);
 }
 
 export const acceptanceReplayInputSchema = acceptWorkflowRunInputSchema.pick({

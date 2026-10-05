@@ -4,10 +4,6 @@ import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
-  assertLocalJsonCallTarget,
-  checkLocalJsonCallReadiness,
-} from '../../platform/local-json-call-readiness.js';
-import {
   reserveNativeResultArtifact,
   inspectNativeResultArtifact,
 } from '../artifacts/native-result-artifact-owner.js';
@@ -30,7 +26,7 @@ import {
   type LoadAdvanceStateResult,
 } from './coordinator-run-store-contract.js';
 import { commitCoordinatorAdvancePlan } from './coordinator-run-store-commit.js';
-import { checkNativeCoordinatorReadiness } from './coordinator-native-readiness.js';
+import { checkInlineWorkflowCallCoordinatorReadiness } from './coordinator-native-readiness.js';
 import { acknowledgeCoordinatorDelivery } from './coordinator-run-store-delivery.js';
 import { loadCoordinatorAdvanceState } from './coordinator-run-store-observations.js';
 import type { CoordinatorCallAdmissionOptions } from './coordinator-call-admission.js';
@@ -59,7 +55,6 @@ export type {
   LoadAdvanceStateResult,
 };
 export type CoordinatorRunStoreOptions = Readonly<{
-  localJsonCallDevelopment?: boolean;
   workflowCallAdmission?: CoordinatorCallAdmissionOptions;
   callableResultEvaluator?: ExpressionEvaluator;
   /** Actual worker value lifetime P; no pool configuration mutation or fallback. */
@@ -98,8 +93,6 @@ export function createCoordinatorRunStore(
       config.connectionTimeoutMillis,
       controlReadTimeoutMillis,
     );
-  if (options.localJsonCallDevelopment === true)
-    assertLocalJsonCallTarget(config);
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   const nativeReads = createNativeCoordinatorValueReads(
@@ -121,20 +114,13 @@ export function createCoordinatorRunStore(
     checkReadiness: async (signal?: AbortSignal): Promise<void> => {
       if (!nativeCapable) return;
       nativeReady = false;
-      if (options.localJsonCallDevelopment === true) {
-        await checkLocalJsonCallReadiness(
-          pool,
-          config,
-          capability.nativeReleases,
-        );
-      } else
-        await checkNativeCoordinatorReadiness(
-          pool,
-          config.ownerRole,
-          config.workerRuntimeRole,
-          controlReadTimeoutMillis,
-          signal,
-        );
+      await checkInlineWorkflowCallCoordinatorReadiness(
+        pool,
+        config.ownerRole,
+        config.workerRuntimeRole,
+        controlReadTimeoutMillis,
+        signal,
+      );
       nativeReady = true;
     },
     ...(nativeCapable

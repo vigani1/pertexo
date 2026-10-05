@@ -2,10 +2,6 @@ import { acquireDatabasePool } from './platform/database-runtime.js';
 import type { DatabaseRuntime } from './platform/database-runtime.js';
 
 import type { DatabaseConfig } from './config.js';
-import {
-  assertLocalJsonCallTarget,
-  checkLocalJsonCallReadiness,
-} from './platform/local-json-call-readiness.js';
 import type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
 import type { CompatibilityReleaseExpectationSet } from './compatibility/compatibility-release.js';
 import {
@@ -36,7 +32,6 @@ export function createWorkspaceDatabase(
     compatibilityRelease?: CompatibilityReleaseExpectation;
     compatibilityReleases?: CompatibilityReleaseExpectationSet;
     runtime?: DatabaseRuntime;
-    localJsonCallDevelopment?: boolean;
   }> = {},
 ): WorkspaceDatabase {
   if (
@@ -46,8 +41,6 @@ export function createWorkspaceDatabase(
     throw new Error(
       'Compatibility release database configuration is ambiguous',
     );
-  if (options.localJsonCallDevelopment === true)
-    assertLocalJsonCallTarget(config);
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
   const readinessOptions = {
@@ -69,21 +62,9 @@ export function createWorkspaceDatabase(
     ): Promise<T> =>
       withWorkspaceTransaction(pool, workspaceId, operation, options),
     checkCompatibility: async (): Promise<DatabaseReadiness> =>
-      options.localJsonCallDevelopment === true
-        ? checkLocalJsonCallReadiness(
-            pool,
-            config,
-            options.compatibilityReleases ?? [],
-          )
-        : checkDatabaseReadiness(pool, readinessOptions),
+      checkDatabaseReadiness(pool, readinessOptions),
     checkReadiness: async (): Promise<DatabaseReadiness> =>
-      options.localJsonCallDevelopment === true
-        ? checkLocalJsonCallReadiness(
-            pool,
-            config,
-            options.compatibilityReleases ?? [],
-          )
-        : checkDatabaseServingReadiness(pool, readinessOptions),
+      checkDatabaseServingReadiness(pool, readinessOptions),
     close: (): Promise<void> => lease.close(),
   });
 }

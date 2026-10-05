@@ -1,4 +1,5 @@
 import {
+  WorkflowCallsUnavailableError,
   WorkflowIdempotencyConflictError,
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
@@ -64,6 +65,10 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof WorkflowCallsUnavailableError)
+    return applicationError('workflow.calls_unavailable', {
+      safeDetail: error.message,
+    });
   const organization = mapWorkflowOrganizationError(error);
   if (organization !== undefined) return organization;
   const portability = mapWorkflowPortabilityError(error);

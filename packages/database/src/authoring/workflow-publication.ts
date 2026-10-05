@@ -1,4 +1,5 @@
 import { validateNativePublicationClosure } from './workflow-native-publication-closure.js';
+import { mapWorkflowCallRolloutError } from '../execution/workflow-calls/workflow-call-rollout-error.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 
 import {
@@ -294,8 +295,9 @@ async function persistVersion(
   }
   const reused = versionRow !== undefined;
   if (!reused) {
-    const inserted = await client.query<Record<string, unknown>>(
-      `insert into app.workflow_versions (
+    const inserted = await client
+      .query<Record<string, unknown>>(
+        `insert into app.workflow_versions (
          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
          checksum,executable_schema_version,executable_json,
          compatibility_release_epoch,published_by)
@@ -303,21 +305,24 @@ async function persistVersion(
          $7,$8::jsonb,$9,$10 from app.workflow_versions
        where workspace_id=$2 and workflow_id=$3
        returning ${workflowVersionRowSelection}`,
-      [
-        generatePersistedId(),
-        input.workspaceId,
-        workflowId,
-        publication.schemaVersion,
-        JSON.stringify(publication.graph),
-        publication.checksum,
-        publication.executable?.executableSchemaVersion ?? null,
-        publication.executable === undefined
-          ? null
-          : JSON.stringify(publication.executable.executableJson),
-        publication.executable?.compatibilityReleaseEpoch ?? null,
-        input.actorId,
-      ],
-    );
+        [
+          generatePersistedId(),
+          input.workspaceId,
+          workflowId,
+          publication.schemaVersion,
+          JSON.stringify(publication.graph),
+          publication.checksum,
+          publication.executable?.executableSchemaVersion ?? null,
+          publication.executable === undefined
+            ? null
+            : JSON.stringify(publication.executable.executableJson),
+          publication.executable?.compatibilityReleaseEpoch ?? null,
+          input.actorId,
+        ],
+      )
+      .catch((error: unknown) => {
+        throw mapWorkflowCallRolloutError(error);
+      });
     versionRow = inserted.rows[0];
   }
   if (versionRow === undefined)

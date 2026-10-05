@@ -35,18 +35,6 @@ type RegistryRelease = Parameters<
   typeof createRegistryReleaseSuccessor
 >[0]['previous'];
 
-// Fixed isolated development release. Existing serving/history identities are
-// unchanged; API/worker configuration rejects this cohort outside development.
-export const PLATFORM_LOCAL_JSON_CALL_STAGED = stageDefinition(
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-  CORE_WORKFLOW_CALL_MANIFEST,
-  [CORE_WORKFLOW_CALL_POLICY],
-);
-export const PLATFORM_LOCAL_JSON_CALL_RELEASE = activateDefinition(
-  PLATFORM_LOCAL_JSON_CALL_STAGED,
-  CORE_WORKFLOW_CALL_MANIFEST,
-);
-
 function stageDefinition(
   previous: RegistryRelease,
   manifest: NodeManifest,
@@ -261,6 +249,17 @@ export const PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE = activateDefinition(
   CORE_VALIDATE_MANIFEST,
 );
 
+export const PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED = stageDefinition(
+  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+  CORE_WORKFLOW_CALL_MANIFEST,
+  [CORE_WORKFLOW_CALL_POLICY],
+);
+export const PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE =
+  activateDefinition(
+    PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED,
+    CORE_WORKFLOW_CALL_MANIFEST,
+  );
+
 /** Complete audit/test history; never pass this to one serving artifact. */
 export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   ...CORE_REGISTRY_RELEASE_SUPPORT,
@@ -300,6 +299,8 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED,
   PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE,
 ]);
 
 /** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */
@@ -468,11 +469,16 @@ export const PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
 ]);
 
+export const PLATFORM_WORKFLOW_CALL_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED,
+]);
+export const PLATFORM_WORKFLOW_CALL_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE,
+]);
+
 const platformReleaseCohortConfig = Object.freeze({
-  local_json_call: Object.freeze({
-    support: Object.freeze([PLATFORM_LOCAL_JSON_CALL_RELEASE]),
-    serving: PLATFORM_LOCAL_JSON_CALL_RELEASE,
-  }),
   core: Object.freeze({
     support: PLATFORM_REGISTRY_RELEASE_SUPPORT,
     serving: CORE_REGISTRY_RELEASE_SUCCESSOR,
@@ -621,6 +627,14 @@ const platformReleaseCohortConfig = Object.freeze({
     support: PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT,
     serving: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
   }),
+  workflow_call_staging: Object.freeze({
+    support: PLATFORM_WORKFLOW_CALL_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+  }),
+  workflow_call_activation: Object.freeze({
+    support: PLATFORM_WORKFLOW_CALL_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE,
+  }),
 });
 
 export type PlatformReleaseCohort = keyof typeof platformReleaseCohortConfig;
@@ -636,12 +650,6 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
 export function platformExecutableRegistryHistory(
   cohort: PlatformReleaseCohort,
 ) {
-  if (cohort === 'local_json_call')
-    return Object.freeze([
-      ...CORE_REGISTRY_RELEASE_SUPPORT,
-      PLATFORM_LOCAL_JSON_CALL_STAGED,
-      PLATFORM_LOCAL_JSON_CALL_RELEASE,
-    ]);
   const maximumEpoch = platformRegistryReleaseSupport(cohort).at(-1)?.epoch;
   if (maximumEpoch === undefined)
     throw new Error('Platform release cohort is empty');

@@ -12,6 +12,7 @@ import {
 } from '@pertexo/database/execution';
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
+import { composeWorkerWorkflowCompatibilityRelease } from '../src/platform/workflow-compatibility.js';
 
 // Actual already-built Call definition, deliberately absent from serving
 // catalogs. This local source qualification fixture does not register a release.
@@ -60,6 +61,40 @@ const config = {
 };
 
 describe('native coordinator capability admission, source only (no registered SQL)', () => {
+  it('accepts the ordinary staged V3 read capability without making Call active', async () => {
+    const staged = platformExecutableRegistryHistory('workflow_call_staging')
+      .slice(-2)
+      .map(composeWorkerWorkflowCompatibilityRelease)
+      .map(describeExecutableCompatibilityRelease);
+    const runtime = createDatabaseRuntime(
+      { ...config, connectionTimeoutMillis: 100 },
+      { monitorLockWaits: false },
+    );
+    let store: ReturnType<typeof createCoordinatorRunStore> | undefined;
+    try {
+      expect(() => {
+        store = createCoordinatorRunStore(
+          { ...config, connectionTimeoutMillis: 100 },
+          runtime,
+          {
+            expectedCompatibilityReleases: staged,
+            nativeValueControlReadTimeoutMillis: 250,
+          },
+        );
+      }).not.toThrow();
+      const catalog = JSON.parse(staged[1]?.catalogJson ?? '{}') as {
+        executors: { executor: { key: string }; lifecycle: string }[];
+      };
+      expect(
+        catalog.executors.find(
+          (row) => row.executor.key === 'core.workflow_call',
+        )?.lifecycle,
+      ).toBe('staged');
+    } finally {
+      await store?.close();
+      await runtime.close();
+    }
+  });
   it('keeps every retained baseline history fingerprint/catalog exact while composing actual Call locally', async () => {
     const retained = platformExecutableRegistryHistory('validate_activation')
       .map(composeExecutableCompatibilityRelease)
@@ -126,11 +161,11 @@ describe('native coordinator capability admission, source only (no registered SQ
     ).toThrow('fingerprint differs');
   });
 
-  it('keeps compatible configuration non-ready and unusable until the complete owner inventory exists', async () => {
+  it('keeps compatible configuration non-ready and unusable when the registered inline catalog cannot be read', async () => {
     const connect = vi
       .spyOn(Pool.prototype, 'connect')
       .mockImplementation(() => {
-        throw new Error('Unexpected checkout');
+        throw new Error('Unavailable registered catalog');
       });
     const admittedConfig = { ...config, connectionTimeoutMillis: 100 };
     const runtime = createDatabaseRuntime(admittedConfig, {
@@ -142,7 +177,7 @@ describe('native coordinator capability admission, source only (no registered SQ
     });
     try {
       await expect(store.checkReadiness?.()).rejects.toThrow(
-        'owner inventory is incomplete',
+        'Unavailable registered catalog',
       );
       expect(() =>
         store.loadAdvanceState({
@@ -151,7 +186,7 @@ describe('native coordinator capability admission, source only (no registered SQ
           signal: new AbortController().signal,
         }),
       ).toThrow('has not passed owner readiness');
-      expect(connect).not.toHaveBeenCalled();
+      expect(connect).toHaveBeenCalled();
     } finally {
       connect.mockRestore();
       await store.close();
