@@ -24,6 +24,7 @@ import {
   CORE_SCHEDULE_EXECUTOR_V2,
   CORE_SWITCH_DEFINITION,
   CORE_SWITCH_EXECUTOR,
+  CORE_WORKFLOW_CALL_POLICY,
   CORE_WAIT_DEFINITION,
   CORE_WAIT_EXECUTOR,
   CORE_WEBHOOK_DEFINITION,
@@ -43,7 +44,11 @@ const release = createRegistryRelease({
     lifecycle: registration.lifecycle,
     policyReferences: registration.policyReferences,
   })),
-  policies: [CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY],
+  policies: [
+    CORE_BOUNDED_JSON_POLICY,
+    CORE_JSONATA_POLICY,
+    CORE_WORKFLOW_CALL_POLICY,
+  ],
 });
 
 const registry = createNodeRegistry({

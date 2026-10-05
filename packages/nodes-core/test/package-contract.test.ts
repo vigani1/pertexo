@@ -57,6 +57,7 @@ describe('@pertexo/nodes-core package contract', () => {
           `${manifest.definition.key}@${String(manifest.definition.version)}`,
       ),
     ).toEqual([
+      'core.workflow_call@1',
       'core.schedule@1',
       'core.schedule@2',
       'core.schedule@3',
