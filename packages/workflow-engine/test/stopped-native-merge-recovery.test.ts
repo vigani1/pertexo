@@ -138,6 +138,10 @@ describe('stopped native Merge recovery at the public transition seam', () => {
         ),
       });
       const current = checkpoint('cancel');
+      const branchOutput = {
+        kind: 'inline' as const,
+        attemptId: '00000000-0000-4000-8000-000000000803',
+      };
       const leftScope = {
         branchPath: [{ nodeId: 'parallel', outputPort: 'branch-01' }],
       };
@@ -189,11 +193,11 @@ describe('stopped native Merge recovery at the public transition seam', () => {
             kind: 'outcome',
             sequence: current.nextEventSequence,
             occurredAt,
-            attemptId: output.attemptId,
+            attemptId: branchOutput.attemptId,
             invocationKey: key('left', leftScope),
             attemptNumber: 1,
             status,
-            ...(status === 'succeeded' ? { output } : {}),
+            ...(status === 'succeeded' ? { output: branchOutput } : {}),
           },
         ],
       });
@@ -201,7 +205,7 @@ describe('stopped native Merge recovery at the public transition seam', () => {
         {
           branchId: 'branch-01',
           disposition: status === 'succeeded' ? 'arrived' : 'failed',
-          ...(status === 'succeeded' ? { output } : {}),
+          ...(status === 'succeeded' ? { output: branchOutput } : {}),
         },
         { branchId: 'branch-02', disposition: 'canceled' },
       ]);
@@ -213,6 +217,14 @@ describe('stopped native Merge recovery at the public transition seam', () => {
         status === 'outcome_unknown' ? status : 'canceled',
       );
       expect(plan.attempts).toEqual([]);
+      expect(
+        plan.checkpoint.invocations.find(({ nodeId }) => nodeId === 'parallel'),
+      ).toMatchObject({ status: 'succeeded', attemptNumber: 1, output });
+      const merge = plan.checkpoint.invocations.find(
+        ({ nodeId }) => nodeId === 'merge',
+      );
+      expect(merge).toMatchObject({ status: 'canceled', attemptNumber: 0 });
+      expect(merge).not.toHaveProperty('output');
       const recovered = await advanceExecutable({
         ...input,
         checkpoint: structuredClone(plan.checkpoint),
