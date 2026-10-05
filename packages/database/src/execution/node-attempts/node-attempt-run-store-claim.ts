@@ -61,6 +61,90 @@ async function appendStartedEvent(
   );
 }
 
+async function lockNodeAttemptClaimSnapshot(
+  client: PoolClient,
+  input: z.output<typeof claimDeliverySchema>,
+) {
+  const candidate = await client.query<{ run_id: string }>(
+    `select node.workflow_run_id as run_id
+         from app.node_attempts attempt
+         join app.node_runs node
+           on node.workspace_id=attempt.workspace_id
+          and node.id=attempt.node_run_id
+         where attempt.workspace_id=$1 and attempt.id=$2`,
+    [input.workspaceId, input.attemptId],
+  );
+  if (candidate.rows[0]?.run_id !== input.runId)
+    throw new NodeAttemptStateCorruptError();
+  const run = await client.query<{
+    cancel_requested_at: Date | null;
+    control_active: boolean;
+    deadline_at: Date | null;
+    workflow_version_id: string;
+    checkpoint_schema_version: string | null;
+  }>(
+    `select workflow_version_id,cancel_requested_at,deadline_at,
+                (select checkpoint.scheduler_state->>'schemaVersion' from app.run_checkpoints checkpoint
+                 where checkpoint.workspace_id=run.workspace_id and checkpoint.workflow_run_id=run.id) checkpoint_schema_version,
+                (cancel_requested_at is not null or
+                 (deadline_at is not null and
+                  deadline_at <= clock_timestamp())) control_active
+         from app.workflow_runs run
+         where workspace_id=$1 and id=$2 for update`,
+    [input.workspaceId, input.runId],
+  );
+  const runRow = run.rows[0];
+  if (runRow === undefined) throw new NodeAttemptStateCorruptError();
+  const locked = await client.query<{
+    admission_kind: 'execute' | 'retry' | 'wait_resume';
+    attempt_number: number;
+    attempt_status: string;
+    dispatch_marked_at: Date | null;
+    fence_token: string;
+    branch_context: unknown;
+    invocation_key: string;
+    lease_valid: boolean;
+    lease_expires_at: Date | null;
+    node_id: string;
+    node_status: string;
+    provider_idempotency_key: string | null;
+    provider_dispatch_binding: string | null;
+    provider_dispatch_unresolved: boolean;
+    side_effect_class: string;
+  }>(
+    `select attempt.attempt_number,attempt.admission_kind,
+                attempt.status as attempt_status,
+                attempt.dispatch_marked_at,attempt.fence_token,
+                attempt.lease_expires_at,
+                (attempt.lease_expires_at > clock_timestamp()) lease_valid,
+                 node.invocation_key,node.node_id,node.branch_context,
+                node.status as node_status,attempt.side_effect_class,
+                 attempt.provider_idempotency_key,
+                 node.provider_dispatch_binding,
+                 (attempt.dispatch_marked_at is not null or exists (
+                   select 1 from app.node_attempts prior
+                   where prior.workspace_id=attempt.workspace_id
+                     and prior.node_run_id=attempt.node_run_id
+                     and prior.attempt_number < attempt.attempt_number
+                     and prior.executor_possibly_dispatched is true
+                     and prior.retry_decision='retry'
+                 )) provider_dispatch_unresolved
+         from app.node_attempts attempt
+         join app.node_runs node
+           on node.workspace_id=attempt.workspace_id
+          and node.id=attempt.node_run_id
+         where attempt.workspace_id=$1 and attempt.id=$2
+           and attempt.node_run_id=$3 and node.workflow_run_id=$4
+           and node.current_attempt_id=attempt.id
+           and node.current_attempt_number=attempt.attempt_number
+         for update of node,attempt`,
+    [input.workspaceId, input.attemptId, input.nodeRunId, input.runId],
+  );
+  const row = locked.rows[0];
+  if (row === undefined) throw new NodeAttemptStateCorruptError();
+  return { row, runRow };
+}
+
 export async function claimNodeAttemptDelivery(
   pool: Pool,
   inputValue: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
@@ -87,83 +171,10 @@ export async function claimNodeAttemptDelivery(
         if (receipt === 'completed')
           return Object.freeze({ kind: 'duplicate' as const });
 
-        const candidate = await client.query<{ run_id: string }>(
-          `select node.workflow_run_id as run_id
-               from app.node_attempts attempt
-               join app.node_runs node
-                 on node.workspace_id=attempt.workspace_id
-                and node.id=attempt.node_run_id
-               where attempt.workspace_id=$1 and attempt.id=$2`,
-          [input.workspaceId, input.attemptId],
+        const { row, runRow } = await lockNodeAttemptClaimSnapshot(
+          client,
+          input,
         );
-        if (candidate.rows[0]?.run_id !== input.runId)
-          throw new NodeAttemptStateCorruptError();
-        const run = await client.query<{
-          cancel_requested_at: Date | null;
-          control_active: boolean;
-          deadline_at: Date | null;
-          workflow_version_id: string;
-          checkpoint_schema_version: string | null;
-        }>(
-          `select workflow_version_id,cancel_requested_at,deadline_at,
-                      (select checkpoint.scheduler_state->>'schemaVersion' from app.run_checkpoints checkpoint
-                       where checkpoint.workspace_id=run.workspace_id and checkpoint.workflow_run_id=run.id) checkpoint_schema_version,
-                      (cancel_requested_at is not null or
-                       (deadline_at is not null and
-                        deadline_at <= clock_timestamp())) control_active
-               from app.workflow_runs run
-               where workspace_id=$1 and id=$2 for update`,
-          [input.workspaceId, input.runId],
-        );
-        const runRow = run.rows[0];
-        if (runRow === undefined) throw new NodeAttemptStateCorruptError();
-        const locked = await client.query<{
-          admission_kind: 'execute' | 'retry' | 'wait_resume';
-          attempt_number: number;
-          attempt_status: string;
-          dispatch_marked_at: Date | null;
-          fence_token: string;
-          branch_context: unknown;
-          invocation_key: string;
-          lease_valid: boolean;
-          lease_expires_at: Date | null;
-          node_id: string;
-          node_status: string;
-          provider_idempotency_key: string | null;
-          provider_dispatch_binding: string | null;
-          provider_dispatch_unresolved: boolean;
-          side_effect_class: string;
-        }>(
-          `select attempt.attempt_number,attempt.admission_kind,
-                      attempt.status as attempt_status,
-                      attempt.dispatch_marked_at,attempt.fence_token,
-                      attempt.lease_expires_at,
-                      (attempt.lease_expires_at > clock_timestamp()) lease_valid,
-                       node.invocation_key,node.node_id,node.branch_context,
-                      node.status as node_status,attempt.side_effect_class,
-                       attempt.provider_idempotency_key,
-                       node.provider_dispatch_binding,
-                       (attempt.dispatch_marked_at is not null or exists (
-                         select 1 from app.node_attempts prior
-                         where prior.workspace_id=attempt.workspace_id
-                           and prior.node_run_id=attempt.node_run_id
-                           and prior.attempt_number < attempt.attempt_number
-                           and prior.executor_possibly_dispatched is true
-                           and prior.retry_decision='retry'
-                       )) provider_dispatch_unresolved
-               from app.node_attempts attempt
-               join app.node_runs node
-                 on node.workspace_id=attempt.workspace_id
-                and node.id=attempt.node_run_id
-               where attempt.workspace_id=$1 and attempt.id=$2
-                 and attempt.node_run_id=$3 and node.workflow_run_id=$4
-                 and node.current_attempt_id=attempt.id
-                 and node.current_attempt_number=attempt.attempt_number
-               for update of node,attempt`,
-          [input.workspaceId, input.attemptId, input.nodeRunId, input.runId],
-        );
-        const row = locked.rows[0];
-        if (row === undefined) throw new NodeAttemptStateCorruptError();
         if (
           [
             'succeeded',

@@ -130,6 +130,49 @@ async function lockPendingFailures(
   );
 }
 
+async function readCommitPersistedFacts(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+  currentCheckpoint: PersistedWorkflowCheckpoint,
+  plan: ParsedTransitionPlan,
+) {
+  const highWaterResult = await client.query<{ high_water: number }>(
+    `select coalesce(max(sequence), 0)::int as high_water
+       from app.run_events
+       where workspace_id = $1 and workflow_run_id = $2`,
+    [workspaceId, runId],
+  );
+  if (highWaterResult.rows[0]?.high_water !== plan.consumedThroughEventSequence)
+    return undefined;
+
+  const expectedPersistedFactCount = Math.max(
+    0,
+    plan.consumedThroughEventSequence - currentCheckpoint.nextEventSequence + 1,
+  );
+  const factCapacity = await persistedFactCapacity(
+    client,
+    workspaceId,
+    runId,
+    currentCheckpoint.nextEventSequence,
+    plan.consumedThroughEventSequence,
+  );
+  if (factCapacity.count !== expectedPersistedFactCount) return undefined;
+  if (factCapacity.count > maximumPersistedFacts)
+    throw new CoordinatorRunStateCorruptError();
+  const persistedFacts = await readPersistedFacts(client, {
+    count: factCapacity.count,
+    firstSequence: currentCheckpoint.nextEventSequence,
+    lastSequence: plan.consumedThroughEventSequence,
+    maximumStorageBytes: factCapacity.maximumStorageBytes,
+    runId,
+    workspaceId,
+  });
+  if (persistedFacts.length !== expectedPersistedFactCount) return undefined;
+  validatePersistedFactBatch(persistedFacts);
+  return persistedFacts;
+}
+
 export async function lockCoordinatorCommitState(
   client: PoolClient,
   input: Readonly<{
@@ -235,41 +278,15 @@ export async function lockCoordinatorCommitState(
   )
     throw new CoordinatorPlanInvalidError();
 
-  const highWaterResult = await client.query<{ high_water: number }>(
-    `select coalesce(max(sequence), 0)::int as high_water
-       from app.run_events
-       where workspace_id = $1 and workflow_run_id = $2`,
-    [workspaceId, runId],
-  );
-  if (highWaterResult.rows[0]?.high_water !== plan.consumedThroughEventSequence)
-    return outcome({ kind: 'stale', revision: row.revision });
-
-  const expectedPersistedFactCount = Math.max(
-    0,
-    plan.consumedThroughEventSequence - currentCheckpoint.nextEventSequence + 1,
-  );
-  const factCapacity = await persistedFactCapacity(
+  const persistedFacts = await readCommitPersistedFacts(
     client,
     workspaceId,
     runId,
-    currentCheckpoint.nextEventSequence,
-    plan.consumedThroughEventSequence,
+    currentCheckpoint,
+    plan,
   );
-  if (factCapacity.count !== expectedPersistedFactCount)
+  if (persistedFacts === undefined)
     return outcome({ kind: 'stale', revision: row.revision });
-  if (factCapacity.count > maximumPersistedFacts)
-    throw new CoordinatorRunStateCorruptError();
-  const persistedFacts = await readPersistedFacts(client, {
-    count: factCapacity.count,
-    firstSequence: currentCheckpoint.nextEventSequence,
-    lastSequence: plan.consumedThroughEventSequence,
-    maximumStorageBytes: factCapacity.maximumStorageBytes,
-    runId,
-    workspaceId,
-  });
-  if (persistedFacts.length !== expectedPersistedFactCount)
-    return outcome({ kind: 'stale', revision: row.revision });
-  validatePersistedFactBatch(persistedFacts);
 
   const {
     rejectedForEachDeclarations,
