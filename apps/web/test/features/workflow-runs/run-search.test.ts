@@ -18,9 +18,9 @@ describe('run search', () => {
     const search = sanitizeRunSearch({ trigger: 'workflow_call' });
     expect(search).toEqual({ trigger: 'workflow_call' });
     expect(filtersFromSearch(search)).toEqual({});
-    expect(runFilterChips(search, undefined).map((chip) => chip.label)).toEqual([
-      'Trigger: Workflow call',
-    ]);
+    expect(runFilterChips(search, undefined).map((chip) => chip.label)).toEqual(
+      ['Trigger: Workflow call'],
+    );
   });
   it('keeps valid keys and drops unknown or malformed ones', () => {
     expect(
