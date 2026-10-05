@@ -200,8 +200,6 @@ test('rejects excluded, unknown and duplicate cases before any resource observat
   };
   const owner = createNativeQualificationLifecycle(input);
   for (const ids of [
-    ['finalized_output_integrity'],
-    ['logical_current_result_tampering'],
     ['raw_login_semantic_attestation'],
     ['other'],
     [],
@@ -210,6 +208,37 @@ test('rejects excluded, unknown and duplicate cases before any resource observat
     await assert.rejects(owner.assess(ids));
   assert.equal(inspected, false);
   await owner.close();
+});
+
+test('selects the local JSON milestone and no longer excludes merged result-fence cases', async () => {
+  const input = simulatedFixture(await observeNativeQualificationSource());
+  const owner = createNativeQualificationLifecycle(input);
+  try {
+    const report = await owner.assess([
+      'local_json_call',
+      'finalized_output_integrity',
+      'logical_current_result_tampering',
+    ]);
+    assert.deepEqual(report.cases, [
+      {
+        id: 'local_json_call',
+        unclosedOwners: [
+          'canonical_publication',
+          'canonical_root_acceptance',
+          'canonical_call_admission',
+          'durable_wait_wakeup_transport',
+          'physical_completion',
+          'earned_parent_child_facts',
+        ],
+      },
+      { id: 'finalized_output_integrity', unclosedOwners: [] },
+      { id: 'logical_current_result_tampering', unclosedOwners: [] },
+    ]);
+    assert.equal(report.nativeReady, false);
+    assert.equal(report.runtimeStartAuthorized, false);
+  } finally {
+    await owner.close();
+  }
 });
 
 test('joins a late catalog observation before disposal and rejects its result after close', async () => {

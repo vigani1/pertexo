@@ -137,6 +137,18 @@ export async function observeNativeQualificationSource() {
 }
 
 const functionalCases = Object.freeze({
+  local_json_call: [
+    'canonical_publication',
+    'canonical_root_acceptance',
+    'canonical_call_admission',
+    'durable_wait_wakeup_transport',
+    'physical_completion',
+    'earned_parent_child_facts',
+  ],
+  // The logical projection fence was merged in 0fa174ad. Selecting these
+  // scenarios is no longer excluded; this source assessor still proves no run.
+  finalized_output_integrity: [],
+  logical_current_result_tampering: [],
   call_wait_resume: [
     'adr066_semantic_authority',
     'canonical_publication',
@@ -161,11 +173,7 @@ const functionalCases = Object.freeze({
     'native_detail_summary_purge_hold',
   ],
 });
-const excludedCases = new Set([
-  'finalized_output_integrity',
-  'logical_current_result_tampering',
-  'raw_login_semantic_attestation',
-]);
+const excludedCases = new Set(['raw_login_semantic_attestation']);
 // Concrete current implementation gaps, not caller-supplied approval flags.
 const runtimeBlockers = Object.freeze([
   'installation_artifact_unavailable',
