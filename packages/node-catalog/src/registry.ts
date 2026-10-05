@@ -27,11 +27,25 @@ import {
   CORE_VALIDATE_MANIFEST,
   CORE_WAIT_MANIFEST,
   CORE_WEBHOOK_MANIFEST,
+  CORE_WORKFLOW_CALL_MANIFEST,
+  CORE_WORKFLOW_CALL_POLICY,
 } from '@pertexo/nodes-core';
 
 type RegistryRelease = Parameters<
   typeof createRegistryReleaseSuccessor
 >[0]['previous'];
+
+// Fixed isolated development release. Existing serving/history identities are
+// unchanged; API/worker configuration rejects this cohort outside development.
+export const PLATFORM_LOCAL_JSON_CALL_STAGED = stageDefinition(
+  CORE_REGISTRY_RELEASE_SUCCESSOR,
+  CORE_WORKFLOW_CALL_MANIFEST,
+  [CORE_WORKFLOW_CALL_POLICY],
+);
+export const PLATFORM_LOCAL_JSON_CALL_RELEASE = activateDefinition(
+  PLATFORM_LOCAL_JSON_CALL_STAGED,
+  CORE_WORKFLOW_CALL_MANIFEST,
+);
 
 function stageDefinition(
   previous: RegistryRelease,
@@ -455,6 +469,10 @@ export const PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
 ]);
 
 const platformReleaseCohortConfig = Object.freeze({
+  local_json_call: Object.freeze({
+    support: Object.freeze([PLATFORM_LOCAL_JSON_CALL_RELEASE]),
+    serving: PLATFORM_LOCAL_JSON_CALL_RELEASE,
+  }),
   core: Object.freeze({
     support: PLATFORM_REGISTRY_RELEASE_SUPPORT,
     serving: CORE_REGISTRY_RELEASE_SUCCESSOR,
@@ -618,6 +636,12 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
 export function platformExecutableRegistryHistory(
   cohort: PlatformReleaseCohort,
 ) {
+  if (cohort === 'local_json_call')
+    return Object.freeze([
+      ...CORE_REGISTRY_RELEASE_SUPPORT,
+      PLATFORM_LOCAL_JSON_CALL_STAGED,
+      PLATFORM_LOCAL_JSON_CALL_RELEASE,
+    ]);
   const maximumEpoch = platformRegistryReleaseSupport(cohort).at(-1)?.epoch;
   if (maximumEpoch === undefined)
     throw new Error('Platform release cohort is empty');

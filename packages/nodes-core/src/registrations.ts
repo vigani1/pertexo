@@ -1,4 +1,5 @@
 import './server-only.js';
+import { coreWorkflowCallExecutor } from './workflow-call/executor.js';
 
 import type {
   NodeDefinitionRegistration,
@@ -68,6 +69,7 @@ function createCoreNodeRegistrationBundles(
 }
 
 const CORE_NODE_EXECUTOR_IMPLEMENTATIONS = Object.freeze([
+  coreWorkflowCallExecutor,
   coreConditionExecutor,
   coreForEachExecutor,
   coreManualExecutor,

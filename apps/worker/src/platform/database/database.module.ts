@@ -1,5 +1,6 @@
 import type { DynamicModule, Provider } from '@nestjs/common';
 import { Module } from '@nestjs/common';
+import { composeWorkerWorkflowCompatibilityRelease as composeExecutableCompatibilityRelease } from '../workflow-compatibility.js';
 import type {
   DatabaseReadiness,
   DatabaseConfig,
@@ -11,10 +12,7 @@ import {
   platformRegistryReleaseSupport,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
-import {
-  composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseSupport,
-} from '@pertexo/workflow-engine';
+import { createExecutableCompatibilityReleaseSupport } from '@pertexo/workflow-engine';
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 
@@ -67,6 +65,9 @@ function createDatabaseProvider(
       new NestWorkspaceDatabase(
         options.database ??
           createWorkspaceDatabase(config, {
+            ...(options.releaseCohort === 'local_json_call'
+              ? { localJsonCallDevelopment: true }
+              : {}),
             compatibilityReleases: createExecutableCompatibilityReleaseSupport(
               platformRegistryReleaseSupport(options.releaseCohort).map(
                 composeExecutableCompatibilityRelease,

@@ -7,12 +7,15 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
+  PLATFORM_LOCAL_JSON_CALL_RELEASE,
+  PLATFORM_LOCAL_JSON_CALL_STAGED,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
   buildWorkflowExecutableV3,
   composeExecutableCompatibilityRelease,
+  composeExecutableCompatibilityReleaseV3,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
@@ -108,22 +111,33 @@ function projectDefinitionCatalogs(
   });
 }
 
+export function composeApiWorkflowCompatibilityRelease(
+  release: PlatformRegistryRelease,
+) {
+  return [
+    PLATFORM_LOCAL_JSON_CALL_RELEASE.fingerprint,
+    PLATFORM_LOCAL_JSON_CALL_STAGED.fingerprint,
+  ].includes(release.fingerprint)
+    ? composeExecutableCompatibilityReleaseV3(release)
+    : composeExecutableCompatibilityRelease(release);
+}
+
 export function createCoreWorkflowCompatibility(
   releaseCohort: PlatformReleaseCohort = 'core',
 ) {
   const registryReleaseSupport =
     platformExecutableRegistryHistory(releaseCohort);
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    registryReleaseSupport.map(composeExecutableCompatibilityRelease),
+    registryReleaseSupport.map(composeApiWorkflowCompatibilityRelease),
   );
   const readinessSupport = createExecutableCompatibilityReleaseSupport(
     platformRegistryReleaseSupport(releaseCohort).map(
-      composeExecutableCompatibilityRelease,
+      composeApiWorkflowCompatibilityRelease,
     ),
   );
   const variants = registryReleaseSupport.map((nodeRelease) => {
     const compatibilityRelease =
-      composeExecutableCompatibilityRelease(nodeRelease);
+      composeApiWorkflowCompatibilityRelease(nodeRelease);
     const compatibilityReleaseDescription = releaseSupport.descriptions.find(
       ({ epoch, fingerprint }) =>
         epoch === compatibilityRelease.epoch &&
@@ -243,7 +257,11 @@ export function createCoreWorkflowAuthoringDatabase(
   const database = createWorkflowAuthoringDatabase(databaseConfig, {
     ...createCoreAuthoringOptions(
       compatibility.variants,
-      compatibility.readinessSupport.descriptions,
+      releaseCohort === 'local_json_call'
+        ? compatibility.releaseSupport.descriptions.filter(
+            ({ epoch }) => epoch === 1 || epoch === 4,
+          )
+        : compatibility.readinessSupport.descriptions,
       {
         validate: (...args) => {
           if (closed) throw new AuthoringValidationUnavailableError('closed');

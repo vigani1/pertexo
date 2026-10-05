@@ -30,7 +30,6 @@ import {
   unrecoverableQueueError,
 } from '@pertexo/queue';
 import {
-  composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
   type NodeExecutionRegistry,
@@ -38,6 +37,7 @@ import {
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
+import { composeWorkerWorkflowCompatibilityRelease as composeExecutableCompatibilityRelease } from '../platform/workflow-compatibility.js';
 import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,

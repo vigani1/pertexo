@@ -10,7 +10,11 @@ import {
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
 
-import { PLATFORM_REGISTRY_RELEASE_HISTORY } from './registry.js';
+import {
+  PLATFORM_REGISTRY_RELEASE_HISTORY,
+  PLATFORM_LOCAL_JSON_CALL_RELEASE,
+  PLATFORM_LOCAL_JSON_CALL_STAGED,
+} from './registry.js';
 import {
   platformServingRegistryRelease,
   type PlatformReleaseCohort,
@@ -81,7 +85,11 @@ export function platformIdentityToken(
 export function parseSupportedPlatformRelease(releaseInput: unknown) {
   const release = parseRegistryRelease(releaseInput);
   if (
-    !PLATFORM_REGISTRY_RELEASE_HISTORY.some(
+    ![
+      ...PLATFORM_REGISTRY_RELEASE_HISTORY,
+      PLATFORM_LOCAL_JSON_CALL_RELEASE,
+      PLATFORM_LOCAL_JSON_CALL_STAGED,
+    ].some(
       (supported) =>
         supported.epoch === release.epoch &&
         supported.fingerprint === release.fingerprint,

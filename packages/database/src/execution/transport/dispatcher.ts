@@ -3,6 +3,7 @@ import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
+import { assertLocalJsonCallTarget } from '../../platform/local-json-call-readiness.js';
 export type { LeasedOutboxEvent } from './dispatcher-contracts.js';
 import {
   claimOutboxBatch,
@@ -61,8 +62,11 @@ export interface OutboxDispatcherDatabase {
 export function createOutboxDispatcherDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
+  options: Readonly<{ localJsonCallDevelopment?: boolean }> = {},
 ): OutboxDispatcherDatabase {
   const { ownerRole, ...poolConfig } = config;
+  if (options.localJsonCallDevelopment === true)
+    assertLocalJsonCallTarget(config);
   const lease = acquireDatabasePool({ ...config, ...poolConfig }, runtime, {
     role: 'dispatcher',
   });
@@ -191,7 +195,11 @@ export function createOutboxDispatcherDatabase(
       });
     },
     checkReadiness: async (): Promise<void> =>
-      checkDispatcherReadiness(pool, ownerRole),
+      checkDispatcherReadiness(
+        pool,
+        ownerRole,
+        options.localJsonCallDevelopment === true,
+      ),
     close: () => lease.close(),
   });
 }

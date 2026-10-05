@@ -1,3 +1,4 @@
+import { composeApiWorkflowCompatibilityRelease as composeExecutableCompatibilityRelease } from '../platform/workflow/workflow-compatibility.js';
 import {
   ExecutionStateConflictError,
   IdempotencyRequestConflictError,
@@ -20,7 +21,6 @@ import {
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
-  composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';

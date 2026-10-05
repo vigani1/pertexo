@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { LOCAL_JSON_CALL_CONCURRENCY_SQL } from '../../platform/local-json-call-readiness.js';
 import { READINESS_WORKFLOW_CONCURRENCY_SQL } from '../../platform/readiness-workflow-concurrency.sql.js';
 
 import {
@@ -9,6 +10,7 @@ import {
 export async function checkDispatcherReadiness(
   pool: Pool,
   ownerRole: string,
+  localJsonCallDevelopment = false,
 ): Promise<void> {
   const result = await pool.query<{
     can_delete: boolean;
@@ -92,7 +94,7 @@ export async function checkDispatcherReadiness(
         ) as dispatch_index_compatible,
         (
           to_regclass('app.outbox_fair_dispatch_cursor') is not null
-          and ${READINESS_WORKFLOW_CONCURRENCY_SQL}
+          and ${localJsonCallDevelopment ? LOCAL_JSON_CALL_CONCURRENCY_SQL : READINESS_WORKFLOW_CONCURRENCY_SQL}
           and (select count(*)=1 from app.outbox_fair_dispatch_cursor where singleton)
           and has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','SELECT')
           and has_column_privilege(current_user,'app.outbox_fair_dispatch_cursor','last_workspace_id','UPDATE')

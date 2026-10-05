@@ -239,6 +239,7 @@ const workerConfigSchema = z
       .transform((value) => value === 'true'),
     NODE_ENV: z.enum(workerEnvironments).default('development'),
     NODE_COMPATIBILITY_COHORT: z.enum(PLATFORM_RELEASE_COHORTS).default('core'),
+    PERTEXO_LOCAL_JSON_CALL: z.enum(['true', 'false']).default('false'),
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
@@ -274,6 +275,43 @@ const workerConfigSchema = z
       .default('pertexo_worker'),
   })
   .superRefine((value, context) => {
+    if (value.NODE_COMPATIBILITY_COHORT === 'local_json_call') {
+      const databases = [
+        value.DATABASE_WORKER_URL,
+        value.DATABASE_DISPATCHER_URL,
+      ].map((url) => new URL(url));
+      const redis = new URL(value.REDIS_URL);
+      if (
+        databases.some(
+          (database) =>
+            database.hostname !== '127.0.0.1' ||
+            database.port !== '51243' ||
+            database.pathname !== '/pertexo' ||
+            database.search !== '',
+        ) ||
+        redis.hostname !== '127.0.0.1' ||
+        redis.port !== '51244' ||
+        redis.search !== ''
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['PERTEXO_LOCAL_JSON_CALL'],
+          message: 'Local JSON Call requires owned loopback database and Redis',
+        });
+    }
+    if (
+      (value.NODE_COMPATIBILITY_COHORT === 'local_json_call' ||
+        value.PERTEXO_LOCAL_JSON_CALL === 'true') &&
+      (value.NODE_ENV !== 'development' ||
+        value.PERTEXO_LOCAL_JSON_CALL !== 'true' ||
+        value.NODE_COMPATIBILITY_COHORT !== 'local_json_call')
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['PERTEXO_LOCAL_JSON_CALL'],
+        message:
+          'Local JSON Call requires explicit development-only cohort opt-in',
+      });
     if (
       value.NODE_ENV === 'production' &&
       value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined

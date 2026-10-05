@@ -44,6 +44,21 @@ ALTER TABLE app.workflow_runs DROP CONSTRAINT workflow_runs_trigger_type_valid;
 ALTER TABLE app.workflow_runs ADD CONSTRAINT workflow_runs_trigger_type_valid
   CHECK(trigger_type IN ('api','manual','replay','schedule','webhook','workflow_call'));
 
+-- A waiting Call is a logical coordinator barrier, not a physical Wait attempt.
+ALTER TABLE app.node_runs DROP CONSTRAINT node_runs_control_kind_valid;
+ALTER TABLE app.node_runs ADD CONSTRAINT node_runs_control_kind_valid
+  CHECK(control_kind IS NULL OR control_kind IN ('for_each_barrier','workflow_call'));
+ALTER TABLE app.node_runs DROP CONSTRAINT node_runs_wait_state_valid;
+ALTER TABLE app.node_runs ADD CONSTRAINT node_runs_wait_state_valid CHECK ((
+  (status='waiting' AND control_kind IN ('for_each_barrier','workflow_call')
+    AND wait_kind IS NULL AND resume_at IS NULL AND retry_due_at IS NULL)
+  OR (status='waiting' AND control_kind IS NULL
+    AND ((wait_kind='node_wait' AND resume_at IS NOT NULL AND retry_due_at IS NULL)
+      OR (wait_kind='retry_backoff' AND resume_at IS NULL AND retry_due_at IS NOT NULL)))
+  OR (status<>'waiting' AND control_kind IS NULL AND wait_kind IS NULL
+    AND resume_at IS NULL AND retry_due_at IS NULL)
+) IS TRUE);
+
 -- Durable human-root initiation lives on the EXISTING run, not in an
 -- idempotency scope, publisher session or a new authorization ledger. Only the
 -- minimum manual native ingress is implemented here; other native root ingress
@@ -1239,9 +1254,10 @@ BEGIN
     AND v_checkpoint.scheduler_state->'cancelRequested'='false'::jsonb
     AND v_checkpoint.scheduler_state->'deadlineExpired'='false'::jsonb
     AND (v_checkpoint.scheduler_state->>'remainingIterationBudget')::integer BETWEEN 0 AND 10000
+    AND v_checkpoint.scheduler_state->'initialIterationBudget'=v_checkpoint.scheduler_state->'remainingIterationBudget'
     AND v_checkpoint.scheduler_state-ARRAY['schemaVersion','engineVersion','workflowVersionId',
       'revision','runStatus','nextEventSequence','readySet','admittedInvocationKeys','invocations',
-      'joins','loops','branchSelections','calls','remainingIterationBudget','cancelRequested',
+      'joins','loops','branchSelections','calls','initialIterationBudget','remainingIterationBudget','cancelRequested',
       'deadlineExpired']='{}'::jsonb) IS NOT TRUE THEN
     RAISE EXCEPTION 'native root input initial checkpoint differs' USING ERRCODE='55000';
   END IF;
@@ -4222,8 +4238,32 @@ BEGIN
       END IF;
       SELECT count(*)::integer,(jsonb_agg(invocation))->0 INTO v_matches,v_invocation
         FROM jsonb_array_elements(v_checkpoint.scheduler_state->'invocations') invocation
-        WHERE invocation->>'nodeId'=v_node_id AND invocation->>'status' IN ('succeeded','waiting');
+        WHERE invocation->>'nodeId'=v_node_id AND invocation->>'status' IN ('running','succeeded','waiting');
       IF v_matches<>1 THEN RAISE EXCEPTION 'native inventory selected invocation differs' USING ERRCODE='23514'; END IF;
+      IF v_invocation->>'status'='running' THEN
+        -- Physical success may be consumed in the same CAS that completes the
+        -- callable. Derive its pending reference from the actual completed
+        -- attempt, not a caller's proposed checkpoint or a Call declaration.
+        SELECT CASE attempt.output_ref->>'kind'
+          WHEN 'inline' THEN jsonb_build_object('kind','inline','attemptId',attempt.id)
+          WHEN 'artifact' THEN jsonb_build_object('kind','artifact','artifactId',attempt.output_ref->'artifactId')
+          END INTO v_identity
+        FROM app.node_runs node JOIN app.node_attempts attempt
+          ON attempt.workspace_id=node.workspace_id AND attempt.node_run_id=node.id
+            AND attempt.id=node.current_attempt_id AND attempt.attempt_number=node.current_attempt_number
+        WHERE node.workspace_id=v_workspace AND node.workflow_run_id=v_run.id AND node.node_id=v_node_id
+          AND node.invocation_key=v_invocation->>'invocationKey' AND node.status='succeeded'
+          AND attempt.attempt_number=(v_invocation->>'attemptNumber')::integer
+          AND attempt.status='succeeded' AND attempt.completed_at IS NOT NULL
+          AND attempt.lease_owner IS NULL AND attempt.lease_expires_at IS NULL
+          AND node.output_ref=attempt.output_ref
+          AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_version.executable_json#>'{graph,nodes}') entry
+            WHERE entry->>'id'=v_node_id AND entry#>>'{definition,key}'='core.workflow_call');
+        IF NOT FOUND OR v_identity IS NULL THEN
+          RAISE EXCEPTION 'native inventory pending physical success differs' USING ERRCODE='23514';
+        END IF;
+        v_invocation:=v_invocation||jsonb_build_object('output',v_identity);
+      END IF;
       IF v_invocation->>'status'='waiting' THEN
         -- Pure demand may settle a just-terminal child BEFORE the parent CAS.
         -- Derive that logical source from sealed admitted truth/current Call wait,
@@ -4950,6 +4990,21 @@ CREATE POLICY inbox_receipts_native_coordinator_owner_select ON app.inbox_receip
   FOR SELECT TO {{owner_role}}
   USING ((workspace_id)::text=NULLIF(current_setting('app.workspace_id',true),'')
     AND consumer_name='workflow-coordinator');
+
+-- Native attempt value reads/completion prove the current physical delivery
+-- from the same existing scoped inbox, without broad owner receipt access.
+CREATE POLICY inbox_receipts_native_attempt_owner_select ON app.inbox_receipts
+  FOR SELECT TO {{owner_role}}
+  USING ((workspace_id)::text=NULLIF(current_setting('app.workspace_id',true),'')
+    AND consumer_name='node-attempt-worker');
+
+-- SELECT FOR UPDATE requires UPDATE visibility as well as SELECT visibility.
+-- WITH CHECK false permits the existing owner to lock, never mutate, receipts.
+CREATE POLICY inbox_receipts_native_owner_lock ON app.inbox_receipts
+  FOR UPDATE TO {{owner_role}}
+  USING ((workspace_id)::text=NULLIF(current_setting('app.workspace_id',true),'')
+    AND consumer_name IN ('node-attempt-worker','workflow-coordinator'))
+  WITH CHECK (false);
 
 -- A native step's logical projection (status, result and current attempt) is
 -- coordinator-owned once its result is accepted. A new or changed nonnull
