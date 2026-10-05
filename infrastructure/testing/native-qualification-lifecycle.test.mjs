@@ -12,16 +12,16 @@ test('binds the actual guarded candidate and exact native inventory without qual
   const observed = await observeNativeQualificationSource();
   assert.equal(
     observed.candidateSha256,
-    '45dcedde7f382b54978578d3f6f8aba066b7a58e1b874e11e65bda90ea67c6bd',
+    'a771404c0dda6bac4884d7100fe54e6d94211510969f72e7a25a196ed6a94a5c',
   );
   assert.equal(observed.ownerCount, 70);
   assert.equal(
     observed.ownerInventorySha256,
-    '4f01ec853699e8d2e26ad3613fa963395311592c7f442b86a0a2598dc78b43a4',
+    '98c264236c52d80cda6c4c60ae8d150d1c346fe406b7410937a356a6a7a31674',
   );
   assert.equal(
     observed.ownerBodyInventorySha256,
-    '38d78e0340bb875b8bbf42fe97269c9a9e8b162d3fd6ab7cda7815e622818026',
+    'dd2f01092e1e3bec28b88ffa01e4169f4798ae0559f4b884291bd112910dd5e9',
   );
   // The reviewed baseline plus exactly these later additions: the run-family
   // reader and the step logical-projection guard with its accepted-value lookup.
@@ -36,7 +36,7 @@ test('binds the actual guarded candidate and exact native inventory without qual
   assert.equal(previousOwners.length, 67);
   assert.equal(
     createHash('sha256').update(JSON.stringify(previousOwners)).digest('hex'),
-    'f70c0d100e7d15970f3e57233d0df6b4a8410cf67b2f9ac9ade019d2c1a1f4fa',
+    '290e63904c958a48a6beabc305c91b4beb8453efb3e5b623ee2969c5fcddd7a2',
   );
   assert.equal(observed.installationGuardPresent, true);
   assert.equal(
@@ -52,9 +52,9 @@ test('binds the actual guarded candidate and exact native inventory without qual
         ),
       )
       .digest('hex'),
-    'e709b9b825a659cde0e25bf0936804be8c65fedf5565cdd0434e57e023aab85b',
+    'b5825c3993fac2b47b9d3b5dce0b7ebc39ce492bfee89d8025623e22fd34f15a',
   );
-  assert.equal(observed.baseHead, '0136_workflow_draft_graph_v2.sql');
+  assert.equal(observed.baseHead, '0139_workflow_json_calls.sql');
   assert.equal(observed.publishedConstraintQualified, false);
 });
 
@@ -450,7 +450,7 @@ test('snapshots caller source and resource bindings rather than adopting later m
   const report = await owner.assess(['artifact_result_lifetime']);
   assert.equal(
     report.source.candidateSha256,
-    '45dcedde7f382b54978578d3f6f8aba066b7a58e1b874e11e65bda90ea67c6bd',
+    'a771404c0dda6bac4884d7100fe54e6d94211510969f72e7a25a196ed6a94a5c',
   );
   assert.equal(report.resources.postgresId, 'a'.repeat(64));
   assert.equal(Object.isFrozen(report.resources), true);

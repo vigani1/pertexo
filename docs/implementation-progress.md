@@ -41,8 +41,9 @@ parked notification rewrite remain out of scope.
       cohesive responsibilities without changing public interfaces or the baseline.
 - [x] Synchronize generated problem-code artifacts and exact nodes-core test
       fixtures with the already-declared Call definition and policy.
-- [ ] Complete the normal local pre-push gate; remaining infrastructure routing
-      and stale source-only assertions require a separate authorized repair.
+- [x] Repair the changed-gate routing and stale source-only lifecycle metadata
+      without altering the dedicated HTTP owner or deferred SQL candidate.
+- [ ] Complete the normal local pre-push gate on the recorded repaired tree.
 - [ ] Run the real HTTP parent/child path in a required no-skip CI job.
 - [ ] Record coherent reviewed commits, green CI and Phase 1 merge to main.
 
@@ -104,10 +105,19 @@ but fails its final infrastructure batch (75 passed / 3 failed): the changed
 selector runs the dedicated HTTP integration without its required owner
 environment, and two source-only lifecycle assertions expect an old candidate
 hash. The actual dedicated HTTP proof passes separately; the deferred candidate
-blob remains `d264e871dd2c96b656e3f6e8367b417344a42096`. Neither routing nor those
-assertions is changed in this repair. Normal local qualification, hosted CI,
-independent rereview and Phase 1 merge remain open. No baseline, timeout,
-migration or rollout setting is changed.
+blob remains `d264e871dd2c96b656e3f6e8367b417344a42096`.
+
+The authorized follow-up from `3783d41d` excludes only that dedicated HTTP file
+from service-free changed Node test execution while retaining its linting,
+unconditional CI owner and strict no-skip reporter. A regression fails before
+the routing change and passes afterward. The same source-only lifecycle tests
+now pin the unchanged candidate's SHA-256, complete/retained owner inventory
+digests and current registered migration head; count, installation guard and
+false native-qualification assertions remain intact. The frozen owner inventory
+and candidate are unchanged. Focused routing, lifecycle and CI-owner tests pass
+70 cases, plus CI policy validation, lint and formatting. Normal local pre-push
+rerun is pending; hosted CI, independent rereview and Phase 1 merge remain open.
+No baseline, timeout, migration or rollout setting is changed.
 
 ### F08 — ordinary execution-value runtime integration (incomplete)
 
