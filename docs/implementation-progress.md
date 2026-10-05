@@ -37,6 +37,11 @@ parked notification rewrite remain out of scope.
       default-false writer/root rollout; accepted families must drain while OFF.
 - [x] Add and locally exercise the dedicated no-skip real HTTP qualifier and
       required CI owner, including weakening/missing-owner policy negatives.
+- [x] Close the eleven inherited complexity regressions through private,
+      cohesive responsibilities without changing public interfaces or the baseline.
+- [x] Synchronize generated problem-code artifacts and exact nodes-core test
+      fixtures with the already-declared Call definition and policy.
+- [ ] Complete the normal local pre-push gate on the recorded repaired tree.
 - [ ] Run the real HTTP parent/child path in a required no-skip CI job.
 - [ ] Record coherent reviewed commits, green CI and Phase 1 merge to main.
 
@@ -72,6 +77,29 @@ target checks. Real PostgreSQL negatives preserve each mismatched index's OID
 and leave migration history empty; exact invalid-index restart, committed-index
 history recovery and normal 0139 installation still pass (13 combined cases).
 This is a migration-runner repair only; 0139 and rollout semantics are unchanged.
+
+The normal pre-push gate reproduced eleven source complexity failures on
+`a50d9ad4`. Private publication projections, event identity/persistence, persisted
+fact validation, bounded authoring job ownership, immutable registry history,
+schema projection and compatibility setup now keep each owned file/function
+within the unchanged budgets. Query order and transaction boundaries are
+preserved; moved SQL is unchanged apart from claim-query indentation. Full
+database units (185 files / 1,759 tests), worker units (106 / 1,333), workflow
+model (1,572), node catalog (1,309) and contracts (240) pass. Eight affected real
+PostgreSQL files pass 56 cases, and the rebuilt ordinary inline Call HTTP case
+passes 1/1 with zero skips. Knip, architecture, builds and affected typechecks
+pass. Two operator checks initially targeted the wrong local server; using the
+same disposable-database endpoint passes without a code or test change.
+
+Further inherited gate failures were stale generated contracts and nodes-core
+fixtures, not refactor behavior changes. Normal deterministic generation adds
+only the already-declared `workflow.calls_unavailable` enum value to nineteen
+artifacts; freshness and built-consumer checks pass. The nodes-core fixtures now
+include the existing Call policy rather than dropping its definition, and the
+exact inventory adds only `core.workflow_call@1` while preserving the retained
+eighteen identities. All 129 nodes-core tests pass. Final normal local pre-push
+qualification is pending; hosted CI, independent rereview and Phase 1 merge
+remain open. No baseline, timeout, migration or rollout setting is changed.
 
 ### F08 — ordinary execution-value runtime integration (incomplete)
 
