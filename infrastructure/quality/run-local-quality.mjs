@@ -1300,6 +1300,34 @@ async function run() {
                 `${service} did not bind its validated loopback port ${hostPort}`,
               );
           }
+          // Attest only services created by this run, after all loopback bindings
+          // are validated. Ordinary integration and curated consumers share the
+          // same exact ownership contract; neither may adopt an older fixture.
+          const postgres = await capture(
+            'docker',
+            composeArguments(id, 'ps', '-q', 'postgres'),
+            environment,
+          );
+          const redis = await capture(
+            'docker',
+            composeArguments(id, 'ps', '-q', 'redis'),
+            environment,
+          );
+          environment = {
+            ...environment,
+            EDITOR_BROWSER_OWNED_FIXTURE: 'true',
+            EDITOR_BROWSER_OWNERSHIP_MANIFEST: JSON.stringify({
+              project: id,
+              postgres: {
+                id: postgres.stdout.trim(),
+                port: Number(environment.POSTGRES_PORT),
+              },
+              redis: {
+                id: redis.stdout.trim(),
+                port: Number(environment.REDIS_PORT),
+              },
+            }),
+          };
           await execute(
             'docker',
             composeArguments(
@@ -1330,28 +1358,6 @@ async function run() {
             path.join(outputDirectory, `${definition.id}.log`),
           );
         } else if (definition.internal === 'curated-template-qualification') {
-          // Only attest services created by this run; never discover/adopt an older fixture.
-          const postgres = await capture(
-            'docker',
-            composeArguments(id, 'ps', '-q', 'postgres'),
-            environment,
-          );
-          const redis = await capture(
-            'docker',
-            composeArguments(id, 'ps', '-q', 'redis'),
-            environment,
-          );
-          const ownership = JSON.stringify({
-            project: id,
-            postgres: {
-              id: postgres.stdout.trim(),
-              port: Number(environment.POSTGRES_PORT),
-            },
-            redis: {
-              id: redis.stdout.trim(),
-              port: Number(environment.REDIS_PORT),
-            },
-          });
           const directory = path.join(
             reportsDirectory,
             'curated-template-qualification',
@@ -1359,11 +1365,7 @@ async function run() {
           await execute(
             process.execPath,
             [...definition.command.slice(1), '--reports-directory', directory],
-            {
-              ...environment,
-              EDITOR_BROWSER_OWNED_FIXTURE: 'true',
-              EDITOR_BROWSER_OWNERSHIP_MANIFEST: ownership,
-            },
+            environment,
             path.join(outputDirectory, `${definition.id}.log`),
           );
           record.ownedQualification =
