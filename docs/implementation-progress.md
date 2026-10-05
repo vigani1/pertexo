@@ -43,7 +43,7 @@ parked notification rewrite remain out of scope.
 Observed test-first evidence: normal migration discovery initially ended at
 0136; explicit post-online transactional mode was rejected; an interrupted
 unique concurrent-index build was incorrectly recorded while INVALID. Focused
-repairs pass the two empty/upgrade migration cases, seven migration-mode
+repairs pass the two empty/upgrade migration cases, eleven migration-mode
 integration cases and twelve execution-plan cases. Real catalog negatives,
 normal API/worker/inline coordinator readiness and ordinary flag-OFF publication
 and root checks pass. Registry/config tests pass with newly pinned native
@@ -57,11 +57,21 @@ API/worker probes, non-Call child publication OFF, fresh Call publication/root
 by parent/child success while OFF with both persisted outputs and the exact pin.
 The dedicated CI owner and thirteen weakening/missing-owner negatives pass within
 39 CI policy tests. This is local execution, not a green hosted CI run. Whole
-database/worker/API unit suites pass 1769/1333/2398 cases respectively, and their
+database/worker/API unit suites pass 1770/1333/2398 cases respectively, and their
 test typechecks pass. The obsolete local installer/repro are deleted (recoverable
 in Git history); the existing historical local database is not migrated or reset.
 Required hosted HTTP CI, independent review, broader qualification and merge
 remain open. Production activation is OFF.
+
+The Phase 1 Standards review found that an existing same-name online prerequisite
+could use a non-default operator class, collation, ordering or null equality and
+still be recorded as applied. The operator-class regression first resolved
+instead of refusing. The runner now compares PostgreSQL's complete normalized
+index definition with the recognized simple default shape, retaining owner and
+target checks. Real PostgreSQL negatives preserve each mismatched index's OID
+and leave migration history empty; exact invalid-index restart, committed-index
+history recovery and normal 0139 installation still pass (13 combined cases).
+This is a migration-runner repair only; 0139 and rollout semantics are unchanged.
 
 ### F08 — ordinary execution-value runtime integration (incomplete)
 

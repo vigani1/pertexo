@@ -168,13 +168,21 @@ describe('migration execution modes', () => {
     }
   });
 
-  for (const difference of ['table', 'column', 'owner'] as const) {
+  for (const difference of [
+    'table',
+    'column',
+    'owner',
+    'opclass',
+    'collation',
+    'ordering',
+    'null equality',
+  ] as const) {
     it(`refuses an online restart index with a different ${difference} without dropping it`, async () => {
       const { config, name } = await createDatabase();
       const directory = await temporaryDirectory();
       await writeFile(
         path.join(directory, '0001_table.sql'),
-        'create table online_items(id integer primary key,value text); create table other_items(id integer primary key,value text);',
+        'create table online_items(id integer primary key,value varchar(128)); create table other_items(id integer primary key,value varchar(128));',
       );
       await writePlan(directory, '0001_table.sql', {});
       await migrateDatabase(config, directory);
@@ -199,8 +207,16 @@ describe('migration execution modes', () => {
             'alter table public.online_items owner to postgres',
           );
         } else {
+          const target = {
+            table: 'other_items(value)',
+            column: 'online_items(id)',
+            opclass: 'online_items(value varchar_pattern_ops)',
+            collation: 'online_items(value COLLATE "C")',
+            ordering: 'online_items(value DESC)',
+            'null equality': 'online_items(value) NULLS NOT DISTINCT',
+          }[difference];
           await owner.query(
-            `create unique index online_items_value_idx on ${difference === 'table' ? 'other_items(value)' : 'online_items(id)'}`,
+            `create unique index online_items_value_idx on ${target}`,
           );
         }
         const before = (

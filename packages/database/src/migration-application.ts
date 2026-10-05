@@ -80,6 +80,8 @@ async function runOnlineMigration(
     // would silently record that failed index as applied on the next run.
     // Recover only a single simple index whose exact target/shape/owner agree;
     // never drop a differently scoped object or split arbitrary migration SQL.
+    // PostgreSQL's non-pretty definition normalizes the simple default shape
+    // and exposes non-default opclasses, collations, ordering and null equality.
     const index =
       /^\s*create\s+(unique\s+)?index\s+concurrently\s+if\s+not\s+exists\s+([a-z_][a-z0-9_]*)\s+on\s+([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?)\s*\(\s*([a-z_][a-z0-9_]*(?:\s*,\s*[a-z_][a-z0-9_]*)*)\s*\)\s*;\s*$/iu.exec(
         input.rendered.replace(/^\s*--[^\n]*(?:\n|$)/gmu, ''),
@@ -97,6 +99,11 @@ async function runOnlineMigration(
           and binding.indisunique=$3 and binding.indpred is null and binding.indexprs is null
           and binding.indnatts=binding.indnkeyatts
           and method.amname='btree'
+          and pg_get_indexdef(binding.indexrelid,0,false)=format(
+            'CREATE %sINDEX %I ON %I.%I USING btree (%s)',
+            case when $3 then 'UNIQUE ' else '' end,$1,namespace.nspname,target.relname,
+            (select string_agg(quote_ident(column_name),', ' order by position)
+              from unnest($5::text[]) with ordinality columns(column_name,position)))
           and array(select attribute.attname::text from unnest(binding.indkey) with ordinality key(number,position)
             join pg_attribute attribute on attribute.attrelid=target.oid and attribute.attnum=key.number
             order by key.position)=$5::text[] compatible
