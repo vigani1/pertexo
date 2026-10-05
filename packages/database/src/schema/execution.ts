@@ -25,6 +25,9 @@ export const workflowRuns = appSchema.table(
     replaySourceRunId: uuid('replay_source_run_id'),
     replayCommandId: uuid('replay_command_id'),
     triggerType: varchar('trigger_type', { length: 32 }).notNull(),
+    // Derived and immutable at the registered Call-capable root admission owner.
+    nativeInitiatingActorId: uuid('native_initiating_actor_id'),
+    nativeInitiatingRoleRevision: integer('native_initiating_role_revision'),
     failureNotificationPolicyVersion: smallint(
       'failure_notification_policy_version',
     ),

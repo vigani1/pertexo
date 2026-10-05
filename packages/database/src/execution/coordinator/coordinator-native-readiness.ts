@@ -6,6 +6,59 @@ import {
   UNFINISHED_NATIVE_OWNER_INTEGRATIONS,
 } from './coordinator-native-owner-inventory.js';
 import { NATIVE_PUBLISHED_CONSTRAINT_INVENTORY } from './coordinator-native-published-constraints.js';
+import { READINESS_WORKFLOW_CALL_SQL } from '../../platform/readiness-workflow-call.sql.js';
+
+/** Registered Phase 1 catalog only; deferred full-native owners stay unqualified. */
+export async function checkInlineWorkflowCallCoordinatorReadiness(
+  pool: Pool,
+  ownerRole: string,
+  workerRole: string,
+  controlReadTimeoutMillis: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  assertNativeCoordinatorPoolAdmission(
+    pool.options.connectionTimeoutMillis,
+    controlReadTimeoutMillis,
+  );
+  await withPlatformReadClient(
+    pool,
+    async (client) => {
+      const boundary = await client.query<{
+        api_role: string | null;
+        operator_role: string | null;
+      }>(
+        `select
+      (select pg_get_userbyid(runtime_role) from pg_policy p,unnest(p.polroles) runtime_role
+        where p.polrelid=to_regclass('app.workflows') and p.polname='workflows_workspace_scope'
+          and runtime_role<>(select oid from pg_roles where rolname=$1)) api_role,
+      (select pg_get_userbyid(runtime_role) from pg_policy p,unnest(p.polroles) runtime_role
+        where p.polrelid=to_regclass('app.workflow_call_rollout') and p.polname='workflow_call_rollout_operator_read') operator_role`,
+        [ownerRole],
+      );
+      const roles = boundary.rows[0];
+      if (!roles?.api_role || !roles.operator_role)
+        throw new Error('Inline workflow Call boundary roles are unavailable');
+      const result = await client.query<{ compatible: boolean }>(
+        `select (current_user=$2::name
+      and exists(select 1 from pg_roles r where r.rolname=current_user and not r.rolsuper and not r.rolbypassrls)
+      and not pg_has_role(current_user,$1::name,'MEMBER')
+      and ${READINESS_WORKFLOW_CALL_SQL}) compatible`,
+        [ownerRole, workerRole, roles.api_role, '', roles.operator_role],
+      );
+      if (result.rows.length !== 1 || result.rows[0]?.compatible !== true)
+        throw new Error(
+          'Inline workflow Call registered catalog is incompatible',
+        );
+    },
+    {
+      ...(signal === undefined ? {} : { signal }),
+      nativeReadBudget: {
+        readTimeoutMillis: controlReadTimeoutMillis,
+        controlReadTimeoutMillis,
+      },
+    },
+  );
+}
 
 /** Infrastructure catalog only: no workspace, payload, writes or installation. */
 export async function checkNativeCoordinatorReadiness(

@@ -118,6 +118,132 @@ describe('migration execution modes', () => {
     }
   });
 
+  it('rebuilds its invalid concurrent index after a failed unique-index build', async () => {
+    const { config } = await createDatabase();
+    const directory = await temporaryDirectory();
+    await writeFile(
+      path.join(directory, '0001_table.sql'),
+      "create table online_items(id integer primary key, value text); insert into online_items values(1,'same'),(2,'same');",
+    );
+    await writePlan(directory, '0001_table.sql', {});
+    await migrateDatabase(config, directory);
+    await writeFile(
+      path.join(directory, '0002_online_index.sql'),
+      'create unique index concurrently if not exists online_items_value_idx on online_items(value);',
+    );
+    await writePlan(directory, '0001_table.sql', {
+      '0002_online_index.sql': {
+        maximumDatabaseBytes: 1_000_000_000,
+        mode: 'online',
+        restartSafe: true,
+        rollbackCompatibleThrough: '0001_table.sql',
+      },
+    });
+    await expect(migrateDatabase(config, directory)).rejects.toThrow();
+    const owner = new Pool({
+      connectionString: config.connectionString,
+      max: 1,
+    });
+    try {
+      await owner.query('set role pertexo_owner');
+      expect(
+        (
+          await owner.query(
+            "select indisvalid from pg_index where indexrelid='online_items_value_idx'::regclass",
+          )
+        ).rows,
+      ).toEqual([{ indisvalid: false }]);
+      await owner.query('delete from online_items where id=2');
+      await migrateDatabase(config, directory);
+      expect(
+        (
+          await owner.query(
+            "select indisvalid, indisready from pg_index where indexrelid='online_items_value_idx'::regclass",
+          )
+        ).rows,
+      ).toEqual([{ indisvalid: true, indisready: true }]);
+      expect(await migrateDatabase(config, directory)).toEqual([]);
+    } finally {
+      await owner.end();
+    }
+  });
+
+  for (const difference of ['table', 'column', 'owner'] as const) {
+    it(`refuses an online restart index with a different ${difference} without dropping it`, async () => {
+      const { config, name } = await createDatabase();
+      const directory = await temporaryDirectory();
+      await writeFile(
+        path.join(directory, '0001_table.sql'),
+        'create table online_items(id integer primary key,value text); create table other_items(id integer primary key,value text);',
+      );
+      await writePlan(directory, '0001_table.sql', {});
+      await migrateDatabase(config, directory);
+      const owner = new Pool({
+        connectionString: config.connectionString,
+        max: 1,
+      });
+      const adminTarget = new URL(adminUrl);
+      adminTarget.pathname = `/${name}`;
+      const admin = new Pool({
+        connectionString: adminTarget.toString(),
+        max: 1,
+      });
+      try {
+        await owner.query('set role pertexo_owner');
+        if (difference === 'owner') {
+          await admin.query(
+            'create unique index online_items_value_idx on public.online_items(value)',
+          );
+          // PostgreSQL keeps an index's ownership aligned with its table.
+          await admin.query(
+            'alter table public.online_items owner to postgres',
+          );
+        } else {
+          await owner.query(
+            `create unique index online_items_value_idx on ${difference === 'table' ? 'other_items(value)' : 'online_items(id)'}`,
+          );
+        }
+        const before = (
+          await admin.query(
+            "select oid from pg_class where oid='public.online_items_value_idx'::regclass",
+          )
+        ).rows;
+        await writeFile(
+          path.join(directory, '0002_online_index.sql'),
+          'create unique index concurrently if not exists online_items_value_idx on online_items(value);',
+        );
+        await writePlan(directory, '0001_table.sql', {
+          '0002_online_index.sql': {
+            maximumDatabaseBytes: 1_000_000_000,
+            mode: 'online',
+            restartSafe: true,
+            rollbackCompatibleThrough: '0001_table.sql',
+          },
+        });
+        await expect(migrateDatabase(config, directory)).rejects.toThrow(
+          'Online index restart target differs',
+        );
+        expect(
+          (
+            await admin.query(
+              "select oid from pg_class where oid='public.online_items_value_idx'::regclass",
+            )
+          ).rows,
+        ).toEqual(before);
+        expect(
+          (
+            await owner.query(
+              "select name from pertexo_internal.schema_migrations where name='0002_online_index.sql'",
+            )
+          ).rows,
+        ).toEqual([]);
+      } finally {
+        await owner.end();
+        await admin.end();
+      }
+    });
+  }
+
   it('restarts the same online migration after the index committed but history recording failed', async () => {
     const { config, name: databaseName } = await createDatabase();
     const directory = await temporaryDirectory();

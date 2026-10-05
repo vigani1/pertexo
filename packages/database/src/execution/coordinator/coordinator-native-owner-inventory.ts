@@ -59,7 +59,7 @@ const sourceOwners = [
   },
   {
     signature: 'app.record_native_root_execution_input(uuid,uuid,text)',
-    hash: '5f03f7bf82cc2c08b93b52166f7cfe01',
+    hash: 'c705169a9352846ca292183a52992c57',
     securityDefiner: true,
     rowSecurity: true,
   },
@@ -300,7 +300,7 @@ const sourceOwners = [
   },
   {
     signature: 'app.native_coordinator_value_inventory(jsonb,jsonb)',
-    hash: '8dde004046c95ad1a7431f82c489522f',
+    hash: '690cdbfc7d584016e7db70483175a18f',
     securityDefiner: false,
     rowSecurity: true,
   },

@@ -33,6 +33,7 @@ const startupRow = Object.freeze({
   due_node_wakeups_compatible: true,
   durable_wait_compatible: true,
   execution_admission_compatible: true,
+  workflow_calls_compatible: true,
   execution_values_compatible: true,
   failure_notification_compatible: true,
   migration_head: EXPECTED_MIGRATION_HEAD,
@@ -68,7 +69,7 @@ const startupRow = Object.freeze({
 
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0136_workflow_draft_graph_v2.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0139_workflow_json_calls.sql');
   });
 
   it('checks only bounded live compatibility state', async () => {

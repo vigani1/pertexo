@@ -1,6 +1,8 @@
 import { READINESS_WORKFLOW_CONCURRENCY_SQL } from './readiness-workflow-concurrency.sql.js';
+import { READINESS_WORKFLOW_CALL_SQL } from './readiness-workflow-call.sql.js';
 
 export const READINESS_TRIGGERS_MIGRATION_SQL = `
+      ${READINESS_WORKFLOW_CALL_SQL} as workflow_calls_compatible,
       (
         exists (
           select 1 from pg_attribute
@@ -284,7 +286,8 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
           ]) and admission_function.prosecdef
             and admission_owner.rolname=$1
             and admission_function.proconfig=array[
-              'search_path=pg_catalog, app','row_security=on'
+              case when admission_function.oid=to_regprocedure('app.workflow_run_active_admission_eligible(uuid,uuid,uuid)')
+                then 'search_path=pg_catalog, app, pg_temp' else 'search_path=pg_catalog, app' end,'row_security=on'
             ]::text[])
         and (
           (

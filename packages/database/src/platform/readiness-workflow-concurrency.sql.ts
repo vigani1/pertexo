@@ -15,12 +15,12 @@ export const READINESS_WORKFLOW_CONCURRENCY_SQL = `(
     and not exists (
       select 1 from (values
         ('app.enforce_workflow_run_admission()','4a178a6940d2a28eb9afde6f5227fbaf','owner','v',false),
-        ('app.workflow_concurrency_admissible(uuid,uuid,boolean)','3c541c79eb4d3849b58d8c76a2c5fade','owner','v',true),
+        ('app.workflow_concurrency_admissible(uuid,uuid,boolean)','4f2b5fe534190e0d4af122280a636775','owner','v',true),
         ('app.workflow_concurrency_control(uuid,uuid,uuid,text,jsonb,text,text,text,text)','f37e4d9d93e59b518d37713078575eda','api','v',true),
         ('app.workflow_run_admission_blockers(uuid,uuid)','f0127382f587223639b4bfb02f120ee8','api','s',true),
         ('app.workflow_run_active_capacity_available(uuid,integer,uuid)','66e1c3ed4d6d458c4889799733c11063','worker','v',false),
         ('app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid)','8ff6b3bf9c4140076f4a16b80f0949a3','worker','v',false),
-        ('app.workflow_run_active_admission_eligible(uuid,uuid,uuid)','9aa4c431740581a37d4873d0e49cc567','dispatcher','v',false),
+        ('app.workflow_run_active_admission_eligible(uuid,uuid,uuid)','02b0d390926624f0ea6d41ffe8ed92a5','dispatcher','v',true),
         ('app.reserve_workflow_run_active_admission(uuid,uuid,uuid)','e11cf9af2c42e62f995138c7483fe162','dispatcher','v',false)
       ) expected(signature,hash,target,volatility,temp_schema)
       where not exists(select 1 from pg_proc command

@@ -362,7 +362,33 @@ describe('unregistered native retention source contracts', () => {
     );
     expect(inventory).toContain("WHERE node->>'id'=v_node_id");
     expect(inventory).toContain(
-      "invocation->>'nodeId'=v_node_id AND invocation->>'status' IN ('succeeded','waiting')",
+      "invocation->>'nodeId'=v_node_id AND invocation->>'status' IN ('running','succeeded','waiting')",
+    );
+    // A logically running invocation is eligible only through the exact
+    // completed physical attempt consumed by the same final CAS (c118).
+    expect(inventory).toContain("IF v_invocation->>'status'='running' THEN");
+    expect(inventory).toContain(
+      'attempt.id=node.current_attempt_id AND attempt.attempt_number=node.current_attempt_number',
+    );
+    expect(inventory).toContain(
+      "node.invocation_key=v_invocation->>'invocationKey' AND node.status='succeeded'",
+    );
+    expect(inventory).toContain(
+      "attempt.attempt_number=(v_invocation->>'attemptNumber')::integer",
+    );
+    expect(inventory).toContain(
+      "attempt.status='succeeded' AND attempt.completed_at IS NOT NULL",
+    );
+    expect(inventory).toContain(
+      'attempt.lease_owner IS NULL AND attempt.lease_expires_at IS NULL',
+    );
+    expect(inventory).toContain('node.output_ref=attempt.output_ref');
+    expect(inventory).toContain(
+      "entry->>'id'=v_node_id AND entry#>>'{definition,key}'='core.workflow_call'",
+    );
+    expect(inventory).toContain('IF NOT FOUND OR v_identity IS NULL THEN');
+    expect(inventory).toContain(
+      "RAISE EXCEPTION 'native inventory pending physical success differs'",
     );
     expect(inventory).toContain(
       'source.original_reference::text=attempt.output_ref::text AND source.original_reference::text=node.output_ref::text',
