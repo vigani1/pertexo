@@ -88,6 +88,21 @@ describe('native coordinator plan boundary', () => {
       ).toBe(expected);
     },
   );
+  it.each([
+    { graph_schema_version: null, executable_schema_version: null },
+    { graph_schema_version: 1, executable_schema_version: 2 },
+    { graph_schema_version: 2, executable_schema_version: 3 },
+  ])(
+    'does not classify absent executable metadata as runnable %j',
+    (metadata) => {
+      expect(
+        coordinatorExecutableFormat({
+          ...metadata,
+          executable_checksum: null,
+        }),
+      ).toBeUndefined();
+    },
+  );
   it('keeps the selected result budget independent of the retained plan budget', () => {
     const source = plan();
     source.callableResult.value.name = 'x'.repeat(1_048_576 - 11);

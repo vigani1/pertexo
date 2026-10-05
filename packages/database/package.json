@@ -54,6 +54,8 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@pertexo/node-catalog": "workspace:*",
+    "@pertexo/workflow-engine": "workspace:*",
     "@types/pg": "8.23.1"
   }
 }

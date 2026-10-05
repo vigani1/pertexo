@@ -56,13 +56,13 @@ export async function loadCoordinatorAdvanceState(
     input.signal,
     async (client) => {
       const result = await client.query<{
-        graph_schema_version: number;
+        graph_schema_version: number | null;
         executable_schema_version: number | null;
-        executable_checksum: string;
+        executable_checksum: string | null;
       }>(
         `select version.schema_version as graph_schema_version,
                 version.executable_schema_version,version.checksum as executable_checksum
-           from app.workflow_runs run join app.workflow_versions version
+           from app.workflow_runs run left join app.workflow_versions version
              on version.workspace_id=run.workspace_id and version.id=run.workflow_version_id
           where run.workspace_id=$1 and run.id=$2`,
         [workspaceId, runId],

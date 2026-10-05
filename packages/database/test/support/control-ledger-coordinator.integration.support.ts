@@ -11,6 +11,7 @@ import type {
   ControlLedgerRecord,
 } from '../../src/lifecycle/control-ledger-coordinator.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
+import { MIGRATION_EXECUTION_PLAN_FILE } from '../../src/migration-execution-plan.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { expectedMigrationHistoryFrom } from './migration-history-fixture.js';
 
@@ -241,6 +242,11 @@ export function createControlLedgerCoordinatorTestEnvironment() {
         path.join(priorDirectory, name),
       );
     }
+    // The current cohort includes online indexes; preserve its execution modes.
+    await copyFile(
+      path.join(MIGRATIONS_DIRECTORY, MIGRATION_EXECUTION_PLAN_FILE),
+      path.join(priorDirectory, MIGRATION_EXECUTION_PLAN_FILE),
+    );
     const applied = await migrateDatabase(migrationConfig, priorDirectory);
     if (
       applied.length !== MIGRATIONS_AFTER_0045.length ||

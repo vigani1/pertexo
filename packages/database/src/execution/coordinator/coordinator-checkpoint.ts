@@ -15,21 +15,21 @@ export type CoordinatorCheckpoint =
 
 export function coordinatorExecutableFormat(
   row: Readonly<{
-    graph_schema_version: number;
+    graph_schema_version: number | null;
     executable_schema_version: number | null;
-    executable_checksum: string;
+    executable_checksum: string | null;
   }>,
 ): 2 | 3 | undefined {
   if (
     row.graph_schema_version === 2 &&
     row.executable_schema_version === 3 &&
-    /^wf:v3:sha256:[0-9a-f]{64}$/u.test(row.executable_checksum)
+    /^wf:v3:sha256:[0-9a-f]{64}$/u.test(row.executable_checksum ?? '')
   )
     return 3;
   if (
     row.graph_schema_version === 1 &&
     row.executable_schema_version === 2 &&
-    /^wf:v2:sha256:[0-9a-f]{64}$/u.test(row.executable_checksum)
+    /^wf:v2:sha256:[0-9a-f]{64}$/u.test(row.executable_checksum ?? '')
   )
     return 2;
   return undefined;
