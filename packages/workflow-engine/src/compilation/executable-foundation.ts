@@ -116,13 +116,6 @@ export function registerExecutableIdentity(
   return value;
 }
 
-export function assertAuthenticExecutableIdentity(
-  value: CompiledWorkflowExecutableV2,
-): void {
-  if (!isAuthenticExecutableIdentity(value))
-    fail('workflow executable identity was not verified in this process');
-}
-
 export const token = (
   value: DefinitionIdentity | ExecutorIdentity | PolicyReference,
 ): string => `${value.key}\u0000${String(value.version)}`;

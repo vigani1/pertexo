@@ -1,6 +1,5 @@
 import type {
   NativeCoordinatorValueOwner,
-  NativeCoordinatorValueOwnerInspection,
   InspectCoordinatorValueReadOwner,
 } from '@pertexo/database/execution';
 import {
@@ -25,9 +24,6 @@ export const COORDINATOR_VALUE_WORK_POLICY_DEFAULTS = Object.freeze({
   controlReadTimeoutMillis: 2_000,
   operationTimeoutMillis: 30_000,
 });
-
-export type CoordinatorValueOwnerInspection =
-  NativeCoordinatorValueOwnerInspection;
 
 const ownerInspectionSchema = z.discriminatedUnion('kind', [
   z

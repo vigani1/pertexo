@@ -81,7 +81,7 @@ export async function persistStoppedForEachDeclarations(
   }
 }
 
-export async function persistRejectedForEachDeclarations(
+async function persistRejectedForEachDeclarations(
   client: PoolClient,
   input: Readonly<{
     workspaceId: string;
@@ -116,7 +116,7 @@ export async function persistRejectedForEachDeclarations(
   }
 }
 
-export async function persistLoopBarrierTransitions(
+async function persistLoopBarrierTransitions(
   client: PoolClient,
   workspaceId: string,
   runId: string,
@@ -147,7 +147,7 @@ export async function persistLoopBarrierTransitions(
     throw new CoordinatorRunStateCorruptError();
 }
 
-export async function persistDueReadyTransitions(
+async function persistDueReadyTransitions(
   client: PoolClient,
   workspaceId: string,
   runId: string,

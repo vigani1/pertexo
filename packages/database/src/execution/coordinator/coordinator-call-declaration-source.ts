@@ -27,7 +27,7 @@ export type NativeCoordinatorCallDeclarationSource = Readonly<{
   }>;
 }>;
 
-export function parseCoordinatorCallDeclarationRow(value: unknown) {
+function parseCoordinatorCallDeclarationRow(value: unknown) {
   const row = rowSchema.parse(value);
   return Object.freeze({
     invocationKey: row.invocation_key,

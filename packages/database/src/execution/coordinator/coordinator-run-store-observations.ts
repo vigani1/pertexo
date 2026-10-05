@@ -20,7 +20,6 @@ export {
   canonicalTimestamp,
   mapEvent,
   maximumPersistedFacts,
-  normalizedJson,
   persistedFactCapacity,
   readPersistedFacts,
   record,

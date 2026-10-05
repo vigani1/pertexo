@@ -27,7 +27,7 @@ const maximumPersistedFactRowsPerFetch = 1_000;
 // PostgreSQL JSON value may exceed it after numeric text expansion.
 const targetPersistedFactWirePageBytes = 4 * 1_024 * 1_024;
 
-export function normalizedJson(value: unknown): unknown {
+function normalizedJson(value: unknown): unknown {
   try {
     return JSON.parse(serializeStoredExecutionJsonValue(value)) as unknown;
   } catch {

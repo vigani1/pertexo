@@ -26,10 +26,7 @@ import {
   type PreparedWorkflowExecutionValue,
 } from './workflow-execution-value-contract.js';
 
-export {
-  WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
-  assertWorkflowExecutionValueProducer,
-} from './workflow-execution-value-contract.js';
+export { WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1 } from './workflow-execution-value-contract.js';
 export type {
   WorkflowStoredExecutionValueV1,
   WorkflowExecutionValueOwner,

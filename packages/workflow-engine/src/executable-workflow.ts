@@ -25,7 +25,6 @@ export {
   type WorkflowExecutableGraphV2,
   type WorkflowExecutableNodeV2,
   type WorkflowExecutableV2,
-  assertAuthenticExecutableIdentity,
 } from './compilation/executable-foundation.js';
 export { normalizeBoundedEngineJson } from './compilation/executable-validation.js';
 export {

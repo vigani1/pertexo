@@ -1,6 +1,6 @@
 // ADR065 Phase 1: exact registered inline-JSON Call catalog. The independent
 // writer flag is not a readiness value: OFF must continue draining accepted work.
-export const WORKFLOW_CALL_CATALOG_SQL = `
+const WORKFLOW_CALL_CATALOG_SQL = `
 with configured_roles as (select $1::text owner_role,$2::text worker_role,$3::text api_role,
   $4::text maintenance_role,$5::text operator_role), relations as (
   select c.* from pg_class c join pg_namespace n on n.oid=c.relnamespace
