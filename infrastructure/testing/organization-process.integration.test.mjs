@@ -5,7 +5,10 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildCuratedCutoverArtifact } from './curated-cutover-artifact-build.mjs';
+import {
+  buildCuratedCutoverArtifact,
+  ORGANIZATION_PRE_METADATA_SOURCE,
+} from './curated-cutover-artifact-build.mjs';
 import { createCuratedCutoverResources } from './curated-cutover-owned-resources.mjs';
 import {
   curatedDatabaseUrl,
@@ -17,7 +20,7 @@ import {
 } from './organization-process-owner.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
-const oldRef = '936612f26567f760c83e41c13e4c7fc7b620e69f';
+const oldRef = ORGANIZATION_PRE_METADATA_SOURCE;
 async function moduleOf(artifact, specifier) {
   const require = createRequire(
     path.join(artifact.source, 'apps/api/package.json'),
