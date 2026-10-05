@@ -774,20 +774,29 @@ describe('workflow organization manager', () => {
     await event.click(
       screen.getByRole('button', { name: 'Load more assignments' }),
     );
-    await screen.findByRole('checkbox', {
+    const overflow = await screen.findByRole('checkbox', {
       name: 'Select workflow name unavailable (51)',
     });
-    for (let index = 0; index < 50; index += 1)
-      await event.click(
-        await screen.findByRole('checkbox', {
-          name: `Select Workflow ${String(index + 1)}`,
-        }),
+    // Wait for all bounded name reads once. These keyed controls stay mounted
+    // during selection; rescanning the whole accessibility tree per click adds
+    // avoidable quadratic work when the complete suite competes for CPU.
+    const checkboxes = await waitFor(() => {
+      const controls = screen.getAllByRole('checkbox', {
+        name: /^Select Workflow \d+$/,
+      });
+      expect(controls).toHaveLength(50);
+      return controls;
+    });
+    for (const [index, checkbox] of checkboxes.entries()) {
+      expect(checkbox).toHaveAccessibleName(
+        `Select Workflow ${String(index + 1)}`,
       );
-    expect(
-      screen.getByRole('checkbox', {
-        name: 'Select workflow name unavailable (51)',
-      }),
-    ).toHaveAttribute('aria-disabled', 'true');
+      await event.click(checkbox);
+      expect(checkbox).toBeChecked();
+    }
+    expect(overflow).toHaveAttribute('aria-disabled', 'true');
+    await event.click(overflow);
+    expect(overflow).not.toBeChecked();
     expect(
       screen.getByRole('button', {
         name: 'Detach tag from 50 selected workflows',

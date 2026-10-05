@@ -53,7 +53,8 @@ unmaintainable repository ignore. The report is CI evidence; production
 deployment must retain it alongside the exact deployed image digest.
 
 The runtime stage currently installs Debian's exact
-`libpcre2-8-0=10.42-1+deb12u1` security update for CVE-2026-86145. The pinned
+`libpcre2-8-0=10.42-1+deb12u2` security update for CVE-2026-86145 and
+CVE-2026-103111. The pinned
 Node base still contains `10.42-1`; refreshing the same upstream tag does not
 provide the fix. The amd64 and arm64 package downloads use SHA-256 values from
 Debian's signed Bookworm security metadata. BuildKit verifies those hashes and
