@@ -390,8 +390,6 @@ jobs:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
         }}-inline-workflow-call-http
       INLINE_WORKFLOW_CALL_HTTP_INTEGRATION: 'true'
-      INLINE_WORKFLOW_CALL_GATE_REPORT:
-        ${{ runner.temp }}/inline-workflow-call-http/report.json
     steps:
       - name: Check out source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -411,6 +409,9 @@ jobs:
       - name: Start disposable PostgreSQL and Redis
         run: docker compose up -d --wait --wait-timeout 120 postgres redis
       - name: Qualify registered inline Call over real HTTP
+        env:
+          INLINE_WORKFLOW_CALL_GATE_REPORT:
+            ${{ runner.temp }}/inline-workflow-call-http/report.json
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/inline-workflow-call-http"

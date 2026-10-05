@@ -170,14 +170,16 @@ jobs:
       COMPOSE_PROJECT_NAME:
         'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-inline-workflow-call-http',
       INLINE_WORKFLOW_CALL_HTTP_INTEGRATION: 'true',
-      INLINE_WORKFLOW_CALL_GATE_REPORT:
-        '${{ runner.temp }}/inline-workflow-call-http/report.json',
     },
     steps: [
       { run: 'pnpm install --frozen-lockfile' },
       { run: 'pnpm build' },
       { run: 'docker compose up -d --wait --wait-timeout 120 postgres redis' },
       {
+        env: {
+          INLINE_WORKFLOW_CALL_GATE_REPORT:
+            '${{ runner.temp }}/inline-workflow-call-http/report.json',
+        },
         run: [
           'set -euo pipefail',
           'mkdir -p "$RUNNER_TEMP/inline-workflow-call-http"',
@@ -261,6 +263,23 @@ test('requires registered inline Call HTTP qualification with strict no-skip evi
     },
     (job) => {
       job.env.COMPOSE_PROJECT_NAME = 'pertexo-fixed-shared';
+    },
+    (job) => {
+      const step = job.steps.find((step) =>
+        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
+      );
+      job.env.INLINE_WORKFLOW_CALL_GATE_REPORT =
+        step.env.INLINE_WORKFLOW_CALL_GATE_REPORT;
+      delete step.env.INLINE_WORKFLOW_CALL_GATE_REPORT;
+    },
+    (job) => {
+      job.env.INLINE_WORKFLOW_CALL_GATE_REPORT =
+        '${{ runner.temp }}/inline-workflow-call-http/report.json';
+    },
+    (job) => {
+      job.steps.find((step) =>
+        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
+      ).env.INLINE_WORKFLOW_CALL_GATE_REPORT = '/tmp/incorrect-report.json';
     },
     (job) => {
       job.env.DATABASE_API_URL = 'postgresql://postgres@127.0.0.1:5432/pertexo';

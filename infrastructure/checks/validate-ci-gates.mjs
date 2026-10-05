@@ -237,11 +237,10 @@ function requiredInlineCallHttpOwner(workflow, jobs) {
     job.env?.COMPOSE_PROJECT_NAME !==
       'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-inline-workflow-call-http' ||
     job.env?.INLINE_WORKFLOW_CALL_HTTP_INTEGRATION !== 'true' ||
-    job.env?.INLINE_WORKFLOW_CALL_GATE_REPORT !==
-      '${{ runner.temp }}/inline-workflow-call-http/report.json'
+    job.env?.INLINE_WORKFLOW_CALL_GATE_REPORT !== undefined
   )
     fail(
-      'inline Call HTTP owner must retain its dynamic project, mandatory flag and report',
+      'inline Call HTTP owner must retain its dynamic project and mandatory flag without a job-level runner report',
     );
   const steps = jobSteps(jobs, name);
   const required = (command) => {
@@ -275,6 +274,13 @@ function requiredInlineCallHttpOwner(workflow, jobs) {
       'inline Call HTTP qualification must follow frozen installation, build and bounded services',
     );
   const selected = steps[qualification];
+  if (
+    selected.env?.INLINE_WORKFLOW_CALL_GATE_REPORT !==
+    '${{ runner.temp }}/inline-workflow-call-http/report.json'
+  )
+    fail(
+      'inline Call HTTP qualification must own its exact runner report path',
+    );
   for (const [key, value] of Object.entries({
     ...CURATED_TEMPLATE_DATABASE_URLS,
     DATABASE_OPERATOR_URL:
