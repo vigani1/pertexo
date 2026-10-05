@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-10-04
+Last updated: 2026-10-05
 
 This is the mutable delivery tracker for
 [`workflow-platform-backend-plan.md`](./workflow-platform-backend-plan.md).
@@ -9,6 +9,59 @@ vertical-slice criteria have passed. Local checks never substitute for the
 external production evidence listed under Phase 7.
 
 ## Current qualification
+
+### F08 Phase 1 — registered inline JSON Call delivery (in progress)
+
+The proven isolated local parent → pinned child → parent milestone is recorded
+at `c118b93d5f2b55093591af3e678c3b0e16f7f20f`, with both persisted outputs
+`{ "answer": 42 }`. It is not production qualification. The newly authorized
+five-phase delivery program starts with a normally migrated, off-by-default
+inline path and required real-PostgreSQL HTTP CI; ADR066 signed proofs and the
+parked notification rewrite remain out of scope.
+
+- [x] Reproduce the local path after actual development-stack restart.
+- [x] Draft and exercise online tuple-index prerequisites and transactional
+      inline Call schema through the normal runner on empty and populated 0136
+      disposable databases; preserve existing data and six deferred owners.
+- [x] Demonstrate and repair invalid concurrent-index restart and owner-role
+      restoration between migration steps; migration-mode integration passes.
+- [x] Qualify exact registered catalog/readiness on real PostgreSQL for API,
+      worker and the inline coordinator, plus body/ACL/RLS/constraint/trigger
+      mutation negatives; preserve default-OFF ordinary publication/root behavior.
+- [x] Add ordinary staged/active Call successors after Validate (epochs 39/40),
+      preserve retained fingerprints and remove source local-only readiness gates.
+- [ ] Complete independent review and negative/readiness qualification of the
+      exact extracted migration. No artifact/retention owner is included.
+- [x] Replace the local-only cohort/env/readiness substitutions with ordinary
+      registry transitions, exact normal readiness and a database-authoritative
+      default-false writer/root rollout; accepted families must drain while OFF.
+- [x] Add and locally exercise the dedicated no-skip real HTTP qualifier and
+      required CI owner, including weakening/missing-owner policy negatives.
+- [ ] Run the real HTTP parent/child path in a required no-skip CI job.
+- [ ] Record coherent reviewed commits, green CI and Phase 1 merge to main.
+
+Observed test-first evidence: normal migration discovery initially ended at
+0136; explicit post-online transactional mode was rejected; an interrupted
+unique concurrent-index build was incorrectly recorded while INVALID. Focused
+repairs pass the two empty/upgrade migration cases, seven migration-mode
+integration cases and twelve execution-plan cases. Real catalog negatives,
+normal API/worker/inline coordinator readiness and ordinary flag-OFF publication
+and root checks pass. Registry/config tests pass with newly pinned native
+successors; a preexisting full-native source-only pin/assertion mismatch was
+synchronized against the unchanged c118 candidate, without changing its SQL or
+granting full-native readiness. These are prerequisite checks, not full F08 or
+Phase 1 completion. The new disposable HTTP qualification passes one actual case:
+normal 0139 installation, each append-only compatibility transition with real
+API/worker probes, non-Call child publication OFF, fresh Call publication/root
+503 refusal OFF, exact replays OFF, and real worker/dispatcher startup followed
+by parent/child success while OFF with both persisted outputs and the exact pin.
+The dedicated CI owner and thirteen weakening/missing-owner negatives pass within
+39 CI policy tests. This is local execution, not a green hosted CI run. Whole
+database/worker/API unit suites pass 1769/1333/2398 cases respectively, and their
+test typechecks pass. The obsolete local installer/repro are deleted (recoverable
+in Git history); the existing historical local database is not migrated or reset.
+Required hosted HTTP CI, independent review, broader qualification and merge
+remain open. Production activation is OFF.
 
 ### F08 — ordinary execution-value runtime integration (incomplete)
 

@@ -17,6 +17,32 @@ Scope: New execution capability across both stacks. Relative size: **XL**, not a
 
 One published workflow calls a reusable published child with typed inputs/results and inspectable parent-child history.
 
+## Current delivery program — 2026-10-05
+
+The user authorized completing F08 in five separately reviewed phases, each
+merged to main with green CI. Only Phase 1 is currently in implementation:
+extract the proven inline JSON Call owners into normally registered migrations,
+qualify empty and populated-database upgrades, replace isolated local gates with
+exact normal readiness and a database-authoritative default-OFF publication/root
+rollout, and require the real PostgreSQL HTTP parent → pinned child → parent test
+in CI. Existing accepted families remain readable/executable/settleable while
+new admission is OFF, as ADR065 requires. Notification rewriting and ADR066
+signed proofs remain excluded. No new architectural decision is introduced.
+
+Local checkpoint `c118b93d` proves both persisted `{ "answer": 42 }` results,
+not a production-ready feature. The Phase 1 migration draft now passes empty and
+populated-0136 normal-runner tests with unchanged deferred retention/purge
+owners and absent artifact candidate/association storage. The exact migration
+review, required hosted HTTP CI and merge gates are unfinished. The new
+disposable real HTTP qualifier locally proves fresh Call publication/root 503
+refusal, exact replay, and accepted parent/child drain after OFF with real
+worker/dispatcher startup. Its dedicated CI owner and fail-closed policy checks
+are added; no hosted CI run is claimed. Exact catalog mutation negatives and normal API/worker/inline
+coordinator readiness now pass. Ordinary registry epochs 39/40 follow Validate,
+with retained identities unchanged; source local-only readiness gates are removed.
+Track concrete evidence and open work in
+[implementation progress](../implementation-progress.md#f08-phase-1--registered-inline-json-call-delivery-in-progress).
+
 ## Current implementation and evidence
 
 Nested For Each bodies exist inside one run; they are not reusable child workflows. Subworkflows remain explicitly deferred in the backend plan.
