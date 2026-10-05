@@ -249,7 +249,46 @@ describe('V3 source-local completed output preparation', () => {
     )?.value;
     expect(nested).toEqual({ keep: true });
     expect(Object.isFrozen(nested)).toBe(true);
+    const next = prepareNodeAttemptInput(
+      attempt({ completedNodeOutputs: [descriptor(value), descriptor(value)] }),
+    );
+    expect(next.completedOutputs.manual).toEqual({
+      value: 7,
+      nested: { keep: false },
+    });
+    expect(prepared.completedOutputs.manual).toEqual({
+      value: 7,
+      nested: { keep: true },
+    });
   });
+
+  it.each(['conflicting', 'oversized', 'accessor'])(
+    'still validates a distinct %s source after repeated accepted descriptors',
+    (kind) => {
+      const value = exactValue();
+      const getter = vi.fn(() => 'private');
+      const other =
+        kind === 'accessor'
+          ? Object.defineProperty({}, 'padding', {
+              enumerable: true,
+              get: getter,
+            })
+          : kind === 'oversized'
+            ? { ...value, padding: `${value.padding}x` }
+            : { ...value, value: 8 };
+      expect(() =>
+        prepareNodeAttemptInput(
+          attempt({
+            completedNodeOutputs: [
+              ...Array.from({ length: 128 }, () => descriptor(value)),
+              descriptor(other),
+            ],
+          }),
+        ),
+      ).toThrow(invalid);
+      expect(getter).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects one byte beyond the independent source value bound', () => {
     const value = exactValue();

@@ -241,10 +241,18 @@ function normalizeCompletedOutputsV3(
     return [nodeId, descriptor.value] as const;
   });
   const canonicalByNodeId = new Map<string, string>();
+  const validatedSourcesByNodeId = new Map<string, Set<unknown>>();
   for (const [nodeId, source] of sources) {
-    // Do not retain an independently cloned value for every duplicate descriptor.
+    // All identities were checked above. Reuse only this call's already validated
+    // source identity for this node; distinct values must still pass every bound
+    // and conflict check. No caller callbacks or awaits occur during this pass.
+    const validated = validatedSourcesByNodeId.get(nodeId);
+    if (validated?.has(source)) continue;
     const normalized = normalizeBoundedEngineJson(source);
     retainCompletedOutput(outputs, canonicalByNodeId, nodeId, normalized);
+    if (validated === undefined)
+      validatedSourcesByNodeId.set(nodeId, new Set([source]));
+    else validated.add(source);
   }
   return freezeExecutable(outputs);
 }
