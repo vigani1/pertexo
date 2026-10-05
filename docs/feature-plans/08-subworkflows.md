@@ -527,31 +527,13 @@ artifact/retention, raw nonliteral writer trust and full qualification gates rem
 open. The repository complexity gate additionally reports owned F08 execution
 hotspots; no waiver or full closure is claimed from passing this authoring slice.
 
-Primary selected purpose-separated process semantic HMAC capability direction
-for the unresolved ordinary-database-login native writer forgery fence and release
-owner allocated ADR066. [ADR066](../adr/066-native-workflow-semantic-attestations.md)
-and its [concrete contract](08-native-semantic-attestation-contract-proposal.md)
-were accepted at exact a6f555d0 after primary full read and two independent
-reviews. Bounded implementation and owned-local disposable qualification are
-authorized; registration, permanent activation, real key provisioning and
-deployment remain separately gated.
-No key, extension, environment configuration or positive grant is provisioned.
-An owned read-only PG18.6 probe found pgcrypto available but uninstalled; availability
-is not readiness or authorization to install. New writers remain OFF, and accepted
-native continuation needs a currently permitted compatible signer rather than a
-historical token dependency under the accepted contract. This records a decision, not
-completion of any F08 acceptance row.
-
-The initial ADR066 private byte-framing codec distinguishes absence/empty fields,
-uses ordered count/tag/uint32-BE-length/exact-UTF8 framing, rejects PostgreSQL
-unrepresentable text and checks bounded aggregate allocation. It has no key,
-signer, verifier, database access or public package export. Eleven focused tests
-and an owned network-none/no-port PG18.6 fixture qualify 48 Node/PostgreSQL framing
-and standard HMAC differential vectors, including changed-MAC digest rejection.
-Fixture pgcrypto was installed only in its private disposable schema and removed
-with the database; no serving grant or persistent key was created. This does not
-qualify owner-specific signed field lists, timing resistance, raw-writer fences,
-readiness, rotation, early seals or full F08 behavior. Native writers remain OFF.
+ADR066 semantic-attestation decision, concrete contract and byte framing remain
+parked and absent from Phase 1. The isolated ADR, contract proposal, private
+framing codec and its test are not part of this release tree. No semantic signer,
+verifier, key provisioning or signed-proof qualification is delivered or authorized
+by Phase 1. The ordinary-database-login native writer forgery fence and full-native
+acceptance remain unresolved; native writers remain OFF. Any future ADR066 work
+requires its own scoped decision, implementation review and qualification.
 
 The existing ordinary native physical-completion owner now records first-write
 inline value bytes/checksum/length with actual lease/fence/canonical delivery,

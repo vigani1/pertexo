@@ -57,7 +57,7 @@ API/worker probes, non-Call child publication OFF, fresh Call publication/root
 by parent/child success while OFF with both persisted outputs and the exact pin.
 The dedicated CI owner and thirteen weakening/missing-owner negatives pass within
 39 CI policy tests. This is local execution, not a green hosted CI run. Whole
-database/worker/API unit suites pass 1770/1333/2398 cases respectively, and their
+database/worker/API unit suites pass, and their
 test typechecks pass. The obsolete local installer/repro are deleted (recoverable
 in Git history); the existing historical local database is not migrated or reset.
 Required hosted HTTP CI, independent review, broader qualification and merge

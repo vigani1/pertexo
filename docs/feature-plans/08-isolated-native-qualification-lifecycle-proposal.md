@@ -5,9 +5,10 @@ two-path diff SHA256 `f882585c3f04ff4fdc1b3eb036d81b910b1971defd1d2b76de3d3772da
 independent Spec and Standards reviews reported zero actionable findings.
 The [accepted ADR065 amendment](../adr/065-durable-parent-child-workflow-calls.md#isolated-qualification-lifecycle--accepted-design-only-2026-10-04)
 changes no current implementation or permission. [F08](08-subworkflows.md),
-accepted [ADR065](../adr/065-durable-parent-child-workflow-calls.md),
-[ADR066](../adr/066-native-workflow-semantic-attestations.md) and their required
-security/compatibility assertions remain authoritative. This is not an alternative
+accepted [ADR065](../adr/065-durable-parent-child-workflow-calls.md) and their required
+security/compatibility assertions remain authoritative. ADR066's decision, contract
+and framing remain parked and absent from Phase 1; this proposal supplies none of
+them and authorizes no signed-proof implementation. This is not an alternative
 execution route for the platform-rejected integrity campaign, and does not resolve
 its restriction. No installation commands or runtime implementation are proposed here.
 
@@ -108,9 +109,9 @@ and rollout qualification remain separately necessary.
   exactly their reviewed temporary least-privilege ACLs; no superuser/BYPASSRLS, owner
   membership, broad table write, generic signing access or grant widening to unblock a
   case. Owner credentials are never given to the canonical application adapter.
-- Existing ADR066 purpose/key/process/verifier/transaction authority is preserved
-  wherever a selected case requires it. Only separately approved ephemeral material
-  in the exclusively owned fixture is eligible; no real key provisioning, reusable
+- Any future ADR066 purpose/key/process/verifier/transaction authority remains a
+  parked prerequisite wherever a selected case requires it. Only separately approved
+  ephemeral material in the exclusively owned fixture is eligible; no real key provisioning, reusable
   secrets, generic signer or credential logs. A different trusted SQL role does not
   replace the selected semantic-authority contract.
 - Temporary roles, ACLs and any approved extension/key facts exist only inside the
@@ -143,8 +144,9 @@ cleanup. Distinguish real PostgreSQL/queue/object-store facts from bootstrap fix
 and simulations; a constructed initial row is not proof of canonical publication,
 root acceptance or admission. Offline normalized ASTs are grammar-only evidence.
 
-All existing F08/ADR065/ADR066 assertions remain required, including semantic
-publication/result authority, raw-login denial, purpose/transaction/replay separation,
+All existing F08/ADR065 assertions and unresolved semantic-attestation requirements
+remain required, including semantic publication/result authority, raw-login denial,
+purpose/transaction/replay separation,
 seal expiry/rollback/receipt/current-result truth, immutable bytes/provenance,
 current tenant/delivery/lease/pin controls, artifact quota/association/lifetime,
 legal hold/retention/purge, parent/child recovery and retained compatibility.
@@ -166,8 +168,9 @@ required evidence remains unavailable. No platform-access resolution is claimed.
    ordinary retained startup expects different shared bodies, while public native
    readiness is intentionally incomplete. Neither can simply be skipped.
 4. Actual reviewed semantic/publication/root/initial-checkpoint authority for each
-   selected positive case, including ADR066 where applicable. Current Fresh0137 is
-   not an integrated, qualified ADR066 installation. Bootstrap rows, worker credentials
+   selected positive case, including separately reviewed ADR066 authority where
+   applicable. That decision, contract and framing remain parked; current Fresh0137
+   is not an integrated, qualified ADR066 installation. Bootstrap rows, worker credentials
    or supplied semantic values cannot replace missing owners. If a case requires an
    excluded security assertion to establish its prerequisite, that case remains blocked.
 5. Positively owned resources, pinned driver/pool budgets, transport/artifact adapters,
@@ -195,9 +198,9 @@ can run through this tranche.
 
 | Closed case ID | Additional actual-owner prerequisites | Scoped future observation |
 | --- | --- | --- |
-| `call_wait_resume` | ADR066 semantic authority, canonical publication/root/Call admission, durable Wait/wakeup/transport | One pinned child survives wait/restart and parent resumes once |
+| `call_wait_resume` | Parked ADR066 semantic authority, canonical publication/root/Call admission, durable Wait/wakeup/transport | One pinned child survives wait/restart and parent resumes once |
 | `parallel_control_reconciliation` | Canonical publication/root, physical completion and authenticated controls/clock | Existing branch truth reconciles without duplicate admissions or value demand |
-| `artifact_result_lifetime` | ADR066 semantic authority, canonical publication/root, artifact preparation/association/result/quota owners | Accepted exact bytes survive result recovery and finite cleanup |
+| `artifact_result_lifetime` | Parked ADR066 semantic authority, canonical publication/root, artifact preparation/association/result/quota owners | Accepted exact bytes survive result recovery and finite cleanup |
 | `retention_family_resume` | Earned accepted parent/child facts, native detail/summary/purge/hold owners | Bounded interrupted pages retain then retire lineage without capacity resurrection |
 
 The separate exclusion ledger covers `finalized_output_integrity`,
