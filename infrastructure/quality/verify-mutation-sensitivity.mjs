@@ -65,7 +65,7 @@ export const MUTATIONS = Object.freeze([
   }),
   Object.freeze({
     id: 'discard-prior-dispatch-control-uncertainty',
-    file: 'apps/worker/src/execution/node-attempt-handler.ts',
+    file: 'apps/worker/src/execution/node-attempt-prepared-execution.ts',
     search: 'return lease.providerDispatchUnresolved === true || dispatched;',
     replacement: 'return dispatched;',
     command: [
