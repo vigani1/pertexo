@@ -1,51 +1,19 @@
-import { apiProblemSchema } from './errors/api-problem.js';
+import { workflowAuthoringContractSchemas } from './workflow-authoring-schema-projection.js';
+
 import {
   workflowOrganizationContractPaths,
-  workflowOrganizationContractSchemas,
   workflowOrganizationGetReadContract,
   workflowOrganizationListReadContract,
 } from './workflow-organization-contract.js';
+import { workflowInputCaseContractPaths } from './workflow-input-cases-contract.js';
+import { workflowConcurrencyContractPaths } from './workflow-concurrency-contract.js';
+import { workflowAutoPauseContractPaths } from './workflow-auto-pause-contract.js';
 import {
-  workflowInputCaseContractPaths,
-  workflowInputCaseContractSchemas,
-} from './workflow-input-cases-contract.js';
-import {
-  workflowConcurrencyContractPaths,
-  workflowConcurrencyContractSchemas,
-} from './workflow-concurrency-contract.js';
-import {
-  workflowAutoPauseContractPaths,
-  workflowAutoPauseContractSchemas,
-} from './workflow-auto-pause-contract.js';
-import {
-  workflowCompatibilityReportSchema,
-  workflowCreateRequestSchema,
-  workflowCreateResponseSchema,
-  workflowDuplicateRequestSchema,
-  workflowDuplicateResponseSchema,
-  workflowDraftResponseSchema,
-  workflowDraftSaveRequestSchema,
-  workflowListResponseSchema,
-  workflowVersionRestoreRequestSchema,
-  workflowPublishResponseSchema,
-  workflowRevisionConflictProblemSchema,
-  workflowSummarySchema,
-  workflowSummaryResponseSchema,
-  workflowTemplateOriginProjectionResponseSchema,
-  workflowValidateResponseSchema,
-  workflowVersionResponseSchema,
   workflowVersionsQuerySchema,
-  workflowVersionsResponseSchema,
-  workflowCallableTargetsQuerySchema,
-  workflowCallableTargetsResponseSchema,
-  workflowCallableTargetsUnavailableProblemSchema,
   strongEtagSchema,
 } from './http/workflow-authoring.js';
-import { projectContractSchema } from './schema-projection.js';
-import {
-  workflowRevisionCommandPaths,
-  workflowRevisionCommandSchemas,
-} from './workflow-revision-commands-contract.js';
+
+import { workflowRevisionCommandPaths } from './workflow-revision-commands-contract.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -61,120 +29,8 @@ import type { z } from 'zod';
 
 export * from './http/workflow-authoring.js';
 
-function contractSchemas(target: 'client' | 'openapi') {
-  const project = (name: string, schema: z.ZodType, io: 'input' | 'output') =>
-    projectContractSchema(name, schema, io, target);
-  return Object.freeze({
-    ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
-    WorkflowDuplicateRequest: project(
-      'WorkflowDuplicateRequest',
-      workflowDuplicateRequestSchema,
-      'input',
-    ),
-    WorkflowDuplicateResponse: project(
-      'WorkflowDuplicateResponse',
-      workflowDuplicateResponseSchema,
-      'output',
-    ),
-    WorkflowVersionRestoreRequest: project(
-      'WorkflowVersionRestoreRequest',
-      workflowVersionRestoreRequestSchema,
-      'input',
-    ),
-    ...workflowRevisionCommandSchemas(project),
-    ...workflowAutoPauseContractSchemas(project),
-    ...workflowConcurrencyContractSchemas(project),
-    ...workflowInputCaseContractSchemas(project),
-    ...workflowOrganizationContractSchemas(project),
-    WorkflowRevisionConflictProblem: project(
-      'WorkflowRevisionConflictProblem',
-      workflowRevisionConflictProblemSchema,
-      'output',
-    ),
-    WorkflowCreateRequest: project(
-      'WorkflowCreateRequest',
-      workflowCreateRequestSchema,
-      'input',
-    ),
-    WorkflowCreateResponse: project(
-      'WorkflowCreateResponse',
-      workflowCreateResponseSchema,
-      'output',
-    ),
-    WorkflowSummary: project(
-      'WorkflowSummary',
-      workflowSummarySchema,
-      'output',
-    ),
-    WorkflowSummaryResponse: project(
-      'WorkflowSummaryResponse',
-      workflowSummaryResponseSchema,
-      'output',
-    ),
-    WorkflowTemplateOriginProjectionResponse: project(
-      'WorkflowTemplateOriginProjectionResponse',
-      workflowTemplateOriginProjectionResponseSchema,
-      'output',
-    ),
-    WorkflowListResponse: project(
-      'WorkflowListResponse',
-      workflowListResponseSchema,
-      'output',
-    ),
-    WorkflowDraftSaveRequest: project(
-      'WorkflowDraftSaveRequest',
-      workflowDraftSaveRequestSchema,
-      'input',
-    ),
-    WorkflowDraftResponse: project(
-      'WorkflowDraftResponse',
-      workflowDraftResponseSchema,
-      'output',
-    ),
-    WorkflowCompatibilityReport: project(
-      'WorkflowCompatibilityReport',
-      workflowCompatibilityReportSchema,
-      'output',
-    ),
-    WorkflowValidationResponse: project(
-      'WorkflowValidationResponse',
-      workflowValidateResponseSchema,
-      'output',
-    ),
-    WorkflowPublishResponse: project(
-      'WorkflowPublishResponse',
-      workflowPublishResponseSchema,
-      'output',
-    ),
-    WorkflowVersionResponse: project(
-      'WorkflowVersionResponse',
-      workflowVersionResponseSchema,
-      'output',
-    ),
-    WorkflowVersionsResponse: project(
-      'WorkflowVersionsResponse',
-      workflowVersionsResponseSchema,
-      'output',
-    ),
-    WorkflowCallableTargetsQuery: project(
-      'WorkflowCallableTargetsQuery',
-      workflowCallableTargetsQuerySchema,
-      'input',
-    ),
-    WorkflowCallableTargetsResponse: project(
-      'WorkflowCallableTargetsResponse',
-      workflowCallableTargetsResponseSchema,
-      'output',
-    ),
-    WorkflowCallableTargetsUnavailableProblem: project(
-      'WorkflowCallableTargetsUnavailableProblem',
-      workflowCallableTargetsUnavailableProblemSchema,
-      'output',
-    ),
-  });
-}
-const clientSchemas = contractSchemas('client');
-const openApiSchemas = contractSchemas('openapi');
+const clientSchemas = workflowAuthoringContractSchemas('client');
+const openApiSchemas = workflowAuthoringContractSchemas('openapi');
 
 export const workflowAuthoringClientContract = Object.freeze({
   schemaVersion: '1.0.0',
