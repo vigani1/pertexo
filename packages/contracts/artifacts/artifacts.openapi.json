@@ -100,6 +100,7 @@
               "workflow.template_origin_unavailable",
               "workflow.validation_unavailable",
               "workflow.callable_targets_unavailable",
+              "workflow.calls_unavailable",
               "workflow.draft_operation_unavailable",
               "workflow.published_version_conflict",
               "workflow.not_published",
