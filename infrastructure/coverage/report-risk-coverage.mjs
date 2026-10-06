@@ -149,6 +149,7 @@ const EXACT_RISK_COHORT_FILES = Object.freeze({
     'packages/workflow-engine/src/compilation/executable-graph-validation-index.ts',
     'packages/workflow-engine/src/compilation/executable-graph.ts',
     'packages/workflow-engine/src/compilation/executable-identity.ts',
+    'packages/workflow-engine/src/compilation/executable-scheduler.ts',
     'packages/workflow-engine/src/compilation/executable-validation.ts',
     'packages/workflow-engine/src/transition/graph-scheduler-indexes.ts',
     'packages/workflow-engine/src/transition/graph-scheduler.ts',

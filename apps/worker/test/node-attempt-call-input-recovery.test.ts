@@ -24,6 +24,7 @@ function fixture(
   recovered = true,
   heartbeatIntervalMillis = 1_000,
   nativeProjection = false,
+  valuesAvailable = true,
 ) {
   const heartbeat = vi
     .fn<NodeAttemptRunStore['heartbeat']>()
@@ -88,7 +89,7 @@ function fixture(
     },
     registry,
     runStore,
-    callDeclarationValues: { prepare, hydrate },
+    ...(valuesAvailable ? { callDeclarationValues: { prepare, hydrate } } : {}),
     workerId: 'worker-1',
   });
   return {
@@ -106,6 +107,36 @@ function fixture(
   };
 }
 describe('required Call declaration input recovery orchestration', () => {
+  it('rejects a native pre-input abort with no durable reason before recovering or executing', async () => {
+    const f = fixture(true, 1_000, true);
+    f.heartbeat.mockResolvedValue({
+      abortRequested: true,
+      leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
+    });
+    await expect(
+      f.handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).rejects.toMatchObject({ code: 'control_reason_missing' });
+    expect(f.heartbeat).toHaveBeenCalledOnce();
+    expect(f.read).not.toHaveBeenCalled();
+    expect(f.loadInputs).not.toHaveBeenCalled();
+    expect(f.hydrate).not.toHaveBeenCalled();
+    expect(f.registry.execute).not.toHaveBeenCalled();
+    expect(f.complete).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when Call value recovery is unavailable without reading or accepting input', async () => {
+    const f = fixture(true, 1_000, true, false);
+    await expect(
+      f.handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).rejects.toThrow('Native Call snapshot recovery is unavailable');
+    expect(f.read).not.toHaveBeenCalled();
+    expect(f.loadInputs).not.toHaveBeenCalled();
+    expect(f.hydrate).not.toHaveBeenCalled();
+    expect(f.registry.execute).not.toHaveBeenCalled();
+    expect(f.record).not.toHaveBeenCalled();
+    expect(f.complete).not.toHaveBeenCalled();
+  });
+
   it('does not apply the committed snapshot exception to a fresh native Call missing descriptors', async () => {
     const f = fixture(false, 1_000, true);
     await expect(

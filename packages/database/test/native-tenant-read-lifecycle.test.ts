@@ -2,7 +2,10 @@ import { EventEmitter } from 'node:events';
 import { Pool, type PoolClient, type PoolConfig } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { withTenantScopedReadClient } from '../src/tenant-access/workspace.js';
+import {
+  withTenantScopedReadClient,
+  withWorkspaceTransaction,
+} from '../src/tenant-access/workspace.js';
 import { withCoordinatorReadClient } from '../src/execution/coordinator/coordinator-run-store-transactions.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
@@ -27,6 +30,24 @@ function checkoutAdapter(checkout: Promise<PoolClient>) {
 }
 
 describe('native tenant read operation and joined ownership', () => {
+  it('refuses a native read budget on a write transaction before acquiring a client', async () => {
+    const connect = vi.fn();
+    const operation = vi.fn();
+    const pool = { connect } as unknown as Pool;
+    await expect(
+      withWorkspaceTransaction(pool, workspaceId, operation, {
+        nativeReadBudget: {
+          readTimeoutMillis: 250,
+          controlReadTimeoutMillis: 250,
+        },
+      }),
+    ).rejects.toThrow(
+      'Native read budget cannot authorize a write transaction',
+    );
+    expect(connect).not.toHaveBeenCalled();
+    expect(operation).not.toHaveBeenCalled();
+  });
+
   it.each([
     { stop: 'abort', phase: 'rollback' },
     { stop: 'deadline', phase: 'rollback' },

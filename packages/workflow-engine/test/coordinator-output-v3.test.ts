@@ -158,4 +158,29 @@ describe('V3 coordinator source-local output budgets', () => {
   it('accepts absent material as an empty batch', () => {
     expect(parseCompletedOutputItemsV3(undefined)).toEqual([]);
   });
+
+  it('rejects an array-shaped completed-output descriptor through public V3 advance', async () => {
+    const input = {
+      runId: 'run',
+      executable,
+      workflowVersionId,
+      checkpoint: createWorkflowCheckpointV3({
+        engineVersion: 'test',
+        workflowVersionId,
+        iterationBudget: 10,
+      }),
+      observations: [],
+      completedOutputs: [],
+      occurredAt,
+      maximumAdmissions: 10,
+      signal: new AbortController().signal,
+    };
+    const admitted = await advanceWorkflow(input);
+    expect(admitted.nodeRunAdmissions).toHaveLength(1);
+    await expect(
+      advanceWorkflow({ ...input, completedOutputs: [[]] }),
+    ).rejects.toThrow(invalid);
+    expect(input.checkpoint.runStatus).toBe('queued');
+    expect(input.checkpoint.revision).toBe(0);
+  });
 });

@@ -324,6 +324,38 @@ describe('stopped native Merge recovery at the public transition seam', () => {
     expect(plan.attempts).toEqual([]);
   });
 
+  it('preserves ordinary settlement for a legacy root join without canonical invocation identity', () => {
+    const current = checkpoint('cancel');
+    const legacy = {
+      ...current,
+      joins: current.joins.map(
+        ({ joinInvocationKey: _identity, ...join }) => join,
+      ),
+    };
+    const parsed = parseCheckpoint(legacy);
+    expect(parsed.joins[0]?.joinInvocationKey).toBe('merge');
+    const plan = advance(legacy, [
+      {
+        kind: 'branch_disposition',
+        joinId: 'merge',
+        branch: { branchId: 'a', disposition: 'arrived' },
+      },
+    ]);
+    expect(plan.checkpoint.joins[0]).toMatchObject({
+      joinInvocationKey: 'merge',
+      ledger: [{ branchId: 'a', disposition: 'arrived' }],
+      selectedBranchIds: ['a'],
+    });
+    expect(
+      plan.checkpoint.invocations.find(({ nodeId }) => nodeId === 'merge'),
+    ).toMatchObject({ status: 'canceled', attemptNumber: 0 });
+    expect(plan.attempts).toEqual([]);
+    expect(parseCheckpoint(plan.checkpoint)).toEqual(plan.checkpoint);
+    expect(current.joins[0]?.ledger).toEqual([
+      { branchId: 'a', disposition: 'pending' },
+    ]);
+  });
+
   it('does not apply native stopped-Merge suppression to retained checkpoints', () => {
     const native = checkpoint('cancel');
     const retained = {
