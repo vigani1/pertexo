@@ -41,9 +41,20 @@ export type AdmissionKind = 'execute' | 'retry' | 'wait_resume';
 export type BranchDisposition =
   'pending' | 'arrived' | 'skipped' | 'missing' | 'failed' | 'canceled';
 
-export type OutputReference =
+import type {
+  WorkflowCallResultReferenceV1,
+  WorkflowCheckpointV3,
+  WorkflowCallStateV1,
+} from './workflow-call-state.js';
+import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+
+/** Immutable physical attempt output; retained V1/V2 only admit these references. */
+export type AttemptOutputReference =
   | Readonly<{ readonly kind: 'inline'; readonly attemptId: string }>
   | Readonly<{ readonly kind: 'artifact'; readonly artifactId: string }>;
+
+export type OutputReference =
+  AttemptOutputReference | WorkflowCallResultReferenceV1;
 
 export interface BranchScopePart {
   readonly nodeId: string;
@@ -148,7 +159,7 @@ export type WorkflowObservation =
       readonly bodyRootNodeIds?: readonly string[];
       readonly bodySinkNodeId?: string;
       readonly coordinatorDerived?: true;
-      readonly collection: OutputReference;
+      readonly collection: AttemptOutputReference;
       readonly collectionChecksum: string;
       readonly collectionSize: number;
       readonly maxIterations: number;
@@ -193,7 +204,7 @@ export interface LoopState {
   readonly iterationPath: readonly IterationScopePart[];
   readonly bodyRootNodeIds: readonly string[];
   readonly bodySinkNodeId: string;
-  readonly collection: OutputReference;
+  readonly collection: AttemptOutputReference;
   readonly collectionChecksum: string;
   readonly collectionSize: number;
   readonly maxConcurrency: number;
@@ -239,7 +250,8 @@ export interface WorkflowCheckpointV2 extends Omit<
   readonly initialIterationBudget?: number;
 }
 
-export type WorkflowCheckpoint = WorkflowCheckpointV1 | WorkflowCheckpointV2;
+export type WorkflowCheckpoint =
+  WorkflowCheckpointV1 | WorkflowCheckpointV2 | WorkflowCheckpointV3;
 
 export type EngineEventName =
   | 'run.started'
@@ -300,6 +312,29 @@ export interface WorkflowTransitionPlan {
   readonly events: readonly EngineEventPlan[];
   readonly nodeRunAdmissions: readonly NodeRunAdmissionPlan[];
   readonly attempts: readonly AttemptAdmissionPlan[];
+  /** V3 terminal value is transient; persistence uses the existing protected codec. */
+  readonly callableResult?:
+    | Readonly<{
+        kind: 'succeeded';
+        value: Readonly<Record<string, JsonValue>>;
+        sources: readonly Readonly<{
+          invocationKey: string;
+          output: OutputReference;
+        }>[];
+      }>
+    | Readonly<{
+        kind: 'failed';
+        reasonCode:
+          'workflow.child_result_invalid' | 'workflow.child_result_missing';
+      }>;
+  /** V3 only: commit with the same parent CAS, durable journal and canonical outbox. */
+  readonly workflowCalls?: Readonly<{
+    readonly declarations: readonly WorkflowCallStateV1[];
+    readonly cancelChildren: readonly Readonly<{
+      readonly childRunId: string;
+      readonly reason: 'cancel_requested' | 'deadline_expired';
+    }>[];
+  }>;
   /** A durable wakeup is needed for scheduler work with no admitted attempt. */
   readonly immediateContinuation?: true;
 }

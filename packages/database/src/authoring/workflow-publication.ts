@@ -1,13 +1,18 @@
+import { validateNativePublicationClosure } from './workflow-native-publication-closure.js';
+import { mapWorkflowCallRolloutError } from '../execution/workflow-calls/workflow-call-rollout-error.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 
 import {
   parseWorkflowGraphForPublish,
   InvalidWorkflowGraphError,
   workflowExecutableChecksum,
-  workflowIntegrationUsage,
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
+import {
+  validateWorkflowCallableGraphV2,
+  workflowCallStructuralProjectionV1,
+} from '@pertexo/workflow-model/workflow-call-closure';
 import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -37,40 +42,31 @@ import {
   mapVersion,
   workflowVersionRowSelection,
 } from './workflow-authoring-rows.js';
-import {
-  reconcileWorkflowTriggersPayload,
-  persistPublishedWorkflowTriggers,
-} from './workflow-trigger-reconciliation.js';
+import { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
+import { persistPublicationProjections } from './workflow-publication-projections.js';
 
 export { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = sha256HexSchema;
-const checksumSchema = z.string().regex(/^wf:v[12]:sha256:[0-9a-f]{64}$/u);
+const checksumSchema = z.string().regex(/^wf:v[123]:sha256:[0-9a-f]{64}$/u);
 const workflowDraftTagSchema = z
   .string()
   .regex(/^"draft-v[12]\.[A-Za-z0-9_-]{43}"$/u);
-const providerKeySchema = z
-  .string()
-  .min(1)
-  .max(64)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
-const operationKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
 const executableSchema = z
   .object({
-    checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
-    executableSchemaVersion: z.literal(2),
+    checksum: z.string().regex(/^wf:v[23]:sha256:[0-9a-f]{64}$/u),
+    executableSchemaVersion: z.union([z.literal(2), z.literal(3)]),
     executableJson: z.record(z.string(), z.unknown()),
     compatibilityReleaseEpoch: z.number().int().positive(),
     compatibilityReleaseFingerprint: z
       .string()
       .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u),
   })
-  .strict();
+  .strict()
+  .refine((value) =>
+    value.checksum.startsWith(`wf:v${String(value.executableSchemaVersion)}:`),
+  );
 
 type PublicationVariant = Readonly<{
   compatibilityRelease: CompatibilityReleaseExpectation | undefined;
@@ -204,22 +200,39 @@ async function lockAndCompilePublication(
   const currentEtag = draftRepresentationTag(workflowId, draft);
   if (currentEtag !== workflowDraftTagSchema.parse(input.representationTag))
     throw new WorkflowRevisionConflictError(draft.revision, currentEtag);
-  if (draft.schemaVersion === 2)
-    throw new WorkflowDraftOperationUnavailableError();
+  const nativeGraph =
+    draft.schemaVersion === 2
+      ? validateWorkflowCallableGraphV2(draft.graphJson)
+      : undefined;
+  if (nativeGraph !== undefined)
+    await validateNativePublicationClosure(client, input, nativeGraph);
+  const structuralGraph =
+    nativeGraph === undefined
+      ? draft.graphJson
+      : workflowCallStructuralProjectionV1(nativeGraph);
   const validation = await admitWorkflowAuthoring(
     client,
     variant.validateAuthoringGraph,
-    draft.graphJson,
+    structuralGraph,
     input.signal,
   );
   if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
-  const graph = parseWorkflowGraphForPublish(
-    draft.graphJson,
+  const validatedStructure = parseWorkflowGraphForPublish(
+    structuralGraph,
     variant.definitionCatalog,
   );
+  const graph = nativeGraph ?? validatedStructure;
   const compiled = variant.executableCompiler?.(graph);
   const executable =
     compiled === undefined ? undefined : executableSchema.parse(compiled);
+  if (nativeGraph !== undefined && executable?.executableSchemaVersion !== 3)
+    throw new WorkflowDraftOperationUnavailableError();
+  if (
+    nativeGraph === undefined &&
+    executable !== undefined &&
+    executable.executableSchemaVersion !== 2
+  )
+    throw new Error('Retained publication requires executable version 2');
   if (executable !== undefined) {
     if (lockedRelease === undefined)
       throw new Error(
@@ -269,8 +282,9 @@ async function persistVersion(
   }
   const reused = versionRow !== undefined;
   if (!reused) {
-    const inserted = await client.query<Record<string, unknown>>(
-      `insert into app.workflow_versions (
+    const inserted = await client
+      .query<Record<string, unknown>>(
+        `insert into app.workflow_versions (
          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
          checksum,executable_schema_version,executable_json,
          compatibility_release_epoch,published_by)
@@ -278,21 +292,24 @@ async function persistVersion(
          $7,$8::jsonb,$9,$10 from app.workflow_versions
        where workspace_id=$2 and workflow_id=$3
        returning ${workflowVersionRowSelection}`,
-      [
-        generatePersistedId(),
-        input.workspaceId,
-        workflowId,
-        publication.schemaVersion,
-        JSON.stringify(publication.graph),
-        publication.checksum,
-        publication.executable?.executableSchemaVersion ?? null,
-        publication.executable === undefined
-          ? null
-          : JSON.stringify(publication.executable.executableJson),
-        publication.executable?.compatibilityReleaseEpoch ?? null,
-        input.actorId,
-      ],
-    );
+        [
+          generatePersistedId(),
+          input.workspaceId,
+          workflowId,
+          publication.schemaVersion,
+          JSON.stringify(publication.graph),
+          publication.checksum,
+          publication.executable?.executableSchemaVersion ?? null,
+          publication.executable === undefined
+            ? null
+            : JSON.stringify(publication.executable.executableJson),
+          publication.executable?.compatibilityReleaseEpoch ?? null,
+          input.actorId,
+        ],
+      )
+      .catch((error: unknown) => {
+        throw mapWorkflowCallRolloutError(error);
+      });
     versionRow = inserted.rows[0];
   }
   if (versionRow === undefined)
@@ -300,45 +317,6 @@ async function persistVersion(
   const version = mapVersion(versionRow);
   await dependencies.testHooks?.afterPublishStep?.('version');
   return Object.freeze({ reused, version });
-}
-
-async function persistPublicationProjections(
-  client: PoolClient,
-  input: PublishWorkflowInput,
-  workflowId: string,
-  publication: CompiledPublication,
-  version: WorkflowVersionRecord,
-  hooks: WorkflowAuthoringTestHooks | undefined,
-): Promise<void> {
-  const usage = workflowIntegrationUsage(
-    version.graphJson,
-    publication.definitionCatalog,
-  ).map((item) => ({
-    connection_id: uuidSchema.parse(item.connectionId),
-    operation_key: operationKeySchema.parse(item.operationKey),
-    provider_key: providerKeySchema.parse(item.providerKey),
-  }));
-  await client.query(
-    `delete from app.workflow_integration_usage
-     where workspace_id=$1 and workflow_version_id=$2`,
-    [input.workspaceId, version.id],
-  );
-  if (usage.length > 0)
-    await client.query(
-      `insert into app.workflow_integration_usage
-         (workspace_id,workflow_version_id,provider_key,operation_key,connection_id)
-       select $1,$2,item.provider_key,item.operation_key,item.connection_id
-       from jsonb_to_recordset($3::jsonb) as item(
-         provider_key varchar(64),operation_key varchar(128),connection_id uuid)`,
-      [input.workspaceId, version.id, JSON.stringify(usage)],
-    );
-  await hooks?.afterPublishStep?.('integration_usage');
-  await persistPublishedWorkflowTriggers(client, {
-    workspaceId: input.workspaceId,
-    workflowId,
-    version,
-  });
-  await hooks?.afterPublishStep?.('trigger_projection');
 }
 
 async function finalizePublication(
@@ -451,7 +429,7 @@ export function createWorkflowPublisher(
           client,
           input,
           claim.workflowId,
-          publication,
+          publication.definitionCatalog,
           version,
           dependencies.testHooks,
         );

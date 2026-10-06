@@ -13,6 +13,73 @@ const moduleUrl = new URL(
   import.meta.url,
 );
 
+test('qualification preparation owns every historical cutover source and the current source', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-cache-refs-'));
+  const log = path.join(directory, 'commands.jsonl');
+  const { stdout: ref } = await exec('git', ['rev-parse', 'HEAD'], {
+    cwd: repository,
+  });
+  await writeFile(
+    path.join(directory, 'pnpm'),
+    `#!/usr/bin/env node
+import { appendFileSync } from 'node:fs';
+appendFileSync(process.env.CACHE_CONTRACT_LOG, JSON.stringify({args:process.argv.slice(2),cwd:process.cwd()})+'\\n');
+`,
+    { mode: 0o700 },
+  );
+  try {
+    const { stdout } = await exec(
+      process.execPath,
+      [
+        new URL('./prepare-curated-cutover-cache.mjs', import.meta.url)
+          .pathname,
+      ],
+      {
+        env: {
+          ...process.env,
+          PATH: `${directory}${path.delimiter}${process.env.PATH}`,
+          CACHE_CONTRACT_LOG: log,
+          PNPM_CONFIG_STORE_DIR: path.join(directory, 'store'),
+          PNPM_CONFIG_CACHE_DIR: path.join(directory, 'cache'),
+        },
+        timeout: 20000,
+      },
+    );
+    const receipts = stdout
+      .trim()
+      .split('\n')
+      .map((line) =>
+        JSON.parse(line.slice('Curated frozen cache prepared: '.length)),
+      );
+    assert.deepEqual(
+      receipts.map((receipt) => receipt.ref),
+      [
+        'f543283825887165889f7520655558b2a3f9229c',
+        '936612f26567f760c83e41c13e4c7fc7b620e69f',
+        ref.trim(),
+      ],
+    );
+    const commands = (await readFile(log, 'utf8'))
+      .trim()
+      .split('\n')
+      .map(JSON.parse);
+    assert.equal(commands.length, 3);
+    assert.equal(new Set(commands.map((command) => command.cwd)).size, 3);
+    for (const command of commands) {
+      assert.deepEqual(command.args, [
+        'fetch',
+        '--ignore-scripts',
+        '--frozen-lockfile',
+      ]);
+      await assert.rejects(readFile(path.join(command.cwd, 'pnpm-lock.yaml')), {
+        code: 'ENOENT',
+      });
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 // Command/identity/cleanup contract only. The cold-metadata regression is proved
 // separately with actual pinned pnpm and independently compiled full archives.
 for (const mode of ['success', 'changed-lock', 'failure']) {

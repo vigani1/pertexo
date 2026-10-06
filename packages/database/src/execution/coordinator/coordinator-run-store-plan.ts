@@ -1,14 +1,15 @@
 import { createHash } from 'node:crypto';
 
-import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import {
   CoordinatorPlanInvalidError,
-  CoordinatorRunStateCorruptError,
   coordinatorIdentitySchema as identitySchema,
 } from './coordinator-run-store-contract.js';
-import { normalizedJson } from './coordinator-run-store-observations.js';
+import {
+  normalizeCoordinatorPlan,
+  coordinatorPlanFingerprintJson,
+} from './coordinator-plan-values.js';
 import {
   assertTransitionPlanValid,
   invocationScope,
@@ -16,13 +17,16 @@ import {
 } from './coordinator-run-store-plan-validation.js';
 import { assertStatusTransitionsValid } from './coordinator-run-store-status-validation.js';
 import {
-  parsePersistedWorkflowCheckpoint,
-  type PersistedWorkflowCheckpoint,
-} from '../../compatibility/persisted-workflow-checkpoint.js';
+  parseCoordinatorCheckpoint,
+  type CoordinatorCheckpoint as PersistedWorkflowCheckpoint,
+} from './coordinator-checkpoint.js';
 import {
-  parseStoredExecutionValueV1,
-  serializeStoredExecutionJsonValue,
-} from '../stored-execution-value.js';
+  persistedWorkflowCallStateSchemaV1,
+  type PersistedWorkflowCallStateV1,
+} from '../../compatibility/persisted-workflow-checkpoint-v3.js';
+import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
+
+export { validateCheckpointOutputOwnership } from './coordinator-checkpoint-output-ownership.js';
 
 export const scheduleRunInputSchema = z
   .object({
@@ -104,6 +108,71 @@ const transitionPlanSchema = z
     nodeRunAdmissions: z.array(nodeRunAdmissionSchema).max(10_000),
     attempts: z.array(attemptAdmissionSchema).max(64),
     immediateContinuation: z.literal(true).optional(),
+    workflowCalls: z
+      .object({
+        declarations: z.array(persistedWorkflowCallStateSchemaV1).max(64),
+        cancelChildren: z
+          .array(
+            z
+              .object({
+                childRunId: identitySchema,
+                reason: z.enum(['cancel_requested', 'deadline_expired']),
+              })
+              .strict(),
+          )
+          .max(64),
+      })
+      .strict()
+      .optional(),
+    callableResult: z
+      .discriminatedUnion('kind', [
+        z
+          .object({
+            kind: z.literal('failed'),
+            reasonCode: z.enum([
+              'workflow.child_result_invalid',
+              'workflow.child_result_missing',
+            ]),
+          })
+          .strict(),
+        z
+          .object({
+            kind: z.literal('succeeded'),
+            value: z.record(z.string(), z.unknown()),
+            sources: z
+              .array(
+                z
+                  .object({
+                    invocationKey: z.string().min(1).max(256),
+                    output: z.discriminatedUnion('kind', [
+                      z
+                        .object({
+                          kind: z.literal('inline'),
+                          attemptId: identitySchema,
+                        })
+                        .strict(),
+                      z
+                        .object({
+                          kind: z.literal('artifact'),
+                          artifactId: identitySchema,
+                        })
+                        .strict(),
+                      z
+                        .object({
+                          kind: z.literal('workflow_call'),
+                          invocationKey: z.string().min(1).max(256),
+                          childRunId: identitySchema,
+                        })
+                        .strict(),
+                    ]),
+                  })
+                  .strict(),
+              )
+              .max(10_000),
+          })
+          .strict(),
+      ])
+      .optional(),
   })
   .strict();
 export const traceparentSchema = z
@@ -118,10 +187,24 @@ export type ParsedTransitionPlan = Omit<
 
 export function parseTransitionPlan(value: unknown): ParsedTransitionPlan {
   try {
-    const parsed = transitionPlanSchema.parse(normalizedJson(value));
+    const parsed = transitionPlanSchema.parse(normalizeCoordinatorPlan(value));
+    const checkpointFields = z
+      .object({ schemaVersion: z.number() })
+      .loose()
+      .parse(parsed.checkpoint);
+    const checkpoint = parseCoordinatorCheckpoint(
+      parsed.checkpoint,
+      checkpointFields.schemaVersion === 3 ? 3 : 2,
+    );
+    if (
+      checkpoint.schemaVersion !== 3 &&
+      (parsed.workflowCalls !== undefined ||
+        parsed.callableResult !== undefined)
+    )
+      throw new CoordinatorPlanInvalidError();
     return Object.freeze({
       ...parsed,
-      checkpoint: parsePersistedWorkflowCheckpoint(parsed.checkpoint),
+      checkpoint,
     });
   } catch {
     throw new CoordinatorPlanInvalidError();
@@ -147,7 +230,7 @@ export function transitionFingerprint(
       serializeStoredExecutionJsonValue({
         schemaVersion: 1,
         workflowVersionId: input.workflowVersionId,
-        plan: input.plan,
+        plan: JSON.parse(coordinatorPlanFingerprintJson(input.plan)) as unknown,
         traceparent: input.traceparent ?? null,
       }),
     )
@@ -158,6 +241,36 @@ export function validateTransitionDelta(
   current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
 ): void {
+  if (current.schemaVersion !== plan.checkpoint.schemaVersion)
+    throw new CoordinatorPlanInvalidError();
+  if (current.schemaVersion === 3 && plan.checkpoint.schemaVersion === 3) {
+    const nextCalls = plan.checkpoint.calls;
+    const currentCalls = new Set(
+      current.calls.map(({ invocationKey }) => invocationKey),
+    );
+    const declaredCalls = plan.checkpoint.calls.filter(
+      ({ invocationKey }) => !currentCalls.has(invocationKey),
+    );
+    const declarations = plan.workflowCalls?.declarations ?? [];
+    if (
+      current.calls.some(
+        ({ invocationKey }) =>
+          !nextCalls.some((call) => call.invocationKey === invocationKey),
+      ) ||
+      new Set(declarations.map(({ invocationKey }) => invocationKey)).size !==
+        declarations.length ||
+      declaredCalls.length !== declarations.length ||
+      declarations.some(
+        (call) =>
+          !declaredCalls.some(
+            (declared) =>
+              serializeStoredExecutionJsonValue(declared) ===
+              serializeStoredExecutionJsonValue(call),
+          ),
+      )
+    )
+      throw new CoordinatorPlanInvalidError();
+  }
   const expectedAdmittedKeys = new Set([
     ...current.admittedInvocationKeys,
     ...plan.attempts.map(({ invocationKey }) => invocationKey),
@@ -299,6 +412,9 @@ export function validateStatusTransitions(
     type: string;
   }>[],
   rejectedForEachDeclarations: ReadonlySet<string> = new Set(),
+  callFacts: readonly PersistedWorkflowCallStateV1[] = [],
+  stoppedForEachDeclarations: ReadonlySet<string> = new Set(),
+  stoppedPendingInvocations: ReadonlySet<string> = new Set(),
 ): void {
   assertStatusTransitionsValid(
     current,
@@ -306,129 +422,10 @@ export function validateStatusTransitions(
     persistedFacts,
     terminalRunStatuses,
     rejectedForEachDeclarations,
+    callFacts,
+    stoppedForEachDeclarations,
+    stoppedPendingInvocations,
   );
-}
-
-export async function validateCheckpointOutputOwnership(
-  client: PoolClient,
-  workspaceId: string,
-  runId: string,
-  currentCheckpoint: PersistedWorkflowCheckpoint,
-  checkpoint: PersistedWorkflowCheckpoint,
-  waitResumeKeys: ReadonlySet<string>,
-): Promise<void> {
-  const expected = checkpoint.invocations.filter(
-    (invocation) => invocation.output !== undefined,
-  );
-  if (expected.length === 0) return;
-  const rows = await client.query<{
-    attempt_id: string | null;
-    attempt_output_ref: unknown;
-    attempt_status: string | null;
-    control_kind: string | null;
-    invocation_key: string;
-    node_output_ref: unknown;
-    node_status: string;
-  }>(
-    `select node.invocation_key, node.status as node_status,node.control_kind,
-            node.output_ref as node_output_ref,
-            attempt.id as attempt_id, attempt.status as attempt_status,
-            attempt.output_ref as attempt_output_ref
-     from app.node_runs node
-     join app.node_attempts attempt
-       on attempt.workspace_id=node.workspace_id
-      and attempt.id=node.current_attempt_id
-     where node.workspace_id=$1 and node.workflow_run_id=$2
-       and node.invocation_key=any($3::varchar[])
-     for share of node, attempt`,
-    [workspaceId, runId, expected.map(({ invocationKey }) => invocationKey)],
-  );
-  const physical = new Map(rows.rows.map((row) => [row.invocation_key, row]));
-  const currentInvocations = new Map(
-    currentCheckpoint.invocations.map((invocation) => [
-      invocation.invocationKey,
-      invocation,
-    ]),
-  );
-  const artifacts = new Set<string>();
-  for (const invocation of expected) {
-    const row = physical.get(invocation.invocationKey);
-    const previous = currentInvocations.get(invocation.invocationKey);
-    const isLoopControl = checkpoint.loops.some(
-      ({ controlInvocationKey }) =>
-        controlInvocationKey === invocation.invocationKey,
-    );
-    const physicalLoopStatus =
-      isLoopControl && row?.control_kind === 'for_each_barrier'
-        ? 'waiting'
-        : 'succeeded';
-    const isSuspendedNodeWait =
-      invocation.status === 'waiting' && invocation.waitKind === 'node_wait';
-    const isStoppedSuspendedNodeWait =
-      previous?.status === 'waiting' &&
-      previous.waitKind === 'node_wait' &&
-      (invocation.status === 'canceled' || invocation.status === 'timed_out');
-    const isWaitResume =
-      invocation.status === 'running' &&
-      invocation.waitKind === undefined &&
-      waitResumeKeys.has(invocation.invocationKey);
-    const expectedNodeStatus =
-      isSuspendedNodeWait || isStoppedSuspendedNodeWait || isWaitResume
-        ? 'waiting'
-        : isLoopControl
-          ? physicalLoopStatus
-          : invocation.status;
-    const expectedAttemptStatus =
-      isSuspendedNodeWait ||
-      isStoppedSuspendedNodeWait ||
-      isWaitResume ||
-      isLoopControl
-        ? 'succeeded'
-        : invocation.status;
-    if (
-      row?.attempt_id === undefined ||
-      row.attempt_id === null ||
-      row.node_status !== expectedNodeStatus ||
-      row.attempt_status !== expectedAttemptStatus
-    )
-      throw new CoordinatorRunStateCorruptError();
-    let nodeValue;
-    let attemptValue;
-    try {
-      nodeValue = parseStoredExecutionValueV1(row.node_output_ref);
-      attemptValue = parseStoredExecutionValueV1(row.attempt_output_ref);
-    } catch {
-      throw new CoordinatorRunStateCorruptError();
-    }
-    if (
-      serializeStoredExecutionJsonValue(nodeValue) !==
-      serializeStoredExecutionJsonValue(attemptValue)
-    )
-      throw new CoordinatorRunStateCorruptError();
-    const output = invocation.output;
-    if (output === undefined) throw new CoordinatorRunStateCorruptError();
-    if (output.kind === 'inline') {
-      if (output.attemptId !== row.attempt_id || nodeValue.kind !== 'inline')
-        throw new CoordinatorRunStateCorruptError();
-    } else {
-      if (
-        nodeValue.kind !== 'artifact' ||
-        nodeValue.artifactId !== output.artifactId
-      )
-        throw new CoordinatorRunStateCorruptError();
-      artifacts.add(output.artifactId);
-    }
-  }
-  if (artifacts.size === 0) return;
-  const available = await client.query<{ id: string }>(
-    `select id from app.artifacts
-     where workspace_id=$1 and id=any($2::uuid[])
-       and status='available' and deleted_at is null
-     for share`,
-    [workspaceId, [...artifacts]],
-  );
-  if (available.rows.length !== artifacts.size)
-    throw new CoordinatorRunStateCorruptError();
 }
 
 export const terminalRunStatuses = new Set([

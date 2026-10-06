@@ -12,6 +12,7 @@ export type PhysicalAttemptRow = Readonly<{
   node_id: string | null;
   current_attempt_id: string | null;
   node_status: string | null;
+  branch_context?: unknown;
   resume_at: Date | null;
   retry_due_at: Date | null;
   retry_decision: string | null;
@@ -51,6 +52,7 @@ export async function readPhysicalAttempts(
   workspaceId: string,
   runId: string,
   attemptIds: readonly string[],
+  lock = false,
 ): Promise<ReadonlyMap<string, PhysicalAttemptRow>> {
   if (attemptIds.length === 0) return new Map();
   const result = await client.query<PhysicalAttemptRow>(
@@ -59,7 +61,7 @@ export async function readPhysicalAttempts(
             attempt.output_ref as attempt_output_ref,
             attempt.executor_failure_kind,attempt.retry_decision,
             node.id as node_run_id, node.node_id, node.invocation_key,
-            node.current_attempt_id, node.status as node_status,
+            node.current_attempt_id, node.status as node_status,node.branch_context,
             node.output_ref as node_output_ref,
             node.resume_at, node.retry_due_at, node.wait_kind
        from app.node_attempts attempt
@@ -68,7 +70,9 @@ export async function readPhysicalAttempts(
         and node.id=attempt.node_run_id
        where attempt.workspace_id=$1
          and attempt.id=any($2::uuid[])
-         and node.workflow_run_id=$3`,
+         and node.workflow_run_id=$3
+       order by node.invocation_key,attempt.id
+       ${lock ? 'for update of node,attempt' : ''}`,
     [workspaceId, attemptIds, runId],
   );
   return new Map(

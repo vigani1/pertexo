@@ -10,6 +10,7 @@ import {
   type QueueConsumerOptions,
 } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
+import { createWorkflowCheckpointV3 } from '@pertexo/workflow-engine';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
@@ -74,6 +75,214 @@ function runtimeDependencies(
 }
 
 describe('coordinator runtime', () => {
+  it('refuses an unscoped decoded-material loader before constructing runtime resources', async () => {
+    const consumer = {
+      close: vi.fn(),
+      isReady: () => true,
+      waitUntilReady: () => Promise.resolve(),
+    };
+    const scanner = {
+      claimDueWakeups: vi.fn().mockResolvedValue(0),
+      close: vi.fn(),
+    };
+    const dependencies = runtimeDependencies(consumer, scanner, scanner);
+    const consumerFactory = vi.fn(() => consumer);
+    await expect(
+      createCoordinatorRuntime(runtimeOptions(), {
+        ...dependencies,
+        consumerFactory,
+        loadCallableCompletion: vi.fn(),
+      }),
+    ).rejects.toThrow(
+      'Unscoped coordinator material loading cannot bypass the native value lifetime',
+    );
+    expect(consumerFactory).not.toHaveBeenCalled();
+  });
+  it('consumes the parsed native policy through the actual queue and owner inspector before demanded sources', async () => {
+    let consumerOptions: QueueConsumerOptions | undefined;
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: () => true,
+      waitUntilReady: () => Promise.resolve(),
+    };
+    const scanner = {
+      claimDueWakeups: vi.fn().mockResolvedValue(0),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const dependencies = runtimeDependencies(consumer, scanner, scanner);
+    const inspectOwner = vi.fn<
+      NonNullable<CoordinatorRunStore['inspectCoordinatorValueReadOwner']>
+    >(() => Promise.resolve({ kind: 'stopped', stop: { kind: 'canceled' } }));
+    const commit = vi.fn();
+    const acknowledge = vi.fn();
+    const runtime = await createCoordinatorRuntime(
+      runtimeOptions({
+        valueWorkPolicy: {
+          controlPollMillis: 333,
+          controlReadTimeoutMillis: 1_337,
+          operationTimeoutMillis: 7_777,
+        },
+      }),
+      {
+        ...dependencies,
+        consumerFactory: (options) => {
+          consumerOptions = options;
+          return consumer;
+        },
+        engine: {
+          advance: async (input) => {
+            if (!input.loadCallableCompletion)
+              throw new Error('Missing native loader');
+            const result = await input.loadCallableCompletion(
+              {
+                expectedRevision: 0,
+                resultSelector: { kind: 'run_input', path: '$' },
+                requiresRunInput: true,
+                sources: [],
+              },
+              input.signal,
+            );
+            if (result.kind !== 'stopped')
+              throw new Error('Expected stopped demand');
+            return { kind: 'value_work_stopped', stop: result.stop };
+          },
+        },
+        runStore: {
+          close: () => Promise.resolve(),
+          commitAdvancePlan: commit,
+          acknowledgeAdvanceDelivery: acknowledge,
+          inspectCoordinatorValueReadOwner: inspectOwner,
+          loadAdvanceState: vi.fn().mockResolvedValue({
+            kind: 'ready',
+            state: {
+              runId: RUN_ID,
+              workflowVersionId: VERSION_ID,
+              checkpoint: createWorkflowCheckpointV3({
+                engineVersion: 'phase3-engine-v1',
+                workflowVersionId: VERSION_ID,
+                iterationBudget: 0,
+              }),
+              observations: [],
+            },
+          }),
+        },
+        reader: {
+          close: () => Promise.resolve(),
+          readForExecution: vi.fn().mockResolvedValue({
+            kind: 'v3_projection',
+            workflowVersion: { id: VERSION_ID, workspaceId: WORKSPACE_ID },
+          }),
+        },
+      },
+    );
+    try {
+      if (!consumerOptions) throw new Error('Missing queue consumer');
+      await expect(
+        consumerOptions.handler(
+          {
+            name: JOB_NAME.advanceWorkflowRun,
+            data: {
+              schemaVersion: 1,
+              workspaceId: WORKSPACE_ID,
+              runId: RUN_ID,
+              outboxEventId: OUTBOX_EVENT_ID,
+            },
+            transport: { attemptsMade: 0, jobId: `outbox-${OUTBOX_EVENT_ID}` },
+          },
+          { signal: new AbortController().signal },
+        ),
+      ).rejects.toMatchObject({
+        name: 'CoordinatorValueWorkStoppedError',
+        stop: { kind: 'canceled' },
+      });
+      expect(inspectOwner).toHaveBeenCalledOnce();
+      expect(inspectOwner.mock.calls[0]?.[0]).toMatchObject({
+        readTimeoutMillis: 1_337,
+        owner: {
+          workspaceId: WORKSPACE_ID,
+          runId: RUN_ID,
+          workflowVersionId: VERSION_ID,
+          expectedRevision: 0,
+        },
+      });
+      expect(commit).not.toHaveBeenCalled();
+      expect(acknowledge).not.toHaveBeenCalled();
+    } finally {
+      await runtime.close();
+    }
+  });
+  it('leaves stopped value work retryable at the actual queue adapter without acknowledging it', async () => {
+    let consumerOptions: QueueConsumerOptions | undefined;
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: () => true,
+      waitUntilReady: () => Promise.resolve(),
+    };
+    const scanner = {
+      claimDueWakeups: vi.fn().mockResolvedValue(0),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const dependencies = runtimeDependencies(consumer, scanner, scanner);
+    const stop = { kind: 'canceled' as const };
+    const acknowledgeAdvanceDelivery = vi.fn();
+    const commitAdvancePlan = vi.fn();
+    const runtime = await createCoordinatorRuntime(runtimeOptions(), {
+      ...dependencies,
+      consumerFactory: (options) => {
+        consumerOptions = options;
+        return consumer;
+      },
+      engine: {
+        advance: () => Promise.resolve({ kind: 'value_work_stopped', stop }),
+      },
+      runStore: {
+        close: () => Promise.resolve(),
+        acknowledgeAdvanceDelivery,
+        commitAdvancePlan,
+        loadAdvanceState: vi.fn().mockResolvedValue({
+          kind: 'ready',
+          state: {
+            runId: RUN_ID,
+            workflowVersionId: VERSION_ID,
+            checkpoint: {},
+            observations: [],
+          },
+        }),
+      },
+      reader: {
+        close: () => Promise.resolve(),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: { id: VERSION_ID, workspaceId: WORKSPACE_ID },
+        }),
+      },
+    });
+    try {
+      if (consumerOptions === undefined) throw new Error('Missing consumer');
+      await expect(
+        consumerOptions.handler(
+          {
+            name: JOB_NAME.advanceWorkflowRun,
+            data: {
+              schemaVersion: 1,
+              workspaceId: WORKSPACE_ID,
+              runId: RUN_ID,
+              outboxEventId: OUTBOX_EVENT_ID,
+            },
+            transport: { attemptsMade: 0, jobId: `outbox-${OUTBOX_EVENT_ID}` },
+          },
+          { signal: new AbortController().signal },
+        ),
+      ).rejects.toMatchObject({
+        name: 'CoordinatorValueWorkStoppedError',
+        stop,
+      });
+      expect(acknowledgeAdvanceDelivery).not.toHaveBeenCalled();
+      expect(commitAdvancePlan).not.toHaveBeenCalled();
+    } finally {
+      await runtime.close();
+    }
+  });
   it.each([
     ['telemetry', []],
     ['traceRunner', []],

@@ -24,6 +24,12 @@ import {
 } from './workflow-transition-state.js';
 
 function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
+  if (
+    state.workflowCallDeclarations.some(
+      ({ status }) => status === 'awaiting_admission',
+    )
+  )
+    return true;
   const { current, graph, invocations, branchSelections, loops } = state;
   if (
     graph?.deriveReadiness !== true ||
@@ -32,7 +38,7 @@ function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
   )
     return false;
   const allInvocations = [...invocations.values()];
-  const selections = current.schemaVersion === 2 ? { branchSelections } : {};
+  const selections = current.schemaVersion !== 1 ? { branchSelections } : {};
   if (
     deriveReadyNodes({
       graph,
@@ -102,7 +108,13 @@ export function buildWorkflowTransitionPlan(
     .filter(({ status }) => status === 'ready')
     .map(({ invocationKey }) => invocationKey);
   const admittedKeys =
-    cancelRequested || deadlineExpired
+    // Resolve fresh durable Call admission before admitting more node attempts.
+    // Ready entries remain unadmitted for the journal-consuming continuation.
+    cancelRequested ||
+    deadlineExpired ||
+    state.workflowCallDeclarations.some(
+      ({ status }) => status === 'awaiting_admission',
+    )
       ? []
       : boundedReadyAdmissions({
           invocations: [...invocations.values()],
@@ -214,7 +226,10 @@ export function buildWorkflowTransitionPlan(
       ...current,
       invocations: finalInvocations,
     }),
-    ...(current.schemaVersion === 2 ? { branchSelections } : {}),
+    ...(current.schemaVersion !== 1 ? { branchSelections } : {}),
+    ...(current.schemaVersion === 3
+      ? { calls: [...state.calls.values()] }
+      : {}),
   });
   const nodeRunAdmissions: NodeRunAdmissionPlan[] = [...nodeRunAdmissionKeys]
     .sort(compareOrdinal)
@@ -248,6 +263,14 @@ export function buildWorkflowTransitionPlan(
     events,
     nodeRunAdmissions,
     attempts,
+    ...(current.schemaVersion === 3
+      ? {
+          workflowCalls: {
+            declarations: state.workflowCallDeclarations,
+            cancelChildren: state.workflowCallCancellations,
+          },
+        }
+      : {}),
     ...(attempts.length === 0 &&
     ['running', 'waiting'].includes(state.runStatus) &&
     hasUnsettledSchedulerWork(state)

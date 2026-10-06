@@ -214,6 +214,108 @@ function requiredFailClosedCommand(step, expectedCommand, label) {
     fail(`${label} must fail closed and invoke its exact command`);
 }
 
+export const INLINE_CALL_HTTP_COMMAND =
+  'node --test --test-reporter=./infrastructure/testing/inline-workflow-call-gate-reporter.mjs infrastructure/testing/inline-workflow-call-http.integration.test.mjs';
+export const INLINE_CALL_HTTP_VALIDATE_COMMAND =
+  'node infrastructure/coverage/validate-vitest-gate-report.mjs "$INLINE_WORKFLOW_CALL_GATE_REPORT" \'Registered inline Call HTTP qualification\' 1';
+
+function requiredInlineCallHttpOwner(workflow, jobs) {
+  const name = 'inline-workflow-call-http';
+  const job = jobs[name];
+  if (
+    !job ||
+    job.if !== undefined ||
+    job.needs !== undefined ||
+    job.strategy !== undefined ||
+    job['continue-on-error'] !== undefined ||
+    job['timeout-minutes'] !== 15
+  )
+    fail(
+      'inline Call HTTP owner must be unconditional, fail closed and bounded to 15 minutes',
+    );
+  if (
+    job.env?.COMPOSE_PROJECT_NAME !==
+      'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-inline-workflow-call-http' ||
+    job.env?.INLINE_WORKFLOW_CALL_HTTP_INTEGRATION !== 'true' ||
+    job.env?.INLINE_WORKFLOW_CALL_GATE_REPORT !== undefined
+  )
+    fail(
+      'inline Call HTTP owner must retain its dynamic project and mandatory flag without a job-level runner report',
+    );
+  const steps = jobSteps(jobs, name);
+  const required = (command) => {
+    const matches = steps.filter(
+      (step) => normalizedShellCommand(step.run) === command,
+    );
+    if (
+      matches.length !== 1 ||
+      matches[0].if !== undefined ||
+      matches[0]['continue-on-error'] !== undefined
+    )
+      fail(`inline Call HTTP owner must require exactly one ${command}`);
+    return steps.indexOf(matches[0]);
+  };
+  const install = required('pnpm install --frozen-lockfile');
+  const build = required('pnpm build');
+  const start = required(
+    'docker compose up -d --wait --wait-timeout 120 postgres redis',
+  );
+  const command = [
+    'set -euo pipefail',
+    'mkdir -p "$RUNNER_TEMP/inline-workflow-call-http"',
+    'test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"',
+    'test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"',
+    INLINE_CALL_HTTP_COMMAND,
+    INLINE_CALL_HTTP_VALIDATE_COMMAND,
+  ].join(' ');
+  const qualification = required(command);
+  if (!(install < build && build < start && start < qualification))
+    fail(
+      'inline Call HTTP qualification must follow frozen installation, build and bounded services',
+    );
+  const selected = steps[qualification];
+  if (
+    selected.env?.INLINE_WORKFLOW_CALL_GATE_REPORT !==
+    '${{ runner.temp }}/inline-workflow-call-http/report.json'
+  )
+    fail(
+      'inline Call HTTP qualification must own its exact runner report path',
+    );
+  for (const [key, value] of Object.entries({
+    ...CURATED_TEMPLATE_DATABASE_URLS,
+    DATABASE_OPERATOR_URL:
+      'postgresql://pertexo_operator:pertexo-local-operator@127.0.0.1:5432/pertexo',
+  }))
+    if (
+      (selected.env?.[key] ?? job.env?.[key] ?? workflow.env?.[key]) !== value
+    )
+      fail(`inline Call HTTP owner must use standard ${key}`);
+  const cleanup = steps.filter(
+    (step) =>
+      step.if === 'always()' &&
+      step['continue-on-error'] === undefined &&
+      normalizedShellCommand(step.run) ===
+        'timeout 120 docker compose down -v --remove-orphans',
+  );
+  const upload = steps.filter(
+    (step) =>
+      step.if === 'always()' &&
+      step['continue-on-error'] === undefined &&
+      step.uses?.startsWith('actions/upload-artifact@') &&
+      step.with?.path === '${{ runner.temp }}/inline-workflow-call-http' &&
+      step.with?.['if-no-files-found'] === 'error',
+  );
+  if (
+    cleanup.length !== 1 ||
+    upload.length !== 1 ||
+    steps.indexOf(cleanup[0]) <= qualification ||
+    steps.indexOf(upload[0]) <= qualification
+  )
+    fail(
+      'inline Call HTTP owner must retain bounded always-cleanup and required report upload',
+    );
+}
+
 function requiredWorkflowOrganizationFixture(qualification, command) {
   if (
     qualification.env?.DATABASE_MAINTENANCE_URL !==
@@ -500,6 +602,7 @@ function requiredFeatureOrdinaryExclusions(jobs) {
 export function validateCiGatePolicy({ packageManifest, workflow }) {
   const scripts = packageScripts(packageManifest);
   const jobs = workflowJobs(workflow);
+  requiredInlineCallHttpOwner(workflow, jobs);
   requiredFeatureQualificationOwner(jobs, {
     job: CURATED_TEMPLATE_JOB,
     label: 'curated-template',

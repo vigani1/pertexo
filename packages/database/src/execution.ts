@@ -26,6 +26,32 @@ export type {
 } from './execution/artifacts/artifact-upload.js';
 export type { ArtifactCapacityObservation } from './execution/artifacts/artifacts.js';
 export {
+  prepareInlineWorkflowExecutionValueV3,
+  WORKFLOW_EXECUTION_VALUE_MEDIA_TYPE_V1,
+} from './execution/artifacts/execution-value-representation.js';
+export type { StoredExecutionValueV1 } from './execution/stored-execution-value.js';
+export { serializeWorkflowExecutionJsonValueV3 } from './execution/stored-execution-value.js';
+export { NODE_ATTEMPT_INPUT_LIMITS } from './execution/node-attempts/node-attempt-run-store-contract.js';
+export { NativeArtifactPreparationUnavailableError } from './execution/artifacts/native-attempt-artifact-contract.js';
+export type {
+  NativeAttemptArtifactReservationInput,
+  NativeAttemptArtifactProofInput,
+  NativeAttemptArtifactMetadata,
+} from './execution/artifacts/native-attempt-artifact-contract.js';
+export type {
+  NativeResultArtifactProducer,
+  NativeResultArtifactReservationInput,
+  NativeResultArtifactProofInput,
+} from './execution/artifacts/native-result-artifact-contract.js';
+export { parseWorkflowExecutionValueSnapshot } from './execution/node-attempts/node-attempt-call-input-record.js';
+export type {
+  NativeNodeAttemptValueSource,
+  NativeNodeAttemptValueSources,
+} from './execution/node-attempts/native-node-attempt-value-sources.js';
+export { parseNativeNodeAttemptValueSource } from './execution/node-attempts/native-node-attempt-value-sources.js';
+export { projectNativeNodeAttemptCollectionValue } from './execution/node-attempts/node-attempt-collection-value.js';
+export { parseCoordinatorNativeSourceInventory } from './execution/coordinator/coordinator-native-source-inventory.js';
+export {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,
   createWorkerConnectionResolutionDatabase,
@@ -39,9 +65,34 @@ export {
   createCoordinatorRunStore,
 } from './execution/coordinator/coordinator-run-store.js';
 export type {
+  CoordinatorAdvanceDelivery,
   CoordinatorRunStore,
   CoordinatorRunStoreOptions,
 } from './execution/coordinator/coordinator-run-store.js';
+export type {
+  NativeCoordinatorValueOwner,
+  NativeCoordinatorMaterialDemand,
+  NativeCallableSourceProjection,
+  NativeCallableValueDescriptor,
+  NativeCallableValueIdentity,
+  NativeCoordinatorValueOwnerInspection,
+  InspectCoordinatorValueReadOwner,
+  NativeCoordinatorResultPreparationScope,
+  NativeCoordinatorResultSourceHydrator,
+  NativeCoordinatorResultValuePreparer,
+  LoadCallableCompletionSources,
+  ReadCallableCompletionSource,
+  ReadCoordinatorCallDeclaration,
+  NativeCoordinatorCallDeclarationHydrator,
+  LoadCoordinatorControlSources,
+  ReadCoordinatorControlSource,
+} from './execution/coordinator/coordinator-native-value-read-contract.js';
+export type { NativeCoordinatorCallDeclarationSource } from './execution/coordinator/coordinator-call-declaration-source.js';
+export {
+  parseCoordinatorControlDeclarationInventory,
+  type NativeCoordinatorControlDeclarationIdentity,
+  type NativeCoordinatorControlDeclarationSource,
+} from './execution/coordinator/coordinator-control-declaration-source.js';
 export type { DatabaseConfig } from './config.js';
 export { createAuthenticationMailDeliveryStore } from './identity/authentication-mail.js';
 export type {
@@ -104,6 +155,8 @@ export {
 } from './operator/operator-run-replay.js';
 export type { OperatorRunReplayStore } from './operator/operator-run-replay.js';
 export { canonicalOutboxPayloadChecksum } from './execution/transport/outbox.js';
+export { createWorkflowExecutionResultIdentityV1 } from './execution/artifacts/workflow-execution-result-identity.js';
+export type { WorkflowExecutionResultIdentityInputV1 } from './execution/artifacts/workflow-execution-result-identity.js';
 export { acquireDatabasePool } from './platform/database-runtime.js';
 export {
   PreviewAttemptStateError,
@@ -133,6 +186,8 @@ export { createPublishedWorkflowReader } from './execution/published-workflow-re
 export type {
   PublishedWorkflowReader,
   PublishedWorkflowV2Projection,
+  PublishedWorkflowV3Projection,
+  PublishedWorkflowExecutableProjection,
 } from './execution/published-workflow-reader.js';
 export { createScheduleTriggerScanner } from './triggers/schedule-trigger-scanner.js';
 export type {

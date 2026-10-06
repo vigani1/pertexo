@@ -1,3 +1,4 @@
+import { authProblems } from './auth-problems.js';
 import { z } from 'zod';
 import {
   WORKFLOW_PORTABILITY_PROBLEM_CODES,
@@ -59,6 +60,8 @@ export const API_PROBLEM_CODES = [
   ...WORKFLOW_PORTABILITY_PROBLEM_CODES,
   'workflow.template_origin_unavailable',
   'workflow.validation_unavailable',
+  'workflow.callable_targets_unavailable',
+  'workflow.calls_unavailable',
   'workflow.draft_operation_unavailable',
   'workflow.published_version_conflict',
   'workflow.not_published',
@@ -123,42 +126,7 @@ export type ApiProblemCode = z.output<typeof apiProblemCodeSchema>;
 export type ApiProblemIssue = z.output<typeof apiProblemIssueSchema>;
 export type ApiProblem = z.output<typeof apiProblemSchema>;
 const apiProblemDetails = {
-  'auth.unauthenticated': {
-    status: 401,
-    title: 'Authentication required',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.forbidden': {
-    status: 403,
-    title: 'Forbidden',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'auth.email_not_verified': {
-    status: 403,
-    title: 'Email verification required',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.reset_link_invalid': {
-    status: 400,
-    title: 'Reset link invalid or expired',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.conflict': {
-    status: 409,
-    title: 'Authentication change conflict',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.session_not_fresh': {
-    status: 403,
-    title: 'Recent sign-in required',
-    severity: 'info',
-    exposeDetail: true,
-  },
+  ...authProblems,
   'resource.not_found': {
     status: 404,
     title: 'Resource not found',
@@ -340,6 +308,18 @@ const apiProblemDetails = {
   'workflow.validation_unavailable': {
     status: 503,
     title: 'Workflow validation unavailable',
+    severity: 'warn',
+    exposeDetail: true,
+  },
+  'workflow.callable_targets_unavailable': {
+    status: 503,
+    title: 'Workflow callable targets unavailable',
+    severity: 'warn',
+    exposeDetail: true,
+  },
+  'workflow.calls_unavailable': {
+    status: 503,
+    title: 'Workflow Calls unavailable',
     severity: 'warn',
     exposeDetail: true,
   },

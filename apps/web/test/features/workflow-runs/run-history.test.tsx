@@ -61,6 +61,40 @@ async function chooseOption(label: string, option: string) {
 }
 
 describe('workspace runs', () => {
+  it('renders native child runs and narrows them through the existing local trigger filter', async () => {
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      statisticsHandler(),
+      http.get(`${apiBase}/runs`, () =>
+        HttpResponse.json({
+          items: [
+            fixtureRun(firstRunId, 'succeeded'),
+            fixtureRun(secondRunId, 'running', {
+              triggerType: 'workflow_call',
+            }),
+          ],
+          nextCursor: null,
+        }),
+      ),
+    );
+    const { router } = renderApp(`/w/${workspaceId}/runs`);
+    expect(
+      await screen.findByText('Workflow call', {}, coldStart),
+    ).toBeVisible();
+    await chooseOption('Trigger', 'Workflow call');
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'Copy run ID eeee…eeee' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Copy run ID ffff…ffff' }),
+    ).toBeVisible();
+    expect(router.state.location.search).toMatchObject({
+      trigger: 'workflow_call',
+    });
+  });
   it('paginates in StrictMode and opens a run from its row', async () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),

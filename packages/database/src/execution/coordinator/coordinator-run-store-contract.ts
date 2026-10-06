@@ -1,5 +1,21 @@
 import { z } from 'zod';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import type { CoordinatorCallMaterials } from './coordinator-call-materials.js';
+import type { CoordinatorCallableMaterials } from './coordinator-callable-materials.js';
+import type { coordinatorControlFactWindow } from './coordinator-control-facts.js';
+import type {
+  NativeResultArtifactReservationInput,
+  NativeResultArtifactProofInput,
+} from '../artifacts/native-result-artifact-contract.js';
+import type { NativeAttemptArtifactMetadata } from '../artifacts/native-attempt-artifact-contract.js';
+import type {
+  InspectCoordinatorValueReadOwner,
+  LoadCallableCompletionSources,
+  ReadCallableCompletionSource,
+  ReadCoordinatorCallDeclaration,
+  LoadCoordinatorControlSources,
+  ReadCoordinatorControlSource,
+} from './coordinator-native-value-read-contract.js';
 
 export const coordinatorIdentitySchema = z.uuid();
 const checksumSchema = sha256HexSchema;
@@ -26,6 +42,9 @@ export type LoadAdvanceStateResult =
         checkpoint: unknown;
         observations: readonly unknown[];
         completedOutputs?: readonly unknown[];
+        controlDeclarations?: ReturnType<typeof coordinatorControlFactWindow>;
+        workflowCalls?: CoordinatorCallMaterials;
+        callableCompletion?: CoordinatorCallableMaterials;
       }>;
     }>;
 
@@ -55,10 +74,31 @@ export type AcknowledgeAdvanceDeliveryResult = Readonly<{
 }>;
 
 export interface CoordinatorRunStore {
+  /** Actual native adapter admission; retained adapters need no native inventory. */
+  checkReadiness?(signal?: AbortSignal): Promise<void>;
+  /** Production provides bounded native reads; injected stores may omit them and fail closed. */
+  inspectCoordinatorValueReadOwner?: InspectCoordinatorValueReadOwner;
+  loadCallableCompletionSources?: LoadCallableCompletionSources;
+  readCallableCompletionSource?: ReadCallableCompletionSource;
+  readCoordinatorCallDeclaration?: ReadCoordinatorCallDeclaration;
+  loadCoordinatorControlSources?: LoadCoordinatorControlSources;
+  readCoordinatorControlSource?: ReadCoordinatorControlSource;
+  /** Framework result producer only; all ports are gated by actual native readiness. */
+  reserveNativeResultArtifact?: (
+    input: NativeResultArtifactReservationInput,
+  ) => Promise<NativeAttemptArtifactMetadata>;
+  assertNativeResultArtifactReserved?: (
+    input: NativeResultArtifactProofInput,
+  ) => Promise<void>;
+  finalizeNativeResultArtifact?: (
+    input: NativeResultArtifactProofInput,
+  ) => Promise<void>;
   loadAdvanceState(
     input: Readonly<{
       workspaceId: string;
       runId: string;
+      /** Already-known transport carrier; protected native reads verify it. */
+      delivery?: CoordinatorAdvanceDelivery;
       signal: AbortSignal;
     }>,
   ): Promise<LoadAdvanceStateResult>;

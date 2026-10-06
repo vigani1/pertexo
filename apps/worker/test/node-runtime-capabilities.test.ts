@@ -54,6 +54,45 @@ afterEach(async () => {
 });
 
 describe('worker node runtime capabilities', () => {
+  it('exposes the configured owned artifact store only to framework values and closes it with the runtime', async () => {
+    const primary = {
+      accessKeyId: 'fixture-access',
+      secretAccessKey: 'fixture-secret',
+      bucket: 'fixture-primary',
+      endpoint: 'http://unreachable.invalid:9000',
+      forcePathStyle: true,
+      maxObjectBytes: 1024 * 1024,
+      region: 'us-east-1',
+      requestTimeoutMs: 1000,
+    };
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      {
+        database: databaseConfig,
+        artifactStore: {
+          primary,
+          recovery: { ...primary, bucket: 'fixture-recovery' },
+        },
+      },
+      {
+        artifactPersistence: { createPending: vi.fn(), finalize: vi.fn() },
+      },
+    );
+    try {
+      expect(runtime.factories.artifacts).toBeTypeOf('function');
+      expect(runtime.factories).not.toHaveProperty('executionValueStore');
+      expect(runtime.executionValueStore?.put).toBeTypeOf('function');
+      expect(runtime.executionValueStore?.getStream).toBeTypeOf('function');
+      const store = runtime.executionValueStore;
+      if (store === undefined) throw new Error('Owned value store missing');
+      await runtime.close();
+      expect(() => store.getStream({ workspaceId, artifactId })).toThrow(
+        'Artifact store is closed',
+      );
+    } finally {
+      await runtime.close();
+    }
+  });
+
   it.each([59_999, 60_000.5, 365 * 24 * 60 * 60_000 + 1])(
     'rejects invalid artifact retention %s',
     async (artifactRetentionMillis) => {

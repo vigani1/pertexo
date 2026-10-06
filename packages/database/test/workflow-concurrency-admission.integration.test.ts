@@ -428,7 +428,7 @@ describe('current workflow concurrency and ordered production admission', () => 
       },
       {
         name: 'workflow_concurrency_admissible',
-        hash: '3c541c79eb4d3849b58d8c76a2c5fade',
+        hash: '4f2b5fe534190e0d4af122280a636775',
       },
       {
         name: 'workflow_concurrency_control',
@@ -436,7 +436,7 @@ describe('current workflow concurrency and ordered production admission', () => 
       },
       {
         name: 'workflow_run_active_admission_eligible',
-        hash: '9aa4c431740581a37d4873d0e49cc567',
+        hash: '02b0d390926624f0ea6d41ffe8ed92a5',
       },
       {
         name: 'workflow_run_active_capacity_available',

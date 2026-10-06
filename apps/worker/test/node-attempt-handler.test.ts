@@ -26,6 +26,35 @@ import {
 } from './support/node-attempt-handler.fixture.js';
 
 describe('NodeAttemptHandler', () => {
+  it('returns truthful native control settlement without creating an execution environment', async () => {
+    const claimDelivery = vi.fn().mockResolvedValue({
+      kind: 'control_settled',
+      outboxEventId: ATTEMPT_ID,
+    });
+    const markDispatched = vi.fn(),
+      complete = vi.fn();
+    const store = executionStore({ claimDelivery, markDispatched, complete });
+    const reader = { close: vi.fn(), readForExecution: vi.fn() };
+    const engine = { prepare: vi.fn() };
+    const registry = { execute: vi.fn() };
+    const handler = createNodeAttemptHandler({
+      engine,
+      registry,
+      reader,
+      runStore: store,
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      workerId: 'worker-1',
+    });
+    await expect(
+      handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).resolves.toEqual({ kind: 'committed', outboxEventId: ATTEMPT_ID });
+    expect(reader.readForExecution).not.toHaveBeenCalled();
+    expect(engine.prepare).not.toHaveBeenCalled();
+    expect(registry.execute).not.toHaveBeenCalled();
+    expect(markDispatched).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
   it.each([9, 1_000.5, 30_000])(
     'rejects invalid heartbeat interval %s',
     (heartbeatIntervalMillis) => {

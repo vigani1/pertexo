@@ -176,6 +176,66 @@ async function replayCommand(overrides: Partial<ReplayWorkflowRunInput> = {}) {
 }
 
 describe('workflow run application seams', () => {
+  it('preserves retired native summary links without nodes or workflow-read authority', async () => {
+    const fixture = persistence();
+    const callFamily = {
+      rootRunId: workflowId,
+      parentRunId: workflowId,
+      parentInvocationKey: 'call:0',
+      children: [
+        {
+          runId: actorId,
+          nodeId: 'nested-call',
+          invocationKey: 'nested-call:0',
+          status: 'canceled' as const,
+        },
+      ],
+    };
+    fixture.get.mockResolvedValue({
+      run: { ...run(), triggerType: 'workflow_call', status: 'failed' },
+      nodes: [],
+      callFamily,
+    });
+    const result = await new GetWorkflowRunUseCase(
+      fixture.store,
+      authorization('viewer'),
+      (_role, capability) => capability === 'run:read',
+    ).execute({ actor, routeWorkspaceId: workspaceId, runId });
+    expect(result.callFamily).toEqual(callFamily);
+    expect(result.nodes).toEqual([]);
+    expect(fixture.get).toHaveBeenCalledWith({
+      workspaceId,
+      runId,
+      includeWorkflowName: false,
+    });
+  });
+  it('preserves native child provenance through authorized detail, list and cancellation responses', async () => {
+    const fixture = persistence();
+    const child = { ...run(), triggerType: 'workflow_call' as const };
+    const callFamily = {
+      rootRunId: workflowId,
+      parentRunId: workflowId,
+      parentInvocationKey: 'call:0',
+      children: [],
+    };
+    fixture.get.mockResolvedValue({ run: child, nodes: [], callFamily });
+    fixture.list.mockResolvedValue({ items: [child] });
+    fixture.cancel.mockResolvedValue({ run: child, alreadyRequested: false });
+    const access = authorization();
+    const input = { actor, routeWorkspaceId: workspaceId, runId };
+    await expect(
+      new GetWorkflowRunUseCase(fixture.store, access).execute(input),
+    ).resolves.toMatchObject({
+      run: { triggerType: 'workflow_call' },
+      callFamily,
+    });
+    await expect(
+      new ListWorkflowRunsUseCase(fixture.store, access).execute(input),
+    ).resolves.toMatchObject({ items: [{ triggerType: 'workflow_call' }] });
+    await expect(
+      new CancelWorkflowRunUseCase(fixture.store, access).execute(input),
+    ).resolves.toMatchObject({ run: { triggerType: 'workflow_call' } });
+  });
   it('binds exact-precision pagination cursors to workspace and normalized filters', async () => {
     const fixture = persistence();
     fixture.list

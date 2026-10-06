@@ -58,14 +58,20 @@ function isStoppableInvocation(
   );
 }
 
-function activeNestedLoopControls(
+function activeDurableControls(
   state: MutableWorkflowTransition,
 ): ReadonlySet<string> {
-  return new Set(
-    [...state.loops.values()]
+  return new Set([
+    ...[...state.loops.values()]
       .filter(({ activeOrdinals }) => activeOrdinals.length > 0)
       .map(({ controlInvocationKey }) => controlInvocationKey),
-  );
+    ...[...state.calls.values()]
+      .filter(
+        ({ status }) =>
+          status === 'awaiting_admission' || status === 'admitted',
+      )
+      .map(({ invocationKey }) => invocationKey),
+  ]);
 }
 
 function iterationContainsActiveNestedLoop(
@@ -130,7 +136,7 @@ export function applyWorkflowStops(
             'loop_state_invalid',
             `active For Each ordinal ${String(ordinal)} has no body invocation`,
           );
-        const protectedControls = activeNestedLoopControls(state);
+        const protectedControls = activeDurableControls(state);
         for (const invocation of iterationInvocations) {
           if (
             isStoppableInvocation(invocation) &&
@@ -182,7 +188,7 @@ export function applyWorkflowStops(
     }
   }
 
-  const protectedControls = activeNestedLoopControls(state);
+  const protectedControls = activeDurableControls(state);
   for (const invocation of invocations.values())
     if (
       isStoppableInvocation(invocation) &&

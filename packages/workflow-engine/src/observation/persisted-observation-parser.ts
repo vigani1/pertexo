@@ -1,7 +1,6 @@
 import { isSafeExecutorErrorCode } from '@pertexo/workflow-model/attempt-failure';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 
-import type { WorkflowObservation } from '../types.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type {
   AttemptFailureObservation,
@@ -17,7 +16,7 @@ type ParsedObservation =
   | AttemptFailureObservation;
 type ObservationRecord = Readonly<Record<string, JsonValue>>;
 type OutcomeOutput = Extract<
-  WorkflowObservation,
+  PersistedWorkflowObservation,
   { readonly kind: 'outcome' }
 >['output'];
 

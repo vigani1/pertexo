@@ -1,4 +1,5 @@
 import {
+  WorkflowCallsUnavailableError,
   WorkflowIdempotencyConflictError,
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
@@ -18,6 +19,7 @@ import {
 } from '@pertexo/database/api';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
+import { WorkflowCallClosureError } from '@pertexo/workflow-model/workflow-call-closure';
 import { apiProblemIssueSchema } from '@pertexo/contracts/errors';
 import { z } from 'zod';
 
@@ -63,6 +65,10 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
 };
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof WorkflowCallsUnavailableError)
+    return applicationError('workflow.calls_unavailable', {
+      safeDetail: error.message,
+    });
   const organization = mapWorkflowOrganizationError(error);
   if (organization !== undefined) return organization;
   const portability = mapWorkflowPortabilityError(error);
@@ -77,6 +83,11 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
   if (error instanceof WorkflowDraftOperationUnavailableError)
     return applicationError('workflow.draft_operation_unavailable', {
       safeDetail: error.message,
+    });
+  if (error instanceof WorkflowCallClosureError)
+    return applicationError('workflow.invalid', {
+      safeDetail:
+        'The workflow Call graph cannot be published in its current form.',
     });
   if (
     error instanceof WorkflowHeaderError &&

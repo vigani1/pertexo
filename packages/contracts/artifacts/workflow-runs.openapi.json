@@ -1375,6 +1375,8 @@
               "workflow.portability_invalid",
               "workflow.template_origin_unavailable",
               "workflow.validation_unavailable",
+              "workflow.callable_targets_unavailable",
+              "workflow.calls_unavailable",
               "workflow.draft_operation_unavailable",
               "workflow.published_version_conflict",
               "workflow.not_published",
@@ -1532,7 +1534,8 @@
                   "manual",
                   "replay",
                   "schedule",
-                  "webhook"
+                  "webhook",
+                  "workflow_call"
                 ]
               },
               "createdAt": {
@@ -1664,7 +1667,8 @@
               "manual",
               "replay",
               "schedule",
-              "webhook"
+              "webhook",
+              "workflow_call"
             ]
           },
           "createdAt": {
@@ -1786,7 +1790,8 @@
               "manual",
               "replay",
               "schedule",
-              "webhook"
+              "webhook",
+              "workflow_call"
             ]
           },
           "createdAt": {
@@ -1960,7 +1965,8 @@
               "manual",
               "replay",
               "schedule",
-              "webhook"
+              "webhook",
+              "workflow_call"
             ]
           },
           "createdAt": {
@@ -2200,7 +2206,8 @@
                     "manual",
                     "replay",
                     "schedule",
-                    "webhook"
+                    "webhook",
+                    "workflow_call"
                   ]
                 },
                 "createdAt": {
@@ -2808,7 +2815,8 @@
                   "manual",
                   "replay",
                   "schedule",
-                  "webhook"
+                  "webhook",
+                  "workflow_call"
                 ]
               },
               "createdAt": {
@@ -3041,6 +3049,91 @@
               ],
               "additionalProperties": false
             }
+          },
+          "callFamily": {
+            "type": "object",
+            "properties": {
+              "rootRunId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "parentRunId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parentInvocationKey": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "children": {
+                "maxItems": 64,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "runId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "invocationKey": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "running",
+                        "waiting",
+                        "succeeded",
+                        "failed",
+                        "canceled",
+                        "timed_out",
+                        "outcome_unknown"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "runId",
+                    "nodeId",
+                    "invocationKey",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "rootRunId",
+              "parentRunId",
+              "parentInvocationKey",
+              "children"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -3108,7 +3201,8 @@
                   "manual",
                   "replay",
                   "schedule",
-                  "webhook"
+                  "webhook",
+                  "workflow_call"
                 ]
               },
               "createdAt": {

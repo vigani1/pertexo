@@ -1,10 +1,8 @@
 import type { parseCheckpoint } from './checkpoint.js';
 import { isCoreMergeDefinition } from '../core-definition-identities.js';
 import { findExecutableNodeContext } from '../compilation/executable-graph.js';
-import type {
-  CompiledWorkflowExecutableV2,
-  WorkflowExecutableNodeV2,
-} from '../executable-workflow.js';
+import type { WorkflowExecutableNodeV2 } from '../executable-workflow.js';
+import type { CompiledWorkflowExecutable } from '../compilation/executable-authentication.js';
 import {
   configuredParallelOutputPorts,
   configuredScopedOutputPorts,
@@ -95,7 +93,7 @@ function expectedInvocationKey(
 function assertInvocationBelongsToExecutable(
   invocation: CheckpointInvocation,
   checkpoint: ParsedCheckpoint,
-  executable: CompiledWorkflowExecutableV2,
+  executable: CompiledWorkflowExecutable,
   nodeIds: ReadonlySet<string>,
   nodesById: ReadonlyMap<string, WorkflowExecutableNodeV2>,
 ): void {
@@ -207,7 +205,7 @@ function assertCheckpointLoopIdentity(
 
 export function assertCheckpointMatchesExecutable(
   checkpoint: ParsedCheckpoint,
-  executable: CompiledWorkflowExecutableV2,
+  executable: CompiledWorkflowExecutable,
   allNodes: readonly WorkflowExecutableNodeV2[],
 ): void {
   const nodeIds = new Set(allNodes.map(({ id }) => id));

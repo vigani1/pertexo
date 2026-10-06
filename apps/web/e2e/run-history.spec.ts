@@ -285,6 +285,65 @@ test('filters and paginates workspace history, then opens the exact run', async 
   );
 });
 
+test('renders and filters workflow-call provenance without hiding retained runs', async ({
+  page,
+}, testInfo) => {
+  await installRoutes(page);
+  await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          run(firstRunId, 'succeeded'),
+          { ...run(secondRunId, 'succeeded'), triggerType: 'workflow_call' },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.goto(`/w/${workspaceId}/runs`);
+  const childTrigger = page
+    .getByRole('list', { name: /^Runs from/u })
+    .getByText('Workflow call', { exact: true });
+  await expect(childTrigger).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toBeVisible();
+  await page.getByRole('combobox', { name: 'Trigger' }).click();
+  await page.getByRole('option', { name: 'Workflow call' }).click();
+  await expect(page).toHaveURL(/trigger=workflow_call/u);
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID ffff…ffff' }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(childTrigger).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  const screenshot = await page.screenshot({ fullPage: true });
+  await testInfo.attach('workflow-call-trigger-390', {
+    body: screenshot,
+    contentType: 'image/png',
+  });
+  if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+    await page.screenshot({
+      path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/workflow-call-trigger-390.png`,
+      fullPage: true,
+    });
+  await page
+    .getByRole('button', { name: 'Remove filter Trigger: Workflow call' })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(page).not.toHaveURL(/trigger=workflow_call/u);
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toBeVisible();
+});
+
 test('replays the exact displayed version from its own input', async ({
   context,
   page,
@@ -308,6 +367,202 @@ test('replays the exact displayed version from its own input', async ({
     page.getByRole('button', { name: 'Copy run ID 1111…1111' }),
   ).toBeVisible();
   await expect(page.getByText('Replay started')).toBeVisible();
+});
+
+for (const viewport of [
+  { width: 1440, height: 1000 },
+  { width: 390, height: 844 },
+]) {
+  test(`inspects the exact accepted child invocation at ${String(viewport.width)}px`, async ({
+    page,
+  }, testInfo) => {
+    await installRoutes(page);
+    await page.setViewportSize(viewport);
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
+      (route) =>
+        route.fulfill({
+          json: {
+            run: run(firstRunId, 'failed'),
+            nodes: [
+              {
+                id: '22222222-2222-4222-8222-222222222222',
+                nodeId: 'call-child',
+                invocationKey: 'call-child:0',
+                status: 'succeeded',
+                currentAttemptNumber: 1,
+                startedAt: timestamp,
+                completedAt: '2026-09-15T10:00:01.000Z',
+                resumeAt: null,
+                safeErrorCode: null,
+              },
+              {
+                id: '33333333-3333-4333-8333-333333333333',
+                nodeId: 'call-child',
+                invocationKey: 'call-child:1',
+                status: 'failed',
+                currentAttemptNumber: 1,
+                startedAt: timestamp,
+                completedAt: '2026-09-15T10:00:02.000Z',
+                resumeAt: null,
+                safeErrorCode: null,
+              },
+            ],
+            callFamily: {
+              rootRunId: firstRunId,
+              parentRunId: null,
+              parentInvocationKey: null,
+              children: [
+                {
+                  runId: secondRunId,
+                  nodeId: 'call-child',
+                  invocationKey: 'call-child:0',
+                  status: 'succeeded',
+                },
+                {
+                  runId: replayRunId,
+                  nodeId: 'call-child',
+                  invocationKey: 'call-child:1',
+                  status: 'outcome_unknown',
+                },
+              ],
+            },
+          },
+        }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/*/node-runs/*/input`,
+      (route) => route.fulfill({ json: { input: { kind: 'none' } } }),
+    );
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/runs/*/node-runs/*/output`,
+      (route) => route.fulfill({ json: { output: { kind: 'none' } } }),
+    );
+    await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+    const lens =
+      viewport.width < 1280
+        ? page.getByRole('dialog', { name: /^call-child ·/u })
+        : page.getByRole('complementary', { name: 'Step details' });
+    await page
+      .getByRole('button', { name: /^call-child · 1: Succeeded/u })
+      .click();
+    await expect(
+      lens.getByRole('link', { name: 'Run ffff…ffff' }),
+    ).toBeVisible();
+    await expect(lens.getByRole('link', { name: 'Run 1111…1111' })).toHaveCount(
+      0,
+    );
+    if (viewport.width < 1280) await page.keyboard.press('Escape');
+    await page
+      .getByRole('button', { name: /^call-child · 2: Failed/u })
+      .click();
+    const child = lens.getByRole('link', { name: 'Run 1111…1111' });
+    await expect(child).toBeVisible();
+    await expect(
+      lens.getByText('Outcome unknown', { exact: true }),
+    ).toBeVisible();
+    await expect(lens.getByRole('link', { name: 'Run ffff…ffff' })).toHaveCount(
+      0,
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await expect(lens).toHaveCSS('opacity', '1');
+    await testInfo.attach(`selected-call-${String(viewport.width)}`, {
+      body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
+      contentType: 'image/png',
+    });
+    if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+      await page.screenshot({
+        path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/selected-call-${String(viewport.width)}.png`,
+        fullPage: true,
+        animations: 'disabled',
+      });
+    await child.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);
+  });
+}
+
+test('follows accepted caller and child run links on mobile', async ({
+  page,
+}, testInfo) => {
+  await installRoutes(page);
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
+    (route) =>
+      route.fulfill({
+        json: {
+          run: run(firstRunId, 'succeeded'),
+          nodes: [],
+          callFamily: {
+            rootRunId: firstRunId,
+            parentRunId: null,
+            parentInvocationKey: null,
+            children: [
+              {
+                runId: secondRunId,
+                nodeId: 'call-child',
+                invocationKey: 'call-child:0',
+                status: 'succeeded',
+              },
+            ],
+          },
+        },
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${secondRunId}`,
+    (route) =>
+      route.fulfill({
+        json: {
+          run: {
+            ...run(secondRunId, 'succeeded'),
+            triggerType: 'workflow_call',
+          },
+          nodes: [],
+          callFamily: {
+            rootRunId: firstRunId,
+            parentRunId: firstRunId,
+            parentInvocationKey: 'call-child:0',
+            children: [],
+          },
+        },
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${secondRunId}/events`,
+    (route) => route.fulfill({ contentType: 'text/event-stream', body: '' }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+  const child = page.getByRole('link', { name: 'call-child: run ffff…ffff' });
+  await expect(child).toBeVisible();
+  await child.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${secondRunId}`);
+  const parent = page.getByRole('link', { name: 'Parent run eeee…eeee' });
+  await expect(parent).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await testInfo.attach('native-child-family-390', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+    await page.screenshot({
+      path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/native-child-family-390.png`,
+      fullPage: true,
+    });
+  await parent.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${firstRunId}`);
+  await expect(child).toBeVisible();
 });
 
 test('keeps a maximum-length workflow identity accessible and contained on mobile', async ({

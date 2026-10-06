@@ -1,5 +1,5 @@
 import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
-import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
+import type { CoordinatorCheckpoint as PersistedWorkflowCheckpoint } from './coordinator-checkpoint.js';
 import {
   assertPlan,
   sameStoredValue,
@@ -49,6 +49,7 @@ function validatePlanEnvelope(
     ),
   );
   assertPlan(plan.events.every(({ name }) => name !== 'run.cancel_requested'));
+  validateNativePlanEnvelope(plan);
   if (plan.checkpoint.cancelRequested || plan.checkpoint.deadlineExpired) {
     assertPlan(plan.attempts.length === 0);
     assertPlan(plan.nodeRunAdmissions.length === 0);
@@ -59,6 +60,61 @@ function validatePlanEnvelope(
       plan.checkpoint.runStatus === 'running' ||
         plan.checkpoint.runStatus === 'waiting',
     );
+  }
+}
+
+function validateNativePlanEnvelope(plan: ParsedTransitionPlan): void {
+  const result = plan.callableResult;
+  if (result !== undefined) {
+    assertPlan(plan.checkpoint.schemaVersion === 3);
+    if (result.kind === 'succeeded') {
+      assertPlan(plan.checkpoint.runStatus === 'succeeded');
+      assertPlan(plan.events.some(({ name }) => name === 'run.succeeded'));
+      const seen = new Set<string>();
+      for (const source of result.sources) {
+        assertPlan(!seen.has(source.invocationKey));
+        seen.add(source.invocationKey);
+        const invocation = plan.checkpoint.invocations.find(
+          (entry) => entry.invocationKey === source.invocationKey,
+        );
+        assertPlan(invocation?.status === 'succeeded');
+        assertPlan(sameStoredValue(invocation.output, source.output));
+      }
+    } else {
+      assertPlan(plan.checkpoint.runStatus === 'failed');
+      assertPlan(
+        plan.events.some(
+          ({ name, reasonCode }) =>
+            name === 'run.failed' && reasonCode === result.reasonCode,
+        ),
+      );
+    }
+  }
+  const cancellations = plan.workflowCalls?.cancelChildren ?? [];
+  const children = new Set<string>();
+  for (const cancellation of cancellations) {
+    assertPlan(plan.checkpoint.schemaVersion === 3);
+    assertPlan(!children.has(cancellation.childRunId));
+    children.add(cancellation.childRunId);
+    assertPlan(
+      cancellation.reason === 'cancel_requested'
+        ? plan.checkpoint.cancelRequested
+        : plan.checkpoint.deadlineExpired && !plan.checkpoint.cancelRequested,
+    );
+    assertPlan(
+      plan.checkpoint.calls.some(
+        (call) =>
+          call.status === 'admitted' &&
+          call.childRunId === cancellation.childRunId,
+      ),
+    );
+  }
+  if (
+    plan.checkpoint.schemaVersion === 3 &&
+    (plan.checkpoint.cancelRequested || plan.checkpoint.deadlineExpired)
+  ) {
+    for (const call of plan.checkpoint.calls)
+      if (call.status === 'admitted') assertPlan(children.has(call.childRunId));
   }
 }
 
@@ -166,6 +222,7 @@ function validateEvent(
   event: EngineEvent,
   invocation: CheckpointInvocation | undefined,
   hasAttempt: boolean,
+  nativeCall: boolean,
 ): void {
   const isNodeEvent = event.name.startsWith('node.');
   if (!isNodeEvent) {
@@ -188,7 +245,12 @@ function validateEvent(
     assertPlan(invocation.waitKind === 'retry_backoff');
   }
   if (event.name === 'node.waiting') {
-    assertPlan(invocation.waitKind === 'node_wait');
+    assertPlan(
+      invocation.waitKind === 'node_wait' ||
+        (nativeCall &&
+          invocation.waitKind === undefined &&
+          invocation.resumeAt === undefined),
+    );
   }
 }
 
@@ -224,6 +286,10 @@ export function assertTransitionPlanValid(
         ? undefined
         : invocations.get(event.invocationKey),
       event.invocationKey !== undefined && attemptKeys.has(event.invocationKey),
+      plan.checkpoint.schemaVersion === 3 &&
+        plan.checkpoint.calls.some(
+          ({ invocationKey }) => invocationKey === event.invocationKey,
+        ),
     );
   }
 }

@@ -1,6 +1,16 @@
 import { z } from 'zod';
+import type {
+  NativeAttemptArtifactReservationInput,
+  NativeAttemptArtifactProofInput,
+  NativeAttemptArtifactMetadata,
+} from '../artifacts/native-attempt-artifact-contract.js';
 import { SAFE_EXECUTOR_ERROR_CODE_PATTERN } from '@pertexo/workflow-model/attempt-failure';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import type { StoredExecutionValueV1 } from '../stored-execution-value.js';
+import type {
+  NativeNodeAttemptValueSource,
+  NativeNodeAttemptValueSources,
+} from './native-node-attempt-value-sources.js';
 
 const identitySchema = z
   .string()
@@ -184,6 +194,14 @@ export const dispatchSchema = ownedLeaseSchema
 export const recordInputSchema = ownedLeaseSchema
   .extend({ input: z.unknown() })
   .strict();
+export const recordCallDeclarationInputSchema = ownedLeaseSchema
+  .extend({
+    reference: z.unknown(),
+    sha256: sha256HexSchema,
+    byteLength: z.number().int().min(1).max(1_048_576),
+  })
+  .strict();
+export const readCallDeclarationInputSchema = ownedLeaseSchema;
 export const heartbeatSchema = ownedLeaseSchema
   .extend({ leaseDurationSeconds: z.number().int().min(1).max(300) })
   .strict();
@@ -252,6 +270,15 @@ export const connectionHealthObservationSchema = z.discriminatedUnion('kind', [
 export const completionSchema = ownedLeaseSchema
   .extend({
     outcome: completionOutcomeSchema,
+    /** Producer metadata only; completion independently rechecks bytes and SQL owner. */
+    nativeOutput: z
+      .object({
+        reference: z.unknown(),
+        sha256: checksumSchema,
+        byteLength: z.number().int().min(1).max(1_048_576),
+      })
+      .strict()
+      .optional(),
     traceparent: traceparentSchema,
     connectionHealthObservation: connectionHealthObservationSchema.optional(),
     connectionRunHealthMode: z.enum(['off', 'observe', 'enforce']).optional(),
@@ -260,9 +287,12 @@ export const completionSchema = ownedLeaseSchema
 
 export type NodeAttemptClaimResult =
   | Readonly<{ kind: 'duplicate' }>
+  | Readonly<{ kind: 'control_settled'; outboxEventId: string }>
   | Readonly<{ kind: 'claimed'; lease: NodeAttemptLease }>;
 
 export type NodeAttemptInputs = Readonly<{
+  /** Exact native loader projection only; retained decoded JSON never populates this field. */
+  nativeValueSources?: NativeNodeAttemptValueSources;
   runInput: unknown;
   completedNodeOutputs: unknown;
   structuredCollection?: Readonly<{
@@ -300,6 +330,23 @@ export type CompleteNodeAttemptResult =
   | Readonly<{ kind: 'duplicate'; outboxEventId: null }>;
 
 export interface NodeAttemptRunStore {
+  reserveNativeArtifact?(
+    input: NativeAttemptArtifactReservationInput,
+  ): Promise<NativeAttemptArtifactMetadata>;
+  assertNativeArtifactReserved?(
+    input: NativeAttemptArtifactProofInput,
+  ): Promise<void>;
+  finalizeNativeArtifact?(
+    input: NativeAttemptArtifactProofInput,
+  ): Promise<void>;
+  /** Reauthorize one accepted native source under the actual existing lease. */
+  readNativeValueSource?(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      source: NativeNodeAttemptValueSource;
+      signal: AbortSignal;
+    }>,
+  ): Promise<NativeNodeAttemptValueSource>;
   claimDelivery(
     input: Readonly<z.input<typeof claimDeliverySchema>>,
   ): Promise<NodeAttemptClaimResult>;
@@ -346,16 +393,53 @@ export interface NodeAttemptRunStore {
       signal: AbortSignal;
     }>,
   ): Promise<Readonly<{ recorded: boolean }>>;
+  /** Required native Call provenance. Unsupported/lost authority throws. */
+  recordCallDeclarationInput?(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      reference: StoredExecutionValueV1;
+      sha256: string;
+      byteLength: number;
+      signal: AbortSignal;
+    }>,
+  ): Promise<void>;
+  /** Current lease/delivery authorizes access to the immutable existing snapshot. */
+  readCallDeclarationInput?(
+    input: Readonly<{ lease: NodeAttemptLease; signal: AbortSignal }>,
+  ): Promise<
+    | Readonly<{
+        reference: StoredExecutionValueV1;
+        sha256: string;
+        byteLength: number;
+        /** Exact immutable inline bytes; absent for artifact references. */
+        serializedValue?: string;
+      }>
+    | undefined
+  >;
   complete(
     input: Readonly<{
       lease: NodeAttemptLease;
       outcome: NodeAttemptCompletion;
+      /** Framework preparation metadata, never acceptance or consumption authority. */
+      nativeOutput?: Readonly<{
+        reference: StoredExecutionValueV1;
+        sha256: string;
+        byteLength: number;
+      }>;
       connectionHealthObservation?: z.output<
         typeof connectionHealthObservationSchema
       >;
       connectionRunHealthMode?: 'off' | 'observe' | 'enforce';
       traceparent?: string;
       signal: AbortSignal;
+    }>,
+  ): Promise<CompleteNodeAttemptResult>;
+  /** Native physical declaration success aliases protected input; no caller output. */
+  completeCallDeclaration?(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      signal: AbortSignal;
+      traceparent?: string;
     }>,
   ): Promise<CompleteNodeAttemptResult>;
   close(): Promise<void>;

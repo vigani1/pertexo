@@ -1,5 +1,26 @@
 [
   {
+    "name": "workflow_call_rollout",
+    "owner": "owner_role",
+    "accessRoles": ["operator_role"],
+    "rls": "forced",
+    "reason": "Default-OFF Call writer state is updated only by the operator SQL command; runtime roles have no direct table access."
+  },
+  {
+    "name": "workflow_execution_value_provenance",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Inline value provenance is private to registered owner SQL commands; runtime roles cannot read or mutate rows directly."
+  },
+  {
+    "name": "workflow_calls",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Sealed parent-child journal identity and settlement are owned by scoped SQL commands, never direct runtime table writes."
+  },
+  {
     "name": "workflow_folders",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role"],

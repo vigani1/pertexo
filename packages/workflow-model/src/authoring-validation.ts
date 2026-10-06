@@ -1,6 +1,12 @@
 import './server-only.js';
 
-export { WorkflowAuthoringValidator } from './authoring-validation/validator.js';
+export {
+  WorkflowAuthoringValidator,
+  createAuthoringJobRuntime,
+  type AuthoringWorkerReply,
+  type CallableTargetWorkerAdapter,
+  type CallableTargetJobSlot,
+} from './authoring-validation/validator.js';
 export {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,

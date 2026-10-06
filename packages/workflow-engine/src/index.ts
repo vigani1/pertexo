@@ -23,6 +23,13 @@ export {
   WORKFLOW_CHECKPOINT_LIMITS_V1,
 } from './checkpoint/checkpoint.js';
 export { WorkflowEngineError } from './errors.js';
+export type {
+  CallableMaterialDemand,
+  CallableMaterialDemandResult,
+  LoadCallableCompletion,
+} from './observation/workflow-call-demand.js';
+export { CallableCompletionStoppedError } from './observation/workflow-call-demand.js';
+export type { LoadCoordinatorControlDeclaration } from './observation/control-declaration-demand.js';
 export type { EngineErrorCode } from './errors.js';
 export {
   buildWorkflowExecutableV2,
@@ -48,4 +55,38 @@ export type {
   WorkflowExecutableV2,
 } from './executable-workflow.js';
 export { invocationKey } from './transition/scheduling.js';
+export {
+  buildWorkflowExecutableV3,
+  parseWorkflowExecutableV3,
+  verifyWorkflowExecutableV3,
+  computeWorkflowExecutableChecksumV3,
+  composeExecutableCompatibilityReleaseV3,
+  WORKFLOW_CALL_RUNTIME_POLICIES_V1,
+  type WorkflowExecutableV3,
+  type VerifiedWorkflowExecutableV3,
+  type CompiledWorkflowExecutableV3,
+} from './executable-workflow.js';
 export type * from './types.js';
+export {
+  createWorkflowCheckpointV3,
+  parseWorkflowCheckpointV3,
+  parseWorkflowCallStateV1,
+} from './checkpoint/checkpoint-v3.js';
+export type * from './workflow-call-state.js';
+export type { CompiledWorkflowExecutable } from './compilation/executable-authentication.js';
+export {
+  createCallableTargetWorkerAdapter,
+  createCallableTargetAssessor,
+} from './compilation/callable-target-assessment-adapter.js';
+export {
+  CALLABLE_TARGET_ASSESSMENT_LIMITS,
+  CALLABLE_TARGET_ASSESSMENT_PURPOSE,
+} from './compilation/callable-target-assessment-contracts.js';
+export type {
+  CallableTargetAssessmentEntry,
+  CallableTargetAssessmentRelease,
+  CallableTargetAssessmentSnapshot,
+  CallableTargetAssessmentCounters,
+  CallableTargetAssessmentFact,
+  CallableTargetAssessmentReport,
+} from './compilation/callable-target-assessment-contracts.js';

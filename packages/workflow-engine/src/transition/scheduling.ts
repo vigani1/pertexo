@@ -9,7 +9,7 @@ import type {
   JoinPolicy,
   JoinState,
   LoopState,
-  OutputReference,
+  AttemptOutputReference,
 } from '../types.js';
 
 const terminalDispositions = new Set([
@@ -134,7 +134,7 @@ export function createLoopState(input: {
   readonly iterationPath?: readonly IterationScopePart[];
   readonly bodyRootNodeIds?: readonly string[];
   readonly bodySinkNodeId?: string;
-  readonly collection: OutputReference;
+  readonly collection: AttemptOutputReference;
   readonly collectionChecksum: string;
   readonly collectionSize: number;
   readonly maxIterations: number;

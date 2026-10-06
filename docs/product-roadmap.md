@@ -109,7 +109,7 @@ performance/reliability rankings are asserted. Editions differ.
 | Reusable configuration and records | [n8n custom variables](https://docs.n8n.io/build/code-in-n8n/define-custom-variables), [n8n data tables](https://docs.n8n.io/build/work-with-data/data-tables) | Optional F13/F14 |
 | Respond through a webhook | [n8n Respond to Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook) | Current 202 stays default; opt-in F15 |
 | Promote between environments | [n8n source control and environments](https://docs.n8n.io/administer/use-source-control-and-environments) | Versioning exists, environment product F17 does not follow automatically |
-| Organize workflows | [Make scenario capabilities](https://help.make.com/scenarios) documents folders/labels | Existing search; proposed metadata F07 |
+| Organize workflows | [Make scenario capabilities](https://help.make.com/scenarios) documents folders/labels | F07 folders/tags/private favorites/discovery implemented and qualified; production OFF |
 | User code as a workflow step | [n8n Code node](https://docs.n8n.io/build/code-in-n8n/using-the-code-node) supports JavaScript/Python | Explicitly deferred; security-heavy F20 |
 | Transform, review and AI breadth | [n8n current documentation index](https://docs.n8n.io/sitemap.md) lists transform nodes, reviews and AI features | Demand-driven F24, F18 and F22; not early parity blockers |
 
@@ -193,8 +193,8 @@ only after its gate is resolved.
 | [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs and artifact lifecycle | Backend foundation exists; consumer contract + frontend missing | L | Proposed |
 | [F05](feature-plans/05-workflow-portability.md) | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Duplicate released through PR142 on natural main `5f78e155`; ADR062 import/export released with F02 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical qualification/repair evidence retained; production activation unauthorized |
 | [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Locally qualified and independently reviewed; primary final review/release open; production gates off |
-| [F07](feature-plans/07-workflow-organization.md) | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Proposed |
-| [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | Proposed |
+| [F07](feature-plans/07-workflow-organization.md) | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Implemented, reviewed, qualified and merged through PR147; fresh natural-main CI/qualification closed after PR148; production OFF |
+| [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | ADR065 accepted; implementation in progress, including native draft/editor configuration and family reads; migration0136 remains OFF/unregistered, publication/root/runtime/readiness and paused security qualification remain open |
 | [F09](feature-plans/09-failure-paths-and-recovery.md) | Workflow-authored failure paths and explicit recovery UX | Existing recovery foundation + new graph behavior | XL | Proposed |
 | [F10](feature-plans/10-human-approvals.md) | Durable human approvals and resume decisions | New cross-stack durable interaction | XL | Proposed |
 | [F11](feature-plans/11-forms-and-resume-input.md) | Hosted forms and structured human input | New trigger/frontend product | L–XL | Proposed |

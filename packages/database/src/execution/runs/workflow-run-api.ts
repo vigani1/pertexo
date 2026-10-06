@@ -26,7 +26,7 @@ import {
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,
-  type PublishedWorkflowV2Projection,
+  type PublishedWorkflowExecutableProjection,
 } from '../published-workflow-reader.js';
 import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
 import { withWorkspaceTransaction } from '../../tenant-access/workspace.js';
@@ -161,7 +161,7 @@ const cancelInputSchema = z
   .strict();
 
 export type WorkflowRunCheckpointFactory = (
-  projection: PublishedWorkflowV2Projection,
+  projection: PublishedWorkflowExecutableProjection,
   currentCompatibilityRelease: CompatibilityReleaseExpectation,
 ) => Readonly<{ engineVersion: string; checkpoint: unknown }>;
 
@@ -373,7 +373,7 @@ async function startInTransaction(
 async function lockPublishedExecution(
   transaction: WorkspaceTransaction,
   workflowId: string,
-): Promise<PublishedWorkflowV2Projection> {
+): Promise<PublishedWorkflowExecutableProjection> {
   const result = await transaction.db.execute(sql<Record<string, unknown>>`
     select
       v.id,
@@ -396,7 +396,10 @@ async function lockPublishedExecution(
     for share of w
   `);
   const classified = classifyPublishedWorkflowVersionRow(result.rows[0]);
-  if (classified.kind !== 'v2_projection')
+  if (
+    classified.kind !== 'v2_projection' &&
+    classified.kind !== 'v3_projection'
+  )
     throw new WorkflowRunNotExecutableError();
   if (
     classified.workflowVersion.workflowId !== workflowId ||

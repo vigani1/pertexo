@@ -1,4 +1,6 @@
+import { composeApiWorkflowCompatibilityRelease as composeExecutableCompatibilityRelease } from '../platform/workflow/workflow-compatibility.js';
 import {
+  WorkflowCallsUnavailableError,
   ExecutionStateConflictError,
   IdempotencyRequestConflictError,
   RegionalWriteAdmissionPausedError,
@@ -20,7 +22,6 @@ import {
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
-  composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
@@ -247,6 +248,12 @@ async function publishHint(
 }
 
 function mapPersistenceError(error: unknown): never {
+  if (error instanceof WorkflowCallsUnavailableError)
+    return throwWorkflowRunError(
+      applicationError('workflow.calls_unavailable', {
+        safeDetail: error.message,
+      }),
+    );
   if (error instanceof WorkflowManualStartUnavailableError)
     return throwWorkflowRunError(
       applicationError('workflow.input_cases_unavailable'),

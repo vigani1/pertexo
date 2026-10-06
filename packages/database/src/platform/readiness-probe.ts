@@ -33,6 +33,7 @@ export interface ReadinessRow {
   durable_wait_compatible: boolean;
   failure_notification_compatible: boolean;
   execution_admission_compatible: boolean;
+  workflow_calls_compatible: boolean;
   regional_write_admission_compatible: boolean;
   webhook_triggers_compatible: boolean;
   schedule_triggers_compatible: boolean;
@@ -56,6 +57,7 @@ type BooleanCapabilityField = {
 }[keyof ReadinessRow];
 
 const CAPABILITY_FAILURES = Object.freeze([
+  ['workflow_calls_compatible', 'Workflow Call catalog is incompatible'],
   ['policy_compatible', 'Workspace row-level security policy is incompatible'],
   ['phase1_schema_compatible', 'Identity/workspace schema is incompatible'],
   [

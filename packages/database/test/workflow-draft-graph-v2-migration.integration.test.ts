@@ -76,12 +76,15 @@ describe('owned retained draft migration', () => {
       );
       expect(await migrateDatabase(migration)).toEqual([
         '0136_workflow_draft_graph_v2.sql',
+        '0137_workflow_json_call_node_scope_index.sql',
+        '0138_workflow_json_call_attempt_scope_index.sql',
+        '0139_workflow_json_calls.sql',
       ]);
       expect(
         await authoring.getDraft(workspace.id, workflow.workflowId, actorId),
       ).toEqual(before);
       expect(await checkDatabaseReadiness(pool)).toMatchObject({
-        migrationHead: '0136_workflow_draft_graph_v2.sql',
+        migrationHead: '0139_workflow_json_calls.sql',
       });
       await recheckCuratedFixtureOwnership(ownership);
     } finally {

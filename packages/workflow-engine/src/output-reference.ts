@@ -9,5 +9,10 @@ export function sameOutputReference(
     return left.attemptId === right.attemptId;
   if (left.kind === 'artifact' && right.kind === 'artifact')
     return left.artifactId === right.artifactId;
+  if (left.kind === 'workflow_call' && right.kind === 'workflow_call')
+    return (
+      left.invocationKey === right.invocationKey &&
+      left.childRunId === right.childRunId
+    );
   return false;
 }

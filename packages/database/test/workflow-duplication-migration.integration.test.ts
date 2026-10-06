@@ -127,10 +127,13 @@ describe('additive workflow duplication migration', () => {
         '0134_workflow_organization.sql',
         '0135_workflow_folders_batch_identity.sql',
         '0136_workflow_draft_graph_v2.sql',
+        '0137_workflow_json_call_node_scope_index.sql',
+        '0138_workflow_json_call_attempt_scope_index.sql',
+        '0139_workflow_json_calls.sql',
       ]);
       expect(await migrateDatabase(config)).toEqual([]);
       expect((await checkDatabaseReadiness(pool)).migrationHead).toBe(
-        '0136_workflow_draft_graph_v2.sql',
+        '0139_workflow_json_calls.sql',
       );
       const copied = await authoring.duplicateWorkflow(input);
       expect(await authoring.duplicateWorkflow(input)).toEqual(copied);

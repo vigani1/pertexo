@@ -14,29 +14,21 @@ import {
 import { advanceWorkflowFromSchedulerState } from './transition/advance-workflow.js';
 import { WorkflowEngineError } from './errors.js';
 import { resolveAttemptFailures } from './observation/coordinator-failures.js';
-import {
-  branchSelectionObservations,
-  mergeCoordinatorObservations,
-} from './observation/coordinator-observations.js';
-import { forEachCoordinatorObservations } from './observation/coordinator-loop-observations.js';
-import {
-  indexPersistedSuccessfulOutcomes,
-  parseCompletedOutputItems,
-} from './observation/coordinator-output.js';
+import { mergeCoordinatorObservations } from './observation/coordinator-observations.js';
+import { prepareCoordinatorControlObservations } from './observation/control-observation-preparation.js';
+import type { LoadCoordinatorControlDeclaration } from './observation/control-declaration-demand.js';
+import { indexPersistedSuccessfulOutcomes } from './observation/coordinator-output.js';
 import { executableNodes } from './compilation/executable-graph.js';
 import {
-  assertAuthenticExecutableIdentity,
   normalizeBoundedEngineJson,
-  type CompiledWorkflowExecutableV2,
   type WorkflowExecutableNodeV2,
-  type WorkflowExecutableGraphV2,
 } from './executable-workflow.js';
 import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint/checkpoint.js';
 import type { SchedulerState } from './transition/graph-scheduler.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './observation/persisted-observations.js';
-import { providerIdempotencyKey } from './attempt/retries.js';
+import { withPlanProviderKeys } from './attempt/plan-provider-keys.js';
 import { prepareNodeAttemptInput } from './attempt/node-attempt-input.js';
 import type {
   ExecuteNodeAttemptInput,
@@ -48,6 +40,26 @@ import {
   isTriggerSourceDefinition,
 } from './core-definition-identities.js';
 import { assertCheckpointMatchesExecutable } from './checkpoint/checkpoint-executable-validation.js';
+import {
+  assertAuthenticWorkflowExecutable,
+  type CompiledWorkflowExecutable,
+} from './compilation/executable-authentication.js';
+import { isAuthenticExecutableIdentityV3 } from './compilation/executable-v3.js';
+import type { WorkflowCallableDeclarationV1 } from '@pertexo/workflow-model/callable-graph-contract';
+import type { WorkflowCallDeclarationMaterialV1 } from './workflow-call-control.js';
+import { workflowCallCoordinatorControls } from './observation/workflow-call-observations.js';
+import { projectSchedulerState } from './compilation/executable-scheduler.js';
+export { projectSchedulerState } from './compilation/executable-scheduler.js';
+import {
+  completeCallableTransition,
+  type WorkflowCallableCompletionMaterial,
+} from './observation/workflow-call-completion.js';
+import type { LoadCallableCompletion } from './observation/workflow-call-demand.js';
+import {
+  recordedCallDeclarationAttemptInput,
+  validateCallDeclarationAttemptInput,
+  validateCallDeclarationAttemptResult,
+} from './attempt/workflow-call-input.js';
 
 export type {
   ExecuteNodeAttemptInput,
@@ -63,11 +75,23 @@ export type {
 
 export interface AdvanceWorkflowInput {
   readonly runId: string;
-  readonly executable: CompiledWorkflowExecutableV2;
+  readonly executable: CompiledWorkflowExecutable;
   readonly workflowVersionId: string;
   readonly checkpoint: unknown;
   readonly observations?: unknown;
   readonly completedOutputs?: unknown;
+  readonly loadCoordinatorControlDeclaration?: LoadCoordinatorControlDeclaration;
+  readonly callableCompletion?: WorkflowCallableCompletionMaterial;
+  readonly loadCallableCompletion?: LoadCallableCompletion;
+  readonly callableExpressionEvaluator?: ExpressionEvaluator;
+  readonly workflowCalls?: Readonly<{
+    readonly declarations: readonly WorkflowCallDeclarationMaterialV1[];
+    readonly facts: readonly unknown[];
+    readonly calleeDeclarations: ReadonlyMap<
+      string,
+      WorkflowCallableDeclarationV1
+    >;
+  }>;
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
   readonly signal: AbortSignal;
@@ -82,44 +106,8 @@ function assertIdentity(
     operationError(code, `${label} is invalid`);
 }
 
-export function projectSchedulerState(
-  graph: WorkflowExecutableGraphV2,
-): SchedulerState {
-  const projectGraph = (graph: WorkflowExecutableGraphV2): SchedulerState => {
-    const nodes = graph.nodes.map(
-      ({
-        id,
-        definition,
-        config,
-        disabled,
-        sideEffectClass: pinnedSideEffectClass,
-      }) => ({
-        id,
-        definition,
-        config,
-        disabled,
-        sideEffectClass: pinnedSideEffectClass,
-      }),
-    );
-    const edges = graph.edges.map(({ source, target }) => ({
-      source: { nodeId: source.nodeId, port: source.port },
-      target: { nodeId: target.nodeId, port: target.port },
-    }));
-    const structuredBodies = graph.nodes.flatMap((node) => {
-      if (node.structured === undefined) return [];
-      const body = projectGraph(node.structured.body);
-      return [
-        { loopNodeId: node.id, nodes: body.nodes, edges: body.edges },
-        ...(body.structuredBodies ?? []),
-      ];
-    });
-    return { deriveReadiness: true, nodes, edges, structuredBodies };
-  };
-  return projectGraph(graph);
-}
-
 function schedulerState(
-  executable: CompiledWorkflowExecutableV2,
+  executable: CompiledWorkflowExecutable,
 ): SchedulerState {
   return projectSchedulerState(executable.envelope.graph);
 }
@@ -127,7 +115,15 @@ function schedulerState(
 export async function advanceWorkflow(
   input: AdvanceWorkflowInput,
 ): Promise<WorkflowTransitionPlan> {
-  assertAuthenticExecutableIdentity(input.executable);
+  assertAuthenticWorkflowExecutable(input.executable);
+  if (
+    input.callableCompletion !== undefined &&
+    input.loadCallableCompletion !== undefined
+  )
+    operationError(
+      'observation_invalid',
+      'eager and demand completion conflict',
+    );
   assertIdentity(input.runId, 'runId', 'workflow_identity_invalid');
   assertIdentity(
     input.workflowVersionId,
@@ -137,6 +133,34 @@ export async function advanceWorkflow(
   await Promise.resolve();
   assertNotAborted(input.signal);
   const checkpoint = parseCheckpoint(input.checkpoint);
+  const callExecutable = isAuthenticExecutableIdentityV3(input.executable);
+  if (
+    input.loadCoordinatorControlDeclaration !== undefined &&
+    (!callExecutable || input.completedOutputs !== undefined)
+  )
+    operationError(
+      'observation_invalid',
+      'native control demand conflicts with eager or retained material',
+    );
+  if (callExecutable !== (checkpoint.schemaVersion === 3))
+    operationError(
+      'workflow_identity_invalid',
+      'checkpoint format does not match the executable runtime',
+    );
+  if (!callExecutable && input.workflowCalls !== undefined)
+    operationError(
+      'observation_invalid',
+      'Call materials require executable V3',
+    );
+  if (
+    (input.callableCompletion !== undefined ||
+      input.loadCallableCompletion !== undefined) &&
+    (!callExecutable || input.executable.envelope.graph.callable === undefined)
+  )
+    operationError(
+      'observation_invalid',
+      'callable completion requires a callable V3 executable',
+    );
   if (checkpoint.workflowVersionId !== input.workflowVersionId)
     operationError(
       'workflow_identity_invalid',
@@ -159,17 +183,8 @@ export async function advanceWorkflow(
     input.observations,
     checkpoint,
   );
-  const completedOutputItems = parseCompletedOutputItems(
-    input.completedOutputs,
-  );
   const successfulOutcomes = indexPersistedSuccessfulOutcomes(
     persistedObservations.facts,
-  );
-  const branchSelections = branchSelectionObservations(
-    completedOutputItems,
-    successfulOutcomes,
-    invocationsByKey,
-    nodesById,
   );
   const controlCanceled =
     checkpoint.cancelRequested ||
@@ -179,6 +194,20 @@ export async function advanceWorkflow(
   const controlDeadline =
     checkpoint.deadlineExpired ||
     persistedObservations.deadlineExpiration !== undefined;
+  const controls = await prepareCoordinatorControlObservations({
+    native: callExecutable,
+    completedOutputs: input.completedOutputs,
+    load: input.loadCoordinatorControlDeclaration,
+    signal: input.signal,
+    outcomes: successfulOutcomes,
+    checkpoint,
+    invocations: invocationsByKey,
+    nodes: nodesById,
+    persistedFacts: persistedObservations.facts,
+    controlCanceled,
+    controlDeadline,
+  });
+  const branchSelections = controls.branchSelections;
   const resolvedFailures = resolveAttemptFailures({
     runId: input.runId,
     failures: persistedObservations.attemptFailures,
@@ -187,20 +216,35 @@ export async function advanceWorkflow(
     retryPolicyReference: input.executable.envelope.runtimePolicies.retry,
     controlCanceled,
     controlDeadline,
+    ...(callExecutable
+      ? {
+          nonRetryableNodeIds: new Set(
+            executableNodeList
+              .filter(
+                ({ definition }) => definition.key === 'core.workflow_call',
+              )
+              .map(({ id }) => id),
+          ),
+        }
+      : {}),
   });
-  const forEach = forEachCoordinatorObservations(
-    completedOutputItems,
-    persistedObservations.facts,
-    successfulOutcomes,
-    checkpoint,
-    invocationsByKey,
-    nodesById,
-    resolvedFailures,
-  );
+  const forEach = controls.forEach(resolvedFailures);
+  const calls = isAuthenticExecutableIdentityV3(input.executable)
+    ? workflowCallCoordinatorControls({
+        executable: input.executable,
+        checkpoint,
+        observations: persistedObservations.observations,
+        successfulOutcomes,
+        materials: input.workflowCalls,
+        controlCanceled,
+        controlDeadline,
+      })
+    : { controls: [], declarationInvocationKeys: new Set<string>() };
   const executionObservations = persistedObservations.observations.map(
     (observation): WorkflowObservation =>
       observation.kind === 'outcome' &&
-      forEach.declarationInvocationKeys.has(observation.invocationKey)
+      (forEach.declarationInvocationKeys.has(observation.invocationKey) ||
+        calls.declarationInvocationKeys.has(observation.invocationKey))
         ? { kind: 'cursor_only' }
         : observation,
   );
@@ -209,6 +253,7 @@ export async function advanceWorkflow(
     checkpoint,
     [...executionObservations, ...resolvedFailures],
     nodesById,
+    callExecutable && (controlCanceled || controlDeadline),
   );
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
@@ -231,38 +276,21 @@ export async function advanceWorkflow(
     dueResumptions: persistedObservations.dueResumptions,
     occurredAt: input.occurredAt,
     maximumAdmissions: input.maximumAdmissions,
+    workflowCallControls: calls.controls,
   });
   assertNotAborted(input.signal);
-  const providerKey = (
-    nodeId: string,
-    invocationKey: string,
-  ): string | undefined => {
-    const node = nodesById.get(nodeId);
-    if (node?.sideEffectClass !== 'idempotent_with_key') return undefined;
-    return providerIdempotencyKey({
-      invocationKey,
-      namespace: 'pertexo.node-attempt',
-      operationIdentity: `${node.definition.key}@${String(node.definition.version)}`,
-      runId: input.runId,
-    });
-  };
-  return Object.freeze({
-    ...plan,
-    attempts: plan.attempts.map((attempt) => {
-      const key = providerKey(attempt.nodeId, attempt.invocationKey);
-      return Object.freeze({
-        ...attempt,
-        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
-      });
-    }),
-    nodeRunAdmissions: plan.nodeRunAdmissions.map((admission) => {
-      const key = providerKey(admission.nodeId, admission.invocationKey);
-      return Object.freeze({
-        ...admission,
-        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
-      });
-    }),
-  });
+  const completedPlan = callExecutable
+    ? await completeCallableTransition(
+        input.executable,
+        plan,
+        input.callableCompletion,
+        input.signal,
+        input.loadCallableCompletion,
+        input.callableExpressionEvaluator,
+      )
+    : plan;
+  assertNotAborted(input.signal);
+  return withPlanProviderKeys(completedPlan, nodesById, input.runId);
 }
 
 function assertNotAborted(signal: AbortSignal): void {
@@ -393,7 +421,7 @@ export async function resolveSingleNodePreviewInput(
 export async function executeNodeAttempt(
   input: ExecuteNodeAttemptInput,
 ): Promise<NodeAttemptOutcome> {
-  assertAuthenticExecutableIdentity(input.executable);
+  assertAuthenticWorkflowExecutable(input.executable);
   assertIdentity(input.runId, 'runId', 'attempt_invalid');
   assertIdentity(input.nodeRunId, 'nodeRunId', 'attempt_invalid');
   assertIdentity(input.attemptId, 'attemptId', 'attempt_invalid');
@@ -405,17 +433,21 @@ export async function executeNodeAttempt(
   assertNotAborted(input.signal);
   const { node, runInput, completedOutputs, directUpstream, structuredInputs } =
     prepareNodeAttemptInput(input);
-  const resolvedInput = await resolveMappedNodeInput(
-    isCoreMergeDefinition(node.definition)
-      ? { ...node, inputMappings: {} }
-      : node,
-    runInput,
-    completedOutputs,
-    directUpstream,
-    input.signal,
-    input.expressionEvaluator,
-    structuredInputs,
-  );
+  const recordedCallInput = recordedCallDeclarationAttemptInput(input, node);
+  const resolvedInput =
+    recordedCallInput === undefined
+      ? await resolveMappedNodeInput(
+          isCoreMergeDefinition(node.definition)
+            ? { ...node, inputMappings: {} }
+            : node,
+          runInput,
+          completedOutputs,
+          directUpstream,
+          input.signal,
+          input.expressionEvaluator,
+          structuredInputs,
+        )
+      : recordedCallInput.value;
   let executionInput = resolvedInput;
   if (isCoreMergeDefinition(node.definition)) {
     if (input.coordinatorInput === undefined)
@@ -426,7 +458,13 @@ export async function executeNodeAttempt(
       operationError('attempt_invalid', 'settled Merge input is invalid');
     }
   }
-  // Recorded before the executor runs, so failed attempts keep it (ADR 052).
+  executionInput = validateCallDeclarationAttemptInput(
+    input,
+    node,
+    executionInput,
+  );
+  // Native declarations must satisfy the pinned contract before their required
+  // immutable snapshot is committed. Ordinary diagnostic recording is unchanged.
   await input.onInputResolved?.(executionInput);
   assertNotAborted(input.signal);
   let result: NodeExecutionResult;
@@ -446,6 +484,9 @@ export async function executeNodeAttempt(
     if (isNodeExecutorFailure(error)) throw error;
     operationError('attempt_invalid', 'node execution failed');
   }
+  if (node.definition.key === 'core.workflow_call')
+    assertNotAborted(input.signal);
+  result = validateCallDeclarationAttemptResult(node, executionInput, result);
   return {
     runId: input.runId,
     nodeRunId: input.nodeRunId,

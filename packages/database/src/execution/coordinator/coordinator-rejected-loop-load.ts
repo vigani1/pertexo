@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
+import type { CoordinatorCheckpoint as PersistedWorkflowCheckpoint } from './coordinator-checkpoint.js';
 import type { CoordinatorEventRow } from './coordinator-run-store-fact-physical-state.js';
 import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
@@ -17,6 +17,9 @@ export async function loadRejectedForEachDeclarations(
     currentCheckpoint: PersistedWorkflowCheckpoint;
     plan: ParsedTransitionPlan;
     persistedFacts: readonly CoordinatorEventRow[];
+    nativeCollections?: Parameters<
+      typeof deriveRejectedForEachDeclarations
+    >[0]['nativeCollections'];
   }>,
 ): Promise<RejectedForEachDeclarations> {
   if (
@@ -35,12 +38,18 @@ export async function loadRejectedForEachDeclarations(
      where workspace_id=$1 and id=$2`,
     [input.workspaceId, input.workflowVersionId],
   );
-  if (version.rows[0]?.executable_schema_version !== 2)
+  if (
+    version.rows[0]?.executable_schema_version !==
+    (input.currentCheckpoint.schemaVersion === 3 ? 3 : 2)
+  )
     throw new CoordinatorRunStateCorruptError();
   return deriveRejectedForEachDeclarations({
     executableJson: version.rows[0].executable_json,
     currentCheckpoint: input.currentCheckpoint,
     plan: input.plan,
     persistedFacts: input.persistedFacts,
+    ...(input.nativeCollections === undefined
+      ? {}
+      : { nativeCollections: input.nativeCollections }),
   });
 }

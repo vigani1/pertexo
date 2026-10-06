@@ -1,6 +1,7 @@
 import type {
   UsageCapacityResponse,
   WorkflowRunAdmissionBlockers,
+  WorkflowRunResponse,
 } from '@pertexo/contracts/workflow-runs';
 import type {
   ActorContext,
@@ -21,7 +22,8 @@ export type WorkflowRunRecord = Readonly<{
     | 'canceled'
     | 'timed_out'
     | 'outcome_unknown';
-  triggerType: 'api' | 'manual' | 'replay' | 'schedule' | 'webhook';
+  triggerType:
+    'api' | 'manual' | 'replay' | 'schedule' | 'webhook' | 'workflow_call';
   createdAt: Date;
   updatedAt: Date;
   startedAt: Date | null;
@@ -108,6 +110,7 @@ export type WorkflowNodeRunRecord = Readonly<{
 export type WorkflowRunReadModel = Readonly<{
   run: WorkflowRunReadRecord;
   nodes: readonly WorkflowNodeRunRecord[];
+  callFamily?: NonNullable<WorkflowRunResponse['callFamily']>;
 }>;
 
 export type WorkflowRunListPosition = Readonly<{

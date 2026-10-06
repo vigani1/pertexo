@@ -5,6 +5,8 @@ import type {
 } from '@pertexo/database/testing';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
+import { createWorkflowCheckpointV3 } from '@pertexo/workflow-engine';
+import { COORDINATOR_VALUE_WORK_POLICY_DEFAULTS } from '../src/execution/coordinator-value-work-lifetime.js';
 import { describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
@@ -13,6 +15,7 @@ import {
   createCoordinatorHandler,
   type CoordinatorAdvanceEngine,
   CoordinatorHandlerStateError,
+  type CoordinatorCallableCompletionLoader,
 } from '../src/execution/coordinator-handler.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
@@ -63,6 +66,8 @@ function handlerFixture(
     committed?: unknown;
     acknowledgeFailure?: unknown;
     notificationFailure?: unknown;
+    loadCallableCompletion?: CoordinatorCallableCompletionLoader;
+    nativeValueWork?: { policy: typeof COORDINATOR_VALUE_WORK_POLICY_DEFAULTS };
   } = {},
 ) {
   const loadAdvanceState = vi.fn().mockResolvedValue(
@@ -104,6 +109,12 @@ function handlerFixture(
       ? vi.fn().mockResolvedValue(undefined)
       : vi.fn().mockRejectedValue(overrides.notificationFailure);
   const handler = createCoordinatorHandler({
+    ...(overrides.nativeValueWork === undefined
+      ? {}
+      : { nativeValueWork: overrides.nativeValueWork }),
+    ...(overrides.loadCallableCompletion === undefined
+      ? {}
+      : { loadCallableCompletion: overrides.loadCallableCompletion }),
     clock: { now: () => '2026-08-21T00:00:00.000Z' },
     engine: { advance },
     maximumAdmissions: 32,
@@ -135,6 +146,184 @@ function handlerFixture(
 }
 
 describe('coordinator handler', () => {
+  it('uses the native lifetime and fails closed on missing current-owner ports before any source or commit', async () => {
+    const selected = handlerFixture({
+      nativeValueWork: { policy: COORDINATOR_VALUE_WORK_POLICY_DEFAULTS },
+      published: {
+        kind: 'v3_projection',
+        workflowVersion: {
+          ...projection(),
+          schemaVersion: 2,
+          executableSchemaVersion: 3,
+        },
+      },
+      loaded: {
+        kind: 'ready',
+        state: {
+          runId: RUN_ID,
+          workflowVersionId: VERSION_ID,
+          checkpoint: createWorkflowCheckpointV3({
+            engineVersion: 'phase3-engine-v1',
+            workflowVersionId: VERSION_ID,
+            iterationBudget: 0,
+          }),
+          observations: [],
+        },
+      },
+    });
+    selected.advance.mockImplementation(
+      async (input: Parameters<CoordinatorAdvanceEngine['advance']>[0]) => {
+        if (!input.loadCallableCompletion)
+          throw new Error('Missing demand loader');
+        const result = await input.loadCallableCompletion(
+          {
+            expectedRevision: 0,
+            resultSelector: { kind: 'run_input', path: '$' },
+            requiresRunInput: true,
+            sources: [],
+          },
+          input.signal,
+        );
+        if (result.kind !== 'stopped')
+          throw new Error('Expected stopped demand');
+        return { kind: 'value_work_stopped', stop: result.stop };
+      },
+    );
+    await expect(
+      selected.handler.handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({
+      name: 'CoordinatorValueWorkStoppedError',
+      stop: { kind: 'unavailable', reason: 'control_read_failed' },
+    });
+    expect(selected.commitAdvancePlan).not.toHaveBeenCalled();
+    expect(selected.acknowledgeAdvanceDelivery).not.toHaveBeenCalled();
+  });
+  it.each([false, true])(
+    'binds native demand to actual delivery scope and fails closed without an adapter (%s)',
+    async (configured) => {
+      const stop = {
+        kind: 'unavailable' as const,
+        reason: 'source_read_failed' as const,
+      };
+      const loadCallableCompletion = vi.fn(() =>
+        Promise.resolve({
+          kind: 'stopped' as const,
+          stop,
+        }),
+      );
+      const native = {
+        ...projection(),
+        schemaVersion: 2,
+        executableSchemaVersion: 3,
+        checksum: `wf:v3:sha256:${'1'.repeat(64)}`,
+        executableJson: { schemaVersion: 3 },
+      };
+      const selected = handlerFixture({
+        published: { kind: 'v3_projection', workflowVersion: native },
+        loaded: {
+          kind: 'ready',
+          state: {
+            runId: RUN_ID,
+            workflowVersionId: VERSION_ID,
+            checkpoint: { revision: 4 },
+            observations: [],
+            callableCompletion: {
+              runInput: 'must-not-reuse-eager-material',
+              outputs: [],
+            },
+          },
+        },
+        ...(configured ? { loadCallableCompletion } : {}),
+      });
+      const demand = {
+        expectedRevision: 4,
+        resultSelector: { kind: 'run_input' as const, path: '$' },
+        requiresRunInput: true,
+        sources: [],
+      };
+      selected.advance.mockImplementation(
+        async (input: Parameters<CoordinatorAdvanceEngine['advance']>[0]) => {
+          expect(input.callableCompletion).toBeUndefined();
+          if (input.loadCallableCompletion === undefined)
+            throw new Error('Missing demand adapter');
+          const material = await input.loadCallableCompletion(
+            demand,
+            input.signal,
+          );
+          if (material.kind !== 'stopped')
+            throw new Error('Expected stopped fixture');
+          return { kind: 'value_work_stopped', stop: material.stop };
+        },
+      );
+      const signal = new AbortController().signal;
+      await expect(
+        selected.handler.handle(delivery(), { signal }),
+      ).rejects.toMatchObject({
+        name: 'CoordinatorValueWorkStoppedError',
+        stop,
+      });
+      if (configured)
+        expect(loadCallableCompletion).toHaveBeenCalledExactlyOnceWith({
+          workspaceId: WORKSPACE_ID,
+          runId: RUN_ID,
+          workflowVersionId: VERSION_ID,
+          delivery: {
+            outboxEventId: OUTBOX_EVENT_ID,
+            payloadChecksum: deliveryChecksum(),
+          },
+          demand,
+          signal,
+        });
+      expect(selected.commitAdvancePlan).not.toHaveBeenCalled();
+      expect(selected.acknowledgeAdvanceDelivery).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    { kind: 'canceled' },
+    { kind: 'timed_out' },
+    { kind: 'stale', revision: 2 },
+    { kind: 'context_aborted' },
+    { kind: 'unavailable', reason: 'source_read_failed' },
+  ] as const)(
+    'rejects typed stop %j without committing, acknowledging or publishing success',
+    async (stop) => {
+      const fixture = handlerFixture({
+        advanced: { kind: 'value_work_stopped', stop },
+      });
+      await expect(
+        fixture.handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toMatchObject({
+        name: 'CoordinatorValueWorkStoppedError',
+        stop,
+      });
+      expect(fixture.commitAdvancePlan).not.toHaveBeenCalled();
+      expect(fixture.acknowledgeAdvanceDelivery).not.toHaveBeenCalled();
+      expect(fixture.resync).not.toHaveBeenCalled();
+    },
+  );
+  it('passes an explicit V3 projection to the engine without a V2 downgrade', async () => {
+    const native = {
+      ...projection(),
+      schemaVersion: 2,
+      executableSchemaVersion: 3,
+      checksum: `wf:v3:sha256:${'1'.repeat(64)}`,
+      executableJson: { schemaVersion: 3 },
+    };
+    const fixture = handlerFixture({
+      published: { kind: 'v3_projection', workflowVersion: native },
+    });
+    await fixture.handler.handle(delivery(), {
+      signal: new AbortController().signal,
+    });
+    expect(fixture.advance).toHaveBeenCalledWith(
+      expect.objectContaining({ projection: native }),
+    );
+    expect(fixture.commitAdvancePlan).toHaveBeenCalledOnce();
+  });
   it.each([
     'not_found',
     'not_executable',
@@ -386,6 +575,11 @@ describe('coordinator handler', () => {
     expect(runStore.loadAdvanceState).toHaveBeenCalledWith({
       workspaceId: WORKSPACE_ID,
       runId: RUN_ID,
+      delivery: {
+        outboxEventId: OUTBOX_EVENT_ID,
+        payloadChecksum:
+          'c3cc46f05b959689b3811aae8acc862e0f3d09b976d7450090261e5ece4ff873',
+      },
       signal,
     });
     expect(reader.readForExecution).toHaveBeenCalledWith({

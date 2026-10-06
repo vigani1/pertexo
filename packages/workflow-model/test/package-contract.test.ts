@@ -17,11 +17,54 @@ describe('workflow-model package contract', () => {
       'AUTHORING_VALIDATION_BUDGET',
       'AuthoringValidationUnavailableError',
       'WorkflowAuthoringValidator',
+      'createAuthoringJobRuntime',
     ]);
     expect(await import('../src/index.js')).not.toHaveProperty(
       'WorkflowAuthoringValidator',
     );
+    expect(await import('../src/index.js')).not.toHaveProperty(
+      'createAuthoringJobRuntime',
+    );
     const built = await import('../dist/authoring-validation.js');
+    let spawns = 0;
+    const jobs = built.createAuthoringJobRuntime({
+      callableTargetAdapter: {
+        purpose: 'callable-target-assessment-v1',
+        prepare: () => ({
+          payload: {
+            snapshot: 'x'.repeat(
+              built.AUTHORING_VALIDATION_BUDGET.envelopeBytes + 1,
+            ),
+          },
+          bytes: 0,
+        }),
+        spawn: () => {
+          spawns += 1;
+          throw new Error('must not spawn');
+        },
+        decodeReply: () => {
+          throw new Error('must not decode');
+        },
+        validateResult: () => {
+          throw new Error('must not validate');
+        },
+      },
+    });
+    try {
+      const slot = jobs.callableTargets;
+      if (slot === undefined) throw new Error('Missing compiled fixed slot');
+      await expect(slot.assess({})).rejects.toMatchObject({
+        reason: 'payload_limit',
+      });
+      expect(spawns).toBe(0);
+      expect(jobs.diagnostics()).toMatchObject({
+        active: 0,
+        queued: 0,
+        queuedBytes: 0,
+      });
+    } finally {
+      await jobs.shutdown();
+    }
     const owner = new built.WorkflowAuthoringValidator();
     try {
       expect(
@@ -58,7 +101,12 @@ describe('workflow-model package contract', () => {
       'callableTypeJsonSchemaV1',
       'canonicalJson',
       'canonicalizeJson',
+      'configuredBranchOutputPorts',
+      'configuredParallelOutputPorts',
+      'inspectBranchSelection',
+      'inspectForEachCollection',
       'inspectJsonValue',
+      'inspectParallelDeclaration',
       'invocationIdentity',
       'parseRetainedWorkflowVersionV1',
       'parseWorkflowAuthoringGraphDraft',

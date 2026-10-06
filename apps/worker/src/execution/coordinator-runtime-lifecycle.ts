@@ -5,6 +5,8 @@ import type {
   PublishedWorkflowReader,
 } from '@pertexo/database/execution';
 import type { StructuredLogger } from '@pertexo/observability';
+import type { CoordinatorArtifactStorage } from './coordinator-artifact-storage.js';
+import type { CoordinatorExpressionEvaluation } from './coordinator-expression-evaluation.js';
 import type {
   QueueConsumer,
   RunEventNotificationPublisher,
@@ -22,6 +24,8 @@ export type CoordinatorRuntimeComposition = Readonly<{
   notifications: RunEventNotificationPublisher;
   reader: PublishedWorkflowReader;
   runStore: CoordinatorRunStore;
+  artifactStorage?: CoordinatorArtifactStorage;
+  expressionEvaluation?: CoordinatorExpressionEvaluation;
 }>;
 
 type CoordinatorScannerOptions = Readonly<{
@@ -61,6 +65,8 @@ export function createCoordinatorRuntimeLifecycle(
     consumer: composition.consumer,
     checkReadiness: async (): Promise<void> => {
       if (closed) throw new Error('Coordinator runtime is closed');
+      await composition.runStore.checkReadiness?.();
+      await composition.artifactStorage?.checkReadiness();
       await firstScan.promise;
       // Close can begin while the first scan is awaiting I/O.
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -177,6 +183,8 @@ export type CoordinatorCloseableDependencies = Readonly<{
   notifications?: RunEventNotificationPublisher | undefined;
   reader?: PublishedWorkflowReader | undefined;
   runStore?: CoordinatorRunStore | undefined;
+  artifactStorage?: CoordinatorArtifactStorage | undefined;
+  expressionEvaluation?: CoordinatorExpressionEvaluation | undefined;
 }>;
 
 export async function closeCoordinatorDependencies(
@@ -189,6 +197,8 @@ export async function closeCoordinatorDependencies(
     () => dependencies.notifications?.close(),
     () => dependencies.reader?.close(),
     () => dependencies.runStore?.close(),
+    () => dependencies.artifactStorage?.close(),
+    () => dependencies.expressionEvaluation?.close(),
   ].map((close) => {
     const operation = Promise.resolve().then(close);
     return timeoutMillis === undefined

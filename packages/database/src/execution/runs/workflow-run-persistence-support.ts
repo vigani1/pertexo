@@ -25,6 +25,7 @@ const triggerTypeSchema = z.enum([
   'replay',
   'schedule',
   'webhook',
+  'workflow_call',
 ]);
 const runRowSchema = z
   .object({

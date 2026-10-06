@@ -5,7 +5,11 @@ import test from 'node:test';
 import { parse as parseYaml } from 'yaml';
 import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-gates.mjs';
 
-import { validateCiGatePolicy } from './validate-ci-gates.mjs';
+import {
+  INLINE_CALL_HTTP_COMMAND,
+  INLINE_CALL_HTTP_VALIDATE_COMMAND,
+  validateCiGatePolicy,
+} from './validate-ci-gates.mjs';
 
 const qualityBundleScripts = [
   'docs:check',
@@ -155,6 +159,50 @@ jobs:
       );
   }
   workflow.jobs['workflow-organization-qualification'] = organization;
+  workflow.jobs['inline-workflow-call-http'] = {
+    'timeout-minutes': 15,
+    env: {
+      ...workflow.jobs['curated-templates'].steps.find(
+        (step) => step.env?.DATABASE_ADMIN_URL,
+      ).env,
+      DATABASE_OPERATOR_URL:
+        'postgresql://pertexo_operator:pertexo-local-operator@127.0.0.1:5432/pertexo',
+      COMPOSE_PROJECT_NAME:
+        'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-inline-workflow-call-http',
+      INLINE_WORKFLOW_CALL_HTTP_INTEGRATION: 'true',
+    },
+    steps: [
+      { run: 'pnpm install --frozen-lockfile' },
+      { run: 'pnpm build' },
+      { run: 'docker compose up -d --wait --wait-timeout 120 postgres redis' },
+      {
+        env: {
+          INLINE_WORKFLOW_CALL_GATE_REPORT:
+            '${{ runner.temp }}/inline-workflow-call-http/report.json',
+        },
+        run: [
+          'set -euo pipefail',
+          'mkdir -p "$RUNNER_TEMP/inline-workflow-call-http"',
+          'test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"',
+          'test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"',
+          INLINE_CALL_HTTP_COMMAND,
+          INLINE_CALL_HTTP_VALIDATE_COMMAND,
+        ].join('\n'),
+      },
+      {
+        if: 'always()',
+        run: 'timeout 120 docker compose down -v --remove-orphans',
+      },
+      {
+        if: 'always()',
+        uses: 'actions/upload-artifact@test',
+        with: {
+          path: '${{ runner.temp }}/inline-workflow-call-http',
+          'if-no-files-found': 'error',
+        },
+      },
+    ],
+  };
   for (const name of qualityBundleScripts) {
     packageManifest.scripts[name] = 'node fixture.mjs';
   }
@@ -196,6 +244,84 @@ async function currentPolicyInput() {
     workflow: await currentWorkflow(),
   };
 }
+
+test('requires registered inline Call HTTP qualification with strict no-skip evidence', async () => {
+  const input = await currentPolicyInput();
+  assert.doesNotThrow(() => validateCiGatePolicy(input));
+  for (const mutate of [
+    (job) => {
+      job.if = 'false';
+    },
+    (job) => {
+      job['continue-on-error'] = true;
+    },
+    (job) => {
+      job['timeout-minutes'] = 60;
+    },
+    (job) => {
+      job.env.INLINE_WORKFLOW_CALL_HTTP_INTEGRATION = 'false';
+    },
+    (job) => {
+      job.env.COMPOSE_PROJECT_NAME = 'pertexo-fixed-shared';
+    },
+    (job) => {
+      const step = job.steps.find((step) =>
+        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
+      );
+      job.env.INLINE_WORKFLOW_CALL_GATE_REPORT =
+        step.env.INLINE_WORKFLOW_CALL_GATE_REPORT;
+      delete step.env.INLINE_WORKFLOW_CALL_GATE_REPORT;
+    },
+    (job) => {
+      job.env.INLINE_WORKFLOW_CALL_GATE_REPORT =
+        '${{ runner.temp }}/inline-workflow-call-http/report.json';
+    },
+    (job) => {
+      job.steps.find((step) =>
+        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
+      ).env.INLINE_WORKFLOW_CALL_GATE_REPORT = '/tmp/incorrect-report.json';
+    },
+    (job) => {
+      job.env.DATABASE_API_URL = 'postgresql://postgres@127.0.0.1:5432/pertexo';
+    },
+    (job) => {
+      job.steps.find((step) =>
+        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
+      ).if = 'false';
+    },
+    (job) => {
+      job.steps.find((step) =>
+        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
+      ).run = 'echo passed';
+    },
+    (job) => {
+      const step = job.steps.find((step) =>
+        step.run?.includes(INLINE_CALL_HTTP_VALIDATE_COMMAND),
+      );
+      step.run = step.run.replace("qualification' 1", "qualification' 0");
+    },
+    (job) => {
+      job.steps.find((step) => step.run?.startsWith('docker compose up')).run =
+        'docker compose up -d postgres redis';
+    },
+    (job) => {
+      job.steps.find((step) => step.run?.includes('docker compose down')).if =
+        'failure()';
+    },
+    (job) => {
+      job.steps.find((step) =>
+        step.uses?.startsWith('actions/upload-artifact@'),
+      ).with['if-no-files-found'] = 'ignore';
+    },
+  ]) {
+    const changed = clone(input);
+    mutate(changed.workflow.jobs['inline-workflow-call-http']);
+    assert.throws(() => validateCiGatePolicy(changed), /inline Call HTTP/u);
+  }
+  const absent = clone(input);
+  delete absent.workflow.jobs['inline-workflow-call-http'];
+  assert.throws(() => validateCiGatePolicy(absent), /inline Call HTTP/u);
+});
 
 function assertRequiredLiveBrowserGate(workflow, gate) {
   const steps = workflow.jobs.browser.steps;

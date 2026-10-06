@@ -50,6 +50,14 @@ const invocationKeyMigrationUrl = new URL(
 );
 
 describe('coordinator run store contract', () => {
+  it('keeps a retained-only adapter from exposing native read owners', async () => {
+    await withNoNetworkStore(async (store) => {
+      expect(store.inspectCoordinatorValueReadOwner).toBeUndefined();
+      expect(store.loadCallableCompletionSources).toBeUndefined();
+      expect(store.readCallableCompletionSource).toBeUndefined();
+      await Promise.resolve();
+    });
+  });
   it('adds the checkpoint-to-run executable identity binding additively', async () => {
     const sql = await readFile(migrationUrl, 'utf8');
 

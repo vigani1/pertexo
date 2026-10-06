@@ -1,6 +1,9 @@
-import { workflowForEachBoundsV2 } from '@pertexo/workflow-model/graph';
+import {
+  workflowForEachBoundsV2,
+  workflowForEachBoundsV3,
+} from '@pertexo/workflow-model/graph';
 import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
-import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
+import type { CoordinatorCheckpoint as PersistedWorkflowCheckpoint } from './coordinator-checkpoint.js';
 import { parseStoredExecutionValueV1 } from '../stored-execution-value.js';
 import { CoordinatorPlanInvalidError } from './coordinator-run-store-contract.js';
 import type { CoordinatorEventRow } from './coordinator-run-store-fact-physical-state.js';
@@ -9,7 +12,7 @@ import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
 import { sameStoredValue } from './coordinator-run-store-validation-values.js';
 
 import {
-  isRejectedForEachCollection,
+  isRejectedForEachCount,
   rejectedForEachCollectionCount as collectionCount,
 } from './coordinator-rejected-loop-collection.js';
 export { isRejectedForEachCollection } from './coordinator-rejected-loop-collection.js';
@@ -22,6 +25,11 @@ export type RejectedForEachDeclarations = ReadonlyMap<
   string,
   RejectedForEachDeclaration
 >;
+type NativeCollections = readonly Readonly<{
+  invocationKey: string;
+  collectionSize: number;
+  collectionChecksum: string;
+}>[];
 
 function assertProof(value: boolean): asserts value {
   if (!value) throw new CoordinatorPlanInvalidError();
@@ -35,6 +43,7 @@ export function deriveRejectedForEachDeclarations(
     currentCheckpoint: PersistedWorkflowCheckpoint;
     plan: ParsedTransitionPlan;
     persistedFacts: readonly CoordinatorEventRow[];
+    nativeCollections?: NativeCollections;
   }>,
 ): ReadonlyMap<string, RejectedForEachDeclaration> {
   const candidates = input.plan.events.filter(
@@ -54,12 +63,18 @@ function derive(
     currentCheckpoint: current,
     plan,
     persistedFacts,
+    nativeCollections,
   }: Parameters<typeof deriveRejectedForEachDeclarations>[0],
   candidates: ParsedTransitionPlan['events'],
 ): ReadonlyMap<string, RejectedForEachDeclaration> {
-  const bounds = workflowForEachBoundsV2(executableJson);
+  const bounds = (
+    current.schemaVersion === 3
+      ? workflowForEachBoundsV3
+      : workflowForEachBoundsV2
+  )(executableJson);
   assertProof(
-    current.schemaVersion === 2 && plan.checkpoint.schemaVersion === 2,
+    current.schemaVersion !== 1 &&
+      current.schemaVersion === plan.checkpoint.schemaVersion,
   );
   assertProof(current.workflowVersionId === plan.checkpoint.workflowVersionId);
   assertProof(
@@ -172,19 +187,29 @@ function derive(
         typeof observation.attemptId === 'string' &&
         observation.invocationKey === key,
     );
-    const stored = parseStoredExecutionValueV1(fact.attempt_output_ref);
-    assertProof(stored.kind === 'inline');
+    let count: number | undefined;
+    if (current.schemaVersion === 3) {
+      const matches =
+        nativeCollections?.filter(
+          (collection) => collection.invocationKey === key,
+        ) ?? [];
+      assertProof(matches.length === 1);
+      count = matches[0]?.collectionSize;
+    } else {
+      const stored = parseStoredExecutionValueV1(fact.attempt_output_ref);
+      assertProof(stored.kind === 'inline');
+      count = collectionCount(stored.value);
+    }
     assertProof(
-      isRejectedForEachCollection({
+      isRejectedForEachCount({
         nodeId: previous.nodeId,
         iterationPath,
-        value: stored.value,
+        count,
         bounds,
         remainingIterationBudget: current.remainingIterationBudget,
       }),
     );
     const pin = bounds.get(previous.nodeId);
-    const count = collectionCount(stored.value);
     assertProof(pin !== undefined && count !== undefined);
     if (count <= pin.maxIterations) {
       assertProof(

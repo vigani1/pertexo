@@ -47,6 +47,90 @@ import {
 
 const root = path.resolve(import.meta.dirname, '../..');
 
+test('ordinary integration receives only the newly acquired Compose service ownership', async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), 'pertexo-quality-owner-'),
+  );
+  const observation = path.join(directory, 'owner.json');
+  const commands = path.join(directory, 'docker.jsonl');
+  try {
+    await writeFile(
+      path.join(directory, 'docker'),
+      `#!/usr/bin/env node
+const { appendFileSync } = require('node:fs');
+const args = process.argv.slice(2);
+appendFileSync(process.env.PERTEXO_TEST_COMMANDS, JSON.stringify(args)+'\\n');
+const ports = {postgres:'POSTGRES_PORT',redis:'REDIS_PORT','artifact-store':'ARTIFACT_STORE_PORT','artifact-store-recovery':'ARTIFACT_STORE_RECOVERY_PORT','control-ledger-primary':'CONTROL_LEDGER_PORT','control-ledger-recovery':'CONTROL_LEDGER_RECOVERY_PORT'};
+if (args.includes('port')) process.stdout.write('127.0.0.1:'+process.env[ports[args[args.indexOf('port')+1]]]);
+if (args.includes('-q')) process.stdout.write((args.at(-1)==='postgres'?'a':'b').repeat(64));
+`,
+      { mode: 0o700 },
+    );
+    await writeFile(
+      path.join(directory, 'pnpm'),
+      `#!/usr/bin/env node
+const { writeFileSync } = require('node:fs');
+if (process.argv.includes('vitest')) {
+  writeFileSync(process.env.PERTEXO_TEST_OBSERVATION, JSON.stringify({owned:process.env.EDITOR_BROWSER_OWNED_FIXTURE,manifest:process.env.EDITOR_BROWSER_OWNERSHIP_MANIFEST,project:process.env.COMPOSE_PROJECT_NAME,postgresPort:Number(process.env.POSTGRES_PORT),redisPort:Number(process.env.REDIS_PORT)}));
+  process.exit(19); // Stop at the real cohort boundary; no fabricated test report.
+}
+`,
+      { mode: 0o700 },
+    );
+    const runner = spawn(
+      process.execPath,
+      [
+        'infrastructure/quality/run-local-quality.mjs',
+        '--partial',
+        'integration-api',
+      ],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          NODE_ENV: 'test',
+          PATH: `${directory}${path.delimiter}${process.env.PATH ?? ''}`,
+          PERTEXO_LOCAL_QUALITY_TEST_STATE_DIRECTORY: path.join(
+            directory,
+            'state',
+          ),
+          PERTEXO_TEST_OBSERVATION: observation,
+          PERTEXO_TEST_COMMANDS: commands,
+          EDITOR_BROWSER_OWNED_FIXTURE: 'false',
+          EDITOR_BROWSER_OWNERSHIP_MANIFEST: '{"project":"foreign"}',
+        },
+        stdio: 'ignore',
+      },
+    );
+    const [code] = await once(runner, 'close');
+    assert.equal(code, 1);
+    const receipt = JSON.parse(await readFile(observation, 'utf8'));
+    assert.equal(receipt.owned, 'true');
+    assert.deepEqual(JSON.parse(receipt.manifest), {
+      project: receipt.project,
+      postgres: { id: 'a'.repeat(64), port: receipt.postgresPort },
+      redis: { id: 'b'.repeat(64), port: receipt.redisPort },
+    });
+    const calls = (await readFile(commands, 'utf8'))
+      .trim()
+      .split('\n')
+      .map(JSON.parse);
+    const firstIdentity = calls.findIndex((args) => args.includes('-q'));
+    assert.equal(
+      calls.slice(0, firstIdentity).filter((args) => args.includes('port'))
+        .length,
+      6,
+    );
+    for (const args of calls.filter((args) => args.includes('-q'))) {
+      assert.equal(args[args.indexOf('-p') + 1], receipt.project);
+      assert.ok(['postgres', 'redis'].includes(args.at(-1)));
+    }
+    assert.equal(calls.filter((args) => args.includes('-q')).length, 2);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('ordinary integration cohorts exclude every dedicated organization Vitest file', () => {
   for (const gate of WORKFLOW_ORGANIZATION_GATES) {
     if (!gate.command.includes('vitest')) continue;

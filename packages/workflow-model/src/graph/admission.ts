@@ -159,6 +159,8 @@ function inspectObjectUnsafe(
   for (let index = keys.length - 1; index >= 0; index -= 1) {
     const key = keys[index];
     if (key === undefined) continue;
+    if (key.length + 1 > limits.graphBytes - state.bytes)
+      return failure('graph_limit', '$', 'graph bytes exceed the graph limit');
     state.bytes += utf8JsonBytes(key) + 1;
     if (state.bytes > limits.graphBytes)
       return failure('graph_limit', '$', 'graph bytes exceed the graph limit');
@@ -228,6 +230,15 @@ function inspectJsonDocumentUnsafe(
       (typeof value === 'number' &&
         (Number.isFinite(value) || options.allowNonFiniteNumbers === true))
     ) {
+      if (
+        typeof value === 'string' &&
+        value.length > limits.graphBytes - state.bytes
+      )
+        return failure(
+          'graph_limit',
+          '$',
+          'graph bytes exceed the graph limit',
+        );
       state.bytes += utf8JsonBytes(value);
       if (state.bytes > limits.graphBytes)
         return failure(
@@ -249,6 +260,31 @@ function inspectJsonDocumentUnsafe(
   }
 
   return { ok: true, snapshot: state.root, bytes: state.bytes };
+}
+
+/** Internal own-data JSON admission without graph-specific facts or recursive parsing. */
+export function inspectJsonDocumentAdmission(
+  input: unknown,
+  limits: Readonly<{ bytes: number; depth: number }>,
+): WorkflowGraphAdmission {
+  try {
+    return inspectJsonDocumentUnsafe(
+      input,
+      {
+        graphBytes: limits.bytes,
+        inputDepth: limits.depth,
+        jsonValueDepth: limits.depth,
+        structuredDepth: limits.depth,
+      },
+      {},
+    );
+  } catch {
+    return failure(
+      'invalid_json',
+      '$',
+      'JSON input could not be inspected safely',
+    );
+  }
 }
 
 function valueDepthFailure(

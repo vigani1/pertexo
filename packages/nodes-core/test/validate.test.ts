@@ -15,6 +15,7 @@ import {
   CORE_VALIDATE_ISSUE_CODES,
   CORE_VALIDATE_ISSUE_CODE_VALUES,
   CORE_VALIDATE_ISSUE_MESSAGES,
+  CORE_WORKFLOW_CALL_POLICY,
   CORE_VALIDATE_ISSUE_SCHEMA,
   CORE_VALIDATE_MAX_ISSUES,
   CORE_VALIDATE_OUTPUT_SCHEMA,
@@ -37,7 +38,11 @@ const release = createRegistryRelease({
     lifecycle: registration.lifecycle,
     policyReferences: registration.policyReferences,
   })),
-  policies: [CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY],
+  policies: [
+    CORE_BOUNDED_JSON_POLICY,
+    CORE_JSONATA_POLICY,
+    CORE_WORKFLOW_CALL_POLICY,
+  ],
 });
 
 const registry = createNodeRegistry({

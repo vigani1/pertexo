@@ -21,6 +21,7 @@ const readyRow = Object.freeze({
   due_node_wakeups_compatible: true,
   durable_wait_compatible: true,
   execution_admission_compatible: true,
+  workflow_calls_compatible: true,
   execution_values_compatible: true,
   failure_notification_compatible: true,
   migration_head: '0081_schedule_claim_concurrency.sql',
@@ -61,6 +62,7 @@ const expected = Object.freeze({
 });
 
 const capabilityFailures = Object.freeze([
+  ['workflow_calls_compatible', 'Workflow Call catalog is incompatible'],
   ['policy_compatible', 'Workspace row-level security policy is incompatible'],
   ['phase1_schema_compatible', 'Identity/workspace schema is incompatible'],
   [

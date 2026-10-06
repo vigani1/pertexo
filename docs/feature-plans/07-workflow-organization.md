@@ -1,10 +1,8 @@
 # F07 — Folders, tags, favorites and workspace discovery
 
-Status: ADR064/contract and qualified F06 handoff accepted; persistent continuation
-authorized on allocated exact integration base; implementation/qualification open.
-Backend and frontend are implemented with local slice evidence and closed
-whole-feature independent review. Local acceptance requires the final frozen
-source-bound four-gate receipt; release/merge and postmerge CI remain separate.
+Status: implemented, independently reviewed, locally qualified and merged through
+PR147. Fresh natural-main qualification and required CI closed after the PR148
+quality-scheduling repair. Production rollout remains OFF and is not authorized.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Metadata backend + frontend. Relative size: **M**, not a calendar estimate.
 
@@ -133,15 +131,13 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 ## Delivery tracker
 
 - [x] Baseline reconciled against current code and accepted decisions.
-- [x] Slice-1 product choices resolved; necessary ADR accepted. Folder-specific
-      name/uniqueness/command decisions remain required before its later slice.
-- [x] Slice-1 contracts and failure/security model reviewed; concrete folder/bulk
-      implementation reviews and all execution evidence remain open.
+- [x] Product choices resolved; ADR064 and folder/bulk follow-on accepted.
+- [x] Contracts, failure/security model and whole-feature implementation reviewed.
 - [x] Backend behavior implemented and independently verified where needed.
 - [x] Frontend behavior implemented and independently verified where needed.
-- [ ] Real integrated acceptance evidence recorded.
-- [ ] Rollout/rollback and limitations documented.
-- [ ] Scoped PR merged with required checks; natural postmerge result inspected.
+- [x] Real integrated acceptance evidence recorded.
+- [x] Rollout/rollback and limitations documented; production remains OFF.
+- [x] Scoped PR merged with required checks; natural postmerge result inspected.
 
 Evidence log: source inventory `1433780b`, proposed contract `dbe5a0a6`, concrete
 ADR/contract `a0508cd0` accepted by primary exact-source review. Documentation
@@ -644,3 +640,28 @@ reset refusal, opener locking, unchanged frozen delete snapshots and exact retry
 no new finding remains. Web typecheck and scoped lint pass, with unchanged passing
 complexity and duplication ratchets. The next required four-gate receipt owns the
 final clean-source outcome; none of the failed attempts is relabeled.
+
+### Release closure on actual main
+
+Primary verified the release-owner source-bound receipt on 2026-10-02. PR147
+merged the reviewed feature as `f7cf3ee637e65af4b1f489c16fbef777fb02e8dc`.
+Its first natural-main quality job exceeded the unchanged deadline; that cancelled
+CI is retained as failed evidence. PR148 repaired only quality scheduling and
+test isolation, without feature/migration changes or weaker gates. Fresh actual
+main `ed9116b97e5528ae414ab12bcbd86f34a4c4d4c9`, tree
+`1d36ff8deb3261dbc1a7cb2571ef1f8d8783fb25`, passed first-attempt natural CI
+`37025498794`: all 13 applicable jobs, with the expected dependency-review skip.
+CodeQL `37025499195` also succeeded.
+
+Fresh reports bind that exact clean main source: F07 database/API/process/browser
+95/20/6/4, F06 origin-guard/boundary/browser/compiled-cutover 2,340/16/1/10,
+and ordinary integration database/API/worker/queue/artifact 893/120/47/1/6.
+Exactly three previously reviewed artifact pending cases remain; all seven
+ordinary integration mutation proofs passed. The release-owner receipt is
+`/Users/vigan/.codex/evidence/pertexo-f07-2026-10-02/quality-scheduling-receipt.md`,
+with source binding in `hosted-main-ed9116b9/source-binding.json` alongside it.
+These local evidence paths are not portable repository artifacts. Historical
+failed attempts above retain their original source identities and outcomes.
+This closes F07 feature/release evidence, not production enablement or broader
+deferred F02 capabilities. F08 keeps immutable qualified base `0b4e0810` and
+exclusive migration0136 allocation.

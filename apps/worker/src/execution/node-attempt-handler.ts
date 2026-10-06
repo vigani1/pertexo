@@ -1,11 +1,11 @@
 import {
   canonicalOutboxPayloadChecksum,
-  NodeAttemptOutputInvalidError,
   type NodeAttemptInputs,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
   type PublishedWorkflowReader,
-  type PublishedWorkflowV2Projection,
+  type PublishedWorkflowExecutableProjection,
+  type PublishedWorkflowV3Projection,
 } from '@pertexo/database/execution';
 import type {
   QueueDelivery,
@@ -17,11 +17,13 @@ import type {
   NodeAttemptOutcome,
   NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { classifyProcessError } from '@pertexo/observability/process-error-classification';
-import { waitForCancelableDelay } from '../runtime/abortable-delay.js';
+import {
+  startNodeAttemptHeartbeat,
+  type NodeAttemptHeartbeat,
+} from './node-attempt-heartbeat.js';
+import { recoverNodeAttemptCallInput } from './node-attempt-call-input-recovery.js';
+import { assertNativeNodeAttemptInputProjection } from './native-node-attempt-input-hydration.js';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import {
   createNodeExecutionEnvironment,
@@ -30,8 +32,15 @@ import {
 export { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error.js';
 import { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error.js';
 import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
-import { connectionHealthCompletionFields } from './connection-health-completion.js';
+import {
+  completeControlOutcome,
+  executePreparedNodeAttempt,
+  resolveHeartbeatInterruption,
+  hasProviderDispatchUncertainty,
+} from './node-attempt-prepared-execution.js';
 import { completionResult } from './node-attempt-completion-result.js';
+import type { createWorkflowExecutionValueCodec } from './workflow-execution-value-codec.js';
+import type { WorkflowCallPinV1 } from '@pertexo/workflow-model/workflow-call-contract';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -39,6 +48,8 @@ type AttemptDelivery = Extract<
 >;
 
 export interface PreparedNodeAttempt {
+  readonly callPin?: WorkflowCallPinV1;
+  readonly inputPersistence?: 'workflow_call_declaration';
   readonly suspensionDurationSeconds?: number;
   readonly upstreamNodeOutputs: readonly Readonly<{
     nodeId: string;
@@ -51,6 +62,8 @@ export interface PreparedNodeAttempt {
         runtime?: NodeExecutionRuntime;
         signal: AbortSignal;
         onInputResolved?: ExecuteNodeAttemptInput['onInputResolved'];
+        pinnedCallableProjection?: PublishedWorkflowV3Projection;
+        recordedWorkflowCallInput?: unknown;
       }
     >,
   ): Promise<NodeAttemptOutcome>;
@@ -60,7 +73,7 @@ export interface NodeAttemptExecutionEngine {
   prepare(
     input: Readonly<{
       lease: NodeAttemptLease;
-      projection: PublishedWorkflowV2Projection;
+      projection: PublishedWorkflowExecutableProjection;
     }>,
   ): PreparedNodeAttempt;
 }
@@ -77,6 +90,18 @@ export interface NodeAttemptHandler {
 }
 
 export type NodeAttemptHandlerDependencies = Readonly<{
+  physicalOutputValues?: Pick<
+    ReturnType<typeof createWorkflowExecutionValueCodec>,
+    'prepare'
+  >;
+  nativeInputValues?: Pick<
+    ReturnType<typeof createWorkflowExecutionValueCodec>,
+    'hydrateSource'
+  >;
+  callDeclarationValues?: Pick<
+    ReturnType<typeof createWorkflowExecutionValueCodec>,
+    'prepare' | 'hydrate'
+  >;
   connectionRunHealthMode?: ConnectionRunHealthMode;
   engine: NodeAttemptExecutionEngine;
   heartbeatIntervalMillis: number;
@@ -88,280 +113,6 @@ export type NodeAttemptHandlerDependencies = Readonly<{
   runtimeCapabilities?: NodeExecutionCapabilityFactories;
   workerId: string;
 }>;
-
-async function completeControlOutcome(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  reason: 'canceled' | 'timed_out',
-  delivery: AttemptDelivery,
-  signal: AbortSignal,
-  dispatched: boolean,
-  environment?: NodeExecutionEnvironment,
-): Promise<NodeAttemptHandlerResult> {
-  const outcomeUnknown = lease.sideEffectClass !== 'safe' && dispatched;
-  const completed = await dependencies.runStore.complete({
-    ...connectionHealthCompletionFields(dependencies, environment),
-    lease,
-    outcome: {
-      status: outcomeUnknown ? 'outcome_unknown' : reason,
-      safeErrorCode: outcomeUnknown
-        ? 'execution.outcome_unknown'
-        : reason === 'canceled'
-          ? 'execution.canceled'
-          : 'execution.deadline_exceeded',
-    },
-    ...(delivery.data.traceparent === undefined
-      ? {}
-      : { traceparent: delivery.data.traceparent }),
-    signal,
-  });
-  return completionResult(dependencies, lease, completed.kind);
-}
-
-type HeartbeatFailure =
-  Readonly<{ failed: false }> | Readonly<{ error: unknown; failed: true }>;
-
-type NodeAttemptHeartbeat = Readonly<{
-  executionSignal: AbortSignal;
-  durableAbortReason(): 'canceled' | 'timed_out' | undefined;
-  failure(): HeartbeatFailure;
-  stop(): Promise<void>;
-}>;
-
-function startNodeAttemptHeartbeat(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  contextSignal: AbortSignal,
-): NodeAttemptHeartbeat {
-  const executionAbort = new AbortController();
-  const heartbeatStop = new AbortController();
-  const heartbeatSignal = AbortSignal.any([
-    contextSignal,
-    heartbeatStop.signal,
-  ]);
-  const executionSignal = AbortSignal.any([
-    contextSignal,
-    executionAbort.signal,
-  ]);
-  let abortReason: 'canceled' | 'timed_out' | undefined;
-  let heartbeatFailure: HeartbeatFailure = Object.freeze({ failed: false });
-  const heartbeat = (async (): Promise<void> => {
-    try {
-      while (!heartbeatSignal.aborted) {
-        await waitForCancelableDelay(
-          dependencies.heartbeatIntervalMillis,
-          heartbeatSignal,
-        );
-        const result = await dependencies.runStore.heartbeat({
-          lease,
-          leaseDurationSeconds: dependencies.leaseDurationSeconds,
-          signal: heartbeatSignal,
-        });
-        if (result.abortRequested) {
-          if (result.abortReason === undefined)
-            throw new NodeAttemptHandlerStateError('control_reason_missing');
-          abortReason = result.abortReason;
-          executionAbort.abort();
-          return;
-        }
-      }
-    } catch (error: unknown) {
-      if (!heartbeatStop.signal.aborted && !contextSignal.aborted) {
-        heartbeatFailure = Object.freeze({ error, failed: true });
-        executionAbort.abort();
-      }
-    }
-  })();
-  return Object.freeze({
-    executionSignal,
-    durableAbortReason: () => abortReason,
-    failure: () => heartbeatFailure,
-    stop: async (): Promise<void> => {
-      heartbeatStop.abort();
-      await heartbeat;
-    },
-  });
-}
-
-/**
- * Keeps the input the executor receives for the run page (ADR 052). It is
- * diagnostic: a store without it, a lost lease or a failed write records
- * nothing and the attempt carries on unchanged.
- */
-async function recordAttemptInput(
-  runStore: NodeAttemptRunStore,
-  lease: NodeAttemptLease,
-  input: unknown,
-  signal: AbortSignal,
-): Promise<void> {
-  try {
-    await runStore.recordInput?.({ lease, input, signal });
-  } catch {
-    // The attempt's outcome never depends on recording its input.
-  }
-}
-
-async function executePreparedNodeAttempt(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  prepared: PreparedNodeAttempt,
-  inputs: NodeAttemptInputs,
-  delivery: AttemptDelivery,
-  contextSignal: AbortSignal,
-  heartbeat: NodeAttemptHeartbeat,
-  environment: NodeExecutionEnvironment,
-): Promise<NodeAttemptHandlerResult> {
-  const traceContext =
-    delivery.data.traceparent === undefined
-      ? {}
-      : { traceparent: delivery.data.traceparent };
-  let outcome: NodeAttemptOutcome;
-  try {
-    outcome = await prepared.execute({
-      ...inputs,
-      registry: environment.registry,
-      runtime: environment.runtime,
-      signal: heartbeat.executionSignal,
-      onInputResolved: (resolved) =>
-        recordAttemptInput(
-          dependencies.runStore,
-          lease,
-          resolved,
-          heartbeat.executionSignal,
-        ),
-    });
-  } catch (error: unknown) {
-    const interruption = await resolveHeartbeatInterruption(
-      dependencies,
-      lease,
-      delivery,
-      contextSignal,
-      heartbeat,
-      environment,
-    );
-    if (interruption !== undefined) return interruption;
-    if (error instanceof NodeExecutorFailure) {
-      const completed = await dependencies.runStore.complete({
-        ...connectionHealthCompletionFields(dependencies, environment),
-        lease,
-        outcome: {
-          status: 'executor_failure',
-          failureKind: error.kind,
-          errorKind: error.errorKind,
-          possiblyDispatched: error.possiblyDispatched,
-          safeErrorCode: `execution.${error.errorKind}`,
-        },
-        ...traceContext,
-        signal: contextSignal,
-      });
-      return await completionResult(dependencies, lease, completed.kind);
-    }
-    if (
-      error instanceof WorkflowEngineError &&
-      error.code === 'attempt_invalid'
-    ) {
-      const completed = await dependencies.runStore.complete({
-        ...connectionHealthCompletionFields(dependencies, environment),
-        lease,
-        outcome: {
-          status: 'failed',
-          safeErrorCode: 'execution.attempt_invalid',
-        },
-        ...traceContext,
-        signal: contextSignal,
-      });
-      return await completionResult(dependencies, lease, completed.kind);
-    }
-    throw error;
-  }
-  const interruption = await resolveHeartbeatInterruption(
-    dependencies,
-    lease,
-    delivery,
-    contextSignal,
-    heartbeat,
-    environment,
-  );
-  if (interruption !== undefined) return interruption;
-  return persistPreparedOutcome(
-    dependencies,
-    lease,
-    prepared,
-    outcome,
-    traceContext,
-    contextSignal,
-    environment,
-  );
-}
-
-async function resolveHeartbeatInterruption(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  delivery: AttemptDelivery,
-  contextSignal: AbortSignal,
-  heartbeat: NodeAttemptHeartbeat,
-  environment: NodeExecutionEnvironment,
-): Promise<NodeAttemptHandlerResult | undefined> {
-  const durableAbortReason = heartbeat.durableAbortReason();
-  if (durableAbortReason !== undefined)
-    return completeControlOutcome(
-      dependencies,
-      lease,
-      durableAbortReason,
-      delivery,
-      contextSignal,
-      hasProviderDispatchUncertainty(lease, environment.wasDispatched()),
-      environment,
-    );
-  const heartbeatFailure = heartbeat.failure();
-  if (!heartbeatFailure.failed) return undefined;
-  throw classifyProcessError(heartbeatFailure.error) === 'Error'
-    ? (heartbeatFailure.error as Error)
-    : new Error('Node attempt heartbeat failed', {
-        cause: heartbeatFailure.error,
-      });
-}
-
-async function persistPreparedOutcome(
-  dependencies: NodeAttemptHandlerDependencies,
-  lease: NodeAttemptLease,
-  prepared: PreparedNodeAttempt,
-  outcome: NodeAttemptOutcome,
-  traceContext: Readonly<{ traceparent?: string }>,
-  contextSignal: AbortSignal,
-  environment: NodeExecutionEnvironment,
-): Promise<NodeAttemptHandlerResult> {
-  try {
-    const completed = await dependencies.runStore.complete({
-      ...connectionHealthCompletionFields(dependencies, environment),
-      lease,
-      outcome:
-        prepared.suspensionDurationSeconds === undefined
-          ? { status: 'succeeded', output: outcome.output }
-          : {
-              status: 'suspended',
-              output: outcome.output,
-              durationSeconds: prepared.suspensionDurationSeconds,
-            },
-      ...traceContext,
-      signal: contextSignal,
-    });
-    return await completionResult(dependencies, lease, completed.kind);
-  } catch (error: unknown) {
-    if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
-    const completed = await dependencies.runStore.complete({
-      ...connectionHealthCompletionFields(dependencies, environment),
-      lease,
-      outcome: {
-        status: 'failed',
-        safeErrorCode: 'execution.output_invalid',
-      },
-      ...traceContext,
-      signal: contextSignal,
-    });
-    return completionResult(dependencies, lease, completed.kind);
-  }
-}
 
 export function createNodeAttemptHandler(
   dependencies: NodeAttemptHandlerDependencies,
@@ -395,12 +146,20 @@ export function createNodeAttemptHandler(
       });
       if (claimed.kind === 'duplicate')
         return Object.freeze({ kind: 'duplicate' });
+      if (claimed.kind === 'control_settled')
+        return Object.freeze({
+          kind: 'committed',
+          outboxEventId: claimed.outboxEventId,
+        });
       const published = await dependencies.reader.readForExecution({
         workspaceId: delivery.data.workspaceId,
         workflowVersionId: claimed.lease.workflowVersionId,
         signal: context.signal,
       });
-      if (published.kind !== 'v2_projection')
+      if (
+        published.kind !== 'v2_projection' &&
+        published.kind !== 'v3_projection'
+      )
         throw new NodeAttemptHandlerStateError(
           published.kind === 'not_found'
             ? 'workflow_not_found'
@@ -415,43 +174,102 @@ export function createNodeAttemptHandler(
         lease: claimed.lease,
         projection: published.workflowVersion,
       });
-      const inputs = await dependencies.runStore.loadInputs({
-        lease: claimed.lease,
-        upstreamNodeOutputs: prepared.upstreamNodeOutputs,
-        signal: context.signal,
-      });
-      if (inputs.abortRequested) {
-        if (inputs.abortReason === undefined)
-          throw new NodeAttemptHandlerStateError('control_reason_missing');
-        return completeControlOutcome(
+      let heartbeat: NodeAttemptHeartbeat | undefined;
+      let environment: NodeExecutionEnvironment | undefined;
+      let executionStarted = false;
+      try {
+        let recordedWorkflowCallInput: Readonly<{ value: unknown }> | undefined;
+        if (
+          published.kind === 'v3_projection' ||
+          prepared.inputPersistence === 'workflow_call_declaration'
+        ) {
+          // Existing control-and-lease owner; this does not load or remap inputs.
+          const control = await dependencies.runStore.heartbeat({
+            lease: claimed.lease,
+            leaseDurationSeconds: dependencies.leaseDurationSeconds,
+            signal: context.signal,
+          });
+          if (control.abortRequested) {
+            if (control.abortReason === undefined)
+              throw new NodeAttemptHandlerStateError('control_reason_missing');
+            return await completeControlOutcome(
+              dependencies,
+              claimed.lease,
+              control.abortReason,
+              delivery,
+              context.signal,
+              hasProviderDispatchUncertainty(claimed.lease, false),
+            );
+          }
+          heartbeat = startNodeAttemptHeartbeat(
+            dependencies,
+            claimed.lease,
+            context.signal,
+          );
+          if (prepared.inputPersistence === 'workflow_call_declaration') {
+            recordedWorkflowCallInput = await recoverNodeAttemptCallInput({
+              lease: claimed.lease,
+              signal: heartbeat.executionSignal,
+              runStore: dependencies.runStore,
+              ...(dependencies.callDeclarationValues === undefined
+                ? {}
+                : { values: dependencies.callDeclarationValues }),
+            });
+          }
+        }
+        const inputs = await dependencies.runStore.loadInputs({
+          lease: claimed.lease,
+          upstreamNodeOutputs:
+            recordedWorkflowCallInput === undefined
+              ? prepared.upstreamNodeOutputs
+              : [],
+          signal: heartbeat?.executionSignal ?? context.signal,
+        });
+        if (inputs.abortRequested) {
+          if (inputs.abortReason === undefined)
+            throw new NodeAttemptHandlerStateError('control_reason_missing');
+          return await completeControlOutcome(
+            dependencies,
+            claimed.lease,
+            inputs.abortReason,
+            delivery,
+            context.signal,
+            hasProviderDispatchUncertainty(claimed.lease, false),
+          );
+        }
+        assertNativeNodeAttemptInputProjection({
+          inputs,
+          nativeExecutable: published.kind === 'v3_projection',
+          recoveredCallInput: recordedWorkflowCallInput !== undefined,
+        });
+        if (
+          claimed.lease.admissionKind === 'wait_resume' &&
+          inputs.nativeValueSources === undefined
+        ) {
+          if (inputs.resumeOutput === undefined)
+            throw new NodeAttemptHandlerStateError(
+              'wait_resume_output_missing',
+            );
+          const completed = await dependencies.runStore.complete({
+            lease: claimed.lease,
+            outcome: { status: 'succeeded', output: inputs.resumeOutput },
+            ...(delivery.data.traceparent === undefined
+              ? {}
+              : { traceparent: delivery.data.traceparent }),
+            signal: context.signal,
+          });
+          return await completionResult(
+            dependencies,
+            claimed.lease,
+            completed.kind,
+          );
+        }
+        heartbeat ??= startNodeAttemptHeartbeat(
           dependencies,
           claimed.lease,
-          inputs.abortReason,
-          delivery,
           context.signal,
-          hasProviderDispatchUncertainty(claimed.lease, false),
         );
-      }
-      if (claimed.lease.admissionKind === 'wait_resume') {
-        if (inputs.resumeOutput === undefined)
-          throw new NodeAttemptHandlerStateError('wait_resume_output_missing');
-        const completed = await dependencies.runStore.complete({
-          lease: claimed.lease,
-          outcome: { status: 'succeeded', output: inputs.resumeOutput },
-          ...(delivery.data.traceparent === undefined
-            ? {}
-            : { traceparent: delivery.data.traceparent }),
-          signal: context.signal,
-        });
-        return completionResult(dependencies, claimed.lease, completed.kind);
-      }
-      const heartbeat = startNodeAttemptHeartbeat(
-        dependencies,
-        claimed.lease,
-        context.signal,
-      );
-      try {
-        const environment = createNodeExecutionEnvironment({
+        environment = createNodeExecutionEnvironment({
           executionSignal: heartbeat.executionSignal,
           lease: claimed.lease,
           registry: dependencies.registry,
@@ -462,6 +280,7 @@ export function createNodeAttemptHandler(
             ? {}
             : { runtimeCapabilities: dependencies.runtimeCapabilities }),
         });
+        executionStarted = true;
         return await executePreparedNodeAttempt(
           dependencies,
           claimed.lease,
@@ -471,17 +290,24 @@ export function createNodeAttemptHandler(
           context.signal,
           heartbeat,
           environment,
+          recordedWorkflowCallInput,
         );
+      } catch (error: unknown) {
+        if (!executionStarted && heartbeat !== undefined) {
+          const interruption = await resolveHeartbeatInterruption(
+            dependencies,
+            claimed.lease,
+            delivery,
+            context.signal,
+            heartbeat,
+            environment,
+          );
+          if (interruption !== undefined) return interruption;
+        }
+        throw error;
       } finally {
-        await heartbeat.stop();
+        await heartbeat?.stop();
       }
     },
   });
-}
-
-function hasProviderDispatchUncertainty(
-  lease: NodeAttemptLease,
-  dispatched: boolean,
-): boolean {
-  return lease.providerDispatchUnresolved === true || dispatched;
 }

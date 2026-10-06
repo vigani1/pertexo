@@ -8,6 +8,7 @@ import {
 } from './scheduling.js';
 import { assertNodeTransition } from './transitions.js';
 import type { InvocationState } from '../types.js';
+import { sameBranchPath, sameIterationPath } from '../scope.js';
 import {
   assertLoopInvocations,
   isSyntheticLegacyLoop,
@@ -39,7 +40,7 @@ function deriveRootReadiness(
     graph,
     workflowVersionId: current.workflowVersionId,
     invocations: [...invocations.values()],
-    ...(current.schemaVersion === 2 ? { branchSelections } : {}),
+    ...(current.schemaVersion !== 1 ? { branchSelections } : {}),
   })) {
     if (input.coordinatorNodeIds.has(decision.nodeId)) continue;
     const invocation: InvocationState = {
@@ -95,7 +96,7 @@ function deriveLoopBodyReadiness(
         graph: { deriveReadiness: true, nodes: body.nodes, edges: body.edges },
         workflowVersionId: current.workflowVersionId,
         invocations: [...invocations.values()],
-        ...(current.schemaVersion === 2 ? { branchSelections } : {}),
+        ...(current.schemaVersion !== 1 ? { branchSelections } : {}),
         branchPath: loop.branchPath,
         iterationPath,
       })) {
@@ -119,6 +120,64 @@ function deriveLoopBodyReadiness(
       }
     }
   }
+}
+
+function isStoppedNativeMerge(
+  state: MutableWorkflowTransition,
+  joinKey: string,
+  invocation: InvocationState,
+): boolean {
+  const { current } = state;
+  if (
+    current.schemaVersion !== 3 ||
+    !(current.cancelRequested || current.deadlineExpired) ||
+    invocation.status !== 'canceled' ||
+    invocation.attemptNumber !== 0 ||
+    invocation.output !== undefined
+  )
+    return false;
+  const previous = current.invocations.find(
+    ({ invocationKey }) => invocationKey === joinKey,
+  );
+  const retained = current.joins.find(
+    ({ joinId, joinInvocationKey }) =>
+      (joinInvocationKey ??
+        rootInvocationKey(current.workflowVersionId, joinId)) === joinKey,
+  );
+  const node = state.schedulerNodes?.get(invocation.nodeId)?.node;
+  if (
+    previous?.status !== 'canceled' ||
+    previous.attemptNumber !== 0 ||
+    previous.output !== undefined ||
+    previous.nodeId !== invocation.nodeId ||
+    retained?.joinId !== invocation.nodeId ||
+    retained.selectedBranchIds !== undefined ||
+    retained.unsatisfiedReasonCode !== undefined ||
+    node?.definition?.key !== 'core.merge' ||
+    node.definition.version !== 1 ||
+    typeof node.config !== 'object' ||
+    node.config === null
+  )
+    return false;
+  const parallelId = Reflect.get(node.config, 'parallelNodeId') as unknown;
+  const parallel =
+    typeof parallelId === 'string'
+      ? state.schedulerNodes?.get(parallelId)?.node
+      : undefined;
+  return (
+    parallel?.definition?.key === 'core.parallel' &&
+    sameBranchPath(previous.branchPath, invocation.branchPath) &&
+    sameIterationPath(previous.iterationPath, invocation.iterationPath) &&
+    sameBranchPath(retained.branchPath, invocation.branchPath) &&
+    sameIterationPath(retained.iterationPath, invocation.iterationPath) &&
+    current.invocations.some(
+      (entry) =>
+        entry.nodeId === parallelId &&
+        entry.status === 'succeeded' &&
+        sameBranchPath(entry.branchPath, invocation.branchPath) &&
+        sameIterationPath(entry.iterationPath, invocation.iterationPath),
+    )
+  );
 }
 
 function settlePendingJoins(
@@ -149,6 +208,9 @@ function settlePendingJoins(
         `join ${join.joinId} has no invocation`,
       );
     }
+    // Branch truth still updates the existing ledger. A previously stopped
+    // native Merge never executes a new selected/unsatisfied join decision.
+    if (isStoppedNativeMerge(state, joinKey, invocation)) continue;
     if (decision.kind === 'satisfied') {
       joins.set(joinKey, {
         ...join,

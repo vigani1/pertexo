@@ -1,5 +1,19 @@
 {
   "schemaVersion": 1,
   "transactionalThrough": "0136_workflow_draft_graph_v2.sql",
-  "migrations": {}
+  "migrations": {
+    "0137_workflow_json_call_node_scope_index.sql": {
+      "mode": "online",
+      "maximumDatabaseBytes": 1000000000,
+      "restartSafe": true,
+      "rollbackCompatibleThrough": "0136_workflow_draft_graph_v2.sql"
+    },
+    "0138_workflow_json_call_attempt_scope_index.sql": {
+      "mode": "online",
+      "maximumDatabaseBytes": 1000000000,
+      "restartSafe": true,
+      "rollbackCompatibleThrough": "0136_workflow_draft_graph_v2.sql"
+    },
+    "0139_workflow_json_calls.sql": { "mode": "transactional" }
+  }
 }
