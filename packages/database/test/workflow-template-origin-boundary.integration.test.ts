@@ -257,7 +257,9 @@ describe.skipIf(!enabled)(
     afterAll(cleanup, 30_000);
 
     it('requires the current head and preserved 0133 inventory on API and worker; is not an old-image cutover proof', async () => {
-      expect(EXPECTED_MIGRATION_HEAD).toBe('0141_native_attempt_lock_order.sql');
+      expect(EXPECTED_MIGRATION_HEAD).toBe(
+        '0141_native_attempt_lock_order.sql',
+      );
       expect(
         (
           await apiPool.query(
