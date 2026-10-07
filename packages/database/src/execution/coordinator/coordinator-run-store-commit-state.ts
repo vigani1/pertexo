@@ -173,6 +173,46 @@ async function readCommitPersistedFacts(
   return persistedFacts;
 }
 
+async function lockCoordinatorCommitRow(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+): Promise<CoordinatorCommitRow | undefined> {
+  // A joined locking clause does not promise row-lock acquisition order. All
+  // checkpoint writers must serialize on the exact run before its checkpoint.
+  const run = await client.query<{ id: string }>(
+    `select id from app.workflow_runs
+     where workspace_id=$1 and id=$2 for no key update`,
+    [workspaceId, runId],
+  );
+  if (run.rows[0] === undefined) return undefined;
+  const checkpoint = await client.query<CoordinatorCommitRow>(
+    `select checkpoint.revision, checkpoint.scheduler_state,
+            checkpoint.last_transition_fingerprint,
+            checkpoint.workflow_version_id, run.status,version.executable_schema_version,
+            version.schema_version as graph_schema_version,version.checksum as executable_checksum,
+            run.cancel_requested_at,run.workflow_id,run.trigger_type,
+            run.started_at,run.created_at,
+            run.failure_notification_policy_version,
+            run.failure_notification_destination_id,
+            run.failure_notification_destination_config_version,
+            run.failure_notification_side_effect_class,
+            run.execution_entitlement_version,run.input_ref,
+            run.deadline_at is not null
+              and run.deadline_at <= clock_timestamp() as deadline_expired
+       from app.workflow_runs run
+       join app.run_checkpoints checkpoint
+         on checkpoint.workspace_id = run.workspace_id
+        and checkpoint.workflow_run_id = run.id
+       join app.workflow_versions version
+         on version.workspace_id=run.workspace_id and version.id=run.workflow_version_id
+       where run.workspace_id = $1 and run.id = $2
+       for no key update of checkpoint`,
+    [workspaceId, runId],
+  );
+  return checkpoint.rows[0];
+}
+
 export async function lockCoordinatorCommitState(
   client: PoolClient,
   input: Readonly<{
@@ -203,31 +243,7 @@ export async function lockCoordinatorCommitState(
     runId,
     delivery,
   );
-  const locked = await client.query<CoordinatorCommitRow>(
-    `select checkpoint.revision, checkpoint.scheduler_state,
-            checkpoint.last_transition_fingerprint,
-            checkpoint.workflow_version_id, run.status,version.executable_schema_version,
-            version.schema_version as graph_schema_version,version.checksum as executable_checksum,
-            run.cancel_requested_at,run.workflow_id,run.trigger_type,
-            run.started_at,run.created_at,
-            run.failure_notification_policy_version,
-            run.failure_notification_destination_id,
-            run.failure_notification_destination_config_version,
-            run.failure_notification_side_effect_class,
-            run.execution_entitlement_version,run.input_ref,
-            run.deadline_at is not null
-              and run.deadline_at <= clock_timestamp() as deadline_expired
-       from app.workflow_runs run
-       join app.run_checkpoints checkpoint
-         on checkpoint.workspace_id = run.workspace_id
-        and checkpoint.workflow_run_id = run.id
-       join app.workflow_versions version
-         on version.workspace_id=run.workspace_id and version.id=run.workflow_version_id
-       where run.workspace_id = $1 and run.id = $2
-       for no key update of run, checkpoint`,
-    [workspaceId, runId],
-  );
-  const row = locked.rows[0];
+  const row = await lockCoordinatorCommitRow(client, workspaceId, runId);
   if (row === undefined) return outcome({ kind: 'not_found' });
   if (row.workflow_version_id !== workflowVersionId)
     throw new CoordinatorPlanInvalidError();

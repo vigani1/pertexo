@@ -84,7 +84,7 @@ describe('owned retained draft migration', () => {
         await authoring.getDraft(workspace.id, workflow.workflowId, actorId),
       ).toEqual(before);
       expect(await checkDatabaseReadiness(pool)).toMatchObject({
-        migrationHead: '0139_workflow_json_calls.sql',
+        migrationHead: '0141_native_attempt_lock_order.sql',
       });
       await recheckCuratedFixtureOwnership(ownership);
     } finally {

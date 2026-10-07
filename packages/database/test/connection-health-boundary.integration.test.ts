@@ -111,7 +111,7 @@ async function assertDriftRejected(statement: string, restore: string) {
     await expect(
       checkDatabaseReadiness(api, readinessOptions),
     ).resolves.toMatchObject({
-      migrationHead: '0139_workflow_json_calls.sql',
+      migrationHead: '0141_native_attempt_lock_order.sql',
     });
   }
 }

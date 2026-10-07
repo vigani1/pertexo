@@ -9,7 +9,9 @@ import {
 import {
   assertCoordinatorNotAborted,
   withCoordinatorReadClient,
+  withCoordinatorWriteClient,
 } from './coordinator-run-store-transactions.js';
+import { applyCoordinatorCallControl } from './coordinator-call-controls.js';
 import { coordinatorExecutableFormat } from './coordinator-checkpoint.js';
 import { assertNativeCoordinatorPoolAdmission } from './coordinator-executable-capability.js';
 import {
@@ -83,6 +85,15 @@ export async function loadCoordinatorAdvanceState(
     classifiedFormat === 3
       ? coordinatorDeliverySchema.parse(input.delivery)
       : undefined;
+  if (delivery !== undefined) {
+    await withCoordinatorWriteClient(
+      pool,
+      workspaceId,
+      input.signal,
+      (client) =>
+        applyCoordinatorCallControl(client, { workspaceId, runId, delivery }),
+    );
+  }
   return withCoordinatorReadClient(
     pool,
     workspaceId,

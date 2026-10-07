@@ -20,6 +20,7 @@ const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const migrationName = '0139_workflow_json_calls.sql';
+const currentMigrationHead = '0141_native_attempt_lock_order.sql';
 const retainedOwners = [
   'execute_standard_retention_page',
   'standard_retention_dry_run_stage_keys',
@@ -94,12 +95,14 @@ describe('registered inline workflow Call migration', () => {
             ).rows;
           }
           const applied = await migrateDatabase(config);
-          expect(applied.at(-1)).toBe(migrationName);
+          expect(applied.at(-1)).toBe(currentMigrationHead);
           if (upgraded) {
             expect(applied).toEqual([
               '0137_workflow_json_call_node_scope_index.sql',
               '0138_workflow_json_call_attempt_scope_index.sql',
               migrationName,
+              '0140_workflow_call_controls.sql',
+              currentMigrationHead,
             ]);
             expect(
               (
@@ -186,7 +189,7 @@ describe('registered inline workflow Call migration', () => {
             await expect(
               checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
             ).resolves.toMatchObject({
-              migrationHead: migrationName,
+              migrationHead: currentMigrationHead,
               role: 'pertexo_api',
             });
           } finally {
@@ -214,7 +217,7 @@ describe('registered inline workflow Call migration', () => {
             await expect(
               checkDatabaseReadiness(worker, { ownerRole: 'pertexo_owner' }),
             ).resolves.toMatchObject({
-              migrationHead: migrationName,
+              migrationHead: currentMigrationHead,
               role: 'pertexo_worker',
             });
           } finally {

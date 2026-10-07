@@ -401,7 +401,7 @@ describe('workflow run API persistence', () => {
     ],
   ])('rejects checked-start startup drift: %s', async (tamper, restore) => {
     await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
-      migrationHead: '0139_workflow_json_calls.sql',
+      migrationHead: '0141_native_attempt_lock_order.sql',
     });
     await ownerQuery(tamper);
     try {
@@ -412,7 +412,7 @@ describe('workflow run API persistence', () => {
       await ownerQuery(restore);
     }
     await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
-      migrationHead: '0139_workflow_json_calls.sql',
+      migrationHead: '0141_native_attempt_lock_order.sql',
     });
   });
 

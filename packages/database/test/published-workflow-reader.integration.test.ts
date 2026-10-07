@@ -373,7 +373,7 @@ describe('PublishedWorkflowReader', () => {
   it('fails readiness on weakened execution constraints, policy, or worker grants', async () => {
     await withReadinessDriftLock(async () => {
       await expect(checkDatabaseReadiness(apiPool)).resolves.toMatchObject({
-        migrationHead: '0139_workflow_json_calls.sql',
+        migrationHead: '0141_native_attempt_lock_order.sql',
       });
       // Restore the exact admitted head after each deliberate drift. Historical
       // V2-only restoration would itself poison subsequent policy/grant probes.
@@ -403,7 +403,7 @@ describe('PublishedWorkflowReader', () => {
           add constraint workflow_versions_checksum_format ${restored.checksum_constraint}`);
       }
       await expect(checkDatabaseReadiness(apiPool)).resolves.toMatchObject({
-        migrationHead: '0139_workflow_json_calls.sql',
+        migrationHead: '0141_native_attempt_lock_order.sql',
       });
 
       await executeAsOwner(`alter policy workflow_versions_worker_execution_read
@@ -428,7 +428,7 @@ describe('PublishedWorkflowReader', () => {
           on app.workflow_versions using (${restored.worker_policy})`);
       }
       await expect(checkDatabaseReadiness(apiPool)).resolves.toMatchObject({
-        migrationHead: '0139_workflow_json_calls.sql',
+        migrationHead: '0141_native_attempt_lock_order.sql',
       });
 
       await executeAsOwner(

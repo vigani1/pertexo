@@ -270,7 +270,7 @@ describe('ADR 057 current capacity authority', () => {
     await expect(
       checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
     ).resolves.toMatchObject({
-      migrationHead: '0139_workflow_json_calls.sql',
+      migrationHead: '0141_native_attempt_lock_order.sql',
     });
     const grants = await runtimePool.query(`select
       has_function_privilege('pertexo_api','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as api,
@@ -512,7 +512,7 @@ describe('ADR 057 current capacity authority', () => {
       await expect(
         checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
       ).resolves.toMatchObject({
-        migrationHead: '0139_workflow_json_calls.sql',
+        migrationHead: '0141_native_attempt_lock_order.sql',
       });
     },
   );
