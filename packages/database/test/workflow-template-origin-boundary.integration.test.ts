@@ -266,7 +266,7 @@ describe.skipIf(!enabled)(
             'select name from pertexo_internal.schema_migrations order by name desc limit 1',
           )
         ).rows,
-      ).toEqual([{ name: '0139_workflow_json_calls.sql' }]);
+      ).toEqual([{ name: '0141_native_attempt_lock_order.sql' }]);
       for (const pool of [apiPool, workerPool])
         await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
           migrationHead: '0141_native_attempt_lock_order.sql',

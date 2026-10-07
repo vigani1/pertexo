@@ -379,7 +379,7 @@ it.each(
 );
 
 it.each(['canceled', 'timed_out'] as const)(
-  'actual handler/engine/commit keeps an admitted child waiting under %s, persists real child control/event/outbox once, then retains unknown outcome and replay',
+  'actual handler/engine/commit keeps an admitted child waiting under %s, persists only its control intent outbox once, then retains unknown outcome and replay',
   async (status) => {
     const base = graph();
     const objectType = {
@@ -548,16 +548,13 @@ it.each(['canceled', 'timed_out'] as const)(
     expect(outbox.values).toContain(
       canonicalOutboxPayloadChecksum(childPayload),
     );
-    expect(childEvents()).toHaveLength(status === 'canceled' ? 1 : 0);
-    const childEvent = childEvents()[0];
-    if (childEvent !== undefined)
-      expect(childEvent.values).toContain('run.cancel_requested');
+    expect(childEvents()).toHaveLength(0);
     expect(fixture.childRequests.size).toBe(1);
     await expect(fixture.handle(1)).resolves.toMatchObject({
       kind: 'already_committed',
     });
     expect(childOutboxes()).toHaveLength(1);
-    expect(childEvents()).toHaveLength(status === 'canceled' ? 1 : 0);
+    expect(childEvents()).toHaveLength(0);
     const unknown: WorkflowCallStateV1 = {
       ...admitted,
       status: 'settled',
