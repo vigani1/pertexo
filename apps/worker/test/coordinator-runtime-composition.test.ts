@@ -118,10 +118,11 @@ describe('coordinator runtime native database composition', () => {
   it('authenticates a child executable before creating its initial V3 checkpoint', async () => {
     const f = await compose();
     try {
-      const release = platformExecutableRegistryHistory('workflow_call_staging')
-        .map(composeWorkerWorkflowCompatibilityRelease)
-        .at(-1);
-      if (release === undefined) throw new Error('Missing staged release');
+      const nodeRelease = platformExecutableRegistryHistory(
+        'workflow_call_staging',
+      ).at(-1);
+      if (nodeRelease === undefined) throw new Error('Missing staged release');
+      const release = composeWorkerWorkflowCompatibilityRelease(nodeRelease);
       const built = buildWorkflowExecutableV3({
         release,
         graph: {
