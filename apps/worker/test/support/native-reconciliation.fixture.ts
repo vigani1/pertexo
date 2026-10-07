@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import type { Pool, PoolClient } from 'pg';
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import { createRegistryRelease, type NodeManifest } from '@pertexo/node-sdk';
 import {
@@ -269,7 +269,19 @@ export function reconciliationFixture(input: {
             },
           ],
         };
-      if (sql.includes('select checkpoint.revision'))
+      if (sql.includes('select id from app.workflow_runs')) {
+        expect(sql.replace(/\s+/gu, ' ').trim()).toBe(
+          'select id from app.workflow_runs where workspace_id=$1 and id=$2 for no key update',
+        );
+        expect(scope).toBe(WORKSPACE_ID);
+        expect(values).toEqual([WORKSPACE_ID, RUN_ID]);
+        return { rows: [{ id: RUN_ID }] };
+      }
+      if (sql.includes('select checkpoint.revision')) {
+        expect(statements.at(-2)?.sql).toContain(
+          'select id from app.workflow_runs',
+        );
+        expect(sql).toContain('for no key update of checkpoint');
         return {
           rows: [
             {
@@ -288,6 +300,7 @@ export function reconciliationFixture(input: {
             },
           ],
         };
+      }
       if (sql.includes('as high_water'))
         return {
           rows: [
@@ -360,20 +373,27 @@ export function reconciliationFixture(input: {
           ],
         };
       if (sql.includes('propagate_workflow_call_control')) {
+        expect(sql).toBe(
+          'select app.propagate_workflow_call_control($1::uuid,$2::integer,$3::uuid,$4::text,$5::jsonb) as result',
+        );
+        expect(values).toHaveLength(5);
+        expect(values[0]).toBe(RUN_ID);
+        expect(values[1]).toBe(snapshot.checkpoint.revision);
+        expect(values[3]).toBe(
+          input.status === 'canceled' ? 'cancel_requested' : 'deadline_expired',
+        );
+        expect(JSON.parse(String(values[4]))).toEqual({
+          outboxEventId: activePayload.outboxEventId,
+          payloadChecksum: canonicalOutboxPayloadChecksum(activePayload),
+        });
         const child = String(values[2]);
-        if (childRequests.has(child))
-          return { rows: [{ result: { kind: 'unchanged' } }] };
         childRequests.add(child);
         return {
           rows: [
             {
               result:
                 input.status === 'canceled'
-                  ? {
-                      kind: 'requested',
-                      actor: `workflow-call:${RUN_ID}`,
-                      reason: 'parent request',
-                    }
+                  ? { kind: 'requested' }
                   : { kind: 'wake' },
             },
           ],

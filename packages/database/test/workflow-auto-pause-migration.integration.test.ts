@@ -127,6 +127,8 @@ describe('auto pause controls prior-head migration and readiness', () => {
         '0137_workflow_json_call_node_scope_index.sql',
         '0138_workflow_json_call_attempt_scope_index.sql',
         '0139_workflow_json_calls.sql',
+        '0140_workflow_call_controls.sql',
+        '0141_native_attempt_lock_order.sql',
       ]);
       expect(await migrateDatabase(config)).toEqual([]);
       expect(
@@ -155,7 +157,7 @@ describe('auto pause controls prior-head migration and readiness', () => {
       await expect(
         checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
       ).resolves.toMatchObject({
-        migrationHead: '0139_workflow_json_calls.sql',
+        migrationHead: '0141_native_attempt_lock_order.sql',
       });
       await expect(fold.checkReadiness()).resolves.toBeUndefined();
       const foldSignature =

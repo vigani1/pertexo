@@ -62,7 +62,7 @@ const request = () => ({
   signal: new AbortController().signal,
 });
 
-function adapter(selector: unknown, native = true) {
+function adapter(selector: unknown, native = true, applyError?: Error) {
   const format = native ? 3 : 2;
   const checkpoint = {
     schemaVersion: native ? 3 : 1,
@@ -128,6 +128,15 @@ function adapter(selector: unknown, native = true) {
           },
         ],
       };
+    if (
+      sql ===
+      'select app.apply_workflow_call_control($1::uuid,$2::jsonb) as result'
+    ) {
+      expect(scoped).toBe(true);
+      expect(values).toEqual([runId, JSON.stringify(delivery)]);
+      if (applyError !== undefined) throw applyError;
+      return { rows: [{ result: { kind: 'unchanged' } }] };
+    }
     if (sql.includes('app.inspect_native_coordinator_value_owner'))
       return {
         rows: [
@@ -221,6 +230,20 @@ function adapter(selector: unknown, native = true) {
 }
 
 describe('actual coordinator observation read adapter before native demand', () => {
+  it('rolls back an own-child apply error without reading the snapshot', async () => {
+    const error = new Error('Own-child control refused');
+    const source = adapter({ kind: 'literal', value: {} }, true, error);
+    await expect(
+      loadCoordinatorAdvanceState(source.pool, request(), nativeAdapter),
+    ).rejects.toBe(error);
+    const sql = source.query.mock.calls.map(([statement]) => statement);
+    expect(sql).toContain('rollback');
+    expect(
+      sql.some((statement) => statement.includes('run.id as run_id')),
+    ).toBe(false);
+    expect(source.release).toHaveBeenCalledTimes(2);
+    expect(source.decodeInput).not.toHaveBeenCalled();
+  });
   it.each([
     { kind: 'run_input', path: '$' },
     { kind: 'node_output', nodeId: 'result', path: '$' },
@@ -258,8 +281,19 @@ describe('actual coordinator observation read adapter before native demand', () 
           sql.includes('app.read_native_workflow_attempt_output'),
         ),
       ).toBe(false);
-      expect(source.connect).toHaveBeenCalledTimes(2);
-      expect(source.release).toHaveBeenCalledTimes(2);
+      expect(source.connect).toHaveBeenCalledTimes(3);
+      expect(source.release).toHaveBeenCalledTimes(3);
+      const sql = source.query.mock.calls.map(([statement]) => statement);
+      const apply = sql.findIndex((statement) =>
+        statement.includes('app.apply_workflow_call_control'),
+      );
+      const snapshot = sql.findIndex((statement) =>
+        statement.includes('run.id as run_id'),
+      );
+      const commit = sql.indexOf('commit', apply);
+      expect(apply).toBeGreaterThan(-1);
+      expect(commit).toBeGreaterThan(apply);
+      expect(snapshot).toBeGreaterThan(commit);
       expect(source.query.mock.calls.map(([sql]) => sql)).toContain(
         'begin isolation level repeatable read read only',
       );
@@ -295,7 +329,7 @@ describe('actual coordinator observation read adapter before native demand', () 
         throw new Error('Expected controlled ready state');
       expect(result.state).not.toHaveProperty('callableCompletion');
       expect(source.decodeInput).not.toHaveBeenCalled();
-      expect(source.release).toHaveBeenCalledTimes(2);
+      expect(source.release).toHaveBeenCalledTimes(3);
     },
   );
 
@@ -307,7 +341,7 @@ describe('actual coordinator observation read adapter before native demand', () 
     ).rejects.toThrow();
     expect(source.decodeInput).not.toHaveBeenCalled();
     expect(source.query.mock.calls.map(([sql]) => sql)).toContain('rollback');
-    expect(source.release).toHaveBeenCalledTimes(2);
+    expect(source.release).toHaveBeenCalledTimes(3);
   });
 
   it('preserves the retained observation path and tenant cleanup', async () => {
@@ -329,6 +363,11 @@ describe('actual coordinator observation read adapter before native demand', () 
       throw new Error('Expected retained ready state');
     expect(result.state).not.toHaveProperty('workflowCalls');
     expect(result.state).not.toHaveProperty('callableCompletion');
+    expect(
+      source.query.mock.calls.some(([sql]) =>
+        sql.includes('app.apply_workflow_call_control'),
+      ),
+    ).toBe(false);
     expect(source.release).toHaveBeenCalledTimes(2);
   });
   it('refuses native format in a retained-only adapter before executable or fact payload reads', async () => {

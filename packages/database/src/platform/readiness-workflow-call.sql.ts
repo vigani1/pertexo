@@ -38,6 +38,8 @@ select encode(sha256(convert_to(jsonb_build_object(
     pg_get_function_result(p.oid),pg_get_function_identity_arguments(p.oid),
     pg_get_function_arguments(p.oid)) order by signature collate "C")
     from unnest(array[
+      'app.apply_workflow_call_control(uuid,jsonb)',
+      'app.propagate_workflow_call_control(uuid,integer,uuid,text,jsonb)',
       'app.assert_native_advance_delivery(uuid,uuid,text)',
       'app.assert_native_callable_value(jsonb,jsonb)',
       'app.assert_native_call_detail_live(uuid)',
@@ -111,7 +113,7 @@ export const READINESS_WORKFLOW_CALL_SQL = `(
     select 'dispatcher',runtime_role from pg_policy p,unnest(p.polroles) runtime_role
       where p.polrelid=to_regclass('app.outbox_events') and p.polname='outbox_events_dispatcher_select'
   ) select coalesce(
-    (${WORKFLOW_CALL_CATALOG_SQL})='9146ad33340c0abfd50573656596209aa93221f94fb45aee3dec03eaa83d1c4d'
+    (${WORKFLOW_CALL_CATALOG_SQL})='f6e3b94dbc46059b931ae93defcfc003434e9db247450b6b2f1481d1a2ff5d1a'
     and (select count(*)=3 from pg_class c where c.oid=any(array[
       to_regclass('app.workflow_calls'),to_regclass('app.workflow_execution_value_provenance'),to_regclass('app.workflow_call_rollout')])
       and c.relowner=(select id from roles where label='owner')
@@ -124,6 +126,8 @@ export const READINESS_WORKFLOW_CALL_SQL = `(
       and not exists(select 1 from pg_attribute col,lateral aclexplode(col.attacl) a
         where col.attrelid=c.oid and a.grantee<>c.relowner))
     and not exists(select 1 from (values
+    ('app.apply_workflow_call_control(uuid,jsonb)','03388ccb0f5bf29b59d5122a6ec0712a',true,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner','worker']),
+    ('app.propagate_workflow_call_control(uuid,integer,uuid,text,jsonb)','6034670c2e0c760d279ccffa7d04c731',true,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner','worker']),
     ('app.assert_native_advance_delivery(uuid,uuid,text)','9efbc0147b28f67e222c1d2940571ff8',false,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner']),
     ('app.assert_native_callable_value(jsonb,jsonb)','48cdbfe0f13ebe9e53c369ae8572463c',false,'v',array['search_path=pg_catalog, app, pg_temp'],array['owner']),
     ('app.assert_native_call_detail_live(uuid)','a62ef936e998537c4249181b1e6609de',false,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner']),
@@ -144,7 +148,7 @@ export const READINESS_WORKFLOW_CALL_SQL = `(
     ('app.inspect_native_coordinator_value_owner(jsonb)','0dcdf90505527bbfe6ed1596a530bf2b',true,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner','worker']),
     ('app.load_native_coordinator_control_sources(jsonb,integer)','e8778ceb31ea7615bf8c4ce5a8f406ac',true,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner','worker']),
     ('app.load_native_coordinator_value_sources(jsonb,jsonb)','b512a2890b44c468ea2faaf9cce354b1',true,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner','worker']),
-    ('app.lock_native_attempt_value_owner(jsonb)','20d54c11fab79fa7b5ae1237ca4ff2a0',false,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner']),
+    ('app.lock_native_attempt_value_owner(jsonb)','54fe1b15d99d5d3dd86bd5e955223ea3',false,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner']),
     ('app.lock_native_call_input_owner(jsonb)','c90186db5fe6ee66f91f10c4cd91910b',false,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner']),
     ('app.lock_native_coordinator_control_sources(jsonb,integer,jsonb)','a655639891559cd5ea049767c014b98b',true,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner','worker']),
     ('app.lock_workflow_call_admission(uuid,integer,text,uuid,uuid,text)','23aed012eaea5daafa7f904501e87d9c',true,'v',array['search_path=pg_catalog, app, pg_temp','row_security=on'],array['owner','worker']),
@@ -218,5 +222,11 @@ export const READINESS_WORKFLOW_CALL_SQL = `(
     ) expected(relation,name,hash)
       where not exists(select 1 from pg_constraint c where c.conrelid=to_regclass(expected.relation)
         and c.conname=expected.name and c.convalidated and md5(pg_get_constraintdef(c.oid))=expected.hash))
+    and exists(select 1 from pg_proc p join pg_language l on l.oid=p.prolang
+      where p.oid=to_regprocedure('app.propagate_workflow_call_control(uuid,integer,uuid,text,jsonb)')
+        and l.lanname='plpgsql' and p.prokind='f' and not p.proisstrict
+        and not p.proleakproof and p.proparallel='u' and p.prosupport=0
+        and pg_get_function_result(p.oid)='jsonb'
+        and pg_get_function_arguments(p.oid)='p_parent uuid, p_revision integer, p_child uuid, p_reason text, p_delivery jsonb')
   ,false)
 )`;

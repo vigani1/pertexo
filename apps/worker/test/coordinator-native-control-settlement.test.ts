@@ -436,7 +436,19 @@ it.each(
             },
           ],
         };
-      if (sql.includes('select checkpoint.revision'))
+      if (sql.includes('select id from app.workflow_runs')) {
+        expect(sql.replace(/\s+/gu, ' ').trim()).toBe(
+          'select id from app.workflow_runs where workspace_id=$1 and id=$2 for no key update',
+        );
+        expect(scope).toBe(WORKSPACE_ID);
+        expect(values).toEqual([WORKSPACE_ID, RUN_ID]);
+        return { rows: [{ id: RUN_ID }] };
+      }
+      if (sql.includes('select checkpoint.revision')) {
+        expect(client.query.mock.calls.at(-2)?.[0]).toContain(
+          'select id from app.workflow_runs',
+        );
+        expect(sql).toContain('for no key update of checkpoint');
         return {
           rows: [
             {
@@ -456,6 +468,7 @@ it.each(
             },
           ],
         };
+      }
       if (sql.includes('as high_water'))
         return { rows: [{ high_water: facts.at(-1)?.sequence }] };
       if (sql.includes('as fact_count'))

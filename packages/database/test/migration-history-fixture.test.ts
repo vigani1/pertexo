@@ -17,7 +17,7 @@ describe('retained migration history fixture', () => {
       .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/u.test(name))
       .sort();
     expect(expected).toEqual(current.slice(current.indexOf(expected[0] ?? '')));
-    expect(expected.at(-1)).toBe('0139_workflow_json_calls.sql');
+    expect(expected.at(-1)).toBe('0141_native_attempt_lock_order.sql');
   });
 
   it('returns an exact suffix and rejects a missing start', async () => {
@@ -75,6 +75,8 @@ describe('retained migration history fixture', () => {
       '0137_workflow_json_call_node_scope_index.sql',
       '0138_workflow_json_call_attempt_scope_index.sql',
       '0139_workflow_json_calls.sql',
+      '0140_workflow_call_controls.sql',
+      '0141_native_attempt_lock_order.sql',
     ]);
     await expect(
       expectedMigrationHistoryFrom('9999_missing.sql'),

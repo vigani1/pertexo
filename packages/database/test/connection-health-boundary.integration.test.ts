@@ -111,7 +111,7 @@ async function assertDriftRejected(statement: string, restore: string) {
     await expect(
       checkDatabaseReadiness(api, readinessOptions),
     ).resolves.toMatchObject({
-      migrationHead: '0139_workflow_json_calls.sql',
+      migrationHead: '0141_native_attempt_lock_order.sql',
     });
   }
 }
@@ -181,6 +181,8 @@ describe('connection health migration and runtime boundary', () => {
       '0137_workflow_json_call_node_scope_index.sql',
       '0138_workflow_json_call_attempt_scope_index.sql',
       '0139_workflow_json_calls.sql',
+      '0140_workflow_call_controls.sql',
+      '0141_native_attempt_lock_order.sql',
     ]);
     const retained = await upgrade.asOwner((client) =>
       client.query(

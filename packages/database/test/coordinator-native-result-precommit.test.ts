@@ -85,6 +85,7 @@ const plan = parseTransitionPlan({
 class ResultClient extends EventEmitter {
   public readonly sql: string[] = [];
   public releases = 0;
+  public runExists = true;
   private workspace: string | null = null;
   private timeout = 0;
   public constructor(
@@ -234,7 +235,14 @@ class ResultClient extends EventEmitter {
           },
         ],
       };
-    if (sql.includes('select checkpoint.revision'))
+    if (sql.includes('select id from app.workflow_runs')) {
+      expect(sql).toContain('for no key update');
+      expect(values).toEqual([id(1), id(2)]);
+      return { rows: this.runExists ? [{ id: id(2) }] : [] };
+    }
+    if (sql.includes('select checkpoint.revision')) {
+      expect(this.sql.at(-2)).toContain('select id from app.workflow_runs');
+      expect(sql).toContain('for no key update of checkpoint');
       return {
         rows: [
           {
@@ -277,6 +285,7 @@ class ResultClient extends EventEmitter {
           },
         ],
       };
+    }
     if (sql.includes('select completed_at, payload_checksum'))
       return {
         rows: [
@@ -374,6 +383,31 @@ async function execute(
   return { result: await run.result, client: run.client };
 }
 describe('native result precommit through actual tenant and CAS composition', () => {
+  it('returns not_found without locking a checkpoint when the own run is missing', async () => {
+    const operation = start(false, false, undefined, true);
+    operation.client.runExists = false;
+    await expect(operation.result).resolves.toEqual({ kind: 'not_found' });
+    expect(
+      operation.client.sql.some((sql) =>
+        sql.includes('select id from app.workflow_runs'),
+      ),
+    ).toBe(true);
+    expect(
+      operation.client.sql.some((sql) =>
+        sql.includes('select checkpoint.revision'),
+      ),
+    ).toBe(false);
+    expect(
+      operation.client.sql.some((sql) =>
+        sql.includes('update app.run_checkpoints'),
+      ),
+    ).toBe(false);
+    expect(
+      operation.client.sql.some((sql) =>
+        sql.includes('update app.inbox_receipts'),
+      ),
+    ).toBe(false);
+  });
   it.each(['exact', 'artifact_exact', 'substituted', 'aborted'] as const)(
     'prepares %s fresh result bytes inside the same independent S before the protected write',
     async (kind) => {

@@ -3,12 +3,29 @@
 ## Registered inline JSON Call boundary
 
 ADR065 Phase 1 adds the catalog-only startup inventory in
-`packages/database/src/platform/readiness-workflow-call.sql.ts`. Head 0139 pins
-three private relations, 58 function ABIs and bodies/security/ACL contracts,
+`packages/database/src/platform/readiness-workflow-call.sql.ts`. Candidate head 0141 pins
+three private relations, 60 function ABIs and bodies/security/ACL contracts,
 12 writer/settlement triggers, the native initiation and published-format
 constraints, and the online-built node/attempt scope constraints. The normalized
 catalog SHA-256 is
-`9146ad33340c0abfd50573656596209aa93221f94fb45aee3dec03eaa83d1c4d`.
+`f6e3b94dbc46059b931ae93defcfc003434e9db247450b6b2f1481d1a2ff5d1a`.
+
+Unreleased main-candidate 0140 authenticates parent controls but emits only
+strict schema1 identifier-only child advance intents. It never locks or updates
+child control/audit rows in the parent transaction. Read-only canonical child
+lineage validation refuses a poisoned sealed root/depth without destination
+locks or mutations. The UUIDv5 namespace is the actual parent delivery UUID;
+the name is the UTF-8 JSON tuple
+`["pertexo.workflow-call-control.v1", expectedRevision, canonicalChildUuid, reason]`
+as name; reason is `cancel_requested` or `deadline_expired`. Replay compares
+complete immutable outbox identity/payload/checksum and refuses conflicts.
+Before the native child snapshot, worker-only child apply authenticates the
+actual carrier and sealed lineage, locks workspace/ancestors/own run/checkpoint,
+and records own cancellation plus exactly one audit in a short transaction.
+It does not complete the coordinator receipt; audit failure rolls back control,
+and replay after a committed apply is unchanged. Deadline-only wakes do not
+manufacture cancellation. Original compact-branch 0140 evidence remains historical;
+the repaired candidate requires fresh source and real-PostgreSQL review.
 
 The independent database rollout flag starts OFF. Startup readiness never
 requires it ON: accepted families must remain readable and drain while OFF.
@@ -19,6 +36,8 @@ mutation, notification rewrites, or production activation.
 
 | Function | Expected MD5 | Security and execution roles |
 | --- | --- | --- |
+| `app.apply_workflow_call_control(uuid,jsonb)` | `03388ccb0f5bf29b59d5122a6ec0712a` | definer; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner, worker |
+| `app.propagate_workflow_call_control(uuid,integer,uuid,text,jsonb)` | `6034670c2e0c760d279ccffa7d04c731` | definer; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner, worker |
 | `app.assert_native_advance_delivery(uuid,uuid,text)` | `9efbc0147b28f67e222c1d2940571ff8` | invoker; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner |
 | `app.assert_native_callable_value(jsonb,jsonb)` | `48cdbfe0f13ebe9e53c369ae8572463c` | invoker; `search_path=pg_catalog, app, pg_temp`; owner |
 | `app.assert_native_call_detail_live(uuid)` | `a62ef936e998537c4249181b1e6609de` | invoker; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner |
@@ -39,7 +58,7 @@ mutation, notification rewrites, or production activation.
 | `app.inspect_native_coordinator_value_owner(jsonb)` | `0dcdf90505527bbfe6ed1596a530bf2b` | definer; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner, worker |
 | `app.load_native_coordinator_control_sources(jsonb,integer)` | `e8778ceb31ea7615bf8c4ce5a8f406ac` | definer; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner, worker |
 | `app.load_native_coordinator_value_sources(jsonb,jsonb)` | `b512a2890b44c468ea2faaf9cce354b1` | definer; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner, worker |
-| `app.lock_native_attempt_value_owner(jsonb)` | `20d54c11fab79fa7b5ae1237ca4ff2a0` | invoker; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner |
+| `app.lock_native_attempt_value_owner(jsonb)` | `54fe1b15d99d5d3dd86bd5e955223ea3` | invoker; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner |
 | `app.lock_native_call_input_owner(jsonb)` | `c90186db5fe6ee66f91f10c4cd91910b` | invoker; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner |
 | `app.lock_native_coordinator_control_sources(jsonb,integer,jsonb)` | `a655639891559cd5ea049767c014b98b` | definer; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner, worker |
 | `app.lock_workflow_call_admission(uuid,integer,text,uuid,uuid,text)` | `23aed012eaea5daafa7f904501e87d9c` | definer; `search_path=pg_catalog, app, pg_temp`, `row_security=on`; owner, worker |

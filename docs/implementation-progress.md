@@ -10,6 +10,42 @@ external production evidence listed under Phase 7.
 
 ## Current qualification
 
+### F08 retained prerequisite repair — unreleased candidate
+
+Main includes the reviewed Phase 1 release and source-map-js/Perl security
+repairs through PR161 (`be6541de`). Natural main CI passed on its one unchanged
+browser retry, and CodeQL passed; the original registry-auth and earlier security
+failures remain recorded in the release receipt, not relabeled green.
+
+- [x] Replace parent-owned child cancellation/audit writes in candidate 0140
+      with canonical deterministic schema1 child intents and exact replay checks.
+- [x] Add worker-only child-owned apply before the native snapshot, with own-run
+      cancellation/audit atomicity and no preliminary receipt completion.
+- [x] Complete eleven direct PostgreSQL control/refusal/rollback/opposing-session
+      cases, including installed source/body/ACL/catalog pins.
+- [ ] Complete independent Standards/Spec rereview of the repaired source.
+- [ ] Record reviewed coherent prerequisite commits and normal hosted CI/merge.
+
+The initial direct public-store regression failed on actual 0140: its checkpoint
+predicate incorrectly required `admitted` when the sealed journal owned the child
+and the persisted checkpoint remained `awaiting_admission`. The repaired direct
+producer/child-apply replay case passes, including exactly one own-child audit.
+Prior 25 passing PostgreSQL cases did not invoke 0140 and did not qualify this
+repair. The fresh combined PostgreSQL run passes 36 cases in seven files (those
+25 retained regressions plus eleven direct control cases); seven focused unit files
+pass 56 cases. Database build, test typecheck, changed-file formatting and diff
+checks pass. These are local results, not whole hosted CI qualification.
+Fresh review requested a poisoned-lineage regression. Both actual root/depth
+poisons initially let the producer emit an intent; read-only canonical child
+lineage validation now refuses both before outbox/control/audit effects, and the
+restore path succeeds through both actual owners. Changed-database ESLint passes
+after narrow query typing/optional-chain/regex corrections. Original reviews
+remain bound to their prior source; this repaired delta needs fresh review.
+Candidate head 0141 now honestly inventories 60 functions; frozen 0139
+and 0141 bytes, original compact 0140 evidence and rejected candidate packets
+are preserved. This remains uncommitted/unpushed work, not completed prerequisite
+qualification. 0142/0143 installation and Phase2 remain open; production/writers OFF.
+
 ### F08 Phase 1 — registered inline JSON Call delivery (in progress)
 
 The proven isolated local parent → pinned child → parent milestone is recorded

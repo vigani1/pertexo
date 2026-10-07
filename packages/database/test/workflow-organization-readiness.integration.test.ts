@@ -30,7 +30,7 @@ describe.skipIf(!organizationFixtureEnabled)(
 
     it('accepts the exact installed default-off schema through real API startup readiness', async () => {
       expect(await checkDatabaseReadiness(fixture.api)).toMatchObject({
-        migrationHead: '0139_workflow_json_calls.sql',
+        migrationHead: '0141_native_attempt_lock_order.sql',
         role: 'pertexo_api',
         postgresMajor: 18,
       });
@@ -92,6 +92,8 @@ describe.skipIf(!organizationFixtureEnabled)(
           '0137_workflow_json_call_node_scope_index.sql',
           '0138_workflow_json_call_attempt_scope_index.sql',
           '0139_workflow_json_calls.sql',
+          '0140_workflow_call_controls.sql',
+          '0141_native_attempt_lock_order.sql',
         ]);
         expect(
           (
@@ -119,7 +121,7 @@ describe.skipIf(!organizationFixtureEnabled)(
           replayed: true,
         });
         expect(await checkDatabaseReadiness(previous.api)).toMatchObject({
-          migrationHead: '0139_workflow_json_calls.sql',
+          migrationHead: '0141_native_attempt_lock_order.sql',
         });
         expect(await previous.upgrade()).toEqual([]);
       } finally {

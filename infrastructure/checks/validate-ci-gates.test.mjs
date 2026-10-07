@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
 
 import { parse as parseYaml } from 'yaml';
 import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-gates.mjs';
@@ -244,6 +248,117 @@ async function currentPolicyInput() {
     workflow: await currentWorkflow(),
   };
 }
+
+test('bounds every hosted Playwright dependency owner with the identical network guard', async () => {
+  const { workflow } = await currentPolicyInput();
+  assert.deepEqual(
+    Object.entries(workflow.jobs)
+      .filter(([, job]) =>
+        job.steps?.some((step) =>
+          step.run?.includes('playwright install --with-deps'),
+        ),
+      )
+      .map(([name]) => name)
+      .sort(),
+    ['browser', 'curated-templates', 'workflow-organization-qualification'],
+  );
+  for (const owner of [
+    'curated-templates',
+    'workflow-organization-qualification',
+  ]) {
+    const job = workflow.jobs[owner];
+    const preparationIndex = job.steps.findIndex(
+      (step) => step.name === 'Bound browser dependency network acquisition',
+    );
+    assert.ok(preparationIndex >= 0, `${owner} must bound APT before install`);
+    assert.deepEqual(
+      job.steps[preparationIndex],
+      workflow.jobs.browser.steps.find(
+        (step) => step.name === 'Bound browser dependency network acquisition',
+      ),
+    );
+    assert.equal(
+      job.steps[preparationIndex + 1].run,
+      'pnpm --filter @pertexo/web exec playwright install --with-deps chromium',
+    );
+    assert.equal(job['timeout-minutes'], 35);
+    assert.equal(job['runs-on'], 'ubuntu-latest');
+  }
+});
+
+test('bounds browser APT acquisition without changing signed sources or browser coverage', async () => {
+  const { workflow } = await currentPolicyInput();
+  const browser = workflow.jobs.browser;
+  const preparationIndex = browser.steps.findIndex(
+    (step) => step.name === 'Bound browser dependency network acquisition',
+  );
+  assert.ok(preparationIndex >= 0);
+  const preparation = browser.steps[preparationIndex];
+  assert.equal(preparation.shell, 'bash');
+  assert.equal(preparation.if, undefined);
+  assert.equal(preparation['continue-on-error'], undefined);
+  assert.equal(browser['timeout-minutes'], 15);
+  assert.equal(
+    browser.steps[preparationIndex + 1].run,
+    'pnpm --filter @pertexo/web exec playwright install --with-deps chromium firefox webkit',
+  );
+
+  // Execute the actual workflow shell against disposable fixtures, not host APT.
+  // Only the three filesystem targets and privilege elevation are substituted.
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-browser-apt-'));
+  const sources = path.join(directory, 'ubuntu.sources');
+  const mirrors = path.join(directory, 'apt-mirrors.txt');
+  const configuration = path.join(directory, 'network.conf');
+  const mirrorList =
+    'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n' +
+    'https://archive.ubuntu.com/ubuntu/\tpriority:2\n' +
+    'https://security.ubuntu.com/ubuntu/\tpriority:3\n';
+  const signedSources =
+    `URIs: mirror+file:${mirrors}\n` +
+    'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n';
+  const command = preparation.run
+    .replaceAll('/etc/apt/sources.list.d/ubuntu.sources', sources)
+    .replaceAll('/etc/apt/apt-mirrors.txt', mirrors)
+    .replaceAll('/etc/apt/apt.conf.d/99-pertexo-browser-network', configuration)
+    .replace('sudo tee ', 'tee ');
+  const execute = () => promisify(execFile)('bash', ['-c', command]);
+  try {
+    await writeFile(mirrors, mirrorList);
+    await writeFile(sources, signedSources);
+    await execute();
+    assert.equal(
+      await readFile(configuration, 'utf8'),
+      'Acquire::http::Timeout "15";\nAcquire::https::Timeout "15";\nAcquire::Retries "1";\n',
+    );
+    assert.equal(await readFile(mirrors, 'utf8'), mirrorList);
+    assert.equal(await readFile(sources, 'utf8'), signedSources);
+    for (const invalidMirrors of [
+      mirrorList.replace(
+        'https://archive.ubuntu.com',
+        'http://archive.ubuntu.com',
+      ),
+      mirrorList.replace('https://archive.ubuntu.com', 'https://example.com'),
+      mirrorList.replace('\tpriority:2', '\tpriority:1'),
+      mirrorList + 'https://example.com/ubuntu/\tpriority:4\n',
+    ]) {
+      await rm(configuration, { force: true });
+      await writeFile(mirrors, invalidMirrors);
+      await assert.rejects(execute);
+      await assert.rejects(readFile(configuration), { code: 'ENOENT' });
+    }
+    await writeFile(mirrors, mirrorList);
+    for (const invalidSources of [
+      signedSources.replace('mirror+file:', 'https:'),
+      signedSources.replace('ubuntu-archive-keyring', 'untrusted-keyring'),
+    ]) {
+      await writeFile(sources, invalidSources);
+      await assert.rejects(execute);
+      await assert.rejects(readFile(configuration), { code: 'ENOENT' });
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test('requires registered inline Call HTTP qualification with strict no-skip evidence', async () => {
   const input = await currentPolicyInput();

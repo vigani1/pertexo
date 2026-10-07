@@ -185,6 +185,8 @@ describe('workspace maintenance-rerun purge upgrade', () => {
       '0137_workflow_json_call_node_scope_index.sql',
       '0138_workflow_json_call_attempt_scope_index.sql',
       '0139_workflow_json_calls.sql',
+      '0140_workflow_call_controls.sql',
+      '0141_native_attempt_lock_order.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

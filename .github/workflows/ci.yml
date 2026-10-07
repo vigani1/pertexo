@@ -229,6 +229,23 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - &browser-dependency-network
+        name: Bound browser dependency network acquisition
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Preserve the runner's signed Ubuntu sources and official mirror fallback.
+          grep -Fx 'URIs: mirror+file:/etc/apt/apt-mirrors.txt' /etc/apt/sources.list.d/ubuntu.sources
+          grep -Fx 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' /etc/apt/sources.list.d/ubuntu.sources
+          cmp -s /etc/apt/apt-mirrors.txt <(printf '%s\t%s\n' \
+            'http://azure.archive.ubuntu.com/ubuntu/' 'priority:1' \
+            'https://archive.ubuntu.com/ubuntu/' 'priority:2' \
+            'https://security.ubuntu.com/ubuntu/' 'priority:3')
+          printf '%s\n' \
+            'Acquire::http::Timeout "15";' \
+            'Acquire::https::Timeout "15";' \
+            'Acquire::Retries "1";' \
+            | sudo tee /etc/apt/apt.conf.d/99-pertexo-browser-network > /dev/null
       - name: Install Playwright browsers
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
@@ -463,6 +480,7 @@ jobs:
           node infrastructure/testing/prepare-curated-cutover-cache.mjs
       - name: Build workspace
         run: pnpm build
+      - *browser-dependency-network
       - name: Install Playwright Chromium
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
@@ -533,6 +551,7 @@ jobs:
           node infrastructure/testing/prepare-curated-cutover-cache.mjs
       - name: Build workspace
         run: pnpm build
+      - *browser-dependency-network
       - name: Install Playwright Chromium
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
