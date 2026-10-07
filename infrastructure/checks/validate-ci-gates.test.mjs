@@ -249,6 +249,43 @@ async function currentPolicyInput() {
   };
 }
 
+test('bounds every hosted Playwright dependency owner with the identical network guard', async () => {
+  const { workflow } = await currentPolicyInput();
+  assert.deepEqual(
+    Object.entries(workflow.jobs)
+      .filter(([, job]) =>
+        job.steps?.some((step) =>
+          step.run?.includes('playwright install --with-deps'),
+        ),
+      )
+      .map(([name]) => name)
+      .sort(),
+    ['browser', 'curated-templates', 'workflow-organization-qualification'],
+  );
+  for (const owner of [
+    'curated-templates',
+    'workflow-organization-qualification',
+  ]) {
+    const job = workflow.jobs[owner];
+    const preparationIndex = job.steps.findIndex(
+      (step) => step.name === 'Bound browser dependency network acquisition',
+    );
+    assert.ok(preparationIndex >= 0, `${owner} must bound APT before install`);
+    assert.deepEqual(
+      job.steps[preparationIndex],
+      workflow.jobs.browser.steps.find(
+        (step) => step.name === 'Bound browser dependency network acquisition',
+      ),
+    );
+    assert.equal(
+      job.steps[preparationIndex + 1].run,
+      'pnpm --filter @pertexo/web exec playwright install --with-deps chromium',
+    );
+    assert.equal(job['timeout-minutes'], 35);
+    assert.equal(job['runs-on'], 'ubuntu-latest');
+  }
+});
+
 test('bounds browser APT acquisition without changing signed sources or browser coverage', async () => {
   const { workflow } = await currentPolicyInput();
   const browser = workflow.jobs.browser;

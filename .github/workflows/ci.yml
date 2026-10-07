@@ -229,7 +229,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Bound browser dependency network acquisition
+      - &browser-dependency-network
+        name: Bound browser dependency network acquisition
         shell: bash
         run: |
           set -euo pipefail
@@ -479,6 +480,7 @@ jobs:
           node infrastructure/testing/prepare-curated-cutover-cache.mjs
       - name: Build workspace
         run: pnpm build
+      - *browser-dependency-network
       - name: Install Playwright Chromium
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
@@ -549,6 +551,7 @@ jobs:
           node infrastructure/testing/prepare-curated-cutover-cache.mjs
       - name: Build workspace
         run: pnpm build
+      - *browser-dependency-network
       - name: Install Playwright Chromium
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
