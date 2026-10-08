@@ -372,24 +372,6 @@ describe('PublishedWorkflowReader', () => {
 
   it('fails readiness on weakened execution constraints, policy, or worker grants', async () => {
     await withReadinessDriftLock(async () => {
-      await expect(checkDatabaseReadiness(apiPool)).resolves.toMatchObject({
-        migrationHead: '0141_native_attempt_lock_order.sql',
-      });
-      // Restore the exact admitted head after each deliberate drift. Historical
-      // V2-only restoration would itself poison subsequent policy/grant probes.
-      const original = await apiPool.query<{
-        checksum_constraint: string;
-        worker_policy: string;
-      }>(`select
-        (select pg_get_constraintdef(oid) from pg_constraint
-          where conrelid='app.workflow_versions'::regclass
-            and conname='workflow_versions_checksum_format') checksum_constraint,
-        (select pg_get_expr(polqual,polrelid) from pg_policy
-          where polrelid='app.workflow_versions'::regclass
-            and polname='workflow_versions_worker_execution_read') worker_policy`);
-      const restored = original.rows[0];
-      if (!restored?.checksum_constraint || !restored.worker_policy)
-        throw new Error('Missing admitted readiness fixture definitions');
       await executeAsOwner(`alter table app.workflow_versions
         drop constraint workflow_versions_checksum_format,
         add constraint workflow_versions_checksum_format check (true)`);
@@ -400,11 +382,21 @@ describe('PublishedWorkflowReader', () => {
       } finally {
         await executeAsOwner(`alter table app.workflow_versions
           drop constraint workflow_versions_checksum_format,
-          add constraint workflow_versions_checksum_format ${restored.checksum_constraint}`);
+          add constraint workflow_versions_checksum_format check ((
+            (checksum ~ '^wf:v1:sha256:[0-9a-f]{64}$'
+             and executable_schema_version is null
+             and executable_json is null
+             and compatibility_release_epoch is null)
+            or
+            (checksum ~ '^wf:v2:sha256:[0-9a-f]{64}$'
+             and executable_schema_version is not null
+             and executable_schema_version = 2
+             and executable_json is not null
+             and jsonb_typeof(executable_json) = 'object'
+             and compatibility_release_epoch is not null
+             and compatibility_release_epoch > 0)
+          ) is true)`);
       }
-      await expect(checkDatabaseReadiness(apiPool)).resolves.toMatchObject({
-        migrationHead: '0141_native_attempt_lock_order.sql',
-      });
 
       await executeAsOwner(`alter policy workflow_versions_worker_execution_read
         on app.workflow_versions to pertexo_dispatcher`);
@@ -425,11 +417,14 @@ describe('PublishedWorkflowReader', () => {
         );
       } finally {
         await executeAsOwner(`alter policy workflow_versions_worker_execution_read
-          on app.workflow_versions using (${restored.worker_policy})`);
+          on app.workflow_versions using (
+            workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+            and checksum like 'wf:v2:sha256:%'
+            and executable_schema_version = 2
+            and executable_json is not null
+            and compatibility_release_epoch > 0
+          )`);
       }
-      await expect(checkDatabaseReadiness(apiPool)).resolves.toMatchObject({
-        migrationHead: '0141_native_attempt_lock_order.sql',
-      });
 
       await executeAsOwner(
         'grant select (graph_json) on app.workflow_versions to pertexo_worker',

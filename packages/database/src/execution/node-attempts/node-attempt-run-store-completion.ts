@@ -24,13 +24,10 @@ import {
   withWorkspaceWriteClient,
 } from './node-attempt-run-store-transactions.js';
 import { serializeStoredExecutionValueV1 } from '../stored-execution-value.js';
-import { prepareNodeAttemptCompletionOutput } from './node-attempt-completion-output-owner.js';
-import { prepareNativeAttemptCompletionOutput } from './node-attempt-native-output-preparation.js';
 
 export async function completeNodeAttempt(
   pool: Pool,
   inputValue: Parameters<NodeAttemptRunStore['complete']>[0],
-  outputSource: 'legacy_inline' | 'workflow_call_input_alias' = 'legacy_inline',
 ): Promise<CompleteNodeAttemptResult> {
   assertNotAborted(inputValue.signal);
   let input: z.output<typeof completionSchema>;
@@ -39,19 +36,10 @@ export async function completeNodeAttempt(
   } catch {
     throw new NodeAttemptStateCorruptError();
   }
+  let serializedOutput: string | null = null;
   if (
-    outputSource === 'workflow_call_input_alias' &&
-    input.nativeOutput !== undefined
-  )
-    throw new NodeAttemptStateCorruptError();
-  const nativeOutput = prepareNativeAttemptCompletionOutput(input);
-  let serializedOutput: string | null =
-    nativeOutput?.serializedReference ?? null;
-  if (
-    outputSource === 'legacy_inline' &&
-    nativeOutput === undefined &&
-    (input.outcome.status === 'succeeded' ||
-      input.outcome.status === 'suspended')
+    input.outcome.status === 'succeeded' ||
+    input.outcome.status === 'suspended'
   ) {
     try {
       serializedOutput = serializeStoredExecutionValueV1({
@@ -72,7 +60,6 @@ export async function completeNodeAttempt(
         await client.query('select app.lock_workspace_run_admission($1)', [
           input.lease.workspaceId,
         ]);
-        assertNotAborted(input.signal);
         await validateDelivery(client, {
           workspaceId: input.lease.workspaceId,
           runId: input.lease.runId,
@@ -83,12 +70,6 @@ export async function completeNodeAttempt(
           workerId: input.lease.workerId,
           signal: input.signal,
         });
-        serializedOutput = await prepareNodeAttemptCompletionOutput(
-          client,
-          input,
-          outputSource,
-          serializedOutput,
-        );
         const receipt = await client.query<CompletionReceiptRow>(
           `select completed_at,payload_checksum
            from app.inbox_receipts
@@ -108,17 +89,11 @@ export async function completeNodeAttempt(
 
         const run = await client.query<{
           abort_requested: boolean;
-          native_execution: boolean;
         }>(
           `select (
              cancel_requested_at is not null or
              (deadline_at is not null and deadline_at <= clock_timestamp())
-           ) abort_requested,
-           exists(select 1 from app.workflow_versions version
-             where version.workspace_id=workflow_runs.workspace_id
-               and version.id=workflow_runs.workflow_version_id
-               and version.schema_version=2
-               and version.executable_schema_version=3) native_execution
+           ) abort_requested
            from app.workflow_runs
            where workspace_id=$1 and id=$2 and workflow_version_id=$3
            for update`,
@@ -174,9 +149,6 @@ export async function completeNodeAttempt(
           receiptRow,
           serializedOutput,
           run.rows[0]?.abort_requested === true,
-          outputSource === 'workflow_call_input_alias',
-          run.rows[0]?.native_execution === true,
-          nativeOutput?.snapshot,
         );
       },
     );

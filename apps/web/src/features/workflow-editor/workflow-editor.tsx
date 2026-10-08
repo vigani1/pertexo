@@ -250,7 +250,6 @@ function WorkflowEditorSession({
               workflow={workflow.data}
               shortcutsOpen={chrome.shortcutsOpen}
               onShortcutsOpenChange={chrome.onShortcutsOpenChange}
-              onInspectWorkflow={chrome.onInspectWorkflow}
               onRetrySave={() => void flushSave()}
               onReviewConflict={() => {
                 setCompareOpen(true);
@@ -262,7 +261,7 @@ function WorkflowEditorSession({
                 actions.request({ kind: 'redo' });
               }}
               commands={
-                paused || graph.schemaVersion === 2 ? null : (
+                paused ? null : (
                   <WorkflowCommandActions
                     apiClient={apiClient}
                     userId={userId}

@@ -20,8 +20,6 @@ export type EditorFocusTarget = Readonly<{
 }>;
 
 export type EditorAction =
-  | Readonly<{ kind: 'inspect-workflow' }>
-  | Readonly<{ kind: 'close-inspector' }>
   | Readonly<{
       kind: 'select';
       nodeIds: readonly string[];
@@ -71,7 +69,6 @@ export function useEditorActions({
 }: Readonly<{ store: EditorStore; isPaused: () => boolean }>) {
   const notifications = useNotifications();
   const { focusStep, ...navigation } = useInspectorNavigation();
-  const { setMobilePanel } = navigation;
   const [pendingAction, setPendingAction] = useState<EditorAction>();
   const [scratchVersion, setScratchVersion] = useState(0);
   const [focusTarget, setFocusTarget] = useState<
@@ -82,14 +79,6 @@ export function useEditorActions({
     (action: EditorAction) => {
       const state = store.getState();
       switch (action.kind) {
-        case 'inspect-workflow':
-          state.selectNodes([]);
-          setMobilePanel('inspector');
-          return;
-        case 'close-inspector':
-          state.selectNodes([]);
-          setMobilePanel('none');
-          return;
         case 'select':
           state.selectNodes(action.nodeIds);
           if (action.focusTarget !== undefined) {
@@ -141,7 +130,7 @@ export function useEditorActions({
         }
       }
     },
-    [focusStep, setMobilePanel, notifications, store],
+    [focusStep, notifications, store],
   );
 
   const request = useCallback(
@@ -221,14 +210,10 @@ function replacesInspectedStep(
   state: ReturnType<EditorStore['getState']>,
 ): boolean {
   switch (action.kind) {
-    case 'inspect-workflow':
-      return state.selectedNodeId !== null || state.selectedNodeIds.length > 0;
-    case 'close-inspector':
-      return true;
     case 'select': {
       const primary =
         action.nodeIds.length === 1 ? (action.nodeIds[0] ?? null) : null;
-      return primary !== state.selectedNodeId || state.selectedNodeId === null;
+      return primary !== state.selectedNodeId;
     }
     case 'undo':
     case 'redo':

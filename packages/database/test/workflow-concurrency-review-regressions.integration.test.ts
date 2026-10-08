@@ -21,7 +21,6 @@ import {
   workflowVersionId,
   workspaceA,
   workspaceB,
-  workspaceCreatorId,
 } from './execution-acceptance.fixtures.js';
 import {
   acceptRun,
@@ -147,25 +146,6 @@ describe('workflow concurrency review regressions', () => {
 
   it('preserves grandfathered reservation through real FIFO deferral, restart, and duplicate delivery', async () => {
     await setLimit(2);
-    // Coordinator CAS requires an actual retained executable pin, unlike generic
-    // acceptance tests that exercise reservation identity without publication.
-    await withOwner((client) =>
-      client.query(
-        `insert into app.workflow_versions(
-          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-          checksum,executable_schema_version,executable_json,
-          compatibility_release_epoch,published_by
-        ) values($1,$2,$3,1,1,'{}'::jsonb,$4,2,$5::jsonb,1,$6)`,
-        [
-          workflowVersionId,
-          workspaceA,
-          workflowId,
-          `wf:v2:sha256:${'a'.repeat(64)}`,
-          JSON.stringify({ schemaVersion: 2, graph: { nodes: [], edges: [] } }),
-          workspaceCreatorId,
-        ],
-      ),
-    );
     const first = await acceptRun();
     const second = await acceptRun();
     await acceptRun();

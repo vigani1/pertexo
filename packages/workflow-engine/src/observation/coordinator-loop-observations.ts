@@ -1,4 +1,4 @@
-import { inspectForEachCollection } from '@pertexo/workflow-model';
+import { createHash } from 'node:crypto';
 
 import {
   canonicalJson,
@@ -85,14 +85,6 @@ function loopObservationKey(observation: WorkflowObservation): string {
   return `${controlKey}:1:${String(observation.ordinal).padStart(16, '0')}`;
 }
 
-export function orderForEachObservations(
-  observations: readonly WorkflowObservation[],
-): readonly WorkflowObservation[] {
-  return [...observations].sort((left, right) =>
-    compareOrdinal(loopObservationKey(left), loopObservationKey(right)),
-  );
-}
-
 export function forEachCoordinatorObservations(
   completedItems: readonly JsonValue[],
   persistedItems: readonly JsonValue[],
@@ -101,12 +93,11 @@ export function forEachCoordinatorObservations(
   invocations: ReadonlyMap<string, CheckpointInvocation>,
   nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
   derivedObservations: readonly WorkflowObservation[] = [],
-  knownDeclarationInvocationKeys: ReadonlySet<string> = new Set(),
 ): Readonly<{
   observations: readonly WorkflowObservation[];
   declarationInvocationKeys: ReadonlySet<string>;
 }> {
-  const declarations = new Set(knownDeclarationInvocationKeys);
+  const declarations = new Set<string>();
   const declarationMaterials = new Map<string, string>();
   const observations: WorkflowObservation[] = [];
   const terminalOutcomes = terminalOutcomesForLoop(
@@ -157,12 +148,19 @@ export function forEachCoordinatorObservations(
     declarationMaterials.set(invocation.invocationKey, canonicalMaterial);
     if (material.value === undefined)
       operationError('observation_invalid', 'For Each output is missing');
-    let collection;
-    try {
-      collection = inspectForEachCollection(material.value);
-    } catch {
+    const output = record(
+      material.value,
+      'observation_invalid',
+      'For Each output',
+    );
+    exactKeys(output, ['items', 'iterationCount']);
+    if (
+      !Array.isArray(output.items) ||
+      typeof output.iterationCount !== 'number' ||
+      !Number.isSafeInteger(output.iterationCount) ||
+      output.iterationCount !== output.items.length
+    )
       operationError('observation_invalid', 'For Each output is invalid');
-    }
     const body = node.structured.body;
     const targets = new Set(body.edges.map(({ target }) => target.nodeId));
     const sources = new Set(body.edges.map(({ source }) => source.nodeId));
@@ -192,8 +190,10 @@ export function forEachCoordinatorObservations(
       bodyRootNodeIds: roots,
       bodySinkNodeId: sinks[0] ?? '',
       collection: outputReference,
-      collectionChecksum: collection.collectionChecksum,
-      collectionSize: collection.collectionSize,
+      collectionChecksum: createHash('sha256')
+        .update(canonicalJson(output.items))
+        .digest('hex'),
+      collectionSize: output.items.length,
       maxIterations: node.structured.maxIterations,
       maxConcurrency: node.structured.maxConcurrency,
       coordinatorDerived: true,
@@ -244,8 +244,8 @@ export function forEachCoordinatorObservations(
       });
     }
   }
-  return {
-    observations: orderForEachObservations(observations),
-    declarationInvocationKeys: declarations,
-  };
+  observations.sort((left, right) =>
+    compareOrdinal(loopObservationKey(left), loopObservationKey(right)),
+  );
+  return { observations, declarationInvocationKeys: declarations };
 }

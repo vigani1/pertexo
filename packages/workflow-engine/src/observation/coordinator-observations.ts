@@ -2,15 +2,13 @@ import {
   canonicalJson,
   type JsonValue,
 } from '@pertexo/workflow-model/canonical-json';
-import {
-  inspectBranchSelection,
-  inspectParallelDeclaration,
-} from '@pertexo/workflow-model';
 
 import type { parseCheckpoint } from '../checkpoint/checkpoint.js';
 import { executableEdges } from '../compilation/executable-graph.js';
-import type { WorkflowExecutableNodeV2 } from '../executable-workflow.js';
-import type { CompiledWorkflowExecutable } from '../compilation/executable-authentication.js';
+import type {
+  CompiledWorkflowExecutableV2,
+  WorkflowExecutableNodeV2,
+} from '../executable-workflow.js';
 import { completedOutputReference } from './coordinator-output.js';
 import {
   configuredBranchOutputPorts,
@@ -85,11 +83,20 @@ export function branchSelectionObservations(
         );
       if (material.value === undefined)
         operationError('observation_invalid', 'Parallel output is missing');
-      try {
-        inspectParallelDeclaration(material.value, parallelPorts);
-      } catch {
+      const completedValue = record(
+        material.value,
+        'observation_invalid',
+        'Parallel output',
+      );
+      exactKeys(completedValue, ['branchIds']);
+      if (
+        !Array.isArray(completedValue.branchIds) ||
+        completedValue.branchIds.length !== parallelPorts.length ||
+        completedValue.branchIds.some(
+          (branchId, index) => branchId !== parallelPorts[index],
+        )
+      )
         operationError('observation_invalid', 'Parallel output is invalid');
-      }
       verifiedParallelOutputs.add(outcomeIdentity);
       return [];
     }
@@ -98,18 +105,23 @@ export function branchSelectionObservations(
     const completedValue = material.value;
     if (completedValue === undefined)
       operationError('observation_invalid', 'branch output is missing');
-    let selectedPort;
-    try {
-      selectedPort = inspectBranchSelection(completedValue, outputPorts);
-    } catch {
+    const output = record(
+      completedValue,
+      'observation_invalid',
+      'branch output',
+    );
+    exactKeys(output, ['selectedPort']);
+    if (
+      typeof output.selectedPort !== 'string' ||
+      !outputPorts.includes(output.selectedPort)
+    )
       operationError('observation_invalid', 'branch output is invalid');
-    }
     return [
       {
         kind: 'branch_selected',
         invocationKey: material.invocationKey,
         nodeId: node.id,
-        selectedOutputPort: selectedPort,
+        selectedOutputPort: output.selectedPort,
         coordinatorDerived: true,
       },
     ];
@@ -133,11 +145,10 @@ export function branchSelectionObservations(
 }
 
 export function mergeCoordinatorObservations(
-  executable: CompiledWorkflowExecutable,
+  executable: CompiledWorkflowExecutableV2,
   checkpoint: ReturnType<typeof parseCheckpoint>,
   observations: readonly WorkflowObservation[],
   nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
-  nativeControlStopped = false,
 ): readonly WorkflowObservation[] {
   const projected = new Map(
     checkpoint.invocations.map((invocation) => [
@@ -198,13 +209,6 @@ export function mergeCoordinatorObservations(
               ? {}
               : { iterationPath: parallelInvocation.iterationPath }),
           });
-          if (
-            nativeControlStopped &&
-            !checkpoint.joins.some(
-              (join) => join.joinInvocationKey === joinInvocationKey,
-            )
-          )
-            return [];
           const declared: WorkflowObservation = {
             kind: 'join_declared',
             joinId: merge.id,

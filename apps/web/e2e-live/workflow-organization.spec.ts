@@ -417,26 +417,6 @@ async function qualifyExtended(input: {
   const betaName = 'Organization Beta';
   const listPath = `/w/${workspaceId}/workflows`;
   await phase('partial');
-  // A bulk response is not UI completion: current authority is checked again.
-  // Hold that real read to prove outcomes stay hidden until it can complete.
-  let bulkAccepted = false;
-  let authorityReadStarted: (() => void) | undefined;
-  let releaseAuthorityRead: (() => void) | undefined;
-  const authorityReadStartedPromise = new Promise<void>((resolve) => {
-    authorityReadStarted = resolve;
-  });
-  const releaseAuthorityReadPromise = new Promise<void>((resolve) => {
-    releaseAuthorityRead = resolve;
-  });
-  let authorityReadHeld = false;
-  await page.route(/\/v1\/workspaces(?:\?.*)?$/u, async (route) => {
-    if (bulkAccepted && !authorityReadHeld) {
-      authorityReadHeld = true;
-      authorityReadStarted?.();
-      await releaseAuthorityReadPromise;
-    }
-    await route.continue();
-  });
   const concurrent = await page.context().newPage();
   try {
     await concurrent.goto(listPath);
@@ -455,7 +435,6 @@ async function qualifyExtended(input: {
         await organize(concurrent, alphaName, 'move', 'Unfiled / top level');
         const actual = await route.fetch();
         expect(actual.status()).toBe(200);
-        bulkAccepted = true;
         const result = workflowOrganizationBulkResponseSchema.parse(
           await actual.json(),
         );
@@ -504,15 +483,6 @@ async function qualifyExtended(input: {
         exact: true,
       })
       .getByRole('listitem');
-    await authorityReadStartedPromise;
-    await expect(outcomes).toHaveCount(0);
-    await expect(
-      dialog.getByRole('button', { name: 'Confirming…', exact: true }),
-    ).toBeDisabled();
-    releaseAuthorityRead?.();
-    await dialog
-      .getByRole('button', { name: 'Confirming…', exact: true })
-      .waitFor({ state: 'hidden' });
     await expect(outcomes).toHaveCount(2);
     await expect(outcomes.nth(0)).toContainText(betaName);
     await expect(outcomes.nth(0)).toContainText('Updated');
@@ -534,7 +504,6 @@ async function qualifyExtended(input: {
       (await projection(page, workspaceId, beta)).organization.folderId,
     ).toBe(null);
   } finally {
-    releaseAuthorityRead?.();
     await concurrent.close();
   }
   await expect(

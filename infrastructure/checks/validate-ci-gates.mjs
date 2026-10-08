@@ -214,108 +214,6 @@ function requiredFailClosedCommand(step, expectedCommand, label) {
     fail(`${label} must fail closed and invoke its exact command`);
 }
 
-export const INLINE_CALL_HTTP_COMMAND =
-  'node --test --test-reporter=./infrastructure/testing/inline-workflow-call-gate-reporter.mjs infrastructure/testing/inline-workflow-call-http.integration.test.mjs';
-export const INLINE_CALL_HTTP_VALIDATE_COMMAND =
-  'node infrastructure/coverage/validate-vitest-gate-report.mjs "$INLINE_WORKFLOW_CALL_GATE_REPORT" \'Registered inline Call HTTP qualification\' 1';
-
-function requiredInlineCallHttpOwner(workflow, jobs) {
-  const name = 'inline-workflow-call-http';
-  const job = jobs[name];
-  if (
-    !job ||
-    job.if !== undefined ||
-    job.needs !== undefined ||
-    job.strategy !== undefined ||
-    job['continue-on-error'] !== undefined ||
-    job['timeout-minutes'] !== 15
-  )
-    fail(
-      'inline Call HTTP owner must be unconditional, fail closed and bounded to 15 minutes',
-    );
-  if (
-    job.env?.COMPOSE_PROJECT_NAME !==
-      'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-inline-workflow-call-http' ||
-    job.env?.INLINE_WORKFLOW_CALL_HTTP_INTEGRATION !== 'true' ||
-    job.env?.INLINE_WORKFLOW_CALL_GATE_REPORT !== undefined
-  )
-    fail(
-      'inline Call HTTP owner must retain its dynamic project and mandatory flag without a job-level runner report',
-    );
-  const steps = jobSteps(jobs, name);
-  const required = (command) => {
-    const matches = steps.filter(
-      (step) => normalizedShellCommand(step.run) === command,
-    );
-    if (
-      matches.length !== 1 ||
-      matches[0].if !== undefined ||
-      matches[0]['continue-on-error'] !== undefined
-    )
-      fail(`inline Call HTTP owner must require exactly one ${command}`);
-    return steps.indexOf(matches[0]);
-  };
-  const install = required('pnpm install --frozen-lockfile');
-  const build = required('pnpm build');
-  const start = required(
-    'docker compose up -d --wait --wait-timeout 120 postgres redis',
-  );
-  const command = [
-    'set -euo pipefail',
-    'mkdir -p "$RUNNER_TEMP/inline-workflow-call-http"',
-    'test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"',
-    'test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"',
-    INLINE_CALL_HTTP_COMMAND,
-    INLINE_CALL_HTTP_VALIDATE_COMMAND,
-  ].join(' ');
-  const qualification = required(command);
-  if (!(install < build && build < start && start < qualification))
-    fail(
-      'inline Call HTTP qualification must follow frozen installation, build and bounded services',
-    );
-  const selected = steps[qualification];
-  if (
-    selected.env?.INLINE_WORKFLOW_CALL_GATE_REPORT !==
-    '${{ runner.temp }}/inline-workflow-call-http/report.json'
-  )
-    fail(
-      'inline Call HTTP qualification must own its exact runner report path',
-    );
-  for (const [key, value] of Object.entries({
-    ...CURATED_TEMPLATE_DATABASE_URLS,
-    DATABASE_OPERATOR_URL:
-      'postgresql://pertexo_operator:pertexo-local-operator@127.0.0.1:5432/pertexo',
-  }))
-    if (
-      (selected.env?.[key] ?? job.env?.[key] ?? workflow.env?.[key]) !== value
-    )
-      fail(`inline Call HTTP owner must use standard ${key}`);
-  const cleanup = steps.filter(
-    (step) =>
-      step.if === 'always()' &&
-      step['continue-on-error'] === undefined &&
-      normalizedShellCommand(step.run) ===
-        'timeout 120 docker compose down -v --remove-orphans',
-  );
-  const upload = steps.filter(
-    (step) =>
-      step.if === 'always()' &&
-      step['continue-on-error'] === undefined &&
-      step.uses?.startsWith('actions/upload-artifact@') &&
-      step.with?.path === '${{ runner.temp }}/inline-workflow-call-http' &&
-      step.with?.['if-no-files-found'] === 'error',
-  );
-  if (
-    cleanup.length !== 1 ||
-    upload.length !== 1 ||
-    steps.indexOf(cleanup[0]) <= qualification ||
-    steps.indexOf(upload[0]) <= qualification
-  )
-    fail(
-      'inline Call HTTP owner must retain bounded always-cleanup and required report upload',
-    );
-}
-
 function requiredWorkflowOrganizationFixture(qualification, command) {
   if (
     qualification.env?.DATABASE_MAINTENANCE_URL !==
@@ -513,45 +411,16 @@ function ownedOrganizationTestFiles(...ids) {
   );
 }
 
-function requiredOrdinaryDraftFixtureOwner(step, command) {
-  if (
-    step.env?.EDITOR_BROWSER_OWNED_FIXTURE !== 'true' ||
-    step.if !== undefined ||
-    step['continue-on-error'] === true
-  )
-    fail(
-      'ordinary draft integration must require unconditional owned fixtures',
-    );
-  const manifest = 'export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn';
-  if (!command.startsWith('set -euo pipefail ') || !command.includes(manifest))
-    fail(
-      'ordinary draft integration must fail closed and construct its manifest',
-    );
-  for (const witness of [
-    'postgres_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q postgres)")',
-    'redis_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q redis)")',
-    '--arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id"',
-    '--argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT"',
-    "'{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}'",
-  ])
-    if (!command.includes(witness))
-      fail('ordinary draft integration is missing its exact fixture witness');
-  if (command.indexOf(manifest) > command.indexOf('pnpm --filter'))
-    fail('ordinary draft integration must attest ownership before its suites');
-}
-
 function requiredFeatureOrdinaryExclusions(jobs) {
   const steps = jobSteps(jobs, 'integration');
   const commandFor = (report) => {
     const output = `--outputFile=../../${report}`;
-    const matches = steps.filter((step) =>
-      normalizedShellCommand(step.run).includes(output),
-    );
+    const matches = steps
+      .map((step) => normalizedShellCommand(step.run))
+      .filter((command) => command.includes(output));
     if (matches.length !== 1)
       fail(`curated-template routing requires one ordinary ${report} owner`);
-    const command = normalizedShellCommand(matches[0].run);
-    requiredOrdinaryDraftFixtureOwner(matches[0], command);
-    return command;
+    return matches[0];
   };
   const exclusions = (command, packageName, report) => {
     const marker = `pnpm --filter ${packageName} exec vitest run`;
@@ -602,7 +471,6 @@ function requiredFeatureOrdinaryExclusions(jobs) {
 export function validateCiGatePolicy({ packageManifest, workflow }) {
   const scripts = packageScripts(packageManifest);
   const jobs = workflowJobs(workflow);
-  requiredInlineCallHttpOwner(workflow, jobs);
   requiredFeatureQualificationOwner(jobs, {
     job: CURATED_TEMPLATE_JOB,
     label: 'curated-template',

@@ -76,12 +76,6 @@ function coordinatorQueryKind(text: string): string {
     return 'begin_repeatable_read_only';
   if (normalized.includes("set_config('app.workspace_id'"))
     return 'install_workspace_context';
-  if (
-    normalized.startsWith(
-      'select version.schema_version as graph_schema_version,',
-    )
-  )
-    return 'executable_classification';
   if (normalized.includes('from app.workflow_runs run'))
     return 'run_checkpoint';
   if (
@@ -188,8 +182,6 @@ function observedCoordinatorStore(afterQuery?: (kind: string) => void) {
       throw new Error('Coordinator test expected promise-based pool checkout');
     return connectWithPromise.call(this).then((client) => {
       clientsAcquired += 1;
-      const priorQuery = Reflect.get(client, 'query');
-      const priorRelease = Reflect.get(client, 'release');
       const originalQuery = client.query.bind(client) as unknown as (
         ...queryArguments: unknown[]
       ) => unknown;
@@ -204,13 +196,6 @@ function observedCoordinatorStore(afterQuery?: (kind: string) => void) {
           return value;
         });
       }) as typeof client.query;
-      client.release = (...releaseArguments: unknown[]) => {
-        // A pooled client can be checked out again for the payload snapshot.
-        // Restore the boundary before release rather than wrapping it twice.
-        client.query = priorQuery;
-        client.release = priorRelease;
-        Reflect.apply(priorRelease, client, releaseArguments);
-      };
       return client;
     });
   } as typeof Pool.prototype.connect;
@@ -251,16 +236,6 @@ function observedKinds(
 ): readonly string[] {
   return queries.map(({ kind }) => kind);
 }
-
-const classificationKinds = [
-  'empty_tenant_context',
-  'begin_repeatable_read_only',
-  'install_workspace_context',
-  'verify_workspace_context',
-  'executable_classification',
-  'commit',
-  'empty_tenant_context',
-] as const;
 
 describe('Coordinator observation integrity invariants', () => {
   it.each([
@@ -679,7 +654,7 @@ describe('Coordinator observation integrity invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0141_native_attempt_lock_order.sql',
+      migrationHead: '0135_workflow_folders_batch_identity.sql',
     });
     await readinessPool.end();
   });
@@ -717,7 +692,7 @@ describe('Coordinator observation integrity invariants', () => {
     ).resolves.toEqual({ kind: 'not_found' });
   });
 
-  it('classifies metadata before loading observations in one separate repeatable-read snapshot', async () => {
+  it('retrospectively characterizes the normal observation query sequence on one repeatable-read client', async () => {
     const runId = await insertRun({});
     const observed = observedCoordinatorStore();
     try {
@@ -729,9 +704,8 @@ describe('Coordinator observation integrity invariants', () => {
         }),
       ).resolves.toMatchObject({ kind: 'ready' });
 
-      expect(observed.clientsAcquired).toBe(2);
+      expect(observed.clientsAcquired).toBe(1);
       expect(observedKinds(observed.observedQueries)).toEqual([
-        ...classificationKinds,
         'empty_tenant_context',
         'begin_repeatable_read_only',
         'install_workspace_context',
@@ -749,7 +723,7 @@ describe('Coordinator observation integrity invariants', () => {
     }
   });
 
-  it('paginates 1,000-row observations without checkouts beyond classification and snapshot', async () => {
+  it('retrospectively characterizes 1,000-row observation pagination without extra clients', async () => {
     const runId = await insertRun({});
     await asOwner(workspaceA, (client) =>
       client.query(
@@ -778,9 +752,8 @@ describe('Coordinator observation integrity invariants', () => {
       expect(loaded).toMatchObject({ kind: 'ready' });
       if (loaded.kind !== 'ready') throw new Error('expected ready state');
       expect(loaded.state.observations).toHaveLength(1_001);
-      expect(observed.clientsAcquired).toBe(2);
+      expect(observed.clientsAcquired).toBe(1);
       expect(observedKinds(observed.observedQueries)).toEqual([
-        ...classificationKinds,
         'empty_tenant_context',
         'begin_repeatable_read_only',
         'install_workspace_context',
@@ -816,9 +789,15 @@ describe('Coordinator observation integrity invariants', () => {
         }),
       ).resolves.toEqual({ kind: 'not_found' });
       expect(missing.clientsAcquired).toBe(1);
-      expect(observedKinds(missing.observedQueries)).toEqual(
-        classificationKinds,
-      );
+      expect(observedKinds(missing.observedQueries)).toEqual([
+        'empty_tenant_context',
+        'begin_repeatable_read_only',
+        'install_workspace_context',
+        'verify_workspace_context',
+        'run_checkpoint',
+        'commit',
+        'empty_tenant_context',
+      ]);
     } finally {
       await missing.close();
     }
@@ -835,9 +814,8 @@ describe('Coordinator observation integrity invariants', () => {
           signal: new AbortController().signal,
         }),
       ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
-      expect(corrupt.clientsAcquired).toBe(2);
+      expect(corrupt.clientsAcquired).toBe(1);
       expect(observedKinds(corrupt.observedQueries)).toEqual([
-        ...classificationKinds,
         'empty_tenant_context',
         'begin_repeatable_read_only',
         'install_workspace_context',
@@ -866,9 +844,8 @@ describe('Coordinator observation integrity invariants', () => {
           signal: controller.signal,
         }),
       ).rejects.toMatchObject({ name: 'AbortError' });
-      expect(observed.clientsAcquired).toBe(2);
+      expect(observed.clientsAcquired).toBe(1);
       expect(observedKinds(observed.observedQueries)).toEqual([
-        ...classificationKinds,
         'empty_tenant_context',
         'begin_repeatable_read_only',
         'install_workspace_context',

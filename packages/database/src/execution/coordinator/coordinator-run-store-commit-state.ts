@@ -27,21 +27,14 @@ import {
   validateTransitionDelta,
 } from './coordinator-run-store-plan.js';
 import {
-  parseCoordinatorCheckpoint,
-  coordinatorExecutableFormat,
-  type CoordinatorCheckpoint as PersistedWorkflowCheckpoint,
-} from './coordinator-checkpoint.js';
+  parsePersistedWorkflowCheckpoint,
+  type PersistedWorkflowCheckpoint,
+} from '../../compatibility/persisted-workflow-checkpoint.js';
 import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
 import type { RejectedForEachDeclaration } from './coordinator-rejected-loop-proof.js';
-import { lockCoordinatorControlSettlements } from './coordinator-control-settlements.js';
-import { loadCoordinatorCallFacts } from './coordinator-call-facts.js';
-import type { prepareCoordinatorControls } from './coordinator-control-preparation.js';
-import type { StoppedForEachDeclarations } from './coordinator-stopped-loop-proof.js';
+import { loadRejectedForEachDeclarations } from './coordinator-rejected-loop-load.js';
 
 export type CoordinatorCommitRow = Readonly<{
-  executable_schema_version: number;
-  graph_schema_version: number;
-  executable_checksum: string;
   revision: number;
   scheduler_state: unknown;
   last_transition_fingerprint: string | null;
@@ -79,7 +72,6 @@ export type CoordinatorCommitState =
       currentCheckpoint: PersistedWorkflowCheckpoint;
       pendingFailures: readonly PendingCoordinatorFailure[];
       authoritativeCancellation: boolean;
-      stoppedForEachDeclarations: StoppedForEachDeclarations;
       rejectedForEachDeclarations: ReadonlyMap<
         string,
         RejectedForEachDeclaration
@@ -130,89 +122,6 @@ async function lockPendingFailures(
   );
 }
 
-async function readCommitPersistedFacts(
-  client: PoolClient,
-  workspaceId: string,
-  runId: string,
-  currentCheckpoint: PersistedWorkflowCheckpoint,
-  plan: ParsedTransitionPlan,
-) {
-  const highWaterResult = await client.query<{ high_water: number }>(
-    `select coalesce(max(sequence), 0)::int as high_water
-       from app.run_events
-       where workspace_id = $1 and workflow_run_id = $2`,
-    [workspaceId, runId],
-  );
-  if (highWaterResult.rows[0]?.high_water !== plan.consumedThroughEventSequence)
-    return undefined;
-
-  const expectedPersistedFactCount = Math.max(
-    0,
-    plan.consumedThroughEventSequence - currentCheckpoint.nextEventSequence + 1,
-  );
-  const factCapacity = await persistedFactCapacity(
-    client,
-    workspaceId,
-    runId,
-    currentCheckpoint.nextEventSequence,
-    plan.consumedThroughEventSequence,
-  );
-  if (factCapacity.count !== expectedPersistedFactCount) return undefined;
-  if (factCapacity.count > maximumPersistedFacts)
-    throw new CoordinatorRunStateCorruptError();
-  const persistedFacts = await readPersistedFacts(client, {
-    count: factCapacity.count,
-    firstSequence: currentCheckpoint.nextEventSequence,
-    lastSequence: plan.consumedThroughEventSequence,
-    maximumStorageBytes: factCapacity.maximumStorageBytes,
-    runId,
-    workspaceId,
-  });
-  if (persistedFacts.length !== expectedPersistedFactCount) return undefined;
-  validatePersistedFactBatch(persistedFacts);
-  return persistedFacts;
-}
-
-async function lockCoordinatorCommitRow(
-  client: PoolClient,
-  workspaceId: string,
-  runId: string,
-): Promise<CoordinatorCommitRow | undefined> {
-  // A joined locking clause does not promise row-lock acquisition order. All
-  // checkpoint writers must serialize on the exact run before its checkpoint.
-  const run = await client.query<{ id: string }>(
-    `select id from app.workflow_runs
-     where workspace_id=$1 and id=$2 for no key update`,
-    [workspaceId, runId],
-  );
-  if (run.rows[0] === undefined) return undefined;
-  const checkpoint = await client.query<CoordinatorCommitRow>(
-    `select checkpoint.revision, checkpoint.scheduler_state,
-            checkpoint.last_transition_fingerprint,
-            checkpoint.workflow_version_id, run.status,version.executable_schema_version,
-            version.schema_version as graph_schema_version,version.checksum as executable_checksum,
-            run.cancel_requested_at,run.workflow_id,run.trigger_type,
-            run.started_at,run.created_at,
-            run.failure_notification_policy_version,
-            run.failure_notification_destination_id,
-            run.failure_notification_destination_config_version,
-            run.failure_notification_side_effect_class,
-            run.execution_entitlement_version,run.input_ref,
-            run.deadline_at is not null
-              and run.deadline_at <= clock_timestamp() as deadline_expired
-       from app.workflow_runs run
-       join app.run_checkpoints checkpoint
-         on checkpoint.workspace_id = run.workspace_id
-        and checkpoint.workflow_run_id = run.id
-       join app.workflow_versions version
-         on version.workspace_id=run.workspace_id and version.id=run.workflow_version_id
-       where run.workspace_id = $1 and run.id = $2
-       for no key update of checkpoint`,
-    [workspaceId, runId],
-  );
-  return checkpoint.rows[0];
-}
-
 export async function lockCoordinatorCommitState(
   client: PoolClient,
   input: Readonly<{
@@ -224,7 +133,6 @@ export async function lockCoordinatorCommitState(
     traceparent?: string;
     workflowVersionId: string;
     workspaceId: string;
-    preparedControls?: Awaited<ReturnType<typeof prepareCoordinatorControls>>;
   }>,
 ): Promise<CoordinatorCommitState> {
   const {
@@ -243,14 +151,30 @@ export async function lockCoordinatorCommitState(
     runId,
     delivery,
   );
-  const row = await lockCoordinatorCommitRow(client, workspaceId, runId);
+  const locked = await client.query<CoordinatorCommitRow>(
+    `select checkpoint.revision, checkpoint.scheduler_state,
+            checkpoint.last_transition_fingerprint,
+            checkpoint.workflow_version_id, run.status,
+            run.cancel_requested_at,run.workflow_id,run.trigger_type,
+            run.started_at,run.created_at,
+            run.failure_notification_policy_version,
+            run.failure_notification_destination_id,
+            run.failure_notification_destination_config_version,
+            run.failure_notification_side_effect_class,
+            run.execution_entitlement_version,run.input_ref,
+            run.deadline_at is not null
+              and run.deadline_at <= clock_timestamp() as deadline_expired
+       from app.workflow_runs run
+       join app.run_checkpoints checkpoint
+         on checkpoint.workspace_id = run.workspace_id
+        and checkpoint.workflow_run_id = run.id
+       where run.workspace_id = $1 and run.id = $2
+       for no key update of run, checkpoint`,
+    [workspaceId, runId],
+  );
+  const row = locked.rows[0];
   if (row === undefined) return outcome({ kind: 'not_found' });
   if (row.workflow_version_id !== workflowVersionId)
-    throw new CoordinatorPlanInvalidError();
-  const executableFormat = coordinatorExecutableFormat(row);
-  if (executableFormat === undefined)
-    throw new CoordinatorRunStateCorruptError();
-  if ((executableFormat === 3) !== (plan.checkpoint.schemaVersion === 3))
     throw new CoordinatorPlanInvalidError();
   if (row.revision !== plan.expectedRevision) {
     if (
@@ -272,10 +196,7 @@ export async function lockCoordinatorCommitState(
 
   let currentCheckpoint: PersistedWorkflowCheckpoint;
   try {
-    currentCheckpoint = parseCoordinatorCheckpoint(
-      row.scheduler_state,
-      executableFormat,
-    );
+    currentCheckpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }
@@ -294,34 +215,54 @@ export async function lockCoordinatorCommitState(
   )
     throw new CoordinatorPlanInvalidError();
 
-  const persistedFacts = await readCommitPersistedFacts(
+  const highWaterResult = await client.query<{ high_water: number }>(
+    `select coalesce(max(sequence), 0)::int as high_water
+       from app.run_events
+       where workspace_id = $1 and workflow_run_id = $2`,
+    [workspaceId, runId],
+  );
+  if (highWaterResult.rows[0]?.high_water !== plan.consumedThroughEventSequence)
+    return outcome({ kind: 'stale', revision: row.revision });
+
+  const expectedPersistedFactCount = Math.max(
+    0,
+    plan.consumedThroughEventSequence - currentCheckpoint.nextEventSequence + 1,
+  );
+  const factCapacity = await persistedFactCapacity(
     client,
     workspaceId,
     runId,
-    currentCheckpoint,
-    plan,
+    currentCheckpoint.nextEventSequence,
+    plan.consumedThroughEventSequence,
   );
-  if (persistedFacts === undefined)
+  if (factCapacity.count !== expectedPersistedFactCount)
     return outcome({ kind: 'stale', revision: row.revision });
+  if (factCapacity.count > maximumPersistedFacts)
+    throw new CoordinatorRunStateCorruptError();
+  const persistedFacts = await readPersistedFacts(client, {
+    count: factCapacity.count,
+    firstSequence: currentCheckpoint.nextEventSequence,
+    lastSequence: plan.consumedThroughEventSequence,
+    maximumStorageBytes: factCapacity.maximumStorageBytes,
+    runId,
+    workspaceId,
+  });
+  if (persistedFacts.length !== expectedPersistedFactCount)
+    return outcome({ kind: 'stale', revision: row.revision });
+  validatePersistedFactBatch(persistedFacts);
 
-  const {
-    rejectedForEachDeclarations,
-    stoppedForEachDeclarations,
-    stoppedPendingInvocations,
-  } = await lockCoordinatorControlSettlements(
+  const rejectedForEachDeclarations = await loadRejectedForEachDeclarations(
     client,
-    input,
-    currentCheckpoint,
-    persistedFacts,
-    row.cancel_requested_at !== null,
-    row.deadline_expired,
+    {
+      workspaceId,
+      workflowVersionId,
+      currentCheckpoint,
+      plan,
+      persistedFacts,
+    },
   );
 
   const pendingFailures = await lockPendingFailures(client, workspaceId, runId);
-  const callFacts =
-    currentCheckpoint.schemaVersion === 3
-      ? await loadCoordinatorCallFacts(client, runId)
-      : [];
   validateStatusTransitions(
     currentCheckpoint,
     plan,
@@ -334,9 +275,6 @@ export async function lockCoordinatorCommitState(
       ...pendingFailures.rows.map(pendingFailureFact),
     ],
     new Set(rejectedForEachDeclarations.keys()),
-    callFacts,
-    new Set(stoppedForEachDeclarations.keys()),
-    stoppedPendingInvocations,
   );
   if (
     (currentCheckpoint.cancelRequested && row.cancel_requested_at === null) ||
@@ -380,6 +318,5 @@ export async function lockCoordinatorCommitState(
     pendingFailures: pendingFailures.rows,
     authoritativeCancellation,
     rejectedForEachDeclarations,
-    stoppedForEachDeclarations,
   });
 }

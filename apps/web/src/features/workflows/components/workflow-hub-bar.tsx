@@ -102,9 +102,8 @@ export function WorkflowHubBar({
     workflow === undefined ? undefined : describeWorkflowState(workflow);
   return (
     // On wide screens the tabs sit in a centre column of their own, so a
-    // long name or a busy action group never pushes them sideways. Both
-    // side columns retain identity space: actions wrap instead of erasing it.
-    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-2 py-2 xl:grid xl:grid-cols-[minmax(16rem,1fr)_auto_minmax(0,max-content)]">
+    // long name or a busy action group never pushes them sideways.
+    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-2 py-2 xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(max-content,1fr)]">
       <div className="flex min-w-[min(100%,12rem)] flex-1 items-center gap-3 xl:min-w-0">
         <Link
           to="/w/$workspaceId/workflows"
@@ -115,7 +114,7 @@ export function WorkflowHubBar({
           <ArrowLeftIcon aria-hidden="true" />
         </Link>
         {glyph}
-        <div className="min-w-0 [overflow-wrap:anywhere]">
+        <div className="min-w-0">
           {workflow === undefined ? (
             // The name is still loading: hold its place instead of showing
             // a stand-in word that then changes.

@@ -140,7 +140,6 @@ test('owned complete examples retain historical origin through independent edits
     ).toBeDisabled();
     const id = await importReviewedDraft(page, dialog);
     importedWorkflowIds.push(id);
-    await assertImportedToolbar(page, descriptor);
     await expect(
       page.getByText(
         `Originally based on ${descriptor.templateId}, version ${String(descriptor.templateVersion)}`,
@@ -284,74 +283,3 @@ test('owned complete examples retain historical origin through independent edits
   );
   expect(evidence.ok()).toBe(true);
 });
-
-async function assertImportedToolbar(
-  page: Page,
-  descriptor: (typeof CURATED_WORKFLOW_TEMPLATES)[number],
-) {
-  for (const width of [1280, 1536, 375]) {
-    await page.setViewportSize({ width, height: 720 });
-    const title = page.getByRole('heading', {
-      name: `Independent ${descriptor.templateId}`,
-      exact: true,
-    });
-    await expect(title).toBeVisible();
-    expect((await title.boundingBox())?.width).toBeGreaterThan(100);
-    await expect(
-      page.getByText(
-        `Originally based on ${descriptor.templateId}, version ${String(descriptor.templateVersion)}`,
-        { exact: false },
-      ),
-    ).toBeVisible();
-    for (const name of [
-      'Export…',
-      'Input cases',
-      'Duplicate…',
-      'Publish v1',
-      'Run (publish first)',
-    ]) {
-      const action = page.getByRole('button', { name, exact: true });
-      await expect(action).toBeVisible();
-      const bounds = await action.boundingBox();
-      expect(bounds).not.toBeNull();
-      expect(bounds?.x).toBeGreaterThanOrEqual(0);
-      expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(
-        width,
-      );
-    }
-    await expect(
-      page.getByRole('navigation', { name: 'Workflow sections' }),
-    ).toBeVisible();
-    if (width < 640) {
-      await page
-        .getByRole('button', { name: 'More editor actions', exact: true })
-        .click();
-      const callable = page.getByRole('menuitem', {
-        name: 'Callable contract',
-        exact: true,
-      });
-      await callable.focus();
-      await expect(callable).toBeFocused();
-      await page.keyboard.press('Enter');
-    } else {
-      const callable = page.getByRole('button', {
-        name: 'Callable contract',
-        exact: true,
-      });
-      await expect(callable).toHaveAttribute('title', 'Callable contract');
-      await callable.focus();
-      await expect(callable).toBeFocused();
-      await page.keyboard.press('Enter');
-    }
-    const contract = page.getByRole('region', {
-      name: 'Callable contract',
-      exact: true,
-    });
-    await expect(contract).toBeVisible();
-    await contract.getByRole('button', { name: 'Close', exact: true }).click();
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth),
-    ).toBeLessThanOrEqual(width);
-  }
-  await page.setViewportSize({ width: 1280, height: 720 });
-}

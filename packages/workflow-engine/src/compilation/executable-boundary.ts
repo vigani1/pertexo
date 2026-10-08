@@ -89,12 +89,6 @@ export function parseBoundary(input: {
     current,
     alreadyAdmitted,
   );
-  if (
-    executableNodes(executableGraph).some(
-      ({ definition }) => definition.key === 'core.workflow_call',
-    )
-  )
-    fail('workflow calls require executable V3 and source graph V2');
   const expectedSelection = selectionFingerprint(
     admission,
     executableNodes(executableGraph),

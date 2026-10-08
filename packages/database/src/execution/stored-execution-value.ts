@@ -45,20 +45,15 @@ function invalid(): never {
   throw new StoredExecutionValueInvalidError();
 }
 
-function jsonStringBytes(
-  value: string,
-  maximumBytes: number,
-  allowNul: boolean,
-): number {
+function jsonStringBytes(value: string): number {
   let bytes = 2;
   const add = (amount: number): void => {
     bytes += amount;
-    if (bytes > maximumBytes) invalid();
+    if (bytes > STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes) invalid();
   };
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
-    if ((!allowNul && code === 0) || (code >= 0xdc00 && code <= 0xdfff))
-      invalid();
+    if (code === 0 || (code >= 0xdc00 && code <= 0xdfff)) invalid();
     if (
       code === 0x22 ||
       code === 0x5c ||
@@ -145,11 +140,7 @@ function assignValue(
   });
 }
 
-function cloneInlineJson(
-  value: unknown,
-  maximumBytes: number = STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes,
-  allowNul = false,
-): StoredExecutionJsonValue {
+function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
   const root: Record<string, StoredExecutionJsonValue> = Object.create(
     null,
   ) as Record<string, StoredExecutionJsonValue>;
@@ -161,7 +152,7 @@ function cloneInlineJson(
   let bytes = 0;
   const addBytes = (amount: number): void => {
     bytes += amount;
-    if (bytes > maximumBytes) invalid();
+    if (bytes > STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes) invalid();
   };
 
   while (pending.length !== 0) {
@@ -185,7 +176,7 @@ function cloneInlineJson(
       continue;
     }
     if (typeof item === 'string') {
-      addBytes(jsonStringBytes(item, maximumBytes, allowNul));
+      addBytes(jsonStringBytes(item));
       assignValue(frame.parent, frame.key, item);
       continue;
     }
@@ -221,7 +212,7 @@ function cloneInlineJson(
       members += 1;
       if (members > STORED_EXECUTION_VALUE_LIMITS_V1.members) invalid();
       if (isArray && key !== String(enumerableCount)) invalid();
-      if (!isArray) addBytes(jsonStringBytes(key, maximumBytes, allowNul) + 1);
+      if (!isArray) addBytes(jsonStringBytes(key) + 1);
       children.push({
         key: isArray ? enumerableCount : key,
         value: descriptor.value,
@@ -367,9 +358,4 @@ export function serializeStoredExecutionJsonValue(value: unknown): string {
   });
   if (parsed.kind !== 'inline') invalid();
   return canonicalJson(parsed.value);
-}
-
-/** Native byte policy only; reuse the retained encoder, not graph identity JSON. */
-export function serializeWorkflowExecutionJsonValueV3(value: unknown): string {
-  return canonicalJson(cloneInlineJson(value, 1_048_576, true));
 }

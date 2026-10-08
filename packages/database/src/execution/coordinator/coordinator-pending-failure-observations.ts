@@ -1,4 +1,3 @@
-import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
 import { isSafeExecutorErrorCode } from '@pertexo/workflow-model/attempt-failure';
 
@@ -63,32 +62,4 @@ export function appendPendingFailureObservations(
       safeErrorCode: failure.safe_error_code,
     });
   }
-}
-
-/** Read current physical pending failures and append their validated semantic facts. */
-export async function loadPendingFailureObservations(
-  client: PoolClient,
-  workspaceId: string,
-  runId: string,
-  observations: unknown[],
-): Promise<void> {
-  const pendingFailures = await client.query<PendingFailureRow>(
-    `select attempt.id attempt_id,attempt.attempt_number,
-                attempt.completed_at,attempt.executor_failure_kind,
-                attempt.executor_error_kind,
-                attempt.executor_possibly_dispatched,
-                attempt.safe_error_code,node.invocation_key
-         from app.node_attempts attempt
-         join app.node_runs node
-           on node.workspace_id=attempt.workspace_id
-          and node.id=attempt.node_run_id
-         where attempt.workspace_id=$1 and node.workflow_run_id=$2
-           and node.current_attempt_id=attempt.id
-           and node.current_attempt_number=attempt.attempt_number
-           and node.status='running' and attempt.status='failed'
-           and attempt.retry_decision='pending'
-         order by node.invocation_key,attempt.id`,
-    [workspaceId, runId],
-  );
-  appendPendingFailureObservations(observations, pendingFailures.rows);
 }

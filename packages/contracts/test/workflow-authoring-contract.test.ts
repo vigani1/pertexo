@@ -5,14 +5,11 @@ import {
   workflowCompatibilityReportSchema,
   workflowCreateRequestSchema,
   workflowDraftSaveRequestSchema,
-  workflowDraftResponseSchema,
-  workflowVersionResponseSchema,
   workflowGraphSchema,
   workflowListQuerySchema,
   workflowRevisionConflictProblemSchema,
   workflowVersionsQuerySchema,
   workflowValidationIssueSchema,
-  workflowCallPinSchemaV1,
 } from '../src/http/workflow-authoring.js';
 import {
   workflowAuthoringClientContract,
@@ -20,92 +17,6 @@ import {
 } from '../src/workflow-authoring.js';
 
 describe('workflow-authoring public contracts', () => {
-  it('exposes exact native Call pin admission through the browser authoring facade', () => {
-    const pin = {
-      workflowId: '11111111-1111-4111-8111-111111111111',
-      versionId: '22222222-2222-4222-8222-222222222222',
-      checksum: `wf:v3:sha256:${'a'.repeat(64)}`,
-      callableContractIdentity: `callable:v1:sha256:${'b'.repeat(64)}`,
-    };
-    expect(workflowCallPinSchemaV1.parse(pin)).toEqual(pin);
-    expect(
-      workflowCallPinSchemaV1.safeParse({ ...pin, versionId: 'latest' })
-        .success,
-    ).toBe(false);
-    expect(
-      workflowCallPinSchemaV1.safeParse({
-        ...pin,
-        checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
-      }).success,
-    ).toBe(false);
-  });
-  it('transports native graphs only under coherent explicit draft/version formats', () => {
-    const graph = {
-      schemaVersion: 2,
-      nodes: [],
-      edges: [],
-      settings: {},
-      callable: {
-        schemaVersion: 1,
-        input: { type: 'object', properties: {}, required: [] },
-        result: { type: 'object', properties: {}, required: [] },
-        resultSelector: { kind: 'literal', value: {} },
-      },
-    };
-    expect(workflowDraftSaveRequestSchema.parse({ graph })).toEqual({ graph });
-    expect(workflowGraphSchema.safeParse(graph).success).toBe(false);
-    const draft = {
-      workflowId: '11111111-1111-4111-8111-111111111111',
-      revision: 1,
-      schemaVersion: 2,
-      graph,
-      compatibility: {
-        compatible: true,
-        fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-        issues: [],
-      },
-      updatedAt: '2026-10-03T00:00:00.000Z',
-    };
-    expect(workflowDraftResponseSchema.parse(draft)).toEqual(draft);
-    expect(
-      workflowDraftResponseSchema.safeParse({ ...draft, schemaVersion: 1 })
-        .success,
-    ).toBe(false);
-    expect(
-      workflowDraftResponseSchema.safeParse({
-        ...draft,
-        graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
-      }).success,
-    ).toBe(false);
-    const version = {
-      id: draft.workflowId,
-      workflowId: draft.workflowId,
-      versionNumber: 1,
-      schemaVersion: 2,
-      graph,
-      checksum: `wf:v3:sha256:${'a'.repeat(64)}`,
-      publishedAt: draft.updatedAt,
-    };
-    expect(workflowVersionResponseSchema.parse(version)).toEqual(version);
-    for (const checksum of [
-      `wf:v1:sha256:${'a'.repeat(64)}`,
-      `wf:v2:sha256:${'a'.repeat(64)}`,
-    ])
-      expect(
-        workflowVersionResponseSchema.safeParse({ ...version, checksum })
-          .success,
-      ).toBe(false);
-    expect(
-      workflowVersionResponseSchema.safeParse({ ...version, schemaVersion: 1 })
-        .success,
-    ).toBe(false);
-    expect(
-      strongEtagSchema.safeParse(`"draft-v2.${'a'.repeat(43)}"`).success,
-    ).toBe(true);
-    expect(
-      strongEtagSchema.safeParse(`"draft-v3.${'a'.repeat(43)}"`).success,
-    ).toBe(false);
-  });
   it('keeps expression and executable issue codes representable and declares checked snapshot/unavailability metadata', () => {
     for (const code of ['invalid_expression', 'executable_invalid'])
       expect(

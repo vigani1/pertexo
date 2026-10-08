@@ -146,7 +146,7 @@ const FORBIDDEN_ROOT_NAMES = new Set([
   'module',
 ]);
 
-export type JsonataAst = Readonly<Record<string, unknown>>;
+type JsonataAst = Readonly<Record<string, unknown>>;
 
 function isRecord(value: unknown): value is JsonataAst {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -168,7 +168,7 @@ function isUnknownArray(value: unknown): value is readonly unknown[] {
  * walker consumes, and let the caller classify malformed dependency output as
  * an invalid expression.
  */
-export function readJsonataAst(value: unknown): JsonataAst {
+function readJsonataAst(value: unknown): JsonataAst {
   if (!isRecord(value))
     throw new TypeError('JSONata returned a non-object AST');
   if (value.type !== undefined && typeof value.type !== 'string')

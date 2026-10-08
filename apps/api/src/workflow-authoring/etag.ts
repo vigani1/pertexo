@@ -1,8 +1,4 @@
-import {
-  parseWorkflowAuthoringGraphDraft,
-  workflowCallableDraftRepresentationTagV2,
-  workflowDraftRepresentationTag,
-} from '@pertexo/workflow-model/graph';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/graph';
 
 export type DraftRepresentation = Readonly<{
   workflowId: string;
@@ -18,15 +14,10 @@ export type DraftRepresentation = Readonly<{
 export function createDraftRepresentationTag(
   representation: DraftRepresentation,
 ): string {
-  const graph = parseWorkflowAuthoringGraphDraft(representation.graph);
-  const tag =
-    graph.schemaVersion === 2
-      ? workflowCallableDraftRepresentationTagV2
-      : workflowDraftRepresentationTag;
-  return tag({
+  return workflowDraftRepresentationTag({
     workflowId: representation.workflowId,
     revision: representation.revision,
-    graph,
+    graph: representation.graph,
     compatibilityFingerprint: representation.compatibilityFingerprint,
   });
 }

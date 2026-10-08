@@ -1,11 +1,4 @@
-import {
-  configuredBranchOutputPorts,
-  configuredParallelOutputPorts,
-} from '@pertexo/workflow-model';
-export {
-  configuredBranchOutputPorts,
-  configuredParallelOutputPorts,
-} from '@pertexo/workflow-model';
+import { workflowControlOutputKind } from '@pertexo/workflow-model/graph';
 
 import { invocationKey } from './scheduling.js';
 import { WorkflowEngineError } from '../errors.js';
@@ -22,6 +15,7 @@ import type {
   IterationScopePart,
 } from '../types.js';
 import type { SideEffectClass } from '../types.js';
+import { isCoreParallelDefinition } from '../core-definition-identities.js';
 
 /** Private execution projection derived only from a verified executable. */
 export interface SchedulerState {
@@ -42,6 +36,76 @@ export interface SchedulerState {
     readonly nodes: SchedulerState['nodes'];
     readonly edges: SchedulerState['edges'];
   }[];
+}
+
+export function configuredBranchOutputPorts(
+  node: Readonly<{
+    definition?: Readonly<{ key: string; version: number }>;
+    config?: unknown;
+  }>,
+): readonly string[] | undefined {
+  if (workflowControlOutputKind(node.definition) !== 'branch') return undefined;
+  if (
+    node.definition?.key === 'core.condition' &&
+    node.definition.version === 1
+  )
+    return ['false', 'true'];
+  if (node.definition?.key !== 'core.switch' || node.definition.version !== 1)
+    return undefined;
+  if (
+    typeof node.config !== 'object' ||
+    node.config === null ||
+    Array.isArray(node.config)
+  )
+    return undefined;
+  const cases = Reflect.get(node.config, 'cases') as unknown;
+  if (!Array.isArray(cases)) return undefined;
+  const ports = cases.map((item): unknown =>
+    typeof item === 'object' && item !== null && !Array.isArray(item)
+      ? Reflect.get(item, 'id')
+      : undefined,
+  );
+  if (
+    ports.some(
+      (port) =>
+        typeof port !== 'string' || !/^case-(?:0[1-9]|1[0-6])$/u.test(port),
+    ) ||
+    new Set(ports).size !== ports.length
+  )
+    return undefined;
+  return [...(ports as string[]), 'default'];
+}
+
+export function configuredParallelOutputPorts(
+  node: Readonly<{
+    definition?: Readonly<{ key: string; version: number }>;
+    config?: unknown;
+  }>,
+): readonly string[] | undefined {
+  if (
+    !isCoreParallelDefinition(node.definition) ||
+    typeof node.config !== 'object' ||
+    node.config === null ||
+    Array.isArray(node.config)
+  )
+    return undefined;
+  const branches = Reflect.get(node.config, 'branches') as unknown;
+  if (!Array.isArray(branches)) return undefined;
+  const ports = branches.map((item): unknown =>
+    typeof item === 'object' && item !== null && !Array.isArray(item)
+      ? Reflect.get(item, 'id')
+      : undefined,
+  );
+  if (
+    ports.length < 2 ||
+    ports.some(
+      (port) =>
+        typeof port !== 'string' || !/^branch-(?:0[1-9]|1[0-6])$/u.test(port),
+    ) ||
+    new Set(ports).size !== ports.length
+  )
+    return undefined;
+  return ports as string[];
 }
 
 export function configuredParallelMaxConcurrency(

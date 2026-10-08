@@ -91,7 +91,7 @@ function executableNode(
   };
 }
 
-export function compileExecutableGraph(
+function compileExecutableGraph(
   graph: WorkflowGraph,
   release: RegistryRelease,
 ): WorkflowExecutableGraphV2 {
@@ -117,17 +117,6 @@ function buildBoundary(input: {
     schemaVersion: 1,
     definitions: release.definitions.map(({ definition }) => definition),
   });
-  const pendingGraphs: WorkflowGraph[] = [graph];
-  while (pendingGraphs.length > 0) {
-    const current = pendingGraphs.pop();
-    if (current === undefined) continue;
-    for (const node of current.nodes) {
-      if (node.definition.key === 'core.workflow_call')
-        fail('workflow calls require executable V3 and source graph V2');
-      if (node.structured !== undefined)
-        pendingGraphs.push(node.structured.body);
-    }
-  }
   const executableGraph = compileExecutableGraph(graph, release);
   const envelope: WorkflowExecutableV2 = {
     schemaVersion: 2,

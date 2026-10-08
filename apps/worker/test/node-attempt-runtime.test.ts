@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
@@ -33,9 +32,6 @@ import {
   nodeAttemptRuntimeProvider,
 } from '../src/transport/node-attempt-runtime-provider.js';
 import type { WorkerConfig } from '../src/config/worker-config.js';
-import type { NodeAttemptHandlerDependencies } from '../src/execution/node-attempt-handler.js';
-import { createWorkflowExecutionValueRuntime } from '../src/execution/workflow-execution-value-runtime.js';
-import { registryPreparedAttempt } from './support/node-attempt-handler.fixture.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '22222222-2222-4222-8222-222222222222';
@@ -131,9 +127,6 @@ async function capturedHandler(
     runStore: NodeAttemptRunStore;
     engine: NodeAttemptExecutionEngine;
     registry: NodeExecutionRegistry;
-    callDeclarationValues?: NodeAttemptHandlerDependencies['callDeclarationValues'];
-    nativeInputValues?: NodeAttemptHandlerDependencies['nativeInputValues'];
-    nativeProjection?: boolean;
   }>,
 ): Promise<
   Readonly<{ handler: QueueJobHandler; runtime: NodeAttemptRuntime }>
@@ -165,25 +158,12 @@ async function capturedHandler(
       reader: {
         close: vi.fn().mockResolvedValue(undefined),
         readForExecution: vi.fn().mockResolvedValue({
-          kind: input.nativeProjection ? 'v3_projection' : 'v2_projection',
-          workflowVersion: input.nativeProjection
-            ? {
-                ...projection(),
-                schemaVersion: 2,
-                executableSchemaVersion: 3,
-                checksum: `wf:v3:sha256:${'a'.repeat(64)}`,
-              }
-            : projection(),
+          kind: 'v2_projection',
+          workflowVersion: projection(),
         }),
       },
       registry: input.registry,
       runStore: input.runStore,
-      ...(input.callDeclarationValues === undefined
-        ? {}
-        : { callDeclarationValues: input.callDeclarationValues }),
-      ...(input.nativeInputValues === undefined
-        ? {}
-        : { nativeInputValues: input.nativeInputValues }),
     },
   );
   if (handler === undefined)
@@ -192,156 +172,6 @@ async function capturedHandler(
 }
 
 describe('node-attempt runtime', () => {
-  it('forwards explicit native source hydration from the queue runtime', async () => {
-    const source = {
-      slot: 'run_input' as const,
-      source: {
-        kind: 'run_input' as const,
-        workspaceId: WORKSPACE_ID,
-        runId: RUN_ID,
-        workflowVersionId: VERSION_ID,
-        provenanceId: WORKFLOW_ID,
-      },
-      snapshot: {
-        reference: {
-          schemaVersion: 1 as const,
-          kind: 'inline' as const,
-          value: null,
-        },
-        byteLength: 4,
-        sha256:
-          '74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b',
-        serializedValue: 'null',
-      },
-    };
-    const complete = vi
-      .fn<NodeAttemptRunStore['complete']>()
-      .mockResolvedValue({ kind: 'committed', outboxEventId: OUTBOX_EVENT_ID });
-    const { handler, runtime } = await capturedHandler({
-      nativeProjection: true,
-      runStore: {
-        claimDelivery: () =>
-          Promise.resolve({ kind: 'claimed', lease: lease() }),
-        close: () => Promise.resolve(),
-        complete,
-        heartbeat: vi.fn().mockResolvedValue({
-          abortRequested: false,
-          leaseExpiresAt: lease().leaseExpiresAt,
-        }),
-        markDispatched: vi.fn(),
-        loadInputs: () =>
-          Promise.resolve({
-            runInput: 'unhydrated',
-            completedNodeOutputs: [],
-            abortRequested: false,
-            nativeValueSources: { runInput: source, completedNodeOutputs: [] },
-          }),
-      },
-      nativeInputValues: {
-        hydrateSource: (input) => {
-          expect(input.source).toBe(source);
-          return Promise.resolve(null);
-        },
-      },
-      engine: {
-        prepare: () => ({
-          ...registryPreparedAttempt(),
-          execute: (input) => {
-            expect(input.runInput).toBeNull();
-            return registryPreparedAttempt().execute(input);
-          },
-        }),
-      },
-      registry: {
-        execute: () => Promise.resolve({ kind: 'succeeded', output: null }),
-      },
-    });
-    try {
-      await handler(delivery(), { signal: new AbortController().signal });
-      expect(complete).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: { status: 'succeeded', output: null },
-        }),
-      );
-    } finally {
-      await runtime.close();
-    }
-  });
-  it('delivers a committed Call snapshot through the framework value runtime without preparing it again', async () => {
-    const value = { name: 'immutable' };
-    const serializedValue = '{ "name" : "immutable" }';
-    const unavailable = (): never => {
-      throw new Error('Unexpected artifact IO or reservation');
-    };
-    const values = createWorkflowExecutionValueRuntime({
-      retentionMillis: 60_000,
-      persistence: {
-        reserve: unavailable,
-        authorize: unavailable,
-        assertReserved: unavailable,
-        finalize: unavailable,
-      },
-      store: { put: unavailable, getStream: unavailable },
-    });
-    const complete = vi.fn().mockResolvedValue({ kind: 'committed' });
-    const record = vi.fn();
-    const runStore: NodeAttemptRunStore = {
-      claimDelivery: vi
-        .fn()
-        .mockResolvedValue({ kind: 'claimed', lease: lease() }),
-      close: vi.fn().mockResolvedValue(undefined),
-      complete: vi.fn(),
-      completeCallDeclaration: complete,
-      recordCallDeclarationInput: record,
-      readCallDeclarationInput: vi.fn().mockResolvedValue({
-        reference: { schemaVersion: 1, kind: 'inline', value },
-        serializedValue,
-        byteLength: Buffer.byteLength(serializedValue),
-        sha256: createHash('sha256').update(serializedValue).digest('hex'),
-      }),
-      heartbeat: vi.fn().mockResolvedValue({
-        abortRequested: false,
-        leaseExpiresAt: lease().leaseExpiresAt,
-      }),
-      markDispatched: vi.fn().mockResolvedValue(undefined),
-      loadInputs: vi.fn().mockResolvedValue({
-        abortRequested: false,
-        runInput: null,
-        completedNodeOutputs: [],
-      }),
-    };
-    const execute = vi.fn<PreparedNodeAttempt['execute']>(async (input) => {
-      expect(input.recordedWorkflowCallInput).toEqual(value);
-      await input.onInputResolved?.(value);
-      return registryPreparedAttempt().execute(input);
-    });
-    const { handler, runtime } = await capturedHandler({
-      runStore,
-      callDeclarationValues: values,
-      engine: {
-        prepare: () => ({
-          inputPersistence: 'workflow_call_declaration',
-          upstreamNodeOutputs: [],
-          execute,
-        }),
-      },
-      registry: {
-        execute: vi
-          .fn()
-          .mockResolvedValue({ kind: 'succeeded', output: value }),
-      },
-    });
-    try {
-      await handler(delivery(), { signal: new AbortController().signal });
-      expect(execute).toHaveBeenCalledWith(
-        expect.objectContaining({ recordedWorkflowCallInput: value }),
-      );
-      expect(record).not.toHaveBeenCalled();
-      expect(complete).toHaveBeenCalledOnce();
-    } finally {
-      await runtime.close();
-    }
-  });
   it.each([
     { jobs: [], expected: { preview: false, production: false } },
     {

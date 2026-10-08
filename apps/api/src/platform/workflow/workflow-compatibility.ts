@@ -1,6 +1,5 @@
 import {
   createWorkflowAuthoringDatabase,
-  WorkflowDraftOperationUnavailableError,
   type DatabaseConfig,
   type DatabaseRuntime,
   type WorkflowAuthoringDatabase,
@@ -8,18 +7,13 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
-  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
-  buildWorkflowExecutableV3,
   composeExecutableCompatibilityRelease,
-  composeExecutableCompatibilityReleaseV3,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
-  WORKFLOW_CALL_RUNTIME_POLICIES_V1,
 } from '@pertexo/workflow-engine';
 import {
   WorkflowAuthoringValidator,
@@ -113,33 +107,22 @@ function projectDefinitionCatalogs(
   });
 }
 
-export function composeApiWorkflowCompatibilityRelease(
-  release: PlatformRegistryRelease,
-) {
-  return [
-    PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_ACTIVE.fingerprint,
-    PLATFORM_REGISTRY_RELEASE_WORKFLOW_CALL_STAGED.fingerprint,
-  ].includes(release.fingerprint)
-    ? composeExecutableCompatibilityReleaseV3(release)
-    : composeExecutableCompatibilityRelease(release);
-}
-
 export function createCoreWorkflowCompatibility(
   releaseCohort: PlatformReleaseCohort = 'core',
 ) {
   const registryReleaseSupport =
     platformExecutableRegistryHistory(releaseCohort);
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    registryReleaseSupport.map(composeApiWorkflowCompatibilityRelease),
+    registryReleaseSupport.map(composeExecutableCompatibilityRelease),
   );
   const readinessSupport = createExecutableCompatibilityReleaseSupport(
     platformRegistryReleaseSupport(releaseCohort).map(
-      composeApiWorkflowCompatibilityRelease,
+      composeExecutableCompatibilityRelease,
     ),
   );
   const variants = registryReleaseSupport.map((nodeRelease) => {
     const compatibilityRelease =
-      composeApiWorkflowCompatibilityRelease(nodeRelease);
+      composeExecutableCompatibilityRelease(nodeRelease);
     const compatibilityReleaseDescription = releaseSupport.descriptions.find(
       ({ epoch, fingerprint }) =>
         epoch === compatibilityRelease.epoch &&
@@ -218,36 +201,16 @@ export function createCoreAuthoringOptions(
           graph: WorkflowGraph,
           options: Readonly<{ signal?: AbortSignal }>,
         ) => validator.validate(graph, authoringPolicies, options),
-        executableCompiler: (graph: WorkflowGraph) => {
-          // The existing locked release remains the authority. A retained
-          // release without exact native policies cannot compile Graph2. Keep
-          // unsupported capability distinct from invalid user-authored graphs;
-          // this branch neither registers a native catalog nor activates it.
-          if (
-            graph.schemaVersion === 2 &&
-            !Object.values(WORKFLOW_CALL_RUNTIME_POLICIES_V1).every(
-              (required) =>
-                compatibilityRelease.policies.some(
-                  (available) =>
-                    available.key === required.key &&
-                    available.version === required.version,
-                ),
-            )
-          )
-            throw new WorkflowDraftOperationUnavailableError();
-          const compiled =
-            graph.schemaVersion === 2
-              ? buildWorkflowExecutableV3({
-                  graph,
-                  release: compatibilityRelease,
-                })
-              : buildWorkflowExecutableV2({
-                  graph,
-                  release: compatibilityRelease,
-                });
+        executableCompiler: (
+          graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
+        ) => {
+          const compiled = buildWorkflowExecutableV2({
+            graph,
+            release: compatibilityRelease,
+          });
           return Object.freeze({
             checksum: compiled.checksum,
-            executableSchemaVersion: compiled.envelope.schemaVersion,
+            executableSchemaVersion: 2 as const,
             executableJson: compiled.envelope,
             compatibilityReleaseEpoch:
               compiled.envelope.compatibilityReleaseEpoch,

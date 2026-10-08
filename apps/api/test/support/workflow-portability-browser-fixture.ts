@@ -7,7 +7,6 @@ import { connectionListResponseSchema } from '@pertexo/contracts/schemas/connect
 import {
   workflowCreateResponseSchema,
   workflowDraftResponseSchema,
-  workflowGraphSchema,
   workflowPublishResponseSchema,
   type WorkflowGraphContract,
 } from '@pertexo/contracts/schemas/workflow-authoring';
@@ -260,8 +259,12 @@ export async function verifyWorkflowPortabilityBrowserEvidence(
   );
   expect(imported.rows).toHaveLength(1);
   expect(imported.rows[0]?.revision).toBeGreaterThan(1);
-  const sourceGraph = workflowGraphSchema.parse(source.rows[0]?.graph_json);
-  const importedGraph = workflowGraphSchema.parse(imported.rows[0]?.graph_json);
+  const sourceGraph = workflowDraftResponseSchema.shape.graph.parse(
+    source.rows[0]?.graph_json,
+  );
+  const importedGraph = workflowDraftResponseSchema.shape.graph.parse(
+    imported.rows[0]?.graph_json,
+  );
   expect(importedGraph.nodes.map((node) => node.id)).toEqual(
     sourceGraph.nodes.map((node) => node.id),
   );

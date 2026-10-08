@@ -24,11 +24,6 @@ export function commandErrorMessage(error: unknown, action: string): string {
   if (error instanceof Error && !isApiError(error)) return error.message;
   if (
     isApiError(error) &&
-    error.problem?.code === 'workflow.draft_operation_unavailable'
-  )
-    return describeCommandError(error, action);
-  if (
-    isApiError(error) &&
     error.problem?.code === 'workflow.validation_unavailable'
   )
     return 'The workflow check is temporarily unavailable. Wait a moment and try again; no new version was published.';

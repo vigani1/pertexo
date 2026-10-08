@@ -75,11 +75,6 @@ export function readFailureReason(error: unknown): string {
 
 /** A sentence for a failed command whose domain codes the caller handled. */
 export function describeCommandError(error: unknown, action: string): string {
-  if (
-    isApiError(error) &&
-    error.problem?.code === 'workflow.draft_operation_unavailable'
-  )
-    return 'This operation is not enabled for native workflow drafts.';
   if (isUncertainOutcome(error))
     return `We couldn’t confirm whether ${action} went through. Check again before retrying.`;
   if (isWritePaused(error))

@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
 import { acquireAbortablePoolClient } from '../platform/abortable-pool-checkout.js';
 import { databaseSchema } from '../schema.js';
-import { NativeTenantRead } from './native-tenant-read.js';
 
 const workspaceIdSchema = z.uuid();
 const actorIdSchema = z.uuid();
@@ -19,28 +18,9 @@ export type WorkspaceTransaction = Readonly<{
   workspaceId: WorkspaceId;
 }>;
 
-/**
- * Adapt an already tenant-scoped transaction without owning its lifecycle.
- * The caller must have established this workspace on this exact client; this
- * adapter does not begin, commit, roll back, change scope or release it.
- * Keep internal: possession of a workspace identifier is not tenant authority.
- */
-export function workspaceTransactionFromClient(
-  client: PoolClient,
-  workspaceId: WorkspaceId,
-): WorkspaceTransaction {
-  const db = drizzle(client, { schema: databaseSchema });
-  return Object.freeze({ db, workspaceId });
-}
-
 export type WorkspaceTransactionOptions = Readonly<{
   signal?: AbortSignal;
   statementTimeoutMillis?: number;
-  /** Native-only operation/cleanup contract; ordinary transaction mode is unchanged. */
-  nativeReadBudget?: Readonly<{
-    readTimeoutMillis: number;
-    controlReadTimeoutMillis: number;
-  }>;
 }>;
 
 export type TenantTransactionScope = Readonly<{
@@ -160,43 +140,23 @@ async function runTransaction<T>(
     cleanup: string;
   }>,
 ): Promise<T> {
-  let statementTimeoutMillis = parseStatementTimeout(
+  const statementTimeoutMillis = parseStatementTimeout(
     options.statementTimeoutMillis,
   );
-  const nativeBudget = options.nativeReadBudget;
-  if (nativeBudget !== undefined && mode !== 'repeatable_read_only')
-    throw new TypeError(
-      'Native read budget cannot authorize a write transaction',
-    );
   const abortError = new Error(messages.abort);
   abortError.name = 'AbortError';
   if (options.signal?.aborted) throw abortError;
-  const nativeRead =
-    nativeBudget === undefined
-      ? undefined
-      : new NativeTenantRead(pool, options.signal, nativeBudget, abortError);
-  const signal = nativeRead?.signal ?? options.signal;
 
-  let client: PoolClient;
-  try {
-    client =
-      nativeRead === undefined
-        ? await acquireAbortablePoolClient(
-            pool,
-            signal,
-            () => abortError,
-            (lateClient) => {
-              lateClient.release(abortError);
-            },
-          )
-        : await nativeRead.acquire();
-  } catch (error: unknown) {
-    await nativeRead?.finish({ error });
-    throw error;
-  }
+  const client = await acquireAbortablePoolClient(
+    pool,
+    options.signal,
+    () => abortError,
+    (lateClient) => {
+      lateClient.release(abortError);
+    },
+  );
   let transactionOpen = false;
   let clientReleased = false;
-  const isReleased = (): boolean => clientReleased;
 
   const releaseForAbort = (): void => {
     if (clientReleased) return;
@@ -205,9 +165,7 @@ async function runTransaction<T>(
     // CancelRequest because PostgreSQL may otherwise finish a sleeping or
     // blocked statement after its application socket disappears.
     try {
-      if (nativeRead === undefined)
-        destroyCanceledPoolClient(client, abortError);
-      else nativeRead.dispose(client);
+      destroyCanceledPoolClient(client, abortError);
     } catch {
       // The caller's abort remains authoritative even if pool bookkeeping
       // itself fails after the socket has been terminated.
@@ -216,24 +174,19 @@ async function runTransaction<T>(
   const destroyClient = (): void => {
     if (clientReleased) return;
     clientReleased = true;
-    if (nativeRead === undefined) client.release(true);
-    else nativeRead.dispose(client);
+    client.release(true);
   };
   const assertNotAborted = (): void => {
-    nativeRead?.remainingMillis();
-    if (signal?.aborted) throw abortError;
+    if (options.signal?.aborted) throw abortError;
   };
 
-  if (signal?.aborted) {
+  if (options.signal?.aborted) {
     releaseForAbort();
-    await nativeRead?.finish({ error: abortError });
     throw abortError;
   }
-  signal?.addEventListener('abort', releaseForAbort, { once: true });
+  options.signal?.addEventListener('abort', releaseForAbort, { once: true });
 
-  let failure: Readonly<{ error: unknown }> | undefined;
   try {
-    assertNotAborted();
     await assertNoTenantContext(client);
     assertNotAborted();
     await client.query(
@@ -262,11 +215,6 @@ async function runTransaction<T>(
       );
     }
     assertNotAborted();
-    if (nativeRead !== undefined)
-      statementTimeoutMillis = Math.min(
-        statementTimeoutMillis ?? Infinity,
-        nativeRead.remainingMillis(),
-      );
     if (statementTimeoutMillis !== undefined) {
       await client.query("select set_config('statement_timeout', $1, true)", [
         `${String(statementTimeoutMillis)}ms`,
@@ -284,64 +232,34 @@ async function runTransaction<T>(
     transactionOpen = false;
     assertNotAborted();
     await assertNoTenantContext(client);
-    if (nativeRead !== undefined) assertNotAborted();
     clientReleased = true;
     client.release();
     return result;
   } catch (error: unknown) {
-    const canceled =
-      signal?.aborted === true &&
-      (nativeRead === undefined ||
-        error === abortError ||
-        (error instanceof Error &&
-          (error.name === 'AbortError' ||
-            [
-              'Connection terminated',
-              'Connection terminated unexpectedly',
-            ].includes(error.message))));
-    failure = { error: canceled ? abortError : error };
-    if (canceled) throw abortError;
-    if (clientReleased || nativeRead?.isStopped() === true) throw error;
+    if (options.signal?.aborted) throw abortError;
+    if (clientReleased) throw error;
     if (transactionOpen) {
       try {
         await client.query('rollback');
       } catch (rollbackError: unknown) {
-        const combined = new AggregateError(
-          [error, rollbackError],
-          messages.rollback,
-        );
-        failure = { error: combined };
         destroyClient();
-        if (nativeRead === undefined && signal?.aborted) throw abortError;
-        throw combined;
+        if (options.signal?.aborted) throw abortError;
+        throw new AggregateError([error, rollbackError], messages.rollback);
       }
     }
 
-    if (nativeRead !== undefined && (nativeRead.isStopped() || isReleased()))
-      throw error;
     try {
       await assertNoTenantContext(client);
-      if (
-        nativeRead === undefined ||
-        (!nativeRead.isStopped() && !isReleased())
-      ) {
-        clientReleased = true;
-        client.release();
-      }
+      clientReleased = true;
+      client.release();
     } catch (cleanupError: unknown) {
-      const combined = new AggregateError(
-        [error, cleanupError],
-        messages.cleanup,
-      );
-      failure = { error: combined };
       destroyClient();
-      if (nativeRead === undefined && signal?.aborted) throw abortError;
-      throw combined;
+      if (options.signal?.aborted) throw abortError;
+      throw new AggregateError([error, cleanupError], messages.cleanup);
     }
     throw error;
   } finally {
-    signal?.removeEventListener('abort', releaseForAbort);
-    await nativeRead?.finish(failure);
+    options.signal?.removeEventListener('abort', releaseForAbort);
   }
 }
 
@@ -440,26 +358,6 @@ export async function withPlatformTransaction<T>(
   });
 }
 
-/** Global catalog reads only; same existing readonly/budget/hygiene owner. */
-export async function withPlatformReadClient<T>(
-  pool: Pool,
-  operation: (client: PoolClient) => Promise<T>,
-  options: WorkspaceTransactionOptions = {},
-): Promise<T> {
-  return runTransaction(
-    pool,
-    undefined,
-    operation,
-    options,
-    'repeatable_read_only',
-    {
-      abort: 'Platform read aborted',
-      cleanup: 'Platform context cleanup failed',
-      rollback: 'Platform read rollback failed',
-    },
-  );
-}
-
 export async function withWorkspaceTransaction<T>(
   pool: Pool,
   workspaceIdInput: string,
@@ -470,7 +368,10 @@ export async function withWorkspaceTransaction<T>(
   return withTenantScopedClient(
     pool,
     { workspaceId },
-    (client) => operation(workspaceTransactionFromClient(client, workspaceId)),
+    async (client) => {
+      const db = drizzle(client, { schema: databaseSchema });
+      return operation(Object.freeze({ db, workspaceId }));
+    },
     options,
   );
 }
@@ -486,7 +387,10 @@ export async function withWorkspaceReadTransaction<T>(
   return withTenantScopedReadClient(
     pool,
     { workspaceId },
-    (client) => operation(workspaceTransactionFromClient(client, workspaceId)),
+    async (client) => {
+      const db = drizzle(client, { schema: databaseSchema });
+      return operation(Object.freeze({ db, workspaceId }));
+    },
     options,
   );
 }

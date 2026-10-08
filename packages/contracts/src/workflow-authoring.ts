@@ -1,19 +1,48 @@
-import { workflowAuthoringContractSchemas } from './workflow-authoring-schema-projection.js';
-
+import { apiProblemSchema } from './errors/api-problem.js';
 import {
   workflowOrganizationContractPaths,
+  workflowOrganizationContractSchemas,
   workflowOrganizationGetReadContract,
   workflowOrganizationListReadContract,
 } from './workflow-organization-contract.js';
-import { workflowInputCaseContractPaths } from './workflow-input-cases-contract.js';
-import { workflowConcurrencyContractPaths } from './workflow-concurrency-contract.js';
-import { workflowAutoPauseContractPaths } from './workflow-auto-pause-contract.js';
 import {
+  workflowInputCaseContractPaths,
+  workflowInputCaseContractSchemas,
+} from './workflow-input-cases-contract.js';
+import {
+  workflowConcurrencyContractPaths,
+  workflowConcurrencyContractSchemas,
+} from './workflow-concurrency-contract.js';
+import {
+  workflowAutoPauseContractPaths,
+  workflowAutoPauseContractSchemas,
+} from './workflow-auto-pause-contract.js';
+import {
+  workflowCompatibilityReportSchema,
+  workflowCreateRequestSchema,
+  workflowCreateResponseSchema,
+  workflowDuplicateRequestSchema,
+  workflowDuplicateResponseSchema,
+  workflowDraftResponseSchema,
+  workflowDraftSaveRequestSchema,
+  workflowListResponseSchema,
+  workflowVersionRestoreRequestSchema,
+  workflowPublishResponseSchema,
+  workflowRevisionConflictProblemSchema,
+  workflowSummarySchema,
+  workflowSummaryResponseSchema,
+  workflowTemplateOriginProjectionResponseSchema,
+  workflowValidateResponseSchema,
+  workflowVersionResponseSchema,
   workflowVersionsQuerySchema,
+  workflowVersionsResponseSchema,
   strongEtagSchema,
 } from './http/workflow-authoring.js';
-
-import { workflowRevisionCommandPaths } from './workflow-revision-commands-contract.js';
+import { projectContractSchema } from './schema-projection.js';
+import {
+  workflowRevisionCommandPaths,
+  workflowRevisionCommandSchemas,
+} from './workflow-revision-commands-contract.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -29,8 +58,105 @@ import type { z } from 'zod';
 
 export * from './http/workflow-authoring.js';
 
-const clientSchemas = workflowAuthoringContractSchemas('client');
-const openApiSchemas = workflowAuthoringContractSchemas('openapi');
+function contractSchemas(target: 'client' | 'openapi') {
+  const project = (name: string, schema: z.ZodType, io: 'input' | 'output') =>
+    projectContractSchema(name, schema, io, target);
+  return Object.freeze({
+    ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
+    WorkflowDuplicateRequest: project(
+      'WorkflowDuplicateRequest',
+      workflowDuplicateRequestSchema,
+      'input',
+    ),
+    WorkflowDuplicateResponse: project(
+      'WorkflowDuplicateResponse',
+      workflowDuplicateResponseSchema,
+      'output',
+    ),
+    WorkflowVersionRestoreRequest: project(
+      'WorkflowVersionRestoreRequest',
+      workflowVersionRestoreRequestSchema,
+      'input',
+    ),
+    ...workflowRevisionCommandSchemas(project),
+    ...workflowAutoPauseContractSchemas(project),
+    ...workflowConcurrencyContractSchemas(project),
+    ...workflowInputCaseContractSchemas(project),
+    ...workflowOrganizationContractSchemas(project),
+    WorkflowRevisionConflictProblem: project(
+      'WorkflowRevisionConflictProblem',
+      workflowRevisionConflictProblemSchema,
+      'output',
+    ),
+    WorkflowCreateRequest: project(
+      'WorkflowCreateRequest',
+      workflowCreateRequestSchema,
+      'input',
+    ),
+    WorkflowCreateResponse: project(
+      'WorkflowCreateResponse',
+      workflowCreateResponseSchema,
+      'output',
+    ),
+    WorkflowSummary: project(
+      'WorkflowSummary',
+      workflowSummarySchema,
+      'output',
+    ),
+    WorkflowSummaryResponse: project(
+      'WorkflowSummaryResponse',
+      workflowSummaryResponseSchema,
+      'output',
+    ),
+    WorkflowTemplateOriginProjectionResponse: project(
+      'WorkflowTemplateOriginProjectionResponse',
+      workflowTemplateOriginProjectionResponseSchema,
+      'output',
+    ),
+    WorkflowListResponse: project(
+      'WorkflowListResponse',
+      workflowListResponseSchema,
+      'output',
+    ),
+    WorkflowDraftSaveRequest: project(
+      'WorkflowDraftSaveRequest',
+      workflowDraftSaveRequestSchema,
+      'input',
+    ),
+    WorkflowDraftResponse: project(
+      'WorkflowDraftResponse',
+      workflowDraftResponseSchema,
+      'output',
+    ),
+    WorkflowCompatibilityReport: project(
+      'WorkflowCompatibilityReport',
+      workflowCompatibilityReportSchema,
+      'output',
+    ),
+    WorkflowValidationResponse: project(
+      'WorkflowValidationResponse',
+      workflowValidateResponseSchema,
+      'output',
+    ),
+    WorkflowPublishResponse: project(
+      'WorkflowPublishResponse',
+      workflowPublishResponseSchema,
+      'output',
+    ),
+    WorkflowVersionResponse: project(
+      'WorkflowVersionResponse',
+      workflowVersionResponseSchema,
+      'output',
+    ),
+    WorkflowVersionsResponse: project(
+      'WorkflowVersionsResponse',
+      workflowVersionsResponseSchema,
+      'output',
+    ),
+  });
+}
+const clientSchemas = contractSchemas('client');
+const openApiSchemas = contractSchemas('openapi');
 
 export const workflowAuthoringClientContract = Object.freeze({
   schemaVersion: '1.0.0',
@@ -322,63 +448,21 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions': {
       get: {
         operationId: 'listWorkflowVersions',
-        description:
-          'Without include, returns the unchanged strict WorkflowVersionsResponse. include=callableTarget returns only WorkflowCallableTargetsResponse (default limit 1, maximum 25); versionId performs an exact refresh and is mutually exclusive with limit/after. Unknown/repeated query fields are invalid. Raw generated callers must narrow the response union; legacy typed wrappers omit include and validate only the legacy schema. The actor-scoped projection is private, no-store, not publication or runtime authority; native OFF never yields eligible.',
         security: [{ cookieSession: [] }],
         parameters: [
           ...workflowParameters,
           queryParameter('limit', workflowVersionsQuerySchema.shape.limit),
           queryParameter('after', workflowVersionsQuerySchema.shape.after),
-          {
-            name: 'include',
-            in: 'query',
-            required: false,
-            schema: { type: 'string', const: 'callableTarget' },
-            description:
-              'Opt-in strict callable target projection. Its page limit is 1–25, default 1; omitted include retains the legacy limit contract.',
-          },
-          {
-            name: 'versionId',
-            in: 'query',
-            required: false,
-            schema: { type: 'string', format: 'uuid' },
-            description:
-              'Requires include=callableTarget; mutually exclusive with limit and after. Exact refresh returns one item and null nextCursor or not found.',
-          },
         ],
         responses: {
-          '200': {
-            description:
-              'Immutable workflow versions or explicitly requested actor-scoped callable targets',
-            content: {
-              'application/json': {
-                schema: {
-                  oneOf: [
-                    { $ref: '#/components/schemas/WorkflowVersionsResponse' },
-                    {
-                      $ref: '#/components/schemas/WorkflowCallableTargetsResponse',
-                    },
-                  ],
-                },
-              },
-            },
-          },
-          '400': responseReference('BadRequest'),
+          '200': jsonResponse(
+            'Immutable workflow versions',
+            'WorkflowVersionsResponse',
+          ),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '500': responseReference('Unexpected'),
-          '503': {
-            description:
-              'Callable target assessment unavailable; no partially assessed page',
-            content: {
-              'application/problem+json': {
-                schema: {
-                  $ref: '#/components/schemas/WorkflowCallableTargetsUnavailableProblem',
-                },
-              },
-            },
-          },
         },
       },
     },

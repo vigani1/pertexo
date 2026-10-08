@@ -180,49 +180,6 @@ describe('workflow runs real Nest HTTP stack', () => {
     application = undefined;
   });
 
-  it('returns accepted native summary lineage through the existing authorized read route only', async () => {
-    const { application, fixture } = await start('viewer', 'suspended');
-    const callFamily = {
-      rootRunId: workflowId,
-      parentRunId: workflowId,
-      parentInvocationKey: 'call:0',
-      children: [],
-    };
-    fixture.get.mockResolvedValue({
-      run: {
-        id: runId,
-        workspaceId,
-        workflowId,
-        workflowVersionId,
-        status: 'canceled',
-        triggerType: 'workflow_call',
-        createdAt: new Date('2026-10-01T00:00:00Z'),
-        updatedAt: new Date('2026-10-01T00:00:00Z'),
-        startedAt: null,
-        completedAt: new Date('2026-10-01T00:00:00Z'),
-        deadlineAt: null,
-        cancelRequestedAt: null,
-      },
-      nodes: [],
-      callFamily,
-    });
-    const response = await application.inject({
-      method: 'GET',
-      url: `/v1/workspaces/${workspaceId}/runs/${runId}`,
-      headers: authHeaders,
-    });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ nodes: [], callFamily });
-    fixture.get.mockClear();
-    const hidden = await application.inject({
-      method: 'GET',
-      url: `/v1/workspaces/${actorId}/runs/${runId}`,
-      headers: authHeaders,
-    });
-    expect(hidden.statusCode).toBe(404);
-    expect(fixture.get).not.toHaveBeenCalled();
-  });
-
   it('runs authentication and authorization guards before workflow persistence', async () => {
     const { application, fixture } = await start('viewer');
 

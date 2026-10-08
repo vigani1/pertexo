@@ -172,12 +172,7 @@ export function editorHandlers(
     ),
     http.get(`${workflowApi}/draft`, () =>
       HttpResponse.json(draftBody(initialGraph, 1), {
-        headers: {
-          etag:
-            initialGraph.schemaVersion === 2
-              ? etagA.replace('draft-v1.', 'draft-v2.')
-              : etagA,
-        },
+        headers: { etag: etagA },
       }),
     ),
     http.put(`${workflowApi}/draft`, async ({ request }) => {
@@ -185,12 +180,7 @@ export function editorHandlers(
       if (!isSaveBody(body)) return HttpResponse.json({}, { status: 400 });
       onSave(request, body);
       return HttpResponse.json(draftBody(body.graph, 2), {
-        headers: {
-          etag:
-            body.graph.schemaVersion === 2
-              ? etagB.replace('draft-v1.', 'draft-v2.')
-              : etagB,
-        },
+        headers: { etag: etagB },
       });
     }),
   ];
@@ -200,7 +190,7 @@ export function draftBody(graph: WorkflowGraphContract, revision: number) {
   return {
     workflowId,
     revision,
-    schemaVersion: graph.schemaVersion,
+    schemaVersion: 1,
     graph,
     compatibility,
     updatedAt: '2026-09-14T10:01:00.000Z',

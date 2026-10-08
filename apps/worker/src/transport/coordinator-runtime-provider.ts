@@ -34,9 +34,6 @@ export function coordinatorRuntimeProvider(
       return createCoordinatorRuntime(
         {
           database: config.database,
-          ...(config.artifactStore === undefined
-            ? {}
-            : { artifactStore: config.artifactStore }),
           ...(dependencies.databaseRuntime === undefined
             ? {}
             : { databaseRuntime: dependencies.databaseRuntime }),
@@ -44,7 +41,6 @@ export function coordinatorRuntimeProvider(
           dueWakeupPollIntervalMillis:
             config.coordinator.dueWakeupPollIntervalMillis,
           maximumAdmissions: config.coordinator.maximumAdmissions,
-          valueWorkPolicy: config.coordinator.valueWorkPolicy,
           runTimeoutFailureContextEnabled:
             config.coordinator.runTimeoutFailureContextEnabled,
           workspaceInboxProducerEnabled:

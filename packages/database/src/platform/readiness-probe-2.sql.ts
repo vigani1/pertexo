@@ -7,7 +7,7 @@ export const READINESS_EXECUTION_SQL = `
           select 1 from pg_constraint
           where conrelid = to_regclass('app.workflow_versions')
             and conname = 'workflow_versions_checksum_format'
-            and pg_get_constraintdef(oid) = 'CHECK ((((((checksum)::text ~ ''^wf:v1:sha256:[0-9a-f]{64}$''::text) AND (executable_schema_version IS NULL) AND (executable_json IS NULL) AND (compatibility_release_epoch IS NULL)) OR (((checksum)::text ~ ''^wf:v2:sha256:[0-9a-f]{64}$''::text) AND (executable_schema_version = 2) AND (jsonb_typeof(executable_json) = ''object''::text) AND (compatibility_release_epoch > 0)) OR (((checksum)::text ~ ''^wf:v3:sha256:[0-9a-f]{64}$''::text) AND (schema_version = 2) AND (executable_schema_version = 3) AND (jsonb_typeof(executable_json) = ''object''::text) AND (compatibility_release_epoch > 0))) IS TRUE))'
+            and pg_get_constraintdef(oid) = 'CHECK ((((((checksum)::text ~ ''^wf:v1:sha256:[0-9a-f]{64}$''::text) AND (executable_schema_version IS NULL) AND (executable_json IS NULL) AND (compatibility_release_epoch IS NULL)) OR (((checksum)::text ~ ''^wf:v2:sha256:[0-9a-f]{64}$''::text) AND (executable_schema_version IS NOT NULL) AND (executable_schema_version = 2) AND (executable_json IS NOT NULL) AND (jsonb_typeof(executable_json) = ''object''::text) AND (compatibility_release_epoch IS NOT NULL) AND (compatibility_release_epoch > 0))) IS TRUE))'
         )
         and exists (
           select 1 from pg_constraint
@@ -24,7 +24,7 @@ export const READINESS_EXECUTION_SQL = `
           and policy.polcmd = 'r'
           and cardinality(policy.polroles) = 1
           and policy.polroles[1] = (select oid from pg_roles where rolname = $2)
-          and pg_get_expr(policy.polqual, policy.polrelid) = '(((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text)) AND (compatibility_release_epoch > 0) AND (executable_json IS NOT NULL) AND ((((checksum)::text ~~ ''wf:v2:sha256:%''::text) AND (executable_schema_version = 2)) OR (((checksum)::text ~~ ''wf:v3:sha256:%''::text) AND (schema_version = 2) AND (executable_schema_version = 3))))'
+          and pg_get_expr(policy.polqual, policy.polrelid) = '(((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text)) AND ((checksum)::text ~~ ''wf:v2:sha256:%''::text) AND (executable_schema_version = 2) AND (executable_json IS NOT NULL) AND (compatibility_release_epoch > 0))'
           and policy.polwithcheck is null
       ) as phase3_policy_compatible,
       (
@@ -71,7 +71,7 @@ export const READINESS_EXECUTION_SQL = `
             and atttypid = 'timestamp with time zone'::regtype
             and not attnotnull and not attisdropped
         )
-        and (select count(*) = 31 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
+        and (select count(*) = 29 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
         and exists (
           select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
             and attname = 'workflow_version_id' and atttypid = 'uuid'::regtype

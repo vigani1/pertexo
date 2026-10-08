@@ -56,8 +56,8 @@ export type WorkflowAuthoringTestHooks = Readonly<{
 }>;
 
 export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
-  checksum: `wf:v2:sha256:${string}` | `wf:v3:sha256:${string}`;
-  executableSchemaVersion: 2 | 3;
+  checksum: `wf:v2:sha256:${string}`;
+  executableSchemaVersion: 2;
   executableJson: unknown;
   compatibilityReleaseEpoch: number;
   compatibilityReleaseFingerprint: string;

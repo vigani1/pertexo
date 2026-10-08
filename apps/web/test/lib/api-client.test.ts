@@ -74,30 +74,6 @@ afterEach(() => {
 });
 
 describe('browser API transport', () => {
-  it('decodes native draft operation unavailability as a definite problem without retry scheduling', async () => {
-    const fetch = fetchMock(
-      problemResponse(
-        commonProblem({
-          type: 'urn:pertexo:problem:workflow.draft_operation_unavailable',
-          title: 'Workflow draft operation unavailable',
-          status: 409,
-          code: 'workflow.draft_operation_unavailable',
-        }),
-        { status: 409 },
-      ),
-    );
-    const client = createApiClient({ fetch, readCsrfToken: () => undefined });
-    const error = await apiErrorFrom(
-      client.request({
-        path: '/v1/examples',
-        response: { kind: 'json', decode: (value) => value },
-      }),
-      'problem',
-    );
-    expect(error.problem?.code).toBe('workflow.draft_operation_unavailable');
-    expect(error.retryAfterMs).toBeUndefined();
-    expect(fetch).toHaveBeenCalledTimes(1);
-  });
   it('decodes JSON through the caller contract and exposes response metadata', async () => {
     const fetch = fetchMock(
       jsonResponse({ value: 'accepted' }, { headers: { etag: '"draft-3"' } }),

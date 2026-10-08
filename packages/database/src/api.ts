@@ -1,5 +1,4 @@
 export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
-export { WorkflowCallsUnavailableError } from './execution/workflow-calls/workflow-call-rollout-error.js';
 export {
   createWorkflowFolderDatabase,
   WorkflowFolderConflictError,
@@ -227,11 +226,7 @@ export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
 } from './execution/previews/preview-execution.js';
-export type {
-  PublishedWorkflowV2Projection,
-  PublishedWorkflowV3Projection,
-  PublishedWorkflowExecutableProjection,
-} from './execution/published-workflow-reader.js';
+export type { PublishedWorkflowV2Projection } from './execution/published-workflow-reader.js';
 export {
   ScheduleTriggerError,
   createScheduleTriggerDatabase,
@@ -274,7 +269,6 @@ export {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   WorkflowPortabilityUnavailableError,
-  WorkflowDraftOperationUnavailableError,
   WorkflowTemplateOriginUnavailableError,
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,

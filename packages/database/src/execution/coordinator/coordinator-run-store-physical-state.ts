@@ -1,13 +1,9 @@
 import type { PoolClient } from 'pg';
-import {
-  workflowForEachBoundsV2,
-  workflowForEachBoundsV3,
-} from '@pertexo/workflow-model/graph';
+import { workflowForEachBoundsV2 } from '@pertexo/workflow-model/graph';
 import { isRejectedForEachCollection } from './coordinator-rejected-loop-collection.js';
-import { assertWorkflowCallResultOutput } from '../workflow-calls/workflow-call-result-reference.js';
 
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
-import type { CoordinatorCheckpoint as PersistedWorkflowCheckpoint } from './coordinator-checkpoint.js';
+import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
@@ -27,14 +23,12 @@ type PhysicalInvocationRow = Readonly<{
   control_kind: string | null;
   node_id: string;
   node_output_ref: unknown;
-  node_input_ref: unknown;
   node_status: string;
   resume_at: Date | null;
   retry_due_at: Date | null;
   wait_kind: 'node_wait' | 'retry_backoff' | null;
   safe_error_code: string | null;
   has_rejection_fact: boolean;
-  has_control_stop_fact: boolean;
 }>;
 
 function corruptIf(condition: boolean): void {
@@ -85,7 +79,6 @@ function parsedPhysicalOutput(
     );
     return undefined;
   }
-  if (expected.kind !== 'artifact') throw new CoordinatorRunStateCorruptError();
   corruptIf(
     nodeValue.kind !== 'artifact' ||
       nodeValue.artifactId !== expected.artifactId,
@@ -157,27 +150,22 @@ function validateWaiting(
     ({ controlInvocationKey }) =>
       controlInvocationKey === invocation.invocationKey,
   );
-  const isCall =
-    checkpoint.schemaVersion === 3 &&
-    checkpoint.calls.some(
-      ({ invocationKey }) => invocationKey === invocation.invocationKey,
-    );
   corruptIf(row.node_status !== 'waiting');
   corruptIf(
-    isLoopBarrier || isCall
-      ? row.control_kind !== (isCall ? 'workflow_call' : 'for_each_barrier')
+    isLoopBarrier
+      ? row.control_kind !== 'for_each_barrier'
       : row.control_kind !== null,
   );
   corruptIf(
     row.attempt_status !== 'succeeded' && row.attempt_status !== 'failed',
   );
   corruptIf(
-    isLoopBarrier || isCall
+    isLoopBarrier
       ? invocation.resumeAt !== undefined || dueAt !== null
       : invocation.resumeAt === undefined ||
           dueAt?.toISOString() !== invocation.resumeAt,
   );
-  corruptIf(!isLoopBarrier && !isCall && row.wait_kind !== invocation.waitKind);
+  corruptIf(!isLoopBarrier && row.wait_kind !== invocation.waitKind);
 }
 
 function validateReady(
@@ -234,49 +222,9 @@ function validateInvocation(
   );
   validateAttemptIdentity(row, invocation);
   validatePhysicalStatus(row, invocation, checkpoint, freshFact);
-  if (
-    checkpoint.schemaVersion === 3 &&
-    checkpoint.calls.some(
-      ({ invocationKey }) => invocationKey === invocation.invocationKey,
-    )
-  ) {
-    corruptIf(
-      row.attempt_status !== 'succeeded' ||
-        row.current_attempt_number !== 1 ||
-        row.node_input_ref === null,
-    );
-    corruptIf(
-      serializeStoredExecutionJsonValue(row.node_input_ref) !==
-        serializeStoredExecutionJsonValue(row.attempt_output_ref),
-    );
-    if (invocation.output === undefined)
-      corruptIf(row.node_output_ref !== null);
-    return undefined;
-  }
   if (invocation.status === 'failed' && row.attempt_status === 'succeeded') {
     validateRejectedForEachState(row, invocation, checkpoint, executableJson);
     return undefined;
-  }
-  if (
-    checkpoint.schemaVersion === 3 &&
-    (invocation.status === 'canceled' || invocation.status === 'timed_out') &&
-    row.attempt_status === 'succeeded' &&
-    !checkpoint.loops.some(
-      ({ controlInvocationKey }) =>
-        controlInvocationKey === invocation.invocationKey,
-    ) &&
-    workflowForEachBoundsV3(executableJson).has(invocation.nodeId)
-  ) {
-    corruptIf(
-      !row.has_control_stop_fact ||
-        row.control_kind !== null ||
-        row.wait_kind !== null ||
-        row.resume_at !== null ||
-        row.retry_due_at !== null ||
-        (invocation.status === 'canceled'
-          ? !checkpoint.cancelRequested
-          : checkpoint.cancelRequested || !checkpoint.deadlineExpired),
-    );
   }
   return invocation.status === 'running' && freshFact !== undefined
     ? undefined
@@ -337,9 +285,7 @@ function validateRejectedForEachState(
         nodeId: invocation.nodeId,
         iterationPath,
         value: stored.value,
-        bounds: (checkpoint.schemaVersion === 3
-          ? workflowForEachBoundsV3
-          : workflowForEachBoundsV2)(executableJson),
+        bounds: workflowForEachBoundsV2(executableJson),
         remainingIterationBudget: checkpoint.remainingIterationBudget,
       }),
     );
@@ -371,20 +317,10 @@ export async function validateLoadedCheckpointPhysicalState(
                  and event.payload->>'nodeId'=node.node_id
                  and event.payload->>'attemptNumber'=node.current_attempt_number::text
              ) else false end as has_rejection_fact,
-            case when node.status in ('canceled','timed_out') and attempt.status='succeeded'
-              then exists(select 1 from app.run_events event
-                where event.workspace_id=node.workspace_id and event.workflow_run_id=node.workflow_run_id
-                  and event.type='node.' || node.status
-                  and event.payload->>'invocationKey'=node.invocation_key
-                  and event.payload->>'attemptId'=node.current_attempt_id::text
-                  and event.payload->>'nodeRunId'=node.id::text
-                  and event.payload->>'nodeId'=node.node_id
-                  and event.payload->>'attemptNumber'=node.current_attempt_number::text)
-              else false end as has_control_stop_fact,
             node.status as node_status,
             node.current_attempt_id, node.current_attempt_number,
              node.resume_at, node.retry_due_at, node.wait_kind,
-            node.output_ref as node_output_ref,node.input_ref as node_input_ref,
+            node.output_ref as node_output_ref,
             attempt.id as attempt_id, attempt.attempt_number,
             attempt.status as attempt_status,
             attempt.output_ref as attempt_output_ref
@@ -413,14 +349,6 @@ export async function validateLoadedCheckpointPhysicalState(
       executableJson,
     );
     if (artifactId !== undefined) artifactIds.add(artifactId);
-    if (invocation.output?.kind === 'workflow_call') {
-      await assertWorkflowCallResultOutput(client, {
-        parentRunId: runId,
-        invocationKey: invocation.invocationKey,
-        childRunId: invocation.output.childRunId,
-        compareLogicalNode: true,
-      });
-    }
   }
   await assertAvailableArtifacts(client, workspaceId, artifactIds);
 }

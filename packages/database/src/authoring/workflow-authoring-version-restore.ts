@@ -1,10 +1,10 @@
 import { z } from 'zod';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/graph';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-  WorkflowDraftOperationUnavailableError,
 } from './workflow-authoring-errors.js';
 import type {
   RestoreWorkflowVersionInput,
@@ -14,7 +14,6 @@ import type { WorkflowDraftRecord } from './workflow-authoring-records.js';
 import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import {
   mapDraft,
-  draftRepresentationTag,
   mapVersion,
   mapWorkflow,
   workflowRowSelection,
@@ -29,7 +28,7 @@ type VersionRestoreStore = Pick<
 const uuidSchema = z.uuid();
 const workflowDraftTagSchema = z
   .string()
-  .regex(/^"draft-v[12]\.[A-Za-z0-9_-]{43}"$/u);
+  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
 
 async function restoreWorkflowVersion(
   context: WorkflowAuthoringWriteContext,
@@ -69,7 +68,12 @@ async function restoreWorkflowVersion(
     if (draftRow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
     const currentDraft = mapDraft(draftRow, definitionCatalog);
-    const currentTag = draftRepresentationTag(workflowId, currentDraft);
+    const currentTag = workflowDraftRepresentationTag({
+      workflowId,
+      revision: currentDraft.revision,
+      graph: currentDraft.graphJson,
+      compatibilityFingerprint: currentDraft.compatibility.fingerprint,
+    });
     if (currentTag !== representationTag)
       throw new WorkflowRevisionConflictError(
         currentDraft.revision,
@@ -85,8 +89,6 @@ async function restoreWorkflowVersion(
     if (sourceRow === undefined)
       throw new WorkflowNotFoundError('Workflow version is not visible');
     const sourceVersion = mapVersion(sourceRow);
-    if (currentDraft.schemaVersion === 2 || sourceVersion.schemaVersion === 2)
-      throw new WorkflowDraftOperationUnavailableError();
     await context.testHooks?.afterVersionRestoreStep?.('source');
     context.requirePlaceable(
       currentDraft.graphJson,

@@ -16,7 +16,6 @@ import type { ApiClient } from '@/lib/api/client';
 import { OutcomeUnknownCard } from './components/run-detail/outcome-unknown-card';
 import { RunDetailTabs } from './components/run-detail/run-detail-tabs';
 import { RunHeader } from './components/run-detail/run-header';
-import { RunCallFamily } from './components/run-detail/run-call-family';
 import {
   StepError,
   RunStepDetails,
@@ -179,7 +178,6 @@ export function RunDetailPage({
       upstream={upstream}
       nowMs={nowMs}
       scope={dataScope}
-      callFamily={snapshot.callFamily}
     />
   );
 
@@ -201,12 +199,6 @@ export function RunDetailPage({
           onReconnect={events.reconnect}
           onRunAccepted={onRunAccepted}
         />
-        {snapshot.callFamily === undefined ? null : (
-          <RunCallFamily
-            family={snapshot.callFamily}
-            workspaceId={workspace.id}
-          />
-        )}
         {compact ? (
           <PhoneFailureNotice
             run={run}

@@ -1,10 +1,7 @@
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 
-import {
-  EMPTY_WORKFLOW_GRAPH_V1,
-  parseWorkflowAuthoringGraphDraft,
-} from './graph.js';
+import { EMPTY_WORKFLOW_GRAPH_V1, parseWorkflowGraphDraft } from './graph.js';
 
 import {
   authorizeWorkspaceOperation,
@@ -253,7 +250,7 @@ export class SaveWorkflowDraftUseCase {
       WORKFLOW_AUTHORING_OPERATION.draftSave,
       async () => {
         await authorize(input, 'workflow:update', this.authorization);
-        const graph = parseWorkflowAuthoringGraphDraft(input.graph);
+        const graph = parseWorkflowGraphDraft(input.graph);
         const current = await this.currentDraft(input);
         const currentTag = createDraftRepresentationTag({
           workflowId: current.workflowId,

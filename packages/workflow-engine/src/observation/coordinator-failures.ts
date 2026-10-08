@@ -21,8 +21,6 @@ export function resolveAttemptFailures(
     retryPolicyReference: PolicyReference;
     controlCanceled: boolean;
     controlDeadline: boolean;
-    /** V3 Call declarations cannot become a fresh logical retry or another child. */
-    nonRetryableNodeIds?: ReadonlySet<string>;
   }>,
 ): readonly WorkflowObservation[] {
   let retryPolicy: ReturnType<typeof resolveRetryPolicy>;
@@ -76,9 +74,7 @@ export function resolveAttemptFailures(
     const decision = decideRetry({
       sideEffectClass: node.sideEffectClass,
       currentAttemptNumber: failure.attemptNumber,
-      policy: input.nonRetryableNodeIds?.has(node.id)
-        ? { ...retryPolicy, maximumAttempts: 1 }
-        : retryPolicy,
+      policy: retryPolicy,
       observation: {
         kind: 'executor_failure',
         recommendation: failure.failureKind,

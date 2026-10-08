@@ -89,7 +89,6 @@ const scenario = z
     'portability',
     'input-cases',
     'curated-templates',
-    'native-draft-storage',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 const webOrigin = 'http://127.0.0.1:4174';
@@ -302,8 +301,6 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(error);
       }),
     );
-    // Ordinary draft storage has no execution qualification or worker lifetime.
-    if (scenario === 'native-draft-storage') return;
     worker = ownChild(
       'pure-node worker process',
       fork('test/editor-browser-worker-process-fixture.ts', [], {
@@ -355,13 +352,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   const api = useBetterAuthRealApi('editor_browser', {
     publicWebOrigin: webOrigin,
     nodeCompatibilityCohort:
-      scenario === 'native-draft-storage'
-        ? 'core'
-        : scenario === 'schedule'
-          ? 'schedule_activation'
-          : scenario === 'webhook-controlled-http'
-            ? httpCohort
-            : 'validate_activation',
+      scenario === 'schedule'
+        ? 'schedule_activation'
+        : scenario === 'webhook-controlled-http'
+          ? httpCohort
+          : 'validate_activation',
     schedules: scenario === 'schedule' || scenario === 'curated-templates',
     ...(httpMaster === undefined
       ? {}
@@ -439,7 +434,6 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       otlpHeaders: {},
     }),
     afterMigration: async (databaseUrl) => {
-      if (scenario === 'native-draft-storage') return;
       if (scenario === 'schedule' || scenario === 'webhook-controlled-http') {
         const inspector = new Pool({
           connectionString: databaseUrl(process.env.DATABASE_ADMIN_URL ?? ''),
@@ -974,29 +968,27 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             'test',
             '--config',
             'playwright.live.config.ts',
-            scenario === 'native-draft-storage'
-              ? 'editor-native-draft-storage.spec.ts'
-              : scenario === 'curated-templates'
-                ? 'curated-templates.spec.ts'
-                : scenario === 'portability'
-                  ? 'workflow-portability.spec.ts'
-                  : scenario === 'input-cases'
-                    ? 'workflow-input-cases.spec.ts'
-                    : scenario === 'duplication'
-                      ? 'workflow-duplication.spec.ts'
-                      : scenario === 'nested-conflict'
-                        ? 'editor-execution.spec.ts'
-                        : scenario === 'receipts'
-                          ? 'editor-receipts.spec.ts'
-                          : scenario === 'run-recovery'
-                            ? 'editor-run-recovery.spec.ts'
-                            : scenario === 'expression-admission'
-                              ? 'editor-expression-admission.spec.ts'
-                              : scenario === 'readonly'
-                                ? 'editor-readonly.spec.ts'
-                                : scenario === 'schedule'
-                                  ? 'editor-schedule.spec.ts'
-                                  : 'editor-webhook-controlled-http.spec.ts',
+            scenario === 'curated-templates'
+              ? 'curated-templates.spec.ts'
+              : scenario === 'portability'
+                ? 'workflow-portability.spec.ts'
+                : scenario === 'input-cases'
+                  ? 'workflow-input-cases.spec.ts'
+                  : scenario === 'duplication'
+                    ? 'workflow-duplication.spec.ts'
+                    : scenario === 'nested-conflict'
+                      ? 'editor-execution.spec.ts'
+                      : scenario === 'receipts'
+                        ? 'editor-receipts.spec.ts'
+                        : scenario === 'run-recovery'
+                          ? 'editor-run-recovery.spec.ts'
+                          : scenario === 'expression-admission'
+                            ? 'editor-expression-admission.spec.ts'
+                            : scenario === 'readonly'
+                              ? 'editor-readonly.spec.ts'
+                              : scenario === 'schedule'
+                                ? 'editor-schedule.spec.ts'
+                                : 'editor-webhook-controlled-http.spec.ts',
           ],
           {
             cwd: webDirectory,
@@ -1016,12 +1008,6 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         else reject(new Error(`Real browser journey exited ${String(code)}`));
       });
     });
-    if (scenario === 'native-draft-storage') {
-      expect(browserWasOpened).toBe(true);
-      expect(openBrowserInstances.size).toBe(0);
-      await recheckOwnership();
-      return;
-    }
     if (scenario === 'curated-templates') {
       if (curatedFixture === undefined || curatedEvidence === undefined)
         throw new Error('Curated template browser evidence missing');

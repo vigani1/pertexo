@@ -6,12 +6,14 @@ import type {
   WorkspaceDatabase,
 } from '@pertexo/database/api';
 import { createWorkspaceDatabase } from '@pertexo/database/api';
-import { composeApiWorkflowCompatibilityRelease as composeExecutableCompatibilityRelease } from '../workflow/workflow-compatibility.js';
 import {
   platformRegistryReleaseSupport,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
-import { createExecutableCompatibilityReleaseSupport } from '@pertexo/workflow-engine';
+import {
+  composeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseSupport,
+} from '@pertexo/workflow-engine';
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 

@@ -7,16 +7,7 @@ import { completeNodeAttempt } from './node-attempt-run-store-completion.js';
 import { markNodeAttemptDispatched } from './node-attempt-run-store-dispatch.js';
 import { heartbeatNodeAttempt } from './node-attempt-run-store-heartbeat.js';
 import { recordNodeAttemptInput } from './node-attempt-run-store-input-record.js';
-import {
-  recordWorkflowCallDeclarationInput,
-  readWorkflowCallDeclarationInput,
-} from './node-attempt-call-input-record.js';
 import { loadNodeAttemptInputs } from './node-attempt-run-store-inputs.js';
-import { readNativeAttemptValueSource } from './node-attempt-native-value-read.js';
-import {
-  reserveNativeAttemptArtifact,
-  inspectNativeAttemptArtifact,
-} from '../artifacts/native-attempt-artifact-owner.js';
 
 import {
   NodeAttemptConnectionFenceError,
@@ -59,20 +50,6 @@ export function createNodeAttemptRunStore(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
-    reserveNativeArtifact: (
-      input: Parameters<typeof reserveNativeAttemptArtifact>[1],
-    ) => reserveNativeAttemptArtifact(pool, input),
-    assertNativeArtifactReserved: (
-      input: Parameters<typeof inspectNativeAttemptArtifact>[1],
-    ) => inspectNativeAttemptArtifact(pool, input),
-    finalizeNativeArtifact: (
-      input: Parameters<typeof inspectNativeAttemptArtifact>[1],
-    ) => inspectNativeAttemptArtifact(pool, input, true),
-    readNativeValueSource: (
-      input: Parameters<
-        NonNullable<NodeAttemptRunStore['readNativeValueSource']>
-      >[0],
-    ) => readNativeAttemptValueSource(pool, input),
     claimDelivery: (
       input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
     ) => claimNodeAttemptDelivery(pool, input),
@@ -86,28 +63,8 @@ export function createNodeAttemptRunStore(
     recordInput: (
       input: Parameters<NonNullable<NodeAttemptRunStore['recordInput']>>[0],
     ) => recordNodeAttemptInput(pool, input),
-    recordCallDeclarationInput: (
-      input: Parameters<
-        NonNullable<NodeAttemptRunStore['recordCallDeclarationInput']>
-      >[0],
-    ) => recordWorkflowCallDeclarationInput(pool, input),
-    readCallDeclarationInput: (
-      input: Parameters<
-        NonNullable<NodeAttemptRunStore['readCallDeclarationInput']>
-      >[0],
-    ) => readWorkflowCallDeclarationInput(pool, input),
     complete: (input: Parameters<NodeAttemptRunStore['complete']>[0]) =>
       completeNodeAttempt(pool, input),
-    completeCallDeclaration: (
-      input: Parameters<
-        NonNullable<NodeAttemptRunStore['completeCallDeclaration']>
-      >[0],
-    ) =>
-      completeNodeAttempt(
-        pool,
-        { ...input, outcome: { status: 'succeeded', output: null } },
-        'workflow_call_input_alias',
-      ),
     close: () => lease.close(),
   });
 }

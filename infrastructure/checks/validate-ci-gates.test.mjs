@@ -1,19 +1,11 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { promisify } from 'node:util';
 
 import { parse as parseYaml } from 'yaml';
 import { WORKFLOW_ORGANIZATION_GATES } from '../testing/workflow-organization-gates.mjs';
 
-import {
-  INLINE_CALL_HTTP_COMMAND,
-  INLINE_CALL_HTTP_VALIDATE_COMMAND,
-  validateCiGatePolicy,
-} from './validate-ci-gates.mjs';
+import { validateCiGatePolicy } from './validate-ci-gates.mjs';
 
 const qualityBundleScripts = [
   'docs:check',
@@ -163,67 +155,12 @@ jobs:
       );
   }
   workflow.jobs['workflow-organization-qualification'] = organization;
-  workflow.jobs['inline-workflow-call-http'] = {
-    'timeout-minutes': 15,
-    env: {
-      ...workflow.jobs['curated-templates'].steps.find(
-        (step) => step.env?.DATABASE_ADMIN_URL,
-      ).env,
-      DATABASE_OPERATOR_URL:
-        'postgresql://pertexo_operator:pertexo-local-operator@127.0.0.1:5432/pertexo',
-      COMPOSE_PROJECT_NAME:
-        'pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-inline-workflow-call-http',
-      INLINE_WORKFLOW_CALL_HTTP_INTEGRATION: 'true',
-    },
-    steps: [
-      { run: 'pnpm install --frozen-lockfile' },
-      { run: 'pnpm build' },
-      { run: 'docker compose up -d --wait --wait-timeout 120 postgres redis' },
-      {
-        env: {
-          INLINE_WORKFLOW_CALL_GATE_REPORT:
-            '${{ runner.temp }}/inline-workflow-call-http/report.json',
-        },
-        run: [
-          'set -euo pipefail',
-          'mkdir -p "$RUNNER_TEMP/inline-workflow-call-http"',
-          'test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"',
-          'test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"',
-          INLINE_CALL_HTTP_COMMAND,
-          INLINE_CALL_HTTP_VALIDATE_COMMAND,
-        ].join('\n'),
-      },
-      {
-        if: 'always()',
-        run: 'timeout 120 docker compose down -v --remove-orphans',
-      },
-      {
-        if: 'always()',
-        uses: 'actions/upload-artifact@test',
-        with: {
-          path: '${{ runner.temp }}/inline-workflow-call-http',
-          'if-no-files-found': 'error',
-        },
-      },
-    ],
-  };
   for (const name of qualityBundleScripts) {
     packageManifest.scripts[name] = 'node fixture.mjs';
   }
   workflow.jobs.quality.steps.splice(2, 0, {
     run: `set -o pipefail\nmkdir -p artifacts\nnode infrastructure/quality/run-ci-quality.mjs --quality ${qualityBundleScripts.join(' ')} --contracts quality:local:check 2>&1 | tee artifacts/quality.log`,
   });
-  const ownership = [
-    'set -euo pipefail',
-    'postgres_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q postgres)")',
-    'redis_id=$(docker inspect --format \'{{.Id}}\' "$(docker compose ps -q redis)")',
-    'export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \'{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}\')',
-  ].join('\n');
-  for (const step of workflow.jobs.integration.steps) {
-    if (!/artifacts\/(?:api|database)-gates\.json/u.test(step.run)) continue;
-    step.env = { EDITOR_BROWSER_OWNED_FIXTURE: 'true' };
-    step.run = `${ownership}\n${step.run}`;
-  }
   return { packageManifest, workflow };
 }
 
@@ -248,195 +185,6 @@ async function currentPolicyInput() {
     workflow: await currentWorkflow(),
   };
 }
-
-test('bounds every hosted Playwright dependency owner with the identical network guard', async () => {
-  const { workflow } = await currentPolicyInput();
-  assert.deepEqual(
-    Object.entries(workflow.jobs)
-      .filter(([, job]) =>
-        job.steps?.some((step) =>
-          step.run?.includes('playwright install --with-deps'),
-        ),
-      )
-      .map(([name]) => name)
-      .sort(),
-    ['browser', 'curated-templates', 'workflow-organization-qualification'],
-  );
-  for (const owner of [
-    'curated-templates',
-    'workflow-organization-qualification',
-  ]) {
-    const job = workflow.jobs[owner];
-    const preparationIndex = job.steps.findIndex(
-      (step) => step.name === 'Bound browser dependency network acquisition',
-    );
-    assert.ok(preparationIndex >= 0, `${owner} must bound APT before install`);
-    assert.deepEqual(
-      job.steps[preparationIndex],
-      workflow.jobs.browser.steps.find(
-        (step) => step.name === 'Bound browser dependency network acquisition',
-      ),
-    );
-    assert.equal(
-      job.steps[preparationIndex + 1].run,
-      'pnpm --filter @pertexo/web exec playwright install --with-deps chromium',
-    );
-    assert.equal(job['timeout-minutes'], 35);
-    assert.equal(job['runs-on'], 'ubuntu-latest');
-  }
-});
-
-test('bounds browser APT acquisition without changing signed sources or browser coverage', async () => {
-  const { workflow } = await currentPolicyInput();
-  const browser = workflow.jobs.browser;
-  const preparationIndex = browser.steps.findIndex(
-    (step) => step.name === 'Bound browser dependency network acquisition',
-  );
-  assert.ok(preparationIndex >= 0);
-  const preparation = browser.steps[preparationIndex];
-  assert.equal(preparation.shell, 'bash');
-  assert.equal(preparation.if, undefined);
-  assert.equal(preparation['continue-on-error'], undefined);
-  assert.equal(browser['timeout-minutes'], 15);
-  assert.equal(
-    browser.steps[preparationIndex + 1].run,
-    'pnpm --filter @pertexo/web exec playwright install --with-deps chromium firefox webkit',
-  );
-
-  // Execute the actual workflow shell against disposable fixtures, not host APT.
-  // Only the three filesystem targets and privilege elevation are substituted.
-  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-browser-apt-'));
-  const sources = path.join(directory, 'ubuntu.sources');
-  const mirrors = path.join(directory, 'apt-mirrors.txt');
-  const configuration = path.join(directory, 'network.conf');
-  const mirrorList =
-    'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n' +
-    'https://archive.ubuntu.com/ubuntu/\tpriority:2\n' +
-    'https://security.ubuntu.com/ubuntu/\tpriority:3\n';
-  const signedSources =
-    `URIs: mirror+file:${mirrors}\n` +
-    'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n';
-  const command = preparation.run
-    .replaceAll('/etc/apt/sources.list.d/ubuntu.sources', sources)
-    .replaceAll('/etc/apt/apt-mirrors.txt', mirrors)
-    .replaceAll('/etc/apt/apt.conf.d/99-pertexo-browser-network', configuration)
-    .replace('sudo tee ', 'tee ');
-  const execute = () => promisify(execFile)('bash', ['-c', command]);
-  try {
-    await writeFile(mirrors, mirrorList);
-    await writeFile(sources, signedSources);
-    await execute();
-    assert.equal(
-      await readFile(configuration, 'utf8'),
-      'Acquire::http::Timeout "15";\nAcquire::https::Timeout "15";\nAcquire::Retries "1";\n',
-    );
-    assert.equal(await readFile(mirrors, 'utf8'), mirrorList);
-    assert.equal(await readFile(sources, 'utf8'), signedSources);
-    for (const invalidMirrors of [
-      mirrorList.replace(
-        'https://archive.ubuntu.com',
-        'http://archive.ubuntu.com',
-      ),
-      mirrorList.replace('https://archive.ubuntu.com', 'https://example.com'),
-      mirrorList.replace('\tpriority:2', '\tpriority:1'),
-      mirrorList + 'https://example.com/ubuntu/\tpriority:4\n',
-    ]) {
-      await rm(configuration, { force: true });
-      await writeFile(mirrors, invalidMirrors);
-      await assert.rejects(execute);
-      await assert.rejects(readFile(configuration), { code: 'ENOENT' });
-    }
-    await writeFile(mirrors, mirrorList);
-    for (const invalidSources of [
-      signedSources.replace('mirror+file:', 'https:'),
-      signedSources.replace('ubuntu-archive-keyring', 'untrusted-keyring'),
-    ]) {
-      await writeFile(sources, invalidSources);
-      await assert.rejects(execute);
-      await assert.rejects(readFile(configuration), { code: 'ENOENT' });
-    }
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('requires registered inline Call HTTP qualification with strict no-skip evidence', async () => {
-  const input = await currentPolicyInput();
-  assert.doesNotThrow(() => validateCiGatePolicy(input));
-  for (const mutate of [
-    (job) => {
-      job.if = 'false';
-    },
-    (job) => {
-      job['continue-on-error'] = true;
-    },
-    (job) => {
-      job['timeout-minutes'] = 60;
-    },
-    (job) => {
-      job.env.INLINE_WORKFLOW_CALL_HTTP_INTEGRATION = 'false';
-    },
-    (job) => {
-      job.env.COMPOSE_PROJECT_NAME = 'pertexo-fixed-shared';
-    },
-    (job) => {
-      const step = job.steps.find((step) =>
-        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
-      );
-      job.env.INLINE_WORKFLOW_CALL_GATE_REPORT =
-        step.env.INLINE_WORKFLOW_CALL_GATE_REPORT;
-      delete step.env.INLINE_WORKFLOW_CALL_GATE_REPORT;
-    },
-    (job) => {
-      job.env.INLINE_WORKFLOW_CALL_GATE_REPORT =
-        '${{ runner.temp }}/inline-workflow-call-http/report.json';
-    },
-    (job) => {
-      job.steps.find((step) =>
-        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
-      ).env.INLINE_WORKFLOW_CALL_GATE_REPORT = '/tmp/incorrect-report.json';
-    },
-    (job) => {
-      job.env.DATABASE_API_URL = 'postgresql://postgres@127.0.0.1:5432/pertexo';
-    },
-    (job) => {
-      job.steps.find((step) =>
-        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
-      ).if = 'false';
-    },
-    (job) => {
-      job.steps.find((step) =>
-        step.run?.includes(INLINE_CALL_HTTP_COMMAND),
-      ).run = 'echo passed';
-    },
-    (job) => {
-      const step = job.steps.find((step) =>
-        step.run?.includes(INLINE_CALL_HTTP_VALIDATE_COMMAND),
-      );
-      step.run = step.run.replace("qualification' 1", "qualification' 0");
-    },
-    (job) => {
-      job.steps.find((step) => step.run?.startsWith('docker compose up')).run =
-        'docker compose up -d postgres redis';
-    },
-    (job) => {
-      job.steps.find((step) => step.run?.includes('docker compose down')).if =
-        'failure()';
-    },
-    (job) => {
-      job.steps.find((step) =>
-        step.uses?.startsWith('actions/upload-artifact@'),
-      ).with['if-no-files-found'] = 'ignore';
-    },
-  ]) {
-    const changed = clone(input);
-    mutate(changed.workflow.jobs['inline-workflow-call-http']);
-    assert.throws(() => validateCiGatePolicy(changed), /inline Call HTTP/u);
-  }
-  const absent = clone(input);
-  delete absent.workflow.jobs['inline-workflow-call-http'];
-  assert.throws(() => validateCiGatePolicy(absent), /inline Call HTTP/u);
-});
 
 function assertRequiredLiveBrowserGate(workflow, gate) {
   const steps = workflow.jobs.browser.steps;
@@ -906,47 +654,6 @@ test('rejects missing, optional or incorrectly owned concurrency browser proof r
     assert.throws(() =>
       assertRequiredLiveBrowserGate(workflow, concurrencyBrowserGate),
     );
-  }
-});
-
-test('rejects missing or weakened ordinary draft integration ownership', () => {
-  for (const report of ['api', 'database']) {
-    for (const mutate of [
-      (step) => delete step.env.EDITOR_BROWSER_OWNED_FIXTURE,
-      (step) => (step.env.EDITOR_BROWSER_OWNED_FIXTURE = 'false'),
-      (step) => (step.if = 'false'),
-      (step) => (step['continue-on-error'] = true),
-      (step) => (step.run = step.run.replace('set -euo pipefail', 'set -e')),
-      (step) =>
-        (step.run = step.run.replace(
-          'export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn',
-          'export OTHER_MANIFEST=$(jq -cn',
-        )),
-      (step) =>
-        (step.run = step.run.replace('docker inspect', 'echo fake-container')),
-      (step) =>
-        (step.run = step.run.replace(
-          '$COMPOSE_PROJECT_NAME',
-          'pertexo-shared',
-        )),
-      (step) => (step.run = step.run.replace('$POSTGRES_PORT', '55435')),
-      (step) => (step.run = step.run.replace('$REDIS_PORT', '56379')),
-      (step) => {
-        const lines = step.run.split('\n');
-        const manifest = lines.splice(3, 1)[0];
-        step.run = [...lines, manifest].join('\n');
-      },
-    ]) {
-      const input = fixture();
-      const step = input.workflow.jobs.integration.steps.find((candidate) =>
-        candidate.run.includes(`artifacts/${report}-gates.json`),
-      );
-      mutate(step);
-      assert.throws(
-        () => validateCiGatePolicy(input),
-        /ordinary draft integration/u,
-      );
-    }
   }
 });
 

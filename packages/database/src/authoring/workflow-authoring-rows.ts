@@ -5,14 +5,10 @@ import {
 } from '@pertexo/workflow-model/lifecycle';
 import {
   parseWorkflowGraphDraft,
-  workflowCallableDraftRepresentationTagV2,
-  workflowDraftRepresentationTag,
   workflowCompatibilityReport,
   workflowRetainedExecutableChecksum,
   type WorkflowDefinitionCatalogV1,
 } from '@pertexo/workflow-model/graph';
-import { workflowCallableGraphSchemaV2 } from '@pertexo/workflow-model/callable-graph-contract';
-import { workflowCallStructuralProjectionV1 } from '@pertexo/workflow-model/workflow-call-closure';
 
 import type {
   WorkflowDraftRecord,
@@ -23,7 +19,6 @@ import type {
 const uuidSchema = z.uuid();
 const revisionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const retainedChecksumSchema = z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u);
-const nativeChecksumSchema = z.string().regex(/^wf:v3:sha256:[0-9a-f]{64}$/u);
 export const workflowVersionRowSelection =
   'id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,published_by,published_at';
 export const workflowRowSelection =
@@ -31,7 +26,6 @@ export const workflowRowSelection =
 export const checksumSchema = z.union([
   retainedChecksumSchema,
   z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
-  nativeChecksumSchema,
 ]);
 const workflowRowSchema = z
   .object({
@@ -79,7 +73,7 @@ const workflowDraftRowSchema = z
     workflow_id: uuidSchema,
     workspace_id: uuidSchema,
     revision: z.number().int().positive(),
-    schema_version: z.union([z.literal(1), z.literal(2)]),
+    schema_version: z.literal(1),
     graph_json: z.unknown(),
     updated_by: uuidSchema,
     updated_at: z.coerce.date(),
@@ -91,7 +85,7 @@ const workflowVersionRowSchema = z
     workspace_id: uuidSchema,
     workflow_id: uuidSchema,
     version_number: z.number().int().positive(),
-    schema_version: z.union([z.literal(1), z.literal(2)]),
+    schema_version: z.literal(1),
     graph_json: z.unknown(),
     checksum: checksumSchema,
     published_by: uuidSchema,
@@ -124,43 +118,16 @@ export function mapDraft(
   definitionCatalog: WorkflowDefinitionCatalogV1,
 ): WorkflowDraftRecord {
   const parsed = workflowDraftRowSchema.parse(row);
-  const graph =
-    parsed.schema_version === 2
-      ? workflowCallableGraphSchemaV2.parse(parsed.graph_json)
-      : parseWorkflowGraphDraft(parsed.graph_json);
-  if (parsed.schema_version !== graph.schemaVersion)
-    throw new Error('Stored workflow draft schema does not match its graph');
+  const graph = parseWorkflowGraphDraft(parsed.graph_json);
   return Object.freeze({
     workflowId: parsed.workflow_id,
     workspaceId: parsed.workspace_id,
     revision: parsed.revision,
     schemaVersion: parsed.schema_version,
     graphJson: graph,
-    compatibility: workflowCompatibilityReport(
-      graph.schemaVersion === 2
-        ? workflowCallStructuralProjectionV1(graph)
-        : graph,
-      definitionCatalog,
-    ),
+    compatibility: workflowCompatibilityReport(graph, definitionCatalog),
     updatedBy: parsed.updated_by,
     updatedAt: parsed.updated_at,
-  });
-}
-
-/** Full editable representation identity; never a structural graph projection. */
-export function draftRepresentationTag(
-  workflowId: string,
-  draft: WorkflowDraftRecord,
-): string {
-  const tag =
-    draft.schemaVersion === 2
-      ? workflowCallableDraftRepresentationTagV2
-      : workflowDraftRepresentationTag;
-  return tag({
-    workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: draft.compatibility.fingerprint,
   });
 }
 
@@ -168,17 +135,7 @@ export function mapVersion(
   row: Record<string, unknown>,
 ): WorkflowVersionRecord {
   const parsed = workflowVersionRowSchema.parse(row);
-  const graph =
-    parsed.schema_version === 2
-      ? workflowCallableGraphSchemaV2.parse(parsed.graph_json)
-      : parseWorkflowGraphDraft(parsed.graph_json);
-  if (
-    (parsed.schema_version === 2) !==
-    nativeChecksumSchema.safeParse(parsed.checksum).success
-  )
-    throw new Error(
-      'Stored workflow version checksum format does not match its graph',
-    );
+  const graph = parseWorkflowGraphDraft(parsed.graph_json);
   if (parsed.schema_version !== graph.schemaVersion) {
     throw new Error('Stored workflow version schema does not match its graph');
   }
