@@ -25,9 +25,7 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
   page,
 }) => {
   // This catalog is loaded in the Node test process, never the client bundle.
-  const realCatalog = platformBrowserNodeDefinitionCatalog(
-    'validate_activation',
-  );
+  const realCatalog = platformBrowserNodeDefinitionCatalog();
   const keys = [
     'core.webhook',
     'core.validate',

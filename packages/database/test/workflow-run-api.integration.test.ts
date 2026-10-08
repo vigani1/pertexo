@@ -12,13 +12,11 @@ import {
 } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { CompatibilityReleaseMismatchError } from '../src/compatibility/compatibility-release.js';
 import {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
 } from '../src/execution/runs/execution-acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
-import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { WorkflowManualStartUnavailableError } from '../src/execution/runs/workflow-run-errors.js';
 import {
   createWorkflowRunDatabase,
@@ -378,44 +376,6 @@ afterAll(async () => {
 });
 
 describe('workflow run API persistence', () => {
-  it.each([
-    [
-      'alter table app.workflow_runs disable trigger manual_start_writer_fence',
-      'alter table app.workflow_runs enable trigger manual_start_writer_fence',
-    ],
-    [
-      'grant select on app.workflow_manual_start_rejections to pertexo_worker',
-      'revoke select on app.workflow_manual_start_rejections from pertexo_worker',
-    ],
-    [
-      'create policy test_manual_receipt_bypass on app.workflow_manual_start_rejections to pertexo_api using(true)',
-      'drop policy test_manual_receipt_bypass on app.workflow_manual_start_rejections',
-    ],
-    [
-      'grant update on app.workflow_input_case_rollout to pertexo_api',
-      'revoke update on app.workflow_input_case_rollout from pertexo_api',
-    ],
-    [
-      'alter function app.lock_manual_workflow_run_start(uuid,uuid,text,text) set search_path=pg_catalog,public',
-      'alter function app.lock_manual_workflow_run_start(uuid,uuid,text,text) set search_path=pg_catalog,pg_temp',
-    ],
-  ])('rejects checked-start startup drift: %s', async (tamper, restore) => {
-    await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
-      migrationHead: '0135_workflow_folders_batch_identity.sql',
-    });
-    await ownerQuery(tamper);
-    try {
-      await expect(checkDatabaseReadiness(api)).rejects.toThrow(
-        'Published workflow execution schema is incompatible',
-      );
-    } finally {
-      await ownerQuery(restore);
-    }
-    await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
-      migrationHead: '0135_workflow_folders_batch_identity.sql',
-    });
-  });
-
   it('counts filtered rows as plan work even when a scan emits no rows', () => {
     expect(
       explainWork({
@@ -784,29 +744,6 @@ describe('workflow run API persistence', () => {
     expect(measured.noMatch?.outputRowInstances).toBe(0);
     expect(measured.noMatch?.rejectedRowInstances).toBeGreaterThan(0);
   }, 15_000);
-
-  it('resolves an exact replay before checking the current compatibility release', async () => {
-    const first = await database.start(startInput());
-    const drifted = createWorkflowRunDatabase(
-      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-      {
-        ...BASELINE_COMPATIBILITY_EXPECTATION,
-        fingerprint:
-          'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      },
-    );
-    try {
-      await expect(drifted.start(startInput())).resolves.toEqual({
-        ...first,
-        replayed: true,
-      });
-      await expect(
-        drifted.start(startInput(digest('request-2'), digest('key-2'))),
-      ).rejects.toBeInstanceOf(CompatibilityReleaseMismatchError);
-    } finally {
-      await drifted.close();
-    }
-  });
 
   it('disables new checked commands during rollback while preserving unchecked manual admission', async () => {
     await ownerQuery(

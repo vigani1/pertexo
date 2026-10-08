@@ -267,10 +267,8 @@ describe('ADR 057 current capacity authority', () => {
       source: 'default',
     });
     expect(result.asOf).toMatch(/\.\d{6}Z$/u);
-    await expect(
-      checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
-    ).resolves.toMatchObject({
-      migrationHead: '0135_workflow_folders_batch_identity.sql',
+    await expect(checkDatabaseReadiness(runtimePool)).resolves.toMatchObject({
+      migrationHead: '0136_remove_release_machinery.sql',
     });
     const grants = await runtimePool.query(`select
       has_function_privilege('pertexo_api','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as api,
@@ -456,94 +454,6 @@ describe('ADR 057 current capacity authority', () => {
       (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts
         .byteLimit,
     ).toBe('9223372036854775807');
-  });
-
-  it.each(['scope bypass', 'wrong count'])(
-    'startup rejects reader body drift: %s',
-    async (variant) => {
-      const source = await inWorkspace<{ definition: string }>(
-        'owner',
-        busyWorkspace,
-        'select pg_get_functiondef($1::regprocedure) as definition',
-        ['app.workspace_reserved_active_slot_count(uuid)'],
-      );
-      const original = source.rows[0]?.definition;
-      if (original === undefined)
-        throw new Error('Reservation reader definition is unavailable');
-      const changed =
-        variant === 'scope bypass'
-          ? original.replace(
-              /IF p_workspace_id IS NULL OR[\s\S]*?THEN/u,
-              'IF false THEN',
-            )
-          : original.replace('count(*)::integer', '(count(*) + 1)::integer');
-      expect(changed).not.toBe(original);
-      try {
-        await inWorkspace('owner', busyWorkspace, changed);
-        if (variant === 'scope bypass') {
-          expect(
-            (
-              await inWorkspace(
-                'api',
-                busyWorkspace,
-                'select app.workspace_reserved_active_slot_count($1) as count',
-                [quietWorkspace],
-              )
-            ).rows,
-          ).toEqual([{ count: 0 }]);
-        } else {
-          expect(
-            (
-              await inWorkspace(
-                'api',
-                busyWorkspace,
-                'select app.workspace_reserved_active_slot_count($1) as count',
-                [busyWorkspace],
-              )
-            ).rows,
-          ).toEqual([{ count: 1 }]);
-        }
-        await expect(
-          checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
-        ).rejects.toThrow(/admission/u);
-      } finally {
-        await inWorkspace('owner', busyWorkspace, original);
-      }
-      await expect(
-        checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
-      ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
-      });
-    },
-  );
-
-  it('readiness rejects a missing reservation index or broadened scalar grant', async () => {
-    await inWorkspace(
-      'owner',
-      busyWorkspace,
-      'drop index app.workflow_run_active_admissions_workspace_idx',
-    );
-    await expect(
-      checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
-    ).rejects.toThrow(/admission/u);
-    await inWorkspace(
-      'owner',
-      busyWorkspace,
-      'create index workflow_run_active_admissions_workspace_idx on app.workflow_run_active_admissions(workspace_id)',
-    );
-    await inWorkspace(
-      'owner',
-      busyWorkspace,
-      'grant execute on function app.workspace_reserved_active_slot_count(uuid) to public',
-    );
-    await expect(
-      checkDatabaseReadiness(runtimePool, { ownerRole: 'pertexo_owner' }),
-    ).rejects.toThrow(/admission/u);
-    await inWorkspace(
-      'owner',
-      busyWorkspace,
-      'revoke execute on function app.workspace_reserved_active_slot_count(uuid) from public',
-    );
   });
 });
 

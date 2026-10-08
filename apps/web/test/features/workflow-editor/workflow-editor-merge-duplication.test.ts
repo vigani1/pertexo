@@ -12,7 +12,7 @@ import { loopStep, step } from '../../support/for-each-fixtures';
 import { etagA } from '../../support/workflow-editor-fixtures';
 
 const release = composeExecutableCompatibilityRelease(
-  platformServingRegistryRelease('validate_activation'),
+  platformServingRegistryRelease(),
 );
 const groupIds = ['parallel', 'left', 'right', 'merge'];
 

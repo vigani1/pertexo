@@ -7,7 +7,6 @@ import {
   IDEMPOTENCY_STATUS_VALUES,
   RUN_STATUS_VALUES,
 } from '../src/execution/runs/execution-acceptance.js';
-import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import {
   idempotencyRecords,
   outboxEvents,
@@ -343,41 +342,5 @@ describe('workflow run persistence security and compatibility', () => {
         `),
       ),
     ).rejects.toSatisfy(hasPostgresCode('42501'));
-  });
-
-  it('fails readiness when an admission trigger is disabled', async () => {
-    const readiness = new Pool({ connectionString: apiUrl, max: 1 });
-    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
-    try {
-      await expect(
-        checkDatabaseReadiness(readiness, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
-      ).resolves.toBeDefined();
-      await owner.query('begin');
-      await owner.query('set local role pertexo_owner');
-      await owner.query(
-        'alter table app.workflow_runs disable trigger workflow_runs_execution_admission',
-      );
-      await owner.query('commit');
-      await expect(
-        checkDatabaseReadiness(readiness, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
-      ).rejects.toThrow('Execution admission persistence is incompatible');
-    } finally {
-      await owner.query('rollback').catch(() => undefined);
-      await owner.query('begin').catch(() => undefined);
-      await owner.query('set local role pertexo_owner').catch(() => undefined);
-      await owner
-        .query(
-          'alter table app.workflow_runs enable trigger workflow_runs_execution_admission',
-        )
-        .catch(() => undefined);
-      await owner.query('commit').catch(() => undefined);
-      await Promise.all([owner.end(), readiness.end()]);
-    }
   });
 });

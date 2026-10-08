@@ -690,7 +690,6 @@ function artifactApiConfig(): ApiConfig {
         sameSite: 'lax',
       },
     },
-    nodeCompatibilityCohort: 'core',
     nodeEnv: 'test',
     observability: {
       environment: 'test',

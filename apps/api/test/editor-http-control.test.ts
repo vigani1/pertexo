@@ -7,7 +7,6 @@ import { createEditorHttpControl } from './support/editor-http-control.js';
 import {
   httpEvidenceSchema,
   httpEffectsSchema,
-  httpCohort,
   submittedHttpEvidenceIds,
   verifyHttpEvidence,
 } from './support/editor-http-evidence.js';
@@ -36,7 +35,7 @@ it('failed qualification retains only submitted IDs without a verified success o
     mapId: 'map',
     conditionId: 'condition',
     httpId: 'http',
-    catalogRelease: platformBrowserNodeDefinitionCatalog(httpCohort).release,
+    catalogRelease: platformBrowserNodeDefinitionCatalog().release,
     authorization: secret,
     requestBody: secret,
   };

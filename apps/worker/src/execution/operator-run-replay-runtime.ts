@@ -13,7 +13,6 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   unrecoverableQueueError,
@@ -41,18 +40,15 @@ type ReplayDelivery = Extract<
 
 export function createDatabaseOperatorRunReplayStore(
   database: DatabaseConfig,
-  releaseCohort: PlatformReleaseCohort = 'core',
   runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
   const releaseHistory = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory(releaseCohort).map(
+    platformExecutableRegistryHistory().map(
       composeExecutableCompatibilityRelease,
     ),
   );
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(releaseCohort).map(
-      composeExecutableCompatibilityRelease,
-    ),
+    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
   );
   return createOperatorRunReplayStore(
     database,

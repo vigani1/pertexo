@@ -206,7 +206,6 @@ jobs:
             --exclude test/workflow-template-origin-boundary.integration.test.ts \
             --exclude test/workflow-organization.integration.test.ts \
             --exclude test/workflow-organization-read.integration.test.ts \
-            --exclude test/workflow-organization-readiness.integration.test.ts \
             --exclude test/workflow-organization-maintenance-plans.integration.test.ts \
             --exclude test/workflow-folders-batch.integration.test.ts \
             --exclude test/workflow-organization-adapters.integration.test.ts \
@@ -216,7 +215,6 @@ jobs:
             test/workflow-template-origin-boundary.integration.test.ts \
             test/workflow-organization.integration.test.ts \
             test/workflow-organization-read.integration.test.ts \
-            test/workflow-organization-readiness.integration.test.ts \
             test/workflow-organization-maintenance-plans.integration.test.ts \
             test/workflow-folders-batch.integration.test.ts \
             test/workflow-organization-adapters.integration.test.ts \
@@ -233,7 +231,6 @@ jobs:
           pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
           pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            --exclude test/platform/compatibility-rollout.integration.test.ts \
             --exclude test/editor-browser.integration.test.ts \
             --exclude test/usage-browser.integration.test.ts \
             --exclude test/workflow-concurrency-browser.integration.test.ts \

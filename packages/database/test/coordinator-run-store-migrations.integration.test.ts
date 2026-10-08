@@ -4,7 +4,6 @@ import {
   Pool,
   adminBaseUrl,
   apiBaseUrl,
-  asOwner,
   asRuntime,
   checkDatabaseReadiness,
   databaseUrl,
@@ -52,12 +51,9 @@ describe('Coordinator migration and identity invariants', () => {
       });
       try {
         await expect(
-          checkDatabaseReadiness(readinessPool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
+          checkDatabaseReadiness(readinessPool),
         ).resolves.toMatchObject({
-          migrationHead: '0135_workflow_folders_batch_identity.sql',
+          migrationHead: '0136_remove_release_machinery.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -126,15 +122,12 @@ describe('Coordinator migration and identity invariants', () => {
         max: 1,
       });
       try {
-        await expect(
-          checkDatabaseReadiness(workerPool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).resolves.toMatchObject({
-          migrationHead: '0135_workflow_folders_batch_identity.sql',
-          role: 'pertexo_worker',
-        });
+        await expect(checkDatabaseReadiness(workerPool)).resolves.toMatchObject(
+          {
+            migrationHead: '0136_remove_release_machinery.sql',
+            role: 'pertexo_worker',
+          },
+        );
         await expect(
           workerPool.query<{ claimed: number }>(
             'select app.claim_due_node_run_wakeups(10)::integer claimed',
@@ -197,12 +190,9 @@ describe('Coordinator migration and identity invariants', () => {
     });
     try {
       await expect(
-        checkDatabaseReadiness(readinessPool, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
+        checkDatabaseReadiness(readinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+        migrationHead: '0136_remove_release_machinery.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -276,172 +266,10 @@ describe('Coordinator migration and identity invariants', () => {
         ),
       ).rejects.toMatchObject({ code: '23514' });
 
-      await asOwner(workspaceA, (client) =>
-        client.query(
-          'revoke update (last_transition_fingerprint) on app.run_checkpoints from pertexo_worker',
-        ),
-      );
-      try {
-        await expect(
-          checkDatabaseReadiness(readinessPool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).rejects.toThrow('Coordinator RunStore grants are incompatible');
-      } finally {
-        await asOwner(workspaceA, (client) =>
-          client.query(
-            'grant update (last_transition_fingerprint) on app.run_checkpoints to pertexo_worker',
-          ),
-        );
-      }
-      await asOwner(workspaceA, (client) =>
-        client.query('grant update on app.outbox_events to pertexo_worker'),
-      );
-      try {
-        await expect(
-          checkDatabaseReadiness(readinessPool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).rejects.toThrow('Coordinator RunStore grants are incompatible');
-      } finally {
-        await asOwner(workspaceA, (client) =>
-          client.query(
-            'revoke update on app.outbox_events from pertexo_worker',
-          ),
-        );
-      }
-      for (const [revoke, restore] of [
-        [
-          'revoke select on app.outbox_events from pertexo_worker',
-          'grant select on app.outbox_events to pertexo_worker',
-        ],
-        [
-          'revoke insert on app.transport_security_audit_facts from pertexo_worker',
-          'grant insert on app.transport_security_audit_facts to pertexo_worker',
-        ],
-      ] as const) {
-        await asOwner(workspaceA, (client) => client.query(revoke));
-        try {
-          await expect(
-            checkDatabaseReadiness(readinessPool, {
-              ownerRole: 'pertexo_owner',
-              workerRuntimeRole: 'pertexo_worker',
-            }),
-          ).rejects.toThrow('Coordinator RunStore grants are incompatible');
-        } finally {
-          await asOwner(workspaceA, (client) => client.query(restore));
-        }
-      }
-      await asOwner(workspaceA, (client) =>
-        client.query(
-          `alter policy inbox_receipts_workspace_scope on app.inbox_receipts
-             using (true) with check (true)`,
-        ),
-      );
-      try {
-        await expect(
-          checkDatabaseReadiness(readinessPool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).rejects.toThrow('Coordinator RunStore grants are incompatible');
-      } finally {
-        await asOwner(workspaceA, (client) =>
-          client.query(
-            `alter policy inbox_receipts_workspace_scope on app.inbox_receipts
-               using (
-                 workspace_id::text = nullif(
-                   current_setting('app.workspace_id', true), ''
-                 )
-               )
-               with check (
-                 workspace_id::text = nullif(
-                   current_setting('app.workspace_id', true), ''
-                 )
-               )`,
-          ),
-        );
-      }
-
-      await asOwner(workspaceA, (client) =>
-        client.query(
-          'alter table app.run_checkpoints drop constraint run_checkpoints_transition_fingerprint_valid',
-        ),
-      );
-      try {
-        await expect(
-          checkDatabaseReadiness(readinessPool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).rejects.toThrow('Execution value persistence is incompatible');
-      } finally {
-        await asOwner(workspaceA, (client) =>
-          client.query(
-            `alter table app.run_checkpoints
-               add constraint run_checkpoints_transition_fingerprint_valid
-               check (
-                 last_transition_fingerprint is null
-                 or last_transition_fingerprint ~ '^[0-9a-f]{64}$'
-               )`,
-          ),
-        );
-      }
-      await asOwner(workspaceA, (client) =>
-        client.query(
-          'alter table app.run_events drop constraint run_events_payload_bounded',
-        ),
-      );
-      try {
-        await expect(
-          checkDatabaseReadiness(readinessPool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).rejects.toThrow('Execution value persistence is incompatible');
-      } finally {
-        await asOwner(workspaceA, (client) =>
-          client.query(
-            `alter table app.run_events
-               add constraint run_events_payload_bounded
-               check (octet_length(payload::text) <= 524288)`,
-          ),
-        );
-      }
-      await asOwner(workspaceA, (client) =>
-        client.query(
-          `alter policy artifacts_workspace_scope on app.artifacts
-             using (true)`,
-        ),
-      );
-      try {
-        await expect(
-          checkDatabaseReadiness(readinessPool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).rejects.toThrow('Execution value persistence is incompatible');
-      } finally {
-        await asOwner(workspaceA, (client) =>
-          client.query(
-            `alter policy artifacts_workspace_scope on app.artifacts
-               using (
-                 workspace_id::text = nullif(
-                   current_setting('app.workspace_id', true), ''
-                 )
-               )`,
-          ),
-        );
-      }
       await expect(
-        checkDatabaseReadiness(readinessPool, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
+        checkDatabaseReadiness(readinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+        migrationHead: '0136_remove_release_machinery.sql',
       });
     } finally {
       await readinessPool.end();

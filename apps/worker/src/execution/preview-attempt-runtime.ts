@@ -5,7 +5,6 @@ import {
 import {
   platformExecutableRegistryHistory,
   resolvePlatformNodeDefinitionForRelease,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
@@ -51,22 +50,19 @@ function releaseDescriptionKey(epoch: number, fingerprint: string): string {
 export function createPlatformPreviewNodeInvoker(
   dependencies: Readonly<{
     registry: ReturnType<typeof createPlatformNodeRegistryForRelease>;
-    releaseCohort: PlatformReleaseCohort;
   }>,
 ): PreviewNodeInvoker {
   // The durable authority binds engine-composed release identities (node
   // catalogs plus this artifact's engine runtime policies), so the supported
   // set derives from exactly the same composition production uses.
   const supported = new Map(
-    platformExecutableRegistryHistory(dependencies.releaseCohort).map(
-      (release) => {
-        const composed = composeExecutableCompatibilityRelease(release);
-        return [
-          releaseDescriptionKey(composed.epoch, composed.fingerprint),
-          release,
-        ] as const;
-      },
-    ),
+    platformExecutableRegistryHistory().map((release) => {
+      const composed = composeExecutableCompatibilityRelease(release);
+      return [
+        releaseDescriptionKey(composed.epoch, composed.fingerprint),
+        release,
+      ] as const;
+    }),
   );
   const failedWith = (safeErrorCode: string): PreviewInvocationOutcome =>
     Object.freeze({

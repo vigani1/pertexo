@@ -24,10 +24,7 @@ Module({
 
 describe('catalog Nest module', () => {
   it('registers static discovery use cases behind the identity module', () => {
-    const dynamic = CatalogModule.register(
-      { cohort: 'core' },
-      { module: FakeIdentityModule },
-    );
+    const dynamic = CatalogModule.register({ module: FakeIdentityModule });
     expect(dynamic.controllers).toEqual([CatalogController]);
     expect(dynamic.imports).toEqual([{ module: FakeIdentityModule }]);
     expect(dynamic.providers).toEqual(
@@ -39,10 +36,7 @@ describe('catalog Nest module', () => {
   });
 
   it('resolves the controller and both use cases through Nest injection', async () => {
-    const dynamic = CatalogModule.register(
-      { cohort: 'core' },
-      { module: FakeIdentityModule },
-    );
+    const dynamic = CatalogModule.register({ module: FakeIdentityModule });
     const testing = await Test.createTestingModule({
       imports: [dynamic],
     }).compile();

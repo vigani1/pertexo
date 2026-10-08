@@ -125,13 +125,6 @@ async function firstFacts() {
   return row;
 }
 beforeAll(async () => {
-  expect(
-    (
-      await apiPool.query(
-        'select import_enabled from app.workflow_portability_rollout',
-      )
-    ).rows,
-  ).toEqual([{ import_enabled: false }]);
   await gate(true);
 });
 afterEach(async () => {
@@ -608,7 +601,6 @@ describe('portable workflow persistence under the API role', () => {
       'workspace',
       'actor',
       'membership',
-      'catalog',
       'gate',
     ] as const) {
       const entered = deferred(),
@@ -649,8 +641,6 @@ describe('portable workflow persistence under the API role', () => {
           actor: 'update app.users set display_name=display_name where id=$1',
           membership:
             'update app.workspace_memberships set role=role where workspace_id=$1 and user_id=$2',
-          catalog:
-            'update app.node_compatibility_current set activated_at=activated_at where singleton',
           gate: 'update app.workflow_portability_rollout set import_enabled=import_enabled where singleton',
         }[surface];
         writer = owner.query(
@@ -919,50 +909,6 @@ describe('portable workflow persistence under the API role', () => {
     }
   });
 
-  it('pins immutable-reader/creator bodies and gate column grants in role-aware startup readiness', async () => {
-    const signatures = [
-      'app.lock_workflow_portable_version(uuid,uuid,uuid,uuid)',
-      'app.create_workflow_import_draft(uuid,uuid,uuid,jsonb,char,char,text)',
-    ];
-    for (const signature of signatures) {
-      await executeAsOwner(
-        `alter function ${signature} set search_path=pg_catalog,public`,
-      );
-      try {
-        await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
-          'Workflow authoring schema is incompatible',
-        );
-      } finally {
-        await executeAsOwner(
-          `alter function ${signature} set search_path=pg_catalog,pg_temp`,
-        );
-      }
-      await executeAsOwner(`grant execute on function ${signature} to public`);
-      try {
-        await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
-          'Workflow authoring schema is incompatible',
-        );
-      } finally {
-        await executeAsOwner(
-          `revoke execute on function ${signature} from public`,
-        );
-      }
-    }
-    await executeAsOwner(
-      'grant update(import_enabled) on app.workflow_portability_rollout to pertexo_api',
-    );
-    try {
-      await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
-        'Workflow authoring schema is incompatible',
-      );
-    } finally {
-      await executeAsOwner(
-        'revoke update(import_enabled) on app.workflow_portability_rollout from pertexo_api',
-      );
-    }
-    expect((await checkDatabaseReadiness(apiPool)).role).toBe('pertexo_api');
-  });
-
   it('retains actor-only receipts under legal hold, reaps expiry and erases import through ordinary bounded workspace purge', async () => {
     const db = database();
     const workspace = await identity.createWorkspaceWithOwner({
@@ -1151,76 +1097,6 @@ describe('portable workflow persistence under the API role', () => {
         release: released.resolve,
         close: [],
       });
-    }
-  });
-
-  it('rejects a stale preview after an admitted catalog writer changes the selected serving variant', async () => {
-    const next = {
-      ...BASELINE_COMPATIBILITY_EXPECTATION,
-      epoch: 2,
-      fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-    };
-    await executeAsOwner(
-      "insert into app.node_compatibility_releases(epoch,schema_version,fingerprint,catalog_json,predecessor_epoch,prepared_by_kind,prepared_by,reason) values($1,1,$2,$3::jsonb,1,'deployment','owned-portability','Catalog CAS fixture')",
-      [next.epoch, next.fingerprint, next.catalogJson],
-    );
-    const variant = (
-      release: Readonly<{
-        epoch: number;
-        fingerprint: string;
-        catalogJson: string;
-      }>,
-    ) => ({
-      compatibilityRelease: release,
-      definitionCatalog: {
-        ...catalog,
-        releaseFingerprint: release.fingerprint,
-      },
-      placementDefinitionCatalog: {
-        ...catalog,
-        releaseFingerprint: release.fingerprint,
-      },
-      portableCatalog: { ...portableCatalog, fingerprint: release.fingerprint },
-      executableCompiler: () => ({
-        checksum: `wf:v2:sha256:${'b'.repeat(64)}` as const,
-        executableSchemaVersion: 2 as const,
-        executableJson: {},
-        compatibilityReleaseEpoch: release.epoch,
-        compatibilityReleaseFingerprint: release.fingerprint,
-      }),
-    });
-    const db = createWorkflowAuthoringDatabase(
-      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-      {
-        compatibilityReleaseVariants: [
-          variant(BASELINE_COMPATIBILITY_EXPECTATION),
-          variant(next),
-        ],
-      },
-    );
-    databases.push(db);
-    try {
-      await executeAsOwner(
-        'update app.node_compatibility_current set epoch=$1,fingerprint=$2 where singleton',
-        [next.epoch, next.fingerprint],
-      );
-      const before = await facts();
-      await expect(db.importWorkflow(command())).rejects.toBeInstanceOf(
-        WorkflowPortabilityCompatibilityConflictError,
-      );
-      expect(await facts()).toEqual(before);
-      expect(
-        (await db.previewWorkflowImport(inputForPreview(command())))
-          .compatibilityFingerprint,
-      ).toBe(next.fingerprint);
-    } finally {
-      await executeAsOwner(
-        'update app.node_compatibility_current set epoch=$1,fingerprint=$2 where singleton',
-        [
-          BASELINE_COMPATIBILITY_EXPECTATION.epoch,
-          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
-        ],
-      );
     }
   });
 

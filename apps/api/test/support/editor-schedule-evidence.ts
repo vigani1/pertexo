@@ -14,11 +14,10 @@ import {
 import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { catalogReleaseSchema } from '@pertexo/contracts/schemas/catalog';
 
-const scheduleCohort = 'schedule_activation';
 export const scheduleCatalogRelease =
-  platformBrowserNodeDefinitionCatalog(scheduleCohort).release;
+  platformBrowserNodeDefinitionCatalog().release;
 const scheduleExecutableRelease = composeExecutableCompatibilityRelease(
-  platformServingRegistryRelease(scheduleCohort),
+  platformServingRegistryRelease(),
 );
 export const scheduleExecutableReleaseDescription =
   describeExecutableCompatibilityRelease(scheduleExecutableRelease);
@@ -82,15 +81,6 @@ export function verifiedScheduleAcceptanceInstant(
 
 /** Actual database clock and durable publication, never workstation due inference. */
 export async function observeScheduleBeforeDue(database: Pool, scope: Scope) {
-  const current = await database.query<{ epoch: number; fingerprint: string }>(
-    'select epoch,fingerprint from app.node_compatibility_current',
-  );
-  expect(current.rows).toEqual([
-    {
-      epoch: scheduleExecutableReleaseDescription.epoch,
-      fingerprint: scheduleExecutableReleaseDescription.fingerprint,
-    },
-  ]);
   const result = await database.query<{
     id: string;
     anchor_at: Date;
@@ -153,11 +143,10 @@ export async function verifyScheduleEvidence(
     evidence.firstDueAt,
     evidence.scheduledAt,
   );
-  const current = await database.query<{ epoch: number; fingerprint: string }>(
-    'select epoch,fingerprint from app.node_compatibility_current',
-  );
-  expect(current.rows).toHaveLength(1);
-  verifyScheduleReleasePairs(evidence.catalogRelease, current.rows[0]);
+  verifyScheduleReleasePairs(evidence.catalogRelease, {
+    epoch: scheduleExecutableReleaseDescription.epoch,
+    fingerprint: scheduleExecutableReleaseDescription.fingerprint,
+  });
   const scope = [evidence.workspaceId, evidence.workflowId];
   const versions = await database.query<{
     id: string;

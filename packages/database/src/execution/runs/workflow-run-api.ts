@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
-  lockExpectedCompatibilityReleaseSet,
+  selectServingCompatibilityRelease,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
@@ -319,8 +319,7 @@ async function startInTransaction(
   if (input.expectedPublishedVersionId !== undefined)
     await assertCheckedManualStartEnabled(transaction);
 
-  const currentCompatibilityRelease = await lockExpectedCompatibilityReleaseSet(
-    transaction.db,
+  const currentCompatibilityRelease = selectServingCompatibilityRelease(
     compatibilityReleases,
   );
 

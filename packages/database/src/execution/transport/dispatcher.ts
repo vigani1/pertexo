@@ -9,7 +9,7 @@ import {
   type ClaimOutboxBatchInput,
   type ClaimOutboxBatchResult,
 } from './dispatcher-claim.js';
-import { checkDispatcherReadiness } from './dispatcher-readiness.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.js';
 
 export type {
   ClaimOutboxBatchInput,
@@ -190,8 +190,9 @@ export function createOutboxDispatcherDatabase(
           : { oldestAgeSeconds: Math.max(0, row.oldest_age_seconds) }),
       });
     },
-    checkReadiness: async (): Promise<void> =>
-      checkDispatcherReadiness(pool, ownerRole),
+    checkReadiness: async (): Promise<void> => {
+      await checkDatabaseReadiness(pool);
+    },
     close: () => lease.close(),
   });
 }

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
+import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { count, eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -244,21 +245,8 @@ beforeAll(async () => {
     workerDatabase = createWorkspaceDatabase(
       parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
     );
-    const pool = new Pool({ connectionString: apiUrl, max: 1 });
-    try {
-      const result = await pool.query<{ epoch: number; fingerprint: string }>(
-        'select epoch, fingerprint from app.node_compatibility_current where singleton = true',
-      );
-      const current = result.rows[0];
-      if (current === undefined)
-        throw new Error(
-          'Preview fixture requires a current compatibility release',
-        );
-      releaseEpoch = current.epoch;
-      releaseFingerprint = current.fingerprint;
-    } finally {
-      await pool.end();
-    }
+    releaseEpoch = BASELINE_COMPATIBILITY_EXPECTATION.epoch;
+    releaseFingerprint = BASELINE_COMPATIBILITY_EXPECTATION.fingerprint;
   } catch (error: unknown) {
     await Promise.allSettled([apiDatabase.close(), workerDatabase.close()]);
     await disposableDatabase.drop();

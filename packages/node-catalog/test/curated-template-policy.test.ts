@@ -9,7 +9,10 @@ import {
   validateCuratedTemplateSetupValue,
   isCuratedHttpsEndpointV1,
 } from '@pertexo/workflow-model/curated-templates';
-import { platformServingRegistryRelease } from '../src/registry.js';
+import {
+  PLATFORM_REGISTRY_RELEASE_HISTORY,
+  platformServingRegistryRelease,
+} from '../src/registry.js';
 import { platformPortableDefinitionPolicy } from '../src/portable-definition-policy.js';
 import { validateRegisteredCuratedTemplateSetup } from '../src/curated-template-policy.js';
 
@@ -72,7 +75,7 @@ const corpus = JSON.parse(
 ) as readonly CorpusCase[];
 
 describe('browser template setup versus registered server policy', () => {
-  const release = platformServingRegistryRelease('validate_activation');
+  const release = platformServingRegistryRelease();
   const policy = platformPortableDefinitionPolicy(release);
   const http = required(
     policy.definitions.find(({ key }) => key === 'http.request'),
@@ -317,7 +320,7 @@ describe('browser template setup versus registered server policy', () => {
     );
     expect(
       validateRegisteredCuratedTemplateSetup(
-        platformServingRegistryRelease('core'),
+        PLATFORM_REGISTRY_RELEASE_HISTORY[0],
         descriptor.manifest,
         origin,
       ),

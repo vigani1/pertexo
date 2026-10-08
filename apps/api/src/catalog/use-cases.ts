@@ -8,12 +8,7 @@ import {
   platformBrowserNodeDefinitionCatalog,
   type PlatformNodeDefinitionBrowserCatalog,
   type PlatformNodeDefinitionBrowserProjection,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
-
-export type CatalogDependencies = Readonly<{
-  cohort: PlatformReleaseCohort;
-}>;
 
 export class ListNodeDefinitionsUseCase {
   private readonly catalog: PlatformNodeDefinitionBrowserCatalog;
@@ -108,13 +103,11 @@ function compareOrdinal(left: string, right: string): number {
 }
 
 /** Construct the immutable browser catalog once during module registration. */
-export function createCatalogUseCases(
-  dependencies: CatalogDependencies,
-): Readonly<{
+export function createCatalogUseCases(): Readonly<{
   readonly listNodeDefinitions: ListNodeDefinitionsUseCase;
   readonly listIntegrations: ListIntegrationsUseCase;
 }> {
-  const catalog = platformBrowserNodeDefinitionCatalog(dependencies.cohort);
+  const catalog = platformBrowserNodeDefinitionCatalog();
   return Object.freeze({
     listNodeDefinitions: new ListNodeDefinitionsUseCase(catalog),
     listIntegrations: new ListIntegrationsUseCase(catalog),

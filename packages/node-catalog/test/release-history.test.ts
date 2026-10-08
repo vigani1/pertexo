@@ -49,8 +49,6 @@ import {
   PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
   PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
-  PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
@@ -69,359 +67,16 @@ import {
   PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED,
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
-  PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT,
-  PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT,
-  PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT,
-  PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT,
-  PLATFORM_SCHEDULE_V3_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_SCHEDULE_V3_STAGING_RELEASE_SUPPORT,
-  PLATFORM_PARALLEL_V3_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_PARALLEL_V3_STAGING_RELEASE_SUPPORT,
-  PLATFORM_MERGE_V3_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_MERGE_V3_STAGING_RELEASE_SUPPORT,
-  PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_VALIDATE_STAGING_RELEASE_SUPPORT,
-  PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT,
-  PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
-  PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT,
-  PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_HTTP_STAGING_RELEASE_SUPPORT,
-  PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_MERGE_STAGING_RELEASE_SUPPORT,
-  PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT,
-  PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT,
-  PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_SLACK_STAGING_RELEASE_SUPPORT,
-  PLATFORM_REGISTRY_RELEASE_SUPPORT,
-  PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT,
-  PLATFORM_WAIT_STAGING_RELEASE_SUPPORT,
   platformExecutableRegistryHistory,
-  PLATFORM_RELEASE_COHORTS,
   platformRegistryReleaseSupport,
   platformServingReleaseRequiresHttpCapabilities,
   platformServingRegistryRelease,
-  type PlatformReleaseCohort,
 } from '../src/registry.js';
 import {
   createPlatformNodeRegistryForRelease,
   resolvePlatformNodeDefinitionForRelease,
 } from '../src/server.js';
 import { PLATFORM_RELEASE_FINGERPRINT_GOLDEN } from './release-history.golden.js';
-
-const PLATFORM_COHORT_EXPECTATIONS = [
-  {
-    cohort: 'core',
-    support: PLATFORM_REGISTRY_RELEASE_SUPPORT,
-    supportEpochs: [1, 2],
-    servingEpoch: 2,
-    requiresHttp: false,
-    executableEpoch: 2,
-  },
-  {
-    cohort: 'http_staging',
-    support: PLATFORM_HTTP_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [2, 3],
-    servingEpoch: 2,
-    requiresHttp: false,
-    executableEpoch: 3,
-  },
-  {
-    cohort: 'http_activation',
-    support: PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [3, 4],
-    servingEpoch: 4,
-    requiresHttp: true,
-    executableEpoch: 4,
-  },
-  {
-    cohort: 'condition_staging',
-    support: PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [4, 5],
-    servingEpoch: 4,
-    requiresHttp: true,
-    executableEpoch: 5,
-  },
-  {
-    cohort: 'condition_activation',
-    support: PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [5, 6],
-    servingEpoch: 6,
-    requiresHttp: true,
-    executableEpoch: 6,
-  },
-  {
-    cohort: 'switch_staging',
-    support: PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [6, 7],
-    servingEpoch: 6,
-    requiresHttp: true,
-    executableEpoch: 7,
-  },
-  {
-    cohort: 'switch_activation',
-    support: PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [7, 8],
-    servingEpoch: 8,
-    requiresHttp: true,
-    executableEpoch: 8,
-  },
-  {
-    cohort: 'parallel_staging',
-    support: PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [8, 9],
-    servingEpoch: 8,
-    requiresHttp: true,
-    executableEpoch: 9,
-  },
-  {
-    cohort: 'parallel_activation',
-    support: PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [9, 10],
-    servingEpoch: 10,
-    requiresHttp: true,
-    executableEpoch: 10,
-  },
-  {
-    cohort: 'merge_staging',
-    support: PLATFORM_MERGE_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [10, 11],
-    servingEpoch: 10,
-    requiresHttp: true,
-    executableEpoch: 11,
-  },
-  {
-    cohort: 'merge_activation',
-    support: PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [11, 12],
-    servingEpoch: 12,
-    requiresHttp: true,
-    executableEpoch: 12,
-  },
-  {
-    cohort: 'for_each_staging',
-    support: PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [12, 13],
-    servingEpoch: 12,
-    requiresHttp: true,
-    executableEpoch: 13,
-  },
-  {
-    cohort: 'for_each_activation',
-    support: PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [13, 14],
-    servingEpoch: 14,
-    requiresHttp: true,
-    executableEpoch: 14,
-  },
-  {
-    cohort: 'wait_staging',
-    support: PLATFORM_WAIT_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [14, 15],
-    servingEpoch: 14,
-    requiresHttp: true,
-    executableEpoch: 15,
-  },
-  {
-    cohort: 'wait_activation',
-    support: PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [15, 16],
-    servingEpoch: 16,
-    requiresHttp: true,
-    executableEpoch: 16,
-  },
-  {
-    cohort: 'slack_staging',
-    support: PLATFORM_SLACK_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [16, 17],
-    servingEpoch: 16,
-    requiresHttp: true,
-    executableEpoch: 17,
-  },
-  {
-    cohort: 'slack_activation',
-    support: PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [17, 18],
-    servingEpoch: 18,
-    requiresHttp: true,
-    executableEpoch: 18,
-  },
-  {
-    cohort: 'email_staging',
-    support: PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [18, 19],
-    servingEpoch: 18,
-    requiresHttp: true,
-    executableEpoch: 19,
-  },
-  {
-    cohort: 'email_activation',
-    support: PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [19, 20],
-    servingEpoch: 20,
-    requiresHttp: true,
-    executableEpoch: 20,
-  },
-  {
-    cohort: 'webhook_staging',
-    support: PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [20, 21],
-    servingEpoch: 20,
-    requiresHttp: true,
-    executableEpoch: 21,
-  },
-  {
-    cohort: 'webhook_activation',
-    support: PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [21, 22],
-    servingEpoch: 22,
-    requiresHttp: true,
-    executableEpoch: 22,
-  },
-  {
-    cohort: 'schedule_staging',
-    support: PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [22, 23],
-    servingEpoch: 22,
-    requiresHttp: true,
-    executableEpoch: 23,
-  },
-  {
-    cohort: 'schedule_activation',
-    support: PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [23, 24],
-    servingEpoch: 24,
-    requiresHttp: true,
-    executableEpoch: 24,
-  },
-  {
-    cohort: 'schedule_v2_staging',
-    support: PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [24, 25],
-    servingEpoch: 24,
-    requiresHttp: true,
-    executableEpoch: 25,
-  },
-  {
-    cohort: 'schedule_v2_activation',
-    support: PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [25, 26],
-    servingEpoch: 26,
-    requiresHttp: true,
-    executableEpoch: 26,
-  },
-  {
-    cohort: 'parallel_v2_staging',
-    support: PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [26, 27],
-    servingEpoch: 26,
-    requiresHttp: true,
-    executableEpoch: 27,
-  },
-  {
-    cohort: 'parallel_v2_activation',
-    support: PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [27, 28],
-    servingEpoch: 28,
-    requiresHttp: true,
-    executableEpoch: 28,
-  },
-  {
-    cohort: 'merge_v2_staging',
-    support: PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [28, 29],
-    servingEpoch: 28,
-    requiresHttp: true,
-    executableEpoch: 29,
-  },
-  {
-    cohort: 'merge_v2_activation',
-    support: PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [29, 30],
-    servingEpoch: 30,
-    requiresHttp: true,
-    executableEpoch: 30,
-  },
-  {
-    cohort: 'schedule_v3_staging',
-    support: PLATFORM_SCHEDULE_V3_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [30, 31],
-    servingEpoch: 30,
-    requiresHttp: true,
-    executableEpoch: 31,
-  },
-  {
-    cohort: 'schedule_v3_activation',
-    support: PLATFORM_SCHEDULE_V3_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [31, 32],
-    servingEpoch: 32,
-    requiresHttp: true,
-    executableEpoch: 32,
-  },
-  {
-    cohort: 'parallel_v3_staging',
-    support: PLATFORM_PARALLEL_V3_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [32, 33],
-    servingEpoch: 32,
-    requiresHttp: true,
-    executableEpoch: 33,
-  },
-  {
-    cohort: 'parallel_v3_activation',
-    support: PLATFORM_PARALLEL_V3_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [33, 34],
-    servingEpoch: 34,
-    requiresHttp: true,
-    executableEpoch: 34,
-  },
-  {
-    cohort: 'merge_v3_staging',
-    support: PLATFORM_MERGE_V3_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [34, 35],
-    servingEpoch: 34,
-    requiresHttp: true,
-    executableEpoch: 35,
-  },
-  {
-    cohort: 'merge_v3_activation',
-    support: PLATFORM_MERGE_V3_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [35, 36],
-    servingEpoch: 36,
-    requiresHttp: true,
-    executableEpoch: 36,
-  },
-  {
-    cohort: 'validate_staging',
-    support: PLATFORM_VALIDATE_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [36, 37],
-    servingEpoch: 36,
-    requiresHttp: true,
-    executableEpoch: 37,
-  },
-  {
-    cohort: 'validate_activation',
-    support: PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [37, 38],
-    servingEpoch: 38,
-    requiresHttp: true,
-    executableEpoch: 38,
-  },
-] as const satisfies readonly {
-  readonly cohort: PlatformReleaseCohort;
-  readonly support: readonly unknown[];
-  readonly supportEpochs: readonly [number, number];
-  readonly servingEpoch: number;
-  readonly requiresHttp: boolean;
-  readonly executableEpoch: number;
-}[];
 
 const PLATFORM_LIFECYCLE_EXPECTATIONS = [
   {
@@ -552,7 +207,7 @@ const PLATFORM_LIFECYCLE_EXPECTATIONS = [
   },
 ] as const;
 
-describe('platform node release history and cohorts', () => {
+describe('platform node release history', () => {
   it('pins every retained compatibility identity independently of manifests', () => {
     expect(
       PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch, fingerprint }) => ({
@@ -708,41 +363,22 @@ describe('platform node release history and cohorts', () => {
     ).toThrow(/not implemented/u);
   });
 
-  it('retains every release cohort and staged/active lifecycle in canonical order', () => {
+  it('serves the newest release and retains staged/active lifecycle history in order', () => {
+    const serving = platformServingRegistryRelease();
+    expect(platformRegistryReleaseSupport()).toEqual([serving]);
+    expect(serving.epoch).toBe(
+      PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.epoch + 1,
+    );
     expect(
-      PLATFORM_COHORT_EXPECTATIONS.map(({ cohort }) => cohort),
-      'platform release cohort expectation coverage',
-    ).toEqual(PLATFORM_RELEASE_COHORTS);
-
-    for (const expectation of PLATFORM_COHORT_EXPECTATIONS) {
-      const context = `cohort ${expectation.cohort}`;
-      expect(platformRegistryReleaseSupport(expectation.cohort), context).toBe(
-        expectation.support,
-      );
-      expect(
-        expectation.support.map(({ epoch }) => epoch),
-        `${context} support epochs`,
-      ).toEqual(expectation.supportEpochs);
-      expect(
-        platformServingRegistryRelease(expectation.cohort).epoch,
-        `${context} serving epoch`,
-      ).toBe(expectation.servingEpoch);
-      expect(
-        platformServingReleaseRequiresHttpCapabilities(expectation.cohort),
-        `${context} HTTP capability requirement`,
-      ).toBe(expectation.requiresHttp);
-      expect(
-        platformExecutableRegistryHistory(expectation.cohort).map(
-          ({ epoch }) => epoch,
-        ),
-        `${context} executable epochs`,
-      ).toEqual(
-        Array.from(
-          { length: expectation.executableEpoch },
-          (_, index) => index + 1,
-        ),
-      );
-    }
+      [...serving.definitions, ...serving.executors].every(
+        ({ lifecycle }) => lifecycle === 'active',
+      ),
+    ).toBe(true);
+    expect(platformServingReleaseRequiresHttpCapabilities()).toBe(true);
+    expect(platformExecutableRegistryHistory()).toEqual([
+      ...PLATFORM_REGISTRY_RELEASE_HISTORY,
+      serving,
+    ]);
     for (const expectation of PLATFORM_LIFECYCLE_EXPECTATIONS) {
       const stagedExecutor = expectation.staged.executors.find(
         ({ executor: candidate }) =>

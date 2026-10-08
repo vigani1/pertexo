@@ -15,6 +15,7 @@ import {
   type WorkspacePurgeLedger,
   type WorkspacePurgeLedgerRecord,
 } from '../src/lifecycle/workspace-purge.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =
@@ -931,13 +932,12 @@ describe('workspace purge foundation', () => {
           may_cause_external_side_effect,dry_run,execution_deadline_at,expires_at
         )
         select $1,$2,$3,1,$4,'node-1','core.set',1,'core.set',1,
-          current.epoch,current.fingerprint,$5,$6,$7,
+          1,$8,$5,$6,$7,
           '{"id":"node-1","type":"core.set"}'::jsonb,
           '{"kind":"inline","schemaVersion":1,"value":null}'::jsonb,
           'safe',false,false,'not_supported',
           clock_timestamp()+interval '1 hour',
-          clock_timestamp()+interval '2 days'
-        from app.node_compatibility_current current`,
+          clock_timestamp()+interval '2 days'`,
         [
           previewRunId,
           workspaceId,
@@ -946,6 +946,7 @@ describe('workspace purge foundation', () => {
           userId,
           'b'.repeat(64),
           'c'.repeat(64),
+          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
         ],
       );
       await owner.query(

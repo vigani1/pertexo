@@ -82,7 +82,6 @@ export async function createCoordinatorRedeliveryHarness(
         max: 4,
       }),
       maximumAdmissions: 1,
-      releaseCohort: 'for_each_activation',
       redisUrl,
     });
     owners.push(() => runtime.close());
@@ -252,7 +251,7 @@ export async function cancelFixtureRun(
       max: 2,
     }),
     createExecutableCompatibilityReleaseSupport(
-      platformRegistryReleaseSupport('for_each_activation').map(
+      platformRegistryReleaseSupport().map(
         composeExecutableCompatibilityRelease,
       ),
     ).descriptions,
@@ -278,7 +277,7 @@ export async function acceptReplayRun(): Promise<AcceptedReplayRun> {
       max: 2,
     }),
     createExecutableCompatibilityReleaseSupport(
-      platformRegistryReleaseSupport('for_each_activation').map(
+      platformRegistryReleaseSupport().map(
         composeExecutableCompatibilityRelease,
       ),
     ).descriptions,

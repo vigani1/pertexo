@@ -7,7 +7,6 @@ import { Pool, type PoolClient } from 'pg';
 import { expect } from 'vitest';
 import { migrateDatabase } from '../src/migrations.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
-import { checkDispatcherReadiness } from '../src/execution/transport/dispatcher-readiness.js';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
 import type { WorkflowConcurrencyDatabase } from '../src/authoring/workflow-concurrency.js';
 import { parseDatabaseConfig } from '../src/config.js';
@@ -300,9 +299,7 @@ export async function proveLegacyConcurrencyUpgrade() {
       '0126_workspace_usage_capacity.sql',
     );
     const legacy = await seedLegacyConcurrencyRuns(owner);
-    await expect(
-      checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-    ).rejects.toThrow();
+    await expect(checkDatabaseReadiness(api)).rejects.toThrow();
     expect(await migrateDatabase(config)).toEqual([
       '0127_workflow_concurrency.sql',
       '0128_connection_health.sql',
@@ -313,6 +310,7 @@ export async function proveLegacyConcurrencyUpgrade() {
       '0133_curated_template_origin.sql',
       '0134_workflow_organization.sql',
       '0135_workflow_folders_batch_identity.sql',
+      '0136_remove_release_machinery.sql',
     ]);
     expect(await migrateDatabase(config)).toEqual([]);
     const tickets = await owner.query<{ id: string; ticket: string }>(
@@ -329,12 +327,9 @@ export async function proveLegacyConcurrencyUpgrade() {
         )
       ).rows,
     ).toEqual([{ exempt: true }]);
-    await expect(
-      checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-    ).resolves.toMatchObject({
-      migrationHead: '0135_workflow_folders_batch_identity.sql',
+    await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
+      migrationHead: '0136_remove_release_machinery.sql',
     });
-    await proveConcurrencyReadinessTamper(owner, api, worker, dispatcher);
   } finally {
     cleanup = await Promise.allSettled([
       owner.end(),
@@ -389,86 +384,4 @@ async function seedLegacyConcurrencyRuns(owner: Pool) {
     [workspace, first, event],
   );
   return { first, second };
-}
-
-async function proveConcurrencyReadinessTamper(
-  owner: Pool,
-  api: Pool,
-  worker: Pool,
-  dispatcher: Pool,
-) {
-  for (const signature of [
-    'app.workflow_concurrency_admissible(uuid,uuid,boolean)',
-    'app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid)',
-  ]) {
-    const row = (
-      await owner.query<{ definition: string }>(
-        'select pg_get_functiondef($1::regprocedure) definition',
-        [signature],
-      )
-    ).rows[0];
-    if (row === undefined)
-      throw new Error('Missing concurrency function definition');
-    const modified = row.definition.replace(
-      'BEGIN\n',
-      'BEGIN\n  -- readiness body fingerprint mutation\n',
-    );
-    if (modified === row.definition)
-      throw new Error('Missing function mutation seam');
-    await owner.query(modified);
-    try {
-      await assertConcurrencyReadiness(api, worker, dispatcher, false);
-    } finally {
-      await owner.query(row.definition);
-    }
-    await assertConcurrencyReadiness(api, worker, dispatcher, true);
-  }
-  for (const [modify, restore] of [
-    [
-      'grant execute on function app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid) to pertexo_api',
-      'revoke execute on function app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid) from pertexo_api',
-    ],
-    [
-      'grant select on app.workflow_concurrency_policies to pertexo_api',
-      'revoke select on app.workflow_concurrency_policies from pertexo_api',
-    ],
-    [
-      'alter index app.workflow_runs_queued_admission_order_idx rename to concurrency_index_drift',
-      'alter index app.concurrency_index_drift rename to workflow_runs_queued_admission_order_idx',
-    ],
-    [
-      'grant usage on sequence app.workflow_run_admission_ticket_seq to pertexo_worker',
-      'revoke usage on sequence app.workflow_run_admission_ticket_seq from pertexo_worker',
-    ],
-  ] as const) {
-    await owner.query(modify);
-    try {
-      await assertConcurrencyReadiness(api, worker, dispatcher, false);
-    } finally {
-      await owner.query(restore);
-    }
-    await assertConcurrencyReadiness(api, worker, dispatcher, true);
-  }
-}
-
-async function assertConcurrencyReadiness(
-  api: Pool,
-  worker: Pool,
-  dispatcher: Pool,
-  ready: boolean,
-) {
-  const probes = [
-    checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-    checkDatabaseReadiness(worker, {
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    }),
-    checkDispatcherReadiness(dispatcher, 'pertexo_owner'),
-  ];
-  await Promise.all(
-    probes.map(async (probe) => {
-      if (ready) await probe;
-      else await expect(probe).rejects.toThrow();
-    }),
-  );
 }

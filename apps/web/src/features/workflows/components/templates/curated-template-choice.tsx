@@ -29,10 +29,8 @@ export function CuratedTemplateChoice({
       aria-label="Curated workflow examples"
       className="flex flex-col gap-4"
     >
-      <Notice tone="warning">
-        These instructional examples require the validate_activation profile. No
-        profile is changed automatically. Creating a draft does not publish,
-        activate or run it.
+      <Notice tone="info">
+        Creating a draft from an example does not publish, activate or run it.
       </Notice>
       {catalog.isFetching ? (
         <p role="status">Checking the current catalog…</p>

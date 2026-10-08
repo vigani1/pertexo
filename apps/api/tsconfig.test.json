@@ -11,7 +11,6 @@
     "src/**/*.ts",
     "test/**/*.ts",
     "vitest.config.ts",
-    "vitest.compatibility-rollout.config.ts",
     "vitest.integration.config.ts",
     "vitest.sse-resilience.config.ts"
   ]

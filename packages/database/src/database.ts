@@ -2,12 +2,7 @@ import { acquireDatabasePool } from './platform/database-runtime.js';
 import type { DatabaseRuntime } from './platform/database-runtime.js';
 
 import type { DatabaseConfig } from './config.js';
-import type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
-import type { CompatibilityReleaseExpectationSet } from './compatibility/compatibility-release.js';
-import {
-  checkDatabaseReadiness,
-  checkDatabaseServingReadiness,
-} from './platform/readiness.js';
+import { checkDatabaseReadiness } from './platform/readiness.js';
 import type { DatabaseReadiness } from './platform/readiness.js';
 import { withWorkspaceTransaction } from './tenant-access/workspace.js';
 import type {
@@ -28,32 +23,10 @@ export interface WorkspaceDatabase {
 
 export function createWorkspaceDatabase(
   config: DatabaseConfig,
-  options: Readonly<{
-    compatibilityRelease?: CompatibilityReleaseExpectation;
-    compatibilityReleases?: CompatibilityReleaseExpectationSet;
-    runtime?: DatabaseRuntime;
-  }> = {},
+  options: Readonly<{ runtime?: DatabaseRuntime }> = {},
 ): WorkspaceDatabase {
-  if (
-    options.compatibilityRelease !== undefined &&
-    options.compatibilityReleases !== undefined
-  )
-    throw new Error(
-      'Compatibility release database configuration is ambiguous',
-    );
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
-  const readinessOptions = {
-    ownerRole: config.ownerRole,
-    workerRuntimeRole: config.workerRuntimeRole,
-    ...(options.compatibilityRelease === undefined
-      ? {}
-      : { expectedCompatibilityRelease: options.compatibilityRelease }),
-    ...(options.compatibilityReleases === undefined
-      ? {}
-      : { expectedCompatibilityReleases: options.compatibilityReleases }),
-  } as const;
-
   return Object.freeze({
     withWorkspace: async <T>(
       workspaceId: string,
@@ -62,9 +35,9 @@ export function createWorkspaceDatabase(
     ): Promise<T> =>
       withWorkspaceTransaction(pool, workspaceId, operation, options),
     checkCompatibility: async (): Promise<DatabaseReadiness> =>
-      checkDatabaseReadiness(pool, readinessOptions),
+      checkDatabaseReadiness(pool),
     checkReadiness: async (): Promise<DatabaseReadiness> =>
-      checkDatabaseServingReadiness(pool, readinessOptions),
+      checkDatabaseReadiness(pool),
     close: (): Promise<void> => lease.close(),
   });
 }

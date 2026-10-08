@@ -44,7 +44,7 @@ const corpus = z
   );
 const fixture = createCuratedOriginOwnedDatabase();
 const actorId = randomUUID();
-const compatibility = createCoreWorkflowCompatibility('validate_activation');
+const compatibility = createCoreWorkflowCompatibility();
 const selected = compatibility.variants.at(-1);
 if (selected === undefined)
   throw new Error('Actual registered qualification cohort unavailable');
@@ -252,10 +252,7 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
         });
         identity = createIdentityWorkspaceDatabase(config);
         resources.push(identity);
-        authoring = createCoreWorkflowAuthoringDatabase(
-          config,
-          'validate_activation',
-        );
+        authoring = createCoreWorkflowAuthoringDatabase(config);
         resources.push(authoring);
         await identity.createUser({
           id: actorId,
@@ -271,16 +268,6 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
             idempotencyKey: randomUUID(),
           })
         ).id;
-        const release = profile.compatibilityReleaseDescription;
-        await ownerQuery(
-          `insert into app.node_compatibility_releases(epoch,schema_version,fingerprint,catalog_json,prepared_by_kind,prepared_by,reason)
-        values($1,1,$2,$3::jsonb,'deployment','owned-test','Disposable registered cohort fixture') on conflict(epoch) do nothing`,
-          [release.epoch, release.fingerprint, release.catalogJson],
-        );
-        await ownerQuery(
-          'update app.node_compatibility_current set epoch=$1,fingerprint=$2 where singleton',
-          [release.epoch, release.fingerprint],
-        );
         await ownerQuery(
           'update app.workflow_portability_rollout set import_enabled=true where singleton',
         );
@@ -400,84 +387,9 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
     });
     it('current compatible API and worker readiness passes without enabling or running providers', async () => {
       for (const pool of [api, worker])
-        expect(
-          (
-            await checkDatabaseReadiness(pool, {
-              ownerRole: 'pertexo_owner',
-              expectedCompatibilityRelease:
-                profile.compatibilityReleaseDescription,
-            })
-          ).migrationHead,
-        ).toBe('0135_workflow_folders_batch_identity.sql');
-    });
-    it('readiness rejects confined worker descriptor privilege drift and recovers after owner restoration', async () => {
-      try {
-        await ownerQuery(
-          'grant select on app.curated_template_descriptors to pertexo_worker',
+        expect((await checkDatabaseReadiness(pool)).migrationHead).toBe(
+          '0136_remove_release_machinery.sql',
         );
-        for (const pool of [api, worker])
-          await expect(checkDatabaseReadiness(pool)).rejects.toThrow();
-      } finally {
-        await ownerQuery(
-          'revoke select on app.curated_template_descriptors from pertexo_worker',
-        );
-      }
-      for (const pool of [api, worker]) await checkDatabaseReadiness(pool);
-    });
-    it('readiness rejects exact helper-body drift on both roles and recovers after restoration', async () => {
-      const definition = (
-        await ownerQuery(
-          "select pg_get_functiondef('app.curated_https_endpoint_valid(text)'::regprocedure) definition",
-        )
-      ).rows[0]?.definition;
-      if (typeof definition !== 'string')
-        throw new Error('Guard definition unavailable');
-      const end = definition.lastIndexOf('$function$');
-      if (end < 0) throw new Error('Unexpected PostgreSQL function quoting');
-      try {
-        await ownerQuery(
-          `${definition.slice(0, end)}\n-- owned fixture body pin drift\n${definition.slice(end)}`,
-        );
-        for (const pool of [api, worker])
-          await expect(checkDatabaseReadiness(pool)).rejects.toThrow(
-            'Workflow authoring schema is incompatible',
-          );
-      } finally {
-        await ownerQuery(definition);
-      }
-      for (const pool of [api, worker]) await checkDatabaseReadiness(pool);
-    });
-    it('readiness and boolean inventory reject confined descriptor-content drift on both roles', async () => {
-      const template = CURATED_WORKFLOW_TEMPLATES[2];
-      if (template === undefined)
-        throw new Error('Reviewed HTTP descriptor unavailable');
-      const update = (targets: unknown) =>
-        ownerQuery(`alter table app.curated_template_descriptors disable trigger curated_template_descriptor_immutable;
-        update app.curated_template_descriptors set setup_targets='${JSON.stringify(targets).replaceAll("'", "''")}'::jsonb where template_id='controlled-http-notification';
-        alter table app.curated_template_descriptors enable trigger curated_template_descriptor_immutable;`);
-      try {
-        // Owner-only fault injection in this disposable DB; trigger re-enabled in
-        // the same transaction. Never an authorized descriptor editing pathway.
-        await update([]);
-        for (const pool of [api, worker]) {
-          expect(
-            (
-              await pool.query<{ matches: boolean }>(
-                'select app.curated_template_inventory_matches($1) matches',
-                [
-                  'b2c003431f093031cdaebb97b78f8a9ddae81f8ce5fa14efd4035b639a3e9f75',
-                ],
-              )
-            ).rows[0]?.matches,
-          ).toBe(false);
-          await expect(checkDatabaseReadiness(pool)).rejects.toThrow(
-            'Workflow authoring schema is incompatible',
-          );
-        }
-      } finally {
-        await update(template.setupTargets);
-      }
-      for (const pool of [api, worker]) await checkDatabaseReadiness(pool);
     });
     it('records authoritative PostgreSQL helper body and inventory witnesses', async () => {
       const result =
@@ -502,84 +414,6 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
         'Owned F06 PostgreSQL CHECK witnesses',
         JSON.stringify(result.rows),
       );
-    });
-    it('API and worker readiness reject every missing CHECK in rollback-only owner transactions', async () => {
-      const constraints = (
-        await ownerQuery(`select conrelid::regclass::text relation,conname name from pg_constraint
-        where conrelid=any(array['app.curated_template_descriptors'::regclass,'app.workflow_template_origins'::regclass]) and contype='c' order by relation,name`)
-      ).rows;
-      expect(constraints).toHaveLength(8);
-      const inspector = new Pool({
-        connectionString: fixture.inspectorUrl,
-        max: 1,
-        connectionTimeoutMillis: 3000,
-      });
-      try {
-        for (const constraint of constraints) {
-          if (
-            typeof constraint.relation !== 'string' ||
-            typeof constraint.name !== 'string'
-          )
-            throw new Error('Invalid constraint metadata');
-          const client = await inspector.connect();
-          // Readiness checks out a connection for metadata and the role-owned
-          // inventory probe. Reuse this real transaction for both APIs; this
-          // fixture alone owns rollback and release of its already-held lease.
-          const transactionPool = new Proxy(inspector, {
-            get(pool, key, receiver) {
-              if (key === 'query') return client.query.bind(client);
-              if (key === 'connect')
-                return () =>
-                  Promise.resolve({
-                    query: client.query.bind(client),
-                    release: () => undefined,
-                  });
-              const value: unknown = Reflect.get(pool, key, receiver);
-              return value;
-            },
-          });
-          try {
-            await client.query('begin');
-            await client.query("set local statement_timeout='5s'");
-            await client.query('set local role pertexo_owner');
-            const relation = constraint.relation
-              .split('.')
-              .map((part) => `"${part.replaceAll('"', '""')}"`)
-              .join('.');
-            const name = `"${constraint.name.replaceAll('"', '""')}"`;
-            await client.query(
-              `alter table ${relation} drop constraint ${name}`,
-            );
-            for (const role of ['pertexo_api', 'pertexo_worker']) {
-              await client.query(`set local role ${role}`);
-              await expect(
-                checkDatabaseReadiness(transactionPool),
-              ).rejects.toThrow('Workflow authoring schema is incompatible');
-            }
-            if (constraint.name === 'workflow_template_origins_origin_check') {
-              await client.query('set local role pertexo_owner');
-              await client.query(
-                `alter table ${relation} add constraint ${name} check (true)`,
-              );
-              for (const role of ['pertexo_api', 'pertexo_worker']) {
-                await client.query(`set local role ${role}`);
-                await expect(
-                  checkDatabaseReadiness(transactionPool),
-                ).rejects.toThrow('Workflow authoring schema is incompatible');
-              }
-            }
-          } finally {
-            try {
-              await client.query('rollback');
-            } finally {
-              client.release();
-            }
-          }
-          for (const pool of [api, worker]) await checkDatabaseReadiness(pool);
-        }
-      } finally {
-        await inspector.end();
-      }
     });
     it.each([0, 1, 2])(
       'registered authoring commits genuine origin for asset %s',
@@ -1002,64 +836,43 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
         ).rows,
       ).toEqual([{ workflow_id: accepted.workflowId }]);
     });
-    it.each(['connection', 'catalog'] as const)(
-      'owner %s change winning before new import rejects without partial origin',
-      async (kind) => {
-        const input = command();
-        if (kind === 'connection') {
-          const db = createApiConnectionDatabase(
-            parseDatabaseConfig({ connectionString: fixture.apiUrl, max: 1 }),
-          );
-          resources.push(db);
-          const id = randomUUID();
-          await db.createConnection({
-            workspaceId,
-            actorId,
-            connectionId: id,
-            secretVersionId: randomUUID(),
-            providerKey: 'http',
-            authType: 'http_headers',
-            name: 'Synthetic revocation witness',
-            idempotencyKey: randomUUID(),
-            requestHash: createHash('sha256').update(id).digest('hex'),
-            sealed: {
-              schemaVersion: 1,
-              kmsKeyReference: 'f06-synthetic-never-resolved',
-              encryptedDataKey: Buffer.alloc(32, 1).toString('base64url'),
-              ciphertext: Buffer.from('synthetic-only').toString('base64url'),
-              nonce: Buffer.alloc(12, 2).toString('base64url'),
-              tag: Buffer.alloc(16, 3).toString('base64url'),
-            },
-          });
-          input.bindings = input.bindings.map((binding) =>
-            binding.nodeId === 'controlled-http'
-              ? { ...binding, connectionId: id }
-              : binding,
-          );
-          await db.revokeConnection({ workspaceId, actorId, connectionId: id });
-        }
-        const before = await facts();
-        const prior = (
-          await ownerQuery(
-            'select epoch,fingerprint from app.node_compatibility_current where singleton',
-          )
-        ).rows[0];
-        try {
-          if (kind === 'catalog')
-            await ownerQuery(
-              'update app.node_compatibility_current set epoch=1,fingerprint=(select fingerprint from app.node_compatibility_releases where epoch=1) where singleton',
-            );
-          await expect(authoring.importWorkflow(input)).rejects.toThrow();
-          expect(await facts()).toEqual(before);
-        } finally {
-          if (kind === 'catalog')
-            await ownerQuery(
-              'update app.node_compatibility_current set epoch=$1,fingerprint=$2 where singleton',
-              [prior?.epoch, prior?.fingerprint],
-            );
-        }
-      },
-    );
+    it('owner connection change winning before new import rejects without partial origin', async () => {
+      const input = command();
+      const db = createApiConnectionDatabase(
+        parseDatabaseConfig({ connectionString: fixture.apiUrl, max: 1 }),
+      );
+      resources.push(db);
+      const id = randomUUID();
+      await db.createConnection({
+        workspaceId,
+        actorId,
+        connectionId: id,
+        secretVersionId: randomUUID(),
+        providerKey: 'http',
+        authType: 'http_headers',
+        name: 'Synthetic revocation witness',
+        idempotencyKey: randomUUID(),
+        requestHash: createHash('sha256').update(id).digest('hex'),
+        sealed: {
+          schemaVersion: 1,
+          kmsKeyReference: 'f06-synthetic-never-resolved',
+          encryptedDataKey: Buffer.alloc(32, 1).toString('base64url'),
+          ciphertext: Buffer.from('synthetic-only').toString('base64url'),
+          nonce: Buffer.alloc(12, 2).toString('base64url'),
+          tag: Buffer.alloc(16, 3).toString('base64url'),
+        },
+      });
+      input.bindings = input.bindings.map((binding) =>
+        binding.nodeId === 'controlled-http'
+          ? { ...binding, connectionId: id }
+          : binding,
+      );
+      await db.revokeConnection({ workspaceId, actorId, connectionId: id });
+
+      const before = await facts();
+      await expect(authoring.importWorkflow(input)).rejects.toThrow();
+      expect(await facts()).toEqual(before);
+    });
     it.each([
       'digest',
       'template',

@@ -30,7 +30,7 @@ it('the actual reviewed For Each fails its pinned bound before any body admissio
   const executable = buildWorkflowExecutableV2({
     graph,
     release: composeExecutableCompatibilityRelease(
-      platformServingRegistryRelease('validate_activation'),
+      platformServingRegistryRelease(),
     ),
   });
   const version = '00000000-0000-4000-8000-000000000001';

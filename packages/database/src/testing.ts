@@ -28,13 +28,8 @@ export type { WorkspaceDatabase } from './database.js';
 export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,
-  checkDatabaseServingReadiness,
-  checkDatabasePreactivationReadiness,
 } from './platform/readiness.js';
-export type {
-  DatabaseReadiness,
-  ReadinessOptions,
-} from './platform/readiness.js';
+export type { DatabaseReadiness } from './platform/readiness.js';
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorPlanInvalidError,
@@ -60,8 +55,6 @@ export {
   idempotencyRecords,
   inboxReceipts,
   nodeAttempts,
-  nodeCompatibilityCurrent,
-  nodeCompatibilityReleases,
   nodeRuns,
   outboxEvents,
   rlsProbeRecords,

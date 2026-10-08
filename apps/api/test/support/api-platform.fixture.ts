@@ -40,7 +40,6 @@ export function createApiPlatformFixture(migrationHead: string) {
       workerRuntimeRole: 'pertexo_worker',
     },
     host: '127.0.0.1',
-    nodeCompatibilityCohort: 'core',
     nodeEnv: 'test',
     observability: {
       environment: 'test',

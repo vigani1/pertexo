@@ -25,26 +25,18 @@ import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
 import { Queue } from 'bullmq';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 
-import { activateCompatibilityReleaseFixture } from './compatibility-release.fixture.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { createRedisTestNamespace } from './redis-test-namespace.js';
-
-const releaseCohort = 'schedule_activation' as const;
-type ScheduleRelease = ReturnType<
-  typeof platformExecutableRegistryHistory
->[number];
 
 function scheduleAuthoringOptions(
   validator: Pick<WorkflowAuthoringValidator, 'validate'>,
 ) {
-  const nodeReleases = platformExecutableRegistryHistory(releaseCohort);
+  const nodeReleases = platformExecutableRegistryHistory();
   const history = createExecutableCompatibilityReleaseHistory(
     nodeReleases.map(composeExecutableCompatibilityRelease),
   );
   const readiness = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(releaseCohort).map(
-      composeExecutableCompatibilityRelease,
-    ),
+    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
   );
   const variants = nodeReleases.map((nodeRelease) => {
     const release = composeExecutableCompatibilityRelease(nodeRelease);
@@ -154,7 +146,6 @@ export interface ScheduleTriggerFixture {
   ) => Promise<QueryResult<Row>>;
   readonly queue: Queue;
   readonly redisUrl: string;
-  readonly releaseCohort: typeof releaseCohort;
   readonly scheduleCompatibility: ReturnType<
     typeof createExecutableCompatibilityReleaseSupport
   >['descriptions'];
@@ -240,9 +231,7 @@ export function createScheduleTriggerFixture(
     },
   });
   const scheduleCompatibility = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(releaseCohort).map(
-      composeExecutableCompatibilityRelease,
-    ),
+    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
   ).descriptions;
 
   let owner: Pool | undefined;
@@ -346,34 +335,6 @@ export function createScheduleTriggerFixture(
     }
   };
 
-  const activateRelease = async (targetRelease: ScheduleRelease) =>
-    activateCompatibilityReleaseFixture({
-      actorId: 'schedule-integration',
-      apiUrl: databaseUrl(apiBaseUrl),
-      artifactPrefix: 'schedule',
-      migrationUrl: databaseUrl(migrationBaseUrl),
-      reasons: {
-        activate: 'Activate direct Schedule integration release',
-        approve: 'Approve direct Schedule integration release',
-        prepare: 'Prepare direct Schedule integration release',
-      },
-      readCurrent: async () =>
-        (
-          await ownerQuery<{
-            catalog_json: unknown;
-            epoch: number;
-            fingerprint: string;
-          }>(
-            `select current.epoch,current.fingerprint,release.catalog_json
-               from app.node_compatibility_current current
-               join app.node_compatibility_releases release
-                 on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
-          )
-        ).rows[0],
-      targetRelease,
-      workerUrl: databaseUrl(workerBaseUrl),
-    });
-
   const close = (): Promise<void> => {
     admissionClosed = true;
     closePromise ??= (async () => {
@@ -473,26 +434,6 @@ export function createScheduleTriggerFixture(
         lifecycleCommandRole: 'pertexo_lifecycle_command',
         operatorRole: 'pertexo_operator',
       });
-      const releases = platformExecutableRegistryHistory(releaseCohort);
-      const current = (
-        await ownerQuery<{ epoch: number; fingerprint: string }>(
-          `select epoch,fingerprint from app.node_compatibility_current
-             where singleton=true`,
-        )
-      ).rows[0];
-      const currentIndex = releases.findIndex((release) => {
-        const composed = composeExecutableCompatibilityRelease(release);
-        return (
-          composed.epoch === current?.epoch &&
-          composed.fingerprint === current.fingerprint
-        );
-      });
-      if (currentIndex === -1)
-        throw new Error(
-          'Current schedule compatibility release is unsupported',
-        );
-      for (const release of releases.slice(currentIndex + 1))
-        await activateRelease(release);
       await queue.obliterate({ force: true });
     } catch (setupError: unknown) {
       let cleanupError: unknown;
@@ -522,7 +463,6 @@ export function createScheduleTriggerFixture(
       return queue;
     },
     redisUrl,
-    releaseCohort,
     scheduleCompatibility,
     setup,
     workerConfig,

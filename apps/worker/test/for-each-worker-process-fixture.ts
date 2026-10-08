@@ -52,7 +52,6 @@ try {
   coordinator = await createCoordinatorRuntime({
     database,
     maximumAdmissions: 10,
-    releaseCohort: 'for_each_activation',
     redisUrl,
   });
   attempts = await createNodeAttemptRuntime(
@@ -60,7 +59,6 @@ try {
       database,
       heartbeatIntervalMillis: 1_000,
       leaseDurationSeconds: 10,
-      releaseCohort: 'for_each_activation',
       redisUrl,
       workerId: `for-each-process-${randomUUID()}`,
     },

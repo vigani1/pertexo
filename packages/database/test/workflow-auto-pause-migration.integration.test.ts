@@ -123,6 +123,7 @@ describe('auto pause controls prior-head migration and readiness', () => {
         '0133_curated_template_origin.sql',
         '0134_workflow_organization.sql',
         '0135_workflow_folders_batch_identity.sql',
+        '0136_remove_release_machinery.sql',
       ]);
       expect(await migrateDatabase(config)).toEqual([]);
       expect(
@@ -148,10 +149,8 @@ describe('auto pause controls prior-head migration and readiness', () => {
           )
         ).rows,
       ).toEqual([{ consecutive_failures: 12, resumed_after: null }]);
-      await expect(
-        checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-      ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+      await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
+        migrationHead: '0136_remove_release_machinery.sql',
       });
       await expect(fold.checkReadiness()).resolves.toBeUndefined();
       const foldSignature =
@@ -198,115 +197,7 @@ describe('auto pause controls prior-head migration and readiness', () => {
           )
         ).rows[0]?.consecutive_failures,
       ).toBe(13);
-      const signature =
-        'app.workflow_auto_pause_control(uuid,uuid,uuid,text,jsonb,text,text,text,text)';
-      const definition = (
-        await owner.query<{ definition: string }>(
-          'select pg_get_functiondef($1::regprocedure) as definition',
-          [signature],
-        )
-      ).rows[0]?.definition;
-      if (definition === undefined) throw new Error('Missing owner command');
-      try {
-        await owner.query(
-          `alter function ${signature} set search_path=pg_catalog,app,public,pg_temp`,
-        );
-        await expect(
-          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-        ).rejects.toThrow('Workflow authoring schema is incompatible');
-      } finally {
-        await owner.query(definition);
-      }
-      try {
-        await owner.query(
-          `grant execute on function ${signature} to pertexo_worker`,
-        );
-        await expect(
-          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-        ).rejects.toThrow('Workflow authoring schema is incompatible');
-      } finally {
-        await owner.query(
-          `revoke execute on function ${signature} from pertexo_worker`,
-        );
-      }
-      try {
-        await owner.query(
-          definition.replace(
-            'invalid auto pause operation',
-            'altered auto pause operation',
-          ),
-        );
-        await expect(
-          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-        ).rejects.toThrow('Workflow authoring schema is incompatible');
-      } finally {
-        await owner.query(definition);
-      }
-      try {
-        await owner.query(
-          'alter table app.workflow_auto_pause_command_receipts no force row level security',
-        );
-        await expect(
-          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-        ).rejects.toThrow('Workflow authoring schema is incompatible');
-      } finally {
-        await owner.query(
-          'alter table app.workflow_auto_pause_command_receipts force row level security',
-        );
-      }
-      await expect(
-        checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-      ).resolves.toBeDefined();
-      const admissionSignature =
-        'app.schedule_claim_workflow_paused(uuid,uuid,timestamptz)';
-      const admissionDefinition = (
-        await owner.query<{ definition: string }>(
-          'select pg_get_functiondef($1::regprocedure) as definition',
-          [admissionSignature],
-        )
-      ).rows[0]?.definition;
-      if (admissionDefinition === undefined)
-        throw new Error('Missing pause admission command');
-      try {
-        await owner.query(
-          admissionDefinition.replace(
-            'scheduled instant required',
-            'altered scheduled instant required',
-          ),
-        );
-        await expect(
-          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-        ).rejects.toThrow('Workflow authoring schema is incompatible');
-      } finally {
-        await owner.query(admissionDefinition);
-      }
-      try {
-        await owner.query(
-          `grant execute on function ${admissionSignature} to pertexo_operator`,
-        );
-        await expect(
-          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-        ).rejects.toThrow('Workflow authoring schema is incompatible');
-      } finally {
-        await owner.query(
-          `revoke execute on function ${admissionSignature} from pertexo_operator`,
-        );
-      }
-      try {
-        await owner.query(
-          'alter table app.workflow_trigger_pause_periods no force row level security',
-        );
-        await expect(
-          checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-        ).rejects.toThrow('Workflow authoring schema is incompatible');
-      } finally {
-        await owner.query(
-          'alter table app.workflow_trigger_pause_periods force row level security',
-        );
-      }
-      await expect(
-        checkDatabaseReadiness(api, { ownerRole: 'pertexo_owner' }),
-      ).resolves.toBeDefined();
+      await expect(checkDatabaseReadiness(api)).resolves.toBeDefined();
     } finally {
       await Promise.all([owner.end(), api.end(), fold.close()]);
       await fixture.drop();

@@ -1081,39 +1081,42 @@ describe('API bootstrap ownership and health', () => {
       expect(changeWorkspaceMemberRole).toHaveBeenCalledOnce();
     });
 
-    it.each(['core', 'http_activation'] as const)(
-      'uses the configured %s cohort for integration discovery',
-      async (nodeCompatibilityCohort) => {
-        application = await createApiApplication(
-          { ...config, nodeCompatibilityCohort },
-          {
-            ...dependencies(),
-            identityRuntime: identityRuntime(undefined, true),
-          },
-        );
-        await application.init();
+    it('lists every integration as available', async () => {
+      application = await createApiApplication(config, {
+        ...dependencies(),
+        identityRuntime: identityRuntime(undefined, true),
+      });
+      await application.init();
 
-        const response = await application.inject({
-          method: 'GET',
-          url: '/v1/integrations',
-          headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
-        });
-        expect(response.statusCode).toBe(200);
-        expect(response.json()).toMatchObject({
-          items:
-            nodeCompatibilityCohort === 'core'
-              ? []
-              : [
-                  {
-                    providerKey: 'http',
-                    operationKey: 'request',
-                    available: true,
-                    publishable: true,
-                  },
-                ],
-        });
-      },
-    );
+      const response = await application.inject({
+        method: 'GET',
+        url: '/v1/integrations',
+        headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        items: [
+          {
+            providerKey: 'email',
+            operationKey: 'send_notification',
+            available: true,
+            publishable: true,
+          },
+          {
+            providerKey: 'http',
+            operationKey: 'request',
+            available: true,
+            publishable: true,
+          },
+          {
+            providerKey: 'slack',
+            operationKey: 'send_message',
+            available: true,
+            publishable: true,
+          },
+        ],
+      });
+    });
 
     it('rejects unsupported catalog query fields with problem details', async () => {
       application = await createApiApplication(config, {

@@ -89,7 +89,6 @@ const options = {
   batchSize: 10,
   leaseDurationSeconds: 30,
   redisUrl: 'redis://localhost:6379/0',
-  releaseCohort: 'core' as const,
 };
 
 describe('trigger runtime', () => {

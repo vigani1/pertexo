@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { CatalogController } from './controllers.js';
-import type { CatalogDependencies } from './use-cases.js';
 import {
   createCatalogUseCases,
   ListIntegrationsUseCase,
@@ -13,11 +12,8 @@ import {
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class CatalogModule {
-  public static register(
-    dependencies: CatalogDependencies,
-    identityModule: DynamicModule,
-  ): DynamicModule {
-    const useCases = createCatalogUseCases(dependencies);
+  public static register(identityModule: DynamicModule): DynamicModule {
+    const useCases = createCatalogUseCases();
     const providers: Provider[] = [
       {
         provide: ListNodeDefinitionsUseCase,

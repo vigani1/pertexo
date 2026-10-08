@@ -15,11 +15,7 @@ import {
   type ConnectionSecretContext,
   type EnvelopeKeyProvider,
 } from '@pertexo/integrations/server';
-import {
-  PLATFORM_REGISTRY_RELEASE_HISTORY,
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-} from '@pertexo/node-catalog';
-import type { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
@@ -28,7 +24,6 @@ import {
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
-import { activateCompatibilityReleaseFixture } from './compatibility-release.fixture.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { createRedisTestNamespace } from './redis-test-namespace.js';
 import { queryAsWorkspaceRole } from './workspace-query.js';
@@ -170,39 +165,6 @@ async function migrateDatabase(): Promise<void> {
       NODE_ENV: 'test',
     }),
   );
-}
-
-async function activateRelease(
-  targetRelease: typeof PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-): Promise<void> {
-  await activateCompatibilityReleaseFixture({
-    actorId: 'http-attempt-integration',
-    apiUrl: databaseUrl(apiUrl),
-    artifactPrefix: 'http-attempt',
-    migrationUrl: databaseUrl(migrationUrl),
-    reasons: {
-      activate: 'Activate HTTP attempt integration release',
-      approve: 'Approve HTTP attempt integration release',
-      prepare: 'Prepare HTTP attempt integration release',
-    },
-    readCurrent: async () =>
-      (
-        await withOwner((client) =>
-          client.query<{
-            catalog_json: unknown;
-            epoch: number;
-            fingerprint: string;
-          }>(
-            `select current.epoch,current.fingerprint,release.catalog_json
-             from app.node_compatibility_current current
-             join app.node_compatibility_releases release
-               on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
-          ),
-        )
-      ).rows[0],
-    targetRelease,
-    workerUrl: databaseUrl(workerUrl),
-  });
 }
 
 function graph() {
@@ -878,10 +840,6 @@ export function installHttpNodeAttemptFixture(): void {
         parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
       );
       apiDatabaseCreated = true;
-      for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.slice(1).filter(
-        (candidate) => candidate.epoch <= activeRelease.epoch,
-      ))
-        await activateRelease(release);
     } catch (setupError: unknown) {
       let cleanupError: unknown;
       await cleanupHttpNodeAttemptFixture().catch((error: unknown) => {

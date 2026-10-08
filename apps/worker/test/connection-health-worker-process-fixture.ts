@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { Pool } from 'pg';
 import { z } from 'zod';
 import {
   createOutboxDispatcherDatabase,
@@ -8,10 +7,7 @@ import {
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createTransportMetrics } from '@pertexo/observability/transport-metrics';
-import {
-  PLATFORM_REGISTRY_RELEASE_HISTORY,
-  platformServingRegistryRelease,
-} from '@pertexo/node-catalog';
+import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import {
   ConnectionEnvelopeEncryption,
@@ -27,7 +23,6 @@ import { createMaintenanceRuntime } from '../src/maintenance/runtime.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
-import { activateCompatibilityReleaseFixture } from './support/compatibility-release.fixture.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import {
   createEditorBrowserWorkerLifetime,
@@ -87,7 +82,6 @@ let configuration: z.output<typeof configSchema> | undefined;
 let healthEnabled = false,
   stopping = false;
 const shutdown = new AbortController();
-const cohort = 'slack_activation';
 const PUBLICATION_LEASE_MILLIS = 30_000;
 let abandonmentUsed = false;
 let abandonmentActivity:
@@ -227,7 +221,6 @@ async function abandonHealthPublication() {
     const maintenance = await createMaintenanceRuntime({
       database,
       redisUrl: namespace.redisUrl,
-      releaseCohort: cohort,
       connectionHealthApplication: true,
       connectionRunHealthMode: 'enforce',
       previewReconciliation: false,
@@ -368,50 +361,6 @@ async function configure() {
   });
   process.send?.({ phase: 'namespace-ready' });
   const config = configSchema.parse(await pending);
-  const inspector = new Pool({ connectionString: config.migrationUrl, max: 1 });
-  const readCurrent = async () => {
-    const client = await inspector.connect();
-    try {
-      await client.query('begin');
-      await client.query('set local role pertexo_owner');
-      const result = await client.query<{
-        epoch: number;
-        fingerprint: string;
-        catalog_json: unknown;
-      }>(`select current.epoch,current.fingerprint,release.catalog_json
-        from app.node_compatibility_current current join app.node_compatibility_releases release on release.epoch=current.epoch and release.fingerprint=current.fingerprint`);
-      await client.query('commit');
-      return result.rows[0];
-    } finally {
-      await client.query('rollback');
-      client.release();
-    }
-  };
-  try {
-    const current = await readCurrent();
-    if (current === undefined)
-      throw new Error('Health compatibility pointer absent');
-    const target = platformServingRegistryRelease(cohort);
-    if (current.epoch > target.epoch)
-      throw new Error('Health fixture refuses cohort downgrade');
-    for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.filter(
-      (item) => item.epoch > current.epoch && item.epoch <= target.epoch,
-    ))
-      await activateCompatibilityReleaseFixture({
-        ...config,
-        actorId: 'connection-health-fixture',
-        artifactPrefix: 'connection-health-fixture',
-        targetRelease: release,
-        readCurrent,
-        reasons: {
-          prepare: 'Prepare isolated health fixture',
-          approve: 'Approve isolated health fixture',
-          activate: 'Activate isolated health fixture',
-        },
-      });
-  } finally {
-    await inspector.end();
-  }
   return config;
 }
 
@@ -445,7 +394,6 @@ async function construct(
   const coordinator = await createCoordinatorRuntime({
     database,
     maximumAdmissions: 10,
-    releaseCohort: cohort,
     redisUrl: namespace.redisUrl,
   });
   resources.coordinator = coordinator;
@@ -457,7 +405,6 @@ async function construct(
     {
       database,
       redisUrl: namespace.redisUrl,
-      releaseCohort: cohort,
       workerId: `health-${randomUUID()}`,
       heartbeatIntervalMillis: 1000,
       leaseDurationSeconds: 10,
@@ -474,7 +421,7 @@ async function construct(
     },
     {
       registry: createPlatformNodeRegistryForRelease(
-        platformServingRegistryRelease(cohort),
+        platformServingRegistryRelease(),
         {
           slackSendMessage: { client },
           httpRequest: {
@@ -500,7 +447,6 @@ async function construct(
     ? await createMaintenanceRuntime({
         database,
         redisUrl: namespace.redisUrl,
-        releaseCohort: cohort,
         connectionHealthApplication: true,
         connectionRunHealthMode: 'enforce',
         previewReconciliation: false,

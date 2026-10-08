@@ -10,10 +10,9 @@ import {
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
 
-import { PLATFORM_REGISTRY_RELEASE_HISTORY } from './registry.js';
 import {
+  platformExecutableRegistryHistory,
   platformServingRegistryRelease,
-  type PlatformReleaseCohort,
 } from './registry.js';
 
 export type PlatformNodeDefinition = NodeDefinitionRegistration;
@@ -81,7 +80,7 @@ export function platformIdentityToken(
 export function parseSupportedPlatformRelease(releaseInput: unknown) {
   const release = parseRegistryRelease(releaseInput);
   if (
-    !PLATFORM_REGISTRY_RELEASE_HISTORY.some(
+    !platformExecutableRegistryHistory().some(
       (supported) =>
         supported.epoch === release.epoch &&
         supported.fingerprint === release.fingerprint,
@@ -140,11 +139,9 @@ function compareDefinitionIdentity(
  * surfaced.  The active-executor check prevents a definition from appearing
  * available while its release is still staged.
  */
-export function platformBrowserNodeDefinitionCatalog(
-  cohort: PlatformReleaseCohort,
-): PlatformNodeDefinitionBrowserCatalog {
+export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBrowserCatalog {
   const release = parseSupportedPlatformRelease(
-    platformServingRegistryRelease(cohort),
+    platformServingRegistryRelease(),
   );
   const activeExecutors = new Set(
     release.executors

@@ -182,14 +182,6 @@ describe('workflow executable V2 identity', () => {
     expect(() =>
       createExecutableCompatibilityReleaseSupport([
         current,
-        composeExecutableCompatibilityRelease(
-          nodeRelease({ epoch: 3, extraPolicyVersion: 2 }),
-        ),
-      ]),
-    ).toThrow('successor');
-    expect(() =>
-      createExecutableCompatibilityReleaseSupport([
-        current,
         target,
         composeExecutableCompatibilityRelease(
           nodeRelease({ epoch: 3, extraPolicyVersion: 2 }),
@@ -224,12 +216,6 @@ describe('workflow executable V2 identity', () => {
       expect(history.resolve(release.epoch, release.fingerprint)).toEqual(
         release,
       );
-    expect(() =>
-      createExecutableCompatibilityReleaseHistory([
-        releases[0],
-        composeExecutableCompatibilityRelease(nodeRelease({ epoch: 4 })),
-      ]),
-    ).toThrow('successor');
     expect(() => createExecutableCompatibilityReleaseHistory([])).toThrow(
       'must not be empty',
     );

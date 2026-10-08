@@ -106,31 +106,11 @@ afterAll(async () => {
 });
 
 describe('SQL boundary integrity', () => {
-  it('rejects owner-only malformed catalog and operator rows by exact constraint', async () => {
+  it('rejects owner-only malformed operator rows by exact constraint', async () => {
     const client = await pools.owner.connect();
     try {
       await client.query('begin');
       await client.query('set local role pertexo_owner');
-      await client.query(
-        'alter table app.node_compatibility_releases disable trigger node_compatibility_releases_phase3_core_non_removal',
-      );
-      await client.query('savepoint malformed_catalog');
-      await expect(
-        client.query(
-          `insert into app.node_compatibility_releases(
-            epoch,schema_version,fingerprint,catalog_json,predecessor_epoch,
-            prepared_by_kind,prepared_by,reason
-          )
-          select max(epoch)+1,1,$1,'{"schemaVersion":1}',max(epoch),
-            'deployment','q10-test','missing catalog domain'
-          from app.node_compatibility_releases`,
-          [`node-compat:v1:sha256:${'d'.repeat(64)}`],
-        ),
-      ).rejects.toMatchObject({
-        code: '23514',
-        constraint: 'node_compatibility_releases_catalog_object',
-      });
-      await client.query('rollback to savepoint malformed_catalog');
       await client.query('savepoint malformed_operator');
       await expect(
         client.query(

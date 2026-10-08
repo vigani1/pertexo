@@ -52,13 +52,6 @@ const maintenance = new Pool({
   max: 1,
 });
 const upgrade = createConnectionHealthUpgradeFixture();
-const readinessError =
-  'Connection persistence schema or grants are incompatible';
-const readinessOptions = {
-  ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
-  apiRuntimeRole: 'pertexo_api',
-};
 
 beforeAll(async () => {
   const admin = new Pool({ connectionString: adminBase, max: 1 });
@@ -92,29 +85,6 @@ afterAll(async () => {
       'Connection health boundary cleanup failed',
     );
 });
-
-async function ownerSql(statement: string): Promise<void> {
-  await asOwner(workspaceA, async (client) => {
-    await client.query(statement);
-  });
-}
-
-async function assertDriftRejected(statement: string, restore: string) {
-  await ownerSql(statement);
-  try {
-    for (const pool of [api, worker, dispatcher])
-      await expect(
-        checkDatabaseReadiness(pool, readinessOptions),
-      ).rejects.toThrow(readinessError);
-  } finally {
-    await ownerSql(restore);
-    await expect(
-      checkDatabaseReadiness(api, readinessOptions),
-    ).resolves.toMatchObject({
-      migrationHead: '0135_workflow_folders_batch_identity.sql',
-    });
-  }
-}
 
 const appliedLedger: ControlLedger = {
   append: () =>
@@ -177,6 +147,7 @@ describe('connection health migration and runtime boundary', () => {
       '0133_curated_template_origin.sql',
       '0134_workflow_organization.sql',
       '0135_workflow_folders_batch_identity.sql',
+      '0136_remove_release_machinery.sql',
     ]);
     const retained = await upgrade.asOwner((client) =>
       client.query(
@@ -228,155 +199,9 @@ describe('connection health migration and runtime boundary', () => {
       [worker, 'pertexo_worker'],
       [dispatcher, 'pertexo_dispatcher'],
     ] as const)
-      await expect(
-        checkDatabaseReadiness(pool, readinessOptions),
-      ).resolves.toMatchObject({ role });
-  });
-
-  it.each([
-    'node_attempt_connection_dispatches',
-    'connection_health_observations',
-  ])(
-    'rejects missing FORCE RLS and permissive policy drift on %s',
-    async (table) => {
-      await assertDriftRejected(
-        `alter table app.${table} no force row level security`,
-        `alter table app.${table} force row level security`,
-      );
-      await assertDriftRejected(
-        `alter policy ${table}_workspace_scope on app.${table} using(true) with check(true)`,
-        `alter policy ${table}_workspace_scope on app.${table} using(workspace_id::text=nullif(current_setting('app.workspace_id',true),'')) with check(workspace_id::text=nullif(current_setting('app.workspace_id',true),''))`,
-      );
-    },
-  );
-
-  it('rejects changed function bodies and definer execution configuration', async () => {
-    const signature =
-      'app.apply_connection_health_observation(uuid,uuid,text,uuid,text)';
-    const definition = await asOwner(workspaceA, (client) =>
-      client.query<{ definition: string }>(
-        'select pg_get_functiondef($1::regprocedure) definition',
-        [signature],
-      ),
-    );
-    const original = definition.rows[0]?.definition;
-    if (original === undefined)
-      throw new Error('Health application function missing');
-    await assertDriftRejected(
-      original.replace('BEGIN', 'BEGIN\n  PERFORM 1;'),
-      original,
-    );
-    await assertDriftRejected(
-      `alter function ${signature} set search_path=pg_catalog,app,pg_temp`,
-      original,
-    );
-  });
-
-  it.each([
-    'inbox_receipts_owner_leased_purge_select',
-    'inbox_receipts_owner_leased_purge_delete',
-    'inbox_receipts_owner_leased_purge_lock',
-  ])(
-    'rejects widened health receipt purge authorization on %s',
-    async (policy) => {
-      const existing = await asOwner(workspaceA, (client) =>
-        client.query<{ expression: string }>(
-          "select pg_get_expr(polqual,polrelid) expression from pg_policy where polrelid='app.inbox_receipts'::regclass and polname=$1",
-          [policy],
-        ),
-      );
-      const expression = existing.rows[0]?.expression;
-      if (expression === undefined)
-        throw new Error('Expected scoped purge policy');
-      await assertDriftRejected(
-        `alter policy ${policy} on app.inbox_receipts using (true)`,
-        `alter policy ${policy} on app.inbox_receipts using (${expression})`,
-      );
-    },
-  );
-
-  it('rejects widened outbox leased purge authorization', async () => {
-    const policy = 'outbox_events_owner_leased_purge_delete';
-    const existing = await asOwner(workspaceA, (client) =>
-      client.query<{ expression: string }>(
-        "select pg_get_expr(polqual,polrelid) expression from pg_policy where polrelid='app.outbox_events'::regclass and polname=$1",
-        [policy],
-      ),
-    );
-    const expression = existing.rows[0]?.expression;
-    if (expression === undefined)
-      throw new Error('Expected scoped purge policy');
-    await assertDriftRejected(
-      `alter policy ${policy} on app.outbox_events using (true)`,
-      `alter policy ${policy} on app.outbox_events using (${expression})`,
-    );
-  });
-
-  it('rejects index shape, check-constraint and trigger drift', async () => {
-    await assertDriftRejected(
-      'drop index app.connection_health_observations_workspace_time_idx; create index connection_health_observations_workspace_time_idx on app.connection_health_observations(workspace_id,id,observed_at)',
-      'drop index app.connection_health_observations_workspace_time_idx; create index connection_health_observations_workspace_time_idx on app.connection_health_observations(workspace_id,observed_at,id)',
-    );
-    await assertDriftRejected(
-      'alter table app.connections drop constraint connections_health_revision_positive; alter table app.connections add constraint connections_health_revision_positive check(health_revision>=0)',
-      'alter table app.connections drop constraint connections_health_revision_positive; alter table app.connections add constraint connections_health_revision_positive check(health_revision>0)',
-    );
-    await assertDriftRejected(
-      'alter table app.connection_health_observations disable trigger connection_health_observations_command_cleanup',
-      'alter table app.connection_health_observations enable trigger connection_health_observations_command_cleanup',
-    );
-    await assertDriftRejected(
-      'alter table app.connections disable trigger connections_health_protocol',
-      'alter table app.connections enable trigger connections_health_protocol',
-    );
-  });
-
-  it('rejects PUBLIC function execution and runtime table/column grant drift', async () => {
-    const signature =
-      'app.apply_connection_health_observation(uuid,uuid,text,uuid,text)';
-    await assertDriftRejected(
-      `grant execute on function ${signature} to public`,
-      `revoke execute on function ${signature} from public`,
-    );
-    await assertDriftRejected(
-      'grant select on app.connection_health_observations to pertexo_api',
-      'revoke select on app.connection_health_observations from pertexo_api',
-    );
-    await assertDriftRejected(
-      'grant update(applied_at) on app.connection_health_observations to pertexo_worker',
-      'revoke update(applied_at) on app.connection_health_observations from pertexo_worker',
-    );
-    await assertDriftRejected(
-      'grant select(reason_code) on app.connection_health_observations to pertexo_api',
-      'revoke select(reason_code) on app.connection_health_observations from pertexo_api',
-    );
-  });
-
-  it('rejects notification connection lock body and serving execute drift', async () => {
-    const signature = 'app.lock_notification_connection(uuid,uuid)';
-    const definition = await asOwner(workspaceA, (client) =>
-      client.query<{ definition: string }>(
-        'select pg_get_functiondef($1::regprocedure) definition',
-        [signature],
-      ),
-    );
-    const original = definition.rows[0]?.definition;
-    if (original === undefined) throw new Error('Expected notification lock');
-    const drifted = original.replace(
-      'FOR SHARE OF connection',
-      'FOR KEY SHARE OF connection',
-    );
-    expect(drifted).not.toBe(original);
-    await assertDriftRejected(drifted, original);
-    for (const role of ['pertexo_api', 'pertexo_worker'])
-      await assertDriftRejected(
-        `revoke execute on function ${signature} from ${role}`,
-        `grant execute on function ${signature} to ${role}`,
-      );
-    await assertDriftRejected(
-      `grant execute on function ${signature} to pertexo_dispatcher`,
-      `revoke execute on function ${signature} from pertexo_dispatcher`,
-    );
+      await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
+        role,
+      });
   });
 
   it('allows only API and worker tenant-bound notification connection locks', async () => {

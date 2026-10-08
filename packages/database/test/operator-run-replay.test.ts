@@ -2,15 +2,12 @@ import { randomUUID } from 'node:crypto';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type * as CompatibilityRelease from '../src/compatibility/compatibility-release.js';
-
 const mocks = vi.hoisted(() => ({
   acceptWorkflowRun: vi.fn(),
   classifyPublishedWorkflowVersionRow: vi.fn(),
   close: vi.fn(),
   consumeInboxMessage: vi.fn(),
   createWorkspaceDatabase: vi.fn(),
-  lockExpectedCompatibilityReleaseSet: vi.fn(),
 }));
 
 vi.mock('../src/database.js', () => ({
@@ -26,17 +23,6 @@ vi.mock('../src/execution/published-workflow-reader.js', () => ({
   classifyPublishedWorkflowVersionRow:
     mocks.classifyPublishedWorkflowVersionRow,
 }));
-vi.mock(
-  '../src/compatibility/compatibility-release.js',
-  async (importOriginal) => {
-    const original = await importOriginal<typeof CompatibilityRelease>();
-    return {
-      ...original,
-      lockExpectedCompatibilityReleaseSet:
-        mocks.lockExpectedCompatibilityReleaseSet,
-    };
-  },
-);
 
 import { canonicalOutboxPayloadChecksum } from '../src/execution/transport/outbox.js';
 import {
@@ -210,7 +196,6 @@ describe('operator run replay validation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.close.mockResolvedValue(undefined);
-    mocks.lockExpectedCompatibilityReleaseSet.mockResolvedValue(release);
     mocks.classifyPublishedWorkflowVersionRow.mockReturnValue({
       kind: 'v2_projection',
       workflowVersion: { workflowId },
@@ -312,7 +297,6 @@ describe('operator run replay validation', () => {
         OperatorRunReplayMismatchError,
       );
       expect(fixture.execute).toHaveBeenCalledTimes(2);
-      expect(mocks.lockExpectedCompatibilityReleaseSet).not.toHaveBeenCalled();
     },
   );
 
@@ -335,15 +319,11 @@ describe('operator run replay validation', () => {
     );
   });
 
-  it.each(['compatibility', 'checkpoint', 'acceptance', 'completion'])(
+  it.each(['checkpoint', 'acceptance', 'completion'])(
     'propagates %s failure without reporting inbox completion',
     async (phase) => {
       const failure = new Error(`${phase} failed`);
       const fixture = storeWith();
-      if (phase === 'compatibility')
-        mocks.lockExpectedCompatibilityReleaseSet.mockRejectedValueOnce(
-          failure,
-        );
       if (phase === 'checkpoint')
         fixture.checkpointFactory.mockImplementationOnce(() => {
           throw failure;

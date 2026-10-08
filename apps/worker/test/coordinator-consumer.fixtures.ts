@@ -10,28 +10,12 @@ import {
   parseDatabaseConfig,
   parseMigrationConfig,
 } from '@pertexo/database/testing';
-import {
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
-} from '@pertexo/node-catalog';
-import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
-import type { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import {} from '@pertexo/node-catalog';
 import { QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { Pool } from 'pg';
 
 import { seedCoordinatorWorkflowFixtures } from './support/coordinator-workflow-fixtures.js';
-import { activateCompatibilityReleaseFixture } from './support/compatibility-release.fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
 import { queryAsWorkspaceRole } from './support/workspace-query.js';
@@ -270,37 +254,6 @@ async function waitFor<T>(
   return value;
 }
 
-async function activateRelease(
-  targetRelease: Parameters<typeof composeExecutableCompatibilityRelease>[0],
-): Promise<void> {
-  await activateCompatibilityReleaseFixture({
-    actorId: 'retained-core-integration',
-    apiUrl: databaseUrl(apiUrl),
-    artifactPrefix: 'retained-core',
-    migrationUrl: databaseUrl(migrationUrl),
-    reasons: {
-      activate: 'Activate retained core execution release',
-      approve: 'Approve retained core execution release',
-      prepare: 'Prepare retained core execution release',
-    },
-    readCurrent: async () =>
-      (
-        await ownerQuery<{
-          catalog_json: unknown;
-          epoch: number;
-          fingerprint: string;
-        }>(
-          `select current.epoch,current.fingerprint,release.catalog_json
-           from app.node_compatibility_current current
-           join app.node_compatibility_releases release
-             on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
-        )
-      )[0],
-    targetRelease,
-    workerUrl: databaseUrl(workerUrl),
-  });
-}
-
 async function setupFixture(): Promise<void> {
   try {
     await redisNamespace.acquire();
@@ -324,19 +277,6 @@ async function setupFixture(): Promise<void> {
     );
     apiDatabaseCreated = true;
 
-    await activateRelease(CORE_REGISTRY_RELEASE_SUCCESSOR);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_STAGED);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_MERGE_STAGED);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE);
     await seedCoordinatorWorkflowFixtures(ownerQuery, {
       actorId,
       workspaceId,
@@ -466,7 +406,6 @@ async function restoreServicesAndCleanupFixture(): Promise<void> {
 export interface CoordinatorIntegrationFixture {
   readonly actorId: string;
   readonly adminUrl: string;
-  readonly activateRelease: typeof activateRelease;
   readonly apiDatabase: ReturnType<typeof createWorkspaceDatabase>;
   readonly apiQuery: typeof apiQuery;
   readonly apiUrl: string;
@@ -506,7 +445,6 @@ export interface CoordinatorIntegrationFixture {
 export const coordinatorFixture: CoordinatorIntegrationFixture = Object.freeze({
   actorId,
   adminUrl,
-  activateRelease,
   get apiDatabase() {
     if (!apiDatabaseCreated)
       throw new Error('Coordinator API database is not initialized');

@@ -7,7 +7,10 @@ import {
   EMAIL_SEND_NOTIFICATION_MANIFEST,
   EMAIL_SEND_NOTIFICATION_POLICY,
 } from '@pertexo/integrations';
-import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
+import {
+  createRegistryRelease,
+  createRegistryReleaseSuccessor,
+} from '@pertexo/node-sdk';
 import type { NodeManifest } from '@pertexo/node-sdk';
 import {
   CORE_CONDITION_MANIFEST,
@@ -288,355 +291,43 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
 ]);
 
-/** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */
-export const PLATFORM_REGISTRY_RELEASE_SUPPORT = CORE_REGISTRY_RELEASE_SUPPORT;
-
-/** First Phase 4 artifact: current core release plus staged HTTP successor. */
-export const PLATFORM_HTTP_STAGING_RELEASE_SUPPORT = Object.freeze([
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-]);
-
-/** Second Phase 4 artifact: staged predecessor plus active HTTP successor. */
-export const PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-]);
-
-/** Condition staging artifact: active HTTP predecessor plus staged Condition. */
-export const PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
-]);
-
-/** Condition activation artifact: staged predecessor plus active Condition. */
-export const PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-]);
-
-/** Switch staging artifact: active Condition predecessor plus staged Switch. */
-export const PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
-]);
-
-/** Switch activation artifact: staged predecessor plus active Switch. */
-export const PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-]);
-
-export const PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
-]);
-
-export const PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-]);
-
-export const PLATFORM_MERGE_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
-]);
-
-export const PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-]);
-
-export const PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
-]);
-
-export const PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-]);
-
-export const PLATFORM_WAIT_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
-]);
-export const PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
-  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-]);
-export const PLATFORM_SLACK_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
-]);
-export const PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-]);
-export const PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
-]);
-export const PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-]);
-export const PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
-]);
-export const PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
-  PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
-]);
-export const PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
-]);
-export const PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
-]);
-export const PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
-]);
-export const PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
-]);
-export const PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED,
-]);
-export const PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
-]);
-export const PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED,
-]);
-export const PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
-]);
-export const PLATFORM_SCHEDULE_V3_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_STAGED,
-]);
-export const PLATFORM_SCHEDULE_V3_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_ACTIVE,
-]);
-export const PLATFORM_PARALLEL_V3_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_STAGED,
-]);
-export const PLATFORM_PARALLEL_V3_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_STAGED,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_ACTIVE,
-]);
-export const PLATFORM_MERGE_V3_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_STAGED,
-]);
-export const PLATFORM_MERGE_V3_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_STAGED,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
-]);
-export const PLATFORM_VALIDATE_STAGING_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED,
-]);
-export const PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED,
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
-]);
-
-const platformReleaseCohortConfig = Object.freeze({
-  core: Object.freeze({
-    support: PLATFORM_REGISTRY_RELEASE_SUPPORT,
-    serving: CORE_REGISTRY_RELEASE_SUCCESSOR,
-  }),
-  http_staging: Object.freeze({
-    support: PLATFORM_HTTP_STAGING_RELEASE_SUPPORT,
-    serving: CORE_REGISTRY_RELEASE_SUCCESSOR,
-  }),
-  http_activation: Object.freeze({
-    support: PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  }),
-  condition_staging: Object.freeze({
-    support: PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  }),
-  condition_activation: Object.freeze({
-    support: PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  }),
-  switch_staging: Object.freeze({
-    support: PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  }),
-  switch_activation: Object.freeze({
-    support: PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-  }),
-  parallel_staging: Object.freeze({
-    support: PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-  }),
-  parallel_activation: Object.freeze({
-    support: PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-  }),
-  merge_staging: Object.freeze({
-    support: PLATFORM_MERGE_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-  }),
-  merge_activation: Object.freeze({
-    support: PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  }),
-  for_each_staging: Object.freeze({
-    support: PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  }),
-  for_each_activation: Object.freeze({
-    support: PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  }),
-  wait_staging: Object.freeze({
-    support: PLATFORM_WAIT_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  }),
-  wait_activation: Object.freeze({
-    support: PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-  }),
-  slack_staging: Object.freeze({
-    support: PLATFORM_SLACK_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-  }),
-  slack_activation: Object.freeze({
-    support: PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-  }),
-  email_staging: Object.freeze({
-    support: PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-  }),
-  email_activation: Object.freeze({
-    support: PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-  }),
-  webhook_staging: Object.freeze({
-    support: PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-  }),
-  webhook_activation: Object.freeze({
-    support: PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
-  }),
-  schedule_staging: Object.freeze({
-    support: PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
-  }),
-  schedule_activation: Object.freeze({
-    support: PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
-  }),
-  schedule_v2_staging: Object.freeze({
-    support: PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
-  }),
-  schedule_v2_activation: Object.freeze({
-    support: PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
-  }),
-  parallel_v2_staging: Object.freeze({
-    support: PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
-  }),
-  parallel_v2_activation: Object.freeze({
-    support: PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
-  }),
-  merge_v2_staging: Object.freeze({
-    support: PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
-  }),
-  merge_v2_activation: Object.freeze({
-    support: PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
-  }),
-  schedule_v3_staging: Object.freeze({
-    support: PLATFORM_SCHEDULE_V3_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
-  }),
-  schedule_v3_activation: Object.freeze({
-    support: PLATFORM_SCHEDULE_V3_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_ACTIVE,
-  }),
-  parallel_v3_staging: Object.freeze({
-    support: PLATFORM_PARALLEL_V3_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_ACTIVE,
-  }),
-  parallel_v3_activation: Object.freeze({
-    support: PLATFORM_PARALLEL_V3_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_ACTIVE,
-  }),
-  merge_v3_staging: Object.freeze({
-    support: PLATFORM_MERGE_V3_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_ACTIVE,
-  }),
-  merge_v3_activation: Object.freeze({
-    support: PLATFORM_MERGE_V3_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
-  }),
-  validate_staging: Object.freeze({
-    support: PLATFORM_VALIDATE_STAGING_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
-  }),
-  validate_activation: Object.freeze({
-    support: PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT,
-    serving: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
-  }),
+/**
+ * The one catalog every API and worker serves: the newest release with every
+ * definition and executor active. Release lifecycles (staging, deprecation)
+ * are not used before launch, so nothing is hidden or marked for migration.
+ */
+export const PLATFORM_REGISTRY_RELEASE = createRegistryRelease({
+  epoch: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.epoch + 1,
+  definitions: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.definitions.map(
+    (manifest) => ({ ...manifest, lifecycle: 'active' as const }),
+  ),
+  executors: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.executors.map(
+    (executor) => ({ ...executor, lifecycle: 'active' as const }),
+  ),
+  policies: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.policies,
 });
 
-export type PlatformReleaseCohort = keyof typeof platformReleaseCohortConfig;
-export const PLATFORM_RELEASE_COHORTS = Object.freeze(
-  Object.keys(platformReleaseCohortConfig) as PlatformReleaseCohort[],
-);
-
-export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
-  return platformReleaseCohortConfig[cohort].support;
+export function platformRegistryReleaseSupport() {
+  return Object.freeze([PLATFORM_REGISTRY_RELEASE]);
 }
 
-/** Retained immutable releases executable by a cohort, distinct from readiness. */
-export function platformExecutableRegistryHistory(
-  cohort: PlatformReleaseCohort,
-) {
-  const maximumEpoch = platformRegistryReleaseSupport(cohort).at(-1)?.epoch;
-  if (maximumEpoch === undefined)
-    throw new Error('Platform release cohort is empty');
-  return Object.freeze(
-    PLATFORM_REGISTRY_RELEASE_HISTORY.filter(
-      ({ epoch }) => epoch <= maximumEpoch,
-    ),
-  );
+const PLATFORM_EXECUTABLE_REGISTRY_HISTORY = Object.freeze([
+  ...PLATFORM_REGISTRY_RELEASE_HISTORY,
+  PLATFORM_REGISTRY_RELEASE,
+]);
+
+/** Releases whose published workflows remain executable. */
+export function platformExecutableRegistryHistory() {
+  return PLATFORM_EXECUTABLE_REGISTRY_HISTORY;
 }
 
-/** Release whose executors the cohort's worker actually dispatches. */
-export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
-  return platformReleaseCohortConfig[cohort].serving;
+/** Release whose executors the worker dispatches. */
+export function platformServingRegistryRelease() {
+  return PLATFORM_REGISTRY_RELEASE;
 }
 
-export function platformServingReleaseRequiresHttpCapabilities(
-  cohort: PlatformReleaseCohort,
-): boolean {
-  return platformServingRegistryRelease(cohort).executors.some(
+export function platformServingReleaseRequiresHttpCapabilities(): boolean {
+  return PLATFORM_REGISTRY_RELEASE.executors.some(
     ({ executor, lifecycle }) =>
       executor.key === HTTP_REQUEST_MANIFEST.executor.key &&
       executor.version === HTTP_REQUEST_MANIFEST.executor.version &&

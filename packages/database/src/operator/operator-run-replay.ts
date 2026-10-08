@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import {
-  lockExpectedCompatibilityReleaseSet,
+  selectServingCompatibilityRelease,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
@@ -155,11 +155,9 @@ export function createOperatorRunReplayStore(
           if (!request.success || request.data.status !== 'pending')
             throw new OperatorRunReplayMismatchError();
 
-          const currentCompatibilityRelease =
-            await lockExpectedCompatibilityReleaseSet(
-              transaction.db,
-              compatibilityReleases,
-            );
+          const currentCompatibilityRelease = selectServingCompatibilityRelease(
+            compatibilityReleases,
+          );
           const versions = await transaction.db.execute(
             sql<Record<string, unknown>>`
               select id,workspace_id,workflow_id,version_number,schema_version,

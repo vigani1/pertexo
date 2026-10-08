@@ -19,7 +19,6 @@ import { createCuratedTemplateEnvelopeContext } from '../../../infrastructure/te
 import { createEditorWebhookRuntime } from './support/editor-webhook-runtime.js';
 import { createEditorHttpControl } from './support/editor-http-control.js';
 import {
-  httpCohort,
   httpEffectsSchema,
   submittedHttpEvidenceIds,
   verifyHttpEvidence,
@@ -351,24 +350,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
   redis.pathname = '/11';
   const api = useBetterAuthRealApi('editor_browser', {
     publicWebOrigin: webOrigin,
-    nodeCompatibilityCohort:
-      scenario === 'schedule'
-        ? 'schedule_activation'
-        : scenario === 'webhook-controlled-http'
-          ? httpCohort
-          : 'validate_activation',
     schedules: scenario === 'schedule' || scenario === 'curated-templates',
     ...(httpMaster === undefined
       ? {}
       : {
           webhookRuntime: (config) =>
-            createEditorWebhookRuntime(
-              config.database,
-              scenario === 'curated-templates'
-                ? 'validate_activation'
-                : httpCohort,
-              httpMaster,
-            ),
+            createEditorWebhookRuntime(config.database, httpMaster),
         }),
     redisUrl: redis.toString(),
     connections: {

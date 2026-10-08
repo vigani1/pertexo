@@ -11,7 +11,6 @@ import type {
   OperatorRunReplayStore,
   PreviewReconciliationStore,
 } from '@pertexo/database/execution';
-import type { PlatformReleaseCohort } from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -97,7 +96,6 @@ type MaintenanceOptions = Readonly<{
   workspaceInvitationDelivery?: WorkspaceInvitationDeliveryHandler;
   unknownOutcomeReconciliation?: boolean;
   runReplay?: boolean;
-  releaseCohort?: PlatformReleaseCohort;
 }>;
 
 type MaintenanceDependencies = Readonly<{
@@ -223,11 +221,7 @@ async function composeMaintenanceRuntime(
     if (options.runReplay === true)
       runReplayStore =
         dependencies.runReplayStore ??
-        factories.replay.store(
-          options.database,
-          options.releaseCohort,
-          options.databaseRuntime,
-        );
+        factories.replay.store(options.database, options.databaseRuntime);
 
     if (
       options.failureNotificationDelivery !== undefined &&

@@ -117,7 +117,6 @@ describe.skipIf(!enabled)(
     redis.pathname = '/11';
     const api = useBetterAuthRealApi('concurrency_browser', {
       publicWebOrigin: webOrigin,
-      nodeCompatibilityCohort: 'schedule_activation',
       redisUrl: redis.toString(),
       afterMigration: async (databaseUrl) => {
         const ready = phase(worker, 'worker-ready');

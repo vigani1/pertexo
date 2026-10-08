@@ -390,7 +390,6 @@ export async function createHttpNodeAttemptProofRuntime(
         }),
         maximumAdmissions: 1,
         redisUrl,
-        releaseCohort: 'email_activation',
       }),
       (runtime) => runtime.close(),
     );
@@ -451,7 +450,6 @@ export async function createHttpNodeAttemptProofRuntime(
         heartbeatIntervalMillis: options.heartbeatIntervalMillis ?? 200,
         leaseDurationSeconds: options.leaseDurationSeconds ?? 10,
         redisUrl,
-        releaseCohort: 'email_activation',
         workerId: `http-attempt-${randomUUID().slice(0, 8)}`,
       },
       {

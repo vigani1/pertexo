@@ -4,7 +4,6 @@ import { createWorkflowAuthoringDatabase as createUnwiredAuthoringDatabase } fro
 
 import {
   CONNECTION_AUTH_TYPE,
-  CompatibilityReleaseMismatchError,
   BASELINE_COMPATIBILITY_EXPECTATION,
   actorId,
   apiPool,
@@ -472,7 +471,7 @@ describe('workflow publication projections', () => {
             idempotencyKey: 'publish-v2-drifted-release',
             requestHash: '8'.repeat(64),
           }),
-        ).rejects.toBeInstanceOf(CompatibilityReleaseMismatchError);
+        ).rejects.toThrow('Workflow draft revision does not match');
       } finally {
         await drifted.close();
       }

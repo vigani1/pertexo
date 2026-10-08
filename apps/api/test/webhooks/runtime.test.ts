@@ -40,7 +40,6 @@ describe('API webhook runtime ownership', () => {
     const runtime = await createApiWebhookRuntime(
       config,
       databaseConfig,
-      'core',
       database(databaseClose),
       undefined,
       { envelope: () => envelope(envelopeClose) },
@@ -69,7 +68,6 @@ describe('API webhook runtime ownership', () => {
       createApiWebhookRuntime(
         config,
         databaseConfig,
-        'core',
         database(databaseClose),
         undefined,
         {
@@ -88,7 +86,6 @@ describe('API webhook runtime ownership', () => {
     const failure = await createApiWebhookRuntime(
       config,
       databaseConfig,
-      'core',
       database(() => Promise.reject(cleanupFailure)),
       undefined,
       {
@@ -119,7 +116,6 @@ describe('API webhook runtime ownership', () => {
       createApiWebhookRuntime(
         config,
         databaseConfig,
-        'core',
         database(databaseClose),
         undefined,
         { envelope: () => invalidEnvelope },
@@ -147,7 +143,6 @@ describe('API webhook runtime ownership', () => {
     const runtime = await createApiWebhookRuntime(
       config,
       databaseConfig,
-      'core',
       undefined,
       sharedRuntime,
       {

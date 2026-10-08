@@ -6,8 +6,7 @@ import {
 } from '@pertexo/workflow-model/graph';
 
 import {
-  lockExpectedCompatibilityReleaseSetWithClient,
-  lockExpectedCompatibilityReleaseWithClient,
+  selectServingCompatibilityRelease,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationHistory,
   parseCompatibilityReleaseExpectationSet,
@@ -116,14 +115,7 @@ export function normalizeWorkflowAuthoringCompatibility(
       validateAuthoringGraph: options.validateAuthoringGraph,
     });
     return Object.freeze({
-      selectLocked: async (client) => {
-        if (compatibilityRelease !== undefined)
-          await lockExpectedCompatibilityReleaseWithClient(
-            client,
-            compatibilityRelease,
-          );
-        return selection;
-      },
+      selectLocked: () => Promise.resolve(selection),
     });
   }
 
@@ -177,17 +169,14 @@ export function normalizeWorkflowAuthoringCompatibility(
     normalizedVariants.map(({ compatibilityRelease }) => compatibilityRelease);
 
   return Object.freeze({
-    selectLocked: async (client) => {
-      const selected = await lockExpectedCompatibilityReleaseSetWithClient(
-        client,
-        supported,
-      );
+    selectLocked: () => {
+      const selected = selectServingCompatibilityRelease(supported);
       const variant = normalizedVariants.find(({ compatibilityRelease }) =>
         sameRelease(compatibilityRelease, selected),
       );
       if (variant === undefined)
         throw new Error('Locked compatibility release variant is unavailable');
-      return variant;
+      return Promise.resolve(variant);
     },
   });
 }

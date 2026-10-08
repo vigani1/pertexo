@@ -144,7 +144,6 @@ export async function createOwnedMaintenanceRuntime(
       redisUrl: config.redisUrl,
       unknownOutcomeReconciliation: jobs.unknownOutcome,
       runReplay: jobs.replay,
-      releaseCohort: config.nodeCompatibilityCohort,
       ...(failureNotificationDelivery === undefined
         ? {}
         : { failureNotificationDelivery }),

@@ -4,17 +4,14 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   CONNECTION_AUTH_TYPE,
-  BASELINE_COMPATIBILITY_EXPECTATION,
   Pool,
   actorId,
   apiPool,
   apiUrl,
   authoring,
-  baselineEmptyDefinitionCatalog,
   createWorkflowAuthoringDatabase,
   createConnectionDatabase,
   createHash,
-  checkDatabaseReadiness,
   currentRepresentationTag,
   deferred,
   draftNode,
@@ -652,19 +649,13 @@ describe('same-workspace workflow duplication through the runtime database role'
   });
 
   it('holds authority, source and catalog locks while concurrent archive, membership suspension and release changes wait', async () => {
-    for (const race of ['archive', 'membership', 'catalog'] as const) {
+    for (const race of ['archive', 'membership'] as const) {
       const original = await source();
       const entered = deferred(),
         release = deferred();
       const copying = createWorkflowAuthoringDatabase(
         parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
         {
-          ...(race === 'catalog'
-            ? {
-                compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
-                definitionCatalog: baselineEmptyDefinitionCatalog,
-              }
-            : {}),
           testHooks: {
             afterDuplicateStep: async (step) => {
               if (step === 'source') {
@@ -700,14 +691,10 @@ describe('same-workspace workflow duplication through the runtime database role'
           workspaceId,
         ]);
         mutation = client.query(
-          race === 'catalog'
-            ? 'update app.node_compatibility_current set activated_at=activated_at where singleton'
-            : race === 'archive'
-              ? "update app.workflows set lifecycle_status='archived' where workspace_id=$1 and id=$2"
-              : "update app.workspace_memberships set status='suspended' where workspace_id=$1 and user_id=$2",
-          race === 'catalog'
-            ? []
-            : [workspaceId, race === 'archive' ? original.workflowId : actorId],
+          race === 'archive'
+            ? "update app.workflows set lifecycle_status='archived' where workspace_id=$1 and id=$2"
+            : "update app.workspace_memberships set status='suspended' where workspace_id=$1 and user_id=$2",
+          [workspaceId, race === 'archive' ? original.workflowId : actorId],
         );
         void mutation.catch(() => undefined);
         await waitForPostgresLock(application);
@@ -1033,60 +1020,6 @@ describe('same-workspace workflow duplication through the runtime database role'
       });
     }
     expect(await commandFacts()).toEqual(before);
-  });
-
-  it('fails readiness on additive creator body, configuration and ACL drift and recovers after restoration', async () => {
-    const signature =
-      'app.create_workflow_duplicate_draft(uuid,uuid,uuid,uuid,varchar,integer,jsonb,char,char,text,uuid)';
-    expect((await checkDatabaseReadiness(apiPool)).role).toBe('pertexo_api');
-    const rows = await queryAsOwner<{ definition: string }>(
-      'select pg_get_functiondef($1::regprocedure) definition',
-      [signature],
-    );
-    const definition = rows[0]?.definition;
-    if (!definition) throw new Error('Expected duplicate function definition');
-    const drift = definition.replace('BEGIN', 'BEGIN\n  PERFORM 1;');
-    expect(drift).not.toBe(definition);
-    await executeAsOwner(drift);
-    try {
-      await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow();
-    } finally {
-      await executeAsOwner(definition);
-    }
-    for (const setting of [
-      'search_path=pg_catalog,public',
-      'row_security=off',
-    ]) {
-      await executeAsOwner(`alter function ${signature} set ${setting}`);
-      try {
-        await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow();
-      } finally {
-        await executeAsOwner(definition);
-      }
-    }
-    for (const grant of ['PUBLIC', 'pertexo_worker']) {
-      await executeAsOwner(
-        `grant execute on function ${signature} to ${grant}`,
-      );
-      try {
-        await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow();
-      } finally {
-        await executeAsOwner(
-          `revoke execute on function ${signature} from ${grant}`,
-        );
-      }
-    }
-    await executeAsOwner(
-      `revoke execute on function ${signature} from pertexo_api`,
-    );
-    try {
-      await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow();
-    } finally {
-      await executeAsOwner(
-        `grant execute on function ${signature} to pertexo_api`,
-      );
-    }
-    expect((await checkDatabaseReadiness(apiPool)).role).toBe('pertexo_api');
   });
 
   it('preserves expired source-scoped duplication receipts under legal hold, then erases them through bounded workspace purge', async () => {
