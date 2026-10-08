@@ -157,7 +157,9 @@ jobs:
       - name: Build
         run: pnpm build
       - name: Unit tests
-        run: pnpm ${{ matrix.filter }} --workspace-concurrency=1 run --if-present test
+        run:
+          pnpm ${{ matrix.filter }} --workspace-concurrency=1 run --if-present
+          test
 
   integration:
     name: integration (${{ matrix.group }})
