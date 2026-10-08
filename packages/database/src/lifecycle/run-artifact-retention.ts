@@ -3,7 +3,6 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import type { ControlLedger } from './control-ledger-coordinator.js';
 import { retentionQuery as query } from './retention-support.js';
 import {
   inRetentionTransaction,
@@ -29,8 +28,7 @@ export type RunArtifactRetentionProcessResult =
   | Readonly<{ status: 'idle' }>
   | Readonly<{
       artifactId: string;
-      status:
-        'completed' | 'held' | 'referenced' | 'released' | 'stale' | 'waiting';
+      status: 'completed' | 'held' | 'referenced' | 'stale' | 'waiting';
       workspaceId: string;
     }>;
 
@@ -65,7 +63,6 @@ const optionsSchema = z
 
 export function createRunArtifactRetentionCoordinator(
   config: DatabaseConfig,
-  ledger: ControlLedger,
   artifacts: RunArtifactRetentionStore,
   inputOptions: RunArtifactRetentionCoordinatorOptions = {},
   runtime?: DatabaseRuntime,
@@ -102,12 +99,11 @@ export function createRunArtifactRetentionCoordinator(
         return Object.freeze({ status: 'idle' as const });
       const artifactId = uuidSchema.parse(candidate.artifact_id);
       const workspaceId = uuidSchema.parse(candidate.workspace_id);
-      const authorization = await withWorkspaceDestructiveAuthorization(
+      return withWorkspaceDestructiveAuthorization(
         pool,
         transactionOptions,
         signal,
         workspaceId,
-        ledger,
         options.externalOperationTimeoutMs,
         async (highWater, externalSignal) => {
           const outcome = await inRetentionTransaction(
@@ -220,13 +216,6 @@ export function createRunArtifactRetentionCoordinator(
           });
         },
       );
-      if (authorization.status === 'stale')
-        return Object.freeze({
-          artifactId,
-          status: 'released' as const,
-          workspaceId,
-        });
-      return authorization.value;
     },
   });
 }

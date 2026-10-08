@@ -17,7 +17,6 @@ const supportedSurfaces = [
   'lifecycle',
   'maintenance',
   'operator',
-  'recovery',
 ] as const;
 
 describe('@pertexo/database package contract', () => {

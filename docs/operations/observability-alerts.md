@@ -7,17 +7,14 @@ correlation for individual requests, runs, and workspaces; do not add those
 identifiers to metric labels.
 
 Repository rule validation does not prove deployed publication, alarm actions,
-pager delivery or autoscaling. That live proof is E01-11 in the
-[external qualification approval packet](./external-platform-contract.md#e01-11--deployed-alarms-pager-routing-and-autoscaling-response)
-and requires exact alarm/scalable-target selectors, a bounded test window,
-notification recipients, cleanup and approval before threshold injection.
+pager delivery or autoscaling.
 
 `pnpm observability:qualify` is a disposable **local** datapoint-flow check. It
 starts the exact digest-pinned collector and Prometheus images, submits two
 same-service writers plus a restarted writer, validates the scrape, and proves
 writer-separated counter, gauge and histogram aggregation. It exports no host,
-process, tenant or request identity. This local result is distinct from E01-11
-and does not prove deployed telemetry, alert delivery or pager routing. Metric
+process, tenant or request identity. It does not prove deployed telemetry,
+alert delivery or pager routing. Metric
 writer identity and source freshness follow
 [ADR 036](../adr/036-metric-writer-identity-and-freshness.md).
 
@@ -29,8 +26,8 @@ writer identity and source freshness follow
    maintenance logs. Do not infer data loss from Redis or queue delay alone.
 3. Check PostgreSQL-authoritative state before taking recovery action. Use the
    supported, reason-required operator command for recovery; never edit rows.
-4. Preserve lifecycle and control-ledger fences. Do not bypass legal hold,
-   leases, fencing tokens, or restore-before-serve agreement to clear an alert.
+4. Preserve lifecycle fences. Do not bypass leases or fencing tokens to clear
+   an alert.
 5. Record the alert start, user impact, command IDs used for recovery, and the
    time the expression returned below threshold.
 
@@ -162,11 +159,8 @@ allow outbox/replay paths to recover rather than fabricating durable state.
 
 ## PertexoObjectStoreSafetyViolation
 
-Identify the bounded surface, region role, and check. Preserve integrity,
-readiness, region-isolation, and restore-before-serve failures as fail-closed.
-Inspect restricted object metadata and control-ledger reconciliation evidence;
-never bypass checksum, immutability, or regional-isolation checks to clear the
-alert.
+Identify the bounded check. Preserve integrity failures as fail-closed. Inspect
+restricted object metadata; never bypass checksum checks to clear the alert.
 
 ## PertexoEventLoopDelayHigh
 
@@ -177,44 +171,24 @@ signals and are not sufficient by themselves to claim user impact.
 
 ## PertexoRetentionOperationFailure
 
-Use the finite `operation` label to locate the failed stage: rerun processing,
-scheduling, dry run, enforcement, preview, run-artifact retention, or workspace
-purge. Inspect the structured error and durable lease/fence state. After fixing
+Use the finite `operation` label to locate the failed stage: lifecycle
+commands, rerun processing, scheduling, dry run, enforcement, preview,
+run-artifact retention, or workspace purge. The worker runs these stages. Inspect the structured error and durable lease/fence state. After fixing
 the cause, use the audited retention or purge rerun command where applicable.
-
-## PertexoRegionalWriteAdmissionPaused
-
-Confirm the retention maintenance task is running and inspect its
-`retention.regional_replica_lag` or `retention.regional_replica_lag_failed`
-events. Verify that the authenticated RDS replica identity is
-`pertexo-eu-west-1`, its state is streaming, and replay lag is below five
-minutes. Freshness uses the originating observation timestamp, not the collector
-scrape time: it fails closed after the tested 90-second SDK/batch/scrape delivery
-bound even if a stopped producer's last gauge remains cached. Do not bypass the
-database admission fence. Restore a fresh observation by repairing monitoring or
-replication; admission resumes automatically only after the persisted lag
-returns below the bound.
 
 ## PertexoWorkspacePurgeReleasedOrStale
 
-Inspect the purge job's persisted step, lease, fence, legal-hold state, and
-object deletion evidence. A released or stale attempt is retryable and is not a
+Inspect the purge job's persisted step, lease, fence, and object deletion
+evidence. A released or stale attempt is retryable and is not a
 completion claim. Use the purge rerun command only after active authority has
 expired and retain the non-sensitive completion tombstone contract.
 
 ## PertexoLifecycleCommandFailure
 
-Inspect the asynchronous lifecycle operation and bounded failure code, then
-correlate lifecycle-command logs. Keep tenant access fenced for deletion and
-keep restore suspended until both control ledgers agree. Retry through the
-supported operation path rather than direct workspace mutation.
-
-## PertexoControlLedgerDivergence
-
-Stop or keep stopped tenant serving in the affected recovery context. Compare
-the PostgreSQL projection high water with both immutable regional ledgers and
-follow `docs/operations/regional-recovery.md`. Do not override reconciliation or
-declare recovery complete from one ledger copy.
+Inspect the lifecycle operation and its bounded failure code, then correlate
+the worker's `retention.operation_failed` logs. Keep tenant access fenced for
+deletion. Retry through the supported operation path rather than direct
+workspace mutation.
 
 ## Coverage Boundaries
 

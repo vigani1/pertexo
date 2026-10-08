@@ -1,7 +1,7 @@
 import {
-  createDualRegionArtifactStore,
+  createArtifactStore,
   type ArtifactStore,
-  type DualRegionArtifactStoreConfig,
+  type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
   createWorkerConnectionResolutionDatabase,
@@ -47,7 +47,7 @@ function assertCapabilityRuntimeOpen(lifecycle: { terminal: boolean }): void {
 export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   database: DatabaseConfig;
   connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
-  artifactStore?: DualRegionArtifactStoreConfig;
+  artifactStore?: ArtifactStoreConfig;
   artifactRetentionMillis?: number;
   redisUrl?: string;
 }>;
@@ -235,10 +235,7 @@ export async function createWorkerNodeRuntimeCapabilities(
         dependencies.artifactStore ??
         (options.artifactStore === undefined
           ? undefined
-          : (ownedArtifactStore = createDualRegionArtifactStore(
-              options.artifactStore.primary,
-              options.artifactStore.recovery,
-            )));
+          : (ownedArtifactStore = createArtifactStore(options.artifactStore)));
       if (store === undefined)
         throw new Error('Worker artifact capability is incomplete');
       const readiness = store;

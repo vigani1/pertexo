@@ -3,7 +3,6 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import type { ControlLedger } from './control-ledger-coordinator.js';
 import {
   inRetentionTransaction,
   withWorkspaceDestructiveAuthorization,
@@ -17,7 +16,6 @@ import type {
 } from './retention-contracts.js';
 export type {
   OperatorMaintenanceRerunResult,
-  RegionalReplicaLagObservation,
   RetentionDatabase,
   RetentionDatabaseOptions,
   RetentionDryRunClaim,
@@ -55,7 +53,7 @@ export function createRetentionDatabase(
   const { pool } = lease;
   return Object.freeze({
     ...createRetentionDryRunCapability(pool, options),
-    ...createRetentionHealthCapability(pool, options),
+    ...createRetentionHealthCapability(pool),
     ...createRetentionOperatorRecoveryCapability(pool, options),
     ...createRetentionSchedulingCapability(pool, options),
     close: () => lease.close(),
@@ -75,7 +73,6 @@ const enforcementOptionsSchema = optionsSchema.extend({
 
 export function createRetentionEnforcementCoordinator(
   config: DatabaseConfig,
-  ledger: ControlLedger,
   inputOptions: RetentionEnforcementCoordinatorOptions,
   runtime?: DatabaseRuntime,
 ): RetentionEnforcementCoordinator {
@@ -161,96 +158,91 @@ export function createRetentionEnforcementCoordinator(
         pageCount += 1
       ) {
         try {
-          const authorization = await withWorkspaceDestructiveAuthorization(
-            pool,
-            options,
-            signal,
-            claimed.workspaceId,
-            ledger,
-            options.externalOperationTimeoutMs,
-            async (highWater) =>
-              inRetentionTransaction(pool, options, signal, async (client) => {
-                const lock = await query<{
-                  retention_control_hash: string;
-                  retention_control_sequence: string | number;
-                }>(
-                  client,
-                  'select * from app.lock_workspace_control_ledger($1)',
-                  [claimed.workspaceId],
+          const { eligibleDelta, examinedDelta, outcome } =
+            await withWorkspaceDestructiveAuthorization(
+              pool,
+              options,
+              signal,
+              claimed.workspaceId,
+              options.externalOperationTimeoutMs,
+              async (highWater) =>
+                inRetentionTransaction(
+                  pool,
+                  options,
                   signal,
-                );
-                const current = lock.rows[0];
-                if (
-                  current === undefined ||
-                  z.coerce
-                    .number()
-                    .parse(current.retention_control_sequence) !==
-                    highWater.sequence ||
-                  current.retention_control_hash !== highWater.hash
-                )
-                  throw new Error('Retention control fence changed');
-                const page = await query<{
-                  cursor_expires_at: Date | string | null;
-                  cursor_id: string | null;
-                  eligible_delta: string | number;
-                  examined_delta: string | number;
-                  outcome: string;
-                }>(
-                  client,
-                  claimed.retentionKind === 'workflow_run_input'
-                    ? `select * from app.execute_workflow_run_input_retention_page(
+                  async (client) => {
+                    const lock = await query<{
+                      retention_control_hash: string;
+                      retention_control_sequence: string | number;
+                    }>(
+                      client,
+                      'select * from app.lock_workspace_control_ledger($1)',
+                      [claimed.workspaceId],
+                      signal,
+                    );
+                    const current = lock.rows[0];
+                    if (
+                      current === undefined ||
+                      z.coerce
+                        .number()
+                        .parse(current.retention_control_sequence) !==
+                        highWater.sequence ||
+                      current.retention_control_hash !== highWater.hash
+                    )
+                      throw new Error('Retention control fence changed');
+                    const page = await query<{
+                      cursor_expires_at: Date | string | null;
+                      cursor_id: string | null;
+                      eligible_delta: string | number;
+                      examined_delta: string | number;
+                      outcome: string;
+                    }>(
+                      client,
+                      claimed.retentionKind === 'workflow_run_input'
+                        ? `select * from app.execute_workflow_run_input_retention_page(
                       $1,$2,$3,$4,$5,$6)`
-                    : `select * from app.execute_standard_retention_page(
+                        : `select * from app.execute_standard_retention_page(
                       $1,$2,$3,$4,$5,$6)`,
-                  [
-                    claimed.batchId,
-                    claimed.leaseToken,
-                    claimed.leaseFence,
-                    options.pageSize,
-                    highWater.sequence,
-                    highWater.hash,
-                  ],
-                  signal,
-                );
-                const row = page.rows[0];
-                if (row === undefined)
-                  throw new Error(
-                    'Destructive retention page was not returned',
-                  );
-                const outcome = z
-                  .enum(['completed', 'paused', 'progressed', 'stale'])
-                  .parse(row.outcome);
-                const examinedDelta = z.coerce
-                  .number()
-                  .int()
-                  .nonnegative()
-                  .parse(row.examined_delta);
-                const eligibleDelta = z.coerce
-                  .number()
-                  .int()
-                  .nonnegative()
-                  .parse(row.eligible_delta);
-                if (eligibleDelta > examinedDelta)
-                  throw new Error(
-                    'Retention page eligible count exceeds examined count',
-                  );
-                return Object.freeze({
-                  eligibleDelta,
-                  examinedDelta,
-                  outcome,
-                });
-              }),
-          );
-          if (authorization.status === 'stale') {
-            return releaseResult(
-              claimed,
-              eligibleCount,
-              examinedCount,
-              pageCount,
-              await release(claimed, signal),
+                      [
+                        claimed.batchId,
+                        claimed.leaseToken,
+                        claimed.leaseFence,
+                        options.pageSize,
+                        highWater.sequence,
+                        highWater.hash,
+                      ],
+                      signal,
+                    );
+                    const row = page.rows[0];
+                    if (row === undefined)
+                      throw new Error(
+                        'Destructive retention page was not returned',
+                      );
+                    const outcome = z
+                      .enum(['completed', 'paused', 'progressed', 'stale'])
+                      .parse(row.outcome);
+                    const examinedDelta = z.coerce
+                      .number()
+                      .int()
+                      .nonnegative()
+                      .parse(row.examined_delta);
+                    const eligibleDelta = z.coerce
+                      .number()
+                      .int()
+                      .nonnegative()
+                      .parse(row.eligible_delta);
+                    if (eligibleDelta > examinedDelta)
+                      throw new Error(
+                        'Retention page eligible count exceeds examined count',
+                      );
+                    return Object.freeze({
+                      eligibleDelta,
+                      examinedDelta,
+                      outcome,
+                    });
+                  },
+                ),
             );
-          }
-          const { eligibleDelta, examinedDelta, outcome } = authorization.value;
           examinedCount += examinedDelta;
           eligibleCount += eligibleDelta;
           if (outcome !== 'progressed') {

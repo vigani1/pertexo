@@ -221,18 +221,6 @@
     "reason": "Global singleton fairness cursor has no tenant payload; dispatcher receives column-limited access."
   },
   {
-    "name": "regional_write_admission",
-    "owner": "owner_role",
-    "accessRoles": [
-      "api_runtime_role",
-      "worker_runtime_role",
-      "maintenance_role",
-      "operator_role"
-    ],
-    "rls": "not_applicable",
-    "reason": "Global singleton regional safety state is available only through SECURITY DEFINER functions."
-  },
-  {
     "name": "run_failure_notification_audit_facts",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role", "worker_runtime_role"],

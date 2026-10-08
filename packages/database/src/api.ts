@@ -140,7 +140,6 @@ export { ExecutionStateConflictError } from './execution/runs/execution-state.js
 export { readRunEventsAfter } from './execution/runs/run-events.js';
 export {
   IdempotencyRequestConflictError,
-  RegionalWriteAdmissionPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from './execution/runs/execution-acceptance.js';

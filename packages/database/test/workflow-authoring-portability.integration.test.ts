@@ -909,7 +909,7 @@ describe('portable workflow persistence under the API role', () => {
     }
   });
 
-  it('retains actor-only receipts under legal hold, reaps expiry and erases import through ordinary bounded workspace purge', async () => {
+  it('reaps expired actor-only receipts and erases the import through bounded workspace purge', async () => {
     const db = database();
     const workspace = await identity.createWorkspaceWithOwner({
       id: randomUUID(),
@@ -921,34 +921,9 @@ describe('portable workflow persistence under the API role', () => {
     const scoped = workspace.id;
     const input = command({ workspaceId: scoped });
     const accepted = await db.importWorkflow(input);
-    const hold = randomUUID();
-    await queryAsOwner(
-      "select app.project_workspace_legal_hold($1,1,$2,'legal_hold_placed',$3,$4,$5,'owned-portable','portable-case','Preserve import receipt',clock_timestamp())",
-      [scoped, randomUUID(), hold, '0'.repeat(64), 'b'.repeat(64)],
-      scoped,
-    );
     await queryAsOwner(
       "update app.idempotency_records set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and operation='workflow.import'",
       [scoped],
-      scoped,
-    );
-    await queryAsOwner('select * from app.reap_transient_data(1000)');
-    const retained = await queryAsOwner(
-      "select scope,resource_id::text,result_ref from app.idempotency_records where workspace_id=$1 and operation='workflow.import'",
-      [scoped],
-      scoped,
-    );
-    expect(retained).toEqual([
-      {
-        scope: actorId,
-        resource_id: accepted.workflowId,
-        result_ref: accepted,
-      },
-    ]);
-    expect(await db.importWorkflow(input)).toEqual(accepted);
-    await queryAsOwner(
-      "select app.project_workspace_legal_hold($1,2,$2,'legal_hold_released',$3,$4,$5,'owned-portable','portable-case','Release import receipt',clock_timestamp())",
-      [scoped, randomUUID(), hold, 'b'.repeat(64), 'c'.repeat(64)],
       scoped,
     );
     await queryAsOwner('select * from app.reap_transient_data(1000)');
@@ -962,8 +937,8 @@ describe('portable workflow persistence under the API role', () => {
     const fresh = await db.importWorkflow(input);
     expect(fresh.workflowId).not.toBe(accepted.workflowId);
     await queryAsOwner(
-      "select app.project_workspace_deletion($1,3,$2,'deletion_requested',$1,$3,$4,$5,null,'Portable import erasure',clock_timestamp()-interval '31 days')",
-      [scoped, randomUUID(), 'c'.repeat(64), 'd'.repeat(64), actorId],
+      "select app.project_workspace_deletion($1,1,$2,'deletion_requested',$1,$3,$4,$5,null,'Portable import erasure',clock_timestamp()-interval '31 days')",
+      [scoped, randomUUID(), '0'.repeat(64), 'd'.repeat(64), actorId],
       scoped,
     );
     const [job] = await queryAsOwner<{
@@ -971,13 +946,13 @@ describe('portable workflow persistence under the API role', () => {
       lease_token: string;
       lease_fence: string;
     }>(
-      "select * from app.prepare_workspace_purge_job($1,3,$2,'owned-portable',interval '1 minute')",
+      "select * from app.prepare_workspace_purge_job($1,1,$2,'owned-portable',interval '1 minute')",
       [scoped, 'd'.repeat(64)],
       scoped,
     );
     if (job === undefined) throw new Error('Expected portability purge job');
     await queryAsOwner(
-      'select app.project_workspace_purge_started($1,$2,$3,4,$4,$5)',
+      'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
       [
         job.job_id,
         job.lease_token,
@@ -992,7 +967,7 @@ describe('portable workflow persistence under the API role', () => {
       lease_fence: string;
       step_name: string;
     }>(
-      "select * from app.claim_workspace_purge_step($1,4,$2,'owned-portable',interval '1 minute')",
+      "select * from app.claim_workspace_purge_step($1,2,$2,'owned-portable',interval '1 minute')",
       [job.job_id, 'e'.repeat(64)],
       scoped,
     );
@@ -1000,7 +975,7 @@ describe('portable workflow persistence under the API role', () => {
       throw new Error('Expected portability object purge lease');
     expect(object.step_name).toBe('object_versions');
     await queryAsOwner(
-      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,4,$4)',
+      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,2,$4)',
       [job.job_id, object.lease_token, object.lease_fence, 'e'.repeat(64)],
       scoped,
     );
@@ -1011,7 +986,7 @@ describe('portable workflow persistence under the API role', () => {
         lease_fence: string;
         step_name: string;
       }>(
-        "select * from app.claim_workspace_purge_step($1,4,$2,'owned-portable',interval '1 minute')",
+        "select * from app.claim_workspace_purge_step($1,2,$2,'owned-portable',interval '1 minute')",
         [job.job_id, 'e'.repeat(64)],
         scoped,
       );
@@ -1019,7 +994,7 @@ describe('portable workflow persistence under the API role', () => {
         throw new Error('Expected portability tenant purge lease');
       expect(claim.step_name).toBe('tenant_rows');
       const rows = await queryAsOwner<{ completed: boolean }>(
-        'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,500,4,$4)',
+        'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,500,2,$4)',
         [job.job_id, claim.lease_token, claim.lease_fence, 'e'.repeat(64)],
         scoped,
       );

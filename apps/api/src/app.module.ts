@@ -269,7 +269,7 @@ function registerFeatureModules(
         identityModule,
         {
           maxObjectBytes:
-            config.artifacts?.primary.maxObjectBytes ??
+            config.artifacts?.maxObjectBytes ??
             DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
         },
       ),

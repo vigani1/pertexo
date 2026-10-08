@@ -10,7 +10,9 @@
   "workloads": {
     "api": {
       "kind": "service",
-      "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
+      "desiredCount": {
+        "eu-central-1": 2
+      },
       "command": ["node", "apps/api/dist/main.js"],
       "environment": {
         "AUTH_MAIL_MODE": "durable",
@@ -26,14 +28,9 @@
         "ARTIFACT_STORE_ENDPOINT",
         "ARTIFACT_STORE_FORCE_PATH_STYLE",
         "ARTIFACT_STORE_REGION",
-        "ARTIFACT_STORE_RECOVERY_BUCKET",
-        "ARTIFACT_STORE_RECOVERY_ENDPOINT",
-        "ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE",
-        "ARTIFACT_STORE_RECOVERY_REGION",
         "CONNECTION_KMS_KEY_REFERENCE",
         "CONNECTION_KMS_REGION",
         "INVITATION_TOKEN_KEY_VERSION",
-        "NODE_COMPATIBILITY_COHORT",
         "OIDC_AUTHORIZATION_ENDPOINT",
         "OIDC_CALLBACK_LANDING_PATH",
         "OIDC_CLIENT_ID",
@@ -50,8 +47,6 @@
       "secrets": [
         "ARTIFACT_STORE_ACCESS_KEY_ID",
         "ARTIFACT_STORE_SECRET_ACCESS_KEY",
-        "ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID",
-        "ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY",
         "DATABASE_API_URL",
         "BETTER_AUTH_SECRET",
         "INVITATION_TOKEN_KEY",
@@ -69,7 +64,9 @@
     },
     "worker": {
       "kind": "service",
-      "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
+      "desiredCount": {
+        "eu-central-1": 2
+      },
       "command": [
         "/bin/sh",
         "-c",
@@ -79,6 +76,8 @@
         "AUTH_MAIL_DELIVERY_ENABLED": "true",
         "CONNECTION_RUN_HEALTH_MODE": "off",
         "DATABASE_DISPATCHER_POOL_MAX": "2",
+        "DATABASE_LIFECYCLE_COMMAND_POOL_MAX": "2",
+        "DATABASE_MAINTENANCE_POOL_MAX": "2",
         "DATABASE_POOL_MAX": "5",
         "FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED": "false",
         "NODE_ENV": "production",
@@ -94,13 +93,8 @@
         "ARTIFACT_STORE_ENDPOINT",
         "ARTIFACT_STORE_FORCE_PATH_STYLE",
         "ARTIFACT_STORE_REGION",
-        "ARTIFACT_STORE_RECOVERY_BUCKET",
-        "ARTIFACT_STORE_RECOVERY_ENDPOINT",
-        "ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE",
-        "ARTIFACT_STORE_RECOVERY_REGION",
         "CONNECTION_KMS_KEY_REFERENCE",
         "CONNECTION_KMS_REGION",
-        "NODE_COMPATIBILITY_COHORT",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
         "OUTBOX_DISPATCH_JOB_NAMES",
         "SERVICE_VERSION"
@@ -112,8 +106,8 @@
         "REDIS_URL",
         "ARTIFACT_STORE_ACCESS_KEY_ID",
         "ARTIFACT_STORE_SECRET_ACCESS_KEY",
-        "ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID",
-        "ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY"
+        "DATABASE_MAINTENANCE_URL",
+        "DATABASE_LIFECYCLE_COMMAND_URL"
       ],
       "sharedConfiguration": ["AUTH_MAIL_KEY_VERSION"],
       "sharedSecrets": ["AUTH_MAIL_KEY"],
@@ -122,135 +116,12 @@
         "test -f /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready && kill -0 1"
       ]
     },
-    "lifecycle-command": {
-      "kind": "service",
-      "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
-      "command": [
-        "/bin/sh",
-        "-c",
-        "export LIFECYCLE_COMMAND_LEASE_OWNER=$HOSTNAME; exec node apps/lifecycle-command/dist/main.js"
-      ],
-      "environment": {
-        "DATABASE_LIFECYCLE_COMMAND_POOL_MAX": "2",
-        "NODE_ENV": "production"
-      },
-      "configuration": [
-        "CONTROL_LEDGER_BUCKET",
-        "CONTROL_LEDGER_ENDPOINT",
-        "CONTROL_LEDGER_FORCE_PATH_STYLE",
-        "CONTROL_LEDGER_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_REGION",
-        "CONTROL_LEDGER_RECOVERY_BUCKET",
-        "CONTROL_LEDGER_RECOVERY_ENDPOINT",
-        "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
-        "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_RECOVERY_REGION",
-        "OTEL_EXPORTER_OTLP_ENDPOINT",
-        "REGIONAL_RECOVERY_REPLICA_APPLICATION_NAME",
-        "REGIONAL_REPLICA_LAG_SAMPLE_INTERVAL_MS"
-      ],
-      "secrets": [
-        "DATABASE_LIFECYCLE_COMMAND_URL",
-        "CONTROL_LEDGER_ACCESS_KEY_ID",
-        "CONTROL_LEDGER_SECRET_ACCESS_KEY",
-        "CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID",
-        "CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY"
-      ],
-      "healthCheck": [
-        "CMD-SHELL",
-        "test -f /tmp/pertexo-lifecycle-command-ready && kill -0 1"
-      ]
-    },
-    "retention": {
-      "kind": "service",
-      "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
-      "command": [
-        "/bin/sh",
-        "-c",
-        "export RETENTION_LEASE_OWNER=$HOSTNAME; exec node apps/retention/dist/main.js"
-      ],
-      "environment": {
-        "DATABASE_MAINTENANCE_POOL_MAX": "2",
-        "NODE_ENV": "production"
-      },
-      "configuration": [
-        "ARTIFACT_STORE_BUCKET",
-        "ARTIFACT_STORE_ENDPOINT",
-        "ARTIFACT_STORE_FORCE_PATH_STYLE",
-        "ARTIFACT_STORE_REGION",
-        "ARTIFACT_STORE_RECOVERY_BUCKET",
-        "ARTIFACT_STORE_RECOVERY_ENDPOINT",
-        "ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE",
-        "ARTIFACT_STORE_RECOVERY_REGION",
-        "CONTROL_LEDGER_BUCKET",
-        "CONTROL_LEDGER_ENDPOINT",
-        "CONTROL_LEDGER_FORCE_PATH_STYLE",
-        "CONTROL_LEDGER_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_REGION",
-        "CONTROL_LEDGER_RECOVERY_BUCKET",
-        "CONTROL_LEDGER_RECOVERY_ENDPOINT",
-        "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
-        "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_RECOVERY_REGION",
-        "OTEL_EXPORTER_OTLP_ENDPOINT"
-      ],
-      "secrets": [
-        "DATABASE_MAINTENANCE_URL",
-        "ARTIFACT_STORE_ACCESS_KEY_ID",
-        "ARTIFACT_STORE_SECRET_ACCESS_KEY",
-        "ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID",
-        "ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY",
-        "CONTROL_LEDGER_ACCESS_KEY_ID",
-        "CONTROL_LEDGER_SECRET_ACCESS_KEY",
-        "CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID",
-        "CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY"
-      ],
-      "healthCheck": ["CMD-SHELL", "kill -0 1"]
-    },
-    "recovery": {
-      "kind": "job",
-      "command": ["node", "apps/recovery/dist/main.js"],
-      "environment": {
-        "DATABASE_MAINTENANCE_POOL_MAX": "2",
-        "NODE_ENV": "production"
-      },
-      "configuration": [
-        "ARTIFACT_STORE_BUCKET",
-        "ARTIFACT_STORE_ENDPOINT",
-        "ARTIFACT_STORE_FORCE_PATH_STYLE",
-        "ARTIFACT_STORE_REGION",
-        "ARTIFACT_STORE_RECOVERY_BUCKET",
-        "ARTIFACT_STORE_RECOVERY_ENDPOINT",
-        "ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE",
-        "ARTIFACT_STORE_RECOVERY_REGION",
-        "CONTROL_LEDGER_BUCKET",
-        "CONTROL_LEDGER_ENDPOINT",
-        "CONTROL_LEDGER_FORCE_PATH_STYLE",
-        "CONTROL_LEDGER_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_REGION",
-        "CONTROL_LEDGER_RECOVERY_BUCKET",
-        "CONTROL_LEDGER_RECOVERY_ENDPOINT",
-        "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
-        "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_RECOVERY_REGION",
-        "OTEL_EXPORTER_OTLP_ENDPOINT"
-      ],
-      "secrets": [
-        "DATABASE_MAINTENANCE_URL",
-        "ARTIFACT_STORE_ACCESS_KEY_ID",
-        "ARTIFACT_STORE_SECRET_ACCESS_KEY",
-        "ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID",
-        "ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY",
-        "CONTROL_LEDGER_ACCESS_KEY_ID",
-        "CONTROL_LEDGER_SECRET_ACCESS_KEY",
-        "CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID",
-        "CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY"
-      ]
-    },
     "operator-command": {
       "kind": "job",
       "command": ["node", "apps/operator-command/dist/main.js"],
-      "environment": { "NODE_ENV": "production" },
+      "environment": {
+        "NODE_ENV": "production"
+      },
       "configuration": ["OTEL_EXPORTER_OTLP_ENDPOINT"],
       "secrets": ["DATABASE_OPERATOR_URL"]
     },
@@ -258,8 +129,7 @@
       "kind": "release-job",
       "command": ["node", "packages/database/dist/migrate.js"],
       "environment": {
-        "NODE_ENV": "production",
-        "REGIONAL_WRITE_ADMISSION_ENFORCED": "true"
+        "NODE_ENV": "production"
       },
       "configuration": [],
       "secrets": ["DATABASE_MIGRATION_URL"]

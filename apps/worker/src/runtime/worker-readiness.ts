@@ -15,6 +15,10 @@ import {
 } from '../execution/workflow-auto-pause-runtime.js';
 import { WORKSPACE_DATABASE } from '../platform/database/database.module.js';
 import {
+  RETENTION_RUNTIME,
+  type RetentionRuntime,
+} from '../retention/runtime.js';
+import {
   COORDINATOR_RUNTIME,
   OUTBOX_DISPATCHER,
   MAINTENANCE_RUNTIME,
@@ -64,6 +68,9 @@ export class WorkerReadiness {
     @Optional()
     @Inject(WORKFLOW_AUTO_PAUSE_RUNTIME)
     private readonly workflowAutoPauseRuntime?: WorkflowAutoPauseRuntime,
+    @Optional()
+    @Inject(RETENTION_RUNTIME)
+    private readonly retentionRuntime?: RetentionRuntime,
   ) {}
 
   public assertCanAcceptWork(): void {
@@ -83,6 +90,7 @@ export class WorkerReadiness {
       this.maintenanceRuntime?.checkReadiness(),
       this.workspaceInboxRuntime?.checkReadiness(),
       this.workflowAutoPauseRuntime?.checkReadiness(),
+      this.retentionRuntime?.checkReadiness(),
     ]);
     this.authenticationMailRuntime?.checkReadiness();
     this.assertCanAcceptWork();

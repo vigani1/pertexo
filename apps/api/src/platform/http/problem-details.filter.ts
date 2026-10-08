@@ -210,7 +210,6 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     error.code === 'request.rate_limited' ||
     error.code === 'request.rate_limit_unavailable' ||
     error.code === 'workspace.quota_exceeded' ||
-    error.code === 'platform.write_paused' ||
     error.code === 'workflow.validation_unavailable'
   ) {
     const retryAfterSeconds = error.details?.retryAfterSeconds;

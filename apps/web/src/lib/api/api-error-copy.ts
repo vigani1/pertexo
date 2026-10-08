@@ -21,10 +21,6 @@ export function isNotFound(error: unknown): boolean {
   return isApiError(error) && error.status === 404;
 }
 
-function isWritePaused(error: unknown): boolean {
-  return isApiError(error) && error.problem?.code === 'platform.write_paused';
-}
-
 /** Whole seconds to wait before retrying a rate-limited request. */
 export function retryAfterSeconds(error: unknown): number | undefined {
   if (!isApiError(error) || error.retryAfterMs === undefined) return undefined;
@@ -77,8 +73,6 @@ export function readFailureReason(error: unknown): string {
 export function describeCommandError(error: unknown, action: string): string {
   if (isUncertainOutcome(error))
     return `We couldn’t confirm whether ${action} went through. Check again before retrying.`;
-  if (isWritePaused(error))
-    return 'Pertexo is in read-only maintenance. Try again shortly.';
   if (isForbidden(error)) return `Your role doesn’t allow ${action}.`;
   if (
     isApiError(error) &&

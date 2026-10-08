@@ -5,7 +5,6 @@ import {
   IDEMPOTENCY_STATUS_VALUES,
   RUN_STATUS,
   RUN_STATUS_VALUES,
-  RegionalWriteAdmissionPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   throwWorkflowRunAdmissionError,
@@ -65,7 +64,6 @@ describe('queued workflow-run admission error classification', () => {
   it.each([
     ['PTA01', WorkspaceRunAdmissionDeniedError],
     ['PTA02', WorkspaceRunQuotaExceededError],
-    ['PTA03', RegionalWriteAdmissionPausedError],
   ] as const)(
     'maps direct and nested %s at this operation boundary',
     (code, ErrorType) => {

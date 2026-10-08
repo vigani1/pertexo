@@ -36,9 +36,6 @@ COPY --from=production-dependencies --chown=10001:10001 /workspace/apps ./apps
 COPY --from=production-dependencies --chown=10001:10001 /workspace/packages ./packages
 COPY --from=build --chown=10001:10001 /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=10001:10001 /workspace/apps/worker/dist ./apps/worker/dist
-COPY --from=build --chown=10001:10001 /workspace/apps/lifecycle-command/dist ./apps/lifecycle-command/dist
-COPY --from=build --chown=10001:10001 /workspace/apps/retention/dist ./apps/retention/dist
-COPY --from=build --chown=10001:10001 /workspace/apps/recovery/dist ./apps/recovery/dist
 COPY --from=build --chown=10001:10001 /workspace/apps/operator-command/dist ./apps/operator-command/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/artifact-store/dist ./packages/artifact-store/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/contracts/dist ./packages/contracts/dist

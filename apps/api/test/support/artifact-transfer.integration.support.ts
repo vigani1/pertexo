@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import type { Readable } from 'node:stream';
 
 import {
   createArtifactStore,
-  createDualRegionArtifactStore,
-  type DualRegionArtifactStore,
+  type ArtifactDownloadCapability,
+  type ArtifactStore,
+  type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 
 import {
@@ -29,10 +29,7 @@ import {
   createApiArtifactRuntime,
   type ApiArtifactRuntime,
 } from '../../src/platform/artifacts/artifact-runtime.module.js';
-import type {
-  ApiConfig,
-  ApiDualRegionArtifactStoreConfig,
-} from '../../src/platform/config/api-config.js';
+import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import {
   createFakeOidcProvider,
   loginThroughOidc,
@@ -58,14 +55,6 @@ const requiredArtifactEnvironment = {
   ARTIFACT_STORE_ACCESS_KEY_ID: process.env.ARTIFACT_STORE_ACCESS_KEY_ID,
   ARTIFACT_STORE_BUCKET: process.env.ARTIFACT_STORE_BUCKET,
   ARTIFACT_STORE_ENDPOINT: process.env.ARTIFACT_STORE_ENDPOINT,
-  ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID:
-    process.env.ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID,
-  ARTIFACT_STORE_RECOVERY_BUCKET: process.env.ARTIFACT_STORE_RECOVERY_BUCKET,
-  ARTIFACT_STORE_RECOVERY_ENDPOINT:
-    process.env.ARTIFACT_STORE_RECOVERY_ENDPOINT,
-  ARTIFACT_STORE_RECOVERY_REGION: process.env.ARTIFACT_STORE_RECOVERY_REGION,
-  ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY:
-    process.env.ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY,
   ARTIFACT_STORE_SECRET_ACCESS_KEY:
     process.env.ARTIFACT_STORE_SECRET_ACCESS_KEY,
   ARTIFACT_STORE_REGION: process.env.ARTIFACT_STORE_REGION,
@@ -109,57 +98,12 @@ export type ArtifactCapacitySnapshot = Readonly<{
   chargedCount: number;
 }>;
 
-type VerificationStore = Readonly<{
-  beginDirectDownload: DualRegionArtifactStore['beginDirectDownload'];
-  beginDirectUpload: DualRegionArtifactStore['beginDirectUpload'];
-  checkReadiness: DualRegionArtifactStore['checkReadiness'];
-  validateDirectUpload: DualRegionArtifactStore['validateDirectUpload'];
-  verifyReplicas(
-    input: ArtifactRequestMetadata &
-      Readonly<{
-        artifactId: string;
-        workspaceId: string;
-      }>,
-  ): Promise<unknown>;
-  head(
-    input: Readonly<{ artifactId: string; workspaceId: string }>,
-  ): Promise<unknown>;
-  delete(
-    input: Readonly<{ artifactId: string; workspaceId: string }>,
-  ): Promise<void>;
-  close(): void;
-}>;
+type VerificationStore = ArtifactStore & ArtifactDownloadCapability;
 
 export type ArtifactStorageCallSnapshot = Readonly<{
   beginDirectDownload: number;
   beginDirectUpload: number;
   validateDirectUpload: number;
-}>;
-
-type ArtifactRegionStore = Readonly<{
-  head(
-    input: Readonly<{ artifactId: string; workspaceId: string }>,
-  ): Promise<unknown>;
-  put(
-    input: Readonly<{
-      artifactId: string;
-      workspaceId: string;
-      byteLength: number;
-      mediaType: string;
-      sha256: string;
-      body: Readable;
-    }>,
-  ): Promise<unknown>;
-  delete(
-    input: Readonly<{ artifactId: string; workspaceId: string }>,
-  ): Promise<void>;
-  close(): void;
-}>;
-
-type FreshArtifactService = Readonly<{
-  application: Awaited<ReturnType<typeof createApiApplication>>;
-  login(subject: 'owner' | 'operator' | 'viewer'): Promise<SessionCookies>;
-  close(): Promise<void>;
 }>;
 
 export type ArtifactTransferApiFixture = Readonly<{
@@ -172,12 +116,7 @@ export type ArtifactTransferApiFixture = Readonly<{
   operatorUserId: string;
   viewerUserId: string;
   verificationStore: VerificationStore;
-  recoveryStore: ArtifactRegionStore;
-  createFreshApplication(): Promise<FreshArtifactService>;
   afterNextUploadVerification(callback: () => Promise<void>): void;
-  deleteWithRecoveryFailure(
-    input: Readonly<{ artifactId: string; workspaceId: string }>,
-  ): Promise<void>;
   readDurableTransferEvidence(artifactId: string): Promise<readonly string[]>;
   readLogText(): string;
   readStorageCalls(): ArtifactStorageCallSnapshot;
@@ -322,14 +261,7 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
     const configuredArtifactStore = artifactStoreConfig();
     const verificationStore = resources.acquire(
       'verification store',
-      createVerificationStore(configuredArtifactStore),
-      (store) => {
-        store.close();
-      },
-    );
-    const recoveryStore = resources.acquire(
-      'recovery store',
-      createRecoveryStore(configuredArtifactStore.recovery),
+      createArtifactStore(configuredArtifactStore),
       (store) => {
         store.close();
       },
@@ -432,9 +364,8 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       identityRuntime,
       { store: apiStore },
     );
-    // S3Mock exposes one physical bucket region for both buckets. The store
-    // remains real and dual-region finalize is exercised below; this fixture
-    // bypasses only the startup region probe.
+    // S3Mock reports its own bucket region. The store remains real; this
+    // fixture bypasses only the startup region probe.
     const runtime: ApiArtifactRuntime = Object.freeze({
       ...createdArtifactRuntime,
       checkReadiness: () => Promise.resolve(),
@@ -470,14 +401,9 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       operatorUserId: subjects.operator.user.id,
       viewerUserId: subjects.viewer.user.id,
       verificationStore,
-      recoveryStore,
-      createFreshApplication: () =>
-        createFreshArtifactService(config, logs.logger),
       afterNextUploadVerification: (callback) => {
         afterNextUploadVerification = callback;
       },
-      deleteWithRecoveryFailure: (input) =>
-        deleteWithRecoveryFailure(configuredArtifactStore, input),
       readDurableTransferEvidence: (artifactId) =>
         withApi(async (client) => {
           const idempotency = await client.query<{ value: string }>(
@@ -703,162 +629,25 @@ function artifactApiConfig(): ApiConfig {
   };
 }
 
-function artifactStoreConfig(): ApiDualRegionArtifactStoreConfig {
+function artifactStoreConfig(): ArtifactStoreConfig {
   const required = (name: keyof typeof requiredArtifactEnvironment): string => {
     const value = requiredArtifactEnvironment[name];
     if (value === undefined || value.trim() === '')
       throw new Error(`Missing artifact integration setting ${name}`);
     return value;
   };
-  const maxObjectBytes = Number(
-    process.env.ARTIFACT_MAX_BYTES ?? 5 * 1024 ** 3,
-  );
   return {
-    primary: {
-      accessKeyId: required('ARTIFACT_STORE_ACCESS_KEY_ID'),
-      bucket: required('ARTIFACT_STORE_BUCKET'),
-      endpoint: required('ARTIFACT_STORE_ENDPOINT'),
-      forcePathStyle: true,
-      maxObjectBytes,
-      region: required('ARTIFACT_STORE_REGION'),
-      requestTimeoutMs: Number(
-        process.env.ARTIFACT_STORE_REQUEST_TIMEOUT_MS ?? 5_000,
-      ),
-      secretAccessKey: required('ARTIFACT_STORE_SECRET_ACCESS_KEY'),
-    },
-    recovery: {
-      accessKeyId: required('ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID'),
-      bucket: required('ARTIFACT_STORE_RECOVERY_BUCKET'),
-      endpoint: required('ARTIFACT_STORE_RECOVERY_ENDPOINT'),
-      forcePathStyle: true,
-      maxObjectBytes,
-      region: required('ARTIFACT_STORE_RECOVERY_REGION'),
-      requestTimeoutMs: Number(
-        process.env.ARTIFACT_STORE_RECOVERY_REQUEST_TIMEOUT_MS ?? 5_000,
-      ),
-      secretAccessKey: required('ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY'),
-    },
+    accessKeyId: required('ARTIFACT_STORE_ACCESS_KEY_ID'),
+    bucket: required('ARTIFACT_STORE_BUCKET'),
+    endpoint: required('ARTIFACT_STORE_ENDPOINT'),
+    forcePathStyle: true,
+    maxObjectBytes: Number(process.env.ARTIFACT_MAX_BYTES ?? 5 * 1024 ** 3),
+    region: required('ARTIFACT_STORE_REGION'),
+    requestTimeoutMs: Number(
+      process.env.ARTIFACT_STORE_REQUEST_TIMEOUT_MS ?? 5_000,
+    ),
+    secretAccessKey: required('ARTIFACT_STORE_SECRET_ACCESS_KEY'),
   };
-}
-
-function createVerificationStore(
-  config: ApiDualRegionArtifactStoreConfig,
-): VerificationStore {
-  return createDualRegionArtifactStore(config.primary, config.recovery);
-}
-
-function createRecoveryStore(
-  config: ApiDualRegionArtifactStoreConfig['recovery'],
-): ArtifactRegionStore {
-  const store = createArtifactStore(config);
-  return Object.freeze({
-    close: () => {
-      store.close();
-    },
-    delete: (input) => store.delete(input),
-    head: (input) => store.head(input),
-    put: (input) => store.put(input),
-  });
-}
-
-async function createFreshArtifactService(
-  config: ApiConfig,
-  logger: StructuredLogger,
-): Promise<FreshArtifactService> {
-  if (config.identity === undefined || config.artifacts === undefined)
-    throw new Error('Artifact integration config is incomplete');
-  const resources = new FixtureResourceOwner();
-  try {
-    const provider = createFakeOidcProvider({
-      issuer,
-      clientId,
-      displayNamePrefix: 'Artifact',
-    });
-    const identityDatabase = resources.acquire(
-      'fresh identity database',
-      createIdentityWorkspaceDatabase(artifactTransferDatabaseConfig),
-      (database) => database.close(),
-    );
-    const transactions = resources.acquire(
-      'fresh OIDC transactions',
-      createOidcLoginTransactionStore(
-        artifactTransferDatabaseConfig,
-        createOidcSecretEncryptionAdapter({
-          current: { version: 'artifact-transfer-v1', key: encryptionKey },
-        }),
-      ),
-      (store) => store.close(),
-    );
-    const workspaceDatabase = resources.acquire(
-      'fresh workspace database',
-      createWorkspaceDatabase(artifactTransferDatabaseConfig),
-      (database) => database.close(),
-    );
-    const identityRuntime = resources.acquire(
-      'fresh identity runtime',
-      await createApiIdentityRuntime(config.identity, config.database, {
-        provider,
-        persistence: { database: identityDatabase, transactions },
-      }),
-      (runtime) => runtime.close(),
-    );
-    resources.transfer(identityDatabase);
-    resources.transfer(transactions);
-    const createdArtifactRuntime = createApiArtifactRuntime(
-      config.artifacts,
-      config.database,
-      identityRuntime,
-    );
-    const runtime: ApiArtifactRuntime = Object.freeze({
-      ...createdArtifactRuntime,
-      checkReadiness: () => Promise.resolve(),
-    });
-    resources.acquire('fresh artifact runtime', runtime, (selected) =>
-      selected.close(),
-    );
-    const application = resources.acquire(
-      'fresh API application',
-      await createApiApplication(config, {
-        database: workspaceDatabase,
-        identityRuntime,
-        artifactRuntime: runtime,
-        rateLimitConsumer: {
-          consume: () => Promise.resolve({ allowed: true as const }),
-        },
-        logger,
-        telemetry,
-      }),
-      (selected) => selected.close(),
-    );
-    resources.transfer(workspaceDatabase);
-    resources.transfer(identityRuntime);
-    resources.transfer(runtime);
-    return Object.freeze({
-      application,
-      login: (subject: 'owner' | 'operator' | 'viewer') =>
-        loginThroughOidc(application, subject),
-      close: () => resources.close(),
-    });
-  } catch (error: unknown) {
-    return rethrowFixtureSetupFailure(resources, error);
-  }
-}
-
-async function deleteWithRecoveryFailure(
-  config: ApiDualRegionArtifactStoreConfig,
-  input: Readonly<{ artifactId: string; workspaceId: string }>,
-): Promise<void> {
-  const primary = createArtifactStore(config.primary);
-  const recovery = createArtifactStore(config.recovery);
-  const dual = createDualRegionArtifactStore(primary, recovery, {
-    artifactOwnership: 'owned',
-  });
-  recovery.close();
-  try {
-    await dual.delete(input);
-  } finally {
-    dual.close();
-  }
 }
 
 async function withRoleClient<T>(

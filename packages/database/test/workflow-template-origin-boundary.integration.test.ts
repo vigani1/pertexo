@@ -257,17 +257,17 @@ describe.skipIf(!enabled)(
     afterAll(cleanup, 30_000);
 
     it('requires the current head and preserved 0133 inventory on API and worker; is not an old-image cutover proof', async () => {
-      expect(EXPECTED_MIGRATION_HEAD).toBe('0136_remove_release_machinery.sql');
+      expect(EXPECTED_MIGRATION_HEAD).toBe('0137_single_region_storage.sql');
       expect(
         (
           await apiPool.query(
             'select name from pertexo_internal.schema_migrations order by name desc limit 1',
           )
         ).rows,
-      ).toEqual([{ name: '0136_remove_release_machinery.sql' }]);
+      ).toEqual([{ name: '0137_single_region_storage.sql' }]);
       for (const pool of [apiPool, workerPool])
         await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
-          migrationHead: '0136_remove_release_machinery.sql',
+          migrationHead: '0137_single_region_storage.sql',
         });
     });
 

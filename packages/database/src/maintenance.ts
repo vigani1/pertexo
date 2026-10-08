@@ -13,7 +13,6 @@ export {
 } from './lifecycle/retention.js';
 export type {
   OperatorMaintenanceRerunResult,
-  RegionalReplicaLagObservation,
   RetentionDatabase,
   RetentionDryRunProcessResult,
   RetentionEnforcementCoordinator,

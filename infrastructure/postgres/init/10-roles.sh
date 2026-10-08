@@ -111,7 +111,4 @@ REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT USAGE, CREATE ON SCHEMA public TO :"owner_user";
 GRANT USAGE ON SCHEMA public TO :"api_runtime_user", :"worker_runtime_user";
 
--- pg_monitor is read-only monitoring access; it does not grant application
--- table access or ownership.
-GRANT pg_monitor TO :"maintenance_user";
 SQL

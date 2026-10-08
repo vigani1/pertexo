@@ -207,11 +207,6 @@ describe('parseWorkerConfig', () => {
       ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
       ARTIFACT_STORE_REGION: 'us-east-1',
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
-      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-access',
-      ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-artifacts-recovery',
-      ARTIFACT_STORE_RECOVERY_ENDPOINT: 'http://localhost:9090',
-      ARTIFACT_STORE_RECOVERY_REGION: 'us-west-2',
-      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
     });
 
     expect(config.connectionEncryption).toEqual({
@@ -220,16 +215,9 @@ describe('parseWorkerConfig', () => {
       endpoint: 'http://localhost:4566',
     });
     expect(config.artifactStore).toMatchObject({
-      primary: {
-        bucket: 'pertexo-artifacts',
-        endpoint: 'http://localhost:9090',
-        maxObjectBytes: 10_485_760,
-      },
-      recovery: {
-        bucket: 'pertexo-artifacts-recovery',
-        endpoint: 'http://localhost:9090',
-        maxObjectBytes: 10_485_760,
-      },
+      bucket: 'pertexo-artifacts',
+      endpoint: 'http://localhost:9090',
+      maxObjectBytes: 10_485_760,
     });
     expect(Object.isFrozen(config.connectionEncryption)).toBe(true);
     expect(Object.isFrozen(config.artifactStore)).toBe(true);
@@ -296,20 +284,18 @@ describe('parseWorkerConfig', () => {
     );
   });
 
-  it('accepts complete HTTPS artifact storage when deployed', () => {
+  it('accepts HTTPS artifact storage and runs retention when deployed', () => {
     const selected = parseWorkerConfig({
       ...requiredEnvironment,
       ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-access',
       ARTIFACT_STORE_BUCKET: 'primary-artifacts',
       ARTIFACT_STORE_ENDPOINT: 'https://artifacts.example.test',
-      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-access',
-      ARTIFACT_STORE_RECOVERY_BUCKET: 'recovery-artifacts',
-      ARTIFACT_STORE_RECOVERY_ENDPOINT:
-        'https://recovery-artifacts.example.test',
-      ARTIFACT_STORE_RECOVERY_REGION: 'eu-west-1',
-      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
       ARTIFACT_STORE_REGION: 'eu-central-1',
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
+      DATABASE_LIFECYCLE_COMMAND_URL:
+        'postgresql://pertexo_lifecycle_command:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       NODE_ENV: 'production',
       OTEL_EXPORTER_OTLP_ENDPOINT: 'https://telemetry.example.test/v1',
       AUTH_MAIL_DELIVERY_ENABLED: 'true',
@@ -318,24 +304,31 @@ describe('parseWorkerConfig', () => {
       AUTH_MAIL_KEY_VERSION: 'mail-v1',
     });
 
-    expect(selected.artifactStore?.primary.endpoint).toBe(
+    expect(selected.artifactStore?.endpoint).toBe(
       'https://artifacts.example.test',
     );
-    expect(selected.artifactStore?.recovery.endpoint).toBe(
-      'https://recovery-artifacts.example.test',
-    );
+    expect(selected.retention?.leaseOwner).toMatch(/^retention:/u);
   });
 
-  it('rejects a partially configured recovery artifact store', () => {
+  it('rejects a partially configured artifact store', () => {
     expect(() =>
       parseWorkerConfig({
         ...requiredEnvironment,
         ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-access',
         ARTIFACT_STORE_BUCKET: 'primary-artifacts',
         ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
-        ARTIFACT_STORE_RECOVERY_BUCKET: 'recovery-artifacts',
-        ARTIFACT_STORE_REGION: 'us-east-1',
         ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
+      }),
+    ).toThrow('Invalid worker configuration');
+  });
+
+  it('runs retention locally only with both maintenance logins and storage', () => {
+    expect(parseWorkerConfig(requiredEnvironment).retention).toBeUndefined();
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       }),
     ).toThrow('Invalid worker configuration');
   });
@@ -348,12 +341,6 @@ describe('parseWorkerConfig', () => {
       ARTIFACT_STORE_BUCKET: 'primary-artifacts',
       ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
       ARTIFACT_STORE_FORCE_PATH_STYLE: true,
-      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-access',
-      ARTIFACT_STORE_RECOVERY_BUCKET: 'recovery-artifacts',
-      ARTIFACT_STORE_RECOVERY_ENDPOINT: 'http://localhost:9091',
-      ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: false,
-      ARTIFACT_STORE_RECOVERY_REGION: 'us-west-2',
-      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
       ARTIFACT_STORE_REGION: 'us-east-1',
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
       DATABASE_POOL_MAX: 7,
@@ -362,9 +349,8 @@ describe('parseWorkerConfig', () => {
 
     expect(selected.database.max).toBe(7);
     expect(selected.resourceSafety.unhealthySamplesBeforeDrain).toBe(4);
-    expect(selected.artifactStore?.primary.forcePathStyle).toBe(true);
-    expect(selected.artifactStore?.recovery.forcePathStyle).toBe(false);
-    expect(selected.artifactStore?.primary.maxObjectBytes).toBe(2_048);
+    expect(selected.artifactStore?.forcePathStyle).toBe(true);
+    expect(selected.artifactStore?.maxObjectBytes).toBe(2_048);
   });
 
   it('rejects non-scalar environment values before capability parsing', () => {
@@ -707,8 +693,6 @@ describe('parseWorkerConfig', () => {
       JOB_NAME.advanceWorkflowRun,
       JOB_NAME.executeNodeAttempt,
     ]);
-    expect(config.artifactStore?.recovery.region).not.toBe(
-      config.artifactStore?.primary.region,
-    );
+    expect(config.retention?.leaseOwner).toMatch(/^retention:/u);
   });
 });

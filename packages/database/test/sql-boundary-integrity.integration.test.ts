@@ -143,12 +143,6 @@ describe('SQL boundary integrity', () => {
         ),
       ).rejects.toSatisfy(hasCode('22023'));
       await expect(
-        pools.maintenance.query(
-          'select * from app.enumerate_committed_tenant_artifacts(null,null,$1)',
-          [value],
-        ),
-      ).rejects.toSatisfy(hasCode('22023'));
-      await expect(
         pools.maintenance.query('select * from app.reap_transient_data($1)', [
           value,
         ]),
@@ -163,12 +157,6 @@ describe('SQL boundary integrity', () => {
       ).resolves.toMatchObject({
         rows: [{ recover_due_workflow_run_active_admissions: 0 }],
       });
-      await expect(
-        pools.maintenance.query(
-          'select * from app.enumerate_committed_tenant_artifacts(null,null,$1)',
-          [value],
-        ),
-      ).resolves.toMatchObject({ rows: [] });
       await expect(
         pools.maintenance.query('select * from app.reap_transient_data($1)', [
           value,
@@ -220,7 +208,6 @@ describe('SQL boundary integrity', () => {
     const lifecycleCalls = [
       'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
       'select app.authorize_workspace_lifecycle_append($1,$2,$3)',
-      'select * from app.read_workspace_lifecycle_control_command($1,$2,$3)',
       `select app.project_and_complete_workspace_lifecycle_operation(
         $1,$2,$3,1,'${'0'.repeat(64)}','${'1'.repeat(64)}'
       )`,

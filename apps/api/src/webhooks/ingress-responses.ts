@@ -4,7 +4,6 @@ import {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
   WebhookWorkflowPausedError,
-  RegionalWriteAdmissionPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from '@pertexo/database/api';
@@ -48,18 +47,6 @@ export async function rejectAcceptance(
       telemetry.delivery('paused');
     });
     await problem(reply, 423, 'webhook.workflow_paused', requestId);
-    return;
-  }
-  if (error instanceof RegionalWriteAdmissionPausedError) {
-    // Tenant writes are paused, so this refusal is telemetry only.
-    record(() => {
-      telemetry.delivery('unavailable');
-    });
-    record(() => {
-      telemetry.health('degraded');
-    });
-    reply.header('retry-after', String(error.retryAfterSeconds));
-    await problem(reply, 503, 'webhook.unavailable', requestId);
     return;
   }
   if (

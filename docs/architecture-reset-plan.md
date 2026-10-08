@@ -59,13 +59,22 @@ now, as one ordered program — not "whenever we touch it".
 - [ ] **4. Storage and ops simplification** — single-region artifact store, no
       control ledger, ops apps merged, deployment definitions cleaned (no
       cohort variable, no recovery store), one-command local setup.
+  - [x] One storage region: no recovery store, object-store control ledger,
+        regional write admission or recovery app. The worker runs retention,
+        workspace purge and deletion commands; the retention and
+        lifecycle-command apps are gone. Deployment definitions match, and the
+        unexercised deployment validators and E01 evidence packet are removed.
+  - [ ] `operator-command` becomes `apps/ops`; one-command `pnpm dev`.
 - [ ] **5. Database foundation** — tables defined once, one baseline migration,
       three database roles, repository layout.
 - [ ] **6. Execution package** — run actions and the coordinator move out of the
       database package; the engine's rules exist once.
 - [ ] **7. Database feature areas** — authoring, workspaces, connections,
-      triggers, notifications, inbox: rules to TypeScript, thin repositories,
-      validate once, unused SQL functions dropped.
+      triggers, notifications, inbox, workspace lifecycle and retention: rules
+      to TypeScript, thin repositories, validate once, unused SQL functions
+      dropped. Workspace lifecycle and retention drop the database's own
+      control record chain (`retention_control_*`, the ledger projection and
+      audit facts) and the parked legal-hold tables and checks.
 - [ ] **8. Package-by-package pass** — read every file of every package and app,
       bottom of the dependency graph first, and redo, remove or improve using
       the checklist below. One PR per package (several for the large ones):

@@ -10,7 +10,7 @@ export const artifactIdentitySchema = z.object({
   workspaceId: z.uuid(),
 });
 
-/** Durable artifact byte identity; control-ledger keys follow a separate format. */
+/** Durable artifact byte identity. */
 export function artifactStorageKey(identity: ArtifactIdentity): string {
   return `workspaces/${identity.workspaceId}/artifacts/${identity.artifactId}`;
 }

@@ -10,13 +10,11 @@ import {
 import {
   observePresign,
   type ObjectStoreObserver,
-  type ObjectStoreRegionRole,
 } from './object-store-telemetry.js';
 
 export function createArtifactDownloadPresigner(
   client: S3Client,
   observer: ObjectStoreObserver,
-  regionRole: ObjectStoreRegionRole,
   override?: GetObjectPresigner,
 ): GetObjectPresigner {
   const presign =
@@ -26,12 +24,7 @@ export function createArtifactDownloadPresigner(
         expiresIn: request.expiresInSeconds,
       }));
   return (request) =>
-    observePresign(
-      observer,
-      regionRole,
-      () => presign(request),
-      'presign_get_object',
-    );
+    observePresign(observer, () => presign(request), 'presign_get_object');
 }
 import {
   awaitWithSignal,

@@ -11,25 +11,6 @@ export type RetentionTransactionOptions = Readonly<{
   statementTimeoutMs: number;
 }>;
 
-export interface WorkspaceControlLedgerReader {
-  reconcile(input: {
-    readonly maxRecords: number;
-    readonly projectedHash: string;
-    readonly projectedSequence: number;
-    readonly signal?: AbortSignal;
-    readonly workspaceId: string;
-  }): Promise<{
-    readonly hasMore: boolean;
-    readonly pageEndHash: string;
-    readonly pageEndSequence: number;
-    readonly reachedHighWater: boolean;
-    readonly records: readonly unknown[];
-  }>;
-}
-
-export type WorkspaceDestructiveAuthorization<T> =
-  Readonly<{ status: 'stale' }> | Readonly<{ status: 'authorized'; value: T }>;
-
 const WORKSPACE_DESTRUCTIVE_LOCK_SALT = 1_934_781_127;
 
 function throwableError(error: unknown, message: string): Error {
@@ -160,8 +141,8 @@ export async function releaseWorkspaceDestructiveOperationLock(
 }
 
 /**
- * Serializes external destructive work with control-ledger projection without
- * keeping a PostgreSQL transaction open across object-store I/O.
+ * Serializes external destructive work with lifecycle control projection
+ * without keeping a PostgreSQL transaction open across object-store I/O.
  */
 export async function withWorkspaceDestructiveOperationLock<T>(
   pool: DestructiveLockPool,
@@ -320,23 +301,22 @@ async function lockWorkspaceRetentionControl(
 }
 
 /**
- * Holds the workspace session lock across the final authoritative-ledger read
- * and the destructive effect. Control-ledger append owners take the same lock,
- * so a newer record either projects first or waits until this operation ends.
- * Database transactions remain short and never span external I/O.
+ * Holds the workspace session lock across the control high-water read and the
+ * destructive effect. Lifecycle command owners take the same lock, so a newer
+ * control record either projects first or waits until this operation ends.
+ * Database transactions remain short and never span object-store I/O.
  */
 export function withWorkspaceDestructiveAuthorization<T>(
   pool: Pool,
   options: RetentionTransactionOptions,
   signal: AbortSignal | undefined,
   workspaceId: string,
-  ledger: WorkspaceControlLedgerReader,
   externalOperationTimeoutMs: number,
   work: (
     highWater: Readonly<{ hash: string; sequence: number }>,
     externalSignal: AbortSignal,
   ) => Promise<T>,
-): Promise<WorkspaceDestructiveAuthorization<T>> {
+): Promise<T> {
   return withWorkspaceDestructiveOperationLock(
     pool,
     workspaceId,
@@ -354,25 +334,7 @@ export function withWorkspaceDestructiveAuthorization<T>(
         signal === undefined
           ? timeoutSignal
           : AbortSignal.any([signal, timeoutSignal]);
-      const reconciliation = await ledger.reconcile({
-        maxRecords: 1,
-        projectedHash: highWater.hash,
-        projectedSequence: highWater.sequence,
-        signal: externalSignal,
-        workspaceId,
-      });
-      if (
-        !reconciliation.reachedHighWater ||
-        reconciliation.hasMore ||
-        reconciliation.records.length !== 0 ||
-        reconciliation.pageEndSequence !== highWater.sequence ||
-        reconciliation.pageEndHash !== highWater.hash
-      )
-        return Object.freeze({ status: 'stale' as const });
-      return Object.freeze({
-        status: 'authorized' as const,
-        value: await work(highWater, externalSignal),
-      });
+      return work(highWater, externalSignal);
     },
   );
 }

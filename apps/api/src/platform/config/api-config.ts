@@ -2,8 +2,8 @@ import { isIP } from 'node:net';
 
 import { z } from 'zod';
 import {
-  parseDualRegionArtifactStoreConfig,
-  type DualRegionArtifactStoreConfig,
+  parseArtifactStoreConfig,
+  type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import type { ObservabilityConfig } from '@pertexo/observability/config';
@@ -110,10 +110,8 @@ const apiEnvironmentSchema = z
 
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 
-export type ApiDualRegionArtifactStoreConfig = DualRegionArtifactStoreConfig;
-
 export type ApiConfig = Readonly<{
-  artifacts?: ApiDualRegionArtifactStoreConfig;
+  artifacts?: ArtifactStoreConfig;
   connections?: Readonly<{
     kmsKeyReference: string;
     region: string;
@@ -233,7 +231,7 @@ function parseConnectionsConfig(
 function parseArtifactsConfig(
   nodeEnv: ApiNodeEnvironment,
   environment: Record<string, string | undefined>,
-): ApiDualRegionArtifactStoreConfig | undefined {
+): ArtifactStoreConfig | undefined {
   const configured = Object.entries(environment).some(
     ([name, value]) =>
       value !== undefined &&
@@ -242,7 +240,7 @@ function parseArtifactsConfig(
   const deployed = nodeEnv === 'staging' || nodeEnv === 'production';
   if (!configured && !deployed) return undefined;
   try {
-    return parseDualRegionArtifactStoreConfig(environment);
+    return parseArtifactStoreConfig(environment);
   } catch {
     throw new Error('Artifact store configuration is incomplete');
   }

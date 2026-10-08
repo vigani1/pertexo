@@ -6,18 +6,12 @@ import {
   createArtifactUploadDatabase,
 } from '../src/execution/artifacts/artifact-upload.js';
 import {
-  createControlLedgerCoordinator,
-  type AppendControlLedgerRecord,
-  type ControlLedgerRecord,
-} from '../src/lifecycle/control-ledger-coordinator.js';
-import {
   acquireWorkspaceDestructiveOperationLock,
   releaseWorkspaceDestructiveOperationLock,
   withWorkspaceDestructiveOperationLock,
 } from '../src/lifecycle/retention-transaction.js';
 
 import {
-  type ControlLedger,
   Pool,
   adminUrl,
   createRunArtifactRetentionCoordinator,
@@ -31,7 +25,6 @@ import {
   withApplicationName,
   workspaceId,
   userId,
-  zeroHash,
 } from './support/retention.integration.support.js';
 
 async function readCapacity(): Promise<{
@@ -206,18 +199,6 @@ describe('retention artifact reclamation', () => {
       chargedBytes: 10,
       chargedCount: 1,
     });
-    const ledger = {
-      append: vi.fn(),
-      reconcile: vi.fn(() =>
-        Promise.resolve({
-          hasMore: false,
-          pageEndHash: zeroHash,
-          pageEndSequence: 0,
-          reachedHighWater: true,
-          records: [],
-        }),
-      ),
-    } satisfies ControlLedger;
     const artifacts = {
       delete: vi.fn((_input: ArtifactStoreInput) => {
         return Promise.resolve();
@@ -228,7 +209,6 @@ describe('retention artifact reclamation', () => {
     };
     const coordinator = createRunArtifactRetentionCoordinator(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-      ledger,
       artifacts,
     );
     try {
@@ -265,19 +245,6 @@ describe('retention artifact reclamation', () => {
       chargedBytes: before.chargedBytes + 10,
       chargedCount: before.chargedCount + 1,
     });
-
-    const ledger = {
-      append: vi.fn(),
-      reconcile: vi.fn(() =>
-        Promise.resolve({
-          hasMore: false,
-          pageEndHash: zeroHash,
-          pageEndSequence: 0,
-          reachedHighWater: true,
-          records: [],
-        }),
-      ),
-    } satisfies ControlLedger;
     const artifacts = {
       delete: vi
         .fn()
@@ -291,7 +258,6 @@ describe('retention artifact reclamation', () => {
     const createCoordinator = () =>
       createRunArtifactRetentionCoordinator(
         parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-        ledger,
         artifacts,
       );
     const coordinator = createCoordinator();
@@ -424,19 +390,6 @@ describe('retention artifact reclamation', () => {
       chargedBytes: 30,
       chargedCount: 3,
     });
-
-    const ledger = {
-      append: vi.fn(),
-      reconcile: vi.fn(() =>
-        Promise.resolve({
-          hasMore: false,
-          pageEndHash: zeroHash,
-          pageEndSequence: 0,
-          reachedHighWater: true,
-          records: [],
-        }),
-      ),
-    } satisfies ControlLedger;
     let releaseDelete: (() => void) | undefined;
     const deleteStarted = Promise.withResolvers<undefined>();
     const artifacts = {
@@ -464,7 +417,6 @@ describe('retention artifact reclamation', () => {
         ),
         max: 2,
       }),
-      ledger,
       artifacts,
     );
     let following: Promise<unknown> | undefined;
@@ -662,19 +614,6 @@ describe('retention artifact reclamation', () => {
           [workspaceId, created.artifact.id],
         );
       });
-
-      const ledger = {
-        append: vi.fn(),
-        reconcile: vi.fn(() =>
-          Promise.resolve({
-            hasMore: false,
-            pageEndHash: zeroHash,
-            pageEndSequence: 0,
-            reachedHighWater: true,
-            records: [],
-          }),
-        ),
-      } satisfies ControlLedger;
       const artifacts = {
         delete: vi.fn(() => {
           replicaBytesPresent = false;
@@ -690,7 +629,6 @@ describe('retention artifact reclamation', () => {
           ),
           max: 2,
         }),
-        ledger,
         artifacts,
       );
       let retentionSettled = false;
@@ -886,403 +824,6 @@ describe('retention artifact reclamation', () => {
       await operation?.catch(() => undefined);
       await queuedPool.end();
       await verifierPool.end();
-    }
-  });
-
-  it('does not acknowledge a legal hold while physical deletion is in flight', async () => {
-    const artifactId = randomUUID();
-    const holdId = randomUUID();
-    const holdApplicationName = `retention-hold-${randomUUID()}`;
-    const before = await readCapacity();
-    await insertExpiredPendingUserUpload(artifactId, '9');
-    const deleteStarted = Promise.withResolvers<undefined>();
-    const releaseDelete = Promise.withResolvers<undefined>();
-    const ledger = {
-      append: vi.fn(),
-      reconcile: vi.fn(() =>
-        Promise.resolve({
-          hasMore: false,
-          pageEndHash: zeroHash,
-          pageEndSequence: 0,
-          reachedHighWater: true,
-          records: [],
-        }),
-      ),
-    } satisfies ControlLedger;
-    const artifacts = {
-      delete: vi.fn(async () => {
-        deleteStarted.resolve(undefined);
-        await releaseDelete.promise;
-      }),
-      head: vi.fn(() => Promise.resolve(null)),
-    };
-    const coordinator = createRunArtifactRetentionCoordinator(
-      parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-      ledger,
-      artifacts,
-    );
-    const hold = new Pool({
-      connectionString: withApplicationName(
-        maintenanceUrl,
-        holdApplicationName,
-      ),
-      max: 1,
-    });
-    let holdAcknowledged = false;
-    let retentionResult: Promise<unknown> | undefined;
-    let holdResult: Promise<unknown> | undefined;
-    try {
-      retentionResult = coordinator.processNext();
-      await deleteStarted.promise;
-      holdResult = hold
-        .query(
-          `select app.project_workspace_legal_hold(
-             $1,1,$2,'legal_hold_placed',$3,$4,$5,
-             'legal-admin','case-inflight-delete','serialize hold',$6)`,
-          [
-            workspaceId,
-            randomUUID(),
-            holdId,
-            zeroHash,
-            '8'.repeat(64),
-            '2026-09-08T00:00:00.000Z',
-          ],
-        )
-        .then((result) => {
-          holdAcknowledged = true;
-          return result;
-        });
-      await waitForPostgresLock(holdApplicationName);
-      expect(holdAcknowledged).toBe(false);
-
-      releaseDelete.resolve(undefined);
-      await expect(retentionResult).resolves.toMatchObject({
-        artifactId,
-        status: 'completed',
-        workspaceId,
-      });
-      await expect(holdResult).resolves.toMatchObject({ rowCount: 1 });
-      expect(holdAcknowledged).toBe(true);
-      await expect(readCapacity()).resolves.toEqual(before);
-    } finally {
-      releaseDelete.resolve(undefined);
-      await Promise.allSettled([
-        retentionResult ?? Promise.resolve(),
-        holdResult ?? Promise.resolve(),
-      ]);
-      await coordinator.close();
-      // The query callback updates this flag asynchronously.
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (holdAcknowledged)
-        await hold.query(
-          `select app.project_workspace_legal_hold(
-             $1,2,$2,'legal_hold_released',$3,$4,$5,
-             'legal-admin','case-inflight-delete','release test hold',$6)`,
-          [
-            workspaceId,
-            randomUUID(),
-            holdId,
-            '8'.repeat(64),
-            '7'.repeat(64),
-            '2026-09-08T00:00:01.000Z',
-          ],
-        );
-      await hold.end();
-    }
-  });
-
-  it('serializes an authoritative hold append after final freshness and before deletion', async () => {
-    const artifactId = randomUUID();
-    const holdId = randomUUID();
-    const commandId = randomUUID();
-    const commandApplicationName = `retention-command-${randomUUID()}`;
-    const before = await readCapacity();
-    await insertExpiredPendingUserUpload(artifactId, 'a');
-
-    const freshnessStarted = Promise.withResolvers<undefined>();
-    const releaseFreshness = Promise.withResolvers<undefined>();
-    const records: ControlLedgerRecord[] = [];
-    let pausedFreshness = false;
-    const events: string[] = [];
-    const appendRecord = vi.fn((input: AppendControlLedgerRecord) => {
-      events.push('append');
-      const record = Object.freeze({
-        ...input,
-        recordHash: (input.commandType === 'legal_hold_placed'
-          ? 'd'
-          : 'e'
-        ).repeat(64),
-        schemaVersion: 1,
-      });
-      records.push(record);
-      return Promise.resolve(record);
-    });
-    const ledger: ControlLedger = {
-      append: appendRecord,
-      reconcile: vi.fn(
-        async (input: Parameters<ControlLedger['reconcile']>[0]) => {
-          if (input.repairCommandId === undefined && !pausedFreshness) {
-            pausedFreshness = true;
-            events.push('freshness');
-            freshnessStarted.resolve(undefined);
-            await releaseFreshness.promise;
-          }
-          const available = records
-            .filter((record) => record.sequence > input.projectedSequence)
-            .slice(0, input.maxRecords);
-          const last = available.at(-1);
-          const hasMore = records.some(
-            (record) =>
-              record.sequence > (last?.sequence ?? input.projectedSequence),
-          );
-          return {
-            hasMore,
-            pageEndHash: last?.recordHash ?? input.projectedHash,
-            pageEndSequence: last?.sequence ?? input.projectedSequence,
-            reachedHighWater: !hasMore,
-            records: available,
-          };
-        },
-      ),
-    };
-    const artifacts = {
-      delete: vi.fn(() => {
-        events.push('delete');
-        return Promise.resolve();
-      }),
-      head: vi.fn(() => Promise.resolve(null)),
-    };
-    const retentionCoordinator = createRunArtifactRetentionCoordinator(
-      parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-      ledger,
-      artifacts,
-    );
-    const commandCoordinator = createControlLedgerCoordinator(
-      parseDatabaseConfig({
-        connectionString: withApplicationName(
-          maintenanceUrl,
-          commandApplicationName,
-        ),
-        max: 2,
-      }),
-      ledger,
-      { externalOperationTimeoutMs: 5_000 },
-    );
-    let retentionResult: Promise<unknown> | undefined;
-    let holdResult: Promise<unknown> | undefined;
-    try {
-      retentionResult = retentionCoordinator.processNext();
-      await freshnessStarted.promise;
-      holdResult = commandCoordinator.placeLegalHold({
-        actorRef: 'legal-admin',
-        commandId,
-        holdId,
-        legalAuthority: 'case-authoritative-race',
-        occurredAt: '2026-09-08T00:00:00.000Z',
-        reason: 'serialize authoritative append',
-        workspaceId,
-      });
-      await waitForPostgresLock(commandApplicationName);
-      expect(appendRecord).not.toHaveBeenCalled();
-      expect(artifacts.delete).not.toHaveBeenCalled();
-
-      releaseFreshness.resolve(undefined);
-      await expect(retentionResult).resolves.toMatchObject({
-        artifactId,
-        status: 'completed',
-        workspaceId,
-      });
-      await expect(holdResult).resolves.toMatchObject({
-        commandId,
-        holdId,
-        replayed: false,
-        workspaceId,
-      });
-      expect(events).toEqual(['freshness', 'delete', 'append']);
-      expect(artifacts.delete).toHaveBeenCalledOnce();
-      await expect(
-        commandCoordinator.releaseLegalHold({
-          actorRef: 'legal-admin',
-          commandId: randomUUID(),
-          holdId,
-          legalAuthority: 'case-authoritative-race',
-          occurredAt: '2026-09-08T00:00:01.000Z',
-          reason: 'release authoritative race hold',
-          workspaceId,
-        }),
-      ).resolves.toMatchObject({
-        commandType: 'legal_hold_released',
-        holdId,
-        replayed: false,
-      });
-      await expect(readCapacity()).resolves.toEqual(before);
-    } finally {
-      releaseFreshness.resolve(undefined);
-      await Promise.allSettled([
-        retentionResult ?? Promise.resolve(),
-        holdResult ?? Promise.resolve(),
-      ]);
-      const closed = await Promise.allSettled([
-        retentionCoordinator.close(),
-        commandCoordinator.close(),
-      ]);
-      await Promise.all(
-        closed.map((result) => {
-          if (result.status === 'fulfilled') {
-            return Promise.resolve();
-          }
-          const reason =
-            result.reason instanceof Error
-              ? result.reason
-              : new Error('Retention coordinator cleanup failed', {
-                  cause: result.reason,
-                });
-          return Promise.reject(reason);
-        }),
-      );
-    }
-  });
-
-  it('holds an expired user-upload artifact before any object-store operation', async () => {
-    const artifactId = randomUUID();
-    const holdId = randomUUID();
-    const holdHash = 'b'.repeat(64);
-    const control = await withOwnerTransaction(async (client) => {
-      const result = await client.query<{
-        retention_control_hash: string;
-        retention_control_sequence: number | string;
-      }>(
-        `select retention_control_hash,retention_control_sequence
-           from app.workspaces where id=$1`,
-        [workspaceId],
-      );
-      const row = result.rows[0];
-      if (row === undefined) throw new Error('workspace control state missing');
-      return {
-        hash: row.retention_control_hash,
-        sequence: Number(row.retention_control_sequence),
-      };
-    });
-    const before = await readCapacity();
-    const apiUrl = new URL(
-      process.env.DATABASE_API_URL ??
-        'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
-    );
-    apiUrl.pathname = new URL(maintenanceUrl).pathname;
-    const api = new Pool({ connectionString: apiUrl.toString(), max: 1 });
-    const maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
-
-    try {
-      await api.query('begin');
-      try {
-        await api.query("select set_config('app.workspace_id',$1,true)", [
-          workspaceId,
-        ]);
-        await api.query(
-          `insert into app.artifacts
-             (id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
-             status,expires_at)
-           values($1,$2,'user-upload',$3,'application/octet-stream',10,$4,
-             'pending',clock_timestamp()-interval '1 hour')`,
-          [
-            artifactId,
-            workspaceId,
-            `workspaces/${workspaceId}/artifacts/${artifactId}`,
-            'c'.repeat(64),
-          ],
-        );
-        await api.query('commit');
-      } catch (error: unknown) {
-        await api.query('rollback').catch(() => undefined);
-        throw error;
-      }
-
-      await expect(readCapacity()).resolves.toEqual({
-        chargedBytes: before.chargedBytes + 10,
-        chargedCount: before.chargedCount + 1,
-      });
-
-      await maintenance.query(
-        `select app.project_workspace_legal_hold(
-          $1,$2,$3,'legal_hold_placed',$4,$5,$6,
-          'legal-admin','case-artifact-1','preserve user-upload',$7)`,
-        [
-          workspaceId,
-          control.sequence + 1,
-          randomUUID(),
-          holdId,
-          control.hash,
-          holdHash,
-          '2026-08-21T00:00:00.000Z',
-        ],
-      );
-
-      const ledger = {
-        append: vi.fn(),
-        reconcile: vi.fn(() =>
-          Promise.resolve({
-            hasMore: false,
-            pageEndHash: holdHash,
-            pageEndSequence: control.sequence + 1,
-            reachedHighWater: true,
-            records: [],
-          }),
-        ),
-      } satisfies ControlLedger;
-      const artifacts = {
-        delete: vi.fn(() => Promise.resolve()),
-        head: vi.fn(() => Promise.resolve(null)),
-      };
-      const coordinator = createRunArtifactRetentionCoordinator(
-        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-        ledger,
-        artifacts,
-      );
-      try {
-        await expect(coordinator.processNext()).resolves.toMatchObject({
-          artifactId,
-          status: 'held',
-          workspaceId,
-        });
-      } finally {
-        await coordinator.close();
-      }
-
-      expect(artifacts.delete).not.toHaveBeenCalled();
-      expect(artifacts.head).not.toHaveBeenCalled();
-      await expect(readCapacity()).resolves.toEqual({
-        chargedBytes: before.chargedBytes + 10,
-        chargedCount: before.chargedCount + 1,
-      });
-
-      await owner.query('begin');
-      try {
-        await owner.query('set local role pertexo_owner');
-        await owner.query("select set_config('app.workspace_id',$1,true)", [
-          workspaceId,
-        ]);
-        const proof = await owner.query(
-          `select status,purpose,byte_length::text as byte_length,
-                  retention_retry_at is not null as retry_scheduled
-             from app.artifacts where workspace_id=$1 and id=$2`,
-          [workspaceId, artifactId],
-        );
-        expect(proof.rows).toEqual([
-          {
-            byte_length: '10',
-            purpose: 'user-upload',
-            retry_scheduled: true,
-            status: 'pending',
-          },
-        ]);
-        await owner.query('commit');
-      } catch (error: unknown) {
-        await owner.query('rollback').catch(() => undefined);
-        throw error;
-      }
-    } finally {
-      await maintenance.end();
-      await api.end();
     }
   });
 });

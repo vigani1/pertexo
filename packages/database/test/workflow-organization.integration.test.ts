@@ -182,32 +182,6 @@ function favorite(
     favoriteOn(client, workflow, value, expected, proof, key),
   );
 }
-async function projectHold(
-  client: PoolClient,
-  s: Scope,
-  hold: string,
-  release = false,
-) {
-  const current = await client.query<{ sequence: string; hash: string }>(
-    'select retention_control_sequence::text sequence,retention_control_hash hash from app.workspaces where id=$1',
-    [s.workspace],
-  );
-  const row = current.rows[0];
-  if (!row) throw new Error('Missing hold projection anchor');
-  return client.query(
-    `select app.project_workspace_legal_hold($1,$2,$3,$4,$5,$6,$7,
-    'owned-fixture','fixture-authority','F07 private evidence',clock_timestamp())`,
-    [
-      s.workspace,
-      Number(row.sequence) + 1,
-      randomUUID(),
-      release ? 'legal_hold_released' : 'legal_hold_placed',
-      hold,
-      row.hash,
-      commandKey(),
-    ],
-  );
-}
 async function reap(limit = 100) {
   const result = await fixture.maintenance.query<Record<string, number>>(
     'select * from app.reap_workflow_organization($1)',
@@ -945,108 +919,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).toEqual([]);
     });
 
-    it('hold wins before replacement: retired evidence is atomically preserved and never exposed as the rejoined bookmark', async () => {
-      const s = await fixture.scope(),
-        workflow = await s.workflow(),
-        old = await absence(s, workflow);
-      const original = await favorite(s, workflow, true, old.token, old);
-      await removeAndRejoin(s);
-      const fresh = await absence(s, workflow),
-        hold = randomUUID();
-      const holding = await fixture.owner.connect(),
-        replacing = await fixture.api.connect();
-      let pending: Promise<Result> | undefined;
-      try {
-        const holdingPid = await begin(holding, s, s.actor, true),
-          replacingPid = await begin(replacing, s, s.viewer);
-        await projectHold(holding, s, hold);
-        pending = favoriteOn(replacing, workflow, false, fresh.token, fresh);
-        // Register an immediate rejection handler before observing locks.
-        void pending.catch(() => undefined);
-        await fixture.waitForBlocker(holdingPid, replacingPid);
-        await holding.query('commit');
-        expect(await pending).toMatchObject({ isFavorite: false });
-        await replacing.query('commit');
-      } finally {
-        await rollbackRelease(holding);
-        await pending?.catch(() => undefined);
-        await rollbackRelease(replacing);
-      }
-      expect(
-        (
-          await owner(
-            s,
-            'select generation,revision,favorite from app.workflow_favorite_held_evidence where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([
-        {
-          generation: old.generation,
-          revision: original.favoriteRevision,
-          favorite: true,
-        },
-      ]);
-      expect(
-        (
-          await api(s, s.viewer, (client) =>
-            client.query(
-              'select favorite,generation from app.workflow_favorites',
-            ),
-          )
-        ).rows,
-      ).toEqual([{ favorite: false, generation: fresh.generation }]);
-      expect(
-        Object.values(await reap(2)).reduce((a, b) => a + b, 0),
-      ).toBeLessThanOrEqual(2);
-      expect(
-        (
-          await owner(
-            s,
-            'select count(*)::int count from app.workflow_favorite_held_evidence where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([{ count: 1 }]);
-      await fixture.transaction(fixture.owner, s.workspace, s.actor, (client) =>
-        projectHold(client, s, hold, true),
-      );
-    });
-
-    it('replacement wins first: hold projection waits for the workspace admission lock before acknowledging the hold', async () => {
-      const s = await fixture.scope(),
-        workflow = await s.workflow(),
-        proof = await absence(s, workflow);
-      const writer = await fixture.api.connect(),
-        holding = await fixture.owner.connect();
-      let pending: Promise<unknown> | undefined;
-      try {
-        const writerPid = await begin(writer, s, s.viewer),
-          holdingPid = await begin(holding, s, s.actor, true);
-        await favoriteOn(writer, workflow, true, proof.token, proof);
-        pending = projectHold(holding, s, randomUUID());
-        void pending.catch(() => undefined);
-        await fixture.waitForBlocker(writerPid, holdingPid);
-        await writer.query('commit');
-        await pending;
-        await holding.query('commit');
-      } finally {
-        await rollbackRelease(writer);
-        await pending?.catch(() => undefined);
-        await rollbackRelease(holding);
-      }
-      expect(
-        (
-          await owner(
-            s,
-            'select favorite from app.workflow_favorites where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([{ favorite: true }]);
-    });
-
-    it('bounds total cleanup work, preserves unexpired tombstones, and rechecks a hold committed while cleanup waits', async () => {
+    it('bounds total cleanup work and preserves unexpired tombstones', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow(),
         proof = await absence(s, workflow);
@@ -1066,12 +939,6 @@ describe.skipIf(!organizationFixtureEnabled)(
         "update app.workflow_favorites set expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1",
         [s.workspace],
       );
-      // Drain unrelated eligible rows, so this race observes this exact workspace.
-      // Temporarily hold this workspace while earlier cases are cleaned.
-      const hold = randomUUID();
-      await fixture.transaction(fixture.owner, s.workspace, s.actor, (client) =>
-        projectHold(client, s, hold),
-      );
       for (let index = 0; index < 40; index++) {
         const counts = await reap(2);
         expect(
@@ -1079,48 +946,6 @@ describe.skipIf(!organizationFixtureEnabled)(
         ).toBeLessThanOrEqual(2);
         if (Object.values(counts).every((count) => count === 0)) break;
       }
-      await fixture.transaction(fixture.owner, s.workspace, s.actor, (client) =>
-        projectHold(client, s, hold, true),
-      );
-      const holding = await fixture.owner.connect(),
-        cleaning = await fixture.maintenance.connect();
-      let pending: Promise<unknown> | undefined;
-      const newHold = randomUUID();
-      try {
-        const holdingPid = await begin(holding, s, s.actor, true);
-        await cleaning.query('begin');
-        await cleaning.query("set local statement_timeout='8s'");
-        const cleaningPid = required(
-          (await cleaning.query<{ pid: number }>('select pg_backend_pid() pid'))
-            .rows[0],
-        ).pid;
-        await projectHold(holding, s, newHold);
-        pending = cleaning.query(
-          'select * from app.reap_workflow_organization(2)',
-        );
-        void pending.catch(() => undefined);
-        await fixture.waitForBlocker(holdingPid, cleaningPid);
-        await holding.query('commit');
-        await pending;
-        await cleaning.query('commit');
-      } finally {
-        await rollbackRelease(holding);
-        await pending?.catch(() => undefined);
-        await rollbackRelease(cleaning);
-      }
-      expect(
-        (
-          await owner(
-            s,
-            'select favorite from app.workflow_favorites where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([{ favorite: false }]);
-      await fixture.transaction(fixture.owner, s.workspace, s.actor, (client) =>
-        projectHold(client, s, newHold, true),
-      );
-      expect(Object.values(await reap(1)).reduce((a, b) => a + b, 0)).toBe(1);
       expect(
         (
           await owner(
@@ -1133,7 +958,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       await expect(reap(101)).rejects.toMatchObject({ code: '22023' });
     });
 
-    it('purges organization children in bounded maintenance pages only after lease/high-water/hold authorization', async () => {
+    it('purges organization children in bounded maintenance pages only after lease and high-water authorization', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow(),
         t = await createTag(s),
@@ -1182,10 +1007,6 @@ describe.skipIf(!organizationFixtureEnabled)(
       );
       await favorite(s, workflow, true, old.token, old);
       await removeAndRejoin(s);
-      const hold = randomUUID();
-      await fixture.transaction(fixture.owner, s.workspace, s.actor, (client) =>
-        projectHold(client, s, hold),
-      );
       const fresh = await absence(s, workflow);
       await favorite(s, workflow, false, fresh.token, fresh);
       const job = randomUUID(),
@@ -1256,7 +1077,6 @@ describe.skipIf(!organizationFixtureEnabled)(
       await expect(page(lease, 'f'.repeat(64))).rejects.toMatchObject({
         code: '40001',
       });
-      await expect(page()).rejects.toMatchObject({ code: '55000' });
       expect(
         (
           await owner(
@@ -1266,21 +1086,6 @@ describe.skipIf(!organizationFixtureEnabled)(
           )
         ).rows,
       ).toEqual([{ count: 1 }]);
-      await fixture.transaction(fixture.owner, s.workspace, s.actor, (client) =>
-        projectHold(client, s, hold, true),
-      );
-      // Release advances the authoritative projection; use its new high water.
-      const released = required(
-        (
-          await owner(
-            s,
-            'select retention_control_sequence::int sequence,retention_control_hash hash from app.workspaces where id=$1',
-            [s.workspace],
-          )
-        ).rows[0],
-      );
-      anchor.sequence = released.sequence;
-      anchor.hash = released.hash;
       const surfaces = [
         'workflow_favorite_receipts',
         'workflow_favorite_held_evidence',

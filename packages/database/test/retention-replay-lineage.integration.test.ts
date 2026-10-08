@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { PoolClient } from 'pg';
 
 import {
   adminUrl,
-  type ControlLedger,
   createRetentionEnforcementCoordinator,
   cutoffAt,
   maintenanceUrl,
@@ -14,7 +13,6 @@ import {
   retention,
   userId,
   workspaceId,
-  zeroHash,
 } from './support/retention.integration.support.js';
 
 type RunFixture = Readonly<{
@@ -144,22 +142,6 @@ async function readBatch(
   });
 }
 
-function ledger(): ControlLedger {
-  type ReconcileInput = Parameters<ControlLedger['reconcile']>[0];
-  return {
-    append: vi.fn(),
-    reconcile: vi.fn((input: ReconcileInput) =>
-      Promise.resolve({
-        hasMore: false,
-        pageEndHash: input.projectedHash,
-        pageEndSequence: input.projectedSequence,
-        reachedHighWater: true,
-        records: [],
-      }),
-    ),
-  };
-}
-
 function coordinator(
   leaseOwner: string,
   options: Readonly<{
@@ -169,7 +151,6 @@ function coordinator(
 ) {
   return createRetentionEnforcementCoordinator(
     parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-    ledger(),
     {
       leaseOwner,
       leaseSeconds: 60,
@@ -193,30 +174,6 @@ async function startSummaryBatch(
     workspaceId: scopedWorkspaceId,
   });
   return batchId;
-}
-
-async function placeLegalHold(
-  scopedWorkspaceId: string,
-  recordHash: string,
-): Promise<void> {
-  const maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
-  try {
-    await maintenance.query(
-      `select app.project_workspace_legal_hold(
-        $1,1,$2,'legal_hold_placed',$3,$4,$5,
-        'legal-admin','case-replay','preserve replay evidence',$6)`,
-      [
-        scopedWorkspaceId,
-        randomUUID(),
-        randomUUID(),
-        zeroHash,
-        recordHash,
-        '2026-08-21T00:00:00Z',
-      ],
-    );
-  } finally {
-    await maintenance.end();
-  }
 }
 
 describe('retention replay lineage', () => {
@@ -478,78 +435,6 @@ describe('retention replay lineage', () => {
     await expect(
       countRuns(workspaceId, [sourceRunId, replayRunId, nestedReplayRunId]),
     ).resolves.toBe(0);
-  });
-
-  it('pauses a replay-source page under a legal hold without touching another tenant', async () => {
-    const heldWorkspaceId = randomUUID();
-    const otherWorkspaceId = randomUUID();
-    const heldSourceRunId = randomUUID();
-    const heldReplayRunId = randomUUID();
-    const otherRunId = randomUUID();
-    await createWorkspaceFixture(heldWorkspaceId);
-    await createWorkspaceFixture(otherWorkspaceId);
-    await insertRunFixtures([
-      {
-        id: heldSourceRunId,
-        workspaceId: heldWorkspaceId,
-        completedAt: '2026-01-01T00:00:00Z',
-        detailsPurgedAt: '2026-01-02T00:00:00Z',
-      },
-      {
-        id: heldReplayRunId,
-        workspaceId: heldWorkspaceId,
-        triggerType: 'replay',
-        replaySourceRunId: heldSourceRunId,
-        replayCommandId: randomUUID(),
-        createdAt: '2026-07-01T00:00:00Z',
-      },
-      {
-        id: otherRunId,
-        workspaceId: otherWorkspaceId,
-        completedAt: '2026-01-01T00:00:00Z',
-        detailsPurgedAt: '2026-01-02T00:00:00Z',
-      },
-    ]);
-    const heldBatchId = await startSummaryBatch(heldWorkspaceId, cutoffAt);
-    const otherBatchId = await startSummaryBatch(otherWorkspaceId, cutoffAt);
-    await placeLegalHold(heldWorkspaceId, 'b'.repeat(64));
-
-    const holdCoordinator = coordinator('retention-replay-legal-hold');
-    try {
-      await expect(holdCoordinator.processNext()).resolves.toMatchObject({
-        batchId: heldBatchId,
-        eligibleCount: 0,
-        examinedCount: 0,
-        pageCount: 1,
-        retentionKind: 'run_summary',
-        status: 'paused',
-        workspaceId: heldWorkspaceId,
-      });
-      await expect(holdCoordinator.processNext()).resolves.toMatchObject({
-        batchId: otherBatchId,
-        eligibleCount: 1,
-        examinedCount: 1,
-        pageCount: 2,
-        retentionKind: 'run_summary',
-        status: 'completed',
-        workspaceId: otherWorkspaceId,
-      });
-    } finally {
-      await holdCoordinator.close();
-    }
-
-    await expect(
-      readBatch(heldWorkspaceId, heldBatchId),
-    ).resolves.toMatchObject({
-      eligible_count: '0',
-      examined_count: '0',
-      pause_reason: 'legal_hold',
-      status: 'paused',
-    });
-    await expect(
-      countRuns(heldWorkspaceId, [heldSourceRunId, heldReplayRunId]),
-    ).resolves.toBe(2);
-    await expect(countRuns(otherWorkspaceId, [otherRunId])).resolves.toBe(0);
   });
 
   it('completes a source-only summary page after the replay child becomes eligible', async () => {

@@ -3,30 +3,8 @@ export {
   type WorkspaceLifecycleCommandCoordinator,
   type WorkspaceLifecycleCommandOutcome,
   type WorkspaceLifecycleCommandType,
-  type WorkspaceLifecycleLedger,
-  type WorkspaceLifecycleLedgerRecord,
 } from './workspace-lifecycle-commands.js';
-export {
-  CONTROL_LEDGER_ZERO_HASH,
-  ControlLedgerCommandConflictError,
-  ControlLedgerReconciliationBoundError,
-  ControlLedgerReconciliationError,
-  createControlLedgerCoordinator,
-  type AppendControlLedgerRecord,
-  type CommittedArtifactInventoryPage,
-  type CommittedArtifactInventoryRecord,
-  type CommittedArtifactInventoryInput,
-  type ControlLedger,
-  type ControlLedgerCommandType,
-  type ControlLedgerCoordinator,
-  type ControlLedgerInventoryResult,
-  type ControlLedgerReconcileResult,
-  type ControlLedgerReconciliation,
-  type ControlLedgerRecord,
-  type LegalHoldCommandInput,
-  type LegalHoldCommandResult,
-  type LegalHoldCommandType,
-} from './control-ledger-coordinator.js';
+export { workspaceControlRecordHash } from './control-record.js';
 export {
   createRetentionDatabase,
   createRetentionEnforcementCoordinator,
@@ -35,7 +13,6 @@ export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.
 export { createWorkspacePurgeCoordinator } from './workspace-purge.js';
 export type {
   WorkspacePurgeCoordinator,
-  WorkspacePurgeLedger,
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
 } from './workspace-purge.js';
@@ -47,7 +24,6 @@ export type {
 } from './run-artifact-retention.js';
 export type {
   OperatorMaintenanceRerunResult,
-  RegionalReplicaLagObservation,
   RetentionDatabase,
   RetentionDatabaseOptions,
   RetentionDryRunClaim,

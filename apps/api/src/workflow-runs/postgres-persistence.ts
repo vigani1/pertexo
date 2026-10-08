@@ -1,7 +1,6 @@
 import {
   ExecutionStateConflictError,
   IdempotencyRequestConflictError,
-  RegionalWriteAdmissionPausedError,
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceAccessDeniedError,
@@ -268,14 +267,6 @@ function mapPersistenceError(error: unknown): never {
     return throwWorkflowRunError(
       applicationError('workspace.quota_exceeded', {
         safeDetail: 'The workspace queued-run limit has been reached.',
-        details: { retryAfterSeconds: error.retryAfterSeconds },
-      }),
-    );
-  if (error instanceof RegionalWriteAdmissionPausedError)
-    return throwWorkflowRunError(
-      applicationError('platform.write_paused', {
-        safeDetail:
-          'Durable workflow starts are paused while regional recovery protection catches up.',
         details: { retryAfterSeconds: error.retryAfterSeconds },
       }),
     );

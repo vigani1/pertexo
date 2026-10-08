@@ -742,7 +742,7 @@ describe('connection persistence', () => {
     });
     try {
       await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
-        migrationHead: '0136_remove_release_machinery.sql',
+        migrationHead: '0137_single_region_storage.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -936,7 +936,7 @@ describe('connection persistence', () => {
     });
     try {
       await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
-        migrationHead: '0136_remove_release_machinery.sql',
+        migrationHead: '0137_single_region_storage.sql',
       });
     } finally {
       await pool.end();

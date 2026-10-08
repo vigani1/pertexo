@@ -1,6 +1,6 @@
 import {
-  createDualRegionArtifactStore,
-  parseDualRegionArtifactStoreConfig,
+  createArtifactStore,
+  parseArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
   canonicalOutboxPayloadChecksum,
@@ -10,7 +10,6 @@ import {
   parseDatabaseConfig,
   PREVIEW_STATUS,
   withTenantScopedClient,
-  type ControlLedger,
 } from '@pertexo/database/testing';
 import type { NodeArtifactReference } from '@pertexo/node-sdk/server';
 import { describe, expect, it } from 'vitest';
@@ -40,14 +39,13 @@ describeIntegration('preview artifact retention transport', () => {
   itArtifactIntegration(
     'removes an expired preview and its object through the real maintenance path',
     async () => {
-      const artifactConfig = parseDualRegionArtifactStoreConfig(process.env);
+      const artifactConfig = parseArtifactStoreConfig(process.env);
       const previewDeadline = new Date(Date.now() + 10_000);
       const traceparent = validTraceparent;
       let capabilities:
         | Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>>
         | undefined;
-      let verifier:
-        ReturnType<typeof createDualRegionArtifactStore> | undefined;
+      let verifier: ReturnType<typeof createArtifactStore> | undefined;
       let cleanup:
         ReturnType<typeof createPreviewRetentionCoordinator> | undefined;
       let reference: NodeArtifactReference | undefined;
@@ -65,10 +63,7 @@ describeIntegration('preview artifact retention transport', () => {
               connectionString: databaseUrl(workerUrl),
             }),
           });
-          verifier = createDualRegionArtifactStore(
-            artifactConfig.primary,
-            artifactConfig.recovery,
-          );
+          verifier = createArtifactStore(artifactConfig);
           const artifacts = capabilities.factories.artifacts?.({
             artifactRetentionDeadline: previewDeadline,
             attemptId: accepted.previewAttemptId,
@@ -127,22 +122,10 @@ describeIntegration('preview artifact retention transport', () => {
             },
             workerId,
           });
-          const ledger: ControlLedger = {
-            append: () => Promise.reject(new Error('cleanup must not append')),
-            reconcile: (request) =>
-              Promise.resolve({
-                hasMore: false,
-                pageEndHash: request.projectedHash,
-                pageEndSequence: request.projectedSequence,
-                reachedHighWater: true,
-                records: [],
-              }),
-          };
           const retentionCleanup = createPreviewRetentionCoordinator(
             parseDatabaseConfig({
               connectionString: databaseUrl(maintenanceUrl),
             }),
-            ledger,
             verifier,
             { artifactQuiescenceSeconds: 1 },
           );
@@ -150,7 +133,7 @@ describeIntegration('preview artifact retention transport', () => {
           await expect(
             verifier.head({ artifactId: reference.artifactId, workspaceId }),
           ).resolves.toMatchObject({ artifactId: reference.artifactId });
-          // The cleanup process and artifact ledger use independent real clocks;
+          // The cleanup process and the database use independent real clocks;
           // this wait proves the cross-process quiescence deadline.
           await new Promise<void>((resolve) =>
             setTimeout(

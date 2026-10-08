@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  assertTenantStorageIsolation,
-  parseArtifactStoreConfig,
-  parseDualRegionArtifactStoreConfig,
-} from '../src/config.js';
+import { parseArtifactStoreConfig } from '../src/config.js';
 
 const REQUIRED_ENVIRONMENT = {
   ARTIFACT_STORE_ACCESS_KEY_ID: 'local-access',
@@ -13,53 +9,6 @@ const REQUIRED_ENVIRONMENT = {
   ARTIFACT_STORE_REGION: 'us-east-1',
   ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
 } as const;
-
-describe('assertTenantStorageIsolation', () => {
-  const artifact = parseArtifactStoreConfig(REQUIRED_ENVIRONMENT);
-  const artifacts = {
-    primary: artifact,
-    recovery: { ...artifact, accessKeyId: 'recovery', bucket: 'recovery' },
-  };
-  const ledgerRegion = {
-    ...artifact,
-    accessKeyId: 'ledger',
-    bucket: 'ledger',
-    minRetentionDays: 30,
-  };
-  const ledger = {
-    primary: ledgerRegion,
-    recovery: {
-      ...ledgerRegion,
-      accessKeyId: 'ledger-recovery',
-      bucket: 'ledger-recovery',
-    },
-  };
-
-  it('accepts distinct principals and buckets across both regions', () => {
-    expect(() => {
-      assertTenantStorageIsolation(artifacts, ledger);
-    }).not.toThrow();
-  });
-
-  for (const control of ['primary', 'recovery'] as const) {
-    for (const tenant of ['primary', 'recovery'] as const) {
-      it.each(['accessKeyId', 'bucket'] as const)(
-        `rejects ${control} ledger sharing %s with ${tenant} artifacts`,
-        (field) => {
-          expect(() => {
-            assertTenantStorageIsolation(artifacts, {
-              ...ledger,
-              [control]: {
-                ...ledger[control],
-                [field]: artifacts[tenant][field],
-              },
-            });
-          }).toThrow('distinct principals and buckets');
-        },
-      );
-    }
-  }
-});
 
 describe('parseArtifactStoreConfig', () => {
   it('returns immutable config with bounded defaults', () => {
@@ -106,44 +55,5 @@ describe('parseArtifactStoreConfig', () => {
     { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_BUCKET: '127.0.0.1' },
   ])('rejects invalid environment %#', (environment) => {
     expect(() => parseArtifactStoreConfig(environment)).toThrow();
-  });
-});
-
-describe('parseDualRegionArtifactStoreConfig', () => {
-  const dualRegionEnvironment = {
-    ...REQUIRED_ENVIRONMENT,
-    ARTIFACT_STORE_REGION: 'eu-central-1',
-    ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-access',
-    ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-artifacts-recovery',
-    ARTIFACT_STORE_RECOVERY_ENDPOINT: 'https://s3.eu-west-1.amazonaws.com',
-    ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: 'false',
-    ARTIFACT_STORE_RECOVERY_REGION: 'eu-west-1',
-    ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
-  } as const;
-
-  it('parses isolated primary and recovery stores with shared bounds', () => {
-    const parsed = parseDualRegionArtifactStoreConfig(dualRegionEnvironment);
-    expect(parsed.primary).toMatchObject({
-      bucket: 'pertexo-artifacts',
-      region: 'eu-central-1',
-    });
-    expect(parsed.recovery).toMatchObject({
-      bucket: 'pertexo-artifacts-recovery',
-      maxObjectBytes: 10 * 1024 * 1024,
-      region: 'eu-west-1',
-    });
-  });
-
-  it.each([
-    { ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'local-access' },
-    { ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-artifacts' },
-    { ARTIFACT_STORE_RECOVERY_REGION: 'eu-central-1' },
-  ])('rejects a shared regional isolation field %#', (override) => {
-    expect(() =>
-      parseDualRegionArtifactStoreConfig({
-        ...dualRegionEnvironment,
-        ...override,
-      }),
-    ).toThrow('must be distinct');
   });
 });

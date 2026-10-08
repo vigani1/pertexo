@@ -440,7 +440,6 @@ export default tseslint.config(
                 '@pertexo/database/lifecycle',
                 '@pertexo/database/maintenance',
                 '@pertexo/database/operator',
-                '@pertexo/database/recovery',
               ],
               message:
                 'API production code must use the @pertexo/database/api capability surface.',
@@ -460,7 +459,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Worker production code must use the @pertexo/database/execution capability surface.',
+                'Worker production code must use the execution, lifecycle or maintenance database surfaces.',
             },
           ],
           patterns: [
@@ -470,15 +469,9 @@ export default tseslint.config(
                 'The worker cannot import API controllers or runtime code.',
             },
             {
-              group: [
-                '@pertexo/database/api',
-                '@pertexo/database/lifecycle',
-                '@pertexo/database/maintenance',
-                '@pertexo/database/operator',
-                '@pertexo/database/recovery',
-              ],
+              group: ['@pertexo/database/api', '@pertexo/database/operator'],
               message:
-                'Worker production code must use the @pertexo/database/execution capability surface.',
+                'Worker production code must use the execution, lifecycle or maintenance database surfaces.',
             },
           ],
         },
@@ -523,44 +516,40 @@ export default tseslint.config(
       ],
     },
   },
-  ...[
-    ['apps/retention/src/**/*.ts', 'maintenance'],
-    ['apps/recovery/src/**/*.ts', 'recovery'],
-    ['apps/operator-command/src/**/*.ts', 'operator'],
-    ['apps/lifecycle-command/src/**/*.ts', 'lifecycle'],
-  ].map(([files, allowedSurface]) => ({
-    files: [files],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@pertexo/database',
-              message: `Production code in this runtime must use the @pertexo/database/${allowedSurface} capability surface.`,
-            },
-          ],
-          patterns: [
-            {
-              group: [
-                ...[
-                  'api',
-                  'execution',
-                  'lifecycle',
-                  'maintenance',
-                  'operator',
-                  'recovery',
-                ]
-                  .filter((surface) => surface !== allowedSurface)
-                  .map((surface) => `@pertexo/database/${surface}`),
-              ],
-              message: `Production code in this runtime must use the @pertexo/database/${allowedSurface} capability surface.`,
-            },
-          ],
-        },
-      ],
-    },
-  })),
+  ...[['apps/operator-command/src/**/*.ts', 'operator']].map(
+    ([files, allowedSurface]) => ({
+      files: [files],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: '@pertexo/database',
+                message: `Production code in this runtime must use the @pertexo/database/${allowedSurface} capability surface.`,
+              },
+            ],
+            patterns: [
+              {
+                group: [
+                  ...[
+                    'api',
+                    'execution',
+                    'lifecycle',
+                    'maintenance',
+                    'operator',
+                  ]
+                    .filter((surface) => surface !== allowedSurface)
+                    .map((surface) => `@pertexo/database/${surface}`),
+                ],
+                message: `Production code in this runtime must use the @pertexo/database/${allowedSurface} capability surface.`,
+              },
+            ],
+          },
+        ],
+      },
+    }),
+  ),
   {
     files: ['**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,

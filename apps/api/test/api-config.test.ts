@@ -36,12 +36,6 @@ function validDeployedEnvironment(): Record<string, string> {
     ARTIFACT_STORE_ENDPOINT: 'https://objects-primary.example.test',
     ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
     ARTIFACT_STORE_REGION: 'eu-central-1',
-    ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-key',
-    ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
-    ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-recovery',
-    ARTIFACT_STORE_RECOVERY_ENDPOINT: 'https://objects-recovery.example.test',
-    ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: 'true',
-    ARTIFACT_STORE_RECOVERY_REGION: 'eu-west-1',
   };
 }
 
@@ -252,7 +246,7 @@ describe('parseApiConfig', () => {
     });
   });
 
-  it('parses an optional complete dual-region artifact configuration locally', () => {
+  it('parses an optional complete artifact configuration locally', () => {
     const config = parseApiConfig({
       DATABASE_API_URL:
         'postgresql://pertexo_api:secret@localhost:5432/pertexo',
@@ -262,16 +256,9 @@ describe('parseApiConfig', () => {
       ARTIFACT_STORE_ENDPOINT: 'http://localhost:19090',
       ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
       ARTIFACT_STORE_REGION: 'primary',
-      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-key',
-      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
-      ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-recovery',
-      ARTIFACT_STORE_RECOVERY_ENDPOINT: 'http://localhost:19091',
-      ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: 'true',
-      ARTIFACT_STORE_RECOVERY_REGION: 'recovery',
       ARTIFACT_MAX_BYTES: '2048',
     });
-    expect(config.artifacts?.primary.maxObjectBytes).toBe(2048);
-    expect(config.artifacts?.recovery.maxObjectBytes).toBe(2048);
+    expect(config.artifacts?.maxObjectBytes).toBe(2048);
   });
 
   it('rejects partial artifact configuration without exposing credentials', () => {
@@ -333,12 +320,6 @@ describe('parseApiConfig', () => {
       ARTIFACT_STORE_ENDPOINT: 'https://objects-primary.example.test',
       ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
       ARTIFACT_STORE_REGION: 'eu-central-1',
-      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-key',
-      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
-      ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-recovery',
-      ARTIFACT_STORE_RECOVERY_ENDPOINT: 'https://objects-recovery.example.test',
-      ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: 'true',
-      ARTIFACT_STORE_RECOVERY_REGION: 'eu-west-1',
     });
 
     expect(config.identity).toMatchObject({
@@ -369,15 +350,9 @@ describe('parseApiConfig', () => {
     expect(config.webhooks).toEqual(config.connections);
     expect(Object.isFrozen(config.webhooks)).toBe(true);
     expect(config.artifacts).toMatchObject({
-      primary: {
-        bucket: 'pertexo-primary',
-        region: 'eu-central-1',
-        maxObjectBytes: 10 * 1024 * 1024,
-      },
-      recovery: {
-        bucket: 'pertexo-recovery',
-        region: 'eu-west-1',
-      },
+      bucket: 'pertexo-primary',
+      region: 'eu-central-1',
+      maxObjectBytes: 10 * 1024 * 1024,
     });
     expect(Object.isFrozen(config.artifacts)).toBe(true);
   });
@@ -776,11 +751,6 @@ describe('parseApiConfig identity boundary', () => {
       printLocalMailLinks: true,
     });
     expect(config.connections).toBeUndefined();
-    expect(config.artifacts?.recovery.region).not.toBe(
-      config.artifacts?.primary.region,
-    );
-    expect(config.artifacts?.recovery.endpoint).not.toBe(
-      config.artifacts?.primary.endpoint,
-    );
+    expect(config.artifacts?.bucket).toBeDefined();
   });
 });

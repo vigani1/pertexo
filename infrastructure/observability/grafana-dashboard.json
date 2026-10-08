@@ -273,7 +273,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "Lifecycle command outcomes and restore control-ledger reconciliation results.",
+      "description": "Workspace deletion and restore command outcomes.",
       "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 39 },
       "id": 14,
@@ -282,14 +282,9 @@
           "expr": "sum by (command_type, outcome) (increase(pertexo_lifecycle_command_process_count_total[15m]))",
           "legendFormat": "lifecycle {{command_type}} {{outcome}}",
           "refId": "A"
-        },
-        {
-          "expr": "sum by (outcome) (increase(pertexo_control_ledger_reconciliation_count_total[15m]))",
-          "legendFormat": "ledger {{outcome}}",
-          "refId": "B"
         }
       ],
-      "title": "Lifecycle And Ledger Safety",
+      "title": "Lifecycle Commands",
       "type": "timeseries"
     },
     {

@@ -166,6 +166,7 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
         '0134_workflow_organization.sql',
         '0135_workflow_folders_batch_identity.sql',
         '0136_remove_release_machinery.sql',
+        '0137_single_region_storage.sql',
       ]);
 
       await owner.query('begin');

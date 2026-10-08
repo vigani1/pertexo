@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
-  type ControlLedger,
   Pool,
   createRetentionDatabase,
   createRetentionEnforcementCoordinator,
@@ -13,7 +12,6 @@ import {
   retention,
   userId,
   workspaceId,
-  zeroHash,
 } from './support/retention.integration.support.js';
 
 describe('retention execution purge stages', () => {
@@ -258,23 +256,9 @@ describe('retention execution purge stages', () => {
       await owner.query('rollback').catch(() => undefined);
       throw error;
     }
-
-    const ledger = {
-      append: vi.fn(),
-      reconcile: vi.fn(() =>
-        Promise.resolve({
-          hasMore: false,
-          pageEndHash: zeroHash,
-          pageEndSequence: 0,
-          reachedHighWater: true,
-          records: [],
-        }),
-      ),
-    } satisfies ControlLedger;
     const maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
     const coordinator = createRetentionEnforcementCoordinator(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-      ledger,
       {
         leaseOwner: 'standard-retention-integration',
         leaseSeconds: 60,

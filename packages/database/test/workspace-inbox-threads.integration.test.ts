@@ -127,31 +127,6 @@ async function asMaintenance<Row extends Record<string, unknown>>(
   }
 }
 
-/** Projects the next retention control record through its owned command. */
-async function projectLegalHold(
-  workspaceId: string,
-  holdId: string,
-  type: 'legal_hold_placed' | 'legal_hold_released',
-) {
-  const [control] = await asAdmin<{ sequence: string; hash: string }>(
-    `select retention_control_sequence::text as sequence,
-            retention_control_hash as hash
-       from app.workspaces where id=$1`,
-    [workspaceId],
-  );
-  if (control === undefined) throw new Error('Expected a workspace');
-  const next = String(BigInt(control.sequence) + 1n);
-  const recordHash = next.padStart(64, 'c').slice(-64);
-  await asMaintenance(
-    workspaceId,
-    `select app.project_workspace_legal_hold(
-       $1,$2,$3,$4,$5,$6,$7,'operator:inbox-test','inbox-test',
-       'Preserve inbox evidence',clock_timestamp())`,
-    [workspaceId, next, randomUUID(), type, holdId, control.hash, recordHash],
-  );
-  return recordHash;
-}
-
 async function user(name: string): Promise<string> {
   return (
     await identity.createUser({
@@ -634,50 +609,32 @@ describe('workspace inbox threads (ADR 055)', () => {
     expect(read?.read_revision).toBe(revision);
   });
 
-  it('expires idle threads with their reads, except under a legal hold', async () => {
-    const held = await seed();
+  it('expires idle threads with their reads', async () => {
     const idle = await seed();
-    for (const fixtureWorkspace of [held, idle]) {
-      await fail(fixtureWorkspace.workspaceId, fixtureWorkspace.first);
-    }
+    await fail(idle.workspaceId, idle.first);
     await drain();
-    for (const fixtureWorkspace of [held, idle]) {
-      const owner = reader(
-        fixtureWorkspace.workspaceId,
-        fixtureWorkspace.members.owner,
-      );
-      const { revision } = await inbox.readSummary(owner);
-      await inbox.markThreadRead({
-        ...owner,
-        workflowId: fixtureWorkspace.first,
-        revision,
-      });
-    }
+    const owner = reader(idle.workspaceId, idle.members.owner);
+    const { revision } = await inbox.readSummary(owner);
+    await inbox.markThreadRead({
+      ...owner,
+      workflowId: idle.first,
+      revision,
+    });
     await asAdmin(
       `update app.workspace_inbox_threads
           set first_occurred_at=now()-interval '31 days',
               latest_occurred_at=now()-interval '31 days'
-        where workspace_id=any($1::uuid[])`,
-      [[held.workspaceId, idle.workspaceId]],
+        where workspace_id=$1`,
+      [idle.workspaceId],
     );
-    const holdId = randomUUID();
-    await projectLegalHold(held.workspaceId, holdId, 'legal_hold_placed');
-    const expireAll = async () => {
-      for (let round = 0; round < 10; round += 1)
-        if ((await fold.expireThreads(1_000)) === 0) return;
-    };
-    await expireAll();
+    for (let round = 0; round < 10; round += 1)
+      if ((await fold.expireThreads(1_000)) === 0) break;
     await expect(threads(idle.workspaceId)).resolves.toEqual([]);
     await expect(
       asAdmin('select 1 from app.workspace_inbox_reads where workspace_id=$1', [
         idle.workspaceId,
       ]),
     ).resolves.toEqual([]);
-    await expect(threads(held.workspaceId)).resolves.toHaveLength(1);
-
-    await projectLegalHold(held.workspaceId, holdId, 'legal_hold_released');
-    await expireAll();
-    await expect(threads(held.workspaceId)).resolves.toEqual([]);
   });
 
   it('is erased by the workspace purge before its parents', async () => {

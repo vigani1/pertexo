@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
-  type ControlLedger,
   Pool,
   apiUrl,
   createRetentionEnforcementCoordinator,
@@ -17,9 +16,7 @@ import {
 
 describe('retention inventory and input enforcement', () => {
   it('reports bounded resumable inventory without changing tenant data', async () => {
-    await retention.checkReadiness({
-      expectedMaintenanceRole: 'pertexo_maintenance',
-    });
+    await retention.checkReadiness();
     const batchId = randomUUID();
     await expect(
       retention.startDryRun({
@@ -141,7 +138,7 @@ describe('retention inventory and input enforcement', () => {
     }
   });
 
-  it('clears only due inputs through exact ledger high water and bounded pages', async () => {
+  it('clears only due inputs through the control high water and bounded pages', async () => {
     const batchId = randomUUID();
     await retention.startEnforcement({
       batchId,
@@ -151,21 +148,8 @@ describe('retention inventory and input enforcement', () => {
       requestedBy: 'integration-operator',
       workspaceId,
     });
-    const ledger = {
-      append: vi.fn(),
-      reconcile: vi.fn(() =>
-        Promise.resolve({
-          hasMore: false,
-          pageEndHash: zeroHash,
-          pageEndSequence: 0,
-          reachedHighWater: true,
-          records: [],
-        }),
-      ),
-    } satisfies ControlLedger;
     const coordinator = createRetentionEnforcementCoordinator(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-      ledger,
       {
         leaseOwner: 'retention-enforcement-integration',
         leaseSeconds: 60,
