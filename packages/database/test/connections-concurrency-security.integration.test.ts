@@ -404,12 +404,12 @@ describe('connection concurrency and security', () => {
       await expect(
         checkDatabaseReadiness(apiReadinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0136_remove_release_machinery.sql',
+        migrationHead: '0137_single_region_storage.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0136_remove_release_machinery.sql',
+        migrationHead: '0137_single_region_storage.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

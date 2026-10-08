@@ -4,10 +4,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase } from '../src/migrations.js';
-import {
-  createWorkspaceLifecycleCommandCoordinator,
-  type WorkspaceLifecycleLedgerRecord,
-} from '../src/lifecycle/workspace-lifecycle-commands.js';
+import { createWorkspaceLifecycleCommandCoordinator } from '../src/lifecycle/workspace-lifecycle-commands.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =
@@ -545,7 +542,6 @@ describe('workspace lifecycle command intents', () => {
     const leaseFunctions = [
       'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
       'select app.authorize_workspace_lifecycle_append($1,$2,$3)',
-      'select * from app.read_workspace_lifecycle_control_command($1,$2,$3)',
       `select app.project_and_complete_workspace_lifecycle_operation(
         $1,$2,$3,1,'${'0'.repeat(64)}','${'1'.repeat(64)}'
       )`,
@@ -608,11 +604,6 @@ describe('workspace lifecycle command intents', () => {
         'a'.repeat(64),
       ],
     );
-    const ledgerCalls: string[] = [];
-    let durableRecord: WorkspaceLifecycleLedgerRecord | undefined;
-    const reconcileStarted = Promise.withResolvers<undefined>();
-    const releaseReconcile = Promise.withResolvers<undefined>();
-    let blockFirstReconcile = true;
     const coordinator = createWorkspaceLifecycleCommandCoordinator(
       {
         connectionString: lifecycleUrl,
@@ -623,74 +614,18 @@ describe('workspace lifecycle command intents', () => {
         workerRuntimeRole: 'pertexo_worker',
       },
       {
-        append: (input) => {
-          ledgerCalls.push('append');
-          durableRecord = {
-            ...input,
-            recordHash: '9'.repeat(64),
-            schemaVersion: 1,
-          };
-          return Promise.reject(new Error('append response was lost'));
-        },
-        reconcile: async () => {
-          ledgerCalls.push('reconcile');
-          if (blockFirstReconcile) {
-            blockFirstReconcile = false;
-            reconcileStarted.resolve(undefined);
-            await releaseReconcile.promise;
-          }
-          return {
-            hasMore: false,
-            pageEndHash: durableRecord?.recordHash ?? '0'.repeat(64),
-            pageEndSequence: durableRecord?.sequence ?? 0,
-            reachedHighWater: true,
-            records:
-              durableRecord === undefined
-                ? ([] as WorkspaceLifecycleLedgerRecord[])
-                : [durableRecord],
-          };
-        },
-      },
-      {
-        externalOperationTimeoutMs: 5_000,
         leaseDurationMs: 60_000,
         leaseOwner: 'command:coordinator',
         statementTimeoutMs: 5_000,
       },
     );
-    await expect(
-      coordinator.checkReadiness({
-        expectedLifecycleCommandRole: 'pertexo_worker',
-      }),
-    ).rejects.toThrow('Lifecycle command database boundary is incompatible');
-    await expect(
-      coordinator.checkReadiness({
-        expectedLifecycleCommandRole: 'pertexo_lifecycle_command',
-      }),
-    ).resolves.toBeUndefined();
+    await expect(coordinator.checkReadiness()).resolves.toBeUndefined();
     try {
-      const firstAttempt = coordinator.processNext();
-      await reconcileStarted.promise;
-      const admin = new Pool({ connectionString: adminUrl, max: 1 });
-      try {
-        const activity = await admin.query<{ count: string }>(
-          `select count(*)::text count from pg_stat_activity
-           where datname=$1 and usename='pertexo_lifecycle_command'
-             and xact_start is not null`,
-          [databaseName],
-        );
-        expect(activity.rows[0]?.count).toBe('0');
-      } finally {
-        await admin.end();
-        releaseReconcile.resolve(undefined);
-      }
-      await expect(firstAttempt).rejects.toThrow('append response was lost');
       await expect(coordinator.processNext()).resolves.toEqual({
         commandType: 'deletion_requested',
         operationId,
         status: 'completed',
       });
-      expect(ledgerCalls).toEqual(['reconcile', 'append', 'reconcile']);
     } finally {
       await coordinator.close();
     }

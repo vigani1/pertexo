@@ -3,9 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   ArtifactIntegrityError,
   createArtifactStore,
-  createDualRegionArtifactStore,
   parseArtifactStoreConfig,
-  parseDualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
   artifactStorageKey,
@@ -524,7 +522,7 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
 describeIntegration('Phase 4 worker artifact output capability', () => {
   it('streams a bounded node response through worker metadata and object-store adapters', async () => {
     const databaseEnvironment = createArtifactDatabaseEnvironment();
-    const artifactConfig = parseDualRegionArtifactStoreConfig(process.env);
+    const artifactConfig = parseArtifactStoreConfig(process.env);
     const workspaceId = randomUUID();
     const context = {
       workspaceId,
@@ -541,7 +539,7 @@ describeIntegration('Phase 4 worker artifact output capability', () => {
     let runtime:
       | Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>>
       | undefined;
-    let verifier: ReturnType<typeof createDualRegionArtifactStore> | undefined;
+    let verifier: ReturnType<typeof createArtifactStore> | undefined;
     let database: ReturnType<typeof createWorkspaceDatabase> | undefined;
     let reference: NodeArtifactReference | undefined;
     await runWithCleanup(
@@ -551,10 +549,7 @@ describeIntegration('Phase 4 worker artifact output capability', () => {
           database: databaseEnvironment.workerConfig,
           artifactStore: artifactConfig,
         });
-        verifier = createDualRegionArtifactStore(
-          artifactConfig.primary,
-          artifactConfig.recovery,
-        );
+        verifier = createArtifactStore(artifactConfig);
         database = createWorkspaceDatabase(databaseEnvironment.apiConfig);
         const artifacts = runtime.factories.artifacts?.(context);
         if (artifacts === undefined)

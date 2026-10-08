@@ -487,7 +487,7 @@ describe('bounded version-contextual run-input cases', () => {
       }),
     ).rejects.toMatchObject({ kind: 'workspace_count' });
   }, 20_000);
-  it('preserves deleted and replaced payload charges under legal hold, then reaps terminal receipts for finite key reuse', async () => {
+  it('reaps terminal receipts and expired rejections for finite key reuse', async () => {
     const scope = await fixture();
     const key = randomUUID();
     const command = {
@@ -497,7 +497,6 @@ describe('bounded version-contextual run-input cases', () => {
       idempotencyKey: key,
     };
     const created = await database.createCase(command);
-    const holdId = randomUUID();
     await executeAsOwner(
       `insert into app.workflow_manual_start_rejections(workspace_id,workflow_id,scope,key_hash,request_hash,expected_version_id,observed_version_id,created_at,expires_at) values($1,$2,$3,$4,$5,$6,$7,clock_timestamp()-interval '2 days',clock_timestamp()-interval '1 day')`,
       [
@@ -510,10 +509,6 @@ describe('bounded version-contextual run-input cases', () => {
         scope.workflowVersionId,
       ],
     );
-    await executeAsOwner(
-      `select app.project_workspace_legal_hold($1,1,$2,'legal_hold_placed',$3,$4,$5,'test-operator','test-authority','preserve owned fixture',clock_timestamp())`,
-      [workspaceId, randomUUID(), holdId, '0'.repeat(64), 'a'.repeat(64)],
-    );
     await database.deleteCase({
       ...scope,
       caseId: created.caseId,
@@ -523,23 +518,6 @@ describe('bounded version-contextual run-input cases', () => {
     await executeAsOwner(
       "update app.workflow_input_case_receipts set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day' where workspace_id=$1",
       [workspaceId],
-    );
-    expect((await reap())[0]).toEqual({
-      payloads_deleted: 0,
-      receipts_deleted: 0,
-      cases_deleted: 0,
-    });
-    expect(
-      (
-        await queryAsOwner<{ count: number }>(
-          'select app.prune_manual_start_rejections(100) count',
-        )
-      )[0]?.count,
-    ).toBe(0);
-    expect((await database.createCase(command)).caseId).toBe(created.caseId);
-    await executeAsOwner(
-      `select app.project_workspace_legal_hold($1,2,$2,'legal_hold_released',$3,$4,$5,'test-operator','test-authority','release owned fixture',clock_timestamp())`,
-      [workspaceId, randomUUID(), holdId, 'a'.repeat(64), 'b'.repeat(64)],
     );
     expect(
       (

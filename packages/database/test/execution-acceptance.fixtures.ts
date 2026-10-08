@@ -236,12 +236,6 @@ async function resetExecutionFixture(): Promise<void> {
        on conflict (id) do update set status = 'active'`,
       [workspaceCreatorId, `execution-${workspaceCreatorId}@example.test`],
     );
-    await client.query(`
-      update app.regional_write_admission
-         set enforced=false,status='open',replay_lag_millis=null,
-             observed_at=null,updated_at=now()
-       where singleton
-    `);
     await client.query(
       `insert into app.workspaces (id, name, slug, status, created_by)
        values

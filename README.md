@@ -42,10 +42,8 @@ credentials, or large payloads.
 apps/
   web/                 React/Vite product application
   api/                 NestJS control-plane API
-  worker/              coordination, node attempts, previews, and triggers
-  retention/           retention and purge processing
-  lifecycle-command/   workspace lifecycle command dispatch
-  recovery/            recovery checks before serving
+  worker/              coordination, node attempts, previews, triggers,
+                       retention, and workspace deletion
   operator-command/    audited operator command execution
 
 packages/
@@ -57,7 +55,7 @@ packages/
   node-catalog/      registry of every node definition and executor
   integrations/     provider and credential boundaries
   queue/             BullMQ transport and Redis event hints
-  artifact-store/    bounded dual-region object storage
+  artifact-store/    bounded object storage
   rate-limit/        distributed abuse-limit policy and atomic counters
   contracts/         public API schemas and generated artifacts
   observability/     logging, tracing, and metrics
@@ -86,9 +84,7 @@ Prerequisites: Node.js 24, pnpm 11, Docker, and Docker Compose.
 ```bash
 pnpm install
 cp .env.example .env
-docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery
-docker compose run --rm control-ledger-primary-bootstrap
-docker compose run --rm control-ledger-recovery-bootstrap
+docker compose up -d --wait postgres redis artifact-store
 set -a; . ./.env; set +a
 pnpm build
 pnpm db:migrate
@@ -98,9 +94,9 @@ The example environment is for local development only. Review `.env` before
 starting processes; do not commit credentials or production configuration.
 Compose reads `.env` itself, but the pnpm commands read only the shell
 environment, so load `.env` (`set -a; . ./.env; set +a`) in every terminal that
-runs one. Refresh a `.env` copied from an older `.env.example`: the artifact
-recovery store now runs on its own port (`ARTIFACT_STORE_RECOVERY_*`), and the
-worker needs `OUTBOX_DISPATCH_JOB_NAMES` to dispatch runs.
+runs one. Refresh a `.env` copied from an older `.env.example`: the worker needs
+`OUTBOX_DISPATCH_JOB_NAMES` to dispatch runs, and runs retention when the
+maintenance and lifecycle-command database URLs are set.
 
 To use the app in a browser, start each process in its own terminal:
 

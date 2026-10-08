@@ -1022,7 +1022,7 @@ describe('same-workspace workflow duplication through the runtime database role'
     expect(await commandFacts()).toEqual(before);
   });
 
-  it('preserves expired source-scoped duplication receipts under legal hold, then erases them through bounded workspace purge', async () => {
+  it('reaps expired source-scoped duplication receipts, then erases them through bounded workspace purge', async () => {
     const workspace = await identity.createWorkspaceWithOwner({
       id: randomUUID(),
       name: 'Duplication hold/purge',
@@ -1053,35 +1053,9 @@ describe('same-workspace workflow duplication through the runtime database role'
       idempotencyKey: randomUUID(),
     };
     const copied = await authoring.duplicateWorkflow(input);
-    const hold = randomUUID();
-    await queryAsOwner(
-      "select app.project_workspace_legal_hold($1,1,$2,'legal_hold_placed',$3,$4,$5,'owned-duplicate','case-duplicate','Preserve duplicate receipt',clock_timestamp())",
-      [scopedWorkspace, randomUUID(), hold, '0'.repeat(64), 'b'.repeat(64)],
-      scopedWorkspace,
-    );
     await queryAsOwner(
       "update app.idempotency_records set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and operation='workflow.duplicate'",
       [scopedWorkspace],
-      scopedWorkspace,
-    );
-    await queryAsOwner('select * from app.reap_transient_data(1000)');
-    const retained = await queryAsOwner(
-      `select scope,resource_id::text,result_ref from app.idempotency_records
-      where workspace_id=$1 and operation='workflow.duplicate'`,
-      [scopedWorkspace],
-      scopedWorkspace,
-    );
-    expect(retained).toEqual([
-      {
-        scope: `${actorId}:${original.workflowId}`,
-        resource_id: copied.workflowId,
-        result_ref: copied,
-      },
-    ]);
-    expect(await authoring.duplicateWorkflow(input)).toEqual(copied);
-    await queryAsOwner(
-      "select app.project_workspace_legal_hold($1,2,$2,'legal_hold_released',$3,$4,$5,'owned-duplicate','case-duplicate','Release duplicate receipt',clock_timestamp())",
-      [scopedWorkspace, randomUUID(), hold, 'b'.repeat(64), 'c'.repeat(64)],
       scopedWorkspace,
     );
     await queryAsOwner('select * from app.reap_transient_data(1000)');
@@ -1095,8 +1069,8 @@ describe('same-workspace workflow duplication through the runtime database role'
     const fresh = await authoring.duplicateWorkflow(input);
     expect(fresh.workflowId).not.toBe(copied.workflowId);
     await queryAsOwner(
-      "select app.project_workspace_deletion($1,3,$2,'deletion_requested',$1,$3,$4,$5,null,'Duplicate receipt purge',clock_timestamp()-interval '31 days')",
-      [scopedWorkspace, randomUUID(), 'c'.repeat(64), 'd'.repeat(64), actorId],
+      "select app.project_workspace_deletion($1,1,$2,'deletion_requested',$1,$3,$4,$5,null,'Duplicate receipt purge',clock_timestamp()-interval '31 days')",
+      [scopedWorkspace, randomUUID(), '0'.repeat(64), 'd'.repeat(64), actorId],
       scopedWorkspace,
     );
     const jobs = await queryAsOwner<{
@@ -1104,14 +1078,14 @@ describe('same-workspace workflow duplication through the runtime database role'
       lease_token: string;
       lease_fence: string;
     }>(
-      "select * from app.prepare_workspace_purge_job($1,3,$2,'owned-duplicate',interval '1 minute')",
+      "select * from app.prepare_workspace_purge_job($1,1,$2,'owned-duplicate',interval '1 minute')",
       [scopedWorkspace, 'd'.repeat(64)],
       scopedWorkspace,
     );
     const job = jobs[0];
     if (!job) throw new Error('Expected duplication purge job');
     await queryAsOwner(
-      'select app.project_workspace_purge_started($1,$2,$3,4,$4,$5)',
+      'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
       [
         job.job_id,
         job.lease_token,
@@ -1126,7 +1100,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       lease_fence: string;
       step_name: string;
     }>(
-      "select * from app.claim_workspace_purge_step($1,4,$2,'owned-duplicate',interval '1 minute')",
+      "select * from app.claim_workspace_purge_step($1,2,$2,'owned-duplicate',interval '1 minute')",
       [job.job_id, 'e'.repeat(64)],
       scopedWorkspace,
     );
@@ -1134,7 +1108,7 @@ describe('same-workspace workflow duplication through the runtime database role'
     if (!object) throw new Error('Expected duplication object purge lease');
     expect(object.step_name).toBe('object_versions');
     await queryAsOwner(
-      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,4,$4)',
+      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,2,$4)',
       [job.job_id, object.lease_token, object.lease_fence, 'e'.repeat(64)],
       scopedWorkspace,
     );
@@ -1145,7 +1119,7 @@ describe('same-workspace workflow duplication through the runtime database role'
         lease_fence: string;
         step_name: string;
       }>(
-        "select * from app.claim_workspace_purge_step($1,4,$2,'owned-duplicate',interval '1 minute')",
+        "select * from app.claim_workspace_purge_step($1,2,$2,'owned-duplicate',interval '1 minute')",
         [job.job_id, 'e'.repeat(64)],
         scopedWorkspace,
       );
@@ -1154,7 +1128,7 @@ describe('same-workspace workflow duplication through the runtime database role'
         throw new Error('Expected bounded duplication tenant purge lease');
       expect(claim.step_name).toBe('tenant_rows');
       const results = await queryAsOwner<{ completed: boolean }>(
-        'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,500,4,$4)',
+        'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,500,2,$4)',
         [job.job_id, claim.lease_token, claim.lease_fence, 'e'.repeat(64)],
         scopedWorkspace,
       );

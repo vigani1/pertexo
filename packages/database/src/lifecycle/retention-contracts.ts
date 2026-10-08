@@ -80,17 +80,8 @@ export interface RetentionScheduleResult {
   readonly scheduledCount: number;
 }
 
-export type RegionalReplicaLagObservation = Readonly<{
-  replayLagMillis: number | null;
-  replicationState: string;
-  status: 'open' | 'paused' | 'unavailable';
-}>;
-
 export interface RetentionDatabase {
-  checkReadiness(input: {
-    readonly expectedMaintenanceRole: string;
-    readonly signal?: AbortSignal;
-  }): Promise<void>;
+  checkReadiness(signal?: AbortSignal): Promise<void>;
   claimDryRuns(signal?: AbortSignal): Promise<readonly RetentionDryRunClaim[]>;
   close(): Promise<void>;
   executeDryRunPage(
@@ -101,10 +92,6 @@ export interface RetentionDatabase {
   processOperatorRerun(
     signal?: AbortSignal,
   ): Promise<OperatorMaintenanceRerunResult | null>;
-  recordRegionalReplicaLag(
-    applicationName: string,
-    signal?: AbortSignal,
-  ): Promise<RegionalReplicaLagObservation>;
   reapTransientData(signal?: AbortSignal): Promise<TransientDataReapResult>;
   scheduleEnforcement(signal?: AbortSignal): Promise<RetentionScheduleResult>;
   startDryRun(

@@ -68,38 +68,21 @@ export function parseDatabaseConfig(
   return Object.freeze(databaseConfigSchema.parse(input));
 }
 
-const migrationEnvironmentSchema = z
-  .object({
-    DATABASE_MIGRATION_URL: postgresUrl(
-      'DATABASE_MIGRATION_URL must be a postgresql:// URL',
-    ),
-    NODE_ENV: z
-      .enum(['development', 'test', 'staging', 'production'])
-      .default('development'),
-    POSTGRES_OWNER_USER: postgresRole('pertexo_owner'),
-    POSTGRES_API_RUNTIME_USER: postgresRole('pertexo_api'),
-    POSTGRES_DISPATCHER_RUNTIME_USER: postgresRole('pertexo_dispatcher'),
-    POSTGRES_MAINTENANCE_USER: postgresRole('pertexo_maintenance'),
-    POSTGRES_LIFECYCLE_COMMAND_USER: postgresRole('pertexo_lifecycle_command'),
-    POSTGRES_OPERATOR_USER: postgresRole('pertexo_operator'),
-    POSTGRES_WORKER_RUNTIME_USER: postgresRole('pertexo_worker'),
-    REGIONAL_WRITE_ADMISSION_ENFORCED: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true')
-      .default(false),
-  })
-  .superRefine((value, context) => {
-    if (
-      value.NODE_ENV === 'production' &&
-      !value.REGIONAL_WRITE_ADMISSION_ENFORCED
-    )
-      context.addIssue({
-        code: 'custom',
-        message:
-          'Production migrations require regional write admission enforcement',
-        path: ['REGIONAL_WRITE_ADMISSION_ENFORCED'],
-      });
-  });
+const migrationEnvironmentSchema = z.object({
+  DATABASE_MIGRATION_URL: postgresUrl(
+    'DATABASE_MIGRATION_URL must be a postgresql:// URL',
+  ),
+  NODE_ENV: z
+    .enum(['development', 'test', 'staging', 'production'])
+    .default('development'),
+  POSTGRES_OWNER_USER: postgresRole('pertexo_owner'),
+  POSTGRES_API_RUNTIME_USER: postgresRole('pertexo_api'),
+  POSTGRES_DISPATCHER_RUNTIME_USER: postgresRole('pertexo_dispatcher'),
+  POSTGRES_MAINTENANCE_USER: postgresRole('pertexo_maintenance'),
+  POSTGRES_LIFECYCLE_COMMAND_USER: postgresRole('pertexo_lifecycle_command'),
+  POSTGRES_OPERATOR_USER: postgresRole('pertexo_operator'),
+  POSTGRES_WORKER_RUNTIME_USER: postgresRole('pertexo_worker'),
+});
 
 export type MigrationConfig = Readonly<{
   apiRuntimeRole: string;
@@ -109,7 +92,6 @@ export type MigrationConfig = Readonly<{
   lifecycleCommandRole: string;
   operatorRole: string;
   ownerRole: string;
-  regionalWriteAdmissionEnforced?: boolean;
   workerRuntimeRole: string;
 }>;
 
@@ -125,7 +107,6 @@ export function parseMigrationConfig(
     lifecycleCommandRole: parsed.POSTGRES_LIFECYCLE_COMMAND_USER,
     operatorRole: parsed.POSTGRES_OPERATOR_USER,
     ownerRole: parsed.POSTGRES_OWNER_USER,
-    regionalWriteAdmissionEnforced: parsed.REGIONAL_WRITE_ADMISSION_ENFORCED,
     workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
 }

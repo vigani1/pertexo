@@ -98,7 +98,7 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
   if (error instanceof WorkflowInputCaseLimitError)
     return applicationError('workflow.input_case_limit_exceeded', {
       safeDetail:
-        'The run-input case count or retained storage limit has been reached. Deleted payloads under legal hold still count toward storage.',
+        'The run-input case count or retained storage limit has been reached.',
     });
   if (error instanceof WorkflowInputCaseUnavailableError)
     return applicationError('workflow.input_cases_unavailable', {

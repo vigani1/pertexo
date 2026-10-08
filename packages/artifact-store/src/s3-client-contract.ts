@@ -3,24 +3,14 @@ import type {
   DeleteObjectCommandOutput,
   DeleteObjectsCommand,
   DeleteObjectsCommandOutput,
-  GetBucketLifecycleConfigurationCommand,
-  GetBucketLifecycleConfigurationCommandOutput,
   GetBucketLocationCommand,
   GetBucketLocationCommandOutput,
-  GetBucketPolicyCommand,
-  GetBucketPolicyCommandOutput,
-  GetBucketVersioningCommand,
-  GetBucketVersioningCommandOutput,
   GetObjectCommand,
   GetObjectCommandOutput,
-  GetObjectLockConfigurationCommand,
-  GetObjectLockConfigurationCommandOutput,
   HeadBucketCommand,
   HeadBucketCommandOutput,
   HeadObjectCommand,
   HeadObjectCommandOutput,
-  ListObjectsV2Command,
-  ListObjectsV2CommandOutput,
   ListObjectVersionsCommand,
   ListObjectVersionsCommandOutput,
   PutObjectCommand,
@@ -30,15 +20,10 @@ import type {
 export type ObjectStoreS3Command =
   | DeleteObjectCommand
   | DeleteObjectsCommand
-  | GetBucketLifecycleConfigurationCommand
   | GetBucketLocationCommand
-  | GetBucketPolicyCommand
-  | GetBucketVersioningCommand
   | GetObjectCommand
-  | GetObjectLockConfigurationCommand
   | HeadBucketCommand
   | HeadObjectCommand
-  | ListObjectsV2Command
   | ListObjectVersionsCommand
   | PutObjectCommand;
 
@@ -63,34 +48,14 @@ export function sendS3(
 ): Promise<DeleteObjectsCommandOutput>;
 export function sendS3(
   client: ObjectStoreS3Client,
-  command: GetBucketLifecycleConfigurationCommand,
-  options?: SendOptions,
-): Promise<GetBucketLifecycleConfigurationCommandOutput>;
-export function sendS3(
-  client: ObjectStoreS3Client,
   command: GetBucketLocationCommand,
   options?: SendOptions,
 ): Promise<GetBucketLocationCommandOutput>;
 export function sendS3(
   client: ObjectStoreS3Client,
-  command: GetBucketPolicyCommand,
-  options?: SendOptions,
-): Promise<GetBucketPolicyCommandOutput>;
-export function sendS3(
-  client: ObjectStoreS3Client,
-  command: GetBucketVersioningCommand,
-  options?: SendOptions,
-): Promise<GetBucketVersioningCommandOutput>;
-export function sendS3(
-  client: ObjectStoreS3Client,
   command: GetObjectCommand,
   options?: SendOptions,
 ): Promise<GetObjectCommandOutput>;
-export function sendS3(
-  client: ObjectStoreS3Client,
-  command: GetObjectLockConfigurationCommand,
-  options?: SendOptions,
-): Promise<GetObjectLockConfigurationCommandOutput>;
 export function sendS3(
   client: ObjectStoreS3Client,
   command: HeadBucketCommand,
@@ -101,11 +66,6 @@ export function sendS3(
   command: HeadObjectCommand,
   options?: SendOptions,
 ): Promise<HeadObjectCommandOutput>;
-export function sendS3(
-  client: ObjectStoreS3Client,
-  command: ListObjectsV2Command,
-  options?: SendOptions,
-): Promise<ListObjectsV2CommandOutput>;
 export function sendS3(
   client: ObjectStoreS3Client,
   command: ListObjectVersionsCommand,

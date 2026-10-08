@@ -4,7 +4,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createRetentionEnforcementCoordinator } from '../src/lifecycle/retention.js';
-import type { ControlLedger } from '../src/lifecycle/control-ledger-coordinator.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import {
   actorId,
@@ -86,19 +85,6 @@ afterAll(async () => {
     );
 });
 
-const appliedLedger: ControlLedger = {
-  append: () =>
-    Promise.reject(new Error('Retention must not invent ledger commands')),
-  reconcile: (input) =>
-    Promise.resolve({
-      hasMore: false,
-      reachedHighWater: true,
-      pageEndHash: input.projectedHash,
-      pageEndSequence: input.projectedSequence,
-      records: [],
-    }),
-};
-
 async function completedEvidence() {
   const connection = await createHealthConnection();
   const lease = await claimHealthAttempt(connection);
@@ -148,6 +134,7 @@ describe('connection health migration and runtime boundary', () => {
       '0134_workflow_organization.sql',
       '0135_workflow_folders_batch_identity.sql',
       '0136_remove_release_machinery.sql',
+      '0137_single_region_storage.sql',
     ]);
     const retained = await upgrade.asOwner((client) =>
       client.query(
@@ -317,7 +304,7 @@ describe('connection health migration and runtime boundary', () => {
 });
 
 describe('connection health retention and tenant purge', () => {
-  it('preserves evidence under legal hold, cascades it with source-attempt retention, removes its command and receipts late delivery as a no-op', async () => {
+  it('cascades evidence with source-attempt retention, removes its command and receipts late delivery as a no-op', async () => {
     const evidence = await completedEvidence();
     const before = await readHealth(evidence.connection.connectionId);
     await asOwner(workspaceA, async (client) => {
@@ -337,7 +324,6 @@ describe('connection health retention and tenant purge', () => {
         connectionString: databaseUrl(maintenanceBase),
         max: 2,
       }),
-      appliedLedger,
       {
         leaseOwner: 'health-boundary-retention',
         leaseSeconds: 60,
@@ -345,33 +331,20 @@ describe('connection health retention and tenant purge', () => {
         pageSize: 1,
       },
     );
-    const holdId = randomUUID();
     try {
-      await maintenance.query(
-        "select app.project_workspace_legal_hold($1,1,$2,'legal_hold_placed',$3,$4,$5,'owned-boundary','case-health','Preserve source evidence',clock_timestamp())",
-        [workspaceA, randomUUID(), holdId, '0'.repeat(64), 'b'.repeat(64)],
-      );
-      const heldBatch = randomUUID();
+      const retentionBatch = randomUUID();
       await maintenance.query(
         "select app.start_retention_batch($1,$2,$3,'execution_detail','2026-08-01',false,'owned-boundary','Health evidence retention')",
-        [heldBatch, workspaceA, `held-${heldBatch}`],
+        [retentionBatch, workspaceA, `batch-${retentionBatch}`],
       );
-      await expect(coordinator.processNext()).resolves.toMatchObject({
-        batchId: heldBatch,
-        status: 'paused',
-      });
       expect(
         await evidenceCounts(
           evidence.lease.attemptId,
           evidence.command.delivery.outboxEventId,
         ),
       ).toEqual({ dispatches: 1, observations: 1, commands: 1 });
-      await maintenance.query(
-        "select app.project_workspace_legal_hold($1,2,$2,'legal_hold_released',$3,$4,$5,'owned-boundary','case-health','Release source evidence',clock_timestamp())",
-        [workspaceA, randomUUID(), holdId, 'b'.repeat(64), 'c'.repeat(64)],
-      );
       await expect(coordinator.processNext()).resolves.toMatchObject({
-        batchId: heldBatch,
+        batchId: retentionBatch,
         status: 'completed',
       });
       for (const forgedToken of [null, randomUUID()]) {
@@ -388,7 +361,7 @@ describe('connection health retention and tenant purge', () => {
             }
             return client.query(
               'delete from app.retention_batches where workspace_id=$1 and id=$2',
-              [workspaceA, heldBatch],
+              [workspaceA, retentionBatch],
             );
           }),
         ).rejects.toMatchObject({ code: '55000' });

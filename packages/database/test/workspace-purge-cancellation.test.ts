@@ -21,10 +21,6 @@ const options = {
 } as const;
 
 const emptyResult = { rows: [] } as unknown as QueryResult<never>;
-const ledger = {
-  append: vi.fn(),
-  reconcile: vi.fn(),
-};
 const objectStore = { purgeWorkspacePage: vi.fn() };
 
 describe('workspace purge cancellation', () => {
@@ -35,12 +31,10 @@ describe('workspace purge cancellation', () => {
       options: { max: 2 },
       query: vi.fn(),
     };
-    const coordinator = createWorkspacePurgeCoordinator(
-      config,
-      ledger,
-      objectStore,
-      { ...options, pool },
-    );
+    const coordinator = createWorkspacePurgeCoordinator(config, objectStore, {
+      ...options,
+      pool,
+    });
     const controller = new AbortController();
     const reason = new Error('already stopped');
     controller.abort(reason);
@@ -79,12 +73,10 @@ describe('workspace purge cancellation', () => {
           : Promise.resolve(emptyResult),
       ),
     };
-    const coordinator = createWorkspacePurgeCoordinator(
-      config,
-      ledger,
-      objectStore,
-      { ...options, pool },
-    );
+    const coordinator = createWorkspacePurgeCoordinator(config, objectStore, {
+      ...options,
+      pool,
+    });
     const controller = new AbortController();
     const reason = new Error('stop purge discovery');
     const processing = coordinator.processNext(controller.signal);
@@ -125,12 +117,10 @@ describe('workspace purge cancellation', () => {
         ],
       }),
     };
-    const coordinator = createWorkspacePurgeCoordinator(
-      config,
-      ledger,
-      objectStore,
-      { ...options, pool },
-    );
+    const coordinator = createWorkspacePurgeCoordinator(config, objectStore, {
+      ...options,
+      pool,
+    });
     const controller = new AbortController();
     const reason = new Error('stop pool wait');
     const processing = coordinator.processNext(controller.signal);

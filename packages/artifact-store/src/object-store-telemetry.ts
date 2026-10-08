@@ -7,20 +7,13 @@ export const OBJECT_STORE_METRIC_NAME = Object.freeze({
   safetyViolationCount: 'pertexo.object_store.safety.violation.count',
 });
 
-export type ObjectStoreSurface = 'artifact' | 'control_ledger';
-export type ObjectStoreRegionRole = 'artifact' | 'primary' | 'recovery';
 export type ObjectStoreOperation =
   | 'delete_object'
   | 'delete_objects'
-  | 'get_bucket_lifecycle_configuration'
   | 'get_bucket_location'
-  | 'get_bucket_policy'
-  | 'get_bucket_versioning'
   | 'get_object'
-  | 'get_object_lock_configuration'
   | 'head_bucket'
   | 'head_object'
-  | 'list_objects_v2'
   | 'list_object_versions'
   | 'presign_get_object'
   | 'presign_put_object'
@@ -35,39 +28,17 @@ export type ObjectStoreErrorClass =
   | 'precondition_failed'
   | 'service_error'
   | 'unknown';
-export type ObjectStoreSafetyCheck =
-  | 'artifact_integrity'
-  | 'artifact_replication'
-  | 'artifact_read_consistency'
-  | 'artifact_purge_consistency'
-  | 'control_ledger_integrity'
-  | 'control_ledger_readiness'
-  | 'region_isolation';
+export type ObjectStoreSafetyCheck = 'artifact_integrity';
 
 export interface ObjectStoreRequestObservation {
   readonly durationSeconds: number;
   readonly errorClass: ObjectStoreErrorClass;
   readonly operation: ObjectStoreOperation;
   readonly outcome: ObjectStoreRequestOutcome;
-  readonly regionRole: ObjectStoreRegionRole;
-  readonly surface: ObjectStoreSurface;
 }
 
 export interface ObjectStoreSafetyObservation {
   readonly check: ObjectStoreSafetyCheck;
-  readonly failedRegionRole?: 'primary' | 'recovery' | 'both' | 'none';
-  readonly operation?:
-    | 'append'
-    | 'read'
-    | 'readiness'
-    | 'reconcile'
-    | 'delete'
-    | 'purge'
-    | 'replicate'
-    | 'verify';
-  readonly outcome?: 'diverged' | 'partial' | 'unavailable';
-  readonly regionRole: ObjectStoreRegionRole;
-  readonly surface: ObjectStoreSurface;
 }
 
 export interface ObjectStoreObserver {
@@ -104,21 +75,12 @@ export function createOpenTelemetryObjectStoreObserver(
         error_class: observation.errorClass,
         operation: observation.operation,
         outcome: observation.outcome,
-        region_role: observation.regionRole,
-        surface: observation.surface,
       };
       requestCount.add(1, attributes);
       requestDuration.record(observation.durationSeconds, attributes);
     },
     observeSafetyViolation(observation: ObjectStoreSafetyObservation): void {
-      safetyViolationCount.add(1, {
-        check: observation.check,
-        failed_region_role: observation.failedRegionRole ?? 'none',
-        operation: observation.operation ?? 'unknown',
-        outcome: observation.outcome ?? 'unknown',
-        region_role: observation.regionRole,
-        surface: observation.surface,
-      });
+      safetyViolationCount.add(1, { check: observation.check });
     },
   });
 }
@@ -158,16 +120,10 @@ const OPERATIONS: Readonly<Record<string, ObjectStoreOperation>> =
   Object.freeze({
     DeleteObjectCommand: 'delete_object',
     DeleteObjectsCommand: 'delete_objects',
-    GetBucketLifecycleConfigurationCommand:
-      'get_bucket_lifecycle_configuration',
     GetBucketLocationCommand: 'get_bucket_location',
-    GetBucketPolicyCommand: 'get_bucket_policy',
-    GetBucketVersioningCommand: 'get_bucket_versioning',
     GetObjectCommand: 'get_object',
-    GetObjectLockConfigurationCommand: 'get_object_lock_configuration',
     HeadBucketCommand: 'head_bucket',
     HeadObjectCommand: 'head_object',
-    ListObjectsV2Command: 'list_objects_v2',
     ListObjectVersionsCommand: 'list_object_versions',
     PutObjectCommand: 'put_object',
   });
@@ -223,8 +179,6 @@ export class ObservedS3Client {
   public constructor(
     private readonly client: ObjectStoreS3Client,
     private readonly observer: ObjectStoreObserver | undefined,
-    private readonly surface: ObjectStoreSurface,
-    private readonly regionRole: ObjectStoreRegionRole,
   ) {}
 
   public destroy(): void {
@@ -244,8 +198,6 @@ export class ObservedS3Client {
         errorClass: 'none',
         operation,
         outcome: 'success',
-        regionRole: this.regionRole,
-        surface: this.surface,
       });
       return result;
     } catch (error: unknown) {
@@ -254,8 +206,6 @@ export class ObservedS3Client {
         errorClass: errorClass(error, options?.abortSignal),
         operation,
         outcome: 'error',
-        regionRole: this.regionRole,
-        surface: this.surface,
       });
       throw error;
     }
@@ -264,7 +214,6 @@ export class ObservedS3Client {
 
 export async function observePresign<T>(
   observer: ObjectStoreObserver | undefined,
-  regionRole: ObjectStoreRegionRole,
   presign: () => Promise<T>,
   operation: 'presign_get_object' | 'presign_put_object' = 'presign_put_object',
 ): Promise<T> {
@@ -276,8 +225,6 @@ export async function observePresign<T>(
       errorClass: 'none',
       operation,
       outcome: 'success',
-      regionRole,
-      surface: 'artifact',
     });
     return result;
   } catch (error: unknown) {
@@ -286,8 +233,6 @@ export async function observePresign<T>(
       errorClass: errorClass(error),
       operation,
       outcome: 'error',
-      regionRole,
-      surface: 'artifact',
     });
     throw error;
   }

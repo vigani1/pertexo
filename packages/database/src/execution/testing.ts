@@ -76,7 +76,6 @@ export {
   IDEMPOTENCY_STATUS_VALUES,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-  RegionalWriteAdmissionPausedError,
   RUN_STATUS,
   RUN_STATUS_VALUES,
   WorkspaceRunAdmissionDeniedError,

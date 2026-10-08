@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
+import { workspaceControlRecordHash } from './control-record.js';
 import { retentionQuery as query } from './retention-support.js';
 import {
   inRetentionTransaction,
@@ -18,49 +19,6 @@ import {
 } from './workspace-purge-claim-release.js';
 
 const uuidSchema = z.uuid();
-
-export interface WorkspacePurgeLedgerRecord {
-  readonly actorRef: string;
-  readonly commandId: string;
-  readonly commandType: string;
-  readonly occurredAt: string;
-  readonly previousHash: string;
-  readonly reason: string;
-  readonly recordHash: string;
-  readonly schemaVersion: number;
-  readonly sequence: number;
-  readonly subjectId: string;
-  readonly workspaceId: string;
-}
-
-export interface WorkspacePurgeLedger {
-  append(input: {
-    readonly actorRef: string;
-    readonly commandId: string;
-    readonly commandType: 'deletion_completed' | 'purge_started';
-    readonly occurredAt: string;
-    readonly previousHash: string;
-    readonly reason: string;
-    readonly sequence: number;
-    readonly signal?: AbortSignal;
-    readonly subjectId: string;
-    readonly workspaceId: string;
-  }): Promise<WorkspacePurgeLedgerRecord>;
-  reconcile(input: {
-    readonly maxRecords: number;
-    readonly projectedHash: string;
-    readonly projectedSequence: number;
-    readonly repairCommandId?: string;
-    readonly signal?: AbortSignal;
-    readonly workspaceId: string;
-  }): Promise<{
-    readonly hasMore: boolean;
-    readonly pageEndHash: string;
-    readonly pageEndSequence: number;
-    readonly reachedHighWater: boolean;
-    readonly records: readonly WorkspacePurgeLedgerRecord[];
-  }>;
-}
 
 export type WorkspacePurgeProcessResult =
   | Readonly<{ status: 'idle' }>
@@ -142,37 +100,6 @@ function sequence(value: number | string): number {
   return parsed;
 }
 
-function verifyRecord(
-  record: WorkspacePurgeLedgerRecord,
-  expected: Readonly<{
-    actorRef: string;
-    commandId: string;
-    commandType: 'deletion_completed' | 'purge_started';
-    occurredAt: Date | string;
-    previousHash: string;
-    reason: string;
-    sequence: number;
-    workspaceId: string;
-  }>,
-): void {
-  if (
-    record.actorRef !== expected.actorRef ||
-    record.commandId !== expected.commandId ||
-    record.commandType !== expected.commandType ||
-    new Date(record.occurredAt).toISOString() !==
-      new Date(expected.occurredAt).toISOString() ||
-    record.previousHash !== expected.previousHash ||
-    record.reason !== expected.reason ||
-    record.sequence !== expected.sequence ||
-    record.subjectId !== expected.workspaceId ||
-    record.workspaceId !== expected.workspaceId ||
-    record.schemaVersion !== 1 ||
-    !hashSchema.safeParse(record.recordHash).success ||
-    record.recordHash === record.previousHash
-  )
-    throw new Error('Purge ledger record conflicts with durable job');
-}
-
 interface PreparedJob extends Record<string, unknown> {
   actor_ref: string;
   command_id: string;
@@ -204,26 +131,8 @@ interface PurgeStepClaim {
   readonly stepName: 'object_versions' | 'tenant_rows';
 }
 
-function assertExactLedgerPage(
-  page: Awaited<ReturnType<WorkspacePurgeLedger['reconcile']>>,
-  anchor: PurgeAnchor,
-  maximumRecords: number,
-  message: string,
-): void {
-  const last = page.records.at(-1);
-  if (
-    !page.reachedHighWater ||
-    page.hasMore ||
-    page.records.length > maximumRecords ||
-    page.pageEndSequence !== (last?.sequence ?? anchor.sequence) ||
-    page.pageEndHash !== (last?.recordHash ?? anchor.hash)
-  )
-    throw new Error(message);
-}
-
 export function createWorkspacePurgeCoordinator(
   config: DatabaseConfig,
-  ledger: WorkspacePurgeLedger,
   objectStore: WorkspacePurgeObjectStore,
   inputOptions: WorkspacePurgeOptions,
   runtime?: DatabaseRuntime,
@@ -285,30 +194,6 @@ export function createWorkspacePurgeCoordinator(
       AbortSignal.timeout(options.externalOperationTimeoutMs),
     ]);
 
-  const assertExactHighWater = async (
-    workspaceId: string,
-    anchor: PurgeAnchor,
-    signal?: AbortSignal,
-  ): Promise<void> => {
-    const reconciliation = await ledger.reconcile({
-      maxRecords: 1,
-      projectedHash: anchor.hash,
-      projectedSequence: anchor.sequence,
-      signal: operationSignal(signal),
-      workspaceId,
-    });
-    if (
-      !reconciliation.reachedHighWater ||
-      reconciliation.hasMore ||
-      reconciliation.records.length !== 0 ||
-      reconciliation.pageEndSequence !== anchor.sequence ||
-      reconciliation.pageEndHash !== anchor.hash
-    )
-      throw new Error(
-        'Workspace purge step requires exact control ledger high water',
-      );
-  };
-
   const findDueStep = (signal?: AbortSignal) =>
     platformQuery<{ job_id: string; workspace_id: string }>(
       'select * from app.find_due_workspace_purge_step()',
@@ -347,7 +232,6 @@ export function createWorkspacePurgeCoordinator(
             const preparedAnchor = await transaction(signal, (client) =>
               lockAnchor(client, stepWorkspaceId, signal),
             );
-            await assertExactHighWater(stepWorkspaceId, preparedAnchor, signal);
             const claimedStep = await transaction(signal, async (client) => {
               const anchor = await lockAnchor(client, stepWorkspaceId, signal);
               if (
@@ -494,54 +378,12 @@ export function createWorkspacePurgeCoordinator(
       );
       let completion: PreparedCompletion | undefined;
       try {
-        const candidate = await transaction(signal, async (client) => {
-          const anchor = await lockAnchor(
-            client,
-            completionWorkspaceId,
-            signal,
-          );
-          const repair = await query<{ command_id: string | null }>(
-            client,
-            'select app.workspace_purge_completion_repair_command_id($1) command_id',
-            [completionWorkspaceId],
-            signal,
-          );
-          return Object.freeze({
-            anchor,
-            repairCommandId:
-              repair.rows[0]?.command_id === null ||
-              repair.rows[0]?.command_id === undefined
-                ? undefined
-                : uuidSchema.parse(repair.rows[0].command_id),
-          });
-        });
-        const candidateReconciliation = await ledger.reconcile({
-          maxRecords: 1,
-          projectedHash: candidate.anchor.hash,
-          projectedSequence: candidate.anchor.sequence,
-          ...(candidate.repairCommandId === undefined
-            ? {}
-            : { repairCommandId: candidate.repairCommandId }),
-          signal: operationSignal(signal),
-          workspaceId: completionWorkspaceId,
-        });
-        assertExactLedgerPage(
-          candidateReconciliation,
-          candidate.anchor,
-          candidate.repairCommandId === undefined ? 0 : 1,
-          'Workspace purge completion requires exact control ledger high water',
-        );
         completion = await transaction(signal, async (client) => {
           const anchor = await lockAnchor(
             client,
             completionWorkspaceId,
             signal,
           );
-          if (
-            anchor.sequence !== candidate.anchor.sequence ||
-            anchor.hash !== candidate.anchor.hash
-          )
-            throw new Error('Workspace purge completion fence changed');
           const prepared = await query<PreparedCompletion>(
             client,
             `select * from app.prepare_workspace_purge_completion(
@@ -566,95 +408,50 @@ export function createWorkspacePurgeCoordinator(
           pool,
           completionWorkspaceId,
           signal,
-          async () => {
-            const appendAnchor = await transaction(signal, async (client) => {
+          () =>
+            transaction(signal, async (client) => {
               const anchor = await lockAnchor(
                 client,
                 completionWorkspaceId,
                 signal,
               );
+              const leaseFence = sequence(preparedCompletion.lease_fence);
               await query(
                 client,
                 'select app.authorize_workspace_purge_completion_append($1,$2,$3,$4,$5)',
                 [
                   completionJobId,
                   preparedCompletion.lease_token,
-                  sequence(preparedCompletion.lease_fence),
+                  leaseFence,
                   anchor.sequence,
                   anchor.hash,
                 ],
                 signal,
               );
-              return anchor;
-            });
-            const reconciliation = await ledger.reconcile({
-              maxRecords: 2,
-              projectedHash: appendAnchor.hash,
-              projectedSequence: appendAnchor.sequence,
-              repairCommandId: preparedCompletion.command_id,
-              signal: operationSignal(signal),
-              workspaceId: completionWorkspaceId,
-            });
-            assertExactLedgerPage(
-              reconciliation,
-              appendAnchor,
-              1,
-              'Workspace purge completion ledger has unrelated unprojected commands',
-            );
-            const expectedSequence = appendAnchor.sequence + 1;
-            let record = reconciliation.records[0];
-            record ??= await ledger.append({
-              actorRef: preparedCompletion.actor_ref,
-              commandId: preparedCompletion.command_id,
-              commandType: 'deletion_completed',
-              occurredAt: new Date(
-                preparedCompletion.occurred_at,
-              ).toISOString(),
-              previousHash: appendAnchor.hash,
-              reason: preparedCompletion.reason,
-              sequence: expectedSequence,
-              signal: operationSignal(signal),
-              subjectId: completionWorkspaceId,
-              workspaceId: completionWorkspaceId,
-            });
-            verifyRecord(record, {
-              actorRef: preparedCompletion.actor_ref,
-              commandId: preparedCompletion.command_id,
-              commandType: 'deletion_completed',
-              occurredAt: preparedCompletion.occurred_at,
-              previousHash: appendAnchor.hash,
-              reason: preparedCompletion.reason,
-              sequence: expectedSequence,
-              workspaceId: completionWorkspaceId,
-            });
-            await transaction(signal, async (client) => {
-              const anchor = await lockAnchor(
-                client,
-                completionWorkspaceId,
-                signal,
-              );
-              if (
-                anchor.sequence !== appendAnchor.sequence ||
-                anchor.hash !== appendAnchor.hash
-              )
-                throw new Error(
-                  'Workspace purge completion projection fence changed',
-                );
+              const nextSequence = anchor.sequence + 1;
               await query(
                 client,
                 'select app.project_workspace_purge_completion($1,$2,$3,$4,$5,$6)',
                 [
                   completionJobId,
                   preparedCompletion.lease_token,
-                  sequence(preparedCompletion.lease_fence),
-                  record.sequence,
-                  record.previousHash,
-                  record.recordHash,
+                  leaseFence,
+                  nextSequence,
+                  anchor.hash,
+                  workspaceControlRecordHash({
+                    actorRef: preparedCompletion.actor_ref,
+                    commandId: preparedCompletion.command_id,
+                    commandType: 'deletion_completed',
+                    occurredAt: preparedCompletion.occurred_at,
+                    previousHash: anchor.hash,
+                    reason: preparedCompletion.reason,
+                    sequence: nextSequence,
+                    workspaceId: completionWorkspaceId,
+                  }),
                 ],
                 signal,
               );
-            });
-          },
+            }),
         );
         return {
           jobId: completionJobId,
@@ -696,46 +493,8 @@ export function createWorkspacePurgeCoordinator(
     let job: PreparedJob | undefined;
 
     try {
-      const candidate = await transaction(signal, async (client) => {
-        const anchor = await lockAnchor(client, workspaceId, signal);
-        const repair = await query<{ command_id: string | null }>(
-          client,
-          'select app.workspace_purge_repair_command_id($1) command_id',
-          [workspaceId],
-          signal,
-        );
-        return Object.freeze({
-          anchor,
-          repairCommandId:
-            repair.rows[0]?.command_id === null ||
-            repair.rows[0]?.command_id === undefined
-              ? undefined
-              : uuidSchema.parse(repair.rows[0].command_id),
-        });
-      });
-      const candidateReconciliation = await ledger.reconcile({
-        maxRecords: 1,
-        projectedHash: candidate.anchor.hash,
-        projectedSequence: candidate.anchor.sequence,
-        ...(candidate.repairCommandId === undefined
-          ? {}
-          : { repairCommandId: candidate.repairCommandId }),
-        signal: operationSignal(signal),
-        workspaceId,
-      });
-      assertExactLedgerPage(
-        candidateReconciliation,
-        candidate.anchor,
-        candidate.repairCommandId === undefined ? 0 : 1,
-        'Workspace purge requires exact control ledger high water',
-      );
       job = await transaction(signal, async (client) => {
         const anchor = await lockAnchor(client, workspaceId, signal);
-        if (
-          anchor.sequence !== candidate.anchor.sequence ||
-          anchor.hash !== candidate.anchor.hash
-        )
-          throw new Error('Workspace purge control fence changed');
         const prepared = await query<PreparedJob>(
           client,
           `select * from app.prepare_workspace_purge_job(
@@ -761,55 +520,10 @@ export function createWorkspacePurgeCoordinator(
         pool,
         workspaceId,
         signal,
-        async () => {
-          const appendAnchor = await transaction(signal, (client) =>
-            lockAnchor(client, workspaceId, signal),
-          );
-          const reconciliation = await ledger.reconcile({
-            maxRecords: 2,
-            projectedHash: appendAnchor.hash,
-            projectedSequence: appendAnchor.sequence,
-            repairCommandId: preparedJob.command_id,
-            signal: operationSignal(signal),
-            workspaceId,
-          });
-          assertExactLedgerPage(
-            reconciliation,
-            appendAnchor,
-            1,
-            'Workspace purge ledger has unrelated unprojected commands',
-          );
-          const expectedSequence = appendAnchor.sequence + 1;
-          let record = reconciliation.records[0];
-          record ??= await ledger.append({
-            actorRef: preparedJob.actor_ref,
-            commandId: preparedJob.command_id,
-            commandType: 'purge_started',
-            occurredAt: new Date(preparedJob.occurred_at).toISOString(),
-            previousHash: appendAnchor.hash,
-            reason: preparedJob.reason,
-            sequence: expectedSequence,
-            signal: operationSignal(signal),
-            subjectId: workspaceId,
-            workspaceId,
-          });
-          verifyRecord(record, {
-            actorRef: preparedJob.actor_ref,
-            commandId: preparedJob.command_id,
-            commandType: 'purge_started',
-            occurredAt: preparedJob.occurred_at,
-            previousHash: appendAnchor.hash,
-            reason: preparedJob.reason,
-            sequence: expectedSequence,
-            workspaceId,
-          });
-          await transaction(signal, async (client) => {
+        () =>
+          transaction(signal, async (client) => {
             const anchor = await lockAnchor(client, workspaceId, signal);
-            if (
-              anchor.sequence !== appendAnchor.sequence ||
-              anchor.hash !== appendAnchor.hash
-            )
-              throw new Error('Workspace purge projection fence changed');
+            const nextSequence = anchor.sequence + 1;
             await query(
               client,
               'select app.project_workspace_purge_started($1,$2,$3,$4,$5,$6)',
@@ -817,14 +531,22 @@ export function createWorkspacePurgeCoordinator(
                 preparedJob.job_id,
                 preparedJob.lease_token,
                 sequence(preparedJob.lease_fence),
-                record.sequence,
-                record.previousHash,
-                record.recordHash,
+                nextSequence,
+                anchor.hash,
+                workspaceControlRecordHash({
+                  actorRef: preparedJob.actor_ref,
+                  commandId: preparedJob.command_id,
+                  commandType: 'purge_started',
+                  occurredAt: preparedJob.occurred_at,
+                  previousHash: anchor.hash,
+                  reason: preparedJob.reason,
+                  sequence: nextSequence,
+                  workspaceId,
+                }),
               ],
               signal,
             );
-          });
-        },
+          }),
       );
       return {
         jobId: preparedJob.job_id,

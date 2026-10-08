@@ -127,16 +127,7 @@ export class WorkspaceRunQuotaExceededError extends Error {
   }
 }
 
-export class RegionalWriteAdmissionPausedError extends Error {
-  public override readonly name = 'RegionalWriteAdmissionPausedError';
-  public readonly retryAfterSeconds = 5;
-
-  public constructor() {
-    super('regional.write_admission_paused');
-  }
-}
-
-type AdmissionSqlState = 'PTA01' | 'PTA02' | 'PTA03';
+type AdmissionSqlState = 'PTA01' | 'PTA02';
 
 function inspectAdmissionSqlState(error: unknown): AdmissionSqlState | null {
   const visited = new Set<object>();
@@ -152,7 +143,7 @@ function inspectAdmissionSqlState(error: unknown): AdmissionSqlState | null {
     try {
       if (!(current instanceof Error)) return null;
       const code = Reflect.get(current, 'code') as unknown;
-      if (code === 'PTA01' || code === 'PTA02' || code === 'PTA03') return code;
+      if (code === 'PTA01' || code === 'PTA02') return code;
       current = Reflect.get(current, 'cause');
     } catch {
       return null;
@@ -165,7 +156,6 @@ function inspectAdmissionSqlState(error: unknown): AdmissionSqlState | null {
 export function throwWorkflowRunAdmissionError(error: unknown): never {
   const code = inspectAdmissionSqlState(error);
   if (code === 'PTA02') throw new WorkspaceRunQuotaExceededError();
-  if (code === 'PTA03') throw new RegionalWriteAdmissionPausedError();
   if (code === 'PTA01') throw new WorkspaceRunAdmissionDeniedError();
   throw error;
 }
@@ -296,9 +286,6 @@ export async function acceptWorkflowRun(
   if (existing !== null) return existing;
 
   try {
-    await transaction.db.execute(
-      sql`select app.assert_regional_write_admission()`,
-    );
     await assertWorkspaceAcceptsNewRuns(transaction);
   } catch (error: unknown) {
     throwWorkflowRunAdmissionError(error);

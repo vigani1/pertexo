@@ -595,29 +595,12 @@ describe.skipIf(!organizationFixtureEnabled)(
         ).rows,
       ).toEqual([{ folder_id: target.id }]);
     });
-    it('expires held parent authority and reaps only after release within the shared budget', async () => {
+    it('expires parent authority and reaps it within the shared budget', async () => {
       const scope = await fixture.scope(),
         workflow = await scope.workflow(),
         key = commandKey(),
         body = move(workflow);
       await admit(scope, key, body);
-      const holdId = randomUUID();
-      const projectHold = (release: boolean) =>
-        owner(
-          scope,
-          `select app.project_workspace_legal_hold(
-        w.id,w.retention_control_sequence+1,$2,$3,$4,w.retention_control_hash,$5,
-        'owned-fixture','fixture-authority','F07 parent receipt hold',clock_timestamp())
-        from app.workspaces w where w.id=$1`,
-          [
-            scope.workspace,
-            randomUUID(),
-            release ? 'legal_hold_released' : 'legal_hold_placed',
-            holdId,
-            commandKey(),
-          ],
-        );
-      await projectHold(false);
       await owner(
         scope,
         "update app.workflow_organization_receipts set created_at=clock_timestamp()-interval '25 hours',expires_at=clock_timestamp()-interval '1 hour' where workspace_id=$1",
@@ -649,17 +632,6 @@ describe.skipIf(!organizationFixtureEnabled)(
         expect(count).toBeLessThanOrEqual(1);
         return count;
       };
-      expect(await reap()).toBe(0);
-      expect(
-        (
-          await owner(
-            scope,
-            'select count(*)::int count from app.workflow_organization_receipts where workspace_id=$1',
-            [scope.workspace],
-          )
-        ).rows,
-      ).toEqual([{ count: 1 }]);
-      await projectHold(true);
       expect(await reap()).toBe(1);
       expect(
         (

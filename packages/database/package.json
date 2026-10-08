@@ -24,10 +24,6 @@
       "types": "./dist/operator.d.ts",
       "default": "./dist/operator.js"
     },
-    "./recovery": {
-      "types": "./dist/recovery.d.ts",
-      "default": "./dist/recovery.js"
-    },
     "./testing": {
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"

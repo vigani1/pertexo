@@ -54,44 +54,11 @@ env:
   ARTIFACT_STORE_SECRET_ACCESS_KEY: pertexo-local-secret-key
   ARTIFACT_STORE_BUCKET: pertexo-artifacts
   ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
-  ARTIFACT_STORE_RECOVERY_PORT: '9094'
-  ARTIFACT_STORE_RECOVERY_ENDPOINT: http://127.0.0.1:9094
-  ARTIFACT_STORE_RECOVERY_REGION: us-west-2
-  ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: pertexo-local-recovery-access-key
-  ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: pertexo-local-recovery-secret-key
-  ARTIFACT_STORE_RECOVERY_BUCKET: pertexo-artifacts-recovery
-  ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: 'true'
   ARTIFACT_STORE_INTEGRATION: 'true'
   # CI pins the same reviewed manifests used by the Compose defaults.
   POSTGRES_IMAGE: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
   REDIS_IMAGE: redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103
   S3MOCK_IMAGE: adobe/s3mock:5.1.0@sha256:65cf60155a2e235fe7d5bf6c633747d6fc7ed93f9f5a6727d86470026b83c2a2
-  MINIO_IMAGE: ghcr.io/vigani1/minio:RELEASE.2025-09-07T16-13-09Z@sha256:fef3b9cf8ce1bcb83cd30b9a41273c8585855c0a269fa97cf297c6615745b969
-  CONTROL_LEDGER_PORT: '9091'
-  CONTROL_LEDGER_ENDPOINT: http://127.0.0.1:9091
-  CONTROL_LEDGER_REGION: eu-central-1
-  CONTROL_LEDGER_ACCESS_KEY_ID: pertexo-local-ledger-primary
-  CONTROL_LEDGER_SECRET_ACCESS_KEY: pertexo-local-ledger-primary-secret
-  CONTROL_LEDGER_ADMIN_ACCESS_KEY_ID: pertexo-local-primary-admin
-  CONTROL_LEDGER_ADMIN_SECRET_ACCESS_KEY: pertexo-local-primary-admin-secret
-  CONTROL_LEDGER_BUCKET: pertexo-control-ledger
-  CONTROL_LEDGER_FORCE_PATH_STYLE: 'true'
-  CONTROL_LEDGER_REQUEST_TIMEOUT_MS: '5000'
-  CONTROL_LEDGER_MIN_RETENTION_DAYS: '30'
-  CONTROL_LEDGER_RECOVERY_PORT: '9092'
-  CONTROL_LEDGER_RECOVERY_ENDPOINT: http://127.0.0.1:9092
-  CONTROL_LEDGER_RECOVERY_REGION: eu-west-1
-  CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID: pertexo-local-ledger-recovery
-  CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY: pertexo-local-ledger-recovery-secret
-  CONTROL_LEDGER_RECOVERY_ADMIN_ACCESS_KEY_ID: pertexo-local-recovery-admin
-  CONTROL_LEDGER_RECOVERY_ADMIN_SECRET_ACCESS_KEY: pertexo-local-recovery-admin-secret
-  CONTROL_LEDGER_RECOVERY_BUCKET: pertexo-control-ledger-recovery
-  CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE: 'true'
-  CONTROL_LEDGER_RECOVERY_REQUEST_TIMEOUT_MS: '5000'
-  CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS: '30'
-  CONTROL_LEDGER_INTEGRATION: 'true'
-  CONTROL_LEDGER_INTEGRATION_DEDICATED_FIXTURE: 'true'
-  CONTROL_LEDGER_INTEGRATION_PROVIDER: minio
   API_SSE_INTEGRATION: 'true'
   API_IDENTITY_INTEGRATION: 'true'
   API_ARTIFACT_INTEGRATION: 'true'
@@ -146,9 +113,7 @@ jobs:
           - group: apps
             filter: >-
               --filter @pertexo/api --filter @pertexo/worker --filter
-              @pertexo/lifecycle-command --filter @pertexo/operator-command
-              --filter @pertexo/recovery --filter @pertexo/retention --filter
-              @pertexo/web
+              @pertexo/operator-command --filter @pertexo/web
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -182,10 +147,7 @@ jobs:
       - name: Build
         run: pnpm build
       - name: Start services
-        run: |
-          docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery
-          docker compose run --rm control-ledger-primary-bootstrap
-          docker compose run --rm control-ledger-recovery-bootstrap
+        run: docker compose up -d --wait postgres redis artifact-store
       - name: Migrate
         run: pnpm db:migrate
       - name: Record owned-fixture manifest
@@ -325,9 +287,6 @@ jobs:
             "await Promise.all([
               import('./apps/api/dist/app.js'),
               import('./apps/worker/dist/app.js'),
-              import('./apps/lifecycle-command/dist/run.js'),
-              import('./apps/retention/dist/run.js'),
-              import('./apps/recovery/dist/restore-before-serve.js'),
               import('./apps/operator-command/dist/run.js'),
               import('./packages/database/dist/migrations.js')
             ])"

@@ -11,14 +11,13 @@ const emitterPaths = [
   '../../../apps/api/src/platform/observability/api-metrics.ts',
   '../../../apps/api/src/platform/observability/sse-visibility-metrics.ts',
   '../../../apps/api/src/webhooks/telemetry.ts',
-  '../../../apps/retention/src/metrics.ts',
   '../../../apps/worker/src/execution/http-provider-telemetry.ts',
+  '../../../apps/worker/src/retention/metrics.ts',
   '../../../apps/worker/src/execution/coordinator-telemetry.ts',
   '../../../apps/worker/src/triggers/trigger-telemetry.ts',
   '../../artifact-store/src/object-store-telemetry.ts',
   '../../database/src/platform/postgres-telemetry.ts',
   '../../queue/src/redis-telemetry.ts',
-  '../src/maintenance-metrics.ts',
   '../src/telemetry.ts',
   '../src/transport-metrics.ts',
 ] as const;
@@ -29,7 +28,6 @@ const allowedReferencedSeries = [
   'pertexo_api_request_duration_seconds_bucket',
   'pertexo_api_sse_persisted_to_visible_duration_seconds_bucket',
   'pertexo_api_sse_persisted_to_visible_skew_count_total',
-  'pertexo_control_ledger_reconciliation_count_total',
   'pertexo_database_lock_wait_active',
   'pertexo_database_pool_saturation_ratio',
   'pertexo_database_pool_waiters',
@@ -44,9 +42,6 @@ const allowedReferencedSeries = [
   'pertexo_provider_request_count_total',
   'pertexo_purge_batch_count_total',
   'pertexo_purge_batch_duration_seconds_bucket',
-  'pertexo_regional_replica_admission_blocked',
-  'pertexo_regional_replica_observation_timestamp_seconds',
-  'pertexo_regional_replica_replay_lag_seconds',
   'pertexo_retention_batch_count_total',
   'pertexo_retention_operation_failure_count_total',
   'pertexo_redis_operation_count_total',
@@ -80,7 +75,6 @@ const requiredEmitterMetrics = [
   'pertexo.api.request.duration',
   'pertexo.api.sse.persisted_to_visible.duration',
   'pertexo.api.sse.persisted_to_visible.skew.count',
-  'pertexo.control_ledger.reconciliation.count',
   'pertexo.database.lock_wait.active',
   'pertexo.database.lock_wait.duration',
   'pertexo.database.pool.connections',
@@ -97,9 +91,6 @@ const requiredEmitterMetrics = [
   'pertexo.provider.request.count',
   'pertexo.purge.batch.count',
   'pertexo.purge.batch.duration',
-  'pertexo.regional_replica.admission.blocked',
-  'pertexo.regional_replica.observation.timestamp',
-  'pertexo.regional_replica.replay_lag',
   'pertexo.retention.batch.count',
   'pertexo.retention.operation.failure.count',
   'pertexo.redis.connection.event.count',
@@ -201,7 +192,7 @@ describe('operations observability assets', () => {
     const { alerts, runbook } = await operationsAssets;
     const alertBlocks = alerts.split('\n      - alert: ').slice(1);
 
-    expect(alertBlocks).toHaveLength(24);
+    expect(alertBlocks).toHaveLength(22);
     for (const block of alertBlocks) {
       const [alertName = ''] = block.split('\n', 1);
       expect(alertName).toMatch(/^Pertexo[A-Za-z]+$/u);
@@ -276,9 +267,6 @@ describe('operations observability assets', () => {
     expect(collector).toContain('timeout: 5s');
     expect(collector).toContain('metric_expiration: 20m');
     expect(prometheus).toContain('scrape_interval: 15s');
-    expect(alerts).toContain(
-      'time() - max(pertexo_regional_replica_observation_timestamp_seconds) > 90',
-    );
   });
 
   it('excludes request and domain identifiers from alert and dashboard text', async () => {

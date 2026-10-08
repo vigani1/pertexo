@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  createDualRegionArtifactStore,
-  parseDualRegionArtifactStoreConfig,
+  createArtifactStore,
+  parseArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
   createNodeAttemptRunStore,
@@ -112,13 +112,10 @@ export async function createHttpNodeAttemptProofRuntime(
     owners.splice(index, 1);
   };
   try {
-    const artifactConfig = parseDualRegionArtifactStoreConfig(process.env);
+    const artifactConfig = parseArtifactStoreConfig(process.env);
     const artifactVerifier = own(
       'artifact verifier',
-      createDualRegionArtifactStore(
-        artifactConfig.primary,
-        artifactConfig.recovery,
-      ),
+      createArtifactStore(artifactConfig),
       (verifier) => {
         verifier.close();
       },

@@ -52,6 +52,11 @@ import {
   WORKSPACE_DATABASE,
 } from './platform/database/database.module.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
+import { configuredRetentionRuntime } from './retention/composition.js';
+import {
+  RETENTION_RUNTIME,
+  type RetentionRuntime,
+} from './retention/runtime.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
 import {
   WorkerReadinessMonitor,
@@ -215,6 +220,11 @@ export class WorkerModule {
             configuredWorkflowAutoPauseRuntime(config, dependencies),
         },
         {
+          provide: RETENTION_RUNTIME,
+          useFactory: (): RetentionRuntime | undefined =>
+            configuredRetentionRuntime(config, dependencies.logger),
+        },
+        {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
           useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
@@ -245,6 +255,7 @@ export class WorkerModule {
             AUTHENTICATION_MAIL_RUNTIME,
             WORKSPACE_INBOX_RUNTIME,
             WORKFLOW_AUTO_PAUSE_RUNTIME,
+            RETENTION_RUNTIME,
           ],
           useFactory: (
             shutdown: WorkerShutdownCoordinator,
@@ -253,10 +264,14 @@ export class WorkerModule {
             authenticationMail: AuthenticationMailRuntime | undefined,
             workspaceInbox: WorkspaceInboxRuntime,
             autoPause: WorkflowAutoPauseRuntime | undefined,
+            retention: RetentionRuntime | undefined,
           ) => {
             authenticationMail?.start();
             workspaceInbox.start();
             autoPause?.start();
+            retention?.start();
+            if (retention !== undefined)
+              shutdown.register('retention', () => retention.close());
             shutdown.register('workspace-inbox', () => workspaceInbox.close());
             if (autoPause !== undefined)
               shutdown.register('workflow-auto-pause', () => autoPause.close());

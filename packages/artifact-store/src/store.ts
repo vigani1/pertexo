@@ -38,10 +38,7 @@ import {
   observePresign,
   safelyObserveSafetyViolation,
 } from './object-store-telemetry.js';
-import type {
-  ObjectStoreObserver,
-  ObjectStoreRegionRole,
-} from './object-store-telemetry.js';
+import type { ObjectStoreObserver } from './object-store-telemetry.js';
 import { sendS3 } from './s3-client-contract.js';
 import type { ObjectStoreS3Client } from './s3-client-contract.js';
 import {
@@ -801,7 +798,6 @@ class ObservedArtifactStore
       ArtifactDownloadCapability &
       WorkspaceObjectPurgeStore,
     private readonly observer: ObjectStoreObserver,
-    private readonly regionRole: ObjectStoreRegionRole,
   ) {}
 
   public beginDirectUpload(
@@ -877,8 +873,6 @@ class ObservedArtifactStore
     }
     safelyObserveSafetyViolation(this.observer, {
       check: 'artifact_integrity',
-      regionRole: this.regionRole,
-      surface: 'artifact',
     });
   }
 }
@@ -891,7 +885,6 @@ export function createArtifactStore(
     observer?: ObjectStoreObserver;
     presignGetObject?: GetObjectPresigner;
     presignPutObject?: PutObjectPresigner;
-    regionRole?: ObjectStoreRegionRole;
   }> = {},
 ): ArtifactStore & ArtifactDownloadCapability & WorkspaceObjectPurgeStore {
   const observer = options.observer ?? createProductionObjectStoreObserver();
@@ -906,15 +899,9 @@ export function createArtifactStore(
       forcePathStyle: config.forcePathStyle,
       region: config.region,
     });
-  const regionRole = options.regionRole ?? 'artifact';
   const ownsClient =
     options.client === undefined || options.clientOwnership === 'owned';
-  const client = new ObservedS3Client(
-    rawClient,
-    observer,
-    'artifact',
-    regionRole,
-  );
+  const client = new ObservedS3Client(rawClient, observer);
   const rawPresignPutObject: PutObjectPresigner =
     options.presignPutObject ??
     (async (request) =>
@@ -924,7 +911,7 @@ export function createArtifactStore(
         unhoistableHeaders: new Set(request.unhoistableHeaders),
       }));
   const presignPutObject: PutObjectPresigner = (request) =>
-    observePresign(observer, regionRole, () => rawPresignPutObject(request));
+    observePresign(observer, () => rawPresignPutObject(request));
   const store = new AwsArtifactStore(
     config,
     client,
@@ -932,10 +919,9 @@ export function createArtifactStore(
     createArtifactDownloadPresigner(
       rawClient as S3Client,
       observer,
-      regionRole,
       options.presignGetObject,
     ),
     ownsClient,
   );
-  return new ObservedArtifactStore(store, observer, regionRole);
+  return new ObservedArtifactStore(store, observer);
 }

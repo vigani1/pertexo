@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Readable } from 'node:stream';
 
 import {
   artifactDownloadResponseSchema,
@@ -30,16 +29,6 @@ if (artifactTransferIntegrationRequested) {
       ARTIFACT_STORE_ACCESS_KEY_ID: process.env.ARTIFACT_STORE_ACCESS_KEY_ID,
       ARTIFACT_STORE_BUCKET: process.env.ARTIFACT_STORE_BUCKET,
       ARTIFACT_STORE_ENDPOINT: process.env.ARTIFACT_STORE_ENDPOINT,
-      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID:
-        process.env.ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID,
-      ARTIFACT_STORE_RECOVERY_BUCKET:
-        process.env.ARTIFACT_STORE_RECOVERY_BUCKET,
-      ARTIFACT_STORE_RECOVERY_ENDPOINT:
-        process.env.ARTIFACT_STORE_RECOVERY_ENDPOINT,
-      ARTIFACT_STORE_RECOVERY_REGION:
-        process.env.ARTIFACT_STORE_RECOVERY_REGION,
-      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY:
-        process.env.ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY,
       ARTIFACT_STORE_REGION: process.env.ARTIFACT_STORE_REGION,
       ARTIFACT_STORE_SECRET_ACCESS_KEY:
         process.env.ARTIFACT_STORE_SECRET_ACCESS_KEY,
@@ -290,7 +279,7 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     expect(fixture.readStorageCalls()).toEqual(storageBefore);
   });
 
-  it('claims one exact concurrent upload, enforces immutable signed PUT metadata, and finalizes through both regions', async () => {
+  it('claims one exact concurrent upload, enforces immutable signed PUT metadata, and finalizes', async () => {
     const owner = await fixture.login('owner');
     const body = Buffer.alloc(1_048_576, 0x61);
     const metadata = requestMetadata(body);
@@ -381,8 +370,7 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
       expiresAt: null,
     });
     await expect(
-      fixture.verificationStore.verifyReplicas({
-        ...metadata,
+      fixture.verificationStore.head({
         artifactId,
         workspaceId: fixture.workspaceId,
       }),
@@ -537,7 +525,7 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     },
   );
 
-  it('keeps finalize fail-closed for missing, divergent and expired objects', async () => {
+  it('keeps finalize fail-closed for missing and expired objects', async () => {
     const owner = await fixture.login('owner');
     const body = Buffer.from('missing-object-finalize');
     const metadata = requestMetadata(body);
@@ -553,44 +541,6 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     });
     expectProblem(missingFinalize, 409);
     expect((await fixture.readArtifact(missingId))?.status).toBe('pending');
-
-    const divergentBegin = await begin(fixture, owner, metadata);
-    const divergentId = divergentBegin.artifact.id;
-    const divergentBody = Buffer.from('recovery-divergence');
-    await signedPut(divergentBegin.upload, body);
-    await fixture.recoveryStore.put({
-      artifactId: divergentId,
-      workspaceId: fixture.workspaceId,
-      byteLength: divergentBody.length,
-      mediaType: 'application/octet-stream',
-      sha256: createHash('sha256').update(divergentBody).digest('hex'),
-      body: Readable.from([divergentBody]),
-    });
-    const divergentFinalize = await fixture.application.inject({
-      method: 'POST',
-      url: `${base}/${divergentId}/finalize`,
-      headers: mutationHeaders(owner, `divergent-finalize-${divergentId}`),
-      payload: {},
-    });
-    expectProblem(divergentFinalize, 409);
-    expect((await fixture.readArtifact(divergentId))?.status).toBe('pending');
-    await fixture.recoveryStore.delete({
-      artifactId: divergentId,
-      workspaceId: fixture.workspaceId,
-    });
-    const freshService = await fixture.createFreshApplication();
-    try {
-      const freshOwner = await freshService.login('owner');
-      const divergentRetry = await freshService.application.inject({
-        method: 'POST',
-        url: `${base}/${divergentId}/finalize`,
-        headers: mutationHeaders(freshOwner, `divergent-retry-${divergentId}`),
-        payload: {},
-      });
-      expect(divergentRetry.statusCode, divergentRetry.payload).toBe(200);
-    } finally {
-      await freshService.close();
-    }
 
     const expiredBegin = await begin(fixture, owner, metadata);
     await fixture.expireArtifact(expiredBegin.artifact.id);
@@ -690,7 +640,7 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     }
   });
 
-  it('rejects deletion that races after actual replica verification without releasing capacity', async () => {
+  it('rejects deletion that races after upload verification without releasing capacity', async () => {
     const owner = await fixture.login('owner');
     const body = Buffer.from('deletion races verified upload');
     const started = await begin(fixture, owner, requestMetadata(body));
@@ -718,7 +668,7 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     expect(await fixture.readCapacity()).toEqual(charged);
   });
 
-  it('does not release a pending charge on expiry and releases exactly once only after both regional deletion succeeds', async () => {
+  it('does not release a pending charge on expiry and releases exactly once after deletion', async () => {
     const owner = await fixture.login('owner');
     const body = Buffer.from('retention charge proof');
     const metadata = requestMetadata(body);
@@ -753,44 +703,12 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     });
     expect(await fixture.readCapacity()).toEqual(held);
 
-    await expect(
-      fixture.deleteWithRecoveryFailure({
-        artifactId,
-        workspaceId: fixture.workspaceId,
-      }),
-    ).rejects.toMatchObject({ name: 'ArtifactPartialReplicationError' });
-    await expect(
-      fixture.verificationStore.head({
-        artifactId,
-        workspaceId: fixture.workspaceId,
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      fixture.recoveryStore.head({
-        artifactId,
-        workspaceId: fixture.workspaceId,
-      }),
-    ).resolves.toMatchObject({
-      artifactId,
-      workspaceId: fixture.workspaceId,
-      byteLength: body.length,
-      mediaType: metadata.mediaType,
-      sha256: metadata.sha256,
-    });
-    expect(await fixture.readCapacity()).toEqual(held);
-
     await fixture.verificationStore.delete({
       artifactId,
       workspaceId: fixture.workspaceId,
     });
     await expect(
       fixture.verificationStore.head({
-        artifactId,
-        workspaceId: fixture.workspaceId,
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      fixture.recoveryStore.head({
         artifactId,
         workspaceId: fixture.workspaceId,
       }),

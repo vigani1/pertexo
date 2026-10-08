@@ -93,9 +93,8 @@ fences before treating a stale disposition as a fault. Use existing dispatcher
 retry, poison-job inspection and recovery paths, never direct connection updates.
 
 Full database restore retains the dispatch evidence, observations and commands.
-Run the normal `restore:before-serve` migration/readiness and control-ledger replay
-boundary before serving; verify supported artifacts and mode-preserving backlog
-handling again. Restore does not activate enforcement or make observe evidence
+Run the normal migration and readiness checks before serving; verify supported
+artifacts and mode-preserving backlog handling again. Restore does not activate enforcement or make observe evidence
 eligible. There is no current user-data export endpoint to extend; safe public
 connection/usage exports exclude revision, dispatch identity, credentials and
 provider bodies. The private source-owned tables are registered as raw SQL.

@@ -3,7 +3,6 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import type { ControlLedger } from './control-ledger-coordinator.js';
 import { retentionQuery as query } from './retention-support.js';
 import {
   inRetentionTransaction,
@@ -35,13 +34,7 @@ export type PreviewRetentionProcessResult =
   | Readonly<{
       artifactId?: string;
       previewRunId: string;
-      status:
-        | 'blocked'
-        | 'completed'
-        | 'held'
-        | 'progressed'
-        | 'released'
-        | 'waiting';
+      status: 'blocked' | 'completed' | 'held' | 'progressed' | 'waiting';
       workspaceId: string;
     }>;
 
@@ -87,7 +80,6 @@ function retentionTransactionOptions(
 
 export function createPreviewRetentionCoordinator(
   config: DatabaseConfig,
-  ledger: ControlLedger,
   artifacts: PreviewRetentionArtifactStore,
   inputOptions: PreviewRetentionCoordinatorOptions = {},
   runtime?: DatabaseRuntime,
@@ -121,12 +113,11 @@ export function createPreviewRetentionCoordinator(
         return Object.freeze({ status: 'idle' as const });
       const workspaceId = uuidSchema.parse(candidate.workspace_id);
       const previewRunId = uuidSchema.parse(candidate.preview_run_id);
-      const authorization = await withWorkspaceDestructiveAuthorization(
+      return withWorkspaceDestructiveAuthorization(
         pool,
         transactionOptions,
         signal,
         workspaceId,
-        ledger,
         options.externalOperationTimeoutMs,
         async (highWater, externalSignal) => {
           const step = await inRetentionTransaction(
@@ -263,13 +254,6 @@ export function createPreviewRetentionCoordinator(
           });
         },
       );
-      if (authorization.status === 'stale')
-        return Object.freeze({
-          previewRunId,
-          status: 'released' as const,
-          workspaceId,
-        });
-      return authorization.value;
     },
   });
 }

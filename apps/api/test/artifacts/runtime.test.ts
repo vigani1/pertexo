@@ -17,26 +17,14 @@ import type {
 } from '../../src/artifacts/index.js';
 
 const config = {
-  primary: {
-    accessKeyId: 'primary',
-    bucket: 'primary-bucket',
-    endpoint: 'https://primary.example.test',
-    forcePathStyle: true,
-    maxObjectBytes: 100,
-    region: 'eu-central-1',
-    requestTimeoutMs: 1_000,
-    secretAccessKey: 'secret',
-  },
-  recovery: {
-    accessKeyId: 'recovery',
-    bucket: 'recovery-bucket',
-    endpoint: 'https://recovery.example.test',
-    forcePathStyle: true,
-    maxObjectBytes: 100,
-    region: 'eu-west-1',
-    requestTimeoutMs: 1_000,
-    secretAccessKey: 'secret',
-  },
+  accessKeyId: 'artifacts',
+  bucket: 'artifacts-bucket',
+  endpoint: 'https://artifacts.example.test',
+  forcePathStyle: true,
+  maxObjectBytes: 100,
+  region: 'eu-central-1',
+  requestTimeoutMs: 1_000,
+  secretAccessKey: 'secret',
 } satisfies NonNullable<ApiConfig['artifacts']>;
 
 const identityRuntime = {

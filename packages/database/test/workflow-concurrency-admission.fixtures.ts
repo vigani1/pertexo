@@ -311,6 +311,7 @@ export async function proveLegacyConcurrencyUpgrade() {
       '0134_workflow_organization.sql',
       '0135_workflow_folders_batch_identity.sql',
       '0136_remove_release_machinery.sql',
+      '0137_single_region_storage.sql',
     ]);
     expect(await migrateDatabase(config)).toEqual([]);
     const tickets = await owner.query<{ id: string; ticket: string }>(
@@ -328,7 +329,7 @@ export async function proveLegacyConcurrencyUpgrade() {
       ).rows,
     ).toEqual([{ exempt: true }]);
     await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
-      migrationHead: '0136_remove_release_machinery.sql',
+      migrationHead: '0137_single_region_storage.sql',
     });
   } finally {
     cleanup = await Promise.allSettled([

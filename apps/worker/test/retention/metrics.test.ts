@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createRetentionMetrics,
   RETENTION_METRIC_NAME,
-} from '../src/metrics.js';
+} from '../../src/retention/metrics.js';
 
 type Instrument = Readonly<{
   add: ReturnType<typeof vi.fn>;
@@ -36,7 +36,7 @@ function setupMetrics() {
     instrumentFactories: [createCounter, createGauge, createHistogram],
     instruments,
     meter,
-    metrics: createRetentionMetrics(meter, () => 1_750_000_000_000),
+    metrics: createRetentionMetrics(meter),
   };
 }
 
@@ -62,14 +62,13 @@ describe('retention metrics', () => {
         [RETENTION_METRIC_NAME.batchDuration, 's'],
         [RETENTION_METRIC_NAME.failureCount, '{failure}'],
         [RETENTION_METRIC_NAME.failureDuration, 's'],
+        [RETENTION_METRIC_NAME.lifecycleCommandCount, '{command}'],
+        [RETENTION_METRIC_NAME.lifecycleCommandDuration, 's'],
         [RETENTION_METRIC_NAME.operatorRerunCount, '{command}'],
         [RETENTION_METRIC_NAME.operatorRerunDuration, 's'],
         [RETENTION_METRIC_NAME.pageCount, '{page}'],
         [RETENTION_METRIC_NAME.purgeCount, '{attempt}'],
         [RETENTION_METRIC_NAME.purgeDuration, 's'],
-        [RETENTION_METRIC_NAME.regionalReplicaAdmissionBlocked, '1'],
-        [RETENTION_METRIC_NAME.regionalReplicaObservationTime, 's'],
-        [RETENTION_METRIC_NAME.regionalReplicaReplayLag, 's'],
         [RETENTION_METRIC_NAME.rowCount, '{row}'],
         [RETENTION_METRIC_NAME.scheduleScanCount, '{scan}'],
         [RETENTION_METRIC_NAME.scheduleWorkspaceCount, '{workspace}'],
@@ -89,44 +88,23 @@ describe('retention metrics', () => {
     ).toEqual([[0.25, { operation: 'workspace_purge' }]]);
   });
 
-  it('records open, paused, and unavailable replica admission with nullable lag', () => {
+  it('records lifecycle command outcomes by command type', () => {
     const { instruments, metrics } = setupMetrics();
-    metrics.recordRegionalReplicaLag({
-      replayLagMillis: 300_000,
-      replicationState: 'streaming',
-      status: 'open',
-    });
-    metrics.recordRegionalReplicaLag({
-      replayLagMillis: null,
-      replicationState: 'catchup',
-      status: 'paused',
-    });
-    metrics.recordRegionalReplicaLag({
-      replayLagMillis: null,
-      replicationState: 'unknown',
-      status: 'unavailable',
-    });
+    metrics.recordLifecycleCommand(
+      {
+        commandType: 'deletion_requested',
+        operationId: 'ignored',
+        status: 'completed',
+      },
+      0.5,
+    );
+    metrics.recordLifecycleCommand({ status: 'idle' }, 0.1);
     expect(
-      callsFor(
-        instruments,
-        RETENTION_METRIC_NAME.regionalReplicaAdmissionBlocked,
-        'record',
-      ),
-    ).toEqual([[0], [1], [1]]);
-    expect(
-      callsFor(
-        instruments,
-        RETENTION_METRIC_NAME.regionalReplicaObservationTime,
-        'record',
-      ),
-    ).toEqual([[1_750_000_000], [1_750_000_000], [1_750_000_000]]);
-    expect(
-      callsFor(
-        instruments,
-        RETENTION_METRIC_NAME.regionalReplicaReplayLag,
-        'record',
-      ),
-    ).toEqual([[300]]);
+      callsFor(instruments, RETENTION_METRIC_NAME.lifecycleCommandCount, 'add'),
+    ).toEqual([
+      [1, { command_type: 'deletion_requested', outcome: 'completed' }],
+      [1, { command_type: 'none', outcome: 'idle' }],
+    ]);
   });
 
   it('records purge outcome and duration without tenant identifiers', () => {

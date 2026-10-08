@@ -1,0 +1,240 @@
+import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database/lifecycle';
+import type {
+  PreviewRetentionCoordinator,
+  RetentionDatabase,
+  RetentionEnforcementCoordinator,
+  RunArtifactRetentionCoordinator,
+  WorkspacePurgeCoordinator,
+} from '@pertexo/database/maintenance';
+import type { StructuredLogger } from '@pertexo/observability/logging';
+
+import {
+  createPollingRuntime,
+  reportDiagnostic,
+  type PollingRuntime,
+} from '../runtime/polling-runtime.js';
+import type { RetentionMetrics, RetentionOperation } from './metrics.js';
+
+export type RetentionRuntime = PollingRuntime;
+
+export const RETENTION_RUNTIME = Symbol('RETENTION_RUNTIME');
+
+export type RetentionRuntimeResources = Readonly<{
+  database: RetentionDatabase;
+  enforcement: RetentionEnforcementCoordinator;
+  lifecycleCommands: WorkspaceLifecycleCommandCoordinator;
+  preview: PreviewRetentionCoordinator;
+  runArtifacts: RunArtifactRetentionCoordinator;
+  workspacePurge: WorkspacePurgeCoordinator;
+  /** Closes resources the coordinators share, such as the database pool. */
+  release(): Promise<void>;
+}>;
+
+/** One call does a bounded unit of work and says whether more is ready now. */
+type RetentionOperationStep = (signal: AbortSignal) => Promise<boolean>;
+
+/** Repeats an operation back to back while it has work, then yields. */
+const MAX_STEPS_PER_OPERATION = 20;
+
+/**
+ * Workspace deletion commands, retention, preview and artifact cleanup and
+ * workspace purge. Every worker may run it; the database leases keep the work
+ * disjoint. A failing operation is logged and retried on the next cycle without
+ * stopping the others or the worker.
+ */
+export function createRetentionRuntime(
+  resources: RetentionRuntimeResources,
+  metrics: RetentionMetrics,
+  logger: StructuredLogger,
+  pollMillis: number,
+): RetentionRuntime {
+  const timed = async <T>(
+    work: () => Promise<T>,
+    record: (result: T, durationSeconds: number) => void,
+  ): Promise<T> => {
+    const startedAt = performance.now();
+    const result = await work();
+    reportDiagnostic(() => {
+      record(result, (performance.now() - startedAt) / 1_000);
+    });
+    return result;
+  };
+
+  const operations: readonly (readonly [
+    RetentionOperation,
+    RetentionOperationStep,
+  ])[] = [
+    [
+      'lifecycle_command',
+      async (signal) => {
+        const result = await timed(
+          () => resources.lifecycleCommands.processNext({ signal }),
+          (result, seconds) => {
+            metrics.recordLifecycleCommand(result, seconds);
+          },
+        );
+        return result.status === 'completed' || result.status === 'failed';
+      },
+    ],
+    [
+      'operator_rerun',
+      async (signal) =>
+        (await timed(
+          () => resources.database.processOperatorRerun(signal),
+          (result, seconds) => {
+            metrics.recordOperatorRerun(result, seconds);
+          },
+        )) !== null,
+    ],
+    [
+      'schedule',
+      async (signal) =>
+        (
+          await timed(
+            () => resources.database.scheduleEnforcement(signal),
+            (result, seconds) => {
+              metrics.recordSchedule(result, seconds);
+            },
+          )
+        ).capacityLimited,
+    ],
+    [
+      'transient_data_reap',
+      async (signal) => {
+        const result = await timed(
+          () => resources.database.reapTransientData(signal),
+          (result, seconds) => {
+            metrics.recordTransientDataReap(result, seconds);
+          },
+        );
+        return (
+          result.invitationAcceptanceIntentsDeleted +
+            result.invitationReplacementClaimsDeleted +
+            result.invitationsExpired +
+            result.idempotencyRecordsDeleted +
+            result.workspaceCreationRecordsDeleted +
+            result.sessionsDeleted >
+          0
+        );
+      },
+    ],
+    [
+      'dry_run',
+      async (signal) =>
+        (
+          await timed(
+            () => resources.database.processNext(signal),
+            (result, seconds) => {
+              metrics.record(result, seconds, 'dry_run');
+            },
+          )
+        ).status !== 'idle',
+    ],
+    [
+      'enforce',
+      async (signal) =>
+        (
+          await timed(
+            () => resources.enforcement.processNext(signal),
+            (result, seconds) => {
+              metrics.record(result, seconds, 'enforce');
+            },
+          )
+        ).status === 'completed',
+    ],
+    [
+      'preview',
+      async (signal) => {
+        const { status } = await timed(
+          () => resources.preview.processNext(signal),
+          (result, seconds) => {
+            metrics.recordPreview(result, seconds);
+          },
+        );
+        return status === 'completed' || status === 'progressed';
+      },
+    ],
+    [
+      'run_artifact',
+      async (signal) =>
+        (
+          await timed(
+            () => resources.runArtifacts.processNext(signal),
+            (result, seconds) => {
+              metrics.recordRunArtifact(result, seconds);
+            },
+          )
+        ).status === 'completed',
+    ],
+    [
+      'workspace_purge',
+      async (signal) => {
+        const { status } = await timed(
+          () => resources.workspacePurge.processNext(signal),
+          (result, seconds) => {
+            metrics.recordWorkspacePurge(result, seconds);
+          },
+        );
+        return status === 'started' || status === 'progressed';
+      },
+    ],
+  ];
+
+  const run = async (
+    operation: RetentionOperation,
+    step: RetentionOperationStep,
+    signal: AbortSignal,
+  ): Promise<void> => {
+    const startedAt = performance.now();
+    try {
+      for (let count = 0; count < MAX_STEPS_PER_OPERATION; count += 1)
+        if (!(await step(signal))) return;
+    } catch (error: unknown) {
+      if (signal.aborted) throw error;
+      reportDiagnostic(() => {
+        metrics.recordFailure(
+          operation,
+          (performance.now() - startedAt) / 1_000,
+        );
+        logger.error('retention.operation_failed', { operation }, error);
+      });
+    }
+  };
+
+  return createPollingRuntime({
+    name: 'Retention',
+    pollMillis,
+    checkCompatibility: async (signal) => {
+      await resources.database.checkReadiness(signal);
+      await resources.lifecycleCommands.checkReadiness(signal);
+    },
+    cycle: async (signal) => {
+      for (const [operation, step] of operations)
+        await run(operation, step, signal);
+    },
+    cycleFailed: () => {
+      logger.error('retention.cycle_failed', {});
+    },
+    release: async () => {
+      const closed = await Promise.allSettled([
+        resources.lifecycleCommands.close(),
+        resources.preview.close(),
+        resources.runArtifacts.close(),
+        resources.workspacePurge.close(),
+        resources.enforcement.close(),
+        resources.database.close(),
+      ]);
+      const failures = closed.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason as unknown] : [],
+      );
+      try {
+        await resources.release();
+      } catch (error: unknown) {
+        failures.push(error);
+      }
+      if (failures.length === 1) throw failures[0];
+      if (failures.length > 1)
+        throw new AggregateError(failures, 'Retention shutdown failed');
+    },
+  });
+}

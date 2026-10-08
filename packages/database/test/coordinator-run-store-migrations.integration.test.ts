@@ -53,7 +53,7 @@ describe('Coordinator migration and identity invariants', () => {
         await expect(
           checkDatabaseReadiness(readinessPool),
         ).resolves.toMatchObject({
-          migrationHead: '0136_remove_release_machinery.sql',
+          migrationHead: '0137_single_region_storage.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -124,7 +124,7 @@ describe('Coordinator migration and identity invariants', () => {
       try {
         await expect(checkDatabaseReadiness(workerPool)).resolves.toMatchObject(
           {
-            migrationHead: '0136_remove_release_machinery.sql',
+            migrationHead: '0137_single_region_storage.sql',
             role: 'pertexo_worker',
           },
         );
@@ -192,7 +192,7 @@ describe('Coordinator migration and identity invariants', () => {
       await expect(
         checkDatabaseReadiness(readinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0136_remove_release_machinery.sql',
+        migrationHead: '0137_single_region_storage.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -269,7 +269,7 @@ describe('Coordinator migration and identity invariants', () => {
       await expect(
         checkDatabaseReadiness(readinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0136_remove_release_machinery.sql',
+        migrationHead: '0137_single_region_storage.sql',
       });
     } finally {
       await readinessPool.end();

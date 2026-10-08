@@ -1,6 +1,6 @@
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
-import { createDualRegionArtifactStore } from '@pertexo/artifact-store';
+import { createArtifactStore } from '@pertexo/artifact-store';
 import {
   createArtifactUploadDatabase,
   type DatabaseConfig,
@@ -37,9 +37,7 @@ export function createApiArtifactRuntime(
   overrides: ApiArtifactRuntimeOverrides = {},
   databaseRuntime?: DatabaseRuntime,
 ): ApiArtifactRuntime {
-  const store =
-    overrides.store ??
-    createDualRegionArtifactStore(config.primary, config.recovery);
+  const store = overrides.store ?? createArtifactStore(config);
   let database: ArtifactUploadDatabase;
   try {
     database =

@@ -38,7 +38,6 @@ import { WorkflowRunNotFoundError } from '../../src/workflow-runs/use-cases.js';
 import {
   ExecutionStateConflictError,
   IdempotencyRequestConflictError,
-  RegionalWriteAdmissionPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   WorkspaceAccessDeniedError,
@@ -572,7 +571,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
 
   it.each([
     [new WorkspaceRunQuotaExceededError(), 'workspace.quota_exceeded'],
-    [new RegionalWriteAdmissionPausedError(), 'platform.write_paused'],
     [new WorkspaceRunAdmissionDeniedError(), 'workspace.conflict'],
   ] as const)(
     'maps acceptance admission failure $expected without leaking its database error',
@@ -731,48 +729,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         nodeRunId: runId,
       }),
     ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
-  });
-
-  it('maps a regional write fence to a retryable service response', async () => {
-    const database = {
-      start: vi
-        .fn<WorkflowRunDatabase['start']>()
-        .mockRejectedValue(new RegionalWriteAdmissionPausedError()),
-      replay: vi.fn<WorkflowRunDatabase['replay']>(),
-      get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
-      list: vi
-        .fn<WorkflowRunDatabase['list']>()
-        .mockResolvedValue({ items: [] }),
-      statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
-      usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
-      cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
-      readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
-      readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
-      readNodeRunInput: vi.fn<WorkflowRunDatabase['readNodeRunInput']>(),
-      stepHealth: vi.fn<WorkflowRunDatabase['stepHealth']>(),
-      stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>(),
-      close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
-    } satisfies WorkflowRunDatabase;
-    const adapter = createPostgresWorkflowRunPersistence(
-      parseDatabaseConfig({
-        connectionString: 'postgresql://unused.invalid/pertexo',
-      }),
-      database,
-    );
-
-    await expect(
-      adapter.persistence.start({
-        actorId,
-        workspaceId,
-        workflowId,
-        idempotencyKeyHash: 'a'.repeat(64),
-        requestHash: 'b'.repeat(64),
-        scope: `workflow:${workflowId}:manual`,
-      }),
-    ).rejects.toMatchObject({
-      code: 'platform.write_paused',
-      details: { retryAfterSeconds: 5 },
-    });
   });
 
   it('forwards an accepted replay and publishes its durable wake-up hint', async () => {

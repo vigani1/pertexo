@@ -98,27 +98,8 @@ describe('database configuration', () => {
       lifecycleCommandRole: 'lifecycle_role',
       operatorRole: 'operator_role',
       ownerRole: 'pertexo_owner',
-      regionalWriteAdmissionEnforced: false,
       workerRuntimeRole: 'worker_role',
     });
-  });
-
-  it('requires the regional write fence for production migrations', () => {
-    expect(() =>
-      parseMigrationConfig({
-        DATABASE_MIGRATION_URL:
-          'postgresql://migration:secret@localhost:5432/pertexo',
-        NODE_ENV: 'production',
-      }),
-    ).toThrow('regional write admission enforcement');
-    expect(
-      parseMigrationConfig({
-        DATABASE_MIGRATION_URL:
-          'postgresql://migration:secret@localhost:5432/pertexo',
-        NODE_ENV: 'production',
-        REGIONAL_WRITE_ADMISSION_ENFORCED: 'true',
-      }).regionalWriteAdmissionEnforced,
-    ).toBe(true);
   });
 
   it.each([
@@ -130,7 +111,6 @@ describe('database configuration', () => {
     ['POSTGRES_LIFECYCLE_COMMAND_USER', 'lifecycle role'],
     ['POSTGRES_OWNER_USER', 'owner-role'],
     ['POSTGRES_WORKER_RUNTIME_USER', 'worker-role'],
-    ['REGIONAL_WRITE_ADMISSION_ENFORCED', 'yes'],
   ] as const)('rejects invalid migration environment %s=%s', (key, value) => {
     expect(() =>
       parseMigrationConfig({

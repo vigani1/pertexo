@@ -6,7 +6,6 @@ import type {
   WebhookVerificationReference,
 } from '@pertexo/database/testing';
 import {
-  RegionalWriteAdmissionPausedError,
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
@@ -547,16 +546,6 @@ describe('generic webhook ingress', () => {
     expect(response.statusCode).toBe(429);
     expect(response.headers['retry-after']).toBe('5');
 
-    const fenced = setup(undefined, new RegionalWriteAdmissionPausedError());
-    const fencedResponse = await fenced.application.inject(
-      request('{}', currentSecret),
-    );
-    expect(fencedResponse.statusCode).toBe(503);
-    expect(fencedResponse.headers['retry-after']).toBe('5');
-    expect(fencedResponse.json<{ code: string }>().code).toBe(
-      'webhook.unavailable',
-    );
-
     const paused = setup(undefined, new WebhookWorkflowPausedError());
     const pausedResponse = await paused.application.inject(
       request('{}', currentSecret),
@@ -843,16 +832,15 @@ describe('generic webhook ingress', () => {
       });
     });
 
-    it('records nothing it cannot attribute or while writes are paused', async () => {
+    it('records nothing it cannot attribute', async () => {
       const unknown = setup();
       unknown.database.resolveVerification.mockResolvedValueOnce(null);
       const limited = setup();
       limited.database.consumeIngressLimit.mockRejectedValueOnce(
         new WebhookIngressRateLimitExceededError(3),
       );
-      const paused = setup(undefined, new RegionalWriteAdmissionPausedError());
       const accepted = setup();
-      const fixtures = [unknown, limited, paused, accepted];
+      const fixtures = [unknown, limited, accepted];
       const responses = await Promise.all(
         fixtures.map(({ application }) =>
           application.inject(request('{"size":1}', currentSecret)),
@@ -860,7 +848,7 @@ describe('generic webhook ingress', () => {
       );
 
       expect(responses.map(({ statusCode }) => statusCode)).toEqual([
-        401, 429, 503, 202,
+        401, 429, 202,
       ]);
       for (const fixture of fixtures)
         expect(fixture.database.recordRejectedDelivery).not.toHaveBeenCalled();

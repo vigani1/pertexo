@@ -9,12 +9,6 @@ import {
 } from '../src/execution/artifacts/artifacts.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import {
-  createControlLedgerCoordinator,
-  type AppendControlLedgerRecord,
-  type ControlLedger,
-  type ControlLedgerRecord,
-} from '../src/lifecycle/control-ledger-coordinator.js';
-import {
   completePreviewAttempt,
   PREVIEW_STATUS,
 } from '../src/execution/previews/preview-execution.js';
@@ -37,25 +31,6 @@ import {
   workerPool,
   workspaceId,
 } from './support/preview-worker-fixture.js';
-
-async function waitForApplicationLock(applicationName: string): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  while (Date.now() < deadline) {
-    const result = await withAdmin(async (admin) => {
-      await admin.query("set statement_timeout='1s'");
-      return admin.query<{ blocked: boolean }>(
-        `select exists (
-           select 1 from pg_stat_activity
-            where application_name=$1 and wait_event_type='Lock'
-         ) blocked`,
-        [applicationName],
-      );
-    });
-    if (result.rows[0]?.blocked === true) return;
-    await new Promise<void>((resolve) => setImmediate(resolve));
-  }
-  throw new Error(`PostgreSQL application ${applicationName} did not block`);
-}
 
 describe('preview artifact retention lifecycle', () => {
   it('binds preview artifacts to their owner and enforces inherited retention', async () => {
@@ -217,7 +192,7 @@ describe('preview artifact retention lifecycle', () => {
     );
     expect(cleanup.rows).toEqual([]);
   });
-  it('deletes one preview artifact under maintenance and exact ledger authority', async () => {
+  it('deletes one quiesced preview artifact under maintenance without an open transaction', async () => {
     const previewDeadline = new Date(Date.now() + 1_500);
     const accepted = await acceptFixture({ expiresAt: previewDeadline });
     const claimed = await claimFixture(accepted, 'maintenance-preview-cleanup');
@@ -250,54 +225,6 @@ describe('preview artifact retention lifecycle', () => {
       ),
     );
     await ownerPool.query('select pg_sleep(1.6)');
-    const freshnessStarted = Promise.withResolvers<undefined>();
-    const releaseFreshness = Promise.withResolvers<undefined>();
-    const records: ControlLedgerRecord[] = [];
-    let pauseFreshness = false;
-    let pausedFreshness = false;
-    const appendRecord = vi.fn((input: AppendControlLedgerRecord) => {
-      const record = Object.freeze({
-        ...input,
-        recordHash: (input.commandType === 'legal_hold_placed'
-          ? '8'
-          : '9'
-        ).repeat(64),
-        schemaVersion: 1,
-      });
-      records.push(record);
-      return Promise.resolve(record);
-    });
-    const ledger: ControlLedger = {
-      append: appendRecord,
-      reconcile: vi.fn(
-        async (request: Parameters<ControlLedger['reconcile']>[0]) => {
-          if (
-            pauseFreshness &&
-            request.repairCommandId === undefined &&
-            !pausedFreshness
-          ) {
-            pausedFreshness = true;
-            freshnessStarted.resolve(undefined);
-            await releaseFreshness.promise;
-          }
-          const available = records
-            .filter((record) => record.sequence > request.projectedSequence)
-            .slice(0, request.maxRecords);
-          const last = available.at(-1);
-          const hasMore = records.some(
-            (record) =>
-              record.sequence > (last?.sequence ?? request.projectedSequence),
-          );
-          return {
-            hasMore,
-            pageEndHash: last?.recordHash ?? request.projectedHash,
-            pageEndSequence: last?.sequence ?? request.projectedSequence,
-            reachedHighWater: !hasMore,
-            records: available,
-          };
-        },
-      ),
-    };
     let releaseDelete: (() => void) | undefined;
     const deleteStarted = Promise.withResolvers<undefined>();
     const remove = vi.fn(
@@ -318,17 +245,8 @@ describe('preview artifact retention lifecycle', () => {
         connectionString: coordinatorUrl.toString(),
         max: 2,
       }),
-      ledger,
       { delete: remove, head: () => Promise.resolve(null) },
       { artifactQuiescenceSeconds: 1 },
-    );
-    const holdApplicationName = `preview-command-${randomUUID()}`;
-    const holdUrl = new URL(databaseUrl(maintenanceBaseUrl));
-    holdUrl.searchParams.set('application_name', holdApplicationName);
-    const commandCoordinator = createControlLedgerCoordinator(
-      parseDatabaseConfig({ connectionString: holdUrl.toString(), max: 2 }),
-      ledger,
-      { externalOperationTimeoutMs: 5_000 },
     );
     const processTarget = async () => {
       for (let attempt = 0; attempt < 25; attempt += 1) {
@@ -342,11 +260,6 @@ describe('preview artifact retention lifecycle', () => {
       throw new Error('Target preview cleanup was not discovered');
     };
     let completion: ReturnType<typeof processTarget> | undefined;
-    let holdResult:
-      ReturnType<typeof commandCoordinator.placeLegalHold> | undefined;
-    let operationFailure: unknown;
-    const cleanupFailures: unknown[] = [];
-    const holdId = randomUUID();
     try {
       await expect(processTarget()).resolves.toMatchObject({
         previewRunId: accepted.previewRunId,
@@ -367,26 +280,8 @@ describe('preview artifact retention lifecycle', () => {
           [workspaceId, artifactId],
         );
       });
-      pauseFreshness = true;
       completion = processTarget();
-      await freshnessStarted.promise;
-      const holdCommandId = randomUUID();
-      holdResult = commandCoordinator.placeLegalHold({
-        actorRef: 'legal-admin',
-        commandId: holdCommandId,
-        holdId,
-        legalAuthority: 'case-preview-retention-race',
-        occurredAt: '2026-09-08T00:00:00.000Z',
-        reason: 'serialize preview retention race',
-        workspaceId,
-      });
-      await waitForApplicationLock(holdApplicationName);
-      expect(appendRecord).not.toHaveBeenCalled();
-      expect(remove).not.toHaveBeenCalled();
-
-      releaseFreshness.resolve(undefined);
       await deleteStarted.promise;
-      expect(appendRecord).not.toHaveBeenCalled();
       const openTransactions = await withAdmin((admin) =>
         admin.query<{ count: string }>(
           `select count(*)::text count from pg_stat_activity
@@ -404,13 +299,7 @@ describe('preview artifact retention lifecycle', () => {
         status: 'completed',
         workspaceId,
       });
-      await expect(holdResult).resolves.toMatchObject({
-        holdId,
-        replayed: false,
-        workspaceId,
-      });
       expect(remove).toHaveBeenCalledOnce();
-      expect(appendRecord).toHaveBeenCalledOnce();
       const removed = await scopedQuery<{ artifacts: string; runs: string }>(
         `select
           (select count(*)::text from app.preview_runs where workspace_id=$1 and id=$2) runs,
@@ -418,40 +307,10 @@ describe('preview artifact retention lifecycle', () => {
         [workspaceId, accepted.previewRunId, artifactId],
       );
       expect(removed.rows[0]).toEqual({ artifacts: '0', runs: '0' });
-      await commandCoordinator.releaseLegalHold({
-        actorRef: 'legal-admin',
-        commandId: randomUUID(),
-        holdId,
-        legalAuthority: 'case-preview-retention-race',
-        occurredAt: '2026-09-08T00:00:01.000Z',
-        reason: 'release preview retention race hold',
-        workspaceId,
-      });
-    } catch (error: unknown) {
-      operationFailure = error;
     } finally {
-      releaseFreshness.resolve(undefined);
       releaseDelete?.();
-      await Promise.allSettled([
-        completion ?? Promise.resolve(),
-        holdResult ?? Promise.resolve(),
-      ]);
-      const closeResults = await Promise.allSettled([
-        coordinator.close(),
-        commandCoordinator.close(),
-      ]);
-      for (const result of closeResults)
-        if (result.status === 'rejected') cleanupFailures.push(result.reason);
+      await Promise.allSettled([completion ?? Promise.resolve()]);
+      await coordinator.close();
     }
-    const failures = [
-      ...(operationFailure === undefined ? [] : [operationFailure]),
-      ...cleanupFailures,
-    ];
-    if (failures.length === 1) throw failures[0];
-    if (failures.length > 1)
-      throw new AggregateError(
-        failures,
-        'Preview retention operation and cleanup failed',
-      );
   });
 });

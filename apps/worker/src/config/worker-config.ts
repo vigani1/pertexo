@@ -1,8 +1,13 @@
 import { z } from 'zod';
 import {
-  parseDualRegionArtifactStoreConfig,
-  type DualRegionArtifactStoreConfig,
+  parseArtifactStoreConfig,
+  type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
+import {
+  parseLifecycleCommandDatabaseConfig,
+  type DatabaseConfig,
+} from '@pertexo/database/lifecycle';
+import { parseMaintenanceDatabaseConfig } from '@pertexo/database/maintenance';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { platformServingReleaseRequiresHttpCapabilities } from '@pertexo/node-catalog';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
@@ -411,7 +416,8 @@ const workerConfigSchema = z
 
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
-    artifactStore?: DualRegionArtifactStoreConfig;
+    artifactStore?: ArtifactStoreConfig;
+    retention?: RetentionConfig;
     connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
     authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
@@ -420,6 +426,12 @@ export type WorkerConfig = Readonly<
     coordinator: { workflowTriggerOutcomesEnabled: boolean };
   }
 >;
+
+export type RetentionConfig = Readonly<{
+  lifecycleDatabase: DatabaseConfig;
+  maintenanceDatabase: DatabaseConfig;
+  leaseOwner: string;
+}>;
 
 function stringEnvironment(
   environment: Readonly<Record<string, unknown>>,
@@ -471,7 +483,7 @@ function connectionEncryptionConfig(
 function artifactStoreConfig(
   environment: Readonly<Record<string, string | undefined>>,
   deployed: boolean,
-): DualRegionArtifactStoreConfig | undefined {
+): ArtifactStoreConfig | undefined {
   const names = [
     'ARTIFACT_STORE_ACCESS_KEY_ID',
     'ARTIFACT_STORE_BUCKET',
@@ -480,25 +492,35 @@ function artifactStoreConfig(
     'ARTIFACT_STORE_REGION',
     'ARTIFACT_STORE_REQUEST_TIMEOUT_MS',
     'ARTIFACT_STORE_SECRET_ACCESS_KEY',
-    'ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID',
-    'ARTIFACT_STORE_RECOVERY_BUCKET',
-    'ARTIFACT_STORE_RECOVERY_ENDPOINT',
-    'ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE',
-    'ARTIFACT_STORE_RECOVERY_REGION',
-    'ARTIFACT_STORE_RECOVERY_REQUEST_TIMEOUT_MS',
-    'ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY',
     'ARTIFACT_MAX_BYTES',
   ] as const;
   if (names.every((name) => environment[name] === undefined)) return undefined;
-  const parsed = parseDualRegionArtifactStoreConfig(environment);
-  if (
-    deployed &&
-    [parsed.primary, parsed.recovery].some(
-      (store) => new URL(store.endpoint).protocol !== 'https:',
-    )
-  )
+  const parsed = parseArtifactStoreConfig(environment);
+  if (deployed && new URL(parsed.endpoint).protocol !== 'https:')
     throw new Error('HTTPS artifact store endpoint is required when deployed');
   return parsed;
+}
+
+/** Retention runs in every deployed worker; locally it needs both logins. */
+function retentionConfig(
+  environment: Readonly<Record<string, string | undefined>>,
+  deployed: boolean,
+  workerId: string,
+  artifactStore: ArtifactStoreConfig | undefined,
+): RetentionConfig | undefined {
+  if (
+    !deployed &&
+    environment.DATABASE_MAINTENANCE_URL === undefined &&
+    environment.DATABASE_LIFECYCLE_COMMAND_URL === undefined
+  )
+    return undefined;
+  if (artifactStore === undefined)
+    throw new Error('Retention requires artifact storage');
+  return Object.freeze({
+    lifecycleDatabase: parseLifecycleCommandDatabaseConfig(environment),
+    maintenanceDatabase: parseMaintenanceDatabaseConfig(environment),
+    leaseOwner: `retention:${workerId}`,
+  });
 }
 
 export function parseWorkerConfig(
@@ -515,6 +537,12 @@ export function parseWorkerConfig(
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
     const connectionEncryption = connectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
+    const retention = retentionConfig(
+      raw,
+      deployed,
+      result.data.nodeAttempt.workerId,
+      artifactStore,
+    );
     const invitationDelivery = parseInvitationDeliveryConfig(
       raw,
       result.data.outboxDispatcher.enabledJobNames.includes(
@@ -543,6 +571,7 @@ export function parseWorkerConfig(
       ...connectionHealth.parseConnectionRunHealthConfig(environment),
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),
       ...(artifactStore === undefined ? {} : { artifactStore }),
+      ...(retention === undefined ? {} : { retention }),
       ...(invitationDelivery === undefined ? {} : { invitationDelivery }),
       ...(authenticationMailDelivery === undefined
         ? {}

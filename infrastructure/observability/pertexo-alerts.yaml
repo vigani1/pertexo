@@ -245,8 +245,8 @@ groups:
         annotations:
           summary: Object-store integrity or readiness enforcement failed
           description:
-            An artifact or control-ledger safety check rejected an observed
-            object-store result; preserve the fail-closed behavior.
+            An artifact integrity check rejected an observed object-store
+            result; preserve the fail-closed behavior.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoobjectstoresafetyviolation
       - alert: PertexoEventLoopDelayHigh
         expr: |
@@ -271,26 +271,6 @@ groups:
 
   - name: pertexo-destructive-maintenance
     rules:
-      - alert: PertexoRegionalWriteAdmissionPaused
-        expr: |
-          max(pertexo_regional_replica_admission_blocked
-            and on (service_instance_id)
-            topk(1, pertexo_regional_replica_observation_timestamp_seconds)) == 1
-          or max(pertexo_regional_replica_replay_lag_seconds
-            and on (service_instance_id)
-            topk(1, pertexo_regional_replica_observation_timestamp_seconds)) >= 300
-          or time() - max(pertexo_regional_replica_observation_timestamp_seconds) > 90
-          or absent(pertexo_regional_replica_observation_timestamp_seconds) == 1
-        for: 1m
-        labels:
-          severity: page
-        annotations:
-          summary: Regional replica state has fenced durable writes
-          description:
-            Cross-region replay is unavailable, stale, or outside the
-            five-minute recovery-point bound; new durable run admission must
-            remain paused.
-          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoregionalwriteadmissionpaused
       - alert: PertexoRetentionOperationFailure
         expr: increase(pertexo_retention_operation_failure_count_total[15m]) > 0
         for: 1m
@@ -325,19 +305,6 @@ groups:
         annotations:
           summary: Lifecycle command processing failed
           description:
-            An asynchronous deletion or restore command failed before reaching a
+            A workspace deletion or restore command failed before reaching a
             durable result.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexolifecyclecommandfailure
-      - alert: PertexoControlLedgerDivergence
-        expr:
-          increase(pertexo_control_ledger_reconciliation_count_total{outcome!="agreed"}[5m])
-          > 0
-        for: 1m
-        labels:
-          severity: page
-        annotations:
-          summary: Dual-region control-ledger agreement is not proven
-          description:
-            Restore-before-serve reconciliation failed and tenant serving must
-            remain fenced.
-          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexocontrolledgerdivergence

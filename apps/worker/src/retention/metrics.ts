@@ -1,7 +1,7 @@
 import { metrics, type Meter } from '@opentelemetry/api';
+import type { WorkspaceLifecycleCommandOutcome } from '@pertexo/database/lifecycle';
 import type {
   OperatorMaintenanceRerunResult,
-  RegionalReplicaLagObservation,
   RetentionDryRunProcessResult,
   RetentionEnforcementProcessResult,
   PreviewRetentionProcessResult,
@@ -18,11 +18,9 @@ export const RETENTION_METRIC_NAME = Object.freeze({
   failureDuration: 'pertexo.retention.operation.failure.duration',
   operatorRerunCount: 'pertexo.maintenance.operator_rerun.count',
   operatorRerunDuration: 'pertexo.maintenance.operator_rerun.duration',
+  lifecycleCommandCount: 'pertexo.lifecycle_command.process.count',
+  lifecycleCommandDuration: 'pertexo.lifecycle_command.process.duration',
   pageCount: 'pertexo.retention.page.count',
-  regionalReplicaAdmissionBlocked: 'pertexo.regional_replica.admission.blocked',
-  regionalReplicaObservationTime:
-    'pertexo.regional_replica.observation.timestamp',
-  regionalReplicaReplayLag: 'pertexo.regional_replica.replay_lag',
   purgeCount: 'pertexo.purge.batch.count',
   purgeDuration: 'pertexo.purge.batch.duration',
   rowCount: 'pertexo.retention.rows.count',
@@ -39,10 +37,14 @@ export type RetentionOperation =
   | 'preview'
   | 'run_artifact'
   | 'workspace_purge'
-  | 'transient_data_reap';
+  | 'transient_data_reap'
+  | 'lifecycle_command';
 
 export interface RetentionMetrics {
-  recordRegionalReplicaLag(result: RegionalReplicaLagObservation): void;
+  recordLifecycleCommand(
+    result: WorkspaceLifecycleCommandOutcome,
+    durationSeconds: number,
+  ): void;
   recordSchedule(
     result: RetentionScheduleResult,
     durationSeconds: number,
@@ -144,43 +146,8 @@ function createTransientDataReapRecorder(
   };
 }
 
-function createRegionalReplicaRecorder(
-  meter: Meter,
-  now: () => number,
-): RetentionMetrics['recordRegionalReplicaLag'] {
-  const admissionBlocked = meter.createGauge(
-    RETENTION_METRIC_NAME.regionalReplicaAdmissionBlocked,
-    {
-      description:
-        'Whether durable write admission is blocked by regional replica state',
-      unit: '1',
-    },
-  );
-  const replayLag = meter.createGauge(
-    RETENTION_METRIC_NAME.regionalReplicaReplayLag,
-    {
-      description: 'Observed cross-region PostgreSQL replica replay lag',
-      unit: 's',
-    },
-  );
-  const observationTime = meter.createGauge(
-    RETENTION_METRIC_NAME.regionalReplicaObservationTime,
-    {
-      description: 'Unix time of the originating regional replica observation',
-      unit: 's',
-    },
-  );
-  return (result) => {
-    admissionBlocked.record(result.status === 'open' ? 0 : 1);
-    observationTime.record(now() / 1_000);
-    if (result.replayLagMillis !== null)
-      replayLag.record(result.replayLagMillis / 1_000);
-  };
-}
-
 export function createRetentionMetrics(
   meter: Meter = metrics.getMeter('@pertexo/retention', '0.0.0'),
-  now: () => number = Date.now,
 ): RetentionMetrics {
   const batches = meter.createCounter(RETENTION_METRIC_NAME.batchCount, {
     description: 'Retention batches processed by bounded kind and outcome',
@@ -250,8 +217,23 @@ export function createRetentionMetrics(
       unit: 's',
     },
   );
+  const lifecycleCommandCount = meter.createCounter(
+    RETENTION_METRIC_NAME.lifecycleCommandCount,
+    { description: 'Lifecycle command processing outcomes', unit: '{command}' },
+  );
+  const lifecycleCommandDuration = meter.createHistogram(
+    RETENTION_METRIC_NAME.lifecycleCommandDuration,
+    { description: 'Lifecycle command processing duration', unit: 's' },
+  );
   const retentionMetrics: RetentionMetrics = {
-    recordRegionalReplicaLag: createRegionalReplicaRecorder(meter, now),
+    recordLifecycleCommand: (result, durationSeconds) => {
+      const attributes = {
+        command_type: result.status === 'idle' ? 'none' : result.commandType,
+        outcome: result.status,
+      };
+      lifecycleCommandCount.add(1, attributes);
+      lifecycleCommandDuration.record(durationSeconds, attributes);
+    },
     recordSchedule: (result, durationSeconds) => {
       const attributes = {
         mode: 'schedule',

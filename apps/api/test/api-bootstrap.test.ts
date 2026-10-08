@@ -487,24 +487,19 @@ describe('API bootstrap ownership and health', () => {
   });
 
   it('rejects artifact overrides when configured artifacts have no identity source', async () => {
-    const regionalStore = (name: string, region: string) => ({
-      accessKeyId: name,
-      bucket: `${name}-bucket`,
-      endpoint: `https://${name}.example.test`,
-      forcePathStyle: true,
-      maxObjectBytes: 100,
-      region,
-      requestTimeoutMs: 1_000,
-      secretAccessKey: 'secret',
-    });
-
     await expect(
       createApiApplication(
         {
           ...config,
           artifacts: {
-            primary: regionalStore('primary', 'eu-central-1'),
-            recovery: regionalStore('recovery', 'eu-west-1'),
+            accessKeyId: 'artifacts',
+            bucket: 'artifacts-bucket',
+            endpoint: 'https://artifacts.example.test',
+            forcePathStyle: true,
+            maxObjectBytes: 100,
+            region: 'eu-central-1',
+            requestTimeoutMs: 1_000,
+            secretAccessKey: 'secret',
           },
         },
         {

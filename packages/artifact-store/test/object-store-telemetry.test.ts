@@ -50,7 +50,6 @@ describe('object-store telemetry', () => {
       const presign = createArtifactDownloadPresigner(
         client,
         recording.observer,
-        'artifact',
       );
       const url = await presign({
         command: new GetObjectCommand({
@@ -83,12 +82,7 @@ describe('object-store telemetry', () => {
       destroy: vi.fn(),
       send: () => Promise.reject(failure),
     };
-    const client = new ObservedS3Client(
-      raw,
-      recording.observer,
-      'control_ledger',
-      'recovery',
-    );
+    const client = new ObservedS3Client(raw, recording.observer);
 
     await expect(
       client.send(new HeadBucketCommand({ Bucket: 'secret' })),
@@ -99,8 +93,6 @@ describe('object-store telemetry', () => {
       errorClass: 'service_error',
       operation: 'head_bucket',
       outcome: 'error',
-      regionRole: 'recovery',
-      surface: 'control_ledger',
     });
     expect(JSON.stringify(recording.requests)).not.toContain('secret');
     expect(JSON.stringify(recording.requests)).not.toContain(
@@ -126,8 +118,6 @@ describe('object-store telemetry', () => {
       const client = new ObservedS3Client(
         { destroy: vi.fn(), send: () => Promise.reject(failure) },
         recording.observer,
-        'artifact',
-        'artifact',
       );
 
       await expect(
@@ -222,8 +212,6 @@ describe('object-store telemetry', () => {
         // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- provider failures are unknown at this boundary.
         { destroy: vi.fn(), send: () => Promise.reject(failure) },
         recording.observer,
-        'artifact',
-        'artifact',
       );
 
       const request = client.send(new HeadBucketCommand({ Bucket: 'secret' }));
@@ -234,7 +222,6 @@ describe('object-store telemetry', () => {
 
       const presign = observePresign(
         recording.observer,
-        'artifact',
         // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- presigner failures are unknown at this boundary.
         () => Promise.reject(failure),
       );
@@ -249,8 +236,6 @@ describe('object-store telemetry', () => {
     const client = new ObservedS3Client(
       { destroy: vi.fn(), send: () => Promise.resolve(result) },
       recording.observer,
-      'artifact',
-      'artifact',
     );
     const command = new Proxy(
       {},
@@ -281,8 +266,6 @@ describe('object-store telemetry', () => {
     const client = new ObservedS3Client(
       { destroy: vi.fn(), send: () => Promise.reject(failure) },
       recording.observer,
-      'artifact',
-      'artifact',
     );
 
     await expect(
@@ -388,30 +371,18 @@ describe('object-store telemetry', () => {
         errorClass: 'none',
         operation: 'presign_put_object',
         outcome: 'success',
-        regionRole: 'artifact',
-        surface: 'artifact',
       }),
       expect.objectContaining({
         errorClass: 'none',
         operation: 'presign_get_object',
         outcome: 'success',
-        regionRole: 'artifact',
-        surface: 'artifact',
       }),
       expect.objectContaining({
         errorClass: 'none',
         operation: 'head_object',
         outcome: 'success',
-        regionRole: 'artifact',
-        surface: 'artifact',
       }),
     ]);
-    expect(recording.safety).toEqual([
-      {
-        check: 'artifact_integrity',
-        regionRole: 'artifact',
-        surface: 'artifact',
-      },
-    ]);
+    expect(recording.safety).toEqual([{ check: 'artifact_integrity' }]);
   });
 });

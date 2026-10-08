@@ -90,7 +90,7 @@ type PreviewAttemptRuntimeDependency = Readonly<{
 
 export type NodeAttemptRuntimeOptions = Readonly<{
   connectionRunHealthMode?: ConnectionRunHealthMode;
-  artifactStore?: DualRegionArtifactStoreConfig;
+  artifactStore?: ArtifactStoreConfig;
   connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
@@ -430,4 +430,4 @@ export async function createNodeAttemptRuntime(
     throw error;
   }
 }
-import type { DualRegionArtifactStoreConfig } from '@pertexo/artifact-store';
+import type { ArtifactStoreConfig } from '@pertexo/artifact-store';

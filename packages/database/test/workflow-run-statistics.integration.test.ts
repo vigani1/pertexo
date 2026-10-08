@@ -268,7 +268,7 @@ describe('ADR 057 current capacity authority', () => {
     });
     expect(result.asOf).toMatch(/\.\d{6}Z$/u);
     await expect(checkDatabaseReadiness(runtimePool)).resolves.toMatchObject({
-      migrationHead: '0136_remove_release_machinery.sql',
+      migrationHead: '0137_single_region_storage.sql',
     });
     const grants = await runtimePool.query(`select
       has_function_privilege('pertexo_api','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as api,

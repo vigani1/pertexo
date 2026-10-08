@@ -69,7 +69,6 @@ export const API_PROBLEM_CODES = [
   'connection.revoked',
   'provider.rate_limited',
   'provider.unavailable',
-  'platform.write_paused',
   'webhook.authentication_failed',
   'webhook.payload_too_large',
   'webhook.unsupported_media_type',
@@ -394,12 +393,6 @@ const apiProblemDetails = {
   'provider.unavailable': {
     status: 503,
     title: 'Provider unavailable',
-    severity: 'error',
-    exposeDetail: true,
-  },
-  'platform.write_paused': {
-    status: 503,
-    title: 'Durable writes temporarily paused',
     severity: 'error',
     exposeDetail: true,
   },

@@ -111,24 +111,30 @@ function quoteIdentifier(identifier: string): string {
 }
 
 function renderMigration(sql: string, config: MigrationConfig): string {
-  return sql
-    .replaceAll('{{owner_role}}', quoteIdentifier(config.ownerRole))
-    .replaceAll('{{api_runtime_role}}', quoteIdentifier(config.apiRuntimeRole))
-    .replaceAll('{{dispatcher_role}}', quoteIdentifier(config.dispatcherRole))
-    .replaceAll('{{maintenance_role}}', quoteIdentifier(config.maintenanceRole))
-    .replaceAll(
-      '{{lifecycle_command_role}}',
-      quoteIdentifier(config.lifecycleCommandRole),
-    )
-    .replaceAll('{{operator_role}}', quoteIdentifier(config.operatorRole))
-    .replaceAll(
-      '{{worker_runtime_role}}',
-      quoteIdentifier(config.workerRuntimeRole),
-    )
-    .replaceAll(
-      '{{regional_write_admission_enforced}}',
-      config.regionalWriteAdmissionEnforced === true ? 'true' : 'false',
-    );
+  return (
+    sql
+      .replaceAll('{{owner_role}}', quoteIdentifier(config.ownerRole))
+      .replaceAll(
+        '{{api_runtime_role}}',
+        quoteIdentifier(config.apiRuntimeRole),
+      )
+      .replaceAll('{{dispatcher_role}}', quoteIdentifier(config.dispatcherRole))
+      .replaceAll(
+        '{{maintenance_role}}',
+        quoteIdentifier(config.maintenanceRole),
+      )
+      .replaceAll(
+        '{{lifecycle_command_role}}',
+        quoteIdentifier(config.lifecycleCommandRole),
+      )
+      .replaceAll('{{operator_role}}', quoteIdentifier(config.operatorRole))
+      .replaceAll(
+        '{{worker_runtime_role}}',
+        quoteIdentifier(config.workerRuntimeRole),
+      )
+      // Migrations before 0137 create the removed regional write admission gate.
+      .replaceAll('{{regional_write_admission_enforced}}', 'false')
+  );
 }
 
 export function isCompatibleMigrationChecksum(
