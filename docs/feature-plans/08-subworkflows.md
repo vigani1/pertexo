@@ -1,6 +1,8 @@
 # F08 — Reusable subworkflows with durable parent/child runs
 
 Status: proposed plan; not implementation-authorized by this document.
+The first implementation (#149, #159, #162) was reverted on 2026-10-08; F08 will
+be re-planned after the architecture reset.
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: New execution capability across both stacks. Relative size: **XL**, not a calendar estimate.
 
