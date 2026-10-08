@@ -50,10 +50,15 @@ now, as one ordered program — not "whenever we touch it".
 - [x] **2. CI, tooling and docs reset** — six standard jobs, fast pre-push,
       custom gates that enforce the old structure removed; old plans, audits,
       progress logs and generated inventories deleted (git keeps history).
-- [ ] **3. Remove release machinery** — no cohorts/epochs, every node available,
-      one format per stored thing, release rules out of the node SDK.
+- [x] **3. Remove release machinery** — no cohorts; the API and worker serve one
+      catalog with every node; the database no longer stores node releases or
+      gates deployments on them; startup readiness is migration head + PostgreSQL
+      version; every feature switch is on. Collapsing old node versions, release
+      history and numbered formats moves to the node-sdk, nodes-core,
+      node-catalog and engine package passes (step 8).
 - [ ] **4. Storage and ops simplification** — single-region artifact store, no
-      control ledger, ops apps merged, one-command local setup.
+      control ledger, ops apps merged, deployment definitions cleaned (no
+      cohort variable, no recovery store), one-command local setup.
 - [ ] **5. Database foundation** — tables defined once, one baseline migration,
       three database roles, repository layout.
 - [ ] **6. Execution package** — run actions and the coordinator move out of the
