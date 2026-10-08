@@ -83,49 +83,38 @@ Prerequisites: Node.js 24, pnpm 11, Docker, and Docker Compose.
 
 ```bash
 pnpm install
-cp .env.example .env
-docker compose up -d --wait postgres redis artifact-store
-set -a; . ./.env; set +a
-pnpm build
-pnpm db:migrate
+pnpm dev
 ```
 
-The example environment is for local development only. Review `.env` before
-starting processes; do not commit credentials or production configuration.
-Compose reads `.env` itself, but the pnpm commands read only the shell
-environment, so load `.env` (`set -a; . ./.env; set +a`) in every terminal that
-runs one. Refresh a `.env` copied from an older `.env.example`: the worker needs
-`OUTBOX_DISPATCH_JOB_NAMES` to dispatch runs, and runs retention when the
-maintenance and lifecycle-command database URLs are set.
+`pnpm dev` creates `.env` from `.env.example` when it is missing, starts
+Postgres, Redis and the local object store, builds the workspace, migrates the
+database, and runs the API, worker and web app with prefixed logs. It also makes
+sure the development account `dev@pertexo.local` (password
+`pertexo-development`) exists and is verified. Open `http://127.0.0.1:5173` and
+sign in. Stop everything with Ctrl+C; the services keep their data until
+`docker compose down -v`.
 
-To use the app in a browser, start each process in its own terminal:
+The example environment is for local development only; do not commit credentials
+or production configuration. Local authentication mail is never sent: the API
+prints each verification or reset link to its log. The example leaves connection
+encryption (`CONNECTION_KMS_*`) unset, so the connections API is off and the
+workflow editor offers no connections. The worker dispatches only the job kinds
+in `OUTBOX_DISPATCH_JOB_NAMES`, which the example sets to run workflows started
+manually, and runs retention because the maintenance and lifecycle-command
+database URLs are set.
 
-```bash
-pnpm dev:api
-pnpm dev:worker
-pnpm dev:web
-```
-
-Open `http://127.0.0.1:5173` and create an account. Local authentication mail is
-never sent: in development the API prints each verification or reset link to its
-console. The example environment leaves connection encryption
-(`CONNECTION_KMS_*`) unset, so the connections API is off and the workflow
-editor offers no connections. The worker dispatches only the job kinds in
-`OUTBOX_DISPATCH_JOB_NAMES`, which the example sets to run workflows started
-manually.
-
-Common commands:
+To run one process on its own, load `.env` into the shell first
+(`set -a; . ./.env; set +a`) and use `pnpm dev:api`, `pnpm dev:worker` or
+`pnpm dev:web`.
 
 Workspace packages resolve their compiled `dist` exports. After changing a
 shared package, run `pnpm build` and restart the affected development process.
 The API/worker source watchers do not replace the shared-package build step.
-`pnpm dev:api` and `pnpm dev:worker` compile with TypeScript before watching the
-emitted JavaScript, preserving the decorator metadata required by NestJS.
+
+Common commands:
 
 ```bash
-pnpm dev:api
-pnpm dev:worker
-pnpm dev:web
+pnpm dev
 pnpm check
 pnpm test
 pnpm test:integration
