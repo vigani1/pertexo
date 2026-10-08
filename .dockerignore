@@ -4,8 +4,6 @@
 .env.*
 coverage
 **/coverage
-!infrastructure/coverage
-!infrastructure/coverage/**
 **/dist
 **/node_modules
 **/playwright-report

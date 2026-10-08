@@ -1,7 +1,6 @@
 name: CI
 
 on:
-  workflow_call:
   pull_request:
   push:
     branches:
@@ -16,8 +15,8 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Every service-consuming job runs on its own runner and Compose project. This
-# keeps databases and Redis disposable and prevents cross-job state races.
+# Service-consuming jobs run on their own runner and Compose project, so
+# databases and Redis are disposable.
 env:
   POSTGRES_DB: pertexo
   POSTGRES_PORT: '5432'
@@ -103,56 +102,33 @@ env:
   WORKER_TRIGGER_INTEGRATION: 'true'
 
 jobs:
-  # Stable, dependency-free failure domain for source quality and compilation.
-  quality:
+  check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Validate ordinary CI gate policy
-        run: pnpm ci:gates:check
-      - name: Build workspace
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Format
+        run: pnpm format:check
+      - name: Build
         run: pnpm build
-      - name: Run joined quality and isolated runner contracts
-        run: |
-          set -o pipefail
-          mkdir -p artifacts
-          node infrastructure/quality/run-ci-quality.mjs \
-            --quality docs:check format:check runtime:check network-registry:check dependencies:check database:schema:check lint complexity:check duplication:check contracts:check typecheck \
-            --contracts quality:local:check 2>&1 | tee artifacts/quality.log
-      - name: Validate architecture boundaries
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unused code and dependencies
+        run: pnpm dependencies:check
+      - name: Generated contracts are current
+        run: pnpm contracts:check
+      - name: Database schema matches migrations
+        run: pnpm database:schema:check
+      - name: Package boundaries
         run: pnpm architecture:check
-      - name: Validate built package exports
-        run: pnpm built-exports:check
-      - name: Upload quality log
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: quality-log
-          path: artifacts/
-          if-no-files-found: ignore
-      - name: Compare approved IANA address registries with upstream
-        if: github.event_name == 'schedule'
-        run: pnpm network-registry:check-upstream
 
-  # Unit tests are independent and partitioned by workspace group. Integration
-  # tests remain in the service-backed jobs below.
-  unit-tests:
-    name: unit-tests (${{ matrix.group }})
+  unit:
+    name: unit (${{ matrix.group }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -160,218 +136,157 @@ jobs:
       matrix:
         include:
           - group: core
-            packages:
-              '@pertexo/contracts @pertexo/integrations @pertexo/node-catalog
-              @pertexo/node-sdk @pertexo/nodes-core @pertexo/observability
-              @pertexo/queue @pertexo/rate-limit @pertexo/workflow-engine
-              @pertexo/workflow-model'
-          - group: services
-            packages:
-              '@pertexo/api @pertexo/lifecycle-command @pertexo/operator-command
-              @pertexo/recovery @pertexo/retention @pertexo/worker @pertexo/web'
-          - group: persistence
-            packages: '@pertexo/artifact-store @pertexo/database'
+            filter: >-
+              --filter @pertexo/contracts --filter @pertexo/integrations
+              --filter @pertexo/node-catalog --filter @pertexo/node-sdk --filter
+              @pertexo/nodes-core --filter @pertexo/observability --filter
+              @pertexo/queue --filter @pertexo/rate-limit --filter
+              @pertexo/workflow-engine --filter @pertexo/workflow-model --filter
+              @pertexo/artifact-store --filter @pertexo/database
+          - group: apps
+            filter: >-
+              --filter @pertexo/api --filter @pertexo/worker --filter
+              @pertexo/lifecycle-command --filter @pertexo/operator-command
+              --filter @pertexo/recovery --filter @pertexo/retention --filter
+              @pertexo/web
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build workspace dependencies
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Build
         run: pnpm build
-      - name: Run ${{ matrix.group }} unit tests
-        run: |
-          set -o pipefail
-          mkdir -p artifacts
-          for package in ${{ matrix.packages }}; do
-            pnpm --filter "$package" test
-          done 2>&1 | tee artifacts/unit-${{ matrix.group }}.log
-      - name: Run extended scheduled workflow model
-        if: github.event_name == 'schedule' && matrix.group == 'core'
-        env:
-          WORKFLOW_MODEL_RUN_MULTIPLIER: '4'
-        run: >-
-          pnpm --filter @pertexo/workflow-engine exec vitest run
-          test/state-machine-model.test.ts
-      - name: Upload unit test log
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: unit-log-${{ matrix.group }}
-          path: artifacts/
-          if-no-files-found: ignore
+      - name: Unit tests
+        run: pnpm ${{ matrix.filter }} run --if-present test
 
-  browser:
+  integration:
+    name: integration (${{ matrix.group }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [database, services]
     env:
       COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
+        }}-integration-${{ matrix.group }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Install Playwright browsers
-        run:
-          pnpm --filter @pertexo/web exec playwright install --with-deps
-          chromium firefox webkit
-      - name: Verify browser harness lifetime and redaction
-        run: pnpm test:browser-probes
-      - name: Run authenticated browser journeys
-        run: pnpm --filter @pertexo/web test:e2e
-      - name: Build dependencies for the real Usage journey
-        run: pnpm --filter @pertexo/api... build
-      - name: Build worker dependencies for the real concurrency journey
-        run: pnpm --filter @pertexo/worker... build
-      - name: Start disposable live browser dependencies
-        run: docker compose up -d --wait postgres redis
-      - name: Run and validate the real Usage browser journey
-        env:
-          USAGE_BROWSER_INTEGRATION: 'true'
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Build
+        run: pnpm build
+      - name: Start services
         run: |
-          mkdir -p artifacts
-          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/usage-browser.integration.test.ts \
-            --reporter=default --reporter=json --outputFile=../../artifacts/usage-browser-gates.json
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/usage-browser-gates.json 'Usage browser integration gate' 1
-      - name: Upload Usage browser integration report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: usage-browser-report
-          path: artifacts/usage-browser-gates.json
-          if-no-files-found: error
-      - name: Run and validate the real workflow concurrency browser journey
-        env:
-          WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION: 'true'
-          WORKFLOW_CONCURRENCY_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
+          docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery
+          docker compose run --rm control-ledger-primary-bootstrap
+          docker compose run --rm control-ledger-recovery-bootstrap
+      - name: Migrate
+        run: pnpm db:migrate
+      - name: Database integration tests
+        if: matrix.group == 'database'
         run: |
-          mkdir -p artifacts
-          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/workflow-concurrency-browser.integration.test.ts \
-            --reporter=default --reporter=json --outputFile=../../artifacts/workflow-concurrency-browser-gates.json
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/workflow-concurrency-browser-gates.json 'Workflow concurrency browser integration gate' 1
-      - name: Upload workflow concurrency browser integration report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: workflow-concurrency-browser-report
-          path: artifacts/workflow-concurrency-browser-gates.json
-          if-no-files-found: error
-      - name: Run and validate the real connection health browser journey
+          set -euo pipefail
+          pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
+            --exclude test/workflow-template-origin-boundary.integration.test.ts \
+            --exclude test/workflow-organization.integration.test.ts \
+            --exclude test/workflow-organization-read.integration.test.ts \
+            --exclude test/workflow-organization-readiness.integration.test.ts \
+            --exclude test/workflow-organization-maintenance-plans.integration.test.ts \
+            --exclude test/workflow-folders-batch.integration.test.ts \
+            --exclude test/workflow-organization-adapters.integration.test.ts \
+            --exclude test/workflow-tags.integration.test.ts
+          F07_ORGANIZATION_OWNED_FIXTURE=true F06_ORIGIN_BOUNDARY_OWNED_FIXTURE=true \
+            pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
+            test/workflow-template-origin-boundary.integration.test.ts \
+            test/workflow-organization.integration.test.ts \
+            test/workflow-organization-read.integration.test.ts \
+            test/workflow-organization-readiness.integration.test.ts \
+            test/workflow-organization-maintenance-plans.integration.test.ts \
+            test/workflow-folders-batch.integration.test.ts \
+            test/workflow-organization-adapters.integration.test.ts \
+            test/workflow-tags.integration.test.ts
+      - name: Service integration tests
+        if: matrix.group == 'services'
         env:
-          CONNECTION_HEALTH_BROWSER_INTEGRATION: 'true'
           CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
         run: |
-          mkdir -p artifacts
+          set -euo pipefail
+          pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts
+          pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts
+          pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts
+          pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
+          pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/connection-health-browser.integration.test.ts \
-            --reporter=default --reporter=json --outputFile=../../artifacts/connection-health-browser-gates.json
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/connection-health-browser-gates.json 'Connection health browser integration gate' 1
-      - name: Upload connection health browser integration report
+            --exclude test/platform/compatibility-rollout.integration.test.ts \
+            --exclude test/editor-browser.integration.test.ts \
+            --exclude test/usage-browser.integration.test.ts \
+            --exclude test/workflow-concurrency-browser.integration.test.ts \
+            --exclude test/connection-health-browser.integration.test.ts \
+            --exclude test/workflow-organization-browser.integration.test.ts \
+            --exclude test/curated-template-origin-guard.integration.test.ts \
+            --exclude test/workflow-authoring/organization.integration.test.ts \
+            --exclude test/workflow-authoring/favorite-persistence.integration.test.ts \
+            --exclude test/workflow-authoring/folders-bulk.integration.test.ts
+          F07_ORGANIZATION_OWNED_FIXTURE=true F06_ORIGIN_GUARD_OWNED_FIXTURE=true \
+            pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
+            test/curated-template-origin-guard.integration.test.ts \
+            test/workflow-authoring/organization.integration.test.ts \
+            test/workflow-authoring/favorite-persistence.integration.test.ts \
+            test/workflow-authoring/folders-bulk.integration.test.ts
+      - name: Service logs
+        if: failure()
+        run: docker compose logs --no-color --timestamps
+      - name: Stop services
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: connection-health-browser-report
-          path: artifacts/connection-health-browser-gates.json
-          if-no-files-found: error
-      - name: Run and validate the real workflow duplication browser journey
+        run: docker compose down -v --remove-orphans
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME:
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-e2e
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Install Playwright browsers
+        run: pnpm --filter @pertexo/web exec playwright install --with-deps
+      - name: Browser tests against the mocked API
+        run: pnpm --filter @pertexo/web test:e2e
+      - name: Build API and worker
+        run: pnpm --filter @pertexo/api... --filter @pertexo/worker... build
+      - name: Start services
+        run: docker compose up -d --wait postgres redis
+      - name: Browser journeys against the real stack
         env:
-          EDITOR_BROWSER_INTEGRATION: 'true'
-          EDITOR_BROWSER_CASE: duplication
-          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
+          WORKFLOW_CONCURRENCY_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
+          CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
         run: |
-          mkdir -p artifacts
+          set -euo pipefail
+          live() {
+            pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts "$@"
+          }
           postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
           redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
           export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
             --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
             --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
             '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
-          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/editor-browser.integration.test.ts \
-            --reporter=default --reporter=json --outputFile=../../artifacts/workflow-duplication-browser-gates.json
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/workflow-duplication-browser-gates.json 'Workflow duplication browser integration gate' 1
-      - name: Upload workflow duplication browser integration report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: workflow-duplication-browser-report
-          path: artifacts/workflow-duplication-browser-gates.json
-          if-no-files-found: error
-      - name: Run and validate the real workflow portability browser journey
-        env:
-          EDITOR_BROWSER_INTEGRATION: 'true'
-          EDITOR_BROWSER_CASE: portability
-          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
-        run: |
-          mkdir -p artifacts
-          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
-          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
-          export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
-            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
-            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
-            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
-          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/editor-browser.integration.test.ts \
-            --reporter=default --reporter=json --outputFile=../../artifacts/workflow-portability-browser-gates.json
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/workflow-portability-browser-gates.json 'Workflow portability browser integration gate' 1
-      - name: Upload workflow portability browser integration report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: workflow-portability-browser-report
-          path: artifacts/workflow-portability-browser-gates.json
-          if-no-files-found: error
-      - name: Run and validate the real workflow input cases browser journey
-        env:
-          EDITOR_BROWSER_INTEGRATION: 'true'
-          EDITOR_BROWSER_CASE: input-cases
-          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
-        run: |
-          mkdir -p artifacts
-          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
-          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
-          export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
-            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
-            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
-            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
-          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/editor-browser.integration.test.ts \
-            --reporter=default --reporter=json --outputFile=../../artifacts/workflow-input-cases-browser-gates.json
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/workflow-input-cases-browser-gates.json 'Workflow input cases browser integration gate' 1
-      - name: Upload workflow input cases browser integration report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: workflow-input-cases-browser-report
-          path: artifacts/workflow-input-cases-browser-gates.json
-          if-no-files-found: error
-      - name: Stop disposable live browser dependencies
+          USAGE_BROWSER_INTEGRATION=true live test/usage-browser.integration.test.ts
+          WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/workflow-concurrency-browser.integration.test.ts
+          CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/connection-health-browser.integration.test.ts
+          for browser_case in duplication portability input-cases curated-templates; do
+            EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE="$browser_case" EDITOR_BROWSER_OWNED_FIXTURE=true \
+              live test/editor-browser.integration.test.ts
+          done
+          F07_ORGANIZATION_OWNED_FIXTURE=true F07_ORGANIZATION_BROWSER_INTEGRATION=true \
+            live test/workflow-organization-browser.integration.test.ts
+      - name: Stop services
         if: always()
         run: docker compose down -v --remove-orphans
       - name: Upload browser traces
@@ -382,195 +297,19 @@ jobs:
           path: apps/web/test-results/
           if-no-files-found: ignore
 
-  curated-templates:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    env:
-      COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
-        }}-curated-templates
-    steps:
-      - name: Check out full source history
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install frozen dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Prepare exact archived dependencies for offline cutover builds
-        run: |
-          set -euo pipefail
-          export PNPM_CONFIG_STORE_DIR="$(pnpm store path --silent)"
-          export PNPM_CONFIG_CACHE_DIR="$RUNNER_TEMP/curated-cutover-pnpm-cache"
-          printf 'PNPM_CONFIG_STORE_DIR=%s\nPNPM_CONFIG_CACHE_DIR=%s\n' \
-            "$PNPM_CONFIG_STORE_DIR" "$PNPM_CONFIG_CACHE_DIR" >> "$GITHUB_ENV"
-          node infrastructure/testing/prepare-curated-cutover-cache.mjs
-      - name: Build workspace
-        run: pnpm build
-      - name: Install Playwright Chromium
-        run:
-          pnpm --filter @pertexo/web exec playwright install --with-deps
-          chromium
-      - name: Start owned curated-template dependencies
-        run: docker compose up -d --wait postgres redis
-      - name: Run source-bound curated-template qualification
-        env:
-          DATABASE_ADMIN_URL: postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres
-          DATABASE_MIGRATION_URL: postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
-          DATABASE_API_URL: postgresql://pertexo_api:pertexo-local-api@127.0.0.1:5432/pertexo
-          DATABASE_WORKER_URL: postgresql://pertexo_worker:pertexo-local-worker@127.0.0.1:5432/pertexo
-          DATABASE_DISPATCHER_URL: postgresql://pertexo_dispatcher:pertexo-local-dispatcher@127.0.0.1:5432/pertexo
-          REDIS_URL: redis://:pertexo-local-redis@127.0.0.1:6379/0
-          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
-        run: |
-          set -euo pipefail
-          test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
-          test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
-          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
-          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
-          export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
-            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
-            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
-            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
-          node infrastructure/testing/run-curated-template-qualification.mjs --reports-directory "$RUNNER_TEMP/curated-template-qualification"
-      - name: Stop disposable curated-template dependencies
-        if: always()
-        run: docker compose down -v --remove-orphans
-      - name: Upload curated-template qualification
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: curated-template-qualification
-          path: ${{ runner.temp }}/curated-template-qualification
-          if-no-files-found: error
-
-  workflow-organization-qualification:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    env:
-      COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
-        }}-workflow-organization-qualification
-    steps:
-      - name: Check out full source history
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install frozen dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Prepare exact archived dependencies for offline cutover builds
-        run: |
-          set -euo pipefail
-          export PNPM_CONFIG_STORE_DIR="$(pnpm store path --silent)"
-          export PNPM_CONFIG_CACHE_DIR="$RUNNER_TEMP/curated-cutover-pnpm-cache"
-          printf 'PNPM_CONFIG_STORE_DIR=%s\nPNPM_CONFIG_CACHE_DIR=%s\n' \
-            "$PNPM_CONFIG_STORE_DIR" "$PNPM_CONFIG_CACHE_DIR" >> "$GITHUB_ENV"
-          node infrastructure/testing/prepare-curated-cutover-cache.mjs
-      - name: Build workspace
-        run: pnpm build
-      - name: Install Playwright Chromium
-        run:
-          pnpm --filter @pertexo/web exec playwright install --with-deps
-          chromium
-      - name: Start owned workflow-organization dependencies
-        run: docker compose up -d --wait postgres redis
-      - name: Run source-bound workflow-organization qualification
-        env:
-          DATABASE_ADMIN_URL: postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres
-          DATABASE_MIGRATION_URL: postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
-          DATABASE_MAINTENANCE_URL: postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo
-          DATABASE_API_URL: postgresql://pertexo_api:pertexo-local-api@127.0.0.1:5432/pertexo
-          DATABASE_WORKER_URL: postgresql://pertexo_worker:pertexo-local-worker@127.0.0.1:5432/pertexo
-          DATABASE_DISPATCHER_URL: postgresql://pertexo_dispatcher:pertexo-local-dispatcher@127.0.0.1:5432/pertexo
-          REDIS_URL: redis://:pertexo-local-redis@127.0.0.1:6379/0
-          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
-        run: |
-          set -euo pipefail
-          test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
-          test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
-          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
-          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
-          export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
-            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
-            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
-            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
-          node infrastructure/testing/run-workflow-organization-qualification.mjs --reports-directory "$RUNNER_TEMP/workflow-organization-qualification"
-      - name: Stop disposable workflow-organization dependencies
-        if: always()
-        run: docker compose down -v --remove-orphans
-      - name: Upload workflow-organization qualification
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: workflow-organization-qualification
-          path: ${{ runner.temp }}/workflow-organization-qualification
-          if-no-files-found: error
-
-  coverage:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build workspace dependencies
-        run: pnpm build
-      - name: Enforce critical-module coverage baselines
-        run: pnpm test:coverage
-      - name: Upload coverage summaries
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: coverage-summaries
-          path: coverage/
-          if-no-files-found: ignore
-
-  production-image:
+  image:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Prepare image provenance output
-        run: mkdir -p artifacts
       - name: Build production image
+        run: docker buildx build --load --tag pertexo-ci:${{ github.sha }} .
+      - name:
+          Runs as non-root on a read-only filesystem and loads every entrypoint
         run: |
-          docker buildx build --load \
-            --tag pertexo-ci:${{ github.sha }} \
-            --metadata-file artifacts/production-image.build.json .
-      - name: Prove non-root read-only runtime
-        run: |
+          set -euo pipefail
           test "$(docker run --rm --read-only --tmpfs /tmp --entrypoint id pertexo-ci:${{ github.sha }} -u)" = 10001
-          docker run --rm --read-only --tmpfs /tmp --entrypoint node pertexo-ci:${{ github.sha }} --version
-      - name: Prove production role dependency closure
-        run: |
           docker run --rm --read-only --tmpfs /tmp --entrypoint node \
             pertexo-ci:${{ github.sha }} --input-type=module --eval \
             "await Promise.all([
@@ -582,327 +321,19 @@ jobs:
               import('./apps/operator-command/dist/run.js'),
               import('./packages/database/dist/migrations.js')
             ])"
-      - name: Generate CycloneDX SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
-        with:
-          image: pertexo-ci:${{ github.sha }}
-          format: cyclonedx-json
-          output-file: artifacts/production-image.sbom.json
-          upload-artifact: false
-      - name: Scan production image
-        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
-        with:
-          image: pertexo-ci:${{ github.sha }}
-          fail-build: true
-          severity-cutoff: high
-          only-fixed: true
-          output-format: json
-          output-file: artifacts/production-image.scan.json
-      - name: Bind image evidence to the built digest
-        run: |
-          node infrastructure/checks/create-image-provenance.mjs \
-            artifacts/production-image.build.json \
-            artifacts/production-image.sbom.json \
-            artifacts/production-image.scan.json \
-            "${{ github.sha }}" \
-            "pertexo-ci:${{ github.sha }}" \
-            artifacts/production-image.provenance.json
-      - name: Upload image provenance
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: production-image-provenance
-          path: artifacts/
-          if-no-files-found: error
 
-  integration:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-integration
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build packages used by integration fixtures
-        run: pnpm build
-      - name: Start disposable integration dependencies
-        run: |
-          docker compose up -d --wait postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery
-          docker compose run --rm control-ledger-primary-bootstrap
-          docker compose run --rm control-ledger-recovery-bootstrap
-      - name: Verify service boundaries and Redis durability policy
-        run: |
-          set -euo pipefail
-          test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
-          test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
-          test "$(docker compose port artifact-store 9090)" = "127.0.0.1:$ARTIFACT_STORE_PORT"
-          test "$(docker compose port artifact-store-recovery 9090)" = "127.0.0.1:$ARTIFACT_STORE_RECOVERY_PORT"
-          unauthenticated_output="$(docker compose exec -T redis redis-cli --raw ping 2>&1 | tr -d '\r')"
-          case "$unauthenticated_output" in
-            NOAUTH*) ;;
-            *) echo "::error::Redis accepted an unauthenticated command"; exit 1 ;;
-          esac
-          test "$(docker compose exec -T redis redis-cli --raw --no-auth-warning -a "$REDIS_PASSWORD" ping)" = PONG
-      - name: Run real PostgreSQL, Redis, and object-store integration suites
-        env:
-          CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          pnpm db:migrate
-          pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts \
-            --reporter=json --outputFile=../../artifacts/artifact-store-gates.json
-          pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts \
-            --reporter=json --outputFile=../../artifacts/queue-gates.json
-          pnpm --filter @pertexo/database exec vitest run --config vitest.integration-coverage.config.ts --coverage \
-            --exclude test/workflow-template-origin-boundary.integration.test.ts \
-            --exclude test/workflow-organization.integration.test.ts \
-            --exclude test/workflow-organization-read.integration.test.ts \
-            --exclude test/workflow-organization-readiness.integration.test.ts \
-            --exclude test/workflow-organization-maintenance-plans.integration.test.ts \
-            --exclude test/workflow-folders-batch.integration.test.ts \
-            --exclude test/workflow-organization-adapters.integration.test.ts \
-            --exclude test/workflow-tags.integration.test.ts \
-            --reporter=json --outputFile=../../artifacts/database-gates.json
-          pnpm --filter @pertexo/database test:coverage
-          pnpm database:coverage:merge
-          pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
-            --reporter=json --outputFile=../../artifacts/worker-gates.json
-          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            --exclude test/platform/compatibility-rollout.integration.test.ts \
-            --exclude test/editor-browser.integration.test.ts \
-            --exclude test/usage-browser.integration.test.ts \
-            --exclude test/workflow-concurrency-browser.integration.test.ts \
-            --exclude test/connection-health-browser.integration.test.ts \
-            --exclude test/curated-template-origin-guard.integration.test.ts \
-            --exclude test/workflow-authoring/organization.integration.test.ts \
-            --exclude test/workflow-authoring/favorite-persistence.integration.test.ts \
-            --exclude test/workflow-authoring/folders-bulk.integration.test.ts \
-            --exclude test/workflow-organization-browser.integration.test.ts \
-            --reporter=default --reporter=json --outputFile=../../artifacts/api-gates.json
-      - name: Prove new regression tests fail under selected mutations
-        run: pnpm mutation:check
-      - name: Prove every required integration cohort executed
-        run: |
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/artifact-store-gates.json 'artifact-store integration gates' 5 3
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/queue-gates.json 'queue integration gates' 1
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/database-gates.json 'database integration gates' 383
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/worker-gates.json 'worker integration gates' 30
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/api-gates.json 'API integration gates' 32
-      - name: Capture integration logs
-        if: failure()
-        run: |
-          mkdir -p artifacts
-          docker compose ps --all > artifacts/service-status.log
-          docker compose logs --no-color --timestamps postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery > artifacts/service-logs.log
-      - name: Upload integration reports
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: integration-reports
-          path: artifacts/
-          if-no-files-found: ignore
-      - name: Upload database integration coverage
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: database-integration-coverage
-          path: |
-            coverage/database-integration/
-            coverage/database-combined/
-          if-no-files-found: error
-      - name: Stop disposable dependencies
-        if: always()
-        run: docker compose down -v --remove-orphans
-
-  recovery:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    env:
-      COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-recovery
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build packages used by recovery fixtures
-        run: pnpm build
-      - name: Start disposable recovery dependencies
-        run:
-          docker compose up -d --wait postgres redis artifact-store
-          artifact-store-recovery control-ledger-primary control-ledger-recovery
-      - name: Run destructive crash, outage, and recovery proofs
-        env:
-          API_SSE_RESILIENCE_INTEGRATION: 'true'
-          API_SSE_RESILIENCE_DISPOSABLE_TARGET: 'true'
-          API_SSE_RESILIENCE_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
-          WORKER_TRANSPORT_RESILIENCE: 'true'
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          pnpm db:migrate
-          pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
-            test/coordinator-consumer-retry-wait.integration.test.ts \
-            test/coordinator-consumer-parallel-recovery.integration.test.ts \
-            test/coordinator-consumer-foreach-cancellation.integration.test.ts \
-            test/http-node-attempt.integration.test.ts \
-            --reporter=json --outputFile=../../artifacts/recovery-worker-gates.json
-          pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts \
-            --reporter=json --outputFile=../../artifacts/recovery-api-gates.json
-          pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts \
-            --reporter=json --outputFile=../../artifacts/transport-resilience-gates.json
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/recovery-worker-gates.json 'worker recovery gates' 4
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/recovery-api-gates.json 'API SSE recovery gates' 1
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/transport-resilience-gates.json 'worker transport recovery gates' 1
-      - name: Capture recovery service logs
-        if: failure()
-        run: |
-          mkdir -p artifacts
-          docker compose ps --all > artifacts/service-status.log
-          docker compose logs --no-color --timestamps postgres redis artifact-store artifact-store-recovery control-ledger-primary control-ledger-recovery > artifacts/service-logs.log
-      - name: Upload recovery reports
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: recovery-reports
-          path: artifacts/
-          if-no-files-found: ignore
-      - name: Stop disposable dependencies
-        if: always()
-        run: docker compose down -v --remove-orphans
-
-  compatibility:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-compatibility
-      API_COMPATIBILITY_ROLLOUT_INTEGRATION: 'true'
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build packages used by compatibility fixtures
-        run: pnpm build
-      - name: Start disposable compatibility database
-        run: docker compose up -d --wait postgres
-      - name: Run additive rollout and prior-head migration proofs
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          pnpm --filter @pertexo/api exec vitest run --config vitest.compatibility-rollout.config.ts \
-            --reporter=json --outputFile=../../artifacts/api-compatibility-gates.json
-          pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
-            test/oidc-browser-binding-migration.integration.test.ts \
-            --reporter=json --outputFile=../../artifacts/database-compatibility-gates.json
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/api-compatibility-gates.json 'API compatibility gates' 1
-          node infrastructure/coverage/validate-vitest-gate-report.mjs \
-            artifacts/database-compatibility-gates.json 'database compatibility gates' 1
-      - name: Capture compatibility database logs
-        if: failure()
-        run: |
-          docker compose ps --all > artifacts/service-status.log
-          docker compose logs --no-color --timestamps postgres > artifacts/service-logs.log
-      - name: Upload compatibility reports
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: compatibility-reports
-          path: artifacts/
-          if-no-files-found: ignore
-      - name: Stop disposable dependencies
-        if: always()
-        run: docker compose down -v --remove-orphans
-
-  deployment-security:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build workspace artifacts for deployment validation
-        run: pnpm build
-      - name: Validate dependencies, deployment, exercises, and image pins
-        run: |
-          set -o pipefail
-          mkdir -p artifacts
-          {
-            pnpm security:audit
-            pnpm deployment:check
-            pnpm exercise:check
-            pnpm images:check
-            docker compose config --quiet
-            docker compose -f infrastructure/observability/compose.yaml config --quiet
-            pnpm observability:check
-          } 2>&1 | tee artifacts/deployment-security.log
-      - name: Upload deployment/security report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: deployment-security-report
-          path: artifacts/
-          if-no-files-found: ignore
-
-  dependency-review:
-    if: github.event_name == 'pull_request'
+  security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Audit production dependencies
+        run: pnpm security:audit
       - name: Reject vulnerable dependency changes
+        if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: moderate

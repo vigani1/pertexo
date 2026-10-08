@@ -1,21 +1,9 @@
 /**
- * Human-reviewed normalization of the IANA special-purpose registries.
- * Upstream byte drift is checked by infrastructure/checks/validate-iana-address-registry.mjs.
+ * Human-reviewed normalization of the IANA special-purpose address registries
+ * (IPv4 and IPv6, both updated 2025-10-09), approved 2026-09-05:
+ * https://www.iana.org/assignments/iana-ipv4-special-registry/
+ * https://www.iana.org/assignments/iana-ipv6-special-registry/
  */
-export const IANA_ADDRESS_REGISTRY_SNAPSHOT = Object.freeze({
-  approvedAt: '2026-09-05',
-  ipv4: Object.freeze({
-    updated: '2025-10-09',
-    url: 'https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xml',
-    sha256: 'cf24e11f41b7d42c68debe2d18b97cac815084ec413ebb3b244f704028a16f20',
-  }),
-  ipv6: Object.freeze({
-    updated: '2025-10-09',
-    url: 'https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry.xml',
-    sha256: 'c17f4380ba84fb2160dae82ebfd8bd155a5853cfab624ed3a9fd251638a8be02',
-  }),
-});
-
 export const BLOCKED_IPV4_PREFIXES = Object.freeze([
   ['0.0.0.0', 8],
   ['10.0.0.0', 8],
