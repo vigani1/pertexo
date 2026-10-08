@@ -516,40 +516,35 @@ export default tseslint.config(
       ],
     },
   },
-  ...[['apps/ops/src/**/*.ts', 'operator']].map(
-    ([files, allowedSurface]) => ({
-      files: [files],
-      rules: {
-        'no-restricted-imports': [
-          'error',
-          {
-            paths: [
-              {
-                name: '@pertexo/database',
-                message: `Production code in this runtime must use the @pertexo/database/${allowedSurface} capability surface.`,
-              },
-            ],
-            patterns: [
-              {
-                group: [
-                  ...[
-                    'api',
-                    'execution',
-                    'lifecycle',
-                    'maintenance',
-                    'operator',
-                  ]
-                    .filter((surface) => surface !== allowedSurface)
-                    .map((surface) => `@pertexo/database/${surface}`),
-                ],
-                message: `Production code in this runtime must use the @pertexo/database/${allowedSurface} capability surface.`,
-              },
-            ],
-          },
-        ],
-      },
-    }),
-  ),
+  {
+    files: ['apps/ops/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@pertexo/database',
+              message:
+                'Ops production code must use the @pertexo/database/operator capability surface.',
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                '@pertexo/database/api',
+                '@pertexo/database/execution',
+                '@pertexo/database/lifecycle',
+                '@pertexo/database/maintenance',
+              ],
+              message:
+                'Ops production code must use the @pertexo/database/operator capability surface.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     files: ['**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
