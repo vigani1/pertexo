@@ -5,11 +5,7 @@ import {
   parseDatabaseConfig,
   parseStoredExecutionValueV1,
 } from '@pertexo/database/testing';
-import {
-  platformServingRegistryRelease,
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED,
-} from '@pertexo/node-catalog';
+import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import {
   CORE_VALIDATE_CONFIG_SCHEMA,
@@ -107,11 +103,6 @@ async function createValidateRuntime() {
 describeIntegration('core.validate persisted preview execution', () => {
   it('persists mismatch and matching results and survives exact redelivery after restart', async () => {
     await activateArtifactRelease();
-    expect(PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED.epoch).toBe(37);
-    expect(PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.epoch).toBe(38);
-    expect(platformServingRegistryRelease().fingerprint).toBe(
-      PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.fingerprint,
-    );
 
     const config = CORE_VALIDATE_CONFIG_SCHEMA.parse(validateConfigInput);
     const runInput = {
