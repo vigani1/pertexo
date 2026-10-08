@@ -22,22 +22,15 @@ To run the services, API, worker, and web app locally from `.env.example`,
 follow the README's [Local Development](./README.md#local-development) section;
 every terminal that runs a pnpm process needs `.env` loaded.
 
-Install dependencies with `pnpm install`; it configures the tracked pre-push
-hook. Ordinary pushes automatically run `pnpm prepush:fast`: every static gate
-from `pnpm check`, plus lint, typecheck, and related unit tests scoped to the
-packages the branch changed (`pnpm prepush:changed`). The protected GitHub
-checks run every suite on the pull request. Run `pnpm prepush:check` (or push
-with `PERTEXO_PRE_PUSH_FULL=1`) to run the repository-wide unit, critical-file
-coverage, and browser probe gates locally. Run `pnpm prepush:full` when
-PostgreSQL, Redis, queue, object-store, HTTP, or process behavior changes; it
-adds the service-backed integration suite. Document any environment-dependent
-check that could not run. `PERTEXO_SKIP_PRE_PUSH_CHECKS=1 git push` is an
-emergency escape hatch, not a substitute for the protected GitHub checks.
+Install dependencies with `pnpm install`; it configures the pre-push hook, which
+runs `pnpm prepush` (formatting, typecheck, and lint and unit tests for changed
+packages). CI runs every suite on the pull request. Run `pnpm test:integration`
+locally when PostgreSQL, Redis, queue, object-store or HTTP behavior changes.
 
-Pull requests should explain the behavior or invariant being changed, tests that
-prove it, operational or migration impact, and any intentionally retained
-similar code. Keep generated contracts, implementation progress, runbooks, and
-audit evidence synchronized when their source-of-truth checkpoint changes.
+Pull requests explain the behavior being changed, the tests that prove it and
+any migration impact. When code moves or is deleted, the description lists what
+moved where and what was removed, and why. Keep generated contracts and runbooks
+in sync with the code.
 
 Public visibility does not grant a license to use or redistribute this code; see
 the repository's licensing note in [`README.md`](./README.md).

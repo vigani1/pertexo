@@ -14,7 +14,7 @@ Internal platform database tables are not customer data tables. No user-configur
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [docs/workflow-platform-backend-plan.md](../../docs/workflow-platform-backend-plan.md)
+- docs/workflow-platform-backend-plan.md
 - [packages/nodes-core/src/definitions.ts](../../packages/nodes-core/src/definitions.ts)
 
 “Not established” means no complete product was found in this targeted inventory,

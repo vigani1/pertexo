@@ -14,7 +14,7 @@ Webhook/manual/schedule triggers exist; hosted forms and external resume input a
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [docs/workflow-platform-backend-plan.md](../../docs/workflow-platform-backend-plan.md)
+- docs/workflow-platform-backend-plan.md
 - [apps/api/src/webhooks](../../apps/api/src/webhooks)
 - [apps/web/src/features/workflow-settings](../../apps/web/src/features/workflow-settings)
 

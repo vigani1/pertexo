@@ -159,7 +159,7 @@ Evidence log:
   records lock order, readiness/role boundaries, old-writer rejection, quiesced
   rollout and rollback. Manager implementation review, full release gates,
   scoped merge, and natural postmerge checks remain open. See the
-  [delivery tracker](../implementation-progress.md#f29--queue-only-workflow-concurrency).
+  delivery tracker.
 - 2026-10-01: manager reviewed the F29 proposal against ADR012/056, current
   reservation and coordinator capacity paths, and dispatcher ordering. Outbox
   `available_at,id` ordering does not establish acceptance FIFO; reservations

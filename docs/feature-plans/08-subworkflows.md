@@ -16,7 +16,7 @@ Nested For Each bodies exist inside one run; they are not reusable child workflo
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [docs/workflow-platform-backend-plan.md](../../docs/workflow-platform-backend-plan.md)
+- docs/workflow-platform-backend-plan.md
 - [docs/adr/020-bounded-for-each.md](../../docs/adr/020-bounded-for-each.md)
 - [packages/workflow-engine/src/index.ts](../../packages/workflow-engine/src/index.ts)
 - [apps/api/src/workflow-runs](../../apps/api/src/workflow-runs)

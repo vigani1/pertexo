@@ -16,7 +16,7 @@ Inspected anchors (paths may move during the concurrent structural cleanup):
 
 - [apps/api/src/identity-workspace](../../apps/api/src/identity-workspace)
 - [docs/adr/039-better-auth-and-session-authority.md](../../docs/adr/039-better-auth-and-session-authority.md)
-- [docs/implementation-progress.md](../../docs/implementation-progress.md)
+- docs/implementation-progress.md
 
 “Not established” means no complete product was found in this targeted inventory,
 not proof of absence from every file. Recheck these anchors before implementation.

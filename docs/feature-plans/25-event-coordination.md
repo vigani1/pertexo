@@ -16,7 +16,7 @@ Inspected anchors (paths may move during the concurrent structural cleanup):
 
 - [packages/queue/src/contracts.ts](../../packages/queue/src/contracts.ts)
 - [packages/rate-limit/src/policy.ts](../../packages/rate-limit/src/policy.ts)
-- [docs/workflow-platform-backend-plan.md](../../docs/workflow-platform-backend-plan.md)
+- docs/workflow-platform-backend-plan.md
 
 “Not established” means no complete product was found in this targeted inventory,
 not proof of absence from every file. Recheck these anchors before implementation.

@@ -53,7 +53,6 @@ pnpm --filter @pertexo/web build
 pnpm --filter @pertexo/web lint
 pnpm --filter @pertexo/web test
 pnpm --filter @pertexo/web exec playwright install chromium
-pnpm test:browser-probes
 pnpm --filter @pertexo/web test:e2e
 ```
 
@@ -76,21 +75,11 @@ same local and CI command; it does not depend on another CI job's build output.
 Use the script rather than a direct Playwright invocation when those package
 artifacts have not been built.
 
-The separate `test:browser-probes` lane verifies browser lifetime accounting and
-verification-URL redaction with the actual Playwright reporter. It requires the
-installed Chromium executable, but no API/database/Redis service. Ordinary
-`pnpm check` and API unit/coverage discovery remain browser-free; coverage
-source selection and thresholds are unchanged. `pnpm prepush:check` explicitly
-runs the browser probes after check/coverage, so install Chromium first (or use
-the existing `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`). CI runs them as a required
-step in its browser job after browser installation. Missing executables fail
-this lane; probes are not skipped or run in every ordinary unit/coverage job.
-
-CI's browser job also runs `test/usage-browser.integration.test.ts` explicitly
-with `USAGE_BROWSER_INTEGRATION=true`, after building the API dependency closure
-and starting its owned PostgreSQL/Redis services. This real Usage journey owns
-its disposable database, API and browser processes; its JSON report must contain
-one passing test and no skips. The ordinary API integration job and mirrored
+CI's e2e job also runs `test/usage-browser.integration.test.ts` explicitly with
+`USAGE_BROWSER_INTEGRATION=true`, after building the API dependency closure and
+starting its owned PostgreSQL/Redis services. This real Usage journey owns its
+disposable database, API and browser processes; its JSON report must contain one
+passing test and no skips. The ordinary API integration job and mirrored
 local-quality cohort exclude that browser-only file. To run it locally, install
 Chromium, build with `pnpm --filter @pertexo/api... build`, provide isolated
 `DATABASE_ADMIN_URL`, `DATABASE_MIGRATION_URL`, `DATABASE_API_URL` and

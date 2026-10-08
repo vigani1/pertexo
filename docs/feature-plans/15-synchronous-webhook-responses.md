@@ -14,7 +14,7 @@ Current webhook durably accepts and returns 202. A synchronous result response i
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [docs/workflow-platform-backend-plan.md](../../docs/workflow-platform-backend-plan.md)
+- docs/workflow-platform-backend-plan.md
 - [apps/api/src/webhooks/ingress.ts](../../apps/api/src/webhooks/ingress.ts)
 
 “Not established” means no complete product was found in this targeted inventory,

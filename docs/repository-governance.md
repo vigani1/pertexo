@@ -10,10 +10,8 @@ require the external evidence described by the operations runbook.
 ## Main-branch policy
 
 `main` uses strict required checks, administrator enforcement, linear history,
-resolved-conversation enforcement, and blocks force-pushes and deletion. The
-production-image build, runtime hardening proof, SBOM, and vulnerability scan
-are required alongside quality, unit, coverage, integration, recovery,
-compatibility, deployment/security, and CodeQL checks.
+resolved-conversation enforcement, and blocks force-pushes and deletion. The CI
+check, unit, integration, e2e, image and security jobs and CodeQL are required.
 
 Critical paths have explicit owners in `.github/CODEOWNERS`.
 Dependency automation follows the grouping, triage, and deferral policy in

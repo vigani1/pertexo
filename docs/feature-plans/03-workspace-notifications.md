@@ -96,7 +96,7 @@ recovery, two tabs, and an actual local run failure reaching the inbox.
 Push or mobile delivery; success or step notices; incident acknowledgement.
 Per-person muting, builder subscriptions, email or digest delivery and more
 notice types are planned in [F27](27-notification-preferences-and-channels.md);
-pausing workflows that keep failing is [F26](26-workflow-auto-pause.md). Both
+pausing workflows that keep failing is F26. Both
 extend the same thread model.
 
 ## Rollout and rollback

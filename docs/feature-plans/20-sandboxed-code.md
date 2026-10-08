@@ -14,7 +14,7 @@ Restricted JSONata exists. Arbitrary JavaScript/Python user execution is explici
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [docs/workflow-platform-backend-plan.md](../../docs/workflow-platform-backend-plan.md)
+- docs/workflow-platform-backend-plan.md
 - [docs/adr/009-restricted-jsonata.md](../../docs/adr/009-restricted-jsonata.md)
 - [packages/node-sdk/src/server.ts](../../packages/node-sdk/src/server.ts)
 
