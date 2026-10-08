@@ -47,7 +47,7 @@ now, as one ordered program — not "whenever we touch it".
       native value path, ADR065/066). Recreate local databases.
 - [x] **1. Plan, ADR 069 and agent rules** — this plan, ADR 069, superseded
       ADRs marked, rewritten `AGENTS.md` and `CONTRIBUTING.md`.
-- [ ] **2. CI, tooling and docs reset** — six standard jobs, fast pre-push,
+- [x] **2. CI, tooling and docs reset** — six standard jobs, fast pre-push,
       custom gates that enforce the old structure removed; old plans, audits,
       progress logs and generated inventories deleted (git keeps history).
 - [ ] **3. Remove release machinery** — no cohorts/epochs, every node available,
