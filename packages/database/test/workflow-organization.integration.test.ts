@@ -271,12 +271,7 @@ describe.skipIf(!organizationFixtureEnabled)(
             'select writes_enabled from app.workflow_organization_rollout',
           )
         ).rows,
-      ).toEqual([{ writes_enabled: false }]);
-      await fixture.transaction(fixture.owner, '', '', (client) =>
-        client.query(
-          'update app.workflow_organization_rollout set writes_enabled=true',
-        ),
-      );
+      ).toEqual([{ writes_enabled: true }]);
     }, 120000);
     afterAll(async () => {
       if (fixtureCreated) await fixture.close();

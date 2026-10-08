@@ -146,7 +146,7 @@ async function cleanup() {
 }
 
 describe.skipIf(!enabled)(
-  `0133 owned PostgreSQL metadata boundaries (${candidateDigest.slice(0, 12)}; owner-seeded origin; writer OFF)`,
+  `0133 owned PostgreSQL metadata boundaries (${candidateDigest.slice(0, 12)}; owner-seeded origin; writer on)`,
   () => {
     beforeAll(async () => {
       try {
@@ -320,7 +320,7 @@ describe.skipIf(!enabled)(
             'select import_enabled from app.curated_template_rollout',
           )
         ).rows,
-      ).toEqual([{ import_enabled: false }]);
+      ).toEqual([{ import_enabled: true }]);
     });
 
     it('forces tenant RLS, hides unscoped/other-workspace rows, and preserves not-found disclosure', async () => {
@@ -545,7 +545,7 @@ describe.skipIf(!enabled)(
       }
     }, 10_000);
 
-    it('inherits owner-seeded historical origin under ordinary duplication with writer OFF and selection removed', async () => {
+    it('inherits owner-seeded historical origin under ordinary duplication with writer on and selection removed', async () => {
       await ownerQuery(
         'update app.curated_template_descriptors set selection_enabled=false where template_id=$1',
         [seededOrigin.templateId],
@@ -593,7 +593,7 @@ describe.skipIf(!enabled)(
               'select import_enabled from app.curated_template_rollout',
             )
           ).rows,
-        ).toEqual([{ import_enabled: false }]);
+        ).toEqual([{ import_enabled: true }]);
       } finally {
         await ownerQuery(
           'update app.curated_template_descriptors set selection_enabled=true where template_id=$1',

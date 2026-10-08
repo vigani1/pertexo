@@ -224,12 +224,13 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
     'Unchecked input proof',
   );
   await page.reload();
+  await setCaseRollout(request, mailOrigin, false);
   const ordinaryRunIds = await ordinaryMenuStarts(
     page,
     workspaceId,
     ordinaryPath,
     ordinaryVersion.versionId,
-    info.outputPath('input-cases-default-off-ordinary.png'),
+    info.outputPath('input-cases-off-ordinary.png'),
   );
   await setCaseRollout(request, mailOrigin, true);
   const path = await createEditorWorkflow(
