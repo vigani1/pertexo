@@ -59,6 +59,7 @@
     "db:provision-operator": "node infrastructure/postgres/provision-operator-role.mjs",
     "dependencies:check": "knip",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
+    "dev": "node infrastructure/development/dev.mjs",
     "dev:api": "pnpm --filter @pertexo/api dev",
     "dev:web": "pnpm --filter @pertexo/web dev",
     "dev:worker": "pnpm --filter @pertexo/worker dev",

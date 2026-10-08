@@ -56,7 +56,7 @@ now, as one ordered program — not "whenever we touch it".
       version; every feature switch is on. Collapsing old node versions, release
       history and numbered formats moves to the node-sdk, nodes-core,
       node-catalog and engine package passes (step 8).
-- [ ] **4. Storage and ops simplification** — single-region artifact store, no
+- [x] **4. Storage and ops simplification** — single-region artifact store, no
       control ledger, ops apps merged, deployment definitions cleaned (no
       cohort variable, no recovery store), one-command local setup.
   - [x] One storage region: no recovery store, object-store control ledger,
@@ -64,7 +64,8 @@ now, as one ordered program — not "whenever we touch it".
         workspace purge and deletion commands; the retention and
         lifecycle-command apps are gone. Deployment definitions match, and the
         unexercised deployment validators and E01 evidence packet are removed.
-  - [ ] `operator-command` becomes `apps/ops`; one-command `pnpm dev`.
+  - [x] `operator-command` becomes `apps/ops`; `pnpm dev` starts the services,
+        migrates, seeds a development account and runs the API, worker and web.
 - [ ] **5. Database foundation** — tables defined once, one baseline migration,
       three database roles, repository layout.
 - [ ] **6. Execution package** — run actions and the coordinator move out of the
