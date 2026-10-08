@@ -1,7 +1,5 @@
 dist
 coverage
-!infrastructure/coverage
-!infrastructure/coverage/**
 node_modules
 pnpm-lock.yaml
 AGENTS.md
