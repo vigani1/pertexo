@@ -48,35 +48,11 @@ export function isRejectedForEachCollection({
   bounds: Bounds;
   remainingIterationBudget: number;
 }>): boolean {
-  const count = rejectedForEachCollectionCount(value);
-  return isRejectedForEachCount({
-    nodeId,
-    iterationPath,
-    count,
-    bounds,
-    remainingIterationBudget: remainingBudget,
-  });
-}
-
-/** Same established bound proof; native count comes from fresh original-byte work. */
-export function isRejectedForEachCount({
-  nodeId,
-  iterationPath,
-  count,
-  bounds,
-  remainingIterationBudget: remainingBudget,
-}: Readonly<{
-  nodeId: string;
-  iterationPath: IterationPath;
-  count: number | undefined;
-  bounds: Bounds;
-  remainingIterationBudget: number;
-}>): boolean {
   const pin = bounds.get(nodeId);
+  const count = rejectedForEachCollectionCount(value);
   return (
     pin !== undefined &&
     count !== undefined &&
-    Number.isSafeInteger(count) &&
     count > 0 &&
     Number.isSafeInteger(remainingBudget) &&
     remainingBudget >= 0 &&

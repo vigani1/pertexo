@@ -1,18 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
-import { platformExecutableRegistryHistory } from '@pertexo/node-catalog';
-import { createRegistryRelease } from '@pertexo/node-sdk';
-import {
-  composeExecutableCompatibilityReleaseV3,
-  createExecutableCompatibilityReleaseHistory,
-  verifyWorkflowExecutableV3,
-  WorkflowEngineError,
-} from '@pertexo/workflow-engine';
 import {
   AuthoringValidationUnavailableError,
   WorkflowAuthoringValidator,
 } from '@pertexo/workflow-model/authoring-validation';
-import { WorkflowDraftOperationUnavailableError } from '@pertexo/database/api';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
   InvalidWorkflowGraphError,
@@ -25,7 +16,6 @@ import { serializeWorkflowValidation } from '../../src/workflow-authoring/serial
 import { mapWorkflowAuthoringError } from '../../src/workflow-authoring/errors.js';
 import { createDraftRepresentationTag } from '../../src/workflow-authoring/etag.js';
 import { withRequestOperationSignal } from '../../src/platform/http/request-operation-signal.js';
-import { createInitialWorkflowCheckpoint } from '../../src/executions/index.js';
 
 const valid = {
   ok: true as const,
@@ -50,119 +40,6 @@ const draft = {
 };
 
 describe('authoring API admission adapter', () => {
-  it('selects the real V3 compiler only with the exact native-capable locked release', () => {
-    const compatibility = createCoreWorkflowCompatibility();
-    const retained = compatibility.variants.at(-1);
-    if (retained === undefined) throw new Error('No retained variant');
-    const nodeRelease = platformExecutableRegistryHistory('core').at(-1);
-    if (nodeRelease === undefined) throw new Error('No node release');
-    const release = composeExecutableCompatibilityReleaseV3(nodeRelease);
-    const description = createExecutableCompatibilityReleaseHistory([release])
-      .descriptions[0];
-    if (description === undefined) throw new Error('No native description');
-    const source = {
-      schemaVersion: 2,
-      nodes: [],
-      edges: [],
-      settings: {},
-      callable: {
-        schemaVersion: 1 as const,
-        input: { type: 'object' as const, properties: {}, required: [] },
-        result: { type: 'object' as const, properties: {}, required: [] },
-        resultSelector: { kind: 'literal' as const, value: {} },
-      },
-    };
-    const options = createCoreAuthoringOptions(
-      [
-        {
-          ...retained,
-          compatibilityRelease: release,
-          compatibilityReleaseDescription: description,
-        },
-      ],
-      [description],
-      { validate: () => Promise.resolve(valid) },
-    );
-    const compiler =
-      options.compatibilityReleaseVariants[0]?.executableCompiler;
-    if (compiler === undefined) throw new Error('No compiler');
-    const compiled = compiler(source);
-    expect(compiled.executableSchemaVersion).toBe(3);
-    expect(compiled.checksum).toMatch(/^wf:v3:sha256:/u);
-    expect(() =>
-      compiler({ ...source, settings: { maxRunDurationMs: -1 } }),
-    ).toThrow(WorkflowEngineError);
-    const verified = verifyWorkflowExecutableV3({
-      envelope: compiled.executableJson,
-      checksum: compiled.checksum,
-      admissionRelease: release,
-    });
-    expect(verified.envelope.graph.callable).toEqual(source.callable);
-    expect(verified.envelope.sourceGraphSchemaVersion).toBe(2);
-    const initial = createInitialWorkflowCheckpoint(
-      {
-        id: draft.workflowId,
-        workspaceId: draft.workspaceId,
-        workflowId: draft.workflowId,
-        versionNumber: 1,
-        schemaVersion: 2,
-        executableSchemaVersion: 3,
-        checksum: compiled.checksum,
-        executableJson: compiled.executableJson,
-        compatibilityReleaseEpoch: release.epoch,
-      },
-      createExecutableCompatibilityReleaseHistory([release]),
-      description,
-    );
-    expect(initial.checkpoint).toMatchObject({
-      schemaVersion: 3,
-      calls: [],
-      revision: 0,
-      runStatus: 'queued',
-    });
-
-    const serving = createCoreAuthoringOptions(
-      compatibility.variants,
-      compatibility.readinessSupport.descriptions,
-      { validate: () => Promise.resolve(valid) },
-    );
-    for (const variant of serving.compatibilityReleaseVariants) {
-      expect(() => variant.executableCompiler(source)).toThrow(
-        WorkflowDraftOperationUnavailableError,
-      );
-      expect(variant.executableCompiler(graph).executableSchemaVersion).toBe(2);
-    }
-    // A policy name alone does not make this release native-capable.
-    const wrongVersion = createRegistryRelease({
-      epoch: release.epoch,
-      definitions: release.definitions,
-      executors: release.executors,
-      policies: release.policies.map((policy) =>
-        policy.key === 'engine.scheduler' && policy.version === 2
-          ? { ...policy, version: 999 }
-          : policy,
-      ),
-    });
-    const wrongDescription = createExecutableCompatibilityReleaseHistory([
-      wrongVersion,
-    ]).descriptions[0];
-    if (wrongDescription === undefined)
-      throw new Error('No wrong-version description');
-    const wrongOptions = createCoreAuthoringOptions(
-      [
-        {
-          ...retained,
-          compatibilityRelease: wrongVersion,
-          compatibilityReleaseDescription: wrongDescription,
-        },
-      ],
-      [wrongDescription],
-      { validate: () => Promise.resolve(valid) },
-    );
-    expect(() =>
-      wrongOptions.compatibilityReleaseVariants[0]?.executableCompiler(source),
-    ).toThrow(WorkflowDraftOperationUnavailableError);
-  });
   it('binds portable destination CAS to full serving compatibility while retaining definition-selection identity', () => {
     const compatibility = createCoreWorkflowCompatibility();
     const options = createCoreAuthoringOptions(

@@ -35,9 +35,6 @@ import {
   type ChannelLookupScope,
 } from './slack-channel-field';
 import { shortcut } from '@/lib/shortcut-keys';
-import type { VersionSourceScope } from '../../workflow-version-sources.queries';
-import { isWorkflowCallPinNode } from '../../model/inspector/workflow-call-pin';
-import { WorkflowVersionSourceBrowser } from './workflow-version-source-browser';
 
 export type NodeInspectorActions = StepMenuActions &
   Readonly<{
@@ -64,7 +61,6 @@ export function NodeInspector({
   definitions,
   connections,
   channelLookup,
-  versionSourceScope,
   editable,
   tab,
   onTabChange,
@@ -82,7 +78,6 @@ export function NodeInspector({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
-  versionSourceScope?: VersionSourceScope;
   editable: boolean;
   tab: InspectorTab;
   onTabChange: (tab: InspectorTab) => void;
@@ -196,10 +191,6 @@ export function NodeInspector({
                   form={form}
                   lookup={channelLookup}
                 />
-              ) : null}
-              {isWorkflowCallPinNode(node) &&
-              versionSourceScope !== undefined ? (
-                <WorkflowVersionSourceBrowser scope={versionSourceScope} />
               ) : null}
             </div>
           </TabsContent>

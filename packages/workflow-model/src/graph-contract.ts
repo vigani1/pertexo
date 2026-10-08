@@ -88,7 +88,7 @@ export const WORKFLOW_VALIDATION_MAX_ISSUES = 100;
 const identifierSchema = z.string().min(1);
 const positiveVersionSchema = z.number().int().positive();
 const jsonRecordSchema = z.record(z.string(), z.json());
-export const valueSourceSchema = z.discriminatedUnion('kind', [
+const valueSourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('literal'), value: z.json() }).strict(),
   z.object({ kind: z.literal('run_input'), path: z.string() }).strict(),
   z
@@ -125,7 +125,7 @@ export const workflowSettingsSchemaV1 = z
   })
   .strict();
 
-export const workflowEdgeSchema = z
+const workflowEdgeSchema = z
   .object({
     id: identifierSchema,
     source: z
@@ -137,10 +137,8 @@ export const workflowEdgeSchema = z
   })
   .strict();
 
-export function workflowNodeSchemaFor(
-  bodySchema: z.ZodType<StructuredBody>,
-): z.ZodType<WorkflowNode> {
-  return z
+const workflowNodeSchema: z.ZodType<WorkflowNode> = z.lazy(() =>
+  z
     .object({
       id: identifierSchema,
       definition: z
@@ -166,19 +164,15 @@ export function workflowNodeSchemaFor(
             .int()
             .positive()
             .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopConcurrency),
-          body: bodySchema,
+          body: z.lazy(() => structuredBodySchema),
         })
         .strict()
         .optional(),
     })
-    .strict();
-}
-
-const workflowNodeSchema: z.ZodType<WorkflowNode> = z.lazy(() =>
-  workflowNodeSchemaFor(structuredBodySchemaV1),
+    .strict(),
 );
 
-export const structuredBodySchemaV1: z.ZodType<StructuredBody> = z.lazy(() =>
+const structuredBodySchema: z.ZodType<StructuredBody> = z.lazy(() =>
   z
     .object({
       schemaVersion: z.literal(1),

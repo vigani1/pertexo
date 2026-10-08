@@ -71,8 +71,7 @@ reports. It writes reports outside the checkout so evidence cannot dirty the
 qualified source. Never enable the owned flags against discovered/shared
 services or substitute a passing file wrapper for actual cutover test counts.
 
-Before offline compiled cutover builds, prepare all three exact source refs
-(pre-origin, pre-organization, and current compatible source) with
+Before offline compiled cutover builds, prepare both exact source refs with
 `node infrastructure/testing/prepare-curated-cutover-cache.mjs`. Set absolute
 `PNPM_CONFIG_STORE_DIR` to `pnpm store path --silent` and an owned absolute
 `PNPM_CONFIG_CACHE_DIR`; retain both for qualification. Preparation archives each

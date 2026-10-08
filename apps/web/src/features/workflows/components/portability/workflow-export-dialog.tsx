@@ -16,7 +16,6 @@ import {
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { describeCommandError } from '@/lib/api/api-error-copy';
-import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import {
   exportWorkflow,
@@ -82,11 +81,6 @@ export function WorkflowExportDialog({
         kind === 'draft' ? { kind } : { kind, versionId: versionId ?? '' },
         request.signal,
       );
-      if (saved.graph.schemaVersion === 2) {
-        if (request.current())
-          setError('This operation is not enabled for native workflow drafts.');
-        return;
-      }
       const digest = await portableGraphDigest(saved.graph);
       if (request.current()) setReview({ ...saved, digest });
     } catch (failure) {
@@ -153,10 +147,7 @@ export function WorkflowExportDialog({
         setAcknowledgedDigest(undefined);
         setReview(undefined);
         setError(
-          isApiError(failure) &&
-            failure.problem?.code === 'workflow.draft_operation_unavailable'
-            ? describeCommandError(failure, 'exporting')
-            : 'The export was not downloaded. Read and review the saved source again before trying another export.',
+          'The export was not downloaded. Read and review the saved source again before trying another export.',
         );
       }
     } finally {

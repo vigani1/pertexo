@@ -1,8 +1,7 @@
 import type {
   CoordinatorRunStore,
   PublishedWorkflowReader,
-  PublishedWorkflowExecutableProjection,
-  PublishedWorkflowV3Projection,
+  PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/execution';
 import type {
@@ -10,19 +9,9 @@ import type {
   QueueHandlerContext,
   RunEventNotificationPublisher,
 } from '@pertexo/queue';
-import type {
-  WorkflowTransitionPlan,
-  LoadCallableCompletion,
-  LoadCoordinatorControlDeclaration,
-} from '@pertexo/workflow-engine';
-import type { CallableValueWorkStop } from '@pertexo/workflow-model/workflow-call-contract';
-import type { CoordinatorAdvanceDelivery } from '@pertexo/database/execution';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 import type { CoordinatorTelemetry } from './coordinator-telemetry.js';
-import {
-  advanceNativeCoordinator,
-  type CoordinatorNativeValueWork,
-} from './coordinator-native-demand-advance.js';
 
 type AdvanceWorkflowDelivery = Extract<
   QueueDelivery,
@@ -34,25 +23,10 @@ export interface CoordinatorAdvanceEngine {
     input: Readonly<{
       runId: string;
       workflowVersionId: string;
-      projection: PublishedWorkflowExecutableProjection;
+      projection: PublishedWorkflowV2Projection;
       checkpoint: unknown;
       observations: readonly unknown[];
       completedOutputs?: readonly unknown[];
-      controlDeclarations?: Extract<
-        Awaited<ReturnType<CoordinatorRunStore['loadAdvanceState']>>,
-        { kind: 'ready' }
-      >['state']['controlDeclarations'];
-      loadCoordinatorControlDeclaration?: LoadCoordinatorControlDeclaration;
-      workflowCalls?: Extract<
-        Awaited<ReturnType<CoordinatorRunStore['loadAdvanceState']>>,
-        { kind: 'ready' }
-      >['state']['workflowCalls'];
-      calleeProjections?: readonly PublishedWorkflowV3Projection[];
-      callableCompletion?: Extract<
-        Awaited<ReturnType<CoordinatorRunStore['loadAdvanceState']>>,
-        { kind: 'ready' }
-      >['state']['callableCompletion'];
-      loadCallableCompletion?: LoadCallableCompletion;
       occurredAt: string;
       maximumAdmissions: number;
       signal: AbortSignal;
@@ -60,7 +34,6 @@ export interface CoordinatorAdvanceEngine {
   ): Promise<
     | Readonly<{ kind: 'no_change'; revision: number }>
     | Readonly<{ kind: 'transition'; plan: WorkflowTransitionPlan }>
-    | Readonly<{ kind: 'value_work_stopped'; stop: CallableValueWorkStop }>
   >;
 }
 
@@ -88,25 +61,6 @@ export class CoordinatorHandlerStateError extends Error {
   }
 }
 
-/** Retryable queue error, not durable workflow-control or receipt authority. */
-export class CoordinatorValueWorkStoppedError extends Error {
-  public override readonly name = 'CoordinatorValueWorkStoppedError';
-  public constructor(readonly stop: CallableValueWorkStop) {
-    super(`Coordinator value work stopped: ${stop.kind}`);
-  }
-}
-
-export type CoordinatorCallableCompletionLoader = (
-  input: Readonly<{
-    workspaceId: string;
-    runId: string;
-    workflowVersionId: string;
-    delivery: CoordinatorAdvanceDelivery;
-    demand: Parameters<LoadCallableCompletion>[0];
-    signal: AbortSignal;
-  }>,
-) => ReturnType<LoadCallableCompletion>;
-
 export interface CoordinatorHandler {
   handle(
     delivery: AdvanceWorkflowDelivery,
@@ -122,8 +76,6 @@ export type CoordinatorHandlerDependencies = Readonly<{
   reader: PublishedWorkflowReader;
   runStore: CoordinatorRunStore;
   telemetry?: CoordinatorTelemetry;
-  loadCallableCompletion?: CoordinatorCallableCompletionLoader;
-  nativeValueWork?: CoordinatorNativeValueWork;
 }>;
 
 export function createCoordinatorHandler(
@@ -141,7 +93,6 @@ export function createCoordinatorHandler(
       const loaded = await dependencies.runStore.loadAdvanceState({
         workspaceId: delivery.data.workspaceId,
         runId: delivery.data.runId,
-        delivery: durableDelivery,
         signal: context.signal,
       });
       if (loaded.kind !== 'ready') {
@@ -155,10 +106,7 @@ export function createCoordinatorHandler(
         workflowVersionId: loaded.state.workflowVersionId,
         signal: context.signal,
       });
-      if (
-        published.kind !== 'v2_projection' &&
-        published.kind !== 'v3_projection'
-      ) {
+      if (published.kind !== 'v2_projection') {
         throw new CoordinatorHandlerStateError(
           published.kind === 'not_found'
             ? 'workflow_not_found'
@@ -171,79 +119,19 @@ export function createCoordinatorHandler(
       ) {
         throw new CoordinatorHandlerStateError('identity_mismatch');
       }
-      const calleeProjections: PublishedWorkflowV3Projection[] = [];
-      for (const versionId of new Set(
-        loaded.state.workflowCalls?.declarations.map(
-          ({ calleeVersionId }) => calleeVersionId,
-        ) ?? [],
-      )) {
-        const callee = await dependencies.reader.readForExecution({
-          workspaceId: delivery.data.workspaceId,
-          workflowVersionId: versionId,
-          signal: context.signal,
-        });
-        if (
-          callee.kind !== 'v3_projection' ||
-          callee.workflowVersion.id !== versionId ||
-          callee.workflowVersion.workspaceId !== delivery.data.workspaceId
-        )
-          throw new CoordinatorHandlerStateError('workflow_non_executable');
-        calleeProjections.push(callee.workflowVersion);
-      }
-      const advanceInput: Parameters<CoordinatorAdvanceEngine['advance']>[0] = {
+      const advanced = await dependencies.engine.advance({
         runId: loaded.state.runId,
         workflowVersionId: loaded.state.workflowVersionId,
         projection: published.workflowVersion,
         checkpoint: loaded.state.checkpoint,
         observations: loaded.state.observations,
-        ...(loaded.state.workflowCalls === undefined
-          ? {}
-          : { workflowCalls: loaded.state.workflowCalls, calleeProjections }),
         ...(loaded.state.completedOutputs === undefined
           ? {}
           : { completedOutputs: loaded.state.completedOutputs }),
-        ...(loaded.state.controlDeclarations === undefined
-          ? {}
-          : {
-              controlDeclarations: loaded.state.controlDeclarations,
-            }),
-        ...(published.kind === 'v3_projection'
-          ? {
-              loadCallableCompletion: (demand, signal) =>
-                dependencies.loadCallableCompletion?.({
-                  workspaceId: delivery.data.workspaceId,
-                  runId: loaded.state.runId,
-                  workflowVersionId: loaded.state.workflowVersionId,
-                  delivery: durableDelivery,
-                  demand,
-                  signal,
-                }) ??
-                Promise.resolve({
-                  kind: 'stopped',
-                  stop: { kind: 'unavailable', reason: 'source_read_failed' },
-                }),
-            }
-          : loaded.state.callableCompletion === undefined
-            ? {}
-            : { callableCompletion: loaded.state.callableCompletion }),
         occurredAt: dependencies.clock.now(),
         maximumAdmissions: dependencies.maximumAdmissions,
         signal: context.signal,
-      };
-      const advanced =
-        published.kind === 'v3_projection' &&
-        dependencies.nativeValueWork !== undefined
-          ? await advanceNativeCoordinator({
-              engine: dependencies.engine,
-              advance: advanceInput,
-              workspaceId: delivery.data.workspaceId,
-              delivery: durableDelivery,
-              runStore: dependencies.runStore,
-              valueWork: dependencies.nativeValueWork,
-            })
-          : await dependencies.engine.advance(advanceInput);
-      if (advanced.kind === 'value_work_stopped')
-        throw new CoordinatorValueWorkStoppedError(advanced.stop);
+      });
       if (advanced.kind === 'no_change') {
         await dependencies.runStore.acknowledgeAdvanceDelivery({
           workspaceId: delivery.data.workspaceId,

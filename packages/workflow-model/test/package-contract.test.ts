@@ -17,54 +17,11 @@ describe('workflow-model package contract', () => {
       'AUTHORING_VALIDATION_BUDGET',
       'AuthoringValidationUnavailableError',
       'WorkflowAuthoringValidator',
-      'createAuthoringJobRuntime',
     ]);
     expect(await import('../src/index.js')).not.toHaveProperty(
       'WorkflowAuthoringValidator',
     );
-    expect(await import('../src/index.js')).not.toHaveProperty(
-      'createAuthoringJobRuntime',
-    );
     const built = await import('../dist/authoring-validation.js');
-    let spawns = 0;
-    const jobs = built.createAuthoringJobRuntime({
-      callableTargetAdapter: {
-        purpose: 'callable-target-assessment-v1',
-        prepare: () => ({
-          payload: {
-            snapshot: 'x'.repeat(
-              built.AUTHORING_VALIDATION_BUDGET.envelopeBytes + 1,
-            ),
-          },
-          bytes: 0,
-        }),
-        spawn: () => {
-          spawns += 1;
-          throw new Error('must not spawn');
-        },
-        decodeReply: () => {
-          throw new Error('must not decode');
-        },
-        validateResult: () => {
-          throw new Error('must not validate');
-        },
-      },
-    });
-    try {
-      const slot = jobs.callableTargets;
-      if (slot === undefined) throw new Error('Missing compiled fixed slot');
-      await expect(slot.assess({})).rejects.toMatchObject({
-        reason: 'payload_limit',
-      });
-      expect(spawns).toBe(0);
-      expect(jobs.diagnostics()).toMatchObject({
-        active: 0,
-        queued: 0,
-        queuedBytes: 0,
-      });
-    } finally {
-      await jobs.shutdown();
-    }
     const owner = new built.WorkflowAuthoringValidator();
     try {
       expect(
@@ -80,8 +37,6 @@ describe('workflow-model package contract', () => {
   it('keeps the server root facade explicit and stable', async () => {
     const publicEntry = await import('../src/index.js');
     expect(Object.keys(publicEntry).sort()).toEqual([
-      'CALLABLE_TYPE_LIMITS_V1',
-      'CALLABLE_VALUE_JSON_LIMITS_V1',
       'CANONICAL_JSON_MAX_DEPTH',
       'EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1',
       'EMPTY_DEFINITION_CATALOG_V1',
@@ -96,29 +51,18 @@ describe('workflow-model package contract', () => {
       'WORKFLOW_GRAPH_LIMITS',
       'WorkflowGraphContractError',
       'WorkflowSettingsSchemaV1',
-      'callableObjectTypeDescriptorSchemaV1',
-      'callableTypeDescriptorSchemaV1',
-      'callableTypeJsonSchemaV1',
       'canonicalJson',
       'canonicalizeJson',
-      'configuredBranchOutputPorts',
-      'configuredParallelOutputPorts',
-      'inspectBranchSelection',
-      'inspectForEachCollection',
       'inspectJsonValue',
-      'inspectParallelDeclaration',
       'invocationIdentity',
       'parseRetainedWorkflowVersionV1',
-      'parseWorkflowAuthoringGraphDraft',
       'parseWorkflowGraphDraft',
       'parseWorkflowGraphForPublish',
       'resolveJsonPath',
       'resolveValueSource',
       'safeParseWorkflowGraphDraft',
-      'validateCallableValueV1',
       'validateExpression',
       'validateWorkflowGraph',
-      'workflowCallableDraftRepresentationTagV2',
       'workflowCompatibilityReport',
       'workflowControlOutputKind',
       'workflowControlOutputNodeIdsV2',
@@ -172,9 +116,6 @@ describe('workflow-model package contract', () => {
         name === './assert-never' ||
         name === './failure-notification' ||
         name === './graph-contract' ||
-        name === './callable-type-contract' ||
-        name === './workflow-call-contract' ||
-        name === './callable-graph-contract' ||
         name === './portability-contract' ||
         name === './curated-templates' ||
         name === './json-path' ||

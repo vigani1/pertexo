@@ -146,29 +146,6 @@ describe('migration execution plan', () => {
     ).rejects.toBeDefined();
   });
 
-  it('permits an explicit transactional schema step after an online prerequisite', async () => {
-    const execution = await plan(
-      {
-        schemaVersion: 1,
-        transactionalThrough: '0001_initial.sql',
-        migrations: {
-          '0002_index.sql': {
-            mode: 'online',
-            maximumDatabaseBytes: 1_000,
-            restartSafe: true,
-            rollbackCompatibleThrough: '0001_initial.sql',
-          },
-          '0003_schema.sql': { mode: 'transactional' },
-        },
-      },
-      ['0001_initial.sql', '0002_index.sql', '0003_schema.sql'],
-    );
-    expect(execution.executionFor('0002_index.sql').mode).toBe('online');
-    expect(execution.executionFor('0003_schema.sql')).toEqual({
-      mode: 'transactional',
-    });
-  });
-
   it('rejects unknown plan files, boundaries, rollback anchors and mode changes', async () => {
     const validExecution = {
       maximumDatabaseBytes: 1_000,

@@ -119,8 +119,6 @@ test('web source allows only reviewed workspace package subpaths', () => {
       "import { parseJsonPath } from '@pertexo/workflow-model/json-path';",
     'apps/web/src/features/workflows/model/curated-templates.ts':
       "import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';",
-    'apps/web/src/features/workflow-editor/model/inspector/callable-type-editor.ts':
-      "import { callableObjectTypeDescriptorSchemaV1 } from '@pertexo/workflow-model/callable-type-contract';",
   };
   assert.deepEqual(validateModuleImports(allowed), []);
 
@@ -129,7 +127,6 @@ test('web source allows only reviewed workspace package subpaths', () => {
     '@pertexo/contracts/errors',
     '@pertexo/contracts/schemas/transport-internals',
     '@pertexo/workflow-model',
-    '@pertexo/workflow-model/callable-type-validation',
     '@pertexo/database/api',
   ])
     assert.match(

@@ -141,25 +141,6 @@ test('lints changed infrastructure scripts and runs their existing node tests', 
   ]);
 });
 
-test('keeps the dedicated inline Call HTTP fixture linted but outside service-free node tests', () => {
-  const integration =
-    'infrastructure/testing/inline-workflow-call-http.integration.test.mjs';
-  const unit = 'infrastructure/checks/validate-ci-gates.test.mjs';
-  const commands = planChangedChecks([integration, unit], packages);
-  assert.deepEqual(commands[0].command, [
-    'pnpm',
-    'exec',
-    'eslint',
-    integration,
-    unit,
-  ]);
-  assert.deepEqual(commands[1].command, ['node', '--test', unit]);
-  assert.equal(commands[1].environment, undefined);
-  assert.deepEqual(labels(planChangedChecks([integration], packages)), [
-    'lint infrastructure',
-  ]);
-});
-
 test('reads every workspace package with its workspace dependencies', () => {
   const root = path.resolve(import.meta.dirname, '../..');
   const workspace = readWorkspacePackages(root);

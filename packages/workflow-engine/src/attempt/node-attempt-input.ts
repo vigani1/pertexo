@@ -6,7 +6,6 @@ import {
 } from '@pertexo/workflow-model/canonical-json';
 
 import { findExecutableNodeContext } from '../compilation/executable-graph.js';
-import { freezeExecutable } from '../compilation/executable-foundation.js';
 import {
   normalizeBoundedEngineJson,
   type WorkflowExecutableGraphV2,
@@ -15,7 +14,6 @@ import {
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type { ExecuteNodeAttemptInput } from './node-attempt-contract.js';
 import { invocationKey as createInvocationKey } from '../transition/scheduling.js';
-import { ownCompletedFields } from '../completed-output-fields.js';
 
 export type PreparedNodeAttemptInput = Readonly<{
   completedOutputs: Readonly<Record<string, JsonValue>>;
@@ -140,15 +138,18 @@ function parseCompletedOutputs(
         graph,
         directUpstream,
       );
-      retainCompletedOutput(outputs, canonicalByNodeId, nodeId, value);
+      const canonicalValue = canonicalJson(value);
+      const existing = canonicalByNodeId.get(nodeId);
+      if (existing !== undefined && existing !== canonicalValue)
+        operationError('attempt_invalid', 'completed outputs conflict');
+      if (existing === undefined) {
+        canonicalByNodeId.set(nodeId, canonicalValue);
+        outputs[nodeId] = value;
+      }
     }
     return outputs;
   }
-  if (
-    (input.iterationPath?.length ?? 0) > 0 ||
-    (input.executable.envelope.schemaVersion === 3 &&
-      (input.branchPath?.length ?? 0) > 0)
-  ) {
+  if ((input.iterationPath?.length ?? 0) > 0) {
     operationError(
       'attempt_invalid',
       'scoped completed outputs require invocation descriptors',
@@ -164,97 +165,6 @@ function parseCompletedOutputs(
     }
   }
   return legacy;
-}
-
-function retainCompletedOutput(
-  outputs: Record<string, JsonValue>,
-  canonicalByNodeId: Map<string, string>,
-  nodeId: string,
-  value: JsonValue,
-): void {
-  const canonicalValue = canonicalJson(value);
-  const existing = canonicalByNodeId.get(nodeId);
-  if (existing !== undefined && existing !== canonicalValue)
-    operationError('attempt_invalid', 'completed outputs conflict');
-  if (existing === undefined) {
-    canonicalByNodeId.set(nodeId, canonicalValue);
-    outputs[nodeId] = value;
-  }
-}
-
-function normalizeCompletedOutputsV3(
-  value: unknown,
-  input: ExecuteNodeAttemptInput,
-  node: WorkflowExecutableNodeV2,
-  graph: WorkflowExecutableGraphV2,
-  directUpstream: ReadonlySet<string>,
-): Readonly<Record<string, JsonValue>> {
-  const fields = ownCompletedFields(value, 'attempt_invalid');
-  const outputs = Object.create(null) as Record<string, JsonValue>;
-  if (!Array.isArray(value)) {
-    const keys = Object.keys(fields);
-    normalizeBoundedEngineJson(keys);
-    parseCompletedOutputs(
-      Object.fromEntries(keys.map((key) => [key, null])),
-      input,
-      node,
-      graph,
-      directUpstream,
-    );
-    for (const [nodeId, source] of Object.entries(fields))
-      outputs[nodeId] = normalizeBoundedEngineJson(source);
-    return freezeExecutable(outputs);
-  }
-  const descriptors = Object.values(fields).map((candidate) => {
-    if (Array.isArray(candidate))
-      operationError('attempt_invalid', 'completed output must be an object');
-    const descriptor = ownCompletedFields(candidate, 'attempt_invalid');
-    if (
-      Object.keys(descriptor).length !== 3 ||
-      !['invocationKey', 'nodeId', 'value'].every((key) =>
-        Object.hasOwn(descriptor, key),
-      )
-    )
-      operationError('attempt_invalid', 'observation fields are invalid');
-    return descriptor;
-  });
-  // Bound aggregate metadata independently, never the source-value wrapper.
-  const metadata = normalizeBoundedEngineJson(
-    descriptors.map(({ nodeId, invocationKey }) => ({ nodeId, invocationKey })),
-  );
-  if (!Array.isArray(metadata))
-    operationError('attempt_invalid', 'completed output metadata is invalid');
-  // Validate every scoped source identity before inspecting any source value.
-  const sources = descriptors.map((descriptor, index) => {
-    const candidate = record(
-      (metadata as readonly JsonValue[])[index] ?? null,
-      'attempt_invalid',
-      'completed output metadata',
-    );
-    const [nodeId] = parseCompletedDescriptor(
-      { ...candidate, value: null },
-      input,
-      node,
-      graph,
-      directUpstream,
-    );
-    return [nodeId, descriptor.value] as const;
-  });
-  const canonicalByNodeId = new Map<string, string>();
-  const validatedSourcesByNodeId = new Map<string, Set<unknown>>();
-  for (const [nodeId, source] of sources) {
-    // All identities were checked above. Reuse only this call's already validated
-    // source identity for this node; distinct values must still pass every bound
-    // and conflict check. No caller callbacks or awaits occur during this pass.
-    const validated = validatedSourcesByNodeId.get(nodeId);
-    if (validated?.has(source)) continue;
-    const normalized = normalizeBoundedEngineJson(source);
-    retainCompletedOutput(outputs, canonicalByNodeId, nodeId, normalized);
-    if (validated === undefined)
-      validatedSourcesByNodeId.set(nodeId, new Set([source]));
-    else validated.add(source);
-  }
-  return freezeExecutable(outputs);
 }
 
 function parseStructuredInputs(
@@ -303,11 +213,10 @@ export function prepareNodeAttemptInput(
   input: ExecuteNodeAttemptInput,
 ): PreparedNodeAttemptInput {
   let runInput: JsonValue;
-  let completed: JsonValue = null;
+  let completed: JsonValue;
   try {
     runInput = normalizeBoundedEngineJson(input.runInput);
-    if (input.executable.envelope.schemaVersion !== 3)
-      completed = normalizeBoundedEngineJson(input.completedNodeOutputs);
+    completed = normalizeBoundedEngineJson(input.completedNodeOutputs);
   } catch (error) {
     operationError(
       'attempt_invalid',
@@ -335,36 +244,17 @@ export function prepareNodeAttemptInput(
       .map(({ source }) => source.nodeId),
   );
   const structuredInputs = parseStructuredInputs(input);
-  let completedOutputs: Readonly<Record<string, JsonValue>>;
-  if (input.executable.envelope.schemaVersion === 3) {
-    try {
-      completedOutputs = normalizeCompletedOutputsV3(
-        input.completedNodeOutputs,
-        input,
-        node,
-        containingGraph,
-        directUpstream,
-      );
-    } catch (error) {
-      operationError(
-        'attempt_invalid',
-        error instanceof Error ? error.message : 'attempt input is invalid',
-      );
-    }
-  } else {
-    completedOutputs = parseCompletedOutputs(
+  return {
+    node,
+    runInput,
+    directUpstream,
+    completedOutputs: parseCompletedOutputs(
       completed,
       input,
       node,
       containingGraph,
       directUpstream,
-    );
-  }
-  return {
-    node,
-    runInput,
-    directUpstream,
-    completedOutputs,
+    ),
     ...(structuredInputs === undefined ? {} : { structuredInputs }),
   };
 }

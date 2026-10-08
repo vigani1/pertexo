@@ -33,7 +33,6 @@ export interface ReadinessRow {
   durable_wait_compatible: boolean;
   failure_notification_compatible: boolean;
   execution_admission_compatible: boolean;
-  workflow_calls_compatible: boolean;
   regional_write_admission_compatible: boolean;
   webhook_triggers_compatible: boolean;
   schedule_triggers_compatible: boolean;
@@ -57,7 +56,6 @@ type BooleanCapabilityField = {
 }[keyof ReadinessRow];
 
 const CAPABILITY_FAILURES = Object.freeze([
-  ['workflow_calls_compatible', 'Workflow Call catalog is incompatible'],
   ['policy_compatible', 'Workspace row-level security policy is incompatible'],
   ['phase1_schema_compatible', 'Identity/workspace schema is incompatible'],
   [
@@ -151,15 +149,7 @@ export function assertReadinessSupport(input: {
   readonly supportedChecksumAlgorithms?: readonly string[];
   readonly supportedExecutableSchemaVersions?: readonly number[];
   readonly supportedGraphSchemaVersions?: readonly number[];
-  readonly supportedDraftGraphSchemaVersions?: readonly number[];
 }): void {
-  const draftVersions = input.supportedDraftGraphSchemaVersions ?? [1, 2];
-  if (
-    draftVersions.length !== 2 ||
-    draftVersions[0] !== 1 ||
-    draftVersions[1] !== 2
-  )
-    throw new Error('Workflow draft graph schema support is incompatible');
   const graphVersions = input.supportedGraphSchemaVersions ?? [1];
   if (graphVersions.length !== 1 || graphVersions[0] !== 1)
     throw new Error('Workflow graph schema support is incompatible');

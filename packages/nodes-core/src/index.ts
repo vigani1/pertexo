@@ -13,4 +13,3 @@ export * from './terminate/index.js';
 export * from './wait/index.js';
 export * from './webhook/index.js';
 export * from './validate/index.js';
-export * from './workflow-call/index.js';

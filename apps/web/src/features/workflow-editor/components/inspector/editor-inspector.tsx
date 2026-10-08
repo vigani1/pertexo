@@ -25,7 +25,6 @@ import { findStep, levelOf } from '../../model/graph/graph-scopes';
 import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../use-editor-actions';
 import { InspectorPanel } from './inspector-panel';
-import { Notice } from '@/components/ui/notice';
 import type { ChannelLookupScope } from './slack-channel-field';
 import type { InspectorTab } from '../../use-inspector-navigation';
 import type { FinishedTest } from '../../use-last-test';
@@ -125,7 +124,6 @@ export function EditorInspector({
       definitions={definitions}
       connections={connections}
       channelLookup={channelLookup}
-      versionSourceScope={{ apiClient, userId, workspaceId }}
       editable={editable}
       scratchVersion={actions.scratchVersion}
       tab={tab}
@@ -162,36 +160,30 @@ export function EditorInspector({
           if (selectedNodeId !== null) onAddToBody(selectedNodeId, opener);
         },
       }}
-      renderTest={(nodeId, stepSideEffect) =>
-        graph.schemaVersion === 2 ? (
-          <Notice title="Draft authoring only">
-            Native step testing and execution are not enabled.
-          </Notice>
-        ) : (
-          <NodeTestPanel
-            apiClient={apiClient}
-            workspaceId={workspaceId}
-            workflowId={workflowId}
-            nodeId={nodeId}
-            stepSideEffect={stepSideEffect}
-            priorPreview={priorTestFor(graph, passedTest, nodeId)}
-            rememberedPreview={
-              rememberedTest?.nodeId === nodeId
-                ? rememberedTest.preview
-                : undefined
-            }
-            ensureSaved={ensureSaved}
-            actionRef={testRef}
-            onFinished={(preview) => {
-              onTestFinished({ nodeId, preview });
-            }}
-            onSucceeded={(preview) => {
-              setPassedTest({ previewId: preview.id, nodeId });
-              onTestPassed(nodeId, inlineOutputBytes(preview.output));
-            }}
-          />
-        )
-      }
+      renderTest={(nodeId, stepSideEffect) => (
+        <NodeTestPanel
+          apiClient={apiClient}
+          workspaceId={workspaceId}
+          workflowId={workflowId}
+          nodeId={nodeId}
+          stepSideEffect={stepSideEffect}
+          priorPreview={priorTestFor(graph, passedTest, nodeId)}
+          rememberedPreview={
+            rememberedTest?.nodeId === nodeId
+              ? rememberedTest.preview
+              : undefined
+          }
+          ensureSaved={ensureSaved}
+          actionRef={testRef}
+          onFinished={(preview) => {
+            onTestFinished({ nodeId, preview });
+          }}
+          onSucceeded={(preview) => {
+            setPassedTest({ previewId: preview.id, nodeId });
+            onTestPassed(nodeId, inlineOutputBytes(preview.output));
+          }}
+        />
+      )}
     />
   );
   // The Schedule step's builder previews its rule against this workflow, and

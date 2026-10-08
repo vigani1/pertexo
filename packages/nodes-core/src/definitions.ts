@@ -1,10 +1,4 @@
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
-import {
-  CORE_WORKFLOW_CALL_MANIFEST,
-  CORE_WORKFLOW_CALL_CONFIG_SCHEMA,
-  CORE_WORKFLOW_CALL_INPUT_SCHEMA,
-  CORE_WORKFLOW_CALL_OUTPUT_SCHEMA,
-} from './workflow-call/index.js';
 
 import {
   CORE_CONDITION_CONFIG_SCHEMA,
@@ -93,12 +87,6 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
-    Object.freeze({
-      manifest: CORE_WORKFLOW_CALL_MANIFEST,
-      configSchema: CORE_WORKFLOW_CALL_CONFIG_SCHEMA,
-      inputSchema: CORE_WORKFLOW_CALL_INPUT_SCHEMA,
-      outputSchema: CORE_WORKFLOW_CALL_OUTPUT_SCHEMA,
-    }),
     Object.freeze({
       manifest: CORE_SCHEDULE_MANIFEST,
       configSchema: CORE_SCHEDULE_CONFIG_SCHEMA,

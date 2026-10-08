@@ -367,7 +367,7 @@ export type PersistedWorkflowCheckpoint = Readonly<
   | z.output<typeof persistedWorkflowCheckpointV2Schema>
 >;
 
-export class PersistedWorkflowCheckpointInvalidError extends Error {
+class PersistedWorkflowCheckpointInvalidError extends Error {
   public override readonly name = 'PersistedWorkflowCheckpointInvalidError';
   public constructor() {
     super('Persisted workflow checkpoint is invalid');

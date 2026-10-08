@@ -258,7 +258,7 @@ describe.skipIf(!enabled)(
 
     it('requires the current head and preserved 0133 inventory on API and worker; is not an old-image cutover proof', async () => {
       expect(EXPECTED_MIGRATION_HEAD).toBe(
-        '0141_native_attempt_lock_order.sql',
+        '0135_workflow_folders_batch_identity.sql',
       );
       expect(
         (
@@ -266,10 +266,10 @@ describe.skipIf(!enabled)(
             'select name from pertexo_internal.schema_migrations order by name desc limit 1',
           )
         ).rows,
-      ).toEqual([{ name: '0141_native_attempt_lock_order.sql' }]);
+      ).toEqual([{ name: '0135_workflow_folders_batch_identity.sql' }]);
       for (const pool of [apiPool, workerPool])
         await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
-          migrationHead: '0141_native_attempt_lock_order.sql',
+          migrationHead: '0135_workflow_folders_batch_identity.sql',
         });
     });
 

@@ -21,10 +21,6 @@ const TEST_EXCLUDES = [
   '**/*.integration.test.ts',
   '**/*.browser-probe.test.ts',
 ];
-// This fixture requires the unconditional dedicated CI service owner and its
-// strict no-skip reporter; the service-free changed gate still lints it.
-const INLINE_CALL_HTTP_INTEGRATION_TEST =
-  'infrastructure/testing/inline-workflow-call-http.integration.test.mjs';
 
 /** Workspace packages under apps/ and packages/, with their workspace dependencies. */
 export function readWorkspacePackages(root) {
@@ -160,9 +156,7 @@ export function planChangedChecks(files, packages, exists = () => true) {
             : file.replace(/\.mjs$/u, '.test.mjs'),
         ),
       ),
-    ].filter(
-      (file) => file !== INLINE_CALL_HTTP_INTEGRATION_TEST && exists(file),
-    );
+    ].filter(exists);
     if (nodeTests.length > 0)
       commands.push({
         label: 'infrastructure node tests',

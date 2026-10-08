@@ -46,28 +46,6 @@ function validDeployedEnvironment(): Record<string, string> {
 }
 
 describe('parseApiConfig', () => {
-  it.each(['workflow_call_staging', 'workflow_call_activation'])(
-    'accepts ordinary %s without a local flag or fixed ports',
-    (cohort) => {
-      expect(
-        parseApiConfig({
-          DATABASE_API_URL:
-            'postgresql://pertexo_api:secret@db.example.test:5432/pertexo',
-          NODE_ENV: 'test',
-          NODE_COMPATIBILITY_COHORT: cohort,
-        }).nodeCompatibilityCohort,
-      ).toBe(cohort);
-    },
-  );
-  it('rejects the retired local-only cohort', () => {
-    expect(() =>
-      parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@db.example.test:5432/pertexo',
-        NODE_COMPATIBILITY_COHORT: 'local_json_call',
-      }),
-    ).toThrow();
-  });
   it('enables Better Auth without requiring legacy OIDC configuration', () => {
     const config = parseApiConfig({
       DATABASE_API_URL:

@@ -7,8 +7,7 @@ import type {
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 
-import type { CompiledWorkflowExecutable } from '../compilation/executable-authentication.js';
-import type { WorkflowCallableDeclarationV1 } from '@pertexo/workflow-model/callable-graph-contract';
+import type { CompiledWorkflowExecutableV2 } from '../executable-workflow.js';
 import type { BranchScopePart, IterationScopePart } from '../types.js';
 
 // What one node attempt takes and gives back, shared by the engine's
@@ -27,12 +26,7 @@ export interface ExecuteNodeAttemptInput {
   readonly runId: string;
   readonly nodeRunId: string;
   readonly attemptId: string;
-  readonly executable: CompiledWorkflowExecutable;
-  /** Retained exact-version callable descriptors, never current publication data. */
-  readonly calleeDeclarations?: ReadonlyMap<
-    string,
-    WorkflowCallableDeclarationV1
-  >;
+  readonly executable: CompiledWorkflowExecutableV2;
   readonly workflowVersionId: string;
   readonly invocationKey: string;
   readonly nodeId: string;
@@ -48,8 +42,6 @@ export interface ExecuteNodeAttemptInput {
   readonly runInput: unknown;
   readonly completedNodeOutputs: unknown;
   readonly coordinatorInput?: unknown;
-  /** Protected immutable snapshot supplied by the worker after lease-authorized recovery. */
-  readonly recordedWorkflowCallInput?: unknown;
   readonly registry: NodeExecutionRegistry;
   readonly signal: AbortSignal;
   readonly runtime?: NodeExecutionRuntime;
@@ -57,8 +49,7 @@ export interface ExecuteNodeAttemptInput {
   /**
    * Called once with the input the executor is about to receive, after
    * mappings resolve and before it runs (ADR 052). Recording it is the
-   * caller's concern. Retained diagnostic callbacks remain best-effort; a native
-   * Call's required persistence failure must escape before executor dispatch.
+   * caller's concern; the callback must not throw.
    */
   readonly onInputResolved?: (input: JsonValue) => Promise<void>;
 }

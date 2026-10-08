@@ -2,11 +2,6 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import {
-  workflowCallableGraphSchemaV2,
-  type WorkflowCallableGraphV2,
-} from '../callable-graph-contract.js';
-
-import {
   canonicalJson,
   canonicalizeJson,
   type JsonValue,
@@ -392,45 +387,4 @@ export function workflowDraftRepresentationTag(input: {
     )
     .digest('base64url');
   return `"draft-v1.${digest}"`;
-}
-
-export type WorkflowCallableDraftRepresentationTagV2 = `"draft-v2.${string}"`;
-
-/** Authoring format routing only; publication still requires its own validation. */
-export function parseWorkflowAuthoringGraphDraft(
-  input: unknown,
-): WorkflowGraph | WorkflowCallableGraphV2 {
-  const native = workflowCallableGraphSchemaV2.safeParse(input);
-  return native.success ? native.data : parseWorkflowGraphDraft(input);
-}
-
-/** Native authoring identity includes the full V2 graph, never a V1 projection. */
-export function workflowCallableDraftRepresentationTagV2(input: {
-  readonly workflowId: string;
-  readonly revision: number;
-  readonly graph: unknown;
-  readonly compatibilityFingerprint: string;
-}): WorkflowCallableDraftRepresentationTagV2 {
-  const workflowId = z.uuid().parse(input.workflowId);
-  const revision = z.number().int().positive().parse(input.revision);
-  const graph = workflowCallableGraphSchemaV2.parse(input.graph);
-  const compatibilityFingerprint = z
-    .string()
-    .min(1)
-    .max(256)
-    .parse(input.compatibilityFingerprint);
-  const digest = createHash('sha256')
-    .update(
-      canonicalJson({
-        domain: 'pertexo.workflow.draft-representation',
-        tagVersion: 2,
-        workflowId,
-        revision,
-        schemaVersion: graph.schemaVersion,
-        graph,
-        compatibilityFingerprint,
-      }),
-    )
-    .digest('base64url');
-  return `"draft-v2.${digest}"`;
 }

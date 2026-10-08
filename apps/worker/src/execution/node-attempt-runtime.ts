@@ -30,6 +30,7 @@ import {
   unrecoverableQueueError,
 } from '@pertexo/queue';
 import {
+  composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
   type NodeExecutionRegistry,
@@ -37,7 +38,6 @@ import {
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
-import { composeWorkerWorkflowCompatibilityRelease as composeExecutableCompatibilityRelease } from '../platform/workflow-compatibility.js';
 import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,
@@ -53,7 +53,6 @@ import {
   createNodeAttemptHandler,
   type NodeAttemptExecutionEngine,
   type NodeAttemptHandler,
-  type NodeAttemptHandlerDependencies,
   NodeAttemptHandlerStateError,
 } from './node-attempt-handler.js';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
@@ -71,7 +70,6 @@ import {
   mapPreviewHandlerError,
   type PreviewAttemptHandler,
 } from './preview-attempt-runtime.js';
-import { createNodeAttemptValueComposition } from './node-attempt-value-composition.js';
 
 export interface NodeAttemptRuntime {
   readonly consumer: QueueConsumer;
@@ -109,10 +107,6 @@ export type NodeAttemptRuntimeOptions = Readonly<{
 }>;
 
 export type NodeAttemptRuntimeDependencies = Readonly<{
-  physicalOutputValues?: NodeAttemptHandlerDependencies['physicalOutputValues'];
-  nativeInputValues?: NodeAttemptHandlerDependencies['nativeInputValues'];
-  /** Borrowed framework value runtime; never exposed to preview/node capabilities. */
-  callDeclarationValues?: NodeAttemptHandlerDependencies['callDeclarationValues'];
   capabilityFactory?: typeof createWorkerNodeRuntimeCapabilities;
   consumerFactory?: typeof createQueueConsumer;
   engine?: NodeAttemptExecutionEngine;
@@ -324,19 +318,9 @@ async function createProductionNodeAttemptRuntime(
     capabilityRuntime?.close.bind(capabilityRuntime),
   );
   runtimeCapabilities ??= capabilityRuntime?.factories;
-  const values = createNodeAttemptValueComposition(
-    runStore,
-    capabilityRuntime?.executionValueStore,
-  );
   return {
     ...(capabilityRuntime === undefined ? {} : { capabilityRuntime }),
     handler: createNodeAttemptHandler({
-      physicalOutputValues:
-        dependencies.physicalOutputValues ?? values.physicalOutputValues,
-      callDeclarationValues:
-        dependencies.callDeclarationValues ?? values.callDeclarationValues,
-      nativeInputValues:
-        dependencies.nativeInputValues ?? values.nativeInputValues,
       connectionRunHealthMode: options.connectionRunHealthMode ?? 'off',
       engine,
       heartbeatIntervalMillis: options.heartbeatIntervalMillis,

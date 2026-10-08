@@ -60,9 +60,7 @@ work; it does not mean features or backend prerequisites already exist.
 
 ## Verification
 
-Follow the root testing workflow: narrow affected checks during iteration and
-grouped verification at a coherent slice handoff. Run app build, lint and relevant
-unit tests after changes. For visible/routing changes,
+Run app build, lint and unit tests after changes. For visible/routing changes,
 also run `test:e2e` and inspect the rendered result. Test user-visible behavior,
 not snapshots of implementation details. Keep import rules enabled, preserve
 root strict TypeScript checks, and document limitations honestly.

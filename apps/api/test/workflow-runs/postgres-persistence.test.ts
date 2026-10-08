@@ -19,7 +19,6 @@ import {
 } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  WorkflowCallsUnavailableError,
   WorkflowManualStartUnavailableError,
   WorkflowPublishedVersionConflictError,
 } from '@pertexo/database/api';
@@ -507,7 +506,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
   });
 
   it.each([
-    [new WorkflowCallsUnavailableError(), 'workflow.calls_unavailable'],
     [
       new WorkflowManualStartUnavailableError(),
       'workflow.input_cases_unavailable',

@@ -47,10 +47,7 @@ export {
 export {
   workflowControlOutputKind,
   workflowControlOutputNodeIdsV2,
-  workflowControlOutputNodeIdsV3,
-  workflowCallNodeIdsV3,
   workflowForEachBoundsV2,
-  workflowForEachBoundsV3,
   type WorkflowControlOutputKind,
 } from './graph/control-output-selection.js';
 export {
@@ -58,9 +55,7 @@ export {
   EMPTY_DEFINITION_CATALOG_V1,
   parseRetainedWorkflowVersionV1,
   parseWorkflowGraphForPublish,
-  parseWorkflowAuthoringGraphDraft,
   workflowCompatibilityReport,
-  workflowCallableDraftRepresentationTagV2,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,
   workflowExecutableProjection,
@@ -69,7 +64,6 @@ export {
   type RetainedWorkflowVersionV1,
   type WorkflowCompatibilityIssue,
   type WorkflowCompatibilityReport,
-  type WorkflowCallableDraftRepresentationTagV2,
   type WorkflowDefinitionCatalogV1,
   type WorkflowDraftRepresentationTag,
   type WorkflowIntegrationUsage,

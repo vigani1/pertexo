@@ -1,4 +1,3 @@
-import type { CommitAdvancePlanResult } from './coordinator-run-store-contract.js';
 import type { Pool, PoolClient } from 'pg';
 
 import { destroyCanceledPoolClient } from '../../platform/pool-client-disposal.js';
@@ -130,28 +129,4 @@ export async function observeScheduleToStartSeconds(
     if (cancelWait !== undefined)
       cancellation.removeEventListener('abort', cancelWait);
   }
-}
-
-/** Project bounded post-commit schedule diagnostics without carrying private transition fields. */
-export async function observeCommittedCoordinatorSchedule(
-  pool: Pool,
-  result: CommitAdvancePlanResult & { scheduleDueAt?: string },
-  signal: AbortSignal,
-): Promise<CommitAdvancePlanResult> {
-  if (
-    result.kind !== 'committed' ||
-    !('scheduleDueAt' in result) ||
-    typeof result.scheduleDueAt !== 'string'
-  )
-    return result;
-  const { scheduleDueAt, ...committed } = result;
-  const scheduleToStartSeconds = await observeScheduleToStartSeconds(
-    pool,
-    scheduleDueAt,
-    signal,
-  );
-  return Object.freeze({
-    ...committed,
-    ...(scheduleToStartSeconds === undefined ? {} : { scheduleToStartSeconds }),
-  });
 }

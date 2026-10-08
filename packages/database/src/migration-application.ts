@@ -63,12 +63,6 @@ async function runOnlineMigration(
     throw new Error(
       `Online migration controls transactions directly: ${input.name}`,
     );
-  const previousRole = await input.client.query<{ current_user: string }>(
-    'select current_user',
-  );
-  const originalRole = previousRole.rows[0]?.current_user;
-  if (originalRole === undefined)
-    throw new Error('Migration role is unavailable');
   await input.client.query(
     `set role ${quoteIdentifier(input.config.ownerRole)}`,
   );
@@ -76,65 +70,9 @@ async function runOnlineMigration(
     await input.client.query("select set_config('lock_timeout',$1,false)", [
       `${String(input.lockTimeoutMs)}ms`,
     ]);
-    // A failed concurrent build leaves an INVALID index. IF NOT EXISTS alone
-    // would silently record that failed index as applied on the next run.
-    // Recover only a single simple index whose exact target/shape/owner agree;
-    // never drop a differently scoped object or split arbitrary migration SQL.
-    // PostgreSQL's non-pretty definition normalizes the simple default shape
-    // and exposes non-default opclasses, collations, ordering and null equality.
-    const index =
-      /^\s*create\s+(unique\s+)?index\s+concurrently\s+if\s+not\s+exists\s+([a-z_][a-z0-9_]*)\s+on\s+([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?)\s*\(\s*([a-z_][a-z0-9_]*(?:\s*,\s*[a-z_][a-z0-9_]*)*)\s*\)\s*;\s*$/iu.exec(
-        input.rendered.replace(/^\s*--[^\n]*(?:\n|$)/gmu, ''),
-      );
-    if (index !== null) {
-      const [, unique, indexName, tableName, columnNames] = index;
-      const existing = await input.client.query<{
-        namespace: string;
-        valid: boolean | null;
-        compatible: boolean | null;
-      }>(
-        `select namespace.nspname namespace,
-        binding.indisvalid and binding.indisready valid,
-        binding.indrelid=target.oid and pg_get_userbyid(relation.relowner)=$4
-          and binding.indisunique=$3 and binding.indpred is null and binding.indexprs is null
-          and binding.indnatts=binding.indnkeyatts
-          and method.amname='btree'
-          and pg_get_indexdef(binding.indexrelid,0,false)=format(
-            'CREATE %sINDEX %I ON %I.%I USING btree (%s)',
-            case when $3 then 'UNIQUE ' else '' end,$1,namespace.nspname,target.relname,
-            (select string_agg(quote_ident(column_name),', ' order by position)
-              from unnest($5::text[]) with ordinality columns(column_name,position)))
-          and array(select attribute.attname::text from unnest(binding.indkey) with ordinality key(number,position)
-            join pg_attribute attribute on attribute.attrelid=target.oid and attribute.attnum=key.number
-            order by key.position)=$5::text[] compatible
-        from pg_class target join pg_namespace namespace on namespace.oid=target.relnamespace
-        join pg_class relation on relation.relnamespace=namespace.oid and relation.relname=$1
-        left join pg_index binding on binding.indexrelid=relation.oid
-        left join pg_am method on method.oid=relation.relam
-        where target.oid=to_regclass($2)`,
-        [
-          indexName,
-          tableName,
-          unique !== undefined,
-          input.config.ownerRole,
-          columnNames?.split(',').map((name) => name.trim()),
-        ],
-      );
-      const current = existing.rows[0];
-      if (current !== undefined) {
-        if (current.compatible !== true)
-          throw new Error(`Online index restart target differs: ${input.name}`);
-        if (current.valid !== true)
-          await input.client.query(
-            `drop index concurrently ${quoteIdentifier(current.namespace)}.${quoteIdentifier(indexName ?? '')}`,
-          );
-      }
-    }
     await input.client.query(input.rendered);
   } finally {
-    await input.client
-      .query(`set role ${quoteIdentifier(originalRole)}`)
-      .catch(() => undefined);
+    await input.client.query('reset role').catch(() => undefined);
   }
   await input.transaction(() =>
     input.client.query(

@@ -486,23 +486,8 @@ describe('workflow draft persistence', () => {
       await api.query("select set_config('app.workspace_id', $1, true)", [
         workspaceId,
       ]);
-      await api.query('savepoint invalid_graph_schema');
-      await expect(
-        api.query(
-          "update app.workflow_drafts set graph_json = '{}'::jsonb where workflow_id = $1",
-          [corrupted.workflowId],
-        ),
-      ).rejects.toMatchObject({
-        code: '23514',
-        constraint: 'workflow_drafts_graph_schema_consistent',
-      });
-      await api.query('rollback to savepoint invalid_graph_schema');
-      // Keep the storage discriminator consistent while retaining a malformed
-      // graph, so the reader must still enforce the complete model contract.
       await api.query(
-        `update app.workflow_drafts
-           set graph_json = '{"schemaVersion":1}'::jsonb
-           where workflow_id = $1`,
+        "update app.workflow_drafts set graph_json = '{}'::jsonb where workflow_id = $1",
         [corrupted.workflowId],
       );
       await api.query('commit');

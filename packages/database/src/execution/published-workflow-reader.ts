@@ -56,12 +56,6 @@ const executableV2RowSchema = z
   })
   .strict();
 
-const executableV3RowSchema = executableV2RowSchema.extend({
-  checksum: z.string().regex(/^wf:v3:sha256:[0-9a-f]{64}$/u),
-  schema_version: z.literal(2),
-  executable_schema_version: z.literal(3),
-});
-
 export type PublishedWorkflowVersionIdentity = Readonly<{
   checksum: string;
   id: string;
@@ -79,18 +73,6 @@ export type PublishedWorkflowV2Projection = PublishedWorkflowVersionIdentity &
     executableSchemaVersion: 2;
   }>;
 
-export type PublishedWorkflowV3Projection = PublishedWorkflowVersionIdentity &
-  Readonly<{
-    schemaVersion: 2;
-    compatibilityReleaseEpoch: number;
-    currentCompatibilityRelease?: CompatibilityReleaseExpectation;
-    executableJson: unknown;
-    executableSchemaVersion: 3;
-  }>;
-
-export type PublishedWorkflowExecutableProjection =
-  PublishedWorkflowV2Projection | PublishedWorkflowV3Projection;
-
 export type PublishedWorkflowReadResult =
   | Readonly<{ kind: 'not_found' }>
   | Readonly<{
@@ -100,10 +82,6 @@ export type PublishedWorkflowReadResult =
   | Readonly<{
       kind: 'v2_projection';
       workflowVersion: PublishedWorkflowV2Projection;
-    }>
-  | Readonly<{
-      kind: 'v3_projection';
-      workflowVersion: PublishedWorkflowV3Projection;
     }>;
 
 export type ReadPublishedWorkflowForExecutionInput = Readonly<{
@@ -128,15 +106,7 @@ export class PublishedWorkflowVersionCorruptError extends Error {
 }
 
 function identityFromRow(
-  row: Pick<
-    z.output<typeof retainedV1RowSchema>,
-    | 'checksum'
-    | 'id'
-    | 'schema_version'
-    | 'version_number'
-    | 'workflow_id'
-    | 'workspace_id'
-  >,
+  row: z.output<typeof retainedV1RowSchema>,
 ): PublishedWorkflowVersionIdentity {
   return Object.freeze({
     checksum: row.checksum,
@@ -158,20 +128,6 @@ export function classifyPublishedWorkflowVersionRow(
     return Object.freeze({
       kind: 'non_executable',
       workflowVersion: identityFromRow(retained.data),
-    });
-  }
-
-  const callable = executableV3RowSchema.safeParse(row);
-  if (callable.success) {
-    return Object.freeze({
-      kind: 'v3_projection',
-      workflowVersion: Object.freeze({
-        ...identityFromRow(callable.data),
-        schemaVersion: callable.data.schema_version,
-        compatibilityReleaseEpoch: callable.data.compatibility_release_epoch,
-        executableJson: callable.data.executable_json,
-        executableSchemaVersion: callable.data.executable_schema_version,
-      }),
     });
   }
 
@@ -246,23 +202,15 @@ export function createPublishedWorkflowReader(
           const classified = classifyPublishedWorkflowVersionRow(
             result.rows[0],
           );
-          if (classified.kind === 'v2_projection')
-            return Object.freeze({
-              ...classified,
-              workflowVersion: Object.freeze({
-                ...classified.workflowVersion,
-                currentCompatibilityRelease,
-              }),
-            });
-          if (classified.kind === 'v3_projection')
-            return Object.freeze({
-              ...classified,
-              workflowVersion: Object.freeze({
-                ...classified.workflowVersion,
-                currentCompatibilityRelease,
-              }),
-            });
-          return classified;
+          return classified.kind === 'v2_projection'
+            ? Object.freeze({
+                ...classified,
+                workflowVersion: Object.freeze({
+                  ...classified.workflowVersion,
+                  currentCompatibilityRelease,
+                }),
+              })
+            : classified;
         },
         transactionOptions,
       );

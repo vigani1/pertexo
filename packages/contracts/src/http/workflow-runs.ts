@@ -42,7 +42,6 @@ export const workflowRunTriggerTypeSchema = z.enum([
   'replay',
   'schedule',
   'webhook',
-  'workflow_call',
 ]);
 export const workflowRunPageLimitSchema = z.coerce
   .number()
@@ -364,26 +363,6 @@ export const workflowRunResponseSchema = z
   .object({
     run: workflowRunReadSummarySchema,
     nodes: z.array(workflowNodeRunSummarySchema).max(1_000),
-    callFamily: z
-      .object({
-        rootRunId: workflowRunIdentifierSchema,
-        parentRunId: workflowRunIdentifierSchema.nullable(),
-        parentInvocationKey: z.string().min(1).max(256).nullable(),
-        children: z
-          .array(
-            z
-              .object({
-                runId: workflowRunIdentifierSchema,
-                nodeId: z.string().min(1).max(128),
-                invocationKey: z.string().min(1).max(256),
-                status: workflowRunStatusSchema,
-              })
-              .strict(),
-          )
-          .max(64),
-      })
-      .strict()
-      .optional(),
   })
   .strict();
 export const workflowRunCancelResponseSchema = z

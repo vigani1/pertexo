@@ -23,24 +23,6 @@
       "types": "./dist/graph-contract.d.ts",
       "default": "./dist/graph-contract.js"
     },
-    "./callable-type-contract": {
-      "types": "./dist/callable-type-contract.d.ts",
-      "default": "./dist/callable-type-contract.js"
-    },
-    "./workflow-call-contract": {
-      "types": "./dist/workflow-call-contract.d.ts",
-      "default": "./dist/workflow-call-contract.js"
-    },
-    "./callable-graph-contract": {
-      "types": "./dist/callable-graph-contract.d.ts",
-      "default": "./dist/callable-graph-contract.js"
-    },
-    "./workflow-call-closure": {
-      "types": "./dist/workflow-call-closure.d.ts",
-      "browser": false,
-      "node": "./dist/workflow-call-closure.js",
-      "default": "./dist/workflow-call-closure.js"
-    },
     "./portability-contract": {
       "types": "./dist/portability-contract.d.ts",
       "default": "./dist/portability-contract.js"
@@ -104,7 +86,6 @@
   },
   "browser": {
     "./dist/portability.js": false,
-    "./dist/workflow-call-closure.js": false,
     "./dist/index.js": false,
     "./dist/canonical-json.js": false,
     "./dist/graph.js": false,

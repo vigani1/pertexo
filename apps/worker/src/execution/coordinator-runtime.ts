@@ -5,7 +5,6 @@ import {
   createCoordinatorRunStore,
   createPublishedWorkflowReader,
   type CoordinatorRunStore,
-  type CoordinatorRunStoreOptions,
   type DatabaseConfig,
   type DatabaseRuntime,
   type DueNodeWakeupScanner,
@@ -34,44 +33,12 @@ import {
   unrecoverableQueueError,
 } from '@pertexo/queue';
 import {
+  composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
-  createWorkflowCheckpointV3,
-  verifyWorkflowExecutableV3,
 } from '@pertexo/workflow-engine';
-import type {
-  createDualRegionArtifactStore,
-  ArtifactStore,
-  DualRegionArtifactStoreConfig,
-} from '@pertexo/artifact-store';
 
 import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
-import { composeWorkerWorkflowCompatibilityRelease as composeExecutableCompatibilityRelease } from '../platform/workflow-compatibility.js';
-import type { createCoordinatorControlSourceHydration } from './coordinator-control-source-hydration.js';
-import {
-  COORDINATOR_VALUE_WORK_POLICY_DEFAULTS,
-  type CoordinatorValueWorkPolicy,
-} from './coordinator-value-work-lifetime.js';
-import type { CoordinatorNativeValueWork } from './coordinator-native-demand-advance.js';
-import { createCoordinatorSourceComposition } from './coordinator-source-composition.js';
-import type { createCoordinatorResultSourceHydration } from './coordinator-result-source-hydration.js';
-import { createCoordinatorResultValuePreparation } from './coordinator-result-value-preparation.js';
-import { parseCoordinatorRuntimeTuning } from './coordinator-runtime-tuning.js';
-import {
-  createCoordinatorExpressionEvaluation,
-  createCoordinatorExpressionEvaluatorForwarding,
-  type CoordinatorExpressionEvaluation,
-} from './coordinator-expression-evaluation.js';
-import type {
-  ExpressionEvaluator,
-  JsonataEvaluator,
-} from '@pertexo/workflow-model/expressions';
-import type { createCoordinatorCallDeclarationHydration } from './coordinator-call-declaration-hydration.js';
-import {
-  createCoordinatorArtifactStorage,
-  type CoordinatorArtifactStorage,
-} from './coordinator-artifact-storage.js';
-import { createCoordinatorResultPreparationScope } from './coordinator-result-preparation-scope.js';
 import {
   createCoordinatorTelemetry,
   type CoordinatorTelemetry,
@@ -80,7 +47,6 @@ import {
   createCoordinatorHandler,
   type CoordinatorAdvanceEngine,
   type CoordinatorHandler,
-  type CoordinatorCallableCompletionLoader,
   CoordinatorHandlerStateError,
 } from './coordinator-handler.js';
 import {
@@ -97,13 +63,10 @@ export interface CoordinatorRuntime {
 export type CoordinatorRuntimeOptions = Readonly<{
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
-  artifactStore?: DualRegionArtifactStoreConfig;
   backgroundTaskShutdownTimeoutMillis?: number;
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
-  /** Parsed ADR065 policy, borrowed by the lazy native demand lifetime. */
-  valueWorkPolicy?: CoordinatorValueWorkPolicy;
   runTimeoutFailureContextEnabled?: boolean;
   workspaceInboxProducerEnabled?: boolean;
   /** ADR 056: record schedule and webhook run outcomes for failure streaks. */
@@ -124,13 +87,6 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   runStore?: CoordinatorRunStore;
   telemetry?: CoordinatorTelemetry;
   logger?: StructuredLogger;
-  loadCallableCompletion?: CoordinatorCallableCompletionLoader;
-  hydrateCallableSource?: CoordinatorNativeValueWork['hydrateSource'];
-  /** Borrowed framework storage; never exposed to workflow executors. */
-  artifactStore?: Pick<ArtifactStore, 'getStream' | 'checkReadiness'> &
-    Partial<Pick<ArtifactStore, 'put'>>;
-  /** Borrowed existing evaluator for native paths; caller retains cleanup. */
-  expressionEvaluator?: ExpressionEvaluator;
 }>;
 
 export type CoordinatorCompositionFactories = Readonly<{
@@ -142,8 +98,6 @@ export type CoordinatorCompositionFactories = Readonly<{
   runStore: typeof createCoordinatorRunStore;
   telemetry: typeof createCoordinatorTelemetry;
   traceRunner: typeof createQueueTraceRunner;
-  artifactStore?: typeof createDualRegionArtifactStore;
-  expressionEvaluator?: () => JsonataEvaluator;
 }>;
 
 const productionFactories: CoordinatorCompositionFactories = {
@@ -187,10 +141,49 @@ function queueHandler(handler: CoordinatorHandler): QueueJobHandler {
   };
 }
 
-/** Keep release selection and child checkpoint verification on the same history. */
-function createCoordinatorCompatibility(releaseCohort: PlatformReleaseCohort) {
+export async function createCoordinatorRuntime(
+  options: CoordinatorRuntimeOptions,
+  dependencies: CoordinatorRuntimeDependencies = {},
+  factories: CoordinatorCompositionFactories = productionFactories,
+): Promise<CoordinatorRuntime> {
+  if (
+    !Number.isSafeInteger(options.maximumAdmissions) ||
+    options.maximumAdmissions < 1 ||
+    options.maximumAdmissions > 64
+  ) {
+    throw new TypeError(
+      'Coordinator maximum admissions must be between 1 and 64',
+    );
+  }
+  const dueWakeupBatchSize = options.dueWakeupBatchSize ?? 25;
+  const dueWakeupPollIntervalMillis =
+    options.dueWakeupPollIntervalMillis ?? 250;
+  const backgroundTaskShutdownTimeoutMillis =
+    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
+  if (
+    !Number.isSafeInteger(dueWakeupBatchSize) ||
+    dueWakeupBatchSize < 1 ||
+    dueWakeupBatchSize > 100
+  )
+    throw new TypeError('Due wakeup batch size must be between 1 and 100');
+  if (
+    !Number.isSafeInteger(dueWakeupPollIntervalMillis) ||
+    dueWakeupPollIntervalMillis < 10 ||
+    dueWakeupPollIntervalMillis > 60_000
+  )
+    throw new TypeError(
+      'Due wakeup poll interval must be between 10 and 60000',
+    );
+  if (
+    !Number.isSafeInteger(backgroundTaskShutdownTimeoutMillis) ||
+    backgroundTaskShutdownTimeoutMillis < 1 ||
+    backgroundTaskShutdownTimeoutMillis > 120_000
+  )
+    throw new TypeError(
+      'Background task shutdown timeout must be between 1 and 120000',
+    );
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory(releaseCohort).map(
+    platformExecutableRegistryHistory(options.releaseCohort ?? 'core').map(
       composeExecutableCompatibilityRelease,
     ),
   );
@@ -198,79 +191,18 @@ function createCoordinatorCompatibility(releaseCohort: PlatformReleaseCohort) {
     releaseSupport.descriptions[0]?.epoch ?? 0,
     releaseSupport.descriptions[0]?.fingerprint ?? '',
   );
+  const engine =
+    dependencies.engine ??
+    createCoordinatorAdvanceEngine({
+      admissionRelease: firstRelease,
+      releaseSupport,
+    });
   const currentReleaseDescriptions =
     createExecutableCompatibilityReleaseSupport(
-      platformRegistryReleaseSupport(releaseCohort).map(
+      platformRegistryReleaseSupport(options.releaseCohort ?? 'core').map(
         composeExecutableCompatibilityRelease,
       ),
     ).descriptions;
-  const workflowCallAdmission: NonNullable<
-    CoordinatorRunStoreOptions['workflowCallAdmission']
-  > = {
-    compatibilityReleases: currentReleaseDescriptions,
-    createInitialCheckpoint: (projection, engineVersion) => {
-      const admission = releaseSupport.descriptions.find(
-        ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
-      );
-      const current = currentReleaseDescriptions.at(-1);
-      if (admission === undefined || current === undefined)
-        throw new Error('Child executable release is unsupported');
-      verifyWorkflowExecutableV3({
-        envelope: projection.executableJson,
-        checksum: projection.checksum,
-        admissionRelease: releaseSupport.resolve(
-          admission.epoch,
-          admission.fingerprint,
-        ),
-        currentRelease: releaseSupport.resolve(
-          current.epoch,
-          current.fingerprint,
-        ),
-      });
-      return createWorkflowCheckpointV3({
-        engineVersion,
-        workflowVersionId: projection.id,
-        iterationBudget: 1000,
-        nextEventSequence: 2,
-      });
-    },
-  };
-  return {
-    releaseSupport,
-    firstRelease,
-    currentReleaseDescriptions,
-    workflowCallAdmission,
-  };
-}
-
-export async function createCoordinatorRuntime(
-  options: CoordinatorRuntimeOptions,
-  dependencies: CoordinatorRuntimeDependencies = {},
-  factories: CoordinatorCompositionFactories = productionFactories,
-): Promise<CoordinatorRuntime> {
-  if (dependencies.loadCallableCompletion !== undefined)
-    throw new TypeError(
-      'Unscoped coordinator material loading cannot bypass the native value lifetime',
-    );
-  const nativeValueWork: CoordinatorNativeValueWork = Object.freeze({
-    policy: Object.freeze({
-      ...(options.valueWorkPolicy ?? COORDINATOR_VALUE_WORK_POLICY_DEFAULTS),
-    }),
-    ...(dependencies.hydrateCallableSource === undefined
-      ? {}
-      : { hydrateSource: dependencies.hydrateCallableSource }),
-  });
-  const {
-    dueWakeupBatchSize,
-    dueWakeupPollIntervalMillis,
-    backgroundTaskShutdownTimeoutMillis,
-  } = parseCoordinatorRuntimeTuning(options);
-  const {
-    releaseSupport,
-    firstRelease,
-    currentReleaseDescriptions,
-    workflowCallAdmission,
-  } = createCoordinatorCompatibility(options.releaseCohort ?? 'core');
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();
   let runStore: CoordinatorRunStore | undefined;
@@ -279,39 +211,10 @@ export async function createCoordinatorRuntime(
   let dueWakeupScanner: DueNodeWakeupScanner | undefined;
   let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
   let consumer: QueueConsumer | undefined;
-  let artifactStorage: CoordinatorArtifactStorage | undefined;
-  let expressionEvaluation: CoordinatorExpressionEvaluation | undefined;
-  let hydrateResultSources: ReturnType<
-    typeof createCoordinatorResultSourceHydration
-  >;
-  let prepareResultValue: ReturnType<
-    typeof createCoordinatorResultValuePreparation
-  >['prepare'];
-  const callableResultEvaluator =
-    createCoordinatorExpressionEvaluatorForwarding(() => expressionEvaluation);
-  let hydrateCallDeclaration: ReturnType<
-    typeof createCoordinatorCallDeclarationHydration
-  >;
-  let hydrateControlSource: ReturnType<
-    typeof createCoordinatorControlSourceHydration
-  >;
   try {
     runStore =
       dependencies.runStore ??
       factories.runStore(options.database, options.databaseRuntime, {
-        expectedCompatibilityReleases: currentReleaseDescriptions,
-        workflowCallAdmission,
-        nativeValueControlReadTimeoutMillis:
-          nativeValueWork.policy.controlReadTimeoutMillis,
-        withNativeResultPreparation: createCoordinatorResultPreparationScope(
-          nativeValueWork.policy,
-        ),
-        hydrateNativeCallDeclaration: (request) =>
-          hydrateCallDeclaration(request),
-        hydrateNativeResultSources: (request) => hydrateResultSources(request),
-        hydrateNativeControlSource: (request) => hydrateControlSource(request),
-        prepareNativeResultValue: (request) => prepareResultValue(request),
-        callableResultEvaluator,
         runTimeoutFailureContextEnabled:
           options.runTimeoutFailureContextEnabled ?? false,
         workspaceInboxProducerEnabled:
@@ -326,39 +229,6 @@ export async function createCoordinatorRuntime(
         currentReleaseDescriptions,
         options.databaseRuntime,
       );
-    artifactStorage = createCoordinatorArtifactStorage(
-      runStore,
-      options.artifactStore,
-      dependencies.artifactStore,
-      factories.artifactStore,
-    );
-    prepareResultValue = createCoordinatorResultValuePreparation(
-      runStore,
-      artifactStorage.store,
-    ).prepare;
-    expressionEvaluation = createCoordinatorExpressionEvaluation(
-      runStore,
-      dependencies.expressionEvaluator,
-      factories.expressionEvaluator,
-    );
-    const sourceComposition = createCoordinatorSourceComposition(
-      runStore,
-      nativeValueWork,
-      artifactStorage.store,
-    );
-    const { hydrateSource } = sourceComposition;
-    hydrateResultSources = sourceComposition.hydrateResultSources;
-    hydrateControlSource = sourceComposition.hydrateControlSource;
-    hydrateCallDeclaration = sourceComposition.hydrateCallDeclaration;
-    const engine =
-      dependencies.engine ??
-      createCoordinatorAdvanceEngine({
-        admissionRelease: firstRelease,
-        releaseSupport,
-        ...(expressionEvaluation.evaluator === undefined
-          ? {}
-          : { expressionEvaluator: expressionEvaluation.evaluator }),
-      });
     notifications =
       dependencies.notifications ?? factories.notifications(options.redisUrl);
     dueWakeupScanner =
@@ -375,15 +245,7 @@ export async function createCoordinatorRuntime(
       reader,
       runStore,
       telemetry,
-      nativeValueWork: {
-        ...nativeValueWork,
-        hydrateSource,
-        hydrateCallDeclaration,
-        hydrateControlSource,
-      },
     });
-    await runStore.checkReadiness?.();
-    await artifactStorage.checkReadiness();
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.workflowCoordinator,
       redisUrl: options.redisUrl,
@@ -399,8 +261,6 @@ export async function createCoordinatorRuntime(
         notifications,
         reader,
         runStore,
-        artifactStorage,
-        expressionEvaluation,
       },
       backgroundTaskShutdownTimeoutMillis,
     );
@@ -419,8 +279,6 @@ export async function createCoordinatorRuntime(
       notifications,
       reader,
       runStore,
-      artifactStorage,
-      expressionEvaluation,
     },
     {
       batchSize: dueWakeupBatchSize,

@@ -78,8 +78,6 @@ export function useInspectorDraftField<Value, Text = string>({
 
   return {
     text: current.text,
-    /** Includes unfinished text before its blur error is displayed. */
-    hasScratch: current.error !== undefined,
     error: current.shown ? current.error : undefined,
     change,
     /** Leaving the field shows its error, if it has one. */

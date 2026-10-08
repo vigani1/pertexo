@@ -21,70 +21,6 @@ import {
   uncoveredBranches,
 } from './report-risk-coverage.mjs';
 
-test('keeps the synchronous checkpoint stack guard review bound to current source', async () => {
-  const root = path.resolve(import.meta.dirname, '../..');
-  const file = 'packages/workflow-engine/src/checkpoint/checkpoint-shared.ts';
-  const absoluteFile = path.join(root, file);
-  const source = await readFile(absoluteFile, 'utf8');
-  const manifest = JSON.parse(
-    await readFile(
-      path.join(import.meta.dirname, 'risk-coverage-reviews.json'),
-      'utf8',
-    ),
-  );
-  const line =
-    source
-      .split('\n')
-      .findIndex(
-        (text) => text === '    if (current === undefined) continue;',
-      ) + 1;
-  assert.ok(line > 0);
-  // Captured Istanbul shape from the hosted V8 report: a null end column
-  // deliberately binds this unchanged unreachable arm to the whole file.
-  const location = { start: { line, column: 4 }, end: { line, column: null } };
-  const coverage = {
-    path: absoluteFile,
-    statementMap: {},
-    s: {},
-    fnMap: {},
-    f: {},
-    branchMap: {
-      20: {
-        type: 'if',
-        loc: location,
-        locations: [location, { start: {}, end: {} }],
-      },
-    },
-    b: { 20: [0, 1] },
-  };
-  const reviews = flattenRiskCoverageReviewGroups(manifest.reviewGroups).filter(
-    (review) => review.file === file && review.branchId === '20',
-  );
-  assert.equal(reviews.length, 1);
-  assert.equal(reviews[0].classification, 'unreachable');
-  const report = createRiskCoverageReport(
-    new Map([['workflow-engine', { [absoluteFile]: coverage }]]),
-    root,
-    new Date(0),
-    reviews,
-    {},
-    new Map([[absoluteFile, source]]),
-  );
-  assertRiskCoveragePolicies(report);
-  assert.throws(
-    () =>
-      createRiskCoverageReport(
-        new Map([['workflow-engine', { [absoluteFile]: coverage }]]),
-        root,
-        new Date(0),
-        reviews,
-        {},
-        new Map([[absoluteFile, `${source}\n// source drift\n`]]),
-      ),
-    /Stale risk-coverage source fingerprint/u,
-  );
-});
-
 test('source spans preserve literal whitespace and honor absolute columns', () => {
   const source = 'before if (value === "a  b") deny(); after\nnext line\n';
   assert.equal(
@@ -204,13 +140,6 @@ test('pins an exact file inventory for every risk cohort', async () => {
     inventories
       .get('workflow-engine')
       .includes('packages/workflow-engine/src/transition/advance-workflow.ts'),
-  );
-  assert.ok(
-    inventories
-      .get('workflow-engine')
-      .includes(
-        'packages/workflow-engine/src/compilation/executable-scheduler.ts',
-      ),
   );
   assert.throws(
     () =>

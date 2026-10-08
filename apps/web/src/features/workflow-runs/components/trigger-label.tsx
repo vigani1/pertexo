@@ -1,7 +1,6 @@
 import {
   BracesIcon,
   CalendarClockIcon,
-  GitBranchIcon,
   MousePointerClickIcon,
   RotateCcwIcon,
   WebhookIcon,
@@ -16,7 +15,6 @@ const triggerIcons: Readonly<Record<RunTriggerType, LucideIcon>> = {
   replay: RotateCcwIcon,
   schedule: CalendarClockIcon,
   webhook: WebhookIcon,
-  workflow_call: GitBranchIcon,
 };
 
 /** How a run started, as an icon and a word. */

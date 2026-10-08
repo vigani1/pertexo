@@ -6,8 +6,6 @@ import path from 'node:path';
 
 export const CURATED_PRE_ORIGIN_SOURCE =
   'f543283825887165889f7520655558b2a3f9229c';
-export const ORGANIZATION_PRE_METADATA_SOURCE =
-  '936612f26567f760c83e41c13e4c7fc7b620e69f';
 
 async function command(stage, executable, args, cwd, timeout = 180_000) {
   const child = spawn(executable, args, {

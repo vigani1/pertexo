@@ -29,7 +29,6 @@ const executionPlanSchema = z
     migrations: z.record(
       migrationNameSchema,
       z.discriminatedUnion('mode', [
-        z.object({ mode: z.literal('transactional') }).strict(),
         onlineMigrationSchema,
         resumableMigrationSchema,
       ]),
@@ -98,7 +97,6 @@ export async function loadMigrationExecutionPlan(
       throw new Error(
         `Published transactional migration cannot change mode: ${name}`,
       );
-    if (execution.mode === 'transactional') continue;
     if (execution.rollbackCompatibleThrough >= name)
       throw new Error(
         `Migration rollback window must precede the migration: ${name}`,

@@ -229,23 +229,6 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - &browser-dependency-network
-        name: Bound browser dependency network acquisition
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Preserve the runner's signed Ubuntu sources and official mirror fallback.
-          grep -Fx 'URIs: mirror+file:/etc/apt/apt-mirrors.txt' /etc/apt/sources.list.d/ubuntu.sources
-          grep -Fx 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' /etc/apt/sources.list.d/ubuntu.sources
-          cmp -s /etc/apt/apt-mirrors.txt <(printf '%s\t%s\n' \
-            'http://azure.archive.ubuntu.com/ubuntu/' 'priority:1' \
-            'https://archive.ubuntu.com/ubuntu/' 'priority:2' \
-            'https://security.ubuntu.com/ubuntu/' 'priority:3')
-          printf '%s\n' \
-            'Acquire::http::Timeout "15";' \
-            'Acquire::https::Timeout "15";' \
-            'Acquire::Retries "1";' \
-            | sudo tee /etc/apt/apt.conf.d/99-pertexo-browser-network > /dev/null
       - name: Install Playwright browsers
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
@@ -399,54 +382,6 @@ jobs:
           path: apps/web/test-results/
           if-no-files-found: ignore
 
-  inline-workflow-call-http:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
-        }}-inline-workflow-call-http
-      INLINE_WORKFLOW_CALL_HTTP_INTEGRATION: 'true'
-    steps:
-      - name: Check out source
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install frozen dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build workspace
-        run: pnpm build
-      - name: Start disposable PostgreSQL and Redis
-        run: docker compose up -d --wait --wait-timeout 120 postgres redis
-      - name: Qualify registered inline Call over real HTTP
-        env:
-          INLINE_WORKFLOW_CALL_GATE_REPORT:
-            ${{ runner.temp }}/inline-workflow-call-http/report.json
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/inline-workflow-call-http"
-          test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
-          test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
-          node --test --test-reporter=./infrastructure/testing/inline-workflow-call-gate-reporter.mjs infrastructure/testing/inline-workflow-call-http.integration.test.mjs
-          node infrastructure/coverage/validate-vitest-gate-report.mjs "$INLINE_WORKFLOW_CALL_GATE_REPORT" 'Registered inline Call HTTP qualification' 1
-      - name: Stop disposable inline Call dependencies
-        if: always()
-        run: timeout 120 docker compose down -v --remove-orphans
-      - name: Upload inline Call qualification report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: inline-workflow-call-http
-          path: ${{ runner.temp }}/inline-workflow-call-http
-          if-no-files-found: error
-
   curated-templates:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -480,7 +415,6 @@ jobs:
           node infrastructure/testing/prepare-curated-cutover-cache.mjs
       - name: Build workspace
         run: pnpm build
-      - *browser-dependency-network
       - name: Install Playwright Chromium
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
@@ -551,7 +485,6 @@ jobs:
           node infrastructure/testing/prepare-curated-cutover-cache.mjs
       - name: Build workspace
         run: pnpm build
-      - *browser-dependency-network
       - name: Install Playwright Chromium
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
@@ -725,16 +658,9 @@ jobs:
       - name: Run real PostgreSQL, Redis, and object-store integration suites
         env:
           CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
-          EDITOR_BROWSER_OWNED_FIXTURE: 'true'
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
-          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
-          export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
-            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
-            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
-            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
           pnpm db:migrate
           pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/artifact-store-gates.json

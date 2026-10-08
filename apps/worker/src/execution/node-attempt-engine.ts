@@ -1,11 +1,14 @@
 import type {
+  NodeAttemptInputs,
   NodeAttemptLease,
-  PublishedWorkflowExecutableProjection,
+  PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
-import type { ExecuteNodeAttemptInput } from '@pertexo/workflow-engine';
+import type {
+  ExecuteNodeAttemptInput,
+  NodeExecutionRegistry,
+} from '@pertexo/workflow-engine';
+import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
-import { workflowCallPinSchemaV1 } from '@pertexo/workflow-model/workflow-call-contract';
-import { workflowCallableContractIdentityV1 } from '@pertexo/workflow-model/workflow-call-closure';
 import {
   executeNodeAttempt,
   invocationKey,
@@ -142,7 +145,7 @@ function branchReachesTarget(
 }
 
 function assertProjectionIdentity(
-  projection: PublishedWorkflowExecutableProjection,
+  projection: PublishedWorkflowV2Projection,
   lease: NodeAttemptLease,
 ): void {
   if (projection.id !== lease.workflowVersionId)
@@ -273,7 +276,7 @@ function deriveUpstreamNodeOutputs(
 }
 
 function prepareNode(
-  projection: PublishedWorkflowExecutableProjection,
+  projection: PublishedWorkflowV2Projection,
   lease: NodeAttemptLease,
   options: NodeAttemptExecutionEngineOptions,
 ): PreparedNodeAttempt {
@@ -294,16 +297,7 @@ function prepareNode(
   // it sends never enters execution records (ADR 023, 024): only other
   // steps record their input (ADR 052).
   const recordsInput = Object.keys(node.connectionRefs).length === 0;
-  const callPin =
-    executable.envelope.schemaVersion === 3 &&
-    node.definition.key === 'core.workflow_call' &&
-    node.definition.version === 1
-      ? workflowCallPinSchemaV1.parse(node.config)
-      : undefined;
   return Object.freeze({
-    ...(callPin !== undefined
-      ? { inputPersistence: 'workflow_call_declaration' as const, callPin }
-      : {}),
     ...(node.definition.key === 'core.wait' && node.definition.version === 1
       ? {
           suspensionDurationSeconds: Number(
@@ -312,35 +306,18 @@ function prepareNode(
         }
       : {}),
     upstreamNodeOutputs,
-    execute: async (input: Parameters<PreparedNodeAttempt['execute']>[0]) => {
+    execute: async (
+      input: Readonly<
+        NodeAttemptInputs & {
+          registry: NodeExecutionRegistry;
+          runtime?: NodeExecutionRuntime;
+          signal: AbortSignal;
+          onInputResolved?: ExecuteNodeAttemptInput['onInputResolved'];
+        }
+      >,
+    ) => {
       if (input.abortRequested)
         throw new DOMException('The operation was aborted', 'AbortError');
-      let calleeDeclarations: ExecuteNodeAttemptInput['calleeDeclarations'];
-      if (callPin !== undefined) {
-        const projection = input.pinnedCallableProjection;
-        if (
-          projection?.workspaceId !== lease.workspaceId ||
-          projection.workflowId !== callPin.workflowId ||
-          projection.id !== callPin.versionId ||
-          projection.checksum !== callPin.checksum
-        )
-          throw new TypeError(
-            'Pinned callable projection identity does not match',
-          );
-        const callee = verifyPersistedWorkflowProjection(projection, options);
-        const declaration = callee.envelope.graph.callable;
-        if (
-          declaration === undefined ||
-          workflowCallableContractIdentityV1(declaration) !==
-            callPin.callableContractIdentity
-        )
-          throw new TypeError(
-            'Pinned callable contract identity does not match',
-          );
-        calleeDeclarations = new Map([[callPin.versionId, declaration]]);
-      } else if (input.pinnedCallableProjection !== undefined) {
-        throw new TypeError('Callable projection requires a native Call');
-      }
       return executeNodeAttempt({
         runId: lease.runId,
         nodeRunId: lease.nodeRunId,
@@ -357,10 +334,6 @@ function prepareNode(
           : { iterationPath: lease.iterationPath }),
         runInput: input.runInput,
         completedNodeOutputs: input.completedNodeOutputs,
-        ...(calleeDeclarations === undefined ? {} : { calleeDeclarations }),
-        ...(input.recordedWorkflowCallInput === undefined
-          ? {}
-          : { recordedWorkflowCallInput: input.recordedWorkflowCallInput }),
         ...(input.structuredCollection === undefined
           ? {}
           : { structuredCollection: input.structuredCollection }),
@@ -387,7 +360,7 @@ export function createNodeAttemptExecutionEngine(
   return Object.freeze({
     prepare: (
       input: Readonly<{
-        projection: PublishedWorkflowExecutableProjection;
+        projection: PublishedWorkflowV2Projection;
         lease: NodeAttemptLease;
       }>,
     ) => prepareNode(input.projection, input.lease, options),

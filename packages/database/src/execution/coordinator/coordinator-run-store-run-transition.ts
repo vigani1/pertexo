@@ -26,7 +26,7 @@ async function persistDerivedContinuation(
     workspaceId: string;
     traceparent?: string;
   }>,
-): Promise<string | undefined> {
+): Promise<void> {
   // The engine decides whether its scheduler still has immediate work. Keep
   // that wakeup durable in the same checkpoint/outbox transaction.
   if (
@@ -58,7 +58,6 @@ async function persistDerivedContinuation(
       canonicalOutboxPayloadChecksum(payload),
     ],
   );
-  return outboxEventId;
 }
 
 function scheduledOccurrence(
@@ -94,9 +93,7 @@ export async function persistCoordinatorRunTransition(
     workflowVersionId: string;
     workspaceId: string;
   }>,
-): Promise<
-  Readonly<{ scheduleDueAt?: string; continuationOutboxEventId?: string }>
-> {
+): Promise<Readonly<{ scheduleDueAt?: string }>> {
   const {
     authoritativeCancellation,
     checkpointJson,
@@ -192,14 +189,6 @@ export async function persistCoordinatorRunTransition(
     ],
   );
   const scheduleDueAt = scheduledOccurrence(row, plan);
-  const continuationOutboxEventId = await persistDerivedContinuation(
-    client,
-    input,
-  );
-  return Object.freeze({
-    ...(scheduleDueAt === undefined ? {} : { scheduleDueAt }),
-    ...(continuationOutboxEventId === undefined
-      ? {}
-      : { continuationOutboxEventId }),
-  });
+  await persistDerivedContinuation(client, input);
+  return Object.freeze(scheduleDueAt === undefined ? {} : { scheduleDueAt });
 }

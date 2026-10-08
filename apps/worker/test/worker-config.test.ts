@@ -15,26 +15,6 @@ const requiredEnvironment = {
 } as const;
 
 describe('parseWorkerConfig', () => {
-  it.each(['workflow_call_staging', 'workflow_call_activation'])(
-    'accepts ordinary %s without a local flag or fixed ports',
-    (cohort) => {
-      expect(
-        parseWorkerConfig({
-          ...requiredEnvironment,
-          NODE_ENV: 'test',
-          NODE_COMPATIBILITY_COHORT: cohort,
-        }).nodeCompatibilityCohort,
-      ).toBe(cohort);
-    },
-  );
-  it('rejects the retired local-only cohort', () => {
-    expect(() =>
-      parseWorkerConfig({
-        ...requiredEnvironment,
-        NODE_COMPATIBILITY_COHORT: 'local_json_call',
-      }),
-    ).toThrow();
-  });
   it('parses the dedicated authentication-mail worker configuration', () => {
     expect(
       parseWorkerConfig({
@@ -92,11 +72,6 @@ describe('parseWorkerConfig', () => {
         runTimeoutFailureContextEnabled: false,
         workspaceInboxProducerEnabled: false,
         workflowTriggerOutcomesEnabled: false,
-        valueWorkPolicy: {
-          controlPollMillis: 250,
-          controlReadTimeoutMillis: 2_000,
-          operationTimeoutMillis: 30_000,
-        },
       },
       workspaceInbox: {
         foldBatchSize: 500,

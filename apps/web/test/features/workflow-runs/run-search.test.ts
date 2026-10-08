@@ -14,14 +14,6 @@ import {
 const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 describe('run search', () => {
-  it('keeps native child trigger filtering local and labels it explicitly', () => {
-    const search = sanitizeRunSearch({ trigger: 'workflow_call' });
-    expect(search).toEqual({ trigger: 'workflow_call' });
-    expect(filtersFromSearch(search)).toEqual({});
-    expect(runFilterChips(search, undefined).map((chip) => chip.label)).toEqual(
-      ['Trigger: Workflow call'],
-    );
-  });
   it('keeps valid keys and drops unknown or malformed ones', () => {
     expect(
       sanitizeRunSearch({

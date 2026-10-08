@@ -5,7 +5,7 @@ import {
   type WorkflowCheckpointV1,
   RUN_STATUSES,
   type BranchLedgerEntry,
-  type AttemptOutputReference,
+  type OutputReference,
   type BranchScopePart,
   type IterationScopePart,
 } from '../types.js';
@@ -270,7 +270,7 @@ export function sortedUnique(
 export function parseOutputReference(
   value: unknown,
   label: string,
-): AttemptOutputReference {
+): OutputReference {
   assertCheckpoint(isRecord(value), `${label} must be an object`);
   const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;

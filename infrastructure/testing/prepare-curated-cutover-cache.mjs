@@ -4,7 +4,6 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   CURATED_PRE_ORIGIN_SOURCE,
-  ORGANIZATION_PRE_METADATA_SOURCE,
   prepareCuratedCutoverCache,
 } from './curated-cutover-artifact-build.mjs';
 
@@ -21,7 +20,6 @@ export async function prepareCuratedQualificationCache() {
   const receipts = [];
   for (const [label, ref] of [
     ['pre-origin-cache', CURATED_PRE_ORIGIN_SOURCE],
-    ['pre-organization-cache', ORGANIZATION_PRE_METADATA_SOURCE],
     ['compatible-cache', current],
   ]) {
     const receipt = await prepareCuratedCutoverCache({

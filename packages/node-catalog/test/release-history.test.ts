@@ -30,8 +30,6 @@ import {
 } from '@pertexo/nodes-core';
 
 import {
-  PLATFORM_WORKFLOW_CALL_STAGING_RELEASE_SUPPORT,
-  PLATFORM_WORKFLOW_CALL_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
@@ -416,22 +414,6 @@ const PLATFORM_COHORT_EXPECTATIONS = [
     requiresHttp: true,
     executableEpoch: 38,
   },
-  {
-    cohort: 'workflow_call_staging',
-    support: PLATFORM_WORKFLOW_CALL_STAGING_RELEASE_SUPPORT,
-    supportEpochs: [38, 39],
-    servingEpoch: 38,
-    requiresHttp: true,
-    executableEpoch: 39,
-  },
-  {
-    cohort: 'workflow_call_activation',
-    support: PLATFORM_WORKFLOW_CALL_ACTIVATION_RELEASE_SUPPORT,
-    supportEpochs: [39, 40],
-    servingEpoch: 40,
-    requiresHttp: true,
-    executableEpoch: 40,
-  },
 ] as const satisfies readonly {
   readonly cohort: PlatformReleaseCohort;
   readonly support: readonly unknown[];
@@ -571,40 +553,6 @@ const PLATFORM_LIFECYCLE_EXPECTATIONS = [
 ] as const;
 
 describe('platform node release history and cohorts', () => {
-  it('stages and activates Call after Validate while retaining ordinary history', () => {
-    const predecessor = platformServingRegistryRelease('validate_activation');
-    const staged = platformRegistryReleaseSupport('workflow_call_staging');
-    const active = platformRegistryReleaseSupport('workflow_call_activation');
-    expect(staged[0]).toBe(predecessor);
-    expect(staged[1]?.epoch).toBe(predecessor.epoch + 1);
-    expect(active[0]).toBe(staged[1]);
-    expect(active[1]?.epoch).toBe(predecessor.epoch + 2);
-    expect(platformServingRegistryRelease('workflow_call_staging')).toBe(
-      predecessor,
-    );
-    expect(platformServingRegistryRelease('workflow_call_activation')).toBe(
-      active[1],
-    );
-    expect(
-      platformExecutableRegistryHistory('workflow_call_activation').slice(
-        0,
-        -2,
-      ),
-    ).toEqual(platformExecutableRegistryHistory('validate_activation'));
-    expect(
-      staged[1]?.executors.find(
-        ({ executor }) => executor.key === 'core.workflow_call',
-      ),
-    ).toMatchObject({ lifecycle: 'staged', abiVersion: 1 });
-    expect(() => createPlatformNodeRegistryForRelease(staged[1])).toThrow(
-      /cannot execute this release/u,
-    );
-    expect(
-      active[1]?.executors.find(
-        ({ executor }) => executor.key === 'core.workflow_call',
-      ),
-    ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
-  });
   it('pins every retained compatibility identity independently of manifests', () => {
     expect(
       PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch, fingerprint }) => ({

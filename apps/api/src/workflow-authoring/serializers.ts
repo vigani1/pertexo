@@ -19,7 +19,7 @@ import {
   type WorkflowVersionResponse,
   type WorkflowVersionsResponse,
 } from './types.js';
-import { parseWorkflowAuthoringGraphDraft } from './graph.js';
+import { parseWorkflowGraphDraft } from './graph.js';
 import type { validateWorkflowGraph } from './graph.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
 import {
@@ -76,7 +76,7 @@ export function serializeWorkflowCreate(
 export function serializeWorkflowDraft(
   draft: WorkflowDraftRecord,
 ): WorkflowDraftResult {
-  const graph = parseWorkflowAuthoringGraphDraft(draft.graphJson);
+  const graph = parseWorkflowGraphDraft(draft.graphJson);
   const representation: DraftRepresentation = {
     workflowId: draft.workflowId,
     revision: draft.revision,
@@ -165,7 +165,7 @@ function workflowVersion(
     workflowId: version.workflowId,
     versionNumber: version.versionNumber,
     schemaVersion: version.schemaVersion,
-    graph: parseWorkflowAuthoringGraphDraft(version.graphJson),
+    graph: parseWorkflowGraphDraft(version.graphJson),
     checksum: version.checksum,
     publishedAt: version.publishedAt.toISOString(),
   });

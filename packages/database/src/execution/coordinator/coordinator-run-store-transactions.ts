@@ -15,19 +15,10 @@ export function withCoordinatorReadClient<T>(
   workspaceId: string,
   signal: AbortSignal,
   operation: (client: PoolClient) => Promise<T>,
-  nativeControlReadTimeoutMillis?: number,
 ): Promise<T> {
   assertCoordinatorNotAborted(signal);
   return withTenantScopedReadClient(pool, { workspaceId }, operation, {
     signal,
-    ...(nativeControlReadTimeoutMillis === undefined
-      ? {}
-      : {
-          nativeReadBudget: {
-            readTimeoutMillis: nativeControlReadTimeoutMillis,
-            controlReadTimeoutMillis: nativeControlReadTimeoutMillis,
-          },
-        }),
   });
 }
 

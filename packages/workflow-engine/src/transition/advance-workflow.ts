@@ -15,8 +15,6 @@ import {
   type MutableWorkflowTransition,
 } from './workflow-transition-state.js';
 import { applyWorkflowStops } from './workflow-transition-stops.js';
-import type { WorkflowCallControlDecisionV1 } from '../workflow-call-control.js';
-import { applyWorkflowCallControls } from './workflow-transition-calls.js';
 
 export interface AdvanceWorkflowFromSchedulerStateInput {
   readonly checkpoint: WorkflowCheckpoint;
@@ -34,8 +32,6 @@ export interface AdvanceWorkflowFromSchedulerStateInput {
     readonly invocationKey: string;
     readonly occurredAt: string;
   }>[];
-  /** V3 controls derived from authenticated executable and immutable Call facts. */
-  readonly workflowCallControls?: readonly WorkflowCallControlDecisionV1[];
 }
 
 export function advanceWorkflowFromSchedulerState(
@@ -103,15 +99,8 @@ export function advanceWorkflowFromSchedulerState(
     loops: new Map(
       current.loops.map((loop) => [loop.controlInvocationKey, loop]),
     ),
-    calls: new Map(
-      current.schemaVersion === 3
-        ? current.calls.map((call) => [call.invocationKey, call])
-        : [],
-    ),
-    workflowCallDeclarations: [],
-    workflowCallCancellations: [],
     branchSelections:
-      current.schemaVersion !== 1 ? [...current.branchSelections] : [],
+      current.schemaVersion === 2 ? [...current.branchSelections] : [],
     remainingIterationBudget: current.remainingIterationBudget,
     eventDrafts: [],
     nodeRunAdmissionKeys: new Set(),
@@ -130,11 +119,6 @@ export function advanceWorkflowFromSchedulerState(
     observations,
     occurredAt: input.occurredAt,
   });
-  applyWorkflowCallControls(
-    state,
-    input.workflowCallControls ?? [],
-    input.occurredAt,
-  );
   const coordinatorNodeIds = new Set([
     ...current.joins.map(({ joinId }) => joinId),
     ...current.loops.map(({ loopId }) => loopId),

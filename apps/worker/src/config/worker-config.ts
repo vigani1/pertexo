@@ -21,9 +21,6 @@ import {
 } from './invitation-delivery-config.js';
 import * as autoPause from './workflow-auto-pause-config.js';
 import * as connectionHealth from './connection-run-health-config.js';
-import { parseCoordinatorValueWorkPolicy } from './coordinator-value-work-config.js';
-import type { CoordinatorValueWorkPolicy } from '../execution/coordinator-value-work-lifetime.js';
-import { stringEnvironment } from './scalar-environment.js';
 const workerEnvironments = [
   'development',
   'test',
@@ -426,12 +423,23 @@ export type WorkerConfig = Readonly<
     authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
     workflowAutoPause: autoPause.WorkflowAutoPauseConfig;
     connectionRunHealthMode: connectionHealth.ConnectionRunHealthMode;
-    coordinator: {
-      workflowTriggerOutcomesEnabled: boolean;
-      valueWorkPolicy: CoordinatorValueWorkPolicy;
-    };
+    coordinator: { workflowTriggerOutcomesEnabled: boolean };
   }
 >;
+
+function stringEnvironment(
+  environment: Readonly<Record<string, unknown>>,
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(environment).map(([name, value]) => {
+      if (value === undefined || typeof value === 'string')
+        return [name, value];
+      if (typeof value === 'number' || typeof value === 'boolean')
+        return [name, String(value)];
+      throw new TypeError('Worker environment values must be scalar');
+    }),
+  );
+}
 
 function connectionEncryptionConfig(
   environment: Readonly<Record<string, string | undefined>>,
@@ -551,7 +559,6 @@ export function parseWorkerConfig(
       workflowAutoPause,
       coordinator: Object.freeze({
         ...result.data.coordinator,
-        valueWorkPolicy: parseCoordinatorValueWorkPolicy(raw),
         workflowTriggerOutcomesEnabled: workflowAutoPause.mode !== 'off',
       }),
       nodeAttempt: Object.freeze(result.data.nodeAttempt),

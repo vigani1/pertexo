@@ -1,13 +1,4 @@
 import { z } from 'zod';
-import {
-  workflowCallableTargetsQuerySchema,
-  workflowCallableTargetsResponseSchema,
-} from './workflow-callable-targets.js';
-export * from './workflow-callable-targets.js';
-import {
-  workflowCallableGraphSchemaV2,
-  type WorkflowCallableGraphV2,
-} from '@pertexo/workflow-model/callable-graph-contract';
 import { workflowTemplateOriginSchema } from '@pertexo/workflow-model/curated-templates';
 export type { WorkflowTemplateOrigin } from '@pertexo/workflow-model/curated-templates';
 export * from './workflow-auto-pause.js';
@@ -38,7 +29,7 @@ import {
 /** Opaque, quoted strong HTTP entity tag. Its internal value is not a client contract. */
 export const strongEtagSchema = z
   .string()
-  .regex(/^"draft-v[12]\.[A-Za-z0-9_-]{43}"$/u);
+  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
 export const ifMatchHeaderSchema = strongEtagSchema;
 export const workflowIdentifierSchema = z.uuid();
 export const workflowLifecycleRevisionSchema = z
@@ -77,19 +68,9 @@ export const workflowNameSchema = z.string().trim().min(1).max(128);
 
 const positiveVersionSchema = z.number().int().positive();
 export { workflowGraphSchema };
-/** Explicit formats; the retained graph schema is deliberately not widened. */
-export const workflowAuthoringGraphSchema = z.union([
-  workflowGraphSchema,
-  workflowCallableGraphSchemaV2,
-]);
 // Browser-safe graph bounds, shared with the structural schema and admission.
 export { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model/graph-contract';
-export type WorkflowGraphContract = WorkflowGraph | WorkflowCallableGraphV2;
-/** Browser authoring uses the same exact pin format as the native Call node. */
-export {
-  workflowCallPinSchemaV1,
-  type WorkflowCallPinV1,
-} from '@pertexo/workflow-model/workflow-call-contract';
+export type WorkflowGraphContract = WorkflowGraph;
 
 export const workflowCreateRequestSchema = z
   .object({ name: workflowNameSchema })
@@ -197,7 +178,7 @@ export const workflowRenameResponseSchema = z
   .object({ workflow: workflowSummarySchema, replayed: z.boolean() })
   .strict();
 
-const workflowDraftResponseV1Schema = z
+export const workflowDraftResponseSchema = z
   .object({
     workflowId: workflowIdentifierSchema,
     revision: z.number().int().positive(),
@@ -207,22 +188,12 @@ const workflowDraftResponseV1Schema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
-export const workflowDraftResponseSchema = z.discriminatedUnion(
-  'schemaVersion',
-  [
-    workflowDraftResponseV1Schema,
-    workflowDraftResponseV1Schema.extend({
-      schemaVersion: z.literal(2),
-      graph: workflowCallableGraphSchemaV2,
-    }),
-  ],
-);
 export const workflowDraftSaveRequestSchema = z
-  .object({ graph: workflowAuthoringGraphSchema })
+  .object({ graph: workflowGraphSchema })
   .strict();
 export const workflowValidateResponseSchema = workflowValidationReportSchema;
 
-const workflowVersionResponseV1Schema = z
+export const workflowVersionResponseSchema = z
   .object({
     id: z.uuid(),
     workflowId: z.uuid(),
@@ -233,17 +204,6 @@ const workflowVersionResponseV1Schema = z
     publishedAt: z.iso.datetime(),
   })
   .strict();
-export const workflowVersionResponseSchema = z.discriminatedUnion(
-  'schemaVersion',
-  [
-    workflowVersionResponseV1Schema,
-    workflowVersionResponseV1Schema.extend({
-      schemaVersion: z.literal(2),
-      graph: workflowCallableGraphSchemaV2,
-      checksum: z.string().regex(/^wf:v3:sha256:[0-9a-f]{64}$/u),
-    }),
-  ],
-);
 export const workflowPublishResponseSchema = z
   .object({
     version: workflowVersionResponseSchema,
@@ -340,16 +300,6 @@ export const workflowVersionsQuerySchema = z
     after: workflowCursorSchema.optional(),
   })
   .strict();
-
-/** Transport unions only; legacy typed callers retain the concrete schemas above. */
-export const workflowVersionsReadQuerySchema = z.union([
-  workflowVersionsQuerySchema,
-  workflowCallableTargetsQuerySchema,
-]);
-export const workflowVersionsReadResponseSchema = z.union([
-  workflowVersionsResponseSchema,
-  workflowCallableTargetsResponseSchema,
-]);
 
 export const workflowRevisionConflictProblemSchema = createApiProblemSchema({
   status: z.literal(412),

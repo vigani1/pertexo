@@ -86,7 +86,7 @@ function applyBranchSelection(
   observation: Extract<WorkflowObservation, { kind: 'branch_selected' }>,
 ): void {
   if (state.cancelRequested) return;
-  if (state.current.schemaVersion === 1)
+  if (state.current.schemaVersion !== 2)
     throw new WorkflowEngineError(
       'checkpoint_invalid',
       'branch selection requires checkpoint V2',

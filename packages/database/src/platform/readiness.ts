@@ -19,7 +19,8 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD = '0141_native_attempt_lock_order.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0135_workflow_folders_batch_identity.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -37,7 +38,6 @@ export type ReadinessOptions = Readonly<{
   expectedCompatibilityRelease?: CompatibilityReleaseExpectation;
   expectedCompatibilityReleases?: CompatibilityReleaseExpectationSet;
   supportedGraphSchemaVersions?: readonly number[];
-  supportedDraftGraphSchemaVersions?: readonly number[];
   supportedChecksumAlgorithms?: readonly string[];
   supportedExecutableSchemaVersions?: readonly number[];
 }>;
