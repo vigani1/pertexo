@@ -185,6 +185,16 @@ jobs:
           docker compose run --rm control-ledger-recovery-bootstrap
       - name: Migrate
         run: pnpm db:migrate
+      - name: Record owned-fixture manifest
+        run: |
+          set -euo pipefail
+          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
+          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
+          manifest=$(jq -cn \
+            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
+            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
+            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
+          echo "EDITOR_BROWSER_OWNERSHIP_MANIFEST=$manifest" >> "$GITHUB_ENV"
       - name: Database integration tests
         if: matrix.group == 'database'
         run: |
@@ -198,7 +208,7 @@ jobs:
             --exclude test/workflow-folders-batch.integration.test.ts \
             --exclude test/workflow-organization-adapters.integration.test.ts \
             --exclude test/workflow-tags.integration.test.ts
-          F07_ORGANIZATION_OWNED_FIXTURE=true F06_ORIGIN_BOUNDARY_OWNED_FIXTURE=true \
+          EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F06_ORIGIN_BOUNDARY_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
             test/workflow-template-origin-boundary.integration.test.ts \
             test/workflow-organization.integration.test.ts \
@@ -230,7 +240,7 @@ jobs:
             --exclude test/workflow-authoring/organization.integration.test.ts \
             --exclude test/workflow-authoring/favorite-persistence.integration.test.ts \
             --exclude test/workflow-authoring/folders-bulk.integration.test.ts
-          F07_ORGANIZATION_OWNED_FIXTURE=true F06_ORIGIN_GUARD_OWNED_FIXTURE=true \
+          EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F06_ORIGIN_GUARD_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             test/curated-template-origin-guard.integration.test.ts \
             test/workflow-authoring/organization.integration.test.ts \
@@ -284,7 +294,7 @@ jobs:
             EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE="$browser_case" EDITOR_BROWSER_OWNED_FIXTURE=true \
               live test/editor-browser.integration.test.ts
           done
-          F07_ORGANIZATION_OWNED_FIXTURE=true F07_ORGANIZATION_BROWSER_INTEGRATION=true \
+          EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F07_ORGANIZATION_BROWSER_INTEGRATION=true \
             live test/workflow-organization-browser.integration.test.ts
       - name: Stop services
         if: always()
