@@ -11,9 +11,6 @@
     "src/**/*.ts",
     "test/**/*.ts",
     "vitest.config.ts",
-    "vitest.browser-probes.config.ts",
-    "vitest.coverage.config.ts",
-    "vitest.entrypoints-coverage.config.ts",
     "vitest.compatibility-rollout.config.ts",
     "vitest.integration.config.ts",
     "vitest.sse-resilience.config.ts"
