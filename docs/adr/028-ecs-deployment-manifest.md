@@ -1,6 +1,8 @@
 # ADR 028: ECS deployment manifest and release job
 
-- **Status:** accepted
+- **Status:** accepted; superseded in part by [ADR 069](069-architecture-reset.md)
+  (one region; the lifecycle-command, retention and recovery workloads, the
+  external platform evidence contract and the deployment validators are removed)
 - **Date:** 2026-08-26
 
 ## Context
