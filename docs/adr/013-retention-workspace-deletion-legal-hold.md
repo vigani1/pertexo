@@ -1,6 +1,6 @@
 # ADR 013: Retention, workspace deletion, legal hold, and backup erasure
 
-- **Status:** accepted
+- **Status:** accepted; superseded in part by [ADR 069](069-architecture-reset.md)
 - **Date:** 2026-08-25
 
 ## Context

@@ -2,103 +2,73 @@
 
 ## Source of truth
 
-- When implementing a planned backend checkpoint, follow
-  `docs/workflow-platform-backend-plan.md` as the authoritative implementation
-  blueprint and treat `docs/workflow-platform-backend-research.md` as supporting
-  research.
-- For planned checkpoint work, keep `docs/implementation-progress.md` current.
-  Update its summary, checklist, and concrete evidence when the checkpoint's
-  status materially changes; never mark a phase complete while required plan
-  criteria remain unfinished.
-- Create required ADRs before implementing decisions listed in the plan's ADR
-  index. Do not create an ADR for a routine fix, refactor, test, investigation,
-  or documentation correction that does not introduce an architectural
-  decision.
-- For work outside a planned backend checkpoint, use the user's request,
-  existing contracts, `CONTEXT.md`, relevant ADRs, and current implementation as
-  the source of truth. Do not update plan or progress documents unless the work
-  changes what they claim.
+- During the architecture reset, `docs/architecture-reset-plan.md` is the plan
+  and the only progress log. Update its tracker in every reset PR; never mark a
+  step done while its work remains.
+- Otherwise use the user's request, `CONTEXT.md` (glossary), the ADRs that are
+  not superseded, and the current code. [ADR 069](docs/adr/069-architecture-reset.md)
+  overrides older ADRs where they conflict.
+- Feature work follows a short plan in `docs/feature-plans/`. Update a plan only
+  when the work changes what it claims.
+
+## Design rules
+
+- **Two-question test** before building anything "for the future": would adding
+  it later be much harder than now, and is it realistically needed within about
+  a year? Two "no" answers mean: keep a clean seam, don't build it.
+- **One way per thing:** one engine, one place per rule, one table definition,
+  one stored format, one validation of each input at the boundary.
+- **Lean, not minimal:** complete, correct behavior without speculative
+  machinery.
+- **Rules live in TypeScript; the database stores.** PostgreSQL keeps tables,
+  constraints, workspace isolation, transactions, queue claiming, capacity
+  counters and the checkpoint version check.
+- **Stop rule:** if work seems to need a subsystem, format, role, CI job or ADR
+  that the plan does not contain, stop and ask the user instead of building it.
+- Write ADRs only for hard-to-reverse decisions.
+
+## Code conventions
+
+- Each package has at most two entry points: `@pertexo/<name>` (safe anywhere,
+  including the browser) and `@pertexo/<name>/server` (Node only).
+- Group files by directory: sub-area first, then role. A folder holds at most
+  ~10 files; no long flat lists.
+- The folder names the area and the file names what it is. File names never
+  repeat their folder. Actions are verbs (`start-run.ts`); storage is noun plus
+  role (`runs.repository.ts`).
+- Validate input once where it enters. Inner layers trust typed values.
+- Tests check behavior, not structure. Production code has no test hooks.
+- Comments explain why, not what.
 
 ## Agent skills
 
-- Load skills only when the current task matches them. Do not load every
-  available skill preemptively.
-- Use `nestjs-best-practices` for NestJS modules, dependency injection,
-  controllers, guards, or framework-specific review.
-- Use `node` for Node.js runtime behavior, async patterns, streams, process
-  lifecycle, logging, testing, profiling, or performance. Preserve Pertexo's
-  existing NestJS and TypeScript build configuration; do not introduce native
-  TypeScript type stripping or a buildless Node setup unless the user
-  explicitly requests it.
-- Use `postgres` for PostgreSQL schemas, migrations, RLS, transactions,
-  concurrency, query behavior, or connection troubleshooting. Existing Pertexo
-  architecture and provider decisions override vendor recommendations in the
-  skill.
-- Use `diagnosing-bugs` for difficult failures, regressions, or performance
-  problems that require reproduction and competing hypotheses.
-- Use `domain-modeling` when changing domain terminology, `CONTEXT.md`, or ADRs,
-  and `codebase-design` when designing or materially changing a module
-  interface or seam.
-- Use `improve-codebase-architecture` when the user explicitly requests a
-  structural architecture audit or asks to discover and compare codebase-wide
-  deepening opportunities. Do not invoke it for routine implementation,
-  focused refactoring, or as permission to reopen decisions already settled by
-  the plan or ADRs.
-- Use `typescript-advanced-types` only for genuinely complex compile-time type
-  contracts. Prefer ordinary TypeScript for routine code.
-- Use `tdd` only when the user asks for test-first development. Infer an
-  established test seam from the plan, ADRs, public contracts, and nearby tests;
-  ask only when selecting a seam would create or change a consequential
-  architectural contract.
-- Use `code-review` only for a fixed-point diff review. A whole-repository audit
-  or ordinary implementation check is not a fixed-point review.
-- Use React, TanStack, shadcn, and frontend-design skills for `apps/web` or
-  explicitly requested frontend scaffolding. Follow `apps/web/AGENTS.md` there.
-  Use Next.js or Prisma skills only when those technologies exist in task scope.
-- Use subagents only for substantial independent work with non-overlapping
-  ownership when parallelism is likely to improve speed or coverage after
-  accounting for coordination and token cost. Keep tightly coupled decisions,
-  cross-package invariants, and final integration with the primary agent.
+- Load a skill only when the task matches it.
+- `codebase-design` for module interfaces and seams; `domain-modeling` for
+  `CONTEXT.md` terms; `postgres` for schemas, migrations, row security, queue
+  queries and concurrency; `nestjs-best-practices` for API modules; `node` for
+  runtime behavior (keep the existing TypeScript build — no type stripping);
+  `diagnosing-bugs` for hard failures.
+- Frontend skills (`frontend-design`, `shadcn`, TanStack, React and web
+  guideline skills) apply to `apps/web`; follow `apps/web/AGENTS.md` there.
+- `tdd` only when the user asks for test-first work. `code-review` only when the
+  user asks for a review. Do not use `grill-with-docs`.
+- Do not use subagents unless the user asks.
 
 ## Git discipline
 
-- Preserve unrelated and uncommitted user work. Inspect `git status` and the
-  relevant diff before handoff.
-- Create commits only when the user requests commits or the current task
-  explicitly includes completing and recording an implementation checkpoint.
-- When commits are authorized, make them as coherent changes become reviewable.
-  Do not use a fixed commit count or commit separately merely because several
-  files changed. Inspect the staged diff, stage only files belonging to the
-  logical change, and run the narrowest relevant verification first.
-- Do not commit broken intermediate states. Each commit should build and pass
-  the checks relevant to its scope whenever those checks are available.
-- Use imperative Conventional Commit messages, such as `feat: add API
-  bootstrap`, `test: cover workspace RLS`, or `docs: record execution dispatch
-  decision`.
-- Never amend, squash, rebase, force-push, or otherwise rewrite existing
-  history unless the user explicitly requests it.
-- Never include secrets, local environment files, generated runtime data, or
-  unrelated formatting changes in a commit.
-- Push only when the user explicitly requests a push or previously authorized
-  pushing completed checkpoints for the current task. Before an authorized
-  push, fetch the remote and confirm the local branch is not behind or
-  diverged. Do not push broken, unreviewed, WIP, secret-bearing, or unrelated
-  changes.
-- At handoff, report any commits created, any push performed, the relevant
-  branch/upstream, and remaining uncommitted changes.
-
-## Commit checkpoints
-
-When commits are authorized, use these as commit boundaries once independently
-reviewable:
-
-- a repository or package foundation;
-- one vertical-slice behavior with its relevant tests;
-- a schema migration plus the code that safely uses it;
-- a focused refactor with unchanged behavior and passing verification;
-- an ADR or documentation decision that changes implementation guidance; or
-- a bug fix with its regression test.
-
-Large authorized phases should use multiple coherent commits. Tiny
-file-by-file, formatting-only, or checkpoint/WIP commits are not useful unless
-the user explicitly asks for them.
+- Preserve unrelated and uncommitted work. Inspect `git status` and the diff
+  before handoff.
+- Commit as the repository owner; do not add co-author trailers.
+- Use imperative Conventional Commit messages (`feat:`, `fix:`, `refactor:`,
+  `test:`, `docs:`, `ci:`, `chore:`, `revert:`).
+- Make commits coherent and buildable. Keep renames and moves in separate
+  commits from logic changes.
+- Never amend, squash, rebase, force-push or otherwise rewrite history unless
+  the user asks. Never skip the pre-push hook.
+- Never commit secrets, local environment files or generated runtime data.
+- Every PR description has a **Moved** table (from → to, why) and a **Removed**
+  list (what, why) when it moves or deletes code, and reports lines added and
+  removed.
+- Push and merge only when the user has authorized it for the current task.
+  Merge with a rebase once CI is green.
+- At handoff, report commits, pushes, the branch and any uncommitted changes.

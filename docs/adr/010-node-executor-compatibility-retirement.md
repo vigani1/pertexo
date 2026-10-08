@@ -1,6 +1,6 @@
 # ADR 010: Node and executor compatibility and retirement
 
-- **Status:** accepted
+- **Status:** accepted; superseded in full by [ADR 069](069-architecture-reset.md)
 - **Date:** 2026-08-20
 
 ## Context
