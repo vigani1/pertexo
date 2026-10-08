@@ -516,7 +516,7 @@ export default tseslint.config(
       ],
     },
   },
-  ...[['apps/operator-command/src/**/*.ts', 'operator']].map(
+  ...[['apps/ops/src/**/*.ts', 'operator']].map(
     ([files, allowedSurface]) => ({
       files: [files],
       rules: {

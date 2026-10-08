@@ -70,7 +70,7 @@
     "lint:workspaces": "NODE_OPTIONS=--max-old-space-size=8192 pnpm --recursive --workspace-concurrency=1 exec eslint .",
     "observability:check": "node --test infrastructure/observability/qualify-metric-pipeline.test.mjs && node infrastructure/observability/validate-config.mjs && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check rules /etc/prometheus/pertexo-alerts.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus test rules /etc/prometheus/pertexo-alerts.test.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps otel-collector validate --config=/etc/otelcol/config.yaml",
     "observability:qualify": "node infrastructure/observability/qualify-metric-pipeline.mjs",
-    "operator-command:start": "pnpm --filter @pertexo/operator-command start",
+    "ops": "pnpm --filter @pertexo/ops start",
     "prepare": "pnpm hooks:install",
     "prepush": "pnpm format:check && pnpm typecheck && pnpm lint:infrastructure && NODE_OPTIONS=--max-old-space-size=8192 pnpm --filter \"...[origin/main]\" --filter \"!pertexo\" --workspace-concurrency=1 exec eslint . && pnpm --filter \"...[origin/main]\" --filter \"!pertexo\" run --if-present test",
     "security:audit": "pnpm audit --prod --audit-level moderate",

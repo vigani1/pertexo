@@ -332,7 +332,7 @@ export function parseOperatorCommandConfig(
       ...(parsed.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
         ? {}
         : { otlpHttpEndpoint: parsed.OTEL_EXPORTER_OTLP_ENDPOINT }),
-      serviceName: 'pertexo-operator-command',
+      serviceName: 'pertexo-ops',
       serviceVersion: parsed.SERVICE_VERSION,
     }),
     operatorRole: database.operatorRole,

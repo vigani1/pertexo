@@ -44,7 +44,7 @@ apps/
   api/                 NestJS control-plane API
   worker/              coordination, node attempts, previews, triggers,
                        retention, and workspace deletion
-  operator-command/    audited operator command execution
+  ops/                 audited operator commands
 
 packages/
   database/         PostgreSQL persistence, roles, and migrations

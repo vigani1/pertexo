@@ -116,9 +116,9 @@
         "test -f /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready && kill -0 1"
       ]
     },
-    "operator-command": {
+    "ops": {
       "kind": "job",
-      "command": ["node", "apps/operator-command/dist/main.js"],
+      "command": ["node", "apps/ops/dist/main.js"],
       "environment": {
         "NODE_ENV": "production"
       },

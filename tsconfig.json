@@ -9,7 +9,7 @@
       "path": "./apps/api/tsconfig.json"
     },
     {
-      "path": "./apps/operator-command/tsconfig.json"
+      "path": "./apps/ops/tsconfig.json"
     },
     {
       "path": "./apps/worker/tsconfig.json"
