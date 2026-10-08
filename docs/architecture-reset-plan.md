@@ -43,9 +43,9 @@ now, as one ordered program — not "whenever we touch it".
 
 ## Tracker
 
-- [ ] **0. Revert F08 from main** ([#163](https://github.com/vigani1/pertexo/pull/163)) — remove #149, #159, #162 (migrations 0136–0141,
+- [x] **0. Revert F08 from main** ([#163](https://github.com/vigani1/pertexo/pull/163)) — remove #149, #159, #162 (migrations 0136–0141,
       native value path, ADR065/066). Recreate local databases.
-- [ ] **1. Plan, ADR 069 and agent rules** — this plan, ADR 069, superseded
+- [x] **1. Plan, ADR 069 and agent rules** — this plan, ADR 069, superseded
       ADRs marked, rewritten `AGENTS.md` and `CONTRIBUTING.md`.
 - [ ] **2. CI, tooling and docs reset** — six standard jobs, fast pre-push,
       custom gates that enforce the old structure removed; old plans, audits,
