@@ -137,7 +137,7 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
 
-  apps/operator-command:
+  apps/ops:
     dependencies:
       '@pertexo/database':
         specifier: workspace:*
