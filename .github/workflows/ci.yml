@@ -157,7 +157,7 @@ jobs:
       - name: Build
         run: pnpm build
       - name: Unit tests
-        run: pnpm ${{ matrix.filter }} run --if-present test
+        run: pnpm ${{ matrix.filter }} --workspace-concurrency=1 run --if-present test
 
   integration:
     name: integration (${{ matrix.group }})
@@ -168,9 +168,10 @@ jobs:
       matrix:
         group: [database, services]
     env:
+      # Tests that own their fixtures expect the project suffix `-integration`.
       COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
-        }}-integration-${{ matrix.group }}
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{
+        matrix.group == 'services' && 'integration' || 'database' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -258,7 +259,7 @@ jobs:
     timeout-minutes: 30
     env:
       COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-e2e
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
