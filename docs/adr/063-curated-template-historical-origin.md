@@ -6,7 +6,7 @@ Implementation is authorized; migration 0133 is allocated against reviewed
 combined F02/F05 base `f5432838`, integrated normally in `69c10d3b`.
 The curated-only HTTPS policy amendment at `fdfc5699` received exact-source
 primary acceptance on 2026-10-02. Changed-policy implementation is authorized;
-qualification remains open. Parent: [F06](../feature-plans/06-curated-templates.md).
+qualification remains open. Parent: F06.
 
 Curated examples should accelerate setup without creating a second importer or
 coupling an editable workflow to a changing asset. Decision: use F05's
@@ -82,7 +82,7 @@ manager: narrow only curated-template setup, consistently across browser/model,
 registered server admission and independent SQL validation. Do not add a general
 URL parser, database extension or caller-trusted verification flag. The exact
 grammar and differential acceptance matrix are specified in the
-[contract](../feature-plans/06-template-origin-contract.md#curated-https-endpoint-v1-grammar).
+contract.
 
 Choose a lowercase `https://` scheme, lowercase ASCII DNS host (no Unicode,
 punycode, IP literal, port or trailing dot), explicit absolute path and at most
@@ -195,7 +195,7 @@ Extend the existing import helper additively to support both exact old envelopes
 and the bounded optional origin envelope; keep its signature and old F05 checks.
 Install reader/guard compatibility before enabling the new writer. No second
 transaction/browser write may attach origin after creation. See the
-[concrete contract design](../feature-plans/06-template-origin-contract.md) for
+concrete contract design for
 lock order, failure model, reader projection and rollout gates.
 
 ## Read, edit, duplication and export policy

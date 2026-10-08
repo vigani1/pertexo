@@ -6,7 +6,7 @@ Release-owner reconciliation and primary authorization allocate migration 0134
 exclusively to F07 against exact qualified integration base `936612f2`, whose
 tree is identical to accepted F06 `eed68cd6`. Persistent continuation is now
 authorized, not writer enablement or completed behavior.
-Number reserved by the primary on 2026-10-02. Parent: [F07](../feature-plans/07-workflow-organization.md).
+Number reserved by the primary on 2026-10-02. Parent: F07.
 
 Workflow discovery currently paginates saved workflow summaries but searches and
 filters lifecycle only over loaded browser pages. We propose shared workspace
@@ -84,12 +84,12 @@ reader/writer rollout and exact readiness cutover precede enablement. Rollback
 disables controls/new writes but retains compatible readers and metadata. No
 down migration, external search cluster, new package, provider effect, production
 operation follows from this ADR. The
-[contract proposal](../feature-plans/07-organization-contract-proposal.md) carries
+contract proposal carries
 concrete normalization, privacy, locking, recovery and acceptance requirements;
 govern implementation. Folder name bounds/sibling uniqueness and exact folder
 command schemas require a reviewed follow-on before the folder slice. Primary
 full-source review on 2026-10-02 accepts the folder policies and concrete routes in
-[the follow-on](../feature-plans/07-folders-bulk-follow-on-proposal.md): U+0020-trimmed
+the follow-on: U+0020-trimmed
 display names bounded to 128 UTF-8 bytes without C0/DEL, ASCII-only lowercase
 sibling identity under PostgreSQL `COLLATE "C"` including root siblings, stable
 folder revisions, exact root/UUID filters, and owner/admin archived placement for

@@ -2348,12 +2348,11 @@ features or authorization to implement them all at once.
   model or other consequential architectural decision, review the existing ADRs
   and record a new/superseding ADR if needed. Do not change an accepted decision
   silently or create ADRs for every form, test or refactor.
-- Planned backend checkpoints still follow the
-  [backend plan](../../docs/workflow-platform-backend-plan.md) and its ADR
-  index; update [implementation progress](../../docs/implementation-progress.md)
-  when checkpoint claims materially change. For these incremental slices, update
-  this roadmap and relevant contracts/docs; do not reopen completed checkpoints
-  or mark a slice delivered before its backend and frontend evidence exists.
+- Planned backend checkpoints still follow the backend plan and its ADR index;
+  update implementation progress when checkpoint claims materially change. For
+  these incremental slices, update this roadmap and relevant contracts/docs; do
+  not reopen completed checkpoints or mark a slice delivered before its backend
+  and frontend evidence exists.
 
 #### 1. Connections: use existing commands, close integration gaps
 

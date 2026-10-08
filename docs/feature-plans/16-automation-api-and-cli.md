@@ -14,7 +14,7 @@ HTTP contracts/OpenAPI exist. API-key entities were deferred; cookie-session rou
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [docs/implementation-progress.md](../../docs/implementation-progress.md)
+- docs/implementation-progress.md
 - [packages/contracts/src/artifacts.ts](../../packages/contracts/src/artifacts.ts)
 - [apps/api/src/identity-workspace](../../apps/api/src/identity-workspace)
 

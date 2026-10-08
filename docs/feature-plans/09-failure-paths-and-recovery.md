@@ -16,7 +16,7 @@ Inspected anchors (paths may move during the concurrent structural cleanup):
 
 - [apps/web/src/features/workflow-runs/workflow-runs.api.ts](../../apps/web/src/features/workflow-runs/workflow-runs.api.ts)
 - [apps/web/src/features/workflow-settings/components/settings/failure-alerts-section.tsx](../../apps/web/src/features/workflow-settings/components/settings/failure-alerts-section.tsx)
-- [docs/workflow-platform-backend-plan.md](../../docs/workflow-platform-backend-plan.md)
+- docs/workflow-platform-backend-plan.md
 
 “Not established” means no complete product was found in this targeted inventory,
 not proof of absence from every file. Recheck these anchors before implementation.

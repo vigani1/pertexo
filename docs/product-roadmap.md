@@ -24,7 +24,7 @@ competitor has ever offered. Later items are decision-gated options.
 ## Authority, snapshot and concurrent work
 
 - Existing backend invariants remain governed by
-  [backend plan](workflow-platform-backend-plan.md), accepted [ADRs](adr),
+  backend plan, accepted [ADRs](adr),
   current implementation and project instructions.
 - Frontend ownership follows [web architecture](../apps/web/ARCHITECTURE.md) and
   [web instructions](../apps/web/AGENTS.md).
@@ -34,7 +34,7 @@ competitor has ever offered. Later items are decision-gated options.
 - Planning inventory began at e650ae31; the structural implementation chat
   concurrently advanced to 20778fea and later commits. Paths are evidence anchors,
   not a frozen future layout. Reconcile against the merged cleanup before coding.
-- Structural cleanup lives in [backend structure audit](backend-structure-audit.md).
+- Structural cleanup lives in backend structure audit.
   This roadmap does not reopen that audit or add its work to feature plans.
 - Cleanup is merged through PR99/100. F00/F01's historical starting source was
   `fcb0c44ca5d9f1a921165207fb33f2802d1688f7`. Their reviewed integration delivery
@@ -186,14 +186,14 @@ only after its gate is resolved.
 
 | ID / plan | Outcome | Work classification | Size | Status |
 | --- | --- | --- | --- | --- |
-| [F00](feature-plans/00-release-baseline.md) | Release baseline and existing-capability qualification | Existing implementation / evidence gate | M | PR verified/merged: bounded local gates closed; external qualification open |
-| [F01](feature-plans/01-editor-capability-completion.md) | Complete and qualify the existing editor surface | Frontend-led parity, not a rebuild | M | PR verified/merged: bounded local gates closed; external qualification open |
+| F00 | Release baseline and existing-capability qualification | Existing implementation / evidence gate | M | PR verified/merged: bounded local gates closed; external qualification open |
+| F01 | Complete and qualify the existing editor surface | Frontend-led parity, not a rebuild | M | PR verified/merged: bounded local gates closed; external qualification open |
 | [F02](feature-plans/02-workflow-test-workspace.md) | Saved test cases, pinned samples and workflow regression runs | New product over existing previews | L | ADR061 first slice released with F05 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical combined database evidence retained; pins/regression deferred |
 | [F03](feature-plans/03-workspace-notifications.md) | Durable in-app notifications and live inbox | New frontend + backend product | L | Delivered: ADR055 database (PR118), worker (PR119), API (PR120) and web (PR123) slices merged; local acceptance recorded; producer on |
 | [F04](feature-plans/04-artifact-inputs-and-files.md) | File inputs and artifact lifecycle | Backend foundation exists; consumer contract + frontend missing | L | Proposed |
-| [F05](feature-plans/05-workflow-portability.md) | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Duplicate released through PR142 on natural main `5f78e155`; ADR062 import/export released with F02 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical qualification/repair evidence retained; production activation unauthorized |
-| [F06](feature-plans/06-curated-templates.md) | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Locally qualified and independently reviewed; primary final review/release open; production gates off |
-| [F07](feature-plans/07-workflow-organization.md) | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Proposed |
+| F05 | Workflow duplicate, safe import and export | New cross-stack authoring slice | M–L | Duplicate released through PR142 on natural main `5f78e155`; ADR062 import/export released with F02 through PR145 on natural main `c8a59b09`; natural CI36949789113 and CodeQL36949789141 pass; historical qualification/repair evidence retained; production activation unauthorized |
+| F06 | Curated workflow templates and guided setup | Frontend-led over portable authoring | M | Locally qualified and independently reviewed; primary final review/release open; production gates off |
+| F07 | Folders, tags, favorites and workspace discovery | Metadata backend + frontend | M | Proposed |
 | [F08](feature-plans/08-subworkflows.md) | Reusable subworkflows with durable parent/child runs | New execution capability across both stacks | XL | Proposed |
 | [F09](feature-plans/09-failure-paths-and-recovery.md) | Workflow-authored failure paths and explicit recovery UX | Existing recovery foundation + new graph behavior | XL | Proposed |
 | [F10](feature-plans/10-human-approvals.md) | Durable human approvals and resume decisions | New cross-stack durable interaction | XL | Proposed |
@@ -212,7 +212,7 @@ only after its gate is resolved.
 | [F23](feature-plans/23-billing-and-commercialization.md) | Billing and commercial entitlements | Explicitly deferred optional business slice | XL | Proposed |
 | [F24](feature-plans/24-data-transform-toolkit.md) | Discoverable data transforms and batch tools | New node UX over existing mapping/JSONata foundations | L | Proposed |
 | [F25](feature-plans/25-event-coordination.md) | Business-event deduplication, debounce and throttling | Optional durable coordination beyond queue reliability | XL | Proposed |
-| [F26](feature-plans/26-workflow-auto-pause.md) | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Design accepted (ADR056); implementation next |
+| F26 | Automatic pause of repeatedly failing workflows | New trigger control over existing run outcomes | L | Design accepted (ADR056); implementation next |
 | [F27](feature-plans/27-notification-preferences-and-channels.md) | Notification preferences, email/digest delivery and more notice types | Extends the F03 inbox | L | Proposed |
 | [F28](feature-plans/28-single-sign-on-and-provisioning.md) | Single sign-on (SAML/OIDC) and SCIM user provisioning | Extends the session authority for organizations | L–XL | Proposed |
 | [F29](feature-plans/29-workflow-concurrency-controls.md) | Per-workflow concurrency limits with queue or skip | Extends run admission | M–L | Queue-only first slice qualified; skip overflow deferred |

@@ -58,7 +58,7 @@ revision they read. Unread means no read row or an older revision.
 
 The fold and expiry commands are owner-run, executable only by the worker, and
 pinned by startup readiness (see
-[database function readiness](operations/database-function-readiness.md)).
+database function readiness).
 
 ## 4. Authorization
 

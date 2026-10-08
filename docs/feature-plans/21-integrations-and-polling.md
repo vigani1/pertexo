@@ -15,8 +15,8 @@ HTTP Request, Slack message, email notification, webhook and schedule exist. Bro
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
 - [packages/integrations/src](../../packages/integrations/src)
-- [docs/workflow-platform-backend-plan.md](../../docs/workflow-platform-backend-plan.md)
-- [docs/implementation-progress.md](../../docs/implementation-progress.md)
+- docs/workflow-platform-backend-plan.md
+- docs/implementation-progress.md
 
 “Not established” means no complete product was found in this targeted inventory,
 not proof of absence from every file. Recheck these anchors before implementation.

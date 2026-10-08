@@ -11,15 +11,8 @@ including authentication, workspace administration, workflow authoring and
 execution surfaces. Start the mocked frontend with `pnpm dev:web`; integrated
 authentication and data flows also require the API and its local dependencies.
 
-For a feature overview, system diagrams, execution flow, and code navigation,
-start with the [codebase map](./docs/codebase-map.md).
-
-Prefer a browser view? Run `pnpm docs:html`, then open
-`docs/dist/codebase-map.html`. The generator downloads a pinned,
-integrity-checked diagram renderer; the resulting page works offline. Markdown
-remains the source of truth: rerun the command after editing the map. Generated
-HTML is ignored by Git. Source-code links require the local checkout alongside
-the page.
+For where things live and how the code is changing, start with the
+[architecture reset plan](./docs/architecture-reset-plan.md).
 
 ## What Is Implemented
 
@@ -35,11 +28,8 @@ the page.
 
 The backend has implemented vertical slices, but unresolved API scope decisions
 and Phase 7 production evidence still prevent a production-ready claim. See the
-concise
-[`current implementation status`](./docs/current-implementation-status.md) for
-current blockers and
-[`implementation progress`](./docs/implementation-progress.md) for detailed
-evidence and history.
+concise `current implementation status` for current blockers and
+`implementation progress` for detailed evidence and history.
 
 ## Architecture
 
@@ -75,7 +65,7 @@ packages/
 
 The architecture is recorded in [`docs/adr/`](./docs/adr/). The authoritative
 backend plan and product vocabulary live in
-[`docs/workflow-platform-backend-plan.md`](./docs/workflow-platform-backend-plan.md).
+`docs/workflow-platform-backend-plan.md`.
 
 ## Stack
 
@@ -140,44 +130,21 @@ emitted JavaScript, preserving the decorator metadata required by NestJS.
 pnpm dev:api
 pnpm dev:worker
 pnpm dev:web
-pnpm test
 pnpm check
-pnpm prepush:fast
-pnpm prepush:check
-pnpm prepush:full
-pnpm quality:local
+pnpm test
 pnpm test:integration
-pnpm --filter @pertexo/api test:sse-resilience
-pnpm --filter @pertexo/worker test:resilience
-pnpm --filter @pertexo/api test:compatibility-rollout
+pnpm test:e2e
 ```
 
-`pnpm check` is the static and unit gate: formatting, build, lint, generated
-contract drift, TypeScript, and package unit tests. It does not replace
-`pnpm test:integration`, which requires the local PostgreSQL, Redis, and
-S3-compatible services above. Resilience and compatibility-rollout commands are
-separate destructive or recovery-focused gates. Historical Phase 0E invariants
-now run through the production coordinator, node-attempt, and SSE integration
-suites selected by CI's `recovery` job.
+`pnpm check` runs formatting, build, lint, typecheck, unused-code detection,
+generated-contract drift, the schema check and package-boundary checks.
+`pnpm test` runs the unit tests. `pnpm test:integration` needs the local
+PostgreSQL, Redis and S3-compatible services above. `pnpm test:e2e` runs the
+browser tests against the mocked API.
 
-`pnpm quality:local` is the isolated, manifest-producing full local
-qualification. It owns disposable services and serializes the repository's fixed
-coverage outputs. See the
-[local quality qualification runbook](./docs/operations/local-quality-verification.md)
-for partial investigative runs, cleanup behavior, and the named AWS-only limits.
-
-`pnpm install` configures the repository-managed pre-push hook. Every ordinary
-push runs `pnpm prepush:fast`, which keeps every static gate from `pnpm check`
-but scopes lint, typecheck, and unit tests to the packages the branch changed;
-the protected GitHub checks still run every suite on the pull request.
-`pnpm prepush:check` combines the whole of `pnpm check` with the critical-file
-coverage thresholds and browser probes; push with `PERTEXO_PRE_PUSH_FULL=1` to
-make the hook run it. Run `pnpm prepush:full` before pushing changes to
-PostgreSQL, Redis, queues, object storage, HTTP behavior, or process
-coordination; it adds the service-backed integration suite and therefore
-requires the local services above. The explicit
-`PERTEXO_SKIP_PRE_PUSH_CHECKS=1 git push` escape hatch is for documented
-emergencies only and does not bypass protected GitHub checks.
+`pnpm install` configures the pre-push hook. Every push runs `pnpm prepush`:
+formatting, typecheck, and lint and unit tests for the packages changed since
+`origin/main`. CI runs everything on the pull request.
 
 ## Contributing, Security, and License
 
@@ -193,8 +160,7 @@ makes that legal/product decision.
 ## Project Status
 
 Pertexo is a personal engineering project in active development, not a hosted
-commercial service. Completed phases and their verification evidence are tracked
-in
-[`docs/current-implementation-status.md`](./docs/current-implementation-status.md),
-with the full evidence journal in
-[`docs/implementation-progress.md`](./docs/implementation-progress.md).
+commercial service. The [product roadmap](./docs/product-roadmap.md) lists what
+is built and what is planned; the
+[architecture reset plan](./docs/architecture-reset-plan.md) tracks the current
+structural work.

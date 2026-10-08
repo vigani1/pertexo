@@ -13,7 +13,7 @@ To update an image:
    environment in `.github/workflows/ci.yml` when that image is used in CI.
 3. Record the old tag/digest and new tag/digest in the pull request. Keep the
    tag and digest on the same reference; do not replace it with a mutable tag.
-4. Run `pnpm images:check`, `docker compose config`, and the complete migration,
+4. Run `docker compose config`, and the complete migration,
    integration, and recovery matrix. For observability changes, also start the
    observability Compose stack and retain its health/log output.
 5. Merge only after the image scan and all required CI jobs pass. A digest update

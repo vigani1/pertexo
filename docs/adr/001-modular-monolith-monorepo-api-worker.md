@@ -32,7 +32,7 @@ roles and packages:
 
 **Repository scope clarification (2026-09-06):** The web application in this
 original description is not part of the current checkout. The
-[authoritative plan](../workflow-platform-backend-plan.md#transition-from-the-current-application)
+authoritative plan
 keeps it external until a separately planned migration; do not create an empty
 web workspace. The backend ownership and process-separation decision is unchanged.
 

@@ -5,7 +5,7 @@
 - **Related:** ADR 014 and ADR 048 (schedules and their occurrences), ADR 026
   and ADR 045 (webhook ingress and its delivery log), ADR 033 and ADR 034
   (activation and lifecycle), ADR 055 (terminal failures folded per workflow),
-  [F26](../feature-plans/26-workflow-auto-pause.md)
+  F26
 
 ## Context
 
