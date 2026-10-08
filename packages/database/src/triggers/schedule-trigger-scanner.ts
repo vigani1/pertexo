@@ -10,7 +10,7 @@ import {
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type { DatabaseConfig } from '../config.js';
 import {
-  lockExpectedCompatibilityReleaseSet,
+  selectServingCompatibilityRelease,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
@@ -212,8 +212,7 @@ async function admitScheduledRun(
   const classified = classifyPublishedWorkflowVersionRow(version.rows[0]);
   if (classified.kind !== 'v2_projection')
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
-  const currentCompatibilityRelease = await lockExpectedCompatibilityReleaseSet(
-    transaction.db,
+  const currentCompatibilityRelease = selectServingCompatibilityRelease(
     compatibilityReleases,
   );
   const initial = checkpointFactory(

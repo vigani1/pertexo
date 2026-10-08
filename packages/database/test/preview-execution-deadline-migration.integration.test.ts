@@ -183,12 +183,9 @@ describe('preview execution deadline prior-head migration', () => {
         max: 1,
       });
       try {
-        await expect(
-          checkDatabaseReadiness(api, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).resolves.toMatchObject({ migrationHead: EXPECTED_MIGRATION_HEAD });
+        await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
+          migrationHead: EXPECTED_MIGRATION_HEAD,
+        });
         await expect(
           ownerAfter.query<{
             body_hash: string;

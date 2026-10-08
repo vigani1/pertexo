@@ -5,10 +5,7 @@ import {
   createDueNodeWakeupScanner,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
-import {
-  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { invocationKey, parseCheckpoint } from '@pertexo/workflow-engine';
@@ -32,7 +29,6 @@ import {
 } from './support/coordinator-run-fixtures.js';
 
 const {
-  activateRelease,
   adminUrl,
   apiQuery,
   databaseUrl,
@@ -332,7 +328,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
       dueWakeupBatchSize: 10,
       dueWakeupPollIntervalMillis: 25,
       maximumAdmissions: 2,
-      releaseCohort: 'for_each_activation' as const,
       redisUrl,
     };
     const beforeDue = await createCoordinatorRuntime(runtimeOptions, {
@@ -536,8 +531,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
   });
 
   it('commits simultaneous cancellation and deadline facts against a genuinely suspended Wait', async () => {
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_WAIT_STAGED);
-    await activateRelease(PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE);
     const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
       connection: redisConnection(),
     });
@@ -557,7 +550,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
     let coordinator = await createCoordinatorRuntime({
       database,
       maximumAdmissions: 1,
-      releaseCohort: 'wait_activation',
       redisUrl,
     });
     const attempts = await createNodeAttemptRuntime(
@@ -565,7 +557,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
         database,
         heartbeatIntervalMillis: 1_000,
         leaseDurationSeconds: 10,
-        releaseCohort: 'wait_activation',
         redisUrl,
         workerId: `wait-control-${randomUUID()}`,
       },
@@ -755,7 +746,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
       coordinator = await createCoordinatorRuntime({
         database,
         maximumAdmissions: 1,
-        releaseCohort: 'wait_activation',
         redisUrl,
       });
       await coordinator.consumer.waitUntilReady(5_000);
@@ -821,7 +811,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
       coordinator = await createCoordinatorRuntime({
         database,
         maximumAdmissions: 1,
-        releaseCohort: 'wait_activation',
         redisUrl,
       });
       await coordinator.consumer.waitUntilReady(5_000);

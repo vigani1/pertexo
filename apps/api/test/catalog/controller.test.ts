@@ -21,7 +21,7 @@ import { RATE_LIMIT_METADATA } from '../../src/platform/rate-limit/metadata.js';
 
 describe('catalog controller public seam', () => {
   it('returns the exact safe, release-pinned node projection', () => {
-    const useCases = createCatalogUseCases({ cohort: 'core' });
+    const useCases = createCatalogUseCases();
     const controller = new CatalogController(
       useCases.listNodeDefinitions,
       useCases.listIntegrations,
@@ -94,7 +94,7 @@ describe('catalog controller public seam', () => {
   });
 
   it('rejects unsupported query fields instead of accepting arbitrary filters', () => {
-    const useCases = createCatalogUseCases({ cohort: 'core' });
+    const useCases = createCatalogUseCases();
     const controller = new CatalogController(
       useCases.listNodeDefinitions,
       useCases.listIntegrations,
@@ -132,7 +132,7 @@ describe('catalog controller public seam', () => {
 });
 
 function customCatalog(): PlatformNodeDefinitionBrowserCatalog {
-  const source = platformBrowserNodeDefinitionCatalog('email_activation');
+  const source = platformBrowserNodeDefinitionCatalog();
   const base = source.definitions[0];
   if (base === undefined)
     throw new Error('Platform browser catalog fixture is unexpectedly empty');

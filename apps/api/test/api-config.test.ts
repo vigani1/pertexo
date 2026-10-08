@@ -174,18 +174,6 @@ describe('parseApiConfig', () => {
       }),
     ).toThrow();
   });
-  it.each(['for_each_staging', 'for_each_activation'] as const)(
-    'accepts the %s compatibility cohort',
-    (cohort) => {
-      expect(
-        parseApiConfig({
-          DATABASE_API_URL:
-            'postgresql://pertexo_api:secret@localhost:5432/pertexo',
-          NODE_COMPATIBILITY_COHORT: cohort,
-        }).nodeCompatibilityCohort,
-      ).toBe(cohort);
-    },
-  );
 
   it('uses safe development defaults when optional values are absent', () => {
     const config = parseApiConfig({
@@ -204,7 +192,6 @@ describe('parseApiConfig', () => {
         workerRuntimeRole: 'pertexo_worker',
       },
       host: '0.0.0.0',
-      nodeCompatibilityCohort: 'core',
       nodeEnv: 'development',
       observability: {
         environment: 'development',
@@ -236,7 +223,6 @@ describe('parseApiConfig', () => {
         'postgresql://pertexo_api:secret@localhost:5432/pertexo',
       HOST: '127.0.0.1',
       NODE_ENV: 'test',
-      NODE_COMPATIBILITY_COHORT: 'http_staging',
       PORT: '4312',
       POSTGRES_WORKER_RUNTIME_USER: 'custom_worker',
     });
@@ -252,7 +238,6 @@ describe('parseApiConfig', () => {
         workerRuntimeRole: 'custom_worker',
       },
       host: '127.0.0.1',
-      nodeCompatibilityCohort: 'http_staging',
       nodeEnv: 'test',
       observability: {
         environment: 'test',

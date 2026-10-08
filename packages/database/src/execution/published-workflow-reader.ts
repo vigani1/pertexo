@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
 import {
-  lockExpectedCompatibilityReleaseSet,
+  selectServingCompatibilityRelease,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
@@ -176,11 +176,9 @@ export function createPublishedWorkflowReader(
         pool,
         parsedInput.workspaceId,
         async (transaction) => {
-          const currentCompatibilityRelease =
-            await lockExpectedCompatibilityReleaseSet(
-              transaction.db,
-              compatibilityReleases,
-            );
+          const currentCompatibilityRelease = selectServingCompatibilityRelease(
+            compatibilityReleases,
+          );
           const result = await transaction.db.execute(
             sql<Record<string, unknown>>`
               select

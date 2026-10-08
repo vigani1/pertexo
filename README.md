@@ -54,7 +54,7 @@ packages/
   workflow-engine/  framework-independent execution state machine
   node-sdk/          node definition and executor contracts
   nodes-core/        built-in deterministic nodes
-  node-catalog/      immutable compatibility releases
+  node-catalog/      registry of every node definition and executor
   integrations/     provider and credential boundaries
   queue/             BullMQ transport and Redis event hints
   artifact-store/    bounded dual-region object storage

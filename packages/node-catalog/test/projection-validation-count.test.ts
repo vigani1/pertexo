@@ -20,7 +20,7 @@ describe('browser catalog release validation ownership', () => {
   it('validates the whole serving release exactly once per projection', () => {
     const before = validationProbe.calls;
 
-    const catalog = platformBrowserNodeDefinitionCatalog('validate_activation');
+    const catalog = platformBrowserNodeDefinitionCatalog();
 
     expect(catalog.definitions.length).toBeGreaterThan(1);
     expect(validationProbe.calls - before).toBe(1);

@@ -1,8 +1,4 @@
-import { sql } from 'drizzle-orm';
-import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
-
-import type { WorkspaceDrizzle } from '../tenant-access/workspace.js';
 
 const MAXIMUM_COMPATIBILITY_CATALOG_BYTES = 128 * 1024;
 const MAXIMUM_ROLLING_RELEASES = 2;
@@ -26,26 +22,6 @@ export type CompatibilityReleaseExpectation = Readonly<{
 
 export type CompatibilityReleaseExpectationSet =
   readonly CompatibilityReleaseExpectation[];
-
-export class CompatibilityReleaseMismatchError extends Error {
-  public override readonly name = 'CompatibilityReleaseMismatchError';
-  public readonly diagnosticCategory: 'mismatch' | 'query_failure';
-
-  public constructor(
-    diagnosticCategory: 'mismatch' | 'query_failure' = 'mismatch',
-    options?: ErrorOptions,
-  ) {
-    super('Node compatibility release does not match this artifact', options);
-    this.diagnosticCategory = diagnosticCategory;
-  }
-}
-
-function compatibilityQueryFailure(error: unknown): never {
-  if (error instanceof CompatibilityReleaseMismatchError) throw error;
-  throw new CompatibilityReleaseMismatchError('query_failure', {
-    cause: error,
-  });
-}
 
 export function parseCompatibilityReleaseExpectation(
   input: unknown,
@@ -109,155 +85,12 @@ export function parseCompatibilityReleaseExpectationHistory(
   return Object.freeze(releases);
 }
 
-function expectedSetJson(
-  expectations: CompatibilityReleaseExpectationSet,
-): string {
-  return JSON.stringify(
-    expectations.map(({ epoch, fingerprint, catalogJson }) => ({
-      epoch,
-      fingerprint,
-      catalog: JSON.parse(catalogJson) as unknown,
-    })),
-  );
-}
-
-export async function lockExpectedCompatibilityRelease(
-  database: WorkspaceDrizzle,
-  input: CompatibilityReleaseExpectation,
-): Promise<void> {
-  const expected = parseCompatibilityReleaseExpectation(input);
-  try {
-    const result = await database.execute(sql`
-      select epoch, fingerprint, catalog_json
-      from app.lock_node_compatibility_current(
-        ${expected.epoch},
-        ${expected.fingerprint},
-        ${expected.catalogJson}::jsonb
-      )
-    `);
-    if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
-  } catch (error: unknown) {
-    compatibilityQueryFailure(error);
-  }
-}
-
-export async function checkExpectedCompatibilityRelease(
-  pool: Pool,
-  input: CompatibilityReleaseExpectation,
-): Promise<void> {
-  await lockExpectedCompatibilityReleaseWithClient(pool, input);
-}
-
-export async function checkExpectedCompatibilityReleaseSet(
-  pool: Pool,
-  input: CompatibilityReleaseExpectationSet,
-): Promise<void> {
-  await lockExpectedCompatibilityReleaseSetWithClient(pool, input);
-}
-
-function matchedExpectation(
-  expected: CompatibilityReleaseExpectationSet,
-  row: unknown,
+/** The newest release in the set: the one this build serves. */
+export function selectServingCompatibilityRelease(
+  releases: CompatibilityReleaseExpectationSet,
 ): CompatibilityReleaseExpectation {
-  const parsed = z
-    .object({
-      epoch: z.coerce.number().int().positive(),
-      fingerprint: fingerprintSchema,
-      catalog_json: z.unknown(),
-    })
-    .loose()
-    .parse(row);
-  const matched = expected.find(
-    (release) =>
-      release.epoch === parsed.epoch &&
-      release.fingerprint === parsed.fingerprint,
-  );
-  if (matched === undefined) throw new CompatibilityReleaseMismatchError();
-  return matched;
-}
-
-export async function lockExpectedCompatibilityReleaseSet(
-  database: WorkspaceDrizzle,
-  input: CompatibilityReleaseExpectationSet,
-): Promise<CompatibilityReleaseExpectation> {
-  const expected = parseCompatibilityReleaseExpectationSet(input);
-  try {
-    const result = await database.execute(sql`
-      select epoch, fingerprint, catalog_json
-      from app.lock_node_compatibility_current_supported(
-        ${expectedSetJson(expected)}::jsonb
-      )
-    `);
-    if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
-    return matchedExpectation(expected, result.rows[0]);
-  } catch (error: unknown) {
-    compatibilityQueryFailure(error);
-  }
-}
-
-export async function lockExpectedCompatibilityReleaseSetWithClient(
-  client: Pick<Pool | PoolClient, 'query'>,
-  input: CompatibilityReleaseExpectationSet,
-): Promise<CompatibilityReleaseExpectation> {
-  const expected = parseCompatibilityReleaseExpectationSet(input);
-  try {
-    const result = await client.query(
-      `select epoch, fingerprint, catalog_json
-         from app.lock_node_compatibility_current_supported($1::jsonb)`,
-      [expectedSetJson(expected)],
-    );
-    if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
-    return matchedExpectation(expected, result.rows[0]);
-  } catch (error: unknown) {
-    compatibilityQueryFailure(error);
-  }
-}
-
-export async function checkCompatibilityReleasePreactivationTarget(
-  pool: Pool,
-  supportedInput: CompatibilityReleaseExpectationSet,
-  targetInput: CompatibilityReleaseExpectation,
-): Promise<void> {
-  const supported = parseCompatibilityReleaseExpectationSet(supportedInput);
-  const target = parseCompatibilityReleaseExpectation(targetInput);
-  if (
-    !supported.some(
-      (release) =>
-        release.epoch === target.epoch &&
-        release.fingerprint === target.fingerprint &&
-        release.catalogJson === target.catalogJson,
-    )
-  )
-    throw new CompatibilityReleaseMismatchError();
-  try {
-    const result = await pool.query(
-      `select epoch, fingerprint
-         from app.node_compatibility_releases
-        where epoch = $1
-          and fingerprint = $2
-          and catalog_json = $3::jsonb
-        `,
-      [target.epoch, target.fingerprint, target.catalogJson],
-    );
-    if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
-  } catch (error: unknown) {
-    compatibilityQueryFailure(error);
-  }
-}
-
-export async function lockExpectedCompatibilityReleaseWithClient(
-  client: Pick<Pool | PoolClient, 'query'>,
-  input: CompatibilityReleaseExpectation,
-): Promise<void> {
-  const expected = parseCompatibilityReleaseExpectation(input);
-  try {
-    const result = await client.query(
-      `select epoch, fingerprint, catalog_json
-         from app.lock_node_compatibility_current($1, $2, $3::jsonb)`,
-      [expected.epoch, expected.fingerprint, expected.catalogJson],
-    );
-    if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
-  } catch (error: unknown) {
-    compatibilityQueryFailure(error);
-  }
+  const serving = releases.at(-1);
+  if (serving === undefined)
+    throw new TypeError('Compatibility release set is empty');
+  return serving;
 }

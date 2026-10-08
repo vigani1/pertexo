@@ -741,13 +741,8 @@ describe('connection persistence', () => {
       max: 1,
     });
     try {
-      await expect(
-        checkDatabaseReadiness(pool, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
-      ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+      await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
+        migrationHead: '0136_remove_release_machinery.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -940,13 +935,8 @@ describe('connection persistence', () => {
       max: 1,
     });
     try {
-      await expect(
-        checkDatabaseReadiness(pool, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
-      ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+      await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
+        migrationHead: '0136_remove_release_machinery.sql',
       });
     } finally {
       await pool.end();

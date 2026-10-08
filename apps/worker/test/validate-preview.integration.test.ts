@@ -62,12 +62,11 @@ const validateConfigInput = {
 };
 
 async function createValidateRuntime() {
-  const releaseCohort = 'validate_activation' as const;
   const previewStore = createDatabasePreviewAttemptRunStore(
     parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
   );
   const registry = createPlatformNodeRegistryForRelease(
-    platformServingRegistryRelease(releaseCohort),
+    platformServingRegistryRelease(),
   );
   const resolveConnection = vi.fn(() =>
     Promise.reject(new Error('Validate preview must not resolve a connection')),
@@ -84,13 +83,11 @@ async function createValidateRuntime() {
       leaseDurationSeconds: 10,
       preview: {
         invoker: createPlatformPreviewNodeInvoker({
-          releaseCohort,
           registry,
         }),
         runStore: previewStore,
       },
       redisUrl,
-      releaseCohort,
       workerId: `validate-preview-${randomUUID().slice(0, 8)}`,
     },
     {
@@ -109,11 +106,10 @@ async function createValidateRuntime() {
 
 describeIntegration('core.validate persisted preview execution', () => {
   it('persists mismatch and matching results and survives exact redelivery after restart', async () => {
-    const releaseCohort = 'validate_activation' as const;
-    await activateArtifactRelease(releaseCohort);
+    await activateArtifactRelease();
     expect(PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED.epoch).toBe(37);
     expect(PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.epoch).toBe(38);
-    expect(platformServingRegistryRelease(releaseCohort).fingerprint).toBe(
+    expect(platformServingRegistryRelease().fingerprint).toBe(
       PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.fingerprint,
     );
 
@@ -277,8 +273,7 @@ describeIntegration('core.validate persisted preview execution', () => {
 
 describeIntegration('core.validate persisted workflow execution', () => {
   it('executes a published Validate node through coordinator and attempt workers', async () => {
-    const releaseCohort = 'validate_activation' as const;
-    await activateArtifactRelease(releaseCohort);
+    await activateArtifactRelease();
     const runInput = {
       profile: { email: 'bad', role: 'member' },
       secret: 'workflow-secret-must-not-be-echoed',
@@ -296,7 +291,6 @@ describeIntegration('core.validate persisted workflow execution', () => {
       database,
       maximumAdmissions: 1,
       redisUrl,
-      releaseCohort,
     });
     const attempts = await createNodeAttemptRuntime(
       {
@@ -304,7 +298,6 @@ describeIntegration('core.validate persisted workflow execution', () => {
         heartbeatIntervalMillis: 200,
         leaseDurationSeconds: 10,
         redisUrl,
-        releaseCohort,
         workerId: `validate-workflow-${randomUUID().slice(0, 8)}`,
       },
       {

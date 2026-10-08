@@ -7,7 +7,6 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
@@ -107,20 +106,17 @@ function projectDefinitionCatalogs(
   });
 }
 
-export function createCoreWorkflowCompatibility(
-  releaseCohort: PlatformReleaseCohort = 'core',
-) {
-  const registryReleaseSupport =
-    platformExecutableRegistryHistory(releaseCohort);
+function buildCoreWorkflowCompatibility() {
+  const registryReleaseSupport = platformExecutableRegistryHistory();
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
     registryReleaseSupport.map(composeExecutableCompatibilityRelease),
   );
   const readinessSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(releaseCohort).map(
-      composeExecutableCompatibilityRelease,
-    ),
+    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
   );
-  const variants = registryReleaseSupport.map((nodeRelease) => {
+  // Authoring always selects the serving release; older releases only need to
+  // stay executable, which releaseSupport covers.
+  const variants = platformRegistryReleaseSupport().map((nodeRelease) => {
     const compatibilityRelease =
       composeExecutableCompatibilityRelease(nodeRelease);
     const compatibilityReleaseDescription = releaseSupport.descriptions.find(
@@ -175,6 +171,15 @@ export function createCoreWorkflowCompatibility(
   });
 }
 
+let coreWorkflowCompatibility:
+  ReturnType<typeof buildCoreWorkflowCompatibility> | undefined;
+
+/** The node catalog is static, so its compiled compatibility is built once. */
+export function createCoreWorkflowCompatibility() {
+  coreWorkflowCompatibility ??= buildCoreWorkflowCompatibility();
+  return coreWorkflowCompatibility;
+}
+
 export function createCoreAuthoringOptions(
   variants: ReturnType<typeof createCoreWorkflowCompatibility>['variants'],
   readinessReleases: ReturnType<
@@ -225,10 +230,9 @@ export function createCoreAuthoringOptions(
 
 export function createCoreWorkflowAuthoringDatabase(
   databaseConfig: DatabaseConfig,
-  releaseCohort: PlatformReleaseCohort = 'core',
   runtime?: DatabaseRuntime,
 ): WorkflowAuthoringDatabase {
-  const compatibility = createCoreWorkflowCompatibility(releaseCohort);
+  const compatibility = createCoreWorkflowCompatibility();
   // Lazy owner: failed synchronous database construction acquires no workers.
   let validator: WorkflowAuthoringValidator | undefined;
   let closed = false;

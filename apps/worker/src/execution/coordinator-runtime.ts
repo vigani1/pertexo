@@ -14,7 +14,6 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   createQueueTraceRunner,
@@ -71,7 +70,6 @@ export type CoordinatorRuntimeOptions = Readonly<{
   workspaceInboxProducerEnabled?: boolean;
   /** ADR 056: record schedule and webhook run outcomes for failure streaks. */
   workflowTriggerOutcomesEnabled?: boolean;
-  releaseCohort?: PlatformReleaseCohort;
   observer?: QueueConsumerObserver;
   redisUrl: string;
 }>;
@@ -183,7 +181,7 @@ export async function createCoordinatorRuntime(
       'Background task shutdown timeout must be between 1 and 120000',
     );
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory(options.releaseCohort ?? 'core').map(
+    platformExecutableRegistryHistory().map(
       composeExecutableCompatibilityRelease,
     ),
   );
@@ -199,7 +197,7 @@ export async function createCoordinatorRuntime(
     });
   const currentReleaseDescriptions =
     createExecutableCompatibilityReleaseSupport(
-      platformRegistryReleaseSupport(options.releaseCohort ?? 'core').map(
+      platformRegistryReleaseSupport().map(
         composeExecutableCompatibilityRelease,
       ),
     ).descriptions;

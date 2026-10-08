@@ -40,7 +40,6 @@ export function triggerRuntimeProvider(
             : { databaseRuntime: dependencies.databaseRuntime }),
           observer,
           redisUrl: config.redisUrl,
-          releaseCohort: config.nodeCompatibilityCohort,
         },
         dependencies.logger === undefined
           ? {}

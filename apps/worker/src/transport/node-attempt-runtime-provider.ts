@@ -92,9 +92,8 @@ export function nodeAttemptRuntimeProvider(
       let previewInvoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
       try {
         previewInvoker = factories.createPreviewInvoker({
-          releaseCohort: config.nodeCompatibilityCohort,
           registry: createPlatformNodeRegistryForRelease(
-            platformServingRegistryRelease(config.nodeCompatibilityCohort),
+            platformServingRegistryRelease(),
           ),
         });
       } catch (error: unknown) {
@@ -149,7 +148,6 @@ async function composeNodeAttemptRuntime(
             runStore: preview.runStore,
           },
         }),
-    releaseCohort: config.nodeCompatibilityCohort,
     redisUrl: config.redisUrl,
     workerId: config.nodeAttempt.workerId,
   });

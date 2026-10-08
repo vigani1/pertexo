@@ -10,7 +10,6 @@ import {
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   checkDatabaseReadiness,
-  checkDatabaseServingReadiness,
   type DatabaseReadiness,
 } from '../../platform/readiness.js';
 import { rolesForCapability } from '../../tenant-access/workspace-policy.js';
@@ -372,10 +371,6 @@ export function createArtifactUploadDatabase(
     );
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
-  const readinessOptions = {
-    ownerRole: config.ownerRole,
-    workerRuntimeRole: config.workerRuntimeRole,
-  } as const;
   return Object.freeze({
     beginUpload: (input: BeginArtifactUploadInput) => beginUpload(pool, input),
     getForUpload: (input: ArtifactUploadAuthorization) =>
@@ -385,9 +380,9 @@ export function createArtifactUploadDatabase(
     getMetadata: (input: ArtifactUploadAuthorization) =>
       readUploadArtifact(pool, input, 'read'),
     checkCompatibility: (): Promise<DatabaseReadiness> =>
-      checkDatabaseReadiness(pool, readinessOptions),
+      checkDatabaseReadiness(pool),
     checkReadiness: (): Promise<DatabaseReadiness> =>
-      checkDatabaseServingReadiness(pool, readinessOptions),
+      checkDatabaseReadiness(pool),
     close: lease.close,
   });
 }

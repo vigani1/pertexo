@@ -14,7 +14,6 @@ import {
   CONNECTION_AUTH_TYPE,
   createConnectionDatabase,
 } from '../../src/connections/connections.js';
-import { CompatibilityReleaseMismatchError } from '../../src/compatibility/compatibility-release.js';
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
@@ -514,7 +513,6 @@ afterAll(async () => {
 
 export {
   CONNECTION_AUTH_TYPE,
-  CompatibilityReleaseMismatchError,
   EMPTY_DEFINITION_CATALOG_V1,
   BASELINE_COMPATIBILITY_EXPECTATION,
   Pool,

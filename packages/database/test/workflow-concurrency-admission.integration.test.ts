@@ -449,7 +449,7 @@ describe('current workflow concurrency and ordered production admission', () => 
     ]);
   });
 
-  it('upgrades legacy queued ordering and reservations from 0126 and rejects enforcement-body drift', async () => {
+  it('upgrades legacy queued ordering and reservations from 0126', async () => {
     await proveLegacyConcurrencyUpgrade();
   }, 30_000);
 

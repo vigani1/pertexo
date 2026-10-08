@@ -23,12 +23,7 @@ import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createTransportMetrics } from '@pertexo/observability/transport-metrics';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
-import { activateCompatibilityReleaseFixture } from './support/compatibility-release.fixture.js';
-import {
-  PLATFORM_REGISTRY_RELEASE_HISTORY,
-  platformServingRegistryRelease,
-} from '@pertexo/node-catalog';
-import { Pool } from 'pg';
+import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { EditorBrowserWorkerShutdownError } from './support/editor-browser-worker-cleanup.js';
 import {
   createEditorBrowserWorkerLifetime,
@@ -73,10 +68,7 @@ const namespace = createRedisTestNamespace(
     },
   },
 );
-const cohort =
-  process.env.EDITOR_BROWSER_CASE === 'schedule'
-    ? 'schedule_activation'
-    : 'validate_activation';
+const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
 const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http';
 const curatedTemplates =
@@ -209,7 +201,7 @@ process.on('message', (message: unknown) => {
       stop();
     }
   };
-  if (cohort !== 'schedule_activation' || lifecycle.stopping) {
+  if (!scheduleCase || lifecycle.stopping) {
     reply(false);
     return;
   }
@@ -259,61 +251,6 @@ async function constructRuntimes(
         'Owned browser worker database configuration is incomplete',
       );
     assertSetupActive();
-    const inspector = new Pool({ connectionString: raw.migrationUrl, max: 1 });
-    const readCurrent = async () => {
-      const client = await inspector.connect();
-      try {
-        await client.query('begin');
-        await client.query('set local role pertexo_owner');
-        const result = await client.query<{
-          epoch: number;
-          fingerprint: string;
-          catalog_json: unknown;
-        }>(
-          `select current.epoch, current.fingerprint, release.catalog_json
-          from app.node_compatibility_current current
-          join app.node_compatibility_releases release
-            on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
-        );
-        await client.query('commit');
-        return result.rows[0];
-      } catch (error: unknown) {
-        await client.query('rollback');
-        throw error;
-      } finally {
-        client.release();
-      }
-    };
-    try {
-      const current = await readCurrent();
-      if (current === undefined)
-        throw new Error('Fresh fixture compatibility pointer is missing');
-      const target = platformServingRegistryRelease(cohort);
-      if (current.epoch > target.epoch)
-        throw new Error('Refusing fixture cohort downgrade');
-      for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.filter(
-        (release) =>
-          release.epoch > current.epoch && release.epoch <= target.epoch,
-      )) {
-        assertSetupActive();
-        await activateCompatibilityReleaseFixture({
-          actorId: 'editor-browser-fixture',
-          artifactPrefix: 'editor-browser-fixture',
-          apiUrl: raw.apiUrl,
-          workerUrl: raw.workerUrl,
-          migrationUrl: raw.migrationUrl,
-          targetRelease: release,
-          readCurrent,
-          reasons: {
-            prepare: 'Prepare isolated pure-node browser fixture release',
-            approve: 'Approve isolated pure-node browser fixture release',
-            activate: 'Activate isolated pure-node browser fixture release',
-          },
-        });
-      }
-    } finally {
-      await inspector.end();
-    }
     configuration = {
       workerUrl: raw.workerUrl,
       dispatcherUrl: raw.dispatcherUrl,
@@ -353,7 +290,6 @@ async function constructRuntimes(
     {
       database,
       maximumAdmissions: 10,
-      releaseCohort: cohort,
       redisUrl: namespace.redisUrl,
     },
     curatedTemplates
@@ -422,7 +358,6 @@ async function constructRuntimes(
       database,
       heartbeatIntervalMillis: 1_000,
       leaseDurationSeconds: 10,
-      releaseCohort: cohort,
       redisUrl: namespace.redisUrl,
       workerId: `editor-browser-${randomUUID()}`,
     },
@@ -451,7 +386,7 @@ async function constructRuntimes(
           }
         : {
             registry: createPlatformNodeRegistryForRelease(
-              platformServingRegistryRelease(cohort),
+              platformServingRegistryRelease(),
               {
                 httpRequest: { httpClient: controlledHttpClient },
                 // Never allow unused provider executors to fall back to real networking.
@@ -489,14 +424,11 @@ async function constructRuntimes(
   assertSetupActive();
   const triggers: TriggerRuntime[] = [];
   resources.triggers = triggers;
-  if (cohort === 'schedule_activation' || controlledHttp || curatedTemplates) {
-    for (const scanner of cohort === 'schedule_activation'
-      ? ['one', 'two']
-      : ['webhook']) {
+  if (scheduleCase || controlledHttp || curatedTemplates) {
+    for (const scanner of scheduleCase ? ['one', 'two'] : ['webhook']) {
       const trigger = await createTriggerRuntime({
         database,
         redisUrl: namespace.redisUrl,
-        releaseCohort: cohort,
         batchSize: 10,
         leaseDurationSeconds: 5,
         leaseOwner: `editor-schedule-${scanner}:${randomUUID()}`,
@@ -567,7 +499,6 @@ try {
   process.send({
     phase: 'worker-ready',
     pid: process.pid,
-    cohort,
   });
 } catch (error: unknown) {
   await finishShutdown(lifecycle.stopping ? undefined : error);

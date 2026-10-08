@@ -4,10 +4,6 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { migrateDatabase } from '../src/migrations.js';
-import {
-  checkDatabaseReadiness,
-  checkDatabaseServingReadiness,
-} from '../src/platform/readiness.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =
@@ -170,63 +166,6 @@ describe('regional write admission fence', () => {
       await migration.query('rollback').catch(() => undefined);
       throw error;
     }
-  });
-
-  it('keeps the catalog audit at startup and steady readiness bounded', async () => {
-    await expect(
-      checkDatabaseReadiness(api, {
-        ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
-      }),
-    ).resolves.toMatchObject({ role: 'pertexo_api' });
-
-    let operationError: unknown;
-    try {
-      await migration.query('begin');
-      await migration.query('set local role pertexo_owner');
-      await migration.query(
-        'alter function app.assert_regional_write_admission() set row_security=off',
-      );
-      await migration.query('commit');
-      await expect(checkDatabaseServingReadiness(api)).resolves.toMatchObject({
-        role: 'pertexo_api',
-      });
-      await expect(checkDatabaseReadiness(api)).rejects.toThrow(
-        'Regional write admission persistence is incompatible',
-      );
-    } catch (error: unknown) {
-      operationError = error;
-      await migration.query('rollback').catch(() => undefined);
-    }
-    let restorationError: unknown;
-    try {
-      await migration.query('begin');
-      await migration.query('set local role pertexo_owner');
-      await migration.query(
-        'alter function app.assert_regional_write_admission() set row_security=on',
-      );
-      await migration.query('commit');
-    } catch (error: unknown) {
-      restorationError = error;
-      await migration.query('rollback').catch(() => undefined);
-    }
-    if (operationError !== undefined && restorationError !== undefined)
-      throw new AggregateError(
-        [operationError, restorationError],
-        'Regional admission audit and schema restoration both failed',
-      );
-    if (restorationError !== undefined)
-      throw restorationError instanceof Error
-        ? restorationError
-        : new Error('Regional admission schema restoration failed', {
-            cause: restorationError,
-          });
-    if (operationError !== undefined)
-      throw operationError instanceof Error
-        ? operationError
-        : new Error('Regional admission audit failed', {
-            cause: operationError,
-          });
   });
 
   it('starts unavailable and opens only below the five-minute bound', async () => {

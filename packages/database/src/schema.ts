@@ -100,13 +100,6 @@ import {
   triggerSchedules,
   triggerScheduleOccurrences,
 } from './schema/triggers.js';
-import {
-  nodeCompatibilityReleases,
-  nodeCompatibilityPreactivationChecks,
-  nodeCompatibilityActivationApprovals,
-  nodeCompatibilityCurrent,
-  nodeCompatibilityActivations,
-} from './schema/compatibility.js';
 
 export {
   authAccounts,
@@ -159,10 +152,6 @@ export {
   triggerSchedules,
   triggerScheduleOccurrences,
 } from './schema/triggers.js';
-export {
-  nodeCompatibilityReleases,
-  nodeCompatibilityCurrent,
-} from './schema/compatibility.js';
 
 export const databaseSchema = {
   curatedTemplateDescriptors,
@@ -189,11 +178,6 @@ export const databaseSchema = {
   idempotencyRecords,
   inboxReceipts,
   nodeAttempts,
-  nodeCompatibilityCurrent,
-  nodeCompatibilityActivationApprovals,
-  nodeCompatibilityActivations,
-  nodeCompatibilityPreactivationChecks,
-  nodeCompatibilityReleases,
   nodeRuns,
   oidcLoginTransactions,
   outboxEvents,

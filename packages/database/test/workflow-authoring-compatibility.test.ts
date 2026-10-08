@@ -113,7 +113,7 @@ describe('workflow authoring compatibility normalization', () => {
     }
   });
 
-  it('locks singular authority and returns its matching catalogs', async () => {
+  it('returns the configured release catalogs without querying the database', async () => {
     const selected = variant(first);
     const query = vi.fn().mockResolvedValue({ rows: [{}] });
     const compatibility = normalizeWorkflowAuthoringCompatibility({
@@ -127,15 +127,10 @@ describe('workflow authoring compatibility normalization', () => {
     await expect(compatibility.selectLocked({ query })).resolves.toEqual(
       selected,
     );
-    expect(query).toHaveBeenCalledOnce();
-    expect(query).toHaveBeenCalledWith(expect.any(String), [
-      first.epoch,
-      first.fingerprint,
-      first.catalogJson,
-    ]);
+    expect(query).not.toHaveBeenCalled();
   });
 
-  it('selects only the locked rolling variant from a bounded readiness set', async () => {
+  it('selects the newest release variant from a bounded readiness set', async () => {
     const firstVariant = variant(first);
     const secondVariant = variant(second);
     const query = vi.fn().mockResolvedValue({
@@ -155,21 +150,7 @@ describe('workflow authoring compatibility normalization', () => {
     await expect(compatibility.selectLocked({ query })).resolves.toEqual(
       secondVariant,
     );
-    expect(query).toHaveBeenCalledOnce();
-    expect(query).toHaveBeenCalledWith(expect.any(String), [
-      JSON.stringify([
-        {
-          epoch: first.epoch,
-          fingerprint: first.fingerprint,
-          catalog: catalogProjection,
-        },
-        {
-          epoch: second.epoch,
-          fingerprint: second.fingerprint,
-          catalog: catalogProjection,
-        },
-      ]),
-    ]);
+    expect(query).not.toHaveBeenCalled();
   });
 
   it('assembles a valid rolling factory with an injected runtime without checkout', async () => {

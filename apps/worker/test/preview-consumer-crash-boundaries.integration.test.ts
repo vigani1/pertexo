@@ -411,7 +411,6 @@ describeIntegration('preview dispatch crash boundaries', () => {
                   runStore: redeliveryStore,
                 },
                 redisUrl,
-                releaseCohort: 'core',
                 workerId: `preview-redelivery-${randomUUID().slice(0, 8)}`,
               });
               await redeliveryRuntime.consumer.waitUntilReady(5_000);

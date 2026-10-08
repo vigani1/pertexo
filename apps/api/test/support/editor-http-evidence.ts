@@ -10,15 +10,12 @@ import {
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
   verifyWorkflowExecutableV2,
 } from '@pertexo/workflow-engine';
 
-export const httpCohort = 'validate_activation';
 const executable = composeExecutableCompatibilityRelease(
-  platformServingRegistryRelease(httpCohort),
+  platformServingRegistryRelease(),
 );
-const release = describeExecutableCompatibilityRelease(executable);
 export const httpScopeSchema = z.strictObject({
   workspaceId: z.uuid(),
   workflowId: z.uuid(),
@@ -140,14 +137,8 @@ export async function verifyHttpEvidence(
     bodyHashes: [hash(httpActionBody)],
   });
   expect(evidence.trueRunId).not.toBe(evidence.falseRunId);
-  const current = await database.query(
-    'select epoch,fingerprint from app.node_compatibility_current',
-  );
-  expect(current.rows).toEqual([
-    { epoch: release.epoch, fingerprint: release.fingerprint },
-  ]);
   expect(evidence.catalogRelease).toEqual(
-    platformBrowserNodeDefinitionCatalog(httpCohort).release,
+    platformBrowserNodeDefinitionCatalog().release,
   );
   const versions = await database.query<{
     id: string;

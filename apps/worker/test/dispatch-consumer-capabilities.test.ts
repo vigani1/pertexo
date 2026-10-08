@@ -166,6 +166,18 @@ describe('dispatch capability provider activation', () => {
       INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
       INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
       PUBLIC_WEB_ORIGIN: 'http://localhost:5173',
+      CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
+      CONNECTION_KMS_REGION: 'eu-central-1',
+      ARTIFACT_STORE_ACCESS_KEY_ID: 'local-access',
+      ARTIFACT_STORE_BUCKET: 'pertexo-artifacts',
+      ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
+      ARTIFACT_STORE_REGION: 'us-east-1',
+      ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
+      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-access',
+      ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-artifacts-recovery',
+      ARTIFACT_STORE_RECOVERY_ENDPOINT: 'http://localhost:9090',
+      ARTIFACT_STORE_RECOVERY_REGION: 'us-west-2',
+      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
     });
     const coordinatorConsumer = consumer() as QueueConsumer;
     const attemptConsumer = consumer() as QueueConsumer;

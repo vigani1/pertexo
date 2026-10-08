@@ -2756,7 +2756,6 @@ describeIntegration('active HTTP node attempt', () => {
             connectionString: databaseUrl(workerUrl),
             max: 1,
           }),
-          'email_activation',
         );
         const source = await admitProviderScenario(runtime, 'email');
         await publishAndWaitForCompletion(

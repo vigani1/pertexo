@@ -86,14 +86,12 @@ export class AppModule {
     const databaseOptions =
       dependencies.database === undefined
         ? {
-            releaseCohort: config.nodeCompatibilityCohort,
             ...(dependencies.databaseRuntime === undefined
               ? {}
               : { runtime: dependencies.databaseRuntime }),
           }
         : {
             database: dependencies.database,
-            releaseCohort: config.nodeCompatibilityCohort,
           };
     const httpErrorLogger: HttpErrorLogger = Object.freeze({
       log: (entry: HttpErrorLogEntry): void => {
@@ -218,12 +216,7 @@ function registerFeatureModules(
   identityModule: DynamicModule | undefined,
 ): DynamicModule[] {
   if (identityModule === undefined) return [];
-  const modules = [
-    CatalogModule.register(
-      { cohort: config.nodeCompatibilityCohort },
-      identityModule,
-    ),
-  ];
+  const modules = [CatalogModule.register(identityModule)];
   if (dependencies.workflowRuntime === undefined) modules.push(identityModule);
   else
     modules.push(

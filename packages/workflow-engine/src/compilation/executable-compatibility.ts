@@ -1,7 +1,6 @@
 import {
   canonicalCompatibilityReleaseJson,
   createRegistryRelease,
-  createRegistryReleaseSuccessor,
   parseRegistryRelease,
   type RegistryRelease,
 } from '@pertexo/node-sdk';
@@ -87,23 +86,6 @@ export function createExecutableCompatibilityReleaseHistory(
       .sort((left, right) => left.epoch - right.epoch);
     if (new Set(releases.map(({ epoch }) => epoch)).size !== releases.length)
       fail('compatibility release epochs must be unique');
-    for (let index = 1; index < releases.length; index += 1) {
-      const previous = releases[index - 1];
-      const target = releases[index];
-      if (previous === undefined || target === undefined)
-        fail('executable compatibility history is incomplete');
-      if (target.epoch !== previous.epoch + 1)
-        fail('compatibility release is not the next successor');
-      const successor = createRegistryReleaseSuccessor({
-        epoch: target.epoch,
-        definitions: target.definitions,
-        executors: target.executors,
-        policies: target.policies,
-        previous,
-      });
-      if (successor.fingerprint !== target.fingerprint)
-        fail('compatibility release successor fingerprint changed');
-    }
     const byPair = new Map(
       releases.map((release) => [
         `${String(release.epoch)}\u0000${release.fingerprint}`,

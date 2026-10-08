@@ -402,20 +402,14 @@ describe('connection concurrency and security', () => {
     });
     try {
       await expect(
-        checkDatabaseReadiness(apiReadinessPool, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
+        checkDatabaseReadiness(apiReadinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+        migrationHead: '0136_remove_release_machinery.sql',
       });
       await expect(
-        checkDatabaseReadiness(workerReadinessPool, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
+        checkDatabaseReadiness(workerReadinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0135_workflow_folders_batch_identity.sql',
+        migrationHead: '0136_remove_release_machinery.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

@@ -8,7 +8,6 @@ import { parseDatabaseConfig } from '../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/execution/published-workflow-reader.js';
-import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './support/workflow-authoring-admission.fixture.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
@@ -68,7 +67,6 @@ let workspaceId = '';
 let workflowId = '';
 let v1VersionId = '';
 let v2VersionId = '';
-const readinessDriftLockId = 7_166_118_813;
 
 function expectPgCode(code: string): (error: unknown) => boolean {
   return (error: unknown): boolean => {
@@ -124,21 +122,6 @@ async function queryAsWorker(
     await client.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    client.release();
-  }
-}
-
-async function withReadinessDriftLock(
-  operation: () => Promise<void>,
-): Promise<void> {
-  const client = await ownerPool.connect();
-  try {
-    await client.query('select pg_advisory_lock($1)', [readinessDriftLockId]);
-    await operation();
-  } finally {
-    await client
-      .query('select pg_advisory_unlock($1)', [readinessDriftLockId])
-      .catch(() => undefined);
     client.release();
   }
 }
@@ -368,76 +351,5 @@ describe('PublishedWorkflowReader', () => {
         v2VersionId,
       ]),
     ).rejects.toSatisfy(expectPgCode('55000'));
-  });
-
-  it('fails readiness on weakened execution constraints, policy, or worker grants', async () => {
-    await withReadinessDriftLock(async () => {
-      await executeAsOwner(`alter table app.workflow_versions
-        drop constraint workflow_versions_checksum_format,
-        add constraint workflow_versions_checksum_format check (true)`);
-      try {
-        await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
-          'Published workflow execution schema is incompatible',
-        );
-      } finally {
-        await executeAsOwner(`alter table app.workflow_versions
-          drop constraint workflow_versions_checksum_format,
-          add constraint workflow_versions_checksum_format check ((
-            (checksum ~ '^wf:v1:sha256:[0-9a-f]{64}$'
-             and executable_schema_version is null
-             and executable_json is null
-             and compatibility_release_epoch is null)
-            or
-            (checksum ~ '^wf:v2:sha256:[0-9a-f]{64}$'
-             and executable_schema_version is not null
-             and executable_schema_version = 2
-             and executable_json is not null
-             and jsonb_typeof(executable_json) = 'object'
-             and compatibility_release_epoch is not null
-             and compatibility_release_epoch > 0)
-          ) is true)`);
-      }
-
-      await executeAsOwner(`alter policy workflow_versions_worker_execution_read
-        on app.workflow_versions to pertexo_dispatcher`);
-      try {
-        await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
-          'Published workflow execution row-level security is incompatible',
-        );
-      } finally {
-        await executeAsOwner(`alter policy workflow_versions_worker_execution_read
-          on app.workflow_versions to pertexo_worker`);
-      }
-
-      await executeAsOwner(`alter policy workflow_versions_worker_execution_read
-        on app.workflow_versions using (true)`);
-      try {
-        await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
-          'Published workflow execution row-level security is incompatible',
-        );
-      } finally {
-        await executeAsOwner(`alter policy workflow_versions_worker_execution_read
-          on app.workflow_versions using (
-            workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
-            and checksum like 'wf:v2:sha256:%'
-            and executable_schema_version = 2
-            and executable_json is not null
-            and compatibility_release_epoch > 0
-          )`);
-      }
-
-      await executeAsOwner(
-        'grant select (graph_json) on app.workflow_versions to pertexo_worker',
-      );
-      try {
-        await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
-          'Published workflow execution grants are incompatible',
-        );
-      } finally {
-        await executeAsOwner(
-          'revoke select (graph_json) on app.workflow_versions from pertexo_worker',
-        );
-      }
-    });
   });
 });

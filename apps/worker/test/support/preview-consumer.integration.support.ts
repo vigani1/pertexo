@@ -13,11 +13,8 @@ import { runWithCleanup } from './test-operation.js';
 import {
   type acceptWorkflowRun,
   acceptPreviewRun,
-  createCompatibilityReleaseMaintenance,
-  createCompatibilityReleaseReadinessProbe,
   databaseSchema,
   migrateDatabase,
-  parseDatabaseConfig,
   parseMigrationConfig,
   parseWorkspaceId,
   withTenantScopedClient,
@@ -27,7 +24,6 @@ import {
 import {
   PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
   platformExecutableRegistryHistory,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
@@ -283,154 +279,15 @@ let activeRelease = {
   fingerprint: '',
 };
 
-export async function activateArtifactRelease(
-  cohort: PlatformReleaseCohort = 'core',
-): Promise<void> {
-  const support = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory(cohort).map(
+export function activateArtifactRelease(): Promise<void> {
+  const target = createExecutableCompatibilityReleaseHistory(
+    platformExecutableRegistryHistory().map(
       composeExecutableCompatibilityRelease,
     ),
-  );
-  const target = support.descriptions.at(-1);
-  if (target === undefined) throw new Error('cohort history is empty');
-  const databaseConfig = parseDatabaseConfig({
-    connectionString: databaseUrl(migrationUrl),
-    ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
-  });
-  const maintenance = createCompatibilityReleaseMaintenance(databaseConfig);
-
-  try {
-    for (;;) {
-      const rows = await withOwner((client) =>
-        client.query<{ epoch: number; fingerprint: string }>(
-          `select epoch,fingerprint from app.node_compatibility_current`,
-        ),
-      );
-      const current = rows.rows[0];
-      if (current === undefined)
-        throw new Error('seeded compatibility pointer missing');
-      if (
-        current.epoch === target.epoch &&
-        current.fingerprint === target.fingerprint
-      ) {
-        activeRelease = {
-          epoch: target.epoch,
-          fingerprint: target.fingerprint,
-        };
-        return;
-      }
-
-      const next = support.descriptions.find(
-        ({ epoch }) => epoch === current.epoch + 1,
-      );
-      if (next === undefined)
-        throw new Error(
-          `compatibility cohort ${cohort} cannot advance from epoch ${String(current.epoch)}`,
-        );
-      const predecessorRows = await withOwner((client) =>
-        client.query<{ catalog_json: unknown }>(
-          `select catalog_json from app.node_compatibility_releases
-           where epoch=$1 and fingerprint=$2`,
-          [current.epoch, current.fingerprint],
-        ),
-      );
-      const rawCatalog = predecessorRows.rows[0]?.catalog_json;
-      if (rawCatalog === null || rawCatalog === undefined)
-        throw new Error('seeded release catalog missing');
-      const expectedPredecessor = {
-        catalogJson:
-          typeof rawCatalog === 'string'
-            ? rawCatalog
-            : JSON.stringify(rawCatalog),
-        epoch: current.epoch,
-        fingerprint: current.fingerprint,
-      };
-      // Rolling readiness accepts exactly the current/target pair, so the
-      // probes must know both identities.
-      const pairDescriptions = [expectedPredecessor, next];
-      const apiProbe = createCompatibilityReleaseReadinessProbe(
-        parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 1 }),
-        pairDescriptions,
-      );
-      let workerProbe:
-        ReturnType<typeof createCompatibilityReleaseReadinessProbe> | undefined;
-      const deploymentId = `preview-transport-${cohort}-${String(next.epoch)}-${randomUUID()}`;
-      const approvalId = randomUUID();
-      const apiArtifact = `preview-transport-api-${String(next.epoch)}`;
-      const workerArtifact = `preview-transport-worker-${String(next.epoch)}`;
-      await runWithCleanup(
-        async () => {
-          workerProbe = createCompatibilityReleaseReadinessProbe(
-            parseDatabaseConfig({
-              connectionString: databaseUrl(workerUrl),
-              max: 1,
-            }),
-            pairDescriptions,
-          );
-          await maintenance.prepare({
-            actorId: 'preview-transport-integration',
-            actorKind: 'deployment',
-            expectedPredecessor,
-            reason: `Prepare ${cohort} epoch ${String(next.epoch)}`,
-            target: next,
-          });
-          await expect(apiProbe.checkTarget(next)).resolves.toMatchObject({
-            role: 'pertexo_api',
-          });
-          await expect(workerProbe.checkTarget(next)).resolves.toMatchObject({
-            role: 'pertexo_worker',
-          });
-          await maintenance.recordPreactivation({
-            artifactId: apiArtifact,
-            checkId: randomUUID(),
-            deploymentId,
-            roleKind: 'api',
-            target: next,
-          });
-          await maintenance.recordPreactivation({
-            artifactId: workerArtifact,
-            checkId: randomUUID(),
-            deploymentId,
-            roleKind: 'worker',
-            target: next,
-          });
-          await maintenance.approve({
-            actorId: 'preview-transport-integration',
-            approvalId,
-            deploymentId,
-            reason: `Approve ${cohort} epoch ${String(next.epoch)}`,
-            requiredApiArtifacts: [apiArtifact],
-            requiredWorkerArtifacts: [workerArtifact],
-            target: next,
-          });
-          await maintenance.activate({
-            activationId: randomUUID(),
-            actorId: 'preview-transport-integration',
-            actorKind: 'deployment',
-            approvalId,
-            expectedPredecessor,
-            reason: `Activate ${cohort} epoch ${String(next.epoch)}`,
-          });
-        },
-        async () => {
-          const errors: unknown[] = [];
-          await workerProbe
-            ?.close()
-            .catch((error: unknown) => errors.push(error));
-          await apiProbe.close().catch((error: unknown) => errors.push(error));
-          if (errors.length > 0)
-            throw new AggregateError(
-              errors,
-              'Preview compatibility probe cleanup failed',
-            );
-        },
-        'Preview compatibility probes',
-      );
-    }
-  } finally {
-    await maintenance.close();
-  }
+  ).descriptions.at(-1);
+  if (target === undefined) throw new Error('release history is empty');
+  activeRelease = { epoch: target.epoch, fingerprint: target.fingerprint };
+  return Promise.resolve();
 }
 
 export function acceptanceInput(
@@ -878,7 +735,7 @@ beforeAll(async () => {
       max: 1,
     });
     await seedIdentity();
-    await activateArtifactRelease('core');
+    await activateArtifactRelease();
     await clearNodeAttemptQueue();
   } catch (setupError: unknown) {
     let cleanupError: unknown;

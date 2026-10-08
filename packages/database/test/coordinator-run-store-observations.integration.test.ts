@@ -6,7 +6,6 @@ import {
   Pool,
   asOwner,
   asRuntime,
-  checkDatabaseReadiness,
   checkpoint,
   createCoordinatorRunStore,
   databaseUrl,
@@ -616,47 +615,6 @@ describe('Coordinator observation integrity invariants', () => {
         ),
       ).rejects.toMatchObject({ code: '23514' });
     }
-
-    const readinessPool = new Pool({
-      connectionString: databaseUrl(workerBaseUrl),
-      max: 1,
-    });
-    await asOwner(workspaceA, (client) =>
-      client.query(
-        `alter table app.node_runs
-             drop constraint node_runs_invocation_key_format,
-             add constraint node_runs_invocation_key_format
-               check (length(invocation_key) > 0)`,
-      ),
-    );
-    try {
-      await expect(
-        checkDatabaseReadiness(readinessPool, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
-      ).rejects.toThrow('Coordinator RunStore grants are incompatible');
-    } finally {
-      await asOwner(workspaceA, (client) =>
-        client.query(
-          `alter table app.node_runs
-               drop constraint node_runs_invocation_key_format,
-               add constraint node_runs_invocation_key_format check (
-                 invocation_key ~ '^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,255}$'
-                 or invocation_key ~ '^([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|b:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*\\|i:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*$'
-               )`,
-        ),
-      );
-    }
-    await expect(
-      checkDatabaseReadiness(readinessPool, {
-        ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
-      }),
-    ).resolves.toMatchObject({
-      migrationHead: '0135_workflow_folders_batch_identity.sql',
-    });
-    await readinessPool.end();
   });
 
   it('loads a valid revision-zero checkpoint at cursor two and enforces workspace RLS', async () => {

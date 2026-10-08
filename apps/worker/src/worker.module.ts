@@ -95,14 +95,12 @@ export class WorkerModule {
     const databaseOptions =
       dependencies.database === undefined
         ? {
-            releaseCohort: config.nodeCompatibilityCohort,
             ...(dependencies.databaseRuntime === undefined
               ? {}
               : { runtime: dependencies.databaseRuntime }),
           }
         : {
             database: dependencies.database,
-            releaseCohort: config.nodeCompatibilityCohort,
           };
 
     return {

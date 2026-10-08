@@ -9,7 +9,6 @@
     "start": "node dist/main.js",
     "test": "node --test ../../infrastructure/testing/editor-browser-envelope-keys.test.mjs && vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:compatibility-rollout": "vitest run --config vitest.compatibility-rollout.config.ts",
     "test:sse-resilience": "vitest run --config vitest.sse-resilience.config.ts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },

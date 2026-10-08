@@ -48,7 +48,6 @@ export function coordinatorRuntimeProvider(
           workflowTriggerOutcomesEnabled:
             config.coordinator.workflowTriggerOutcomesEnabled,
           observer,
-          releaseCohort: config.nodeCompatibilityCohort,
           redisUrl: config.redisUrl,
         },
         dependencies.logger === undefined

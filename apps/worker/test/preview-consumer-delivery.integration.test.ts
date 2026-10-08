@@ -35,10 +35,9 @@ describeIntegration('preview delivery transport', () => {
       parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
     );
     const registry = createPlatformNodeRegistryForRelease(
-      platformServingRegistryRelease('core'),
+      platformServingRegistryRelease(),
     );
     const platformInvoker = createPlatformPreviewNodeInvoker({
-      releaseCohort: 'core',
       registry,
     });
     let invocationCount = 0;
@@ -62,7 +61,6 @@ describeIntegration('preview delivery transport', () => {
       },
       productionEnabled: false,
       redisUrl,
-      releaseCohort: 'core',
       workerId: `preview-transport-${randomUUID().slice(0, 8)}`,
     });
     try {

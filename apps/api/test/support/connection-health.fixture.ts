@@ -362,7 +362,6 @@ export function useConnectionHealthFixture(
     ...(options.webOrigin === undefined
       ? {}
       : { publicWebOrigin: options.webOrigin }),
-    nodeCompatibilityCohort: 'slack_activation',
     redisUrl: redis.toString(),
     connections: {
       config: { kmsKeyReference: 'owned-health-fixture', region: 'us-east-1' },

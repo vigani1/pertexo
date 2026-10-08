@@ -46,7 +46,7 @@ describe('Schedule fixture authoring admission ownership', () => {
         worstCaseLoopIterations: 0,
       });
     try {
-      const releases = platformExecutableRegistryHistory(fixture.releaseCohort);
+      const releases = platformExecutableRegistryHistory();
       const command = { signal: new AbortController().signal };
       expect(releases.length).toBeGreaterThan(0);
       expect(variants(fixture)).toHaveLength(releases.length);

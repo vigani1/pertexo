@@ -54,7 +54,7 @@ function leaseFixture(
   executableNode: PreviewAttemptLease['executableNode'],
 ): PreviewAttemptLease {
   const release = composeExecutableCompatibilityRelease(
-    platformServingRegistryRelease('core'),
+    platformServingRegistryRelease(),
   );
   return {
     attemptFenceToken: 1,
@@ -89,7 +89,6 @@ describe('platform preview node invoker', () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = leaseFixture({
       config: {},
@@ -134,7 +133,6 @@ describe('platform preview node invoker', () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = leaseFixture({
       config: {},
@@ -234,7 +232,6 @@ describe('platform preview node invoker', () => {
           emailSendNotification: { client: { sendNotification } },
         },
       ),
-      releaseCohort: 'email_activation',
     });
     await expect(
       invoker.invoke({
@@ -338,7 +335,6 @@ describe('platform preview node invoker', () => {
         PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
         { slackSendMessage: { client: { sendMessage } } },
       ),
-      releaseCohort: 'slack_activation',
     });
 
     await expect(
@@ -385,7 +381,6 @@ describe('platform preview node invoker', () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = {
       ...leaseFixture({
@@ -415,7 +410,6 @@ describe('platform preview node invoker', () => {
     );
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = leaseFixture({
       config: {},
@@ -452,7 +446,6 @@ describe('platform preview node invoker', () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = leaseFixture({
       config: {},
@@ -485,7 +478,6 @@ describe('platform preview node invoker', () => {
       const execute = vi.fn();
       const invoker = createPlatformPreviewNodeInvoker({
         registry: { execute } as never,
-        releaseCohort: 'core',
       });
       const lease = leaseFixture({
         config: {},
@@ -520,9 +512,8 @@ describe('platform preview node invoker', () => {
   it('rejects a mismatched config version through the real core registry path', async () => {
     const invoker = createPlatformPreviewNodeInvoker({
       registry: createPlatformNodeRegistryForRelease(
-        platformServingRegistryRelease('core'),
+        platformServingRegistryRelease(),
       ),
-      releaseCohort: 'core',
     });
     const lease = leaseFixture({
       config: {},
@@ -552,7 +543,6 @@ describe('platform preview node invoker', () => {
           return { kind: 'succeeded' as const, output: { ok: true } };
         },
       } as never,
-      releaseCohort: 'core',
     });
     const lease = leaseFixture({
       config: {},
@@ -596,7 +586,6 @@ describe('platform preview node invoker', () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = leaseFixture({
       config: {},
@@ -631,7 +620,6 @@ describe('platform preview node invoker', () => {
       );
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = {
       ...leaseFixture({
@@ -665,7 +653,6 @@ describe('platform preview node invoker', () => {
     );
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = {
       ...leaseFixture({
@@ -696,7 +683,6 @@ describe('platform preview node invoker', () => {
     );
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
-      releaseCohort: 'core',
     });
     const lease = {
       ...leaseFixture({
@@ -767,7 +753,6 @@ describe('platform preview node invoker', () => {
   ] as const)('classifies executor failure %#', async (error, expected) => {
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute: () => Promise.reject(error) } as never,
-      releaseCohort: 'core',
     });
     const lease = leaseFixture({
       config: {},
@@ -794,7 +779,6 @@ describe('platform preview node invoker', () => {
             }),
           ),
       } as never,
-      releaseCohort: 'core',
     });
     const lease = {
       ...leaseFixture({
@@ -829,7 +813,6 @@ describe('platform preview node invoker', () => {
     for (const error of errors) {
       const invoker = createPlatformPreviewNodeInvoker({
         registry: { execute: () => Promise.reject(error) } as never,
-        releaseCohort: 'core',
       });
       const lease = leaseFixture({
         config: {},

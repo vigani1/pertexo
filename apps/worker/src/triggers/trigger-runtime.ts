@@ -12,7 +12,6 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import type { StructuredLogger } from '@pertexo/observability';
@@ -60,7 +59,6 @@ export type TriggerRuntimeOptions = Readonly<{
   onTimeWindowSeconds: number;
   pollIntervalMillis: number;
   redisUrl: string;
-  releaseCohort: PlatformReleaseCohort;
 }>;
 
 export type TriggerCompositionFactories = Readonly<{
@@ -124,14 +122,12 @@ export async function createTriggerRuntime(
   const backgroundTaskShutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
   const releaseHistory = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory(options.releaseCohort).map(
+    platformExecutableRegistryHistory().map(
       composeExecutableCompatibilityRelease,
     ),
   );
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(options.releaseCohort).map(
-      composeExecutableCompatibilityRelease,
-    ),
+    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
   );
   const checkpointFactory: ScheduleCheckpointFactory =
     dependencies.checkpointFactory ??

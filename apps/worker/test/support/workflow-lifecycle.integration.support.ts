@@ -993,7 +993,6 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
         onTimeWindowSeconds: 300,
         pollIntervalMillis: 25,
         redisUrl: redisNamespace.redisUrl,
-        releaseCohort: 'core',
       },
       { reader, reconciliation, scanner: noOpScanner() },
     );

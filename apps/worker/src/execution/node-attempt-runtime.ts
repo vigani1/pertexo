@@ -11,9 +11,7 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
-  platformServingReleaseRequiresHttpCapabilities,
   platformServingRegistryRelease,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { createQueueTraceRunner } from '@pertexo/observability';
@@ -101,7 +99,6 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   observer?: QueueConsumerObserver;
   preview?: PreviewAttemptRuntimeDependency;
   productionEnabled?: boolean;
-  releaseCohort?: PlatformReleaseCohort;
   redisUrl: string;
   workerId: string;
 }>;
@@ -219,29 +216,15 @@ interface ProductionNodeAttemptRuntime {
 async function createProductionNodeAttemptRuntime(
   options: NodeAttemptRuntimeOptions,
   dependencies: NodeAttemptRuntimeDependencies,
-  releaseCohort: PlatformReleaseCohort,
   own: OwnNodeAttemptResource,
 ): Promise<ProductionNodeAttemptRuntime> {
-  if (
-    platformServingReleaseRequiresHttpCapabilities(releaseCohort) &&
-    !(
-      (options.connectionEncryption !== undefined &&
-        options.artifactStore !== undefined) ||
-      (dependencies.runtimeCapabilities?.connections !== undefined &&
-        dependencies.runtimeCapabilities.artifacts !== undefined)
-    )
-  )
-    throw new TypeError(
-      'HTTP activation requires connection and artifact runtime capabilities',
-    );
-
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory(releaseCohort).map(
+    platformExecutableRegistryHistory().map(
       composeExecutableCompatibilityRelease,
     ),
   );
   const firstDescription = releaseSupport.descriptions[0];
-  const latestNodeRelease = platformServingRegistryRelease(releaseCohort);
+  const latestNodeRelease = platformServingRegistryRelease();
   if (firstDescription === undefined)
     throw new Error('Core compatibility release support is empty');
   const firstRelease = releaseSupport.resolve(
@@ -277,7 +260,7 @@ async function createProductionNodeAttemptRuntime(
     createPublishedWorkflowReader(
       options.database,
       createExecutableCompatibilityReleaseSupport(
-        platformRegistryReleaseSupport(releaseCohort).map(
+        platformRegistryReleaseSupport().map(
           composeExecutableCompatibilityRelease,
         ),
       ).descriptions,
@@ -377,7 +360,6 @@ export async function createNodeAttemptRuntime(
       !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(options.workerId)
     )
       throw new TypeError('Node-attempt runtime options are invalid');
-    const releaseCohort = options.releaseCohort ?? 'core';
     const productionEnabled = options.productionEnabled ?? true;
     let capabilityRuntime: WorkerNodeRuntimeCapabilities | undefined;
     let runtimeCapabilities = dependencies.runtimeCapabilities;
@@ -386,7 +368,6 @@ export async function createNodeAttemptRuntime(
       const production = await createProductionNodeAttemptRuntime(
         options,
         dependencies,
-        releaseCohort,
         own,
       );
       capabilityRuntime = production.capabilityRuntime;

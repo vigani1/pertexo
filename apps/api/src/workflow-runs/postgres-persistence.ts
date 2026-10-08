@@ -17,7 +17,6 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
-  type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
@@ -54,11 +53,10 @@ export function createPostgresWorkflowRunPersistence(
   config: DatabaseConfig,
   databaseInput?: WorkflowRunDatabase,
   notifications?: RunEventNotificationPublisher,
-  releaseCohort: PlatformReleaseCohort = 'core',
   runtime?: DatabaseRuntime,
 ): PostgresWorkflowRunPersistence {
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory(releaseCohort).map(
+    platformExecutableRegistryHistory().map(
       composeExecutableCompatibilityRelease,
     ),
   );
@@ -67,7 +65,7 @@ export function createPostgresWorkflowRunPersistence(
     createWorkflowRunDatabase(
       config,
       createExecutableCompatibilityReleaseSupport(
-        platformRegistryReleaseSupport(releaseCohort).map(
+        platformRegistryReleaseSupport().map(
           composeExecutableCompatibilityRelease,
         ),
       ).descriptions,

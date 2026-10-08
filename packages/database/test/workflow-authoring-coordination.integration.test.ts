@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createCompatibilityReleaseMaintenance } from '../src/compatibility/compatibility-release-maintenance.js';
-import { createCompatibilityReleaseReadinessProbe } from '../src/compatibility/compatibility-release-readiness.js';
-import { WorkflowDefinitionPlacementError } from '../src/authoring/workflow-authoring.js';
 
 import {
-  BASELINE_COMPATIBILITY_EXPECTATION,
-  CompatibilityReleaseMismatchError,
   Pool,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
@@ -17,14 +12,12 @@ import {
   createWorkflowAuthoringDatabase,
   currentRepresentationTag,
   deferred,
-  draftNode,
   emptyGraph,
   finishControlledScenario,
   finishTransactionClient,
   migrationUrl,
   otherWorkflowId,
   parseDatabaseConfig,
-  baselineEmptyDefinitionCatalog,
   queryAsOwner,
   randomUUID,
   saveCurrentDraft,
@@ -32,120 +25,10 @@ import {
   workspaceId,
   waitForPostgresLock,
   waitForOperationEntry,
-  workerUrl,
   withApplicationName,
 } from './support/workflow-authoring.integration.support.js';
 
 describe('workflow authoring coordination', () => {
-  it('holds the durable compatibility pointer lock through publication commit', async () => {
-    const pointerApplication = `workflow-pointer-${workflowId}`;
-    const releaseLocked = deferred();
-    const releasePublication = deferred();
-    const checksum = `wf:v2:sha256:${'b'.repeat(64)}` as const;
-    const executableJson = {
-      schemaVersion: 2,
-      compatibilityReleaseEpoch: 1,
-      compatibilityReleaseFingerprint:
-        BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
-    };
-    const lockingAuthoring = createWorkflowAuthoringDatabase(
-      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-      {
-        compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
-        definitionCatalog: baselineEmptyDefinitionCatalog,
-        executableCompiler: () => ({
-          checksum,
-          executableSchemaVersion: 2,
-          executableJson,
-          compatibilityReleaseEpoch: 1,
-          compatibilityReleaseFingerprint:
-            BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
-        }),
-        testHooks: {
-          afterCompatibilityReleaseLock: async () => {
-            releaseLocked.resolve();
-            await releasePublication.promise;
-          },
-        },
-      },
-    );
-    const pointerPool = new Pool({
-      connectionString: withApplicationName(migrationUrl, pointerApplication),
-      max: 1,
-    });
-    const owner = await pointerPool.connect();
-    let rollbackFailure: unknown;
-    try {
-      const created = await lockingAuthoring.createWorkflow({
-        actorId,
-        emptyGraph,
-        idempotencyKey: 'create-compatibility-lock-proof',
-        name: 'Compatibility lock proof',
-        workspaceId,
-      });
-      const representationTag = await currentRepresentationTag(
-        lockingAuthoring,
-        workspaceId,
-        created.workflowId,
-        actorId,
-        baselineEmptyDefinitionCatalog,
-      );
-      const publication = lockingAuthoring.publishWorkflow({
-        actorId,
-        representationTag,
-        idempotencyKey: 'publish-compatibility-lock-proof',
-        requestHash: 'a'.repeat(64),
-        workflowId: created.workflowId,
-        workspaceId,
-      });
-      await waitForOperationEntry(
-        releaseLocked.promise,
-        publication,
-        'compatibility-locked publication',
-      );
-
-      await owner.query('begin');
-      await owner.query('set local role pertexo_owner');
-      let pointerUpdateCompleted = false;
-      const pointerUpdate = owner
-        .query(
-          `update app.node_compatibility_current
-              set activated_at = activated_at
-            where singleton`,
-        )
-        .then(() => {
-          pointerUpdateCompleted = true;
-        });
-      await waitForPostgresLock(pointerApplication);
-      expect(pointerUpdateCompleted).toBe(false);
-
-      releasePublication.resolve();
-      await expect(publication).resolves.toMatchObject({
-        version: { checksum },
-      });
-      await pointerUpdate;
-      await owner.query('commit');
-    } catch (error: unknown) {
-      releasePublication.resolve();
-      try {
-        await owner.query('rollback');
-      } catch (rollbackError: unknown) {
-        rollbackFailure = rollbackError;
-      }
-      throw error;
-    } finally {
-      owner.release(
-        rollbackFailure === undefined
-          ? undefined
-          : new Error('Compatibility pointer proof rollback failed', {
-              cause: rollbackFailure,
-            }),
-      );
-      await pointerPool.end();
-      await lockingAuthoring.close();
-    }
-  });
-
   it('allows exactly one racing compare-and-swap save', async () => {
     const results = await Promise.allSettled([
       saveCurrentDraft(authoring, {
@@ -660,184 +543,5 @@ describe('workflow authoring coordination', () => {
       primaryError,
       release: releasePublish.resolve,
     });
-  });
-
-  it('rejects a racing save and then uses the newly activated placement catalog', async () => {
-    const target = { ...BASELINE_COMPATIBILITY_EXPECTATION, epoch: 2 };
-    const supported = [BASELINE_COMPATIBILITY_EXPECTATION, target] as const;
-    const placementAllowed = Object.freeze({
-      schemaVersion: 1 as const,
-      releaseFingerprint: target.fingerprint,
-      definitions: Object.freeze([{ key: 'test.blocked', version: 1 }]),
-    });
-    const placementBlocked = Object.freeze({
-      ...placementAllowed,
-      definitions: Object.freeze([]),
-    });
-    const compiler = (): never => {
-      throw new Error('Publication is outside the placement race');
-    };
-    const application = `placement-release-${randomUUID()}`;
-    const rolling = createWorkflowAuthoringDatabase(
-      parseDatabaseConfig({
-        connectionString: withApplicationName(apiUrl, application),
-        max: 2,
-      }),
-      {
-        compatibilityReadinessReleases: supported,
-        compatibilityReleaseVariants: [
-          {
-            compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
-            definitionCatalog: placementAllowed,
-            placementDefinitionCatalog: placementAllowed,
-            executableCompiler: compiler,
-          },
-          {
-            compatibilityRelease: target,
-            definitionCatalog: placementAllowed,
-            placementDefinitionCatalog: placementBlocked,
-            executableCompiler: compiler,
-          },
-        ],
-      },
-    );
-    const maintenance = createCompatibilityReleaseMaintenance(
-      parseDatabaseConfig({
-        connectionString: migrationUrl,
-        ownerRole: 'pertexo_owner',
-      }),
-    );
-    const apiReadiness = createCompatibilityReleaseReadinessProbe(
-      parseDatabaseConfig({ connectionString: apiUrl }),
-      supported,
-    );
-    const workerReadiness = createCompatibilityReleaseReadinessProbe(
-      parseDatabaseConfig({ connectionString: workerUrl }),
-      supported,
-    );
-    const pointerPool = new Pool({ connectionString: migrationUrl, max: 1 });
-    try {
-      await maintenance.prepare({
-        actorId: 'placement-release-test',
-        actorKind: 'deployment',
-        expectedPredecessor: BASELINE_COMPATIBILITY_EXPECTATION,
-        reason: 'Test locked authoring placement',
-        target,
-      });
-      await Promise.all([
-        apiReadiness.checkTarget(target),
-        workerReadiness.checkTarget(target),
-      ]);
-      const deploymentId = `placement-${randomUUID()}`;
-      const approvalId = randomUUID();
-      for (const roleKind of ['api', 'worker'] as const)
-        await maintenance.recordPreactivation({
-          artifactId: `placement-${roleKind}`,
-          checkId: randomUUID(),
-          deploymentId,
-          roleKind,
-          target,
-        });
-      await maintenance.approve({
-        actorId: 'placement-release-test',
-        approvalId,
-        deploymentId,
-        reason: 'Approve test placement release',
-        requiredApiArtifacts: ['placement-api'],
-        requiredWorkerArtifacts: ['placement-worker'],
-        target,
-      });
-
-      const created = await rolling.createWorkflow({
-        actorId,
-        emptyGraph,
-        idempotencyKey: `placement-race-${randomUUID()}`,
-        name: 'Placement release race',
-        workspaceId,
-      });
-      const representationTag = await currentRepresentationTag(
-        rolling,
-        workspaceId,
-        created.workflowId,
-        actorId,
-        placementAllowed,
-      );
-      const blockedGraph = {
-        ...emptyGraph,
-        nodes: [
-          {
-            ...draftNode('newly-blocked'),
-            definition: { key: 'test.blocked', version: 1 },
-          },
-        ],
-      };
-      const owner = await pointerPool.connect();
-      let transactionOpen = false;
-      let save: Promise<unknown> | undefined;
-      try {
-        await owner.query('begin');
-        transactionOpen = true;
-        await owner.query('set local role pertexo_owner');
-        await owner.query(
-          `select app.activate_node_compatibility_release(
-             $1,1,$2,$3,'deployment',$4,$5)`,
-          [
-            randomUUID(),
-            BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
-            approvalId,
-            'placement-release-test',
-            'Activate test placement release',
-          ],
-        );
-        save = rolling.saveDraft({
-          actorId,
-          expectedRevision: 1,
-          graphJson: blockedGraph,
-          representationTag,
-          workflowId: created.workflowId,
-          workspaceId,
-        });
-        const saveOutcome = save.then(
-          () => new Error('Save unexpectedly succeeded'),
-          (error: unknown) => error,
-        );
-        await waitForPostgresLock(application);
-        await owner.query('commit');
-        transactionOpen = false;
-        const rejection = await saveOutcome;
-        expect(rejection).toBeInstanceOf(CompatibilityReleaseMismatchError);
-      } finally {
-        if (transactionOpen) await owner.query('rollback');
-        owner.release();
-        await save?.catch(() => undefined);
-      }
-      await expect(
-        saveCurrentDraft(rolling, {
-          actorId,
-          expectedRevision: 1,
-          graphJson: blockedGraph,
-          workflowId: created.workflowId,
-          workspaceId,
-        }),
-      ).rejects.toBeInstanceOf(WorkflowDefinitionPlacementError);
-      const draft = await queryAsOwner<{
-        revision: number;
-        graph_json: { nodes: unknown[] };
-      }>(
-        `select revision,graph_json from app.workflow_drafts
-          where workspace_id=$1 and workflow_id=$2`,
-        [workspaceId, created.workflowId],
-        workspaceId,
-      );
-      expect(draft).toEqual([{ revision: 1, graph_json: emptyGraph }]);
-    } finally {
-      await Promise.all([
-        rolling.close(),
-        maintenance.close(),
-        apiReadiness.close(),
-        workerReadiness.close(),
-        pointerPool.end(),
-      ]);
-    }
   });
 });

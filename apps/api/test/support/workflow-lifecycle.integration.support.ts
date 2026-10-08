@@ -394,7 +394,6 @@ function apiConfig(): ApiConfig {
         sameSite: 'lax',
       },
     },
-    nodeCompatibilityCohort: 'core',
     nodeEnv: 'test',
     observability: {
       environment: 'test',

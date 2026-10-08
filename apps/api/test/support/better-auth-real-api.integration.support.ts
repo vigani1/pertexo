@@ -20,7 +20,6 @@ import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { FixtureResourceOwner } from './fixture-resource-owner.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
-import { createCoreWorkflowCompatibility } from '../../src/platform/workflow/workflow-compatibility.js';
 import { createBetterAuthFixtureApplication } from './better-auth-fixture-application.js';
 import type { ApiConnectionRuntimeOverrides } from '../../src/platform/connections/connection-runtime.module.js';
 import type { ApiWebhookRuntime } from '../../src/platform/webhooks/webhook-runtime.module.js';
@@ -122,7 +121,6 @@ export function useBetterAuthRealApi(
   suite: string,
   options: Readonly<{
     publicWebOrigin?: string;
-    nodeCompatibilityCohort?: ApiConfig['nodeCompatibilityCohort'];
     workflowOrganization?: ApiConfig['workflowOrganization'];
     /** F07-owned qualification namespace, never a shared database selection. */
     databaseNamespace?: 'f07_organization';
@@ -217,7 +215,6 @@ export function useBetterAuthRealApi(
     const config: ApiConfig = {
       ...defaults,
       identity,
-      nodeCompatibilityCohort: options.nodeCompatibilityCohort ?? 'core',
       redisUrl: options.redisUrl ?? redisUrl,
       ...(options.workflowOrganization === undefined
         ? {}
@@ -235,11 +232,7 @@ export function useBetterAuthRealApi(
     );
     workspaceDatabase = owner.acquire(
       'workspace database',
-      createWorkspaceDatabase(databaseConfig, {
-        compatibilityReleases: createCoreWorkflowCompatibility(
-          config.nodeCompatibilityCohort,
-        ).readinessSupport.descriptions,
-      }),
+      createWorkspaceDatabase(databaseConfig),
       (database) => database.close(),
     );
     const webhookRuntime =
@@ -392,7 +385,6 @@ function apiConfig(database: DatabaseConfig): ApiConfig {
         providers: {},
       },
     },
-    nodeCompatibilityCohort: 'core',
     nodeEnv: 'test',
     observability: {
       environment: 'test',

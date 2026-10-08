@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import {
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
@@ -64,7 +61,6 @@ describeIntegration('Linear node execution resilience', () => {
     const coordinator = await createCoordinatorRuntime({
       database,
       maximumAdmissions: 1,
-      releaseCohort: 'for_each_activation',
       redisUrl,
     });
     const attempts = await createNodeAttemptRuntime(
@@ -72,7 +68,6 @@ describeIntegration('Linear node execution resilience', () => {
         database,
         heartbeatIntervalMillis: 1_000,
         leaseDurationSeconds: 10,
-        releaseCohort: 'for_each_activation',
         redisUrl,
         workerId: `integration-${randomUUID()}`,
       },
@@ -349,28 +344,19 @@ describeIntegration('Linear node execution resilience', () => {
       const epoch2 = composeExecutableCompatibilityRelease(
         CORE_REGISTRY_RELEASE_SUCCESSOR,
       );
-      const epoch14 = composeExecutableCompatibilityRelease(
-        PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-      );
       await expect(
         workerQuery<{
-          current_epoch: number;
-          current_fingerprint: string;
           executable_epoch: number;
           executable_fingerprint: string;
         }>(
-          `select current.epoch current_epoch,current.fingerprint current_fingerprint,
-                    version.compatibility_release_epoch executable_epoch,
+          `select version.compatibility_release_epoch executable_epoch,
                     version.executable_json->>'compatibilityReleaseFingerprint' executable_fingerprint
              from app.workflow_versions version
-             cross join app.node_compatibility_current current
              where version.workspace_id=$1 and version.id=$2`,
           [workspaceId, workflowVersionId],
         ),
       ).resolves.toEqual([
         {
-          current_epoch: 14,
-          current_fingerprint: epoch14.fingerprint,
           executable_epoch: 2,
           executable_fingerprint: epoch2.fingerprint,
         },

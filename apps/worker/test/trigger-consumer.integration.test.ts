@@ -149,7 +149,6 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
             onTimeWindowSeconds: 300,
             pollIntervalMillis: 100,
             redisUrl: requireRedisUrl(),
-            releaseCohort: 'core',
           },
           {
             checkpointFactory: () => ({

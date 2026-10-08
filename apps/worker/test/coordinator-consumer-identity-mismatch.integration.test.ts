@@ -36,7 +36,6 @@ describeIntegration('Coordinator transport identity fencing', () => {
         max: 4,
       }),
       maximumAdmissions: 1,
-      releaseCohort: 'for_each_activation',
       redisUrl,
     });
     const producer = createQueueProducer({ redisUrl });

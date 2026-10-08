@@ -3,7 +3,6 @@ import {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
-  WorkflowInputCaseUnavailableError,
 } from '../src/authoring/workflow-input-cases.js';
 import {
   WorkflowIdempotencyConflictError,
@@ -24,7 +23,6 @@ import {
   queryAsOwner,
   randomUUID,
   parseDatabaseConfig,
-  checkDatabaseReadiness,
   identity,
   ownerPool,
   waitForPostgresLock,
@@ -96,31 +94,6 @@ describe('bounded version-contextual run-input cases', () => {
     },
   );
 
-  it('qualifies new forced RLS/grants readiness and rejects a widened case policy', async () => {
-    await checkDatabaseReadiness(apiPool);
-    await executeAsOwner(
-      'alter policy workflow_input_cases_tenant on app.workflow_input_cases using(true) with check(true)',
-    );
-    try {
-      await expect(checkDatabaseReadiness(apiPool)).rejects.toThrow(
-        'Workflow authoring schema is incompatible',
-      );
-    } finally {
-      await executeAsOwner(
-        `alter policy workflow_input_cases_tenant on app.workflow_input_cases using(workspace_id::text=nullif(current_setting('app.workspace_id',true),'')) with check(workspace_id::text=nullif(current_setting('app.workspace_id',true),''))`,
-      );
-    }
-  });
-  it('fails closed until additive reader and all-writer gate is enabled', async () => {
-    const scope = await fixture();
-    await expect(
-      database.listCases({ ...scope, limit: 10 }),
-    ).rejects.toBeInstanceOf(WorkflowInputCaseUnavailableError);
-    await enable();
-    expect((await database.listCases({ ...scope, limit: 10 })).items).toEqual(
-      [],
-    );
-  });
   it('lists metadata only, gets detached canonical input and replays identifiers without names or JSON in receipts/audits', async () => {
     await enable();
     const scope = await fixture();

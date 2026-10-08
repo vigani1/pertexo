@@ -140,7 +140,6 @@ export async function acquireApiRuntimes(
         config.redisUrl,
         {
           ...dependencies.workflowOverrides,
-          releaseCohort: config.nodeCompatibilityCohort,
           ...(config.workflowOrganization === undefined
             ? {}
             : { organization: config.workflowOrganization }),
@@ -171,7 +170,6 @@ export async function acquireApiRuntimes(
       webhookRuntime = await createApiWebhookRuntime(
         config.webhooks,
         config.database,
-        config.nodeCompatibilityCohort,
         undefined,
         databaseRuntime,
       );

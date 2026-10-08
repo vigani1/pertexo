@@ -84,7 +84,6 @@ export async function createCoordinatorRecoveryHarness(input: {
       coordinator = await createCoordinatorRuntime({
         database: input.database,
         maximumAdmissions: 10,
-        releaseCohort: 'for_each_activation',
         redisUrl,
       });
       attempts = await createNodeAttemptRuntime(
@@ -92,7 +91,6 @@ export async function createCoordinatorRecoveryHarness(input: {
           database: input.database,
           heartbeatIntervalMillis: 1_000,
           leaseDurationSeconds: 10,
-          releaseCohort: 'for_each_activation',
           redisUrl,
           workerId: `${input.workerIdPrefix}-${randomUUID()}`,
           observer: {

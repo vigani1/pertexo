@@ -51,7 +51,6 @@ const {
   ownerQuery,
   ownerQueryIn,
   redisUrl,
-  releaseCohort,
   scheduleCompatibility,
   workerConfig,
   workerQuery,
@@ -233,7 +232,6 @@ describeIntegration('direct Schedule worker integration gate', () => {
           onTimeWindowSeconds: 300,
           pollIntervalMillis: 25,
           redisUrl,
-          releaseCohort,
         },
         {
           logger,
@@ -259,7 +257,6 @@ describeIntegration('direct Schedule worker integration gate', () => {
         database: workerConfig,
         maximumAdmissions: 10,
         redisUrl,
-        releaseCohort,
       }),
     );
     await coordinator.consumer.waitUntilReady(5_000);
@@ -601,7 +598,6 @@ describeIntegration('direct Schedule worker integration gate', () => {
         onTimeWindowSeconds: 300,
         pollIntervalMillis: 25,
         redisUrl,
-        releaseCohort,
       }),
     );
     await runtime.consumer.waitUntilReady(5_000);
@@ -748,7 +744,6 @@ describeIntegration('direct Schedule worker integration gate', () => {
       onTimeWindowSeconds: 300,
       pollIntervalMillis: 25,
       redisUrl,
-      releaseCohort,
     });
     resources.push(runtime);
     await runtime.consumer.waitUntilReady(5_000);

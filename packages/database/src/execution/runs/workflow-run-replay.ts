@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
-  lockExpectedCompatibilityReleaseSet,
+  selectServingCompatibilityRelease,
   type CompatibilityReleaseExpectationSet,
 } from '../../compatibility/compatibility-release.js';
 import { readWorkflowRunAcceptanceReplay } from './execution-acceptance.js';
@@ -40,8 +40,7 @@ export async function replayWorkflowRunInTransaction(
     return Object.freeze({ run, replayed: true });
   }
 
-  const currentCompatibilityRelease = await lockExpectedCompatibilityReleaseSet(
-    transaction.db,
+  const currentCompatibilityRelease = selectServingCompatibilityRelease(
     compatibilityReleases,
   );
   const source = await lockReplaySource(transaction, input.sourceRunId);

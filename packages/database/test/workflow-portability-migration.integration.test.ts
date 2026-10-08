@@ -10,7 +10,6 @@ import { parseDatabaseConfig } from '../src/config.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-workspace.js';
-import { WorkflowPortabilityUnavailableError } from '../src/authoring/workflow-authoring-errors.js';
 import { createWorkflowAuthoringFixtureDatabase } from './support/workflow-authoring-admission.fixture.js';
 import {
   copyMigrationsBefore,
@@ -163,11 +162,12 @@ describe('additive portable workflow migration', () => {
           '0133_curated_template_origin.sql',
           '0134_workflow_organization.sql',
           '0135_workflow_folders_batch_identity.sql',
+          '0136_remove_release_machinery.sql',
         ]);
         expect(await migrateDatabase(config)).toEqual([]);
         for (const role of [api, worker])
           expect((await checkDatabaseReadiness(role)).migrationHead).toBe(
-            '0135_workflow_folders_batch_identity.sql',
+            '0136_remove_release_machinery.sql',
           );
         expect(
           await authoring.getDraft(workspace.id, retained.workflowId, actorId),
@@ -188,14 +188,7 @@ describe('additive portable workflow migration', () => {
             expectedCompatibilityFingerprint: portableCatalog.fingerprint,
             idempotencyKey: randomUUID(),
           }),
-        ).rejects.toBeInstanceOf(WorkflowPortabilityUnavailableError);
-        expect(
-          (
-            await api.query(
-              'select import_enabled from app.workflow_portability_rollout',
-            )
-          ).rows,
-        ).toEqual([{ import_enabled: false }]);
+        ).resolves.toHaveProperty('workflowId');
         expect(
           (
             await api.query(

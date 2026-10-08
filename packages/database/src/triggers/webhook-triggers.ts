@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type { DatabaseConfig } from '../config.js';
 import {
-  lockExpectedCompatibilityReleaseSet,
+  selectServingCompatibilityRelease,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
@@ -572,11 +572,9 @@ export function createWebhookTriggerDatabase(
               clock_timestamp()+case when ${dedupeKind}='keyed'
                 then interval '24 hours' else interval '5 minutes' end)
           `);
-          const currentCompatibilityRelease =
-            await lockExpectedCompatibilityReleaseSet(
-              transaction.db,
-              compatibilityReleases,
-            );
+          const currentCompatibilityRelease = selectServingCompatibilityRelease(
+            compatibilityReleases,
+          );
           const projection = await executableProjection(
             transaction,
             verification.workflowVersionId,

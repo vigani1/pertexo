@@ -4,10 +4,7 @@ import {
   type DualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
-import {
-  PLATFORM_RELEASE_COHORTS,
-  platformServingReleaseRequiresHttpCapabilities,
-} from '@pertexo/node-catalog';
+import { platformServingReleaseRequiresHttpCapabilities } from '@pertexo/node-catalog';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import { ACTIVE_QUEUE_JOB_NAMES, JOB_NAME, type JobName } from '@pertexo/queue';
 
@@ -235,7 +232,6 @@ const workerConfigSchema = z
       .default('false')
       .transform((value) => value === 'true'),
     NODE_ENV: z.enum(workerEnvironments).default('development'),
-    NODE_COMPATIBILITY_COHORT: z.enum(PLATFORM_RELEASE_COHORTS).default('core'),
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
@@ -331,7 +327,6 @@ const workerConfigSchema = z
       NODE_ATTEMPT_HEARTBEAT_MILLIS,
       WORKER_INSTANCE_ID,
       NODE_ENV,
-      NODE_COMPATIBILITY_COHORT,
       LOG_LEVEL,
       OTEL_EXPORTER_OTLP_ENDPOINT,
       SERVICE_VERSION,
@@ -343,7 +338,6 @@ const workerConfigSchema = z
       POSTGRES_WORKER_RUNTIME_USER,
     }) => ({
       nodeEnv: NODE_ENV,
-      nodeCompatibilityCohort: NODE_COMPATIBILITY_COHORT,
       logLevel: LOG_LEVEL,
       observability: parseObservabilityConfig({
         serviceName: 'pertexo-worker',
@@ -534,16 +528,15 @@ export function parseWorkerConfig(
       deployed,
     );
     if (
-      platformServingReleaseRequiresHttpCapabilities(
-        result.data.nodeCompatibilityCohort,
-      ) &&
+      platformServingReleaseRequiresHttpCapabilities() &&
       result.data.outboxDispatcher.enabledJobNames.includes(
         JOB_NAME.executeNodeAttempt,
       ) &&
-      (connectionEncryption === undefined || artifactStore === undefined)
+      (artifactStore === undefined ||
+        (deployed && connectionEncryption === undefined))
     )
       throw new Error(
-        'HTTP activation workers require connection encryption and artifact storage',
+        'Node-attempt workers require artifact storage, and connection encryption when deployed',
       );
     return Object.freeze({
       ...result.data,

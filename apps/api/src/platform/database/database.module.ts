@@ -6,14 +6,7 @@ import type {
   WorkspaceDatabase,
 } from '@pertexo/database/api';
 import { createWorkspaceDatabase } from '@pertexo/database/api';
-import {
-  platformRegistryReleaseSupport,
-  type PlatformReleaseCohort,
-} from '@pertexo/node-catalog';
-import {
-  composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseSupport,
-} from '@pertexo/workflow-engine';
+import {} from '@pertexo/workflow-engine';
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 
@@ -44,7 +37,6 @@ class NestWorkspaceDatabase implements WorkspaceDatabase {
 type DatabaseModuleOptions = Readonly<{
   database?: WorkspaceDatabase;
   runtime?: DatabaseRuntime;
-  releaseCohort: PlatformReleaseCohort;
 }>;
 
 function createDatabaseProvider(
@@ -56,16 +48,10 @@ function createDatabaseProvider(
     useFactory: (): NestWorkspaceDatabase =>
       new NestWorkspaceDatabase(
         options.database ??
-          createWorkspaceDatabase(config, {
-            compatibilityReleases: createExecutableCompatibilityReleaseSupport(
-              platformRegistryReleaseSupport(options.releaseCohort).map(
-                composeExecutableCompatibilityRelease,
-              ),
-            ).descriptions,
-            ...(options.runtime === undefined
-              ? {}
-              : { runtime: options.runtime }),
-          }),
+          createWorkspaceDatabase(
+            config,
+            options.runtime === undefined ? {} : { runtime: options.runtime },
+          ),
       ),
   };
 }

@@ -216,9 +216,9 @@ describe('schedule claim concurrency', () => {
 
       await blocker.query('begin');
       blockerTransactionOpen = true;
+      // Block run admission at its workflow_runs insert.
       await blocker.query(
-        `select singleton from app.node_compatibility_current
-          where singleton for update`,
+        'lock table app.workflow_runs in share row exclusive mode',
       );
 
       const scan = scanner.scanDue({

@@ -258,13 +258,8 @@ describe('execution value persistence migration', () => {
         max: 1,
       });
       try {
-        await expect(
-          checkDatabaseReadiness(pool, {
-            ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
-          }),
-        ).resolves.toMatchObject({
-          migrationHead: '0135_workflow_folders_batch_identity.sql',
+        await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
+          migrationHead: '0136_remove_release_machinery.sql',
           role: expectedRole,
         });
       } finally {
@@ -458,41 +453,6 @@ describe('execution value persistence migration', () => {
       await worker.query('commit');
     } finally {
       await worker.end();
-    }
-  });
-
-  it('fails readiness when an execution-value backstop drifts', async () => {
-    await withOwner(upgradeDatabaseName, async (pool) => {
-      await pool.query(
-        'alter table app.workflow_runs drop constraint workflow_runs_input_ref_bounded',
-      );
-      await pool.query(
-        `alter table app.workflow_runs add constraint workflow_runs_input_ref_bounded
-         check (input_ref is null or octet_length(input_ref::text) <= 4194305)`,
-      );
-    });
-    const api = new Pool({
-      connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
-      max: 1,
-    });
-    try {
-      await expect(
-        checkDatabaseReadiness(api, {
-          ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
-        }),
-      ).rejects.toThrow('Execution value persistence is incompatible');
-    } finally {
-      await api.end();
-      await withOwner(upgradeDatabaseName, async (pool) => {
-        await pool.query(
-          'alter table app.workflow_runs drop constraint workflow_runs_input_ref_bounded',
-        );
-        await pool.query(
-          `alter table app.workflow_runs add constraint workflow_runs_input_ref_bounded
-           check (input_ref is null or octet_length(input_ref::text) <= 4194304)`,
-        );
-      });
     }
   });
 });

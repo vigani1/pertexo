@@ -351,7 +351,6 @@ describe('node-attempt runtime', () => {
           },
         },
         productionEnabled: false,
-        releaseCohort: 'http_activation',
         redisUrl: 'redis://localhost:6379/0',
         workerId: 'worker-1',
       },
@@ -750,45 +749,6 @@ describe('node-attempt runtime', () => {
       await runtime.close();
     }
   });
-
-  it.each([
-    'http_activation',
-    'condition_activation',
-    'switch_activation',
-    'merge_activation',
-    'for_each_staging',
-    'for_each_activation',
-  ] as const)(
-    'fails before adapter creation when %s HTTP capabilities are absent',
-    async (releaseCohort) => {
-      const consumerFactory = vi.fn();
-
-      await expect(
-        createNodeAttemptRuntime(
-          {
-            database: {
-              connectionString:
-                'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
-              connectionTimeoutMillis: 5_000,
-              idleTimeoutMillis: 30_000,
-              max: 5,
-              ownerRole: 'pertexo_owner',
-              workerRuntimeRole: 'pertexo_worker',
-            },
-            heartbeatIntervalMillis: 10_000,
-            leaseDurationSeconds: 30,
-            releaseCohort,
-            redisUrl: 'redis://localhost:6379/0',
-            workerId: 'worker-1',
-          },
-          { consumerFactory },
-        ),
-      ).rejects.toThrow(
-        'HTTP activation requires connection and artifact runtime capabilities',
-      );
-      expect(consumerFactory).not.toHaveBeenCalled();
-    },
-  );
 
   it('composes the IDs-only node queue and closes every owned adapter', async () => {
     let consumerOptions: QueueConsumerOptions | undefined;

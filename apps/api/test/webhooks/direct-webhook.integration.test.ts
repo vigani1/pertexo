@@ -1,8 +1,6 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 
 import {
-  createCompatibilityReleaseMaintenance,
-  createCompatibilityReleaseReadinessProbe,
   createIdentityWorkspaceDatabase,
   createWebhookTriggerDatabase,
   createWorkflowTriggerReconciliationDatabase,
@@ -247,12 +245,12 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         workerRuntimeRole: workerRole,
       });
       releaseSupport = createExecutableCompatibilityReleaseSupport(
-        platformRegistryReleaseSupport('webhook_activation').map(
+        platformRegistryReleaseSupport().map(
           composeExecutableCompatibilityRelease,
         ),
       );
       releaseHistory = createExecutableCompatibilityReleaseHistory(
-        platformExecutableRegistryHistory('webhook_activation').map(
+        platformExecutableRegistryHistory().map(
           composeExecutableCompatibilityRelease,
         ),
       );
@@ -266,7 +264,6 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         lifecycleCommandRole: 'pertexo_lifecycle_command',
         operatorRole: 'pertexo_operator',
       });
-      await activateWebhookRelease();
       identity = resources.acquire(
         'identity database',
         createIdentityWorkspaceDatabase(apiConfig),
@@ -302,7 +299,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       }) satisfies ApiIdentityRuntime;
       authoring = resources.acquire(
         'workflow authoring database',
-        createCoreWorkflowAuthoringDatabase(apiConfig, 'webhook_activation'),
+        createCoreWorkflowAuthoringDatabase(apiConfig),
         (database) => database.close(),
       );
       reconciliation = resources.acquire(
@@ -317,9 +314,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       );
       workspaceDatabase = resources.acquire(
         'workspace database',
-        createWorkspaceDatabase(apiConfig, {
-          compatibilityReleases: releaseSupport.descriptions,
-        }),
+        createWorkspaceDatabase(apiConfig),
         (database) => database.close(),
       );
       encryption = new WebhookTriggerEnvelopeEncryption(
@@ -349,7 +344,6 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         database: apiConfig,
         host: '127.0.0.1',
         nodeEnv: 'test',
-        nodeCompatibilityCohort: 'webhook_activation',
         observability: {
           serviceName: 'pertexo-api-webhook-integration',
           serviceVersion: 'test',
@@ -830,128 +824,6 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       replayed: true,
     });
   }, 60_000);
-
-  async function activateWebhookRelease(): Promise<void> {
-    const descriptions = releaseHistory.descriptions;
-    const currentResult = await apiPool.query<{
-      epoch: number;
-      fingerprint: string;
-    }>(
-      `select epoch,fingerprint
-         from app.node_compatibility_current
-        where singleton=true`,
-    );
-    const current = currentResult.rows[0];
-    const currentIndex = descriptions.findIndex(
-      ({ epoch, fingerprint }) =>
-        epoch === current?.epoch && fingerprint === current.fingerprint,
-    );
-    if (currentIndex === -1)
-      throw new Error('Current webhook compatibility release is unsupported');
-    const maintenanceOwner = new FixtureResourceOwner();
-    try {
-      const maintenance = maintenanceOwner.acquire(
-        'compatibility maintenance',
-        createCompatibilityReleaseMaintenance(
-          parseDatabaseConfig({
-            connectionString: configuredDatabaseUrl(migrationBaseUrl),
-            max: 1,
-            ownerRole,
-            workerRuntimeRole: workerRole,
-          }),
-        ),
-        (value) => value.close(),
-      );
-      for (
-        let index = currentIndex + 1;
-        index < descriptions.length;
-        index += 1
-      ) {
-        const predecessor = descriptions[index - 1];
-        const target = descriptions[index];
-        if (predecessor === undefined || target === undefined)
-          throw new Error('Compatibility history is incomplete');
-        const pair = [predecessor, target] as const;
-        const probeOwner = new FixtureResourceOwner();
-        try {
-          const apiProbe = probeOwner.acquire(
-            'API compatibility probe',
-            createCompatibilityReleaseReadinessProbe(
-              parseDatabaseConfig({
-                connectionString: configuredDatabaseUrl(apiBaseUrl),
-                max: 1,
-                ownerRole,
-                workerRuntimeRole: workerRole,
-              }),
-              pair,
-            ),
-            (value) => value.close(),
-          );
-          const workerProbe = probeOwner.acquire(
-            'worker compatibility probe',
-            createCompatibilityReleaseReadinessProbe(
-              parseDatabaseConfig({
-                connectionString: configuredDatabaseUrl(workerBaseUrl),
-                max: 1,
-                ownerRole,
-                workerRuntimeRole: workerRole,
-              }),
-              pair,
-            ),
-            (value) => value.close(),
-          );
-          const deploymentId = `webhook-integration-${String(target.epoch)}-${randomUUID()}`;
-          const approvalId = randomUUID();
-          await maintenance.prepare({
-            actorId: 'webhook-integration',
-            actorKind: 'deployment',
-            expectedPredecessor: predecessor,
-            reason: `Prepare webhook integration epoch ${String(target.epoch)}`,
-            target,
-          });
-          await apiProbe.checkTarget(target);
-          await workerProbe.checkTarget(target);
-          await maintenance.recordPreactivation({
-            artifactId: `api-${String(target.epoch)}`,
-            checkId: randomUUID(),
-            deploymentId,
-            roleKind: 'api',
-            target,
-          });
-          await maintenance.recordPreactivation({
-            artifactId: `worker-${String(target.epoch)}`,
-            checkId: randomUUID(),
-            deploymentId,
-            roleKind: 'worker',
-            target,
-          });
-          await maintenance.approve({
-            actorId: 'webhook-integration',
-            approvalId,
-            deploymentId,
-            reason: `Approve webhook integration epoch ${String(target.epoch)}`,
-            requiredApiArtifacts: [`api-${String(target.epoch)}`],
-            requiredWorkerArtifacts: [`worker-${String(target.epoch)}`],
-            target,
-          });
-          await maintenance.activate({
-            activationId: randomUUID(),
-            actorId: 'webhook-integration',
-            actorKind: 'deployment',
-            approvalId,
-            expectedPredecessor: predecessor,
-            reason: `Activate webhook integration epoch ${String(target.epoch)}`,
-          });
-        } catch (error: unknown) {
-          await rethrowFixtureSetupFailure(probeOwner, error);
-        }
-        await probeOwner.close();
-      }
-    } catch (error: unknown) {
-      await rethrowFixtureSetupFailure(maintenanceOwner, error);
-    }
-    await maintenanceOwner.close();
-  }
 
   async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
     statement: string,

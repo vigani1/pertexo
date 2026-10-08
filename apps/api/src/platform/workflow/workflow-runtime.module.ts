@@ -1,10 +1,7 @@
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
-import {
-  platformServingRegistryRelease,
-  type PlatformReleaseCohort,
-} from '@pertexo/node-catalog';
+import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import {
   createWorkspaceDatabase,
   createWorkflowAuthoringDatabase,
@@ -88,7 +85,6 @@ export type ApiWorkflowRuntimeOverrides = Readonly<{
     runs?: WorkflowRunPersistence;
     runsFactory?: typeof createPostgresWorkflowRunPersistence;
   }>;
-  releaseCohort?: PlatformReleaseCohort;
   streaming?: Readonly<{
     database?: WorkspaceDatabase;
     databaseFactory?: typeof createWorkspaceDatabase;
@@ -106,12 +102,10 @@ export async function createApiWorkflowRuntime(
   overrides: ApiWorkflowRuntimeOverrides = {},
   runtime?: DatabaseRuntime,
 ): Promise<ApiWorkflowRuntime> {
-  const releaseCohort = overrides.releaseCohort ?? 'core';
   const authoring = overrides.authoring ?? {};
   const persistence = overrides.persistence ?? {};
   const streaming = overrides.streaming ?? {};
-  const { readinessSupport, variants } =
-    createCoreWorkflowCompatibility(releaseCohort);
+  const { readinessSupport, variants } = createCoreWorkflowCompatibility();
   let database: WorkflowAuthoringDatabase | undefined;
   let metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
@@ -156,13 +150,7 @@ export async function createApiWorkflowRuntime(
         )(redisUrl);
       runAdapter = (
         persistence.runsFactory ?? createPostgresWorkflowRunPersistence
-      )(
-        databaseConfig,
-        undefined,
-        notifications,
-        overrides.releaseCohort,
-        runtime,
-      );
+      )(databaseConfig, undefined, notifications, runtime);
     }
     const runPersistence = persistence.runs ?? runAdapter?.persistence;
 
@@ -170,10 +158,10 @@ export async function createApiWorkflowRuntime(
     if (streaming.streamer === undefined) {
       eventDatabase =
         streaming.database ??
-        (streaming.databaseFactory ?? createWorkspaceDatabase)(databaseConfig, {
-          compatibilityReleases: readinessSupport.descriptions,
-          ...(runtime === undefined ? {} : { runtime }),
-        });
+        (streaming.databaseFactory ?? createWorkspaceDatabase)(
+          databaseConfig,
+          runtime === undefined ? {} : { runtime },
+        );
       liveSource =
         streaming.liveSource ??
         (
@@ -227,7 +215,7 @@ export async function createApiWorkflowRuntime(
       nodeTestingDependencies: Object.freeze({
         persistence: database,
         authorization: identityRuntime.dependencies.authorization,
-        release: platformServingRegistryRelease(releaseCohort),
+        release: platformServingRegistryRelease(),
         expressionEvaluator,
       }),
       runDependencies: Object.freeze({

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  PLATFORM_RELEASE_COHORTS,
   platformBrowserNodeDefinitionCatalog,
   platformServingRegistryRelease,
 } from '../src/index.js';
@@ -14,12 +13,12 @@ function expectDeepFrozen(value: unknown): void {
 
 describe('browser-safe platform catalog projection', () => {
   it('returns deterministic metadata and schemas without runtime identities', () => {
-    const first = platformBrowserNodeDefinitionCatalog('core');
-    const second = platformBrowserNodeDefinitionCatalog('core');
+    const first = platformBrowserNodeDefinitionCatalog();
+    const second = platformBrowserNodeDefinitionCatalog();
     expect(first).toEqual(second);
     expect(first.release).toEqual({
-      epoch: platformServingRegistryRelease('core').epoch,
-      fingerprint: platformServingRegistryRelease('core').fingerprint,
+      epoch: platformServingRegistryRelease().epoch,
+      fingerprint: platformServingRegistryRelease().fingerprint,
     });
     expect(first.definitions.length).toBeGreaterThan(0);
     expect(first.definitions.map(({ definition }) => definition)).toEqual(
@@ -45,54 +44,20 @@ describe('browser-safe platform catalog projection', () => {
     }
   });
 
-  it('uses the serving release for each cohort and never admits staged additions', () => {
-    const staging = platformBrowserNodeDefinitionCatalog('http_staging');
-    const activation = platformBrowserNodeDefinitionCatalog('http_activation');
-    expect(
-      staging.definitions.some(
-        ({ definition }) => definition.key === 'http.request',
-      ),
-    ).toBe(false);
-    expect(
-      activation.definitions.some(
-        ({ definition }) => definition.key === 'http.request',
-      ),
-    ).toBe(true);
-    expect(staging.release).toEqual({
-      epoch: platformServingRegistryRelease('http_staging').epoch,
-      fingerprint: platformServingRegistryRelease('http_staging').fingerprint,
-    });
+  it('offers every node to the browser, including integrations', () => {
+    const catalog = platformBrowserNodeDefinitionCatalog();
+    const keys = new Set(
+      catalog.definitions.map(({ definition }) => definition.key),
+    );
+    for (const key of [
+      'core.manual',
+      'core.condition',
+      'core.switch',
+      'core.foreach',
+      'core.wait',
+      'http.request',
+    ])
+      expect(keys).toContain(key);
+    expectDeepFrozen(catalog);
   });
-
-  it.each(PLATFORM_RELEASE_COHORTS)(
-    'projects cohort %s deterministically from one validated release snapshot',
-    (cohort) => {
-      const first = platformBrowserNodeDefinitionCatalog(cohort);
-      const second = platformBrowserNodeDefinitionCatalog(cohort);
-      const serving = platformServingRegistryRelease(cohort);
-
-      expect(JSON.stringify(first)).toBe(JSON.stringify(second));
-      expect(first.release).toEqual({
-        epoch: serving.epoch,
-        fingerprint: serving.fingerprint,
-      });
-      expect(first.definitions.map(({ definition }) => definition)).toEqual(
-        [...first.definitions]
-          .sort((left, right) =>
-            left.definition.key < right.definition.key
-              ? -1
-              : left.definition.key > right.definition.key
-                ? 1
-                : left.definition.version - right.definition.version,
-          )
-          .map(({ definition }) => definition),
-      );
-      for (const definition of first.definitions) {
-        expect(definition).not.toHaveProperty('executor');
-        expect(definition).not.toHaveProperty('executorAbi');
-        expect(definition).not.toHaveProperty('policyReferences');
-      }
-      expectDeepFrozen(first);
-    },
-  );
 });

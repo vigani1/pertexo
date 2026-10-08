@@ -14,21 +14,11 @@ import {
 } from './editor-schedule-evidence.js';
 
 describe('schedule catalog and executable release evidence', () => {
-  const catalog = platformBrowserNodeDefinitionCatalog(
-    'schedule_activation',
-  ).release;
+  const catalog = platformBrowserNodeDefinitionCatalog().release;
   const { epoch, fingerprint } = describeExecutableCompatibilityRelease(
-    composeExecutableCompatibilityRelease(
-      platformServingRegistryRelease('schedule_activation'),
-    ),
+    composeExecutableCompatibilityRelease(platformServingRegistryRelease()),
   );
   const executable = { epoch, fingerprint };
-  const { epoch: coreEpoch, fingerprint: coreFingerprint } =
-    describeExecutableCompatibilityRelease(
-      composeExecutableCompatibilityRelease(
-        platformServingRegistryRelease('core'),
-      ),
-    );
 
   it('verifies distinct real projections from the same cohort and epoch', () => {
     expect(catalog.epoch).toBe(executable.epoch);
@@ -57,16 +47,6 @@ describe('schedule catalog and executable release evidence', () => {
       'wrong executable fingerprint at the same epoch',
       catalog,
       { ...executable, fingerprint: `node-compat:v1:sha256:${'0'.repeat(64)}` },
-    ],
-    [
-      'another catalog cohort',
-      platformBrowserNodeDefinitionCatalog('core').release,
-      executable,
-    ],
-    [
-      'another executable cohort',
-      catalog,
-      { epoch: coreEpoch, fingerprint: coreFingerprint },
     ],
   ])('rejects %s', (_name, catalogInput, executableInput) => {
     expect(() => {
