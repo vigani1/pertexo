@@ -1,6 +1,6 @@
 # ADR 003: Workspace tenancy, RLS, runtime roles, and Drizzle transaction context
 
-- **Status:** accepted
+- **Status:** accepted; superseded in part by [ADR 069](069-architecture-reset.md)
 - **Date:** 2026-08-18
 
 ## Context

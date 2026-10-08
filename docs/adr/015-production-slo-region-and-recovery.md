@@ -1,6 +1,6 @@
 # ADR 015: Initial SLO, region, and recovery strategy
 
-- **Status:** accepted
+- **Status:** accepted; superseded in part by [ADR 069](069-architecture-reset.md)
 - **Date:** 2026-08-26
 
 ## Context

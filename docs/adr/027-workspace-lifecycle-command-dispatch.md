@@ -1,6 +1,6 @@
 # ADR 027: Workspace lifecycle command dispatch
 
-- **Status:** accepted
+- **Status:** accepted; superseded in full by [ADR 069](069-architecture-reset.md)
 - **Date:** 2026-08-26
 
 ## Context
