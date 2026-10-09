@@ -328,7 +328,7 @@ export default tseslint.config(
                 'The node SDK browser entry cannot depend on infrastructure, graph runtime, or core implementations.',
             },
             {
-              group: ['node:*', './server', './server.js', './server-only.js'],
+              group: ['node:*', './server', './server.js'],
               message:
                 'The node SDK browser entry cannot import Node builtins or server-only implementation modules.',
             },

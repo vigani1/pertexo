@@ -41,6 +41,28 @@ describe('core node catalog', () => {
       expectRecursivelyFrozen(manifest);
   });
 
+  it('lists every core node, one version each', () => {
+    expect(
+      CORE_NODE_DEFINITION_REGISTRATIONS.map(
+        ({ manifest }) =>
+          `${manifest.definition.key}@${String(manifest.definition.version)}`,
+      ),
+    ).toEqual([
+      'core.schedule@1',
+      'core.webhook@1',
+      'core.wait@1',
+      'core.foreach@1',
+      'core.merge@1',
+      'core.parallel@1',
+      'core.switch@1',
+      'core.condition@1',
+      'core.manual@1',
+      'core.set@1',
+      'core.terminate@1',
+      'core.validate@1',
+    ]);
+  });
+
   it('catalogs every core definition with its own executor', () => {
     expect(CORE_NODE_CATALOG.definitions).toHaveLength(
       CORE_NODE_DEFINITION_REGISTRATIONS.length,

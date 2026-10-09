@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import { verifyCuratedTemplateManifest } from '@pertexo/templates';
 import {
   type WorkflowGraph,

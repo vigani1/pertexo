@@ -1,5 +1,3 @@
-import './server-only.js';
-
 export {
   AwsKmsEnvelopeKeyProvider,
   ConnectionEnvelopeEncryption,

@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import {
   createNodeRegistry,
   bindNodeCatalog,

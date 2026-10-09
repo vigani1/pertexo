@@ -1,5 +1,3 @@
-import './server-only.js';
-
 export { platformPortableDefinitionPolicy } from './portable-definition-policy.js';
 export { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
 

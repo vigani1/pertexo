@@ -6,8 +6,6 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "browser": "./dist/index.js",
-      "node": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./server": {
@@ -17,8 +15,7 @@
     }
   },
   "browser": {
-    "./dist/server.js": false,
-    "./dist/server-only.js": false
+    "./dist/server.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
