@@ -53,32 +53,23 @@ const FLOW_BUNDLE = Object.freeze({
 
 /**
  * One definition per step type, the way people pick steps: the catalog can
- * list several versions of a key, and a new step uses the highest version
- * that is available and publishable (or, when none can be published yet,
- * the highest available one). Unavailable keys are left out; the result
- * keeps the catalog's order of first appearance.
+ * list several versions of a key, and a new step uses the highest one. The
+ * result keeps the catalog's order of first appearance.
  */
 export function placeableDefinitions(
   definitions: readonly NodeDefinitionCatalogItem[],
 ): readonly NodeDefinitionCatalogItem[] {
   const chosen = new Map<string, NodeDefinitionCatalogItem>();
   for (const candidate of definitions) {
-    if (!candidate.available) continue;
     const key = candidate.definition.key;
     const current = chosen.get(key);
-    if (current === undefined || preferVersion(candidate, current))
+    if (
+      current === undefined ||
+      candidate.definition.version > current.definition.version
+    )
       chosen.set(key, candidate);
   }
   return [...chosen.values()];
-}
-
-function preferVersion(
-  candidate: NodeDefinitionCatalogItem,
-  current: NodeDefinitionCatalogItem,
-): boolean {
-  if (candidate.publishable !== current.publishable)
-    return candidate.publishable;
-  return candidate.definition.version > current.definition.version;
 }
 
 /**
@@ -155,13 +146,9 @@ function bundledEntries(
   return entries;
 }
 
-/** A trigger a workflow can start with: placeable now and publishable later. */
+/** A trigger a workflow can start with. */
 export function isStartTrigger(definition: NodeDefinitionCatalogItem): boolean {
-  return (
-    definition.family === 'trigger' &&
-    definition.available &&
-    definition.publishable
-  );
+  return definition.family === 'trigger';
 }
 
 export function findDefinitionByIdentity(

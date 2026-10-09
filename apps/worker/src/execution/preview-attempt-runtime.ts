@@ -2,16 +2,13 @@ import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
 } from '@pertexo/database/previews';
-import {
-  resolvePlatformNodeDefinitionForRelease,
-  PLATFORM_REGISTRY_RELEASE,
-} from '@pertexo/node-catalog';
+import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
 import {
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
-import type { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import type { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
@@ -38,12 +35,12 @@ const previewExecutableNodeSchema = z
   .strict();
 
 /**
- * Resolves the pinned definition in the served release, with no
+ * Resolves the pinned definition in the served catalog, with no
  * latest-version fallback, then executes it through the platform registry.
  */
 export function createPlatformPreviewNodeInvoker(
   dependencies: Readonly<{
-    registry: ReturnType<typeof createPlatformNodeRegistryForRelease>;
+    registry: ReturnType<typeof createPlatformNodeRegistry>;
   }>,
 ): PreviewNodeInvoker {
   const failedWith = (safeErrorCode: string): PreviewInvocationOutcome =>
@@ -66,7 +63,7 @@ export function createPlatformPreviewNodeInvoker(
       safeErrorCode: 'execution.canceled',
       status: 'canceled',
     });
-  // Construct the evaluator only after all pure release support can no longer
+  // Construct the evaluator only after all pure catalog support can no longer
   // fail, so the factory cannot strand an owned worker during setup.
   const expressionEvaluator = new JsonataEvaluator();
   const invokeOnce = async ({
@@ -89,13 +86,10 @@ export function createPlatformPreviewNodeInvoker(
       if (node.definition.key === 'core.wait' && node.definition.version === 1)
         return failedWith('preview.suspension_not_supported');
       let definition: ReturnType<
-        typeof resolvePlatformNodeDefinitionForRelease
+        typeof resolvePlatformNodeDefinition
       >['manifest'];
       try {
-        definition = resolvePlatformNodeDefinitionForRelease(
-          PLATFORM_REGISTRY_RELEASE,
-          node.definition,
-        ).manifest;
+        definition = resolvePlatformNodeDefinition(node.definition).manifest;
       } catch {
         return failedWith('preview.executable_invalid');
       }

@@ -21,10 +21,10 @@ import {
   type AcceptWorkflowRunInput,
   type AcceptPreviewRunInput,
 } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
 } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
@@ -242,7 +242,7 @@ async function seedIdentity(): Promise<void> {
     );
     const executable = buildWorkflowExecutable({
       graph: validateWorkflowGraph,
-      release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
+      catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
     });
     await client.query(
       `insert into app.workflow_versions (
@@ -636,7 +636,7 @@ function cleanupPreviewIntegrationFixture(): Promise<void> {
     await attempt('close worker pool', () => workerPool.end());
     await attempt('close owner pool', () => ownerPool.end());
     if (redisNamespaceAcquired) {
-      await attempt('release Redis namespace', () => redisNamespace.close());
+      await attempt('catalog Redis namespace', () => redisNamespace.close());
       redisNamespaceAcquired = false;
     }
     if (databaseCreated) {

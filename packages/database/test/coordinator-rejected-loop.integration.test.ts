@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { PLATFORM_REGISTRY_RELEASE } from '../../node-catalog/dist/index.js';
+import { PLATFORM_NODE_CATALOG } from '../../node-catalog/dist/index.js';
 import { rejectedLoopGraph } from './support/coordinator-rejected-loop-graph.js';
 
 // Test-only compiled facade: do not add the engine to the database runtime graph.
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
 } from '../../workflow-engine/dist/index.js';
 
 // The shared fixture supports local defaults for older suites. This suite never
@@ -29,13 +29,13 @@ const graph = () => rejectedLoopGraph(items);
 async function rejectedFixture() {
   const executable = buildWorkflowExecutable({
     graph: graph(),
-    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
+    catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
   });
   const versionId = fixture.randomUUID();
   const workflowId = fixture.randomUUID();
   const pinned = buildWorkflowExecutable({
     graph: graph(),
-    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
+    catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
   });
   await fixture.asOwner(fixture.workspaceA, async (client) => {
     await client.query(

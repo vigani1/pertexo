@@ -4,8 +4,8 @@ import {
 } from '@pertexo/database/triggers';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { createAwsWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import type { ApiConfig } from '../config/api-config.js';
 import { initialCheckpointFactory } from '@pertexo/execution';
@@ -34,9 +34,7 @@ export async function createApiWebhookRuntime(
   runtime?: DatabaseRuntime,
   factories: ApiWebhookRuntimeFactories = {},
 ): Promise<ApiWebhookRuntime> {
-  const release = composeExecutableCompatibilityRelease(
-    PLATFORM_REGISTRY_RELEASE,
-  );
+  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   let database: WebhookTriggerDatabase | undefined;
   let envelope: WebhookEnvelopeRuntime | undefined;
   try {
@@ -64,7 +62,7 @@ export async function createApiWebhookRuntime(
       ingress: Object.freeze({
         database: acquiredDatabase,
         encryption: acquiredEnvelope.encryption,
-        checkpointFactory: initialCheckpointFactory({ release }),
+        checkpointFactory: initialCheckpointFactory({ catalog }),
       }),
       close: () => {
         closePromise ??= closeWebhookResources(

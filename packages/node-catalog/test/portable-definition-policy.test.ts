@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PLATFORM_REGISTRY_RELEASE } from '../src/registry.js';
 import { platformPortableDefinitionPolicy } from '../src/server.js';
 
 describe('registered portable definition policy', () => {
   it('derives exact registered slots/config schemas without executor/credential access', () => {
-    const policy = platformPortableDefinitionPolicy(PLATFORM_REGISTRY_RELEASE);
+    const policy = platformPortableDefinitionPolicy();
     const http = policy.definitions.find(({ key }) => key === 'http.request');
     expect(http?.slots).toEqual([
       { slot: 'http_headers', providerKey: 'http', authType: 'http_headers' },
@@ -47,12 +46,9 @@ describe('registered portable definition policy', () => {
       }),
     ).toBe(false);
     expect(http?.validateConfig({ ...config, unexpected: true })).toBe(false);
-    expect(
-      policy.selectionFingerprint([{ key: 'http.request', version: 1 }]),
-    ).toMatch(/^node-select:v1:sha256:[a-f0-9]{64}$/u);
   });
-  it('uses independently declared provider policies and refuses unsupported releases', () => {
-    const policy = platformPortableDefinitionPolicy(PLATFORM_REGISTRY_RELEASE);
+  it('uses independently declared provider policies', () => {
+    const policy = platformPortableDefinitionPolicy();
     expect(
       policy.definitions.find(({ key }) => key === 'email.send_notification')
         ?.slots,
@@ -72,6 +68,5 @@ describe('registered portable definition policy', () => {
         authType: 'slack_bot_token',
       },
     ]);
-    expect(() => platformPortableDefinitionPolicy({})).toThrow();
   });
 });

@@ -1,4 +1,3 @@
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import type { AcceptedPreviewRun } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -53,12 +52,7 @@ function controller() {
   };
   return {
     controller: new NodeTestingController(
-      new TestWorkflowNodeUseCase(
-        persistence,
-        authorization,
-        PLATFORM_REGISTRY_RELEASE,
-        () => acceptedAt,
-      ),
+      new TestWorkflowNodeUseCase(persistence, authorization, () => acceptedAt),
       new GetPreviewRunUseCase(persistence, authorization),
     ),
     persistence,

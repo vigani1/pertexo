@@ -3,11 +3,6 @@ import type { ReactNode } from 'react';
 import { StepTile } from '@/features/catalog/presentation.public';
 import { STEP_DRAG_TYPE, type StepChoice } from '../../model/step-catalog';
 
-const lifecycleWords = {
-  deprecated: 'Deprecated',
-  migration_required: 'Needs migration',
-} as const;
-
 /** The shape every add-step row shares: a tile, its words and a trailing mark. */
 export const stepRowClass =
   'group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left outline-none hover:bg-white/5 focus-visible:bg-white/5 focus-ring';
@@ -36,11 +31,6 @@ export function AddStepItem({
 }: Readonly<{ choice: StepChoice; onAdd: (choice: StepChoice) => void }>) {
   const { definition, step } = choice;
   const needsConnection = definition.connectionRequirements.length > 0;
-  const lifecycle =
-    definition.lifecycle === 'deprecated' ||
-    definition.lifecycle === 'migration_required'
-      ? lifecycleWords[definition.lifecycle]
-      : undefined;
   return (
     <button
       type="button"
@@ -61,13 +51,7 @@ export function AddStepItem({
       }}
     >
       <StepTile step={step} size="sm" />
-      <StepRowText name={step.name} description={step.description}>
-        {lifecycle === undefined ? null : (
-          <span className="mt-0.5 block font-mono text-[0.62rem] text-warning">
-            {lifecycle}
-          </span>
-        )}
-      </StepRowText>
+      <StepRowText name={step.name} description={step.description} />
       {needsConnection ? (
         <PlugIcon
           aria-label="Needs a connection"

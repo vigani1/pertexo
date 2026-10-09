@@ -21,8 +21,7 @@ import {
   type SecureHttpTransportResponse,
   type SlackClient,
 } from '@pertexo/integrations/server';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import type { NodeConnectionRuntime } from '@pertexo/node-sdk/server';
 import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
 import type { Attributes, Meter, Span, Tracer } from '@opentelemetry/api';
@@ -199,70 +198,67 @@ export async function createHttpNodeAttemptProofRuntime(
         },
       },
     );
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE,
-      {
-        httpRequest: { httpClient },
-        httpRequestTelemetry: createProductionHttpProviderTelemetry({
-          meter,
-          tracer,
-        }),
-        slackSendMessage: {
-          client: {
-            sendMessage: async (input) => {
-              await input.beforeDispatch();
-              slackRequests.push({
-                botToken: input.botToken,
-                channelId: input.channelId,
-                text: input.text,
+    const registry = createPlatformNodeRegistry({
+      httpRequest: { httpClient },
+      httpRequestTelemetry: createProductionHttpProviderTelemetry({
+        meter,
+        tracer,
+      }),
+      slackSendMessage: {
+        client: {
+          sendMessage: async (input) => {
+            await input.beforeDispatch();
+            slackRequests.push({
+              botToken: input.botToken,
+              channelId: input.channelId,
+              text: input.text,
+            });
+            if (options.sendSlackMessage !== undefined)
+              return options.sendSlackMessage({
+                ...input,
+                beforeDispatch: () => Promise.resolve(),
               });
-              if (options.sendSlackMessage !== undefined)
-                return options.sendSlackMessage({
-                  ...input,
-                  beforeDispatch: () => Promise.resolve(),
-                });
-              return {
-                kind: 'succeeded',
-                channelId: input.channelId,
-                messageTs: '1724412345.000100',
-              };
-            },
-          },
-        },
-        emailSendNotification: {
-          client: {
-            sendNotification: async (input) => {
-              await input.beforeDispatch();
-              emailRequests.push({
-                apiKey: input.apiKey,
-                fromEmail: input.fromEmail,
-                toEmail: input.toEmail,
-                subject: input.subject,
-                text: input.text,
-                idempotencyKey: input.idempotencyKey,
-              });
-              if (options.sendEmailNotification !== undefined)
-                return options.sendEmailNotification({
-                  ...input,
-                  beforeDispatch: () => Promise.resolve(),
-                });
-              const scripted =
-                options.emailResponseScript?.[emailRequests.length - 1];
-              if (scripted !== undefined) return scripted;
-              if (
-                options.emailResponseScript !== undefined &&
-                emailRequests.length > options.emailResponseScript.length
-              )
-                throw new Error('Email response script was exhausted');
-              return {
-                kind: 'succeeded',
-                emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
-              };
-            },
+            return {
+              kind: 'succeeded',
+              channelId: input.channelId,
+              messageTs: '1724412345.000100',
+            };
           },
         },
       },
-    );
+      emailSendNotification: {
+        client: {
+          sendNotification: async (input) => {
+            await input.beforeDispatch();
+            emailRequests.push({
+              apiKey: input.apiKey,
+              fromEmail: input.fromEmail,
+              toEmail: input.toEmail,
+              subject: input.subject,
+              text: input.text,
+              idempotencyKey: input.idempotencyKey,
+            });
+            if (options.sendEmailNotification !== undefined)
+              return options.sendEmailNotification({
+                ...input,
+                beforeDispatch: () => Promise.resolve(),
+              });
+            const scripted =
+              options.emailResponseScript?.[emailRequests.length - 1];
+            if (scripted !== undefined) return scripted;
+            if (
+              options.emailResponseScript !== undefined &&
+              emailRequests.length > options.emailResponseScript.length
+            )
+              throw new Error('Email response script was exhausted');
+            return {
+              kind: 'succeeded',
+              emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
+            };
+          },
+        },
+      },
+    });
     const executionRegistry: NodeExecutionRegistry =
       options.beforeRegistryExecute === undefined
         ? registry

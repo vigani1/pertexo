@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  platformBrowserNodeDefinitionCatalog,
-  PLATFORM_REGISTRY_RELEASE,
-} from '../src/index.js';
+import { platformBrowserNodeDefinitionCatalog } from '../src/index.js';
 
 function expectDeepFrozen(value: unknown): void {
   if (value === null || typeof value !== 'object') return;
@@ -16,10 +13,6 @@ describe('browser-safe platform catalog projection', () => {
     const first = platformBrowserNodeDefinitionCatalog();
     const second = platformBrowserNodeDefinitionCatalog();
     expect(first).toEqual(second);
-    expect(first.release).toEqual({
-      epoch: PLATFORM_REGISTRY_RELEASE.epoch,
-      fingerprint: PLATFORM_REGISTRY_RELEASE.fingerprint,
-    });
     expect(first.definitions.length).toBeGreaterThan(0);
     expect(first.definitions.map(({ definition }) => definition)).toEqual(
       [...first.definitions]
@@ -39,8 +32,6 @@ describe('browser-safe platform catalog projection', () => {
       expect(definition.configSchema).toBeTypeOf('object');
       expect(definition.inputSchema).toBeTypeOf('object');
       expect(definition.outputSchema).toBeTypeOf('object');
-      expect(definition.publishable).toBe(true);
-      expect(definition.available).toBe(definition.lifecycle === 'active');
     }
   });
 

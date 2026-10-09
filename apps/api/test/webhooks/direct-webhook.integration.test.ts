@@ -13,12 +13,12 @@ import {
   WebhookTriggerEnvelopeEncryption,
   type WebhookEnvelopeKeyProvider,
 } from '@pertexo/integrations/server';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { Pool, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -149,9 +149,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   let owner!: Pool;
   let apiPool!: Pool;
   let apiConfig!: ReturnType<typeof parseDatabaseConfig>;
-  const release = composeExecutableCompatibilityRelease(
-    PLATFORM_REGISTRY_RELEASE,
-  );
+  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   let identity!: ReturnType<typeof createIdentityWorkspaceDatabase>;
   let authoring!: ReturnType<typeof createCoreWorkflowAuthoringDatabase>;
   let reconciliation!: ReturnType<
@@ -336,7 +334,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
               database: ingressDatabase,
               encryption,
               checkpointFactory: (projection) =>
-                createInitialCheckpoint(projection, { release }),
+                createInitialCheckpoint(projection, { catalog }),
             },
             close: () => Promise.resolve(),
           },

@@ -1,7 +1,7 @@
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 
 type Query = (
@@ -461,13 +461,13 @@ async function insertCompiledWorkflow(
     graph: unknown;
     identity: WorkflowIdentity;
     name: string;
-    release: Parameters<typeof composeExecutableCompatibilityRelease>[0];
+    catalog: Parameters<typeof composeExecutableCatalog>[0];
     workspaceId: string;
   }>,
 ): Promise<void> {
   const executable = buildWorkflowExecutable({
     graph: input.graph,
-    release: composeExecutableCompatibilityRelease(input.release),
+    catalog: composeExecutableCatalog(input.catalog),
   });
   await query(
     `insert into app.workflows (id, workspace_id, name, created_by)
@@ -504,7 +504,7 @@ export async function seedSerialForEachWorkflow(
     ...input,
     graph: forEachGraph(1),
     name: 'Serial For Each continuation proof',
-    release: PLATFORM_REGISTRY_RELEASE,
+    catalog: PLATFORM_NODE_CATALOG,
   });
 }
 
@@ -578,7 +578,7 @@ export async function seedStructuredForEachWorkflow(
     identity: input.identity,
     graph,
     name: `Structured ${input.kind} For Each continuation proof`,
-    release: PLATFORM_REGISTRY_RELEASE,
+    catalog: PLATFORM_NODE_CATALOG,
   });
 }
 
@@ -610,7 +610,7 @@ export async function seedCoordinatorWorkflowFixtures(
     graph: linearGraph(),
     identity: identities.retained,
     name: 'Coordinator proof',
-    release: PLATFORM_REGISTRY_RELEASE,
+    catalog: PLATFORM_NODE_CATALOG,
     workspaceId: identities.workspaceId,
   });
   await Promise.all([
@@ -619,7 +619,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: forEachGraph(),
       identity: identities.forEach,
       name: 'For Each recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE,
+      catalog: PLATFORM_NODE_CATALOG,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -627,7 +627,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: waitGraph(),
       identity: identities.wait,
       name: 'Wait control precedence proof',
-      release: PLATFORM_REGISTRY_RELEASE,
+      catalog: PLATFORM_NODE_CATALOG,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -635,7 +635,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: nestedParallelGraph(),
       identity: identities.nestedParallel,
       name: 'Nested Parallel admission recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE,
+      catalog: PLATFORM_NODE_CATALOG,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -643,7 +643,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: parallelGraph(),
       identity: identities.parallel,
       name: 'Parallel Merge recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE,
+      catalog: PLATFORM_NODE_CATALOG,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -651,7 +651,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: branchGraph('switch'),
       identity: identities.switch,
       name: 'Switch recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE,
+      catalog: PLATFORM_NODE_CATALOG,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -659,7 +659,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: branchGraph('condition'),
       identity: identities.condition,
       name: 'Condition recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE,
+      catalog: PLATFORM_NODE_CATALOG,
       workspaceId: identities.workspaceId,
     }),
   ]);

@@ -1,7 +1,7 @@
 import {
-  createRegistryRelease,
-  parseRegistryRelease,
-  type RegistryRelease,
+  createNodeCatalog,
+  parseNodeCatalog,
+  type NodeCatalog,
 } from '@pertexo/node-sdk';
 import {
   BASELINE_RUNTIME_POLICIES,
@@ -10,19 +10,18 @@ import {
   normalizeError,
 } from './foundation.js';
 
-export function composeExecutableCompatibilityRelease(
-  nodeReleaseInput: unknown,
-): RegistryRelease {
+export function composeExecutableCatalog(
+  nodeCatalogInput: unknown,
+): NodeCatalog {
   try {
-    const nodeRelease = parseRegistryRelease(nodeReleaseInput);
-    if (nodeRelease.policies.some(({ key }) => key.startsWith('engine.')))
-      fail('node release must not declare engine runtime policies');
-    return createRegistryRelease({
-      epoch: nodeRelease.epoch,
-      definitions: nodeRelease.definitions,
-      executors: nodeRelease.executors,
+    const nodeCatalog = parseNodeCatalog(nodeCatalogInput);
+    if (nodeCatalog.policies.some(({ key }) => key.startsWith('engine.')))
+      fail('node catalog must not declare engine runtime policies');
+    return createNodeCatalog({
+      definitions: nodeCatalog.definitions,
+      executors: nodeCatalog.executors,
       policies: [
-        ...nodeRelease.policies,
+        ...nodeCatalog.policies,
         ...globalPolicies(BASELINE_RUNTIME_POLICIES),
       ],
     });

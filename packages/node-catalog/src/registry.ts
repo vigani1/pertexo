@@ -8,7 +8,7 @@ import {
   EMAIL_SEND_NOTIFICATION_POLICY,
 } from '@pertexo/integrations';
 import {
-  createRegistryRelease,
+  createNodeCatalog,
   type ExecutorManifest,
   type NodeManifest,
 } from '@pertexo/node-sdk';
@@ -21,7 +21,7 @@ import {
   CORE_PARALLEL_MANIFEST,
   CORE_PARALLEL_MANIFEST_V2,
   CORE_PARALLEL_MANIFEST_V3,
-  CORE_REGISTRY_RELEASE,
+  CORE_NODE_CATALOG,
   CORE_SCHEDULE_MANIFEST,
   CORE_SCHEDULE_MANIFEST_V2,
   CORE_SCHEDULE_MANIFEST_V3,
@@ -31,7 +31,7 @@ import {
   CORE_WEBHOOK_MANIFEST,
 } from '@pertexo/nodes-core';
 
-/** Every node beyond the three in the core release. */
+/** Every node beyond the three in the core catalog. */
 const PLATFORM_MANIFESTS: readonly NodeManifest[] = [
   HTTP_REQUEST_MANIFEST,
   CORE_CONDITION_MANIFEST,
@@ -54,29 +54,23 @@ const PLATFORM_MANIFESTS: readonly NodeManifest[] = [
 ];
 
 function executorFor(manifest: NodeManifest): ExecutorManifest {
-  if (manifest.executorAbi === undefined)
-    throw new Error(
-      `${manifest.definition.key} manifest must pin its executor ABI`,
-    );
   return {
     executor: manifest.executor,
     abiVersion: manifest.executorAbi,
     definitions: [manifest.definition],
-    lifecycle: 'active',
     policyReferences: manifest.policyReferences,
   };
 }
 
-/** The one catalog every API and worker serves: every node, all active. */
-export const PLATFORM_REGISTRY_RELEASE = createRegistryRelease({
-  epoch: 1,
-  definitions: [...CORE_REGISTRY_RELEASE.definitions, ...PLATFORM_MANIFESTS],
+/** The one catalog every API and worker serves, with every node. */
+export const PLATFORM_NODE_CATALOG = createNodeCatalog({
+  definitions: [...CORE_NODE_CATALOG.definitions, ...PLATFORM_MANIFESTS],
   executors: [
-    ...CORE_REGISTRY_RELEASE.executors,
+    ...CORE_NODE_CATALOG.executors,
     ...PLATFORM_MANIFESTS.map(executorFor),
   ],
   policies: [
-    ...CORE_REGISTRY_RELEASE.policies,
+    ...CORE_NODE_CATALOG.policies,
     HTTP_REQUEST_NETWORK_POLICY,
     HTTP_REQUEST_VALUE_POLICY,
     SLACK_SEND_MESSAGE_POLICY,

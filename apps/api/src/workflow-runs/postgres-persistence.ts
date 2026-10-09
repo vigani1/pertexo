@@ -14,10 +14,10 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { initialCheckpointFactory } from '@pertexo/execution';
 import {
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 
@@ -48,9 +48,7 @@ export function createPostgresWorkflowRunPersistence(
   notifications?: RunEventNotificationPublisher,
   runtime?: DatabaseRuntime,
 ): PostgresWorkflowRunPersistence {
-  const release = composeExecutableCompatibilityRelease(
-    PLATFORM_REGISTRY_RELEASE,
-  );
+  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const database = databaseInput ?? createWorkflowRunDatabase(config, runtime);
   const persistence: WorkflowRunPersistence = Object.freeze({
     usageCapacity: async (
@@ -65,9 +63,9 @@ export function createPostgresWorkflowRunPersistence(
       }
     },
     start: (input: StartWorkflowRunCommand) =>
-      executeAcceptance(database, input, release, notifications),
+      executeAcceptance(database, input, catalog, notifications),
     replay: (input: ReplayWorkflowRunCommand) =>
-      executeAcceptance(database, input, release, notifications),
+      executeAcceptance(database, input, catalog, notifications),
     get: async (input: Readonly<{ workspaceId: string; runId: string }>) => {
       try {
         return await database.get(input);
@@ -167,7 +165,7 @@ type WorkflowRunAcceptanceResult = Awaited<
 async function executeAcceptance(
   database: WorkflowRunDatabase,
   input: StartWorkflowRunCommand | ReplayWorkflowRunCommand,
-  release: ReturnType<typeof composeExecutableCompatibilityRelease>,
+  catalog: ReturnType<typeof composeExecutableCatalog>,
   notifications: RunEventNotificationPublisher | undefined,
 ): Promise<WorkflowRunAcceptanceResult> {
   try {
@@ -175,11 +173,11 @@ async function executeAcceptance(
       'workflowId' in input
         ? await database.start({
             ...input,
-            checkpointFactory: initialCheckpointFactory({ release }),
+            checkpointFactory: initialCheckpointFactory({ catalog }),
           })
         : await database.replay({
             ...input,
-            checkpointFactory: initialCheckpointFactory({ release }),
+            checkpointFactory: initialCheckpointFactory({ catalog }),
           });
     if (!result.replayed)
       await publishHint(notifications, {

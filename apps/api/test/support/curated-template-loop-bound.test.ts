@@ -1,10 +1,10 @@
 import { expect, it } from 'vitest';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
 } from '@pertexo/workflow-engine';
 import { curatedScheduleInputCase } from './curated-template-worker-evidence.js';
@@ -29,7 +29,7 @@ it('the actual reviewed For Each fails its pinned bound before any body admissio
   };
   const executable = buildWorkflowExecutable({
     graph,
-    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
+    catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
   });
   const version = '00000000-0000-4000-8000-000000000001';
   const base = {

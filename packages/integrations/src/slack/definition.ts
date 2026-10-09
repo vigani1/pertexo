@@ -21,7 +21,6 @@ export const SLACK_SEND_MESSAGE_POLICY = Object.freeze({
 });
 
 export const SLACK_SEND_MESSAGE_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: SLACK_SEND_MESSAGE_DEFINITION,
   family: 'action',
   configVersion: 1,
@@ -41,7 +40,6 @@ export const SLACK_SEND_MESSAGE_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'unsafe',
   resourceClass: 'io',
   capabilities: Object.freeze(['external_http', 'side_effect_disclosure']),
-  lifecycle: 'active',
   executor: SLACK_SEND_MESSAGE_EXECUTOR,
   executorAbi: 2,
   policyReferences: Object.freeze([SLACK_SEND_MESSAGE_POLICY]),

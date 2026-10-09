@@ -1,10 +1,10 @@
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   parseCheckpoint,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { WorkflowPublishedVersionConflictError } from '@pertexo/database/runs';
@@ -37,11 +37,9 @@ const runId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const actorId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 function executable() {
-  const release = composeExecutableCompatibilityRelease(
-    PLATFORM_REGISTRY_RELEASE,
-  );
+  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   return buildWorkflowExecutable({
-    release,
+    catalog,
     graph: {
       schemaVersion: 1,
       settings: { maxRunDurationMs: 60_000 },
@@ -79,9 +77,7 @@ function executable() {
 }
 
 function forEachExecutable() {
-  const release = composeExecutableCompatibilityRelease(
-    PLATFORM_REGISTRY_RELEASE,
-  );
+  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const setNode = (id: string, inputMappings: Record<string, unknown>) => ({
     id,
     definition: { key: 'core.set', version: 1 },
@@ -92,9 +88,9 @@ function forEachExecutable() {
     connectionRefs: {},
   });
   return {
-    release,
+    catalog,
     compiled: buildWorkflowExecutable({
-      release,
+      catalog,
       graph: {
         schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
@@ -181,8 +177,8 @@ function forEachExecutable() {
 }
 
 function parallelExecutable(version: 1 | 2 | 3) {
-  const nodeRelease = PLATFORM_REGISTRY_RELEASE;
-  const release = composeExecutableCompatibilityRelease(nodeRelease);
+  const nodeRelease = PLATFORM_NODE_CATALOG;
+  const catalog = composeExecutableCatalog(nodeRelease);
   const ordinaryNode = (id: string) => ({
     id,
     definition: { key: 'core.set', version: 1 },
@@ -193,9 +189,9 @@ function parallelExecutable(version: 1 | 2 | 3) {
     connectionRefs: {},
   });
   return {
-    release,
+    catalog,
     compiled: buildWorkflowExecutable({
-      release,
+      catalog,
       graph: {
         schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
@@ -768,11 +764,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
   });
 
   it('initializes the checkpoint for a verified Condition executable', () => {
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const compiled = buildWorkflowExecutable({
-      release,
+      catalog,
       graph: {
         schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
@@ -839,7 +833,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         executableJson: compiled.envelope,
       },
       {
-        release,
+        catalog,
       },
     );
 
@@ -850,11 +844,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
   });
 
   it('initializes the checkpoint for a verified Switch executable', () => {
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const compiled = buildWorkflowExecutable({
-      release,
+      catalog,
       graph: {
         schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },
@@ -913,7 +905,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         executableJson: compiled.envelope,
       },
       {
-        release,
+        catalog,
       },
     );
 
@@ -924,7 +916,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
   });
 
   it('initializes the checkpoint for a verified For Each executable', () => {
-    const { compiled, release } = forEachExecutable();
+    const { compiled, catalog } = forEachExecutable();
     const checkpoint = createInitialCheckpoint(
       {
         id: workflowVersionId,
@@ -937,7 +929,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         executableJson: compiled.envelope,
       },
       {
-        release,
+        catalog,
       },
     );
 
@@ -950,13 +942,13 @@ describe('PostgreSQL workflow run persistence adapter', () => {
   it.each([1, 2, 3] as const)(
     'initializes the checkpoint for a verified Parallel V%s executable',
     (version) => {
-      const { compiled, release } = parallelExecutable(version);
+      const { compiled, catalog } = parallelExecutable(version);
       const checkpoint = createInitialCheckpoint(
         {
           ...projection(compiled),
         },
         {
-          release,
+          catalog,
         },
       );
 
@@ -969,15 +961,13 @@ describe('PostgreSQL workflow run persistence adapter', () => {
 
   it('initializes the checkpoint for a verified root executable', () => {
     const compiled = executable();
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const checkpoint = createInitialCheckpoint(
       {
         ...projection(compiled),
       },
       {
-        release,
+        catalog,
       },
     );
 
@@ -986,9 +976,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
 
   it('rejects an executable whose checksum does not match', () => {
     const compiled = executable();
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     expect(() =>
       createInitialCheckpoint(
         {
@@ -996,7 +984,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
           checksum: '0'.repeat(64),
         },
         {
-          release,
+          catalog,
         },
       ),
     ).toThrow(WorkflowEngineError);

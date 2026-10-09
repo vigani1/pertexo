@@ -1,4 +1,4 @@
-import type { RegistryRelease } from '@pertexo/node-sdk';
+import type { NodeCatalog } from '@pertexo/node-sdk';
 import {
   canonicalJson,
   type WorkflowGraph,
@@ -133,18 +133,15 @@ export function authoringGraph(tree: RawExecutableGraph): unknown {
 function validatePin(
   raw: Record<string, unknown>,
   node: WorkflowNode,
-  release: RegistryRelease,
+  catalog: NodeCatalog,
 ): WorkflowExecutableNode {
   const definition = parseIdentity(raw.definition, 'node definition');
   const executor = parseIdentity(raw.executor, 'node executor');
   const policies = parsePolicies(raw.policyReferences);
   const selectedSideEffectClass = parseSideEffectClass(raw.sideEffectClass);
-  const definitionPin = definitionManifest(release, definition);
-  const executorPin = executorManifest(release, executor);
+  const definitionPin = definitionManifest(catalog, definition);
+  const executorPin = executorManifest(catalog, executor);
   if (
-    (definitionPin.lifecycle !== 'active' &&
-      definitionPin.lifecycle !== 'deprecated') ||
-    executorPin.lifecycle !== 'active' ||
     !executorPin.definitions.some((value) => sameIdentity(value, definition)) ||
     !sameIdentity(node.definition, definition) ||
     !sameIdentity(definitionPin.executor, executor) ||
@@ -174,17 +171,17 @@ function validatePin(
 export function validateExecutableGraph(
   tree: RawExecutableGraph,
   graph: WorkflowGraph,
-  release: RegistryRelease,
+  catalog: NodeCatalog,
 ): WorkflowExecutableGraph {
   const index = graphValidationIndex(graph);
-  assertGraphPorts(graph, release, index);
+  assertGraphPorts(graph, catalog, index);
   assertBranchesDoNotReconverge(graph, index);
   const parsedById = new Map(graph.nodes.map((node) => [node.id, node]));
   const nodes = tree.nodes.map((rawNode) => {
     if (typeof rawNode.raw.id !== 'string') fail('node ID is invalid');
     const node = parsedById.get(rawNode.raw.id);
     if (node === undefined) fail('node is absent from parsed graph');
-    const executable = validatePin(rawNode.raw, node, release);
+    const executable = validatePin(rawNode.raw, node, catalog);
     if (rawNode.structured === undefined && node.structured === undefined)
       return executable;
     if (rawNode.structured === undefined || node.structured === undefined)
@@ -192,7 +189,7 @@ export function validateExecutableGraph(
     const body = validateExecutableGraph(
       rawNode.structured.body,
       node.structured.body,
-      release,
+      catalog,
     );
     return {
       ...executable,

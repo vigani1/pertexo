@@ -181,7 +181,6 @@ const catalog = catalogOf([
   catalogDefinition('core.webhook', 'trigger'),
   catalogDefinition('http.request', 'action'),
   catalogDefinition('slack.send_message', 'action'),
-  catalogDefinition('core.schedule', 'trigger', { available: false }),
 ]);
 
 function StarterHarness({

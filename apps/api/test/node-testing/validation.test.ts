@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { nodeValidationResponseSchema } from '@pertexo/contracts/node-testing';
 import { describe, expect, it } from 'vitest';
 
@@ -41,7 +40,6 @@ describe('pure node preview validation', () => {
     const result = await prepareNodeValidation({
       graph: graph(),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
       sampleInput: {
         body: { encoding: 'utf8', value: 'hello' },
       },
@@ -69,7 +67,6 @@ describe('pure node preview validation', () => {
       const result = await prepareNodeValidation({
         graph: graph({ configVersion }),
         nodeId: 'http',
-        release: PLATFORM_REGISTRY_RELEASE,
         sampleInput: {
           body: { encoding: 'utf8', value: 'hello' },
         },
@@ -90,7 +87,6 @@ describe('pure node preview validation', () => {
         connectionRefs: { unexpected: randomUUID() },
       }),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
       sampleInput: {},
     });
     expect(result.issues).toEqual(
@@ -126,7 +122,6 @@ describe('pure node preview validation', () => {
     const missing = await prepareNodeValidation({
       graph: graph(),
       nodeId: 'missing',
-      release: PLATFORM_REGISTRY_RELEASE,
     });
     expect(missing.issues).toEqual([
       expect.objectContaining({ code: 'node.not_found_or_ambiguous' }),
@@ -160,7 +155,6 @@ describe('pure node preview validation', () => {
         ],
       },
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
     });
 
     expect(ambiguous.issues).toEqual([
@@ -176,7 +170,6 @@ describe('pure node preview validation', () => {
     const unknown = await prepareNodeValidation({
       graph: graph({ definition: { key: 'future.node', version: 1 } }),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
     });
 
     expect(unknown.issues).toEqual([
@@ -188,7 +181,6 @@ describe('pure node preview validation', () => {
     const result = await prepareNodeValidation({
       graph: graph({ connectionRefs: { extra: randomUUID() } }),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
     });
 
     expect(
@@ -211,7 +203,6 @@ describe('pure node preview validation', () => {
     const missing = await prepareNodeValidation({
       graph: graph(),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
       sampleInput: {},
     });
     const failed = await prepareNodeValidation({
@@ -226,7 +217,6 @@ describe('pure node preview validation', () => {
         },
       }),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
       sampleInput: {},
       expressionEvaluator: {
         evaluate: () =>
@@ -262,7 +252,6 @@ describe('pure node preview validation', () => {
         inputMappings: { body: { kind: 'literal', value: null } },
       }),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
       sampleInput: {},
     });
 
@@ -276,7 +265,6 @@ describe('pure node preview validation', () => {
     const result = await prepareNodeValidation({
       graph: graph(),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
       deferInput: true,
     });
 
@@ -292,7 +280,6 @@ describe('pure node preview validation', () => {
     const result = await prepareNodeValidation({
       graph: graph({ connectionRefs }),
       nodeId: 'http',
-      release: PLATFORM_REGISTRY_RELEASE,
       sampleInput: {},
     });
     if (!('disclosure' in result))

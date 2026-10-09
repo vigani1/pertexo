@@ -223,8 +223,6 @@ export const CONTROLLED_HTTP_NOTIFICATION_MANIFEST: WorkflowPortableManifest = {
         configVersion: 1,
       },
     ],
-    selectionFingerprint:
-      'node-select:v1:sha256:8d088833aecf943752bcd78cf18475e682cfae0b62f1b6445fb709fc4bd53513',
   },
   connectionSlots: [
     {

@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 
 import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
@@ -37,7 +36,6 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
         connectionString: databaseUrl(workerUrl),
         max: 6,
       }),
-      registryRelease: PLATFORM_REGISTRY_RELEASE,
       runtimeCapabilities: {
         connections: () => ({ resolve: connectionResolve }),
         artifacts: () => ({ write: artifactWrite }),
@@ -128,7 +126,6 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
         connectionString: databaseUrl(workerUrl),
         max: 6,
       }),
-      registryRelease: PLATFORM_REGISTRY_RELEASE,
       runtimeCapabilities: {
         connections: () => ({ resolve: connectionResolve }),
         artifacts: () => ({ write: artifactWrite }),

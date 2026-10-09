@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createRegistryRelease, type RegistryRelease } from '@pertexo/node-sdk';
+import { createNodeCatalog, type NodeCatalog } from '@pertexo/node-sdk';
 
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   parseWorkflowExecutable,
 } from '../src/index.js';
 import {
@@ -16,7 +16,7 @@ import {
   boundedPolicy,
   graph,
   jsonataPolicy,
-  nodeRelease,
+  nodeCatalog,
 } from './executable-workflow.fixtures.js';
 import {
   chainGraph,
@@ -24,41 +24,32 @@ import {
   occurredAt,
 } from './support/advance-workflow.fixture.js';
 
-function recreateRelease(
-  release: RegistryRelease,
-  changes: Partial<
-    Pick<RegistryRelease, 'definitions' | 'executors' | 'policies'>
-  >,
-): RegistryRelease {
-  return createRegistryRelease({
-    epoch: release.epoch,
-    definitions: changes.definitions ?? release.definitions,
-    executors: changes.executors ?? release.executors,
-    policies: changes.policies ?? release.policies,
+function recreateCatalog(
+  catalog: NodeCatalog,
+  changes: Partial<Pick<NodeCatalog, 'definitions' | 'executors' | 'policies'>>,
+): NodeCatalog {
+  return createNodeCatalog({
+    definitions: changes.definitions ?? catalog.definitions,
+    executors: changes.executors ?? catalog.executors,
+    policies: changes.policies ?? catalog.policies,
   });
 }
 
-function baselineRelease(): RegistryRelease {
-  return composeExecutableCompatibilityRelease(nodeRelease());
+function baselineCatalog(): NodeCatalog {
+  return composeExecutableCatalog(nodeCatalog());
 }
 
 describe('expanded public workflow-engine boundaries', () => {
-  it('rejects exact-shaped executable envelope identity drift', () => {
-    const release = baselineRelease();
-    const compiled = buildWorkflowExecutable({ graph: graph(), release });
+  it('rejects an unknown schema version or extra envelope fields', () => {
+    const catalog = baselineCatalog();
+    const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
 
     for (const mutate of [
       (envelope: Record<string, unknown>) => {
         envelope.schemaVersion = 3;
       },
       (envelope: Record<string, unknown>) => {
-        envelope.compatibilityReleaseEpoch = release.epoch + 1;
-      },
-      (envelope: Record<string, unknown>) => {
-        envelope.configMigrations = [{}];
-      },
-      (envelope: Record<string, unknown>) => {
-        envelope.compatibilitySelectionFingerprint = 'mismatched-selection';
+        envelope.unexpected = 1;
       },
     ]) {
       const envelope = structuredClone(compiled.envelope) as unknown as Record<
@@ -69,54 +60,27 @@ describe('expanded public workflow-engine boundaries', () => {
       expect(() =>
         parseWorkflowExecutable({
           envelope,
-          release: release,
+          catalog: catalog,
         }),
       ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     }
   });
 
-  it('publishes deprecated definitions but rejects incompatible config and ABI pins', () => {
-    const release = baselineRelease();
-    const deprecated = recreateRelease(release, {
-      definitions: release.definitions.map((definition) =>
-        definition.definition.key === 'core.set'
-          ? { ...definition, lifecycle: 'deprecated' as const }
-          : definition,
-      ),
-    });
-    expect(
-      buildWorkflowExecutable({ graph: graph(), release: deprecated }).envelope
-        .graph.nodes,
-    ).toHaveLength(3);
-
+  it('rejects incompatible config pins', () => {
+    const catalog = baselineCatalog();
     const incompatibleGraph = structuredClone(graph());
     const setNode = incompatibleGraph.nodes.find(({ id }) => id === 'set');
     if (setNode === undefined) throw new Error('set fixture is missing');
     Object.assign(setNode, { configVersion: 2 });
     expect(() =>
-      buildWorkflowExecutable({ graph: incompatibleGraph, release }),
-    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
-
-    const missingAbi = recreateRelease(release, {
-      definitions: release.definitions.map((definition) => {
-        if (
-          definition.definition.key !== 'core.manual' ||
-          definition.schemaVersion !== 1
-        )
-          return definition;
-        const { executorAbi: omitted, ...withoutAbi } = definition;
-        return withoutAbi;
-      }),
-    });
-    expect(() =>
-      buildWorkflowExecutable({ graph: graph(), release: missingAbi }),
+      buildWorkflowExecutable({ graph: incompatibleGraph, catalog }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('canonicalizes reversed policy references and rejects invalid global policy sets', () => {
-    const release = baselineRelease();
-    const reversed = recreateRelease(release, {
-      definitions: release.definitions.map((definition) =>
+    const catalog = baselineCatalog();
+    const reversed = recreateCatalog(catalog, {
+      definitions: catalog.definitions.map((definition) =>
         definition.definition.key === 'core.set'
           ? {
               ...definition,
@@ -124,7 +88,7 @@ describe('expanded public workflow-engine boundaries', () => {
             }
           : definition,
       ),
-      executors: release.executors.map((executor) =>
+      executors: catalog.executors.map((executor) =>
         executor.executor.key === 'core.set'
           ? {
               ...executor,
@@ -136,38 +100,38 @@ describe('expanded public workflow-engine boundaries', () => {
     expect(
       buildWorkflowExecutable({
         graph: graph(),
-        release: reversed,
+        catalog: reversed,
       }).envelope.graph.nodes.find(({ id }) => id === 'set')?.policyReferences,
     ).toEqual([jsonataPolicy, boundedPolicy]);
 
     const policyV1 = { key: 'test.versioned', version: 1 } as const;
     const policyV2 = { key: 'test.versioned', version: 2 } as const;
-    const reversedVersions = recreateRelease(release, {
-      definitions: release.definitions.map((definition) =>
+    const reversedVersions = recreateCatalog(catalog, {
+      definitions: catalog.definitions.map((definition) =>
         definition.definition.key === 'core.set'
           ? { ...definition, policyReferences: [policyV2, policyV1] }
           : definition,
       ),
-      executors: release.executors.map((executor) =>
+      executors: catalog.executors.map((executor) =>
         executor.executor.key === 'core.set'
           ? { ...executor, policyReferences: [policyV2, policyV1] }
           : executor,
       ),
-      policies: [...release.policies, policyV1, policyV2],
+      policies: [...catalog.policies, policyV1, policyV2],
     });
     expect(
       buildWorkflowExecutable({
         graph: graph(),
-        release: reversedVersions,
+        catalog: reversedVersions,
       }).envelope.graph.nodes.find(({ id }) => id === 'set')?.policyReferences,
     ).toEqual([policyV1, policyV2]);
 
-    const releaseWithAlternative = composeExecutableCompatibilityRelease(
-      nodeRelease({ extraPolicyVersion: 1 }),
+    const catalogWithAlternative = composeExecutableCatalog(
+      nodeCatalog({ extraPolicyVersion: 1 }),
     );
     const compiled = buildWorkflowExecutable({
       graph: graph(),
-      release: releaseWithAlternative,
+      catalog: catalogWithAlternative,
     });
     const nonBaseline = structuredClone(compiled.envelope);
     Object.assign(nonBaseline.runtimePolicies, {
@@ -176,19 +140,19 @@ describe('expanded public workflow-engine boundaries', () => {
     expect(() =>
       parseWorkflowExecutable({
         envelope: nonBaseline,
-        release: releaseWithAlternative,
+        catalog: catalogWithAlternative,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
 
-    const missingRuntimePolicy = recreateRelease(release, {
-      policies: release.policies.filter(
+    const missingRuntimePolicy = recreateCatalog(catalog, {
+      policies: catalog.policies.filter(
         ({ key }) => key !== 'engine.cancellation',
       ),
     });
     expect(() =>
       buildWorkflowExecutable({
         graph: graph(),
-        release: missingRuntimePolicy,
+        catalog: missingRuntimePolicy,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
@@ -246,7 +210,7 @@ describe('expanded public workflow-engine boundaries', () => {
       );
 
       expect(
-        () => buildWorkflowExecutable({ graph: graph(), release: hostile }),
+        () => buildWorkflowExecutable({ graph: graph(), catalog: hostile }),
         name,
       ).toThrow('executable processing failed');
       expect(() => parseSchedulerGraph(hostile), name).toThrow(

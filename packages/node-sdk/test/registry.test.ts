@@ -1,25 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import {
-  canonicalCompatibilityReleaseJson,
   boundedNodeJsonSchema,
-  computeCompatibilityReleaseFingerprint,
-  computeCompatibilitySelectionFingerprint,
-  createRegistryRelease,
-  createNodeManifestV2,
+  createNodeCatalog,
   generateSchemaDocument,
   isBoundedNodeJson,
   nodeManifestSchema,
-  parseRegistryRelease,
-  registryReleaseSchema,
+  parseNodeCatalog,
+  nodeCatalogSchema,
   type DefinitionIdentity,
   type ExecutorIdentity,
   type NodeManifest,
   type PolicyReference,
   TERMINATES_RUN_CAPABILITY,
-} from '../src/release.js';
+} from '../src/catalog.js';
 import {
   DefinitionNotFoundError,
   ExecutorNotFoundError,
@@ -35,7 +30,7 @@ import {
   NODE_EXECUTION_LIMITS_V1,
   canonicalizeBoundedJson,
   createNodeRegistry,
-  bindRegistryRelease,
+  bindNodeCatalog,
   type NodeExecutorRegistration,
   type NodeConnectionHealthObservation,
 } from '../src/server.js';
@@ -66,7 +61,6 @@ const manifest: NodeManifest = Object.freeze({
   definition,
   family: 'transform',
   inputSchema: generateSchemaDocument(z.record(z.string(), z.json())),
-  lifecycle: 'active',
   outputSchema: generateSchemaDocument(z.record(z.string(), z.json())),
   policyReferences: Object.freeze([policy]),
   ports: Object.freeze({
@@ -75,8 +69,8 @@ const manifest: NodeManifest = Object.freeze({
   }),
   resourceClass: 'cpu',
   retryClass: 'safe',
-  schemaVersion: 1,
   executor,
+  executorAbi: 1,
 });
 
 const executorRegistration = (
@@ -85,7 +79,6 @@ const executorRegistration = (
   abiVersion: 1,
   definitions: Object.freeze([definition]),
   executor: identity,
-  lifecycle: 'active',
   policyReferences: Object.freeze([policy]),
   execute: () => Promise.resolve({}),
 });
@@ -93,16 +86,14 @@ const executorRegistration = (
 const configSchema = z.object({}).strict();
 const objectSchema = z.record(z.string(), z.json());
 
-function release(): ReturnType<typeof createRegistryRelease> {
-  return createRegistryRelease({
+function catalog(): ReturnType<typeof createNodeCatalog> {
+  return createNodeCatalog({
     definitions: [manifest],
-    epoch: 1,
     executors: [
       {
         abiVersion: 1,
         definitions: [definition],
         executor,
-        lifecycle: 'active',
         policyReferences: [policy],
       },
     ],
@@ -115,15 +106,13 @@ function dispatchAwareFixture(beforeDispatch = vi.fn(() => Promise.resolve())) {
     ...manifest,
     executorAbi: 2,
   } satisfies NodeManifest;
-  const dispatchRelease = createRegistryRelease({
+  const dispatchCatalog = createNodeCatalog({
     definitions: [dispatchManifest],
-    epoch: 1,
     executors: [
       {
         abiVersion: 2,
         definitions: [definition],
         executor,
-        lifecycle: 'active',
         policyReferences: [policy],
       },
     ],
@@ -168,14 +157,14 @@ function dispatchAwareFixture(beforeDispatch = vi.fn(() => Promise.resolve())) {
           execute,
         },
       ],
-      release: dispatchRelease,
+      catalog: dispatchCatalog,
     });
   return { beforeDispatch, registryFor, request, runtime };
 }
 
-describe('node-sdk registry release contracts', () => {
-  it('binds release metadata without replacing runtime schemas or execution', async () => {
-    const selected = release();
+describe('node-sdk catalog contracts', () => {
+  it('binds catalog metadata without replacing runtime schemas or execution', async () => {
+    const selected = catalog();
     const registration = {
       manifest: { ...manifest, lifecycle: 'deprecated' as const },
       configSchema,
@@ -183,12 +172,12 @@ describe('node-sdk registry release contracts', () => {
       outputSchema: objectSchema,
     };
     const execute = vi.fn(() => Promise.resolve({ echoed: true }));
-    const bound = bindRegistryRelease({
-      release: selected,
+    const bound = bindNodeCatalog({
+      catalog: selected,
       definitions: [registration],
       executors: [{ ...executorRegistration(), execute }],
     });
-    expect(bound.release).toBe(selected);
+    expect(bound.catalog).toBe(selected);
     expect(bound.definitions[0]?.manifest).toBe(selected.definitions[0]);
     expect(bound.definitions[0]?.configSchema).toBe(configSchema);
     expect(bound.executors[0]?.execute).toBe(execute);
@@ -206,8 +195,8 @@ describe('node-sdk registry release contracts', () => {
     expect(registration.manifest.lifecycle).toBe('deprecated');
   });
 
-  it('rejects an unavailable exact release definition or executor before execution', () => {
-    const selected = release();
+  it('rejects a catalog definition or executor that is not implemented', () => {
+    const selected = catalog();
     const registration = {
       manifest,
       configSchema,
@@ -215,32 +204,19 @@ describe('node-sdk registry release contracts', () => {
       outputSchema: objectSchema,
     };
     expect(() =>
-      bindRegistryRelease({
-        release: selected,
+      bindNodeCatalog({
+        catalog: selected,
         definitions: [],
         executors: [executorRegistration()],
       }),
     ).toThrow(/definition test.echo@1 is not implemented/u);
     expect(() =>
-      bindRegistryRelease({
-        release: selected,
+      bindNodeCatalog({
+        catalog: selected,
         definitions: [registration],
         executors: [],
       }),
     ).toThrow(/executor test.echo@1 is not implemented/u);
-  });
-
-  it('requires an explicit ABI in current manifests without changing retained V1', () => {
-    expect(nodeManifestSchema.safeParse(manifest).success).toBe(true);
-    expect(
-      nodeManifestSchema.safeParse({ ...manifest, schemaVersion: 2 }).success,
-    ).toBe(false);
-    const current = createNodeManifestV2(manifest, 1);
-    expect(current).toMatchObject({ schemaVersion: 2, executorAbi: 1 });
-    expect(Object.isFrozen(current)).toBe(true);
-    expect(() =>
-      createNodeManifestV2({ ...manifest, executorAbi: 2 }, 1),
-    ).toThrow(/conflicts/u);
   });
 
   it('rejects malformed and unbounded executor failure kinds', () => {
@@ -262,110 +238,45 @@ describe('node-sdk registry release contracts', () => {
     ).toThrow(new TypeError('Invalid node executor failure'));
   });
 
-  it('produces a declaration-order-independent full fingerprint', () => {
-    const one = release();
-    const reversed = createRegistryRelease({
+  it('sorts definitions, executors and policies regardless of declaration order', () => {
+    const one = catalog();
+    const reversed = createNodeCatalog({
       definitions: [...one.definitions].reverse(),
-      epoch: one.epoch,
       executors: [...one.executors].reverse(),
       policies: [...one.policies].reverse(),
     });
-
-    expect(reversed.fingerprint).toBe(one.fingerprint);
-    expect(computeCompatibilityReleaseFingerprint(one)).toBe(one.fingerprint);
-    expect(registryReleaseSchema.parse(one)).toEqual(one);
-    expect(one.fingerprint).toBe(
-      'node-compat:v1:sha256:0ad188367be35938873560920ff9cb5d8b3ad6e5432ef5043bf3c1e330231eb0',
-    );
-    expect(one.fingerprint).toBe(
-      `node-compat:v1:sha256:${createHash('sha256')
-        .update(canonicalCompatibilityReleaseJson(one))
-        .digest('hex')}`,
-    );
-
-    const otherDefinition = { key: 'test.other', version: 1 } as const;
-    const otherExecutor = { key: 'test.other', version: 1 } as const;
-    const two = createRegistryRelease({
-      definitions: [
-        { ...manifest, policyReferences: [policy, secondPolicy] },
-        {
-          ...manifest,
-          definition: otherDefinition,
-          executor: otherExecutor,
-          policyReferences: [policy, secondPolicy],
-        },
-      ],
-      epoch: 2,
-      executors: [
-        {
-          abiVersion: 1,
-          definitions: [definition],
-          executor,
-          lifecycle: 'active',
-          policyReferences: [policy, secondPolicy],
-        },
-        {
-          abiVersion: 1,
-          definitions: [otherDefinition],
-          executor: otherExecutor,
-          lifecycle: 'active',
-          policyReferences: [policy, secondPolicy],
-        },
-      ],
-      policies: [policy, secondPolicy],
-    });
-    const fullyPermuted = createRegistryRelease({
-      definitions: [...two.definitions].reverse().map((item) => ({
-        ...item,
-        policyReferences: [...item.policyReferences].reverse(),
-      })),
-      epoch: two.epoch,
-      executors: [...two.executors].reverse().map((item) => ({
-        ...item,
-        definitions: [...item.definitions].reverse(),
-        policyReferences: [...item.policyReferences].reverse(),
-      })),
-      policies: [...two.policies].reverse(),
-    });
-    expect(fullyPermuted.fingerprint).toBe(two.fingerprint);
+    expect(reversed).toEqual(one);
+    expect(nodeCatalogSchema.parse(one)).toEqual(one);
   });
 
   it('rejects duplicate definition policies before set comparison', () => {
     const malformedInput = {
       definitions: [{ ...manifest, policyReferences: [policy, policy] }],
-      epoch: 1,
       executors: [
         {
           abiVersion: 1,
           definitions: [definition],
           executor,
-          lifecycle: 'active' as const,
           policyReferences: [policy, secondPolicy],
         },
       ],
       policies: [policy, secondPolicy],
-      schemaVersion: 1 as const,
     };
 
-    expect(() => createRegistryRelease(malformedInput)).toThrow(
+    expect(() => createNodeCatalog(malformedInput)).toThrow(
       /duplicate definition policy/u,
     );
-    const malformedRelease = {
-      ...malformedInput,
-      fingerprint: computeCompatibilityReleaseFingerprint(malformedInput),
-    };
-    expect(() => parseRegistryRelease(malformedRelease)).toThrow(
+    expect(() => parseNodeCatalog(malformedInput)).toThrow(
       /duplicate definition policy/u,
     );
     expect(() =>
-      createRegistryRelease({
+      createNodeCatalog({
         ...malformedInput,
         executors: [
           {
             abiVersion: 1,
             definitions: [definition],
             executor,
-            lifecycle: 'active',
             policyReferences: [policy, policy],
           },
         ],
@@ -374,59 +285,53 @@ describe('node-sdk registry release contracts', () => {
   });
 
   it('accepts unique reordered policies and rejects unknown or version-drifted edges', () => {
-    const reordered = createRegistryRelease({
+    const reordered = createNodeCatalog({
       definitions: [{ ...manifest, policyReferences: [secondPolicy, policy] }],
-      epoch: 1,
       executors: [
         {
           abiVersion: 1,
           definitions: [definition],
           executor,
-          lifecycle: 'active',
           policyReferences: [policy, secondPolicy],
         },
       ],
       policies: [secondPolicy, policy],
     });
-    const oppositeOrder = createRegistryRelease({
+    const oppositeOrder = createNodeCatalog({
       definitions: [{ ...manifest, policyReferences: [policy, secondPolicy] }],
-      epoch: 1,
       executors: [
         {
           abiVersion: 1,
           definitions: [definition],
           executor,
-          lifecycle: 'active',
           policyReferences: [secondPolicy, policy],
         },
       ],
       policies: [policy, secondPolicy],
     });
 
-    expect(reordered.fingerprint).toBe(oppositeOrder.fingerprint);
+    expect(reordered.definitions).toHaveLength(1);
+    expect(oppositeOrder.definitions).toHaveLength(1);
     expect(() =>
-      createRegistryRelease({
+      createNodeCatalog({
         definitions: [
           {
             ...manifest,
             policyReferences: [{ ...policy, version: policy.version + 1 }],
           },
         ],
-        epoch: 1,
-        executors: release().executors,
+        executors: catalog().executors,
         policies: [policy],
       }),
     ).toThrow(/policies do not match/u);
     expect(() =>
-      createRegistryRelease({
+      createNodeCatalog({
         definitions: [{ ...manifest, policyReferences: [secondPolicy] }],
-        epoch: 1,
         executors: [
           {
             abiVersion: 1,
             definitions: [definition],
             executor,
-            lifecycle: 'active',
             policyReferences: [secondPolicy],
           },
         ],
@@ -435,58 +340,21 @@ describe('node-sdk registry release contracts', () => {
     ).toThrow(/unknown policy/u);
   });
 
-  it.each([
-    '',
-    'x',
-    'x'.repeat(55),
-    'x'.repeat(56),
-    'x'.repeat(63),
-    'x'.repeat(64),
-    'x'.repeat(65),
-    'workflow-✓-🚀',
-    'x'.repeat(4_097),
-  ])('matches Node SHA-256 across UTF-8 and padding boundaries %#', (text) => {
-    const candidate = createRegistryRelease({
-      definitions: [
-        {
-          ...manifest,
-          configSchema: { ...manifest.configSchema, description: text },
-        },
-      ],
-      epoch: 1,
-      executors: release().executors,
-      policies: [policy],
-    });
-    expect(candidate.fingerprint).toBe(
-      `node-compat:v1:sha256:${createHash('sha256')
-        .update(canonicalCompatibilityReleaseJson(candidate))
-        .digest('hex')}`,
-    );
-  });
-
-  it('changes the full fingerprint for lifecycle and binding changes', () => {
-    const one = release();
-    const deprecated = createRegistryRelease({
-      definitions: [{ ...manifest, lifecycle: 'deprecated' }],
-      epoch: one.epoch + 1,
-      executors: one.executors,
-      policies: one.policies,
-    });
-    expect(deprecated.fingerprint).not.toBe(one.fingerprint);
+  it('rejects a definition bound to an unknown executor', () => {
+    const one = catalog();
     expect(() =>
-      createRegistryRelease({
+      createNodeCatalog({
         definitions: [
           { ...manifest, executor: { key: 'test.other', version: 1 } },
         ],
-        epoch: one.epoch + 2,
         executors: one.executors,
         policies: one.policies,
       }),
     ).toThrow(/unknown executor/u);
   });
 
-  it('validates and fingerprints stable integration operation metadata', () => {
-    const integrated = createRegistryRelease({
+  it('validates integration operation metadata', () => {
+    const integrated = createNodeCatalog({
       definitions: [
         {
           ...manifest,
@@ -494,12 +362,10 @@ describe('node-sdk registry release contracts', () => {
           integration: { providerKey: 'http', operationKey: 'request' },
         },
       ],
-      epoch: 2,
-      executors: release().executors,
-      policies: release().policies,
+      executors: catalog().executors,
+      policies: catalog().policies,
     });
-    expect(integrated.fingerprint).not.toBe(release().fingerprint);
-    expect(registryReleaseSchema.parse(integrated)).toEqual(integrated);
+    expect(nodeCatalogSchema.parse(integrated)).toEqual(integrated);
     expect(
       nodeManifestSchema.safeParse({
         ...manifest,
@@ -508,7 +374,7 @@ describe('node-sdk registry release contracts', () => {
     ).toBe(false);
   });
 
-  it('rejects recursively deep schema documents before fingerprint traversal', () => {
+  it('rejects recursively deep schema documents', () => {
     let deepSchema: Record<string, unknown> = {};
     for (let depth = 0; depth < 65; depth += 1)
       deepSchema = { nested: deepSchema };
@@ -533,39 +399,6 @@ describe('node-sdk registry release contracts', () => {
     expect(() =>
       generateSchemaDocument(refined, { runtimeOnlySemantics: [] as never }),
     ).toThrow();
-  });
-
-  it('selects only pinned definitions, executors, and policies', () => {
-    const one = release();
-    const withUnrelated = createRegistryRelease({
-      definitions: [
-        ...one.definitions,
-        {
-          ...manifest,
-          definition: { key: 'test.other', version: 1 },
-          executor: { key: 'test.other', version: 1 },
-        },
-      ],
-      epoch: one.epoch + 1,
-      executors: [
-        ...one.executors,
-        {
-          abiVersion: 1,
-          definitions: [{ key: 'test.other', version: 1 }],
-          executor: { key: 'test.other', version: 1 },
-          lifecycle: 'active',
-          policyReferences: [policy],
-        },
-      ],
-      policies: one.policies,
-    });
-
-    expect(computeCompatibilitySelectionFingerprint(one, [definition])).toBe(
-      computeCompatibilitySelectionFingerprint(withUnrelated, [definition]),
-    );
-    expect(() =>
-      computeCompatibilitySelectionFingerprint(one, [definition, definition]),
-    ).toThrow(/duplicate selected definition/u);
   });
 });
 
@@ -815,13 +648,12 @@ describe('node-sdk bounded JSON contracts', () => {
       ...manifest,
       configSchema: input as NodeManifest['configSchema'],
     };
-    const created = createRegistryRelease({
+    const created = createNodeCatalog({
       definitions: [hostileManifest],
-      epoch: 1,
-      executors: release().executors,
+      executors: catalog().executors,
       policies: [policy],
     });
-    expect(registryReleaseSchema.parse(created)).toEqual(created);
+    expect(nodeCatalogSchema.parse(created)).toEqual(created);
     expect(JSON.stringify(created.definitions[0]?.configSchema)).toBe(
       JSON.stringify(input),
     );
@@ -900,13 +732,13 @@ describe('node-sdk bounded JSON contracts', () => {
     }
   });
 
-  it('normalizes hostile release parser failures at the public registry boundary', () => {
+  it('normalizes hostile catalog parser failures at the public registry boundary', () => {
     const secondaryTrap = new Proxy(new Error('hidden'), {
       getPrototypeOf: () => {
         throw new Error('secondary trap escaped');
       },
     });
-    const hostileRelease = new Proxy(release(), {
+    const hostileCatalog = new Proxy(catalog(), {
       ownKeys: () => {
         throw secondaryTrap;
       },
@@ -924,7 +756,7 @@ describe('node-sdk bounded JSON contracts', () => {
           },
         ],
         executors: [executorRegistration()],
-        release: hostileRelease,
+        catalog: hostileCatalog,
       });
     } catch (error) {
       failure = error;
@@ -999,7 +831,7 @@ describe('node-sdk bounded JSON contracts', () => {
 
 describe('node-sdk exact server registry', () => {
   it('rejects duplicate identities and mismatched bindings', () => {
-    const one = release();
+    const one = catalog();
     expect(() =>
       createNodeRegistry({
         definitions: [
@@ -1017,7 +849,7 @@ describe('node-sdk exact server registry', () => {
           },
         ],
         executors: [executorRegistration()],
-        release: one,
+        catalog: one,
       }),
     ).toThrow(NodeRegistryCompatibilityError);
   });
@@ -1034,7 +866,7 @@ describe('node-sdk exact server registry', () => {
           },
         ],
         executors: [executorRegistration()],
-        release: release(),
+        catalog: catalog(),
       }),
     ).toThrow(/JSON Schema projection/u);
   });
@@ -1051,17 +883,9 @@ describe('node-sdk exact server registry', () => {
         },
       ],
       executors: [registration],
-      release: release(),
+      catalog: catalog(),
     });
-    expect(Object.keys(registry).sort()).toEqual([
-      'compatibility',
-      'dispatchMode',
-      'execute',
-      'historicalCatalog',
-      'placementCatalog',
-      'publicationCatalog',
-    ]);
-    expect(Object.isFrozen(registry.compatibility)).toBe(true);
+    expect(Object.keys(registry).sort()).toEqual(['dispatchMode', 'execute']);
     const half = 'x'.repeat(Math.ceil(NODE_EXECUTION_LIMITS_V1.bytes / 2));
     await expect(
       registry.execute({
@@ -1250,15 +1074,13 @@ describe('node-sdk exact server registry', () => {
             abiVersion: unsupportedAbi,
           },
         ],
-        release: createRegistryRelease({
+        catalog: createNodeCatalog({
           definitions: [{ ...manifest, executorAbi: unsupportedAbi }],
-          epoch: 1,
           executors: [
             {
               abiVersion: unsupportedAbi,
               definitions: [definition],
               executor,
-              lifecycle: 'active',
               policyReferences: [policy],
             },
           ],
@@ -1273,10 +1095,9 @@ describe('node-sdk exact server registry', () => {
       ...manifest,
       capabilities: [TERMINATES_RUN_CAPABILITY],
     } satisfies NodeManifest;
-    const terminalRelease = createRegistryRelease({
+    const terminalCatalog = createNodeCatalog({
       definitions: [terminalManifest],
-      epoch: 1,
-      executors: release().executors,
+      executors: catalog().executors,
       policies: [policy],
     });
     const registry = createNodeRegistry({
@@ -1289,7 +1110,7 @@ describe('node-sdk exact server registry', () => {
         },
       ],
       executors: [executorRegistration()],
-      release: terminalRelease,
+      catalog: terminalCatalog,
     });
     await expect(
       registry.execute({
@@ -1315,7 +1136,7 @@ describe('node-sdk exact server registry', () => {
         },
       ],
       executors: [executorRegistration()],
-      release: release(),
+      catalog: catalog(),
     });
     await expect(
       normal.execute({
@@ -1345,7 +1166,7 @@ describe('node-sdk exact server registry', () => {
         },
       ],
       executors: [aborting],
-      release: release(),
+      catalog: catalog(),
     });
     await expect(
       abortingRegistry.execute({
@@ -1370,16 +1191,15 @@ describe('node-sdk exact server registry', () => {
       inputSchema: generateSchemaDocument(schemas.inputSchema),
       outputSchema: generateSchemaDocument(schemas.outputSchema),
     } satisfies NodeManifest;
-    const strictRelease = createRegistryRelease({
+    const strictCatalog = createNodeCatalog({
       definitions: [strictManifest],
-      epoch: 1,
-      executors: release().executors,
+      executors: catalog().executors,
       policies: [policy],
     });
     const strictRegistry = createNodeRegistry({
       definitions: [{ manifest: strictManifest, ...schemas }],
       executors: [executorRegistration()],
-      release: strictRelease,
+      catalog: strictCatalog,
     });
     const request = {
       definition,
@@ -1409,102 +1229,8 @@ describe('node-sdk exact server registry', () => {
     ).rejects.toBeInstanceOf(NodeOutputValidationError);
   });
 
-  it('separates placement, publication, and historical lifecycle catalogs and executes retained versions', async () => {
-    const identities = {
-      active: { key: 'test.active', version: 1 },
-      deprecated: { key: 'test.deprecated', version: 1 },
-      migration: { key: 'test.migration', version: 1 },
-      retired: { key: 'test.retired', version: 1 },
-    } as const;
-    const activeExecutor = { key: 'test.active.executor', version: 1 };
-    const retainedExecutor = { key: 'test.retained.executor', version: 1 };
-    const manifests = [
-      {
-        ...manifest,
-        definition: identities.active,
-        executor: activeExecutor,
-        lifecycle: 'active',
-      },
-      {
-        ...manifest,
-        definition: identities.deprecated,
-        executor: activeExecutor,
-        lifecycle: 'deprecated',
-      },
-      {
-        ...manifest,
-        definition: identities.migration,
-        executor: retainedExecutor,
-        lifecycle: 'migration_required',
-      },
-      {
-        ...manifest,
-        definition: identities.retired,
-        executor: retainedExecutor,
-        lifecycle: 'retired',
-      },
-    ] satisfies NodeManifest[];
-    const executorManifests = [
-      {
-        abiVersion: 1,
-        definitions: [identities.active, identities.deprecated],
-        executor: activeExecutor,
-        lifecycle: 'active',
-        policyReferences: [policy],
-      },
-      {
-        abiVersion: 1,
-        definitions: [identities.migration, identities.retired],
-        executor: retainedExecutor,
-        lifecycle: 'retained',
-        policyReferences: [policy],
-      },
-    ] as const;
-    const lifecycleRelease = createRegistryRelease({
-      definitions: manifests,
-      epoch: 1,
-      executors: executorManifests,
-      policies: [policy],
-    });
-    const lifecycleRegistry = createNodeRegistry({
-      definitions: manifests.map((item) => ({
-        manifest: item,
-        configSchema,
-        inputSchema: objectSchema,
-        outputSchema: objectSchema,
-      })),
-      executors: executorManifests.map((item) => ({
-        ...item,
-        execute: () => Promise.resolve({ retained: true }),
-      })),
-      release: lifecycleRelease,
-    });
-    expect(lifecycleRegistry.placementCatalog().definitions).toEqual([
-      identities.active,
-    ]);
-    expect(lifecycleRegistry.publicationCatalog().definitions).toEqual([
-      identities.active,
-      identities.deprecated,
-    ]);
-    expect(lifecycleRegistry.historicalCatalog().definitions).toEqual([
-      identities.active,
-      identities.deprecated,
-      identities.migration,
-      identities.retired,
-    ]);
-    await expect(
-      lifecycleRegistry.execute({
-        config: {},
-        definition: identities.retired,
-        executor: retainedExecutor,
-        input: {},
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toMatchObject({ output: { retained: true } });
-  });
-
   it('resolves the exact executor and never falls forward to another version', async () => {
-    const one = release();
+    const one = catalog();
     const registry = createNodeRegistry({
       definitions: [
         {
@@ -1515,7 +1241,7 @@ describe('node-sdk exact server registry', () => {
         },
       ],
       executors: [executorRegistration()],
-      release: one,
+      catalog: one,
     });
 
     await expect(
@@ -1546,19 +1272,17 @@ describe('node-sdk exact server registry', () => {
       definition: otherDefinition,
       executor: otherExecutor,
     } satisfies NodeManifest;
-    const [baseExecutor] = release().executors;
+    const [baseExecutor] = catalog().executors;
     if (baseExecutor === undefined)
       throw new Error('test release is missing its executor');
-    const exactRelease = createRegistryRelease({
+    const exactCatalog = createNodeCatalog({
       definitions: [manifest, otherManifest],
-      epoch: 1,
       executors: [
         baseExecutor,
         {
           abiVersion: 1,
           definitions: [otherDefinition],
           executor: otherExecutor,
-          lifecycle: 'active',
           policyReferences: [policy],
         },
       ],
@@ -1578,7 +1302,7 @@ describe('node-sdk exact server registry', () => {
           definitions: Object.freeze([otherDefinition]),
         },
       ],
-      release: exactRelease,
+      catalog: exactCatalog,
     });
     const missingDefinition = { key: definition.key, version: 2 } as const;
     const missingExecutor = { key: executor.key, version: 2 } as const;

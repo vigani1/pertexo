@@ -1,4 +1,4 @@
-import { createRegistryRelease } from '@pertexo/node-sdk';
+import { createNodeCatalog } from '@pertexo/node-sdk';
 import {
   createNodeRegistry,
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
@@ -1318,7 +1318,7 @@ describe('http.request@1 server executor', () => {
     },
   );
 
-  it('matches an exact ABI 2 registry identity without entering the production release', async () => {
+  it('matches an exact ABI 2 registry identity outside the platform catalog', async () => {
     const state = runtime();
     const httpClient = streamingHttpClient(
       vi.fn(async (request: SecureHttpRequest) => {
@@ -1326,26 +1326,21 @@ describe('http.request@1 server executor', () => {
         return response(encoder.encode('{}'), 200);
       }),
     );
-    const registration = createHttpRequestExecutorRegistration(
-      { httpClient },
-      'active',
-    );
-    const release = createRegistryRelease({
-      epoch: 99,
+    const registration = createHttpRequestExecutorRegistration({ httpClient });
+    const catalog = createNodeCatalog({
       definitions: [HTTP_REQUEST_MANIFEST],
       executors: [
         {
           executor: HTTP_REQUEST_MANIFEST.executor,
           abiVersion: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
           definitions: [HTTP_REQUEST_MANIFEST.definition],
-          lifecycle: 'active',
           policyReferences: HTTP_REQUEST_MANIFEST.policyReferences,
         },
       ],
       policies: HTTP_REQUEST_MANIFEST.policyReferences,
     });
     const registry = createNodeRegistry({
-      release,
+      catalog,
       definitions: [HTTP_REQUEST_DEFINITION_REGISTRATION],
       executors: [registration],
     });

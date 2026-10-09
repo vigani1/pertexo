@@ -25,7 +25,6 @@ export const HTTP_REQUEST_VALUE_POLICY = Object.freeze({
 });
 
 export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: HTTP_REQUEST_DEFINITION,
   family: 'action',
   configVersion: 1,
@@ -49,7 +48,6 @@ export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
     'artifact_output',
     'side_effect_disclosure',
   ]),
-  lifecycle: 'active',
   executor: HTTP_REQUEST_EXECUTOR,
   executorAbi: 2,
   policyReferences: Object.freeze([

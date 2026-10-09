@@ -1,6 +1,6 @@
 export {
   platformBrowserNodeDefinitionCatalog,
-  resolvePlatformNodeDefinitionForRelease,
+  resolvePlatformNodeDefinition,
   type PlatformNodeDefinitionBrowserCatalog,
   type PlatformNodeDefinitionBrowserProjection,
   type PlatformNodeDefinition,

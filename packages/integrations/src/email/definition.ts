@@ -21,7 +21,6 @@ export const EMAIL_SEND_NOTIFICATION_POLICY = Object.freeze({
 });
 
 export const EMAIL_SEND_NOTIFICATION_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: EMAIL_SEND_NOTIFICATION_DEFINITION,
   family: 'action',
   configVersion: 1,
@@ -41,7 +40,6 @@ export const EMAIL_SEND_NOTIFICATION_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'idempotent-with-key',
   resourceClass: 'io',
   capabilities: Object.freeze(['external_http', 'side_effect_disclosure']),
-  lifecycle: 'active',
   executor: EMAIL_SEND_NOTIFICATION_EXECUTOR,
   executorAbi: 2,
   policyReferences: Object.freeze([EMAIL_SEND_NOTIFICATION_POLICY]),

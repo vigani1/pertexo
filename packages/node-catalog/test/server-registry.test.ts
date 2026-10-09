@@ -15,26 +15,16 @@ import type {
   SecureHttpRequest,
   SecureHttpResponse,
 } from '@pertexo/integrations/server';
-import { createRegistryRelease } from '@pertexo/node-sdk';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { CORE_SET_DEFINITION, CORE_SET_EXECUTOR } from '@pertexo/nodes-core';
 
-import { PLATFORM_REGISTRY_RELEASE } from '../src/registry.js';
-import { createPlatformNodeRegistryForRelease } from '../src/server.js';
+import { createPlatformNodeRegistry } from '../src/server.js';
 
 describe('platform server registry composition', () => {
-  it('builds one exact active registry with dispatch-aware HTTP', async () => {
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE,
-      { httpRequest: { httpClient: { executeStreaming: vi.fn() } as never } },
-    );
-    expect(registry.compatibility).toEqual({
-      epoch: PLATFORM_REGISTRY_RELEASE.epoch,
-      fingerprint: PLATFORM_REGISTRY_RELEASE.fingerprint,
+  it('builds one registry with dispatch-aware HTTP', async () => {
+    const registry = createPlatformNodeRegistry({
+      httpRequest: { httpClient: { executeStreaming: vi.fn() } as never },
     });
-    expect(registry.historicalCatalog().definitions).toEqual(
-      expect.arrayContaining([CORE_SET_DEFINITION, HTTP_REQUEST_DEFINITION]),
-    );
     expect(
       registry.dispatchMode({
         definition: CORE_SET_DEFINITION,
@@ -58,22 +48,6 @@ describe('platform server registry composition', () => {
     ).resolves.toMatchObject({ kind: 'succeeded' });
   });
 
-  it('rejects a release other than the platform release', () => {
-    const unshipped = createRegistryRelease({
-      epoch: PLATFORM_REGISTRY_RELEASE.epoch + 1,
-      definitions: PLATFORM_REGISTRY_RELEASE.definitions.map((manifest) =>
-        manifest.definition.key === HTTP_REQUEST_DEFINITION.key
-          ? { ...manifest, lifecycle: 'deprecated' as const }
-          : manifest,
-      ),
-      executors: PLATFORM_REGISTRY_RELEASE.executors,
-      policies: PLATFORM_REGISTRY_RELEASE.policies,
-    });
-    expect(() => createPlatformNodeRegistryForRelease(unshipped)).toThrow(
-      'Platform compatibility release identity is not supported',
-    );
-  });
-
   it('executes the active email provider and clears its resolved secret', async () => {
     const sendNotification = vi.fn(
       async (input: { beforeDispatch(): Promise<void> }) => {
@@ -92,10 +66,9 @@ describe('platform server registry composition', () => {
         fromEmail: 'sender@example.com',
       }),
     );
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE,
-      { emailSendNotification: { client: { sendNotification } } },
-    );
+    const registry = createPlatformNodeRegistry({
+      emailSendNotification: { client: { sendNotification } },
+    });
 
     await expect(
       registry.execute({
@@ -158,10 +131,9 @@ describe('platform server registry composition', () => {
         botToken: 'xoxb-123456789-secret',
       }),
     );
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE,
-      { slackSendMessage: { client: { sendMessage } } },
-    );
+    const registry = createPlatformNodeRegistry({
+      slackSendMessage: { client: { sendMessage } },
+    });
 
     await expect(
       registry.execute({
@@ -266,13 +238,10 @@ describe('platform server registry composition', () => {
         }),
       },
     } satisfies NodeExecutionRuntime;
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE,
-      {
-        httpRequest: { httpClient: { executeStreaming } },
-        httpRequestTelemetry: { measure },
-      },
-    );
+    const registry = createPlatformNodeRegistry({
+      httpRequest: { httpClient: { executeStreaming } },
+      httpRequestTelemetry: { measure },
+    });
 
     await expect(
       registry.execute({

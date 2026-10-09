@@ -21,7 +21,6 @@ describe('portable workflow public HTTP contract', () => {
     graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
     requirements: {
       definitions: [],
-      selectionFingerprint: `node-select:v1:sha256:${'a'.repeat(64)}`,
     },
     connectionSlots: [],
   };
@@ -45,7 +44,7 @@ describe('portable workflow public HTTP contract', () => {
         ...old,
         templateOrigin: origin,
         name: 'Example',
-        expectedCompatibilityFingerprint: `node-compat:v1:sha256:${'b'.repeat(64)}`,
+        expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'b'.repeat(64)}`,
       }).templateOrigin,
     ).toEqual(origin);
     expect(

@@ -32,7 +32,8 @@ export function normalizeWorkflowAuthoringCompatibility(
   const selection = Object.freeze({
     portableCatalog: options.portableCatalog,
     definitionCatalog: options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG,
-    placementDefinitionCatalog: options.placementDefinitionCatalog,
+    // New nodes must come from the configured catalog; without one, any may be placed.
+    placementDefinitionCatalog: options.definitionCatalog,
     executableCompiler: options.executableCompiler,
     validateAuthoringGraph: options.validateAuthoringGraph,
   });

@@ -5,7 +5,7 @@ import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
@@ -23,7 +23,6 @@ import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createTransportMetrics } from '@pertexo/observability/transport-metrics';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { EditorBrowserWorkerShutdownError } from './support/editor-browser-worker-cleanup.js';
 import {
   createEditorBrowserWorkerLifetime,
@@ -385,29 +384,26 @@ async function constructRuntimes(
             },
           }
         : {
-            registry: createPlatformNodeRegistryForRelease(
-              PLATFORM_REGISTRY_RELEASE,
-              {
-                httpRequest: { httpClient: controlledHttpClient },
-                // Never allow unused provider executors to fall back to real networking.
-                slackSendMessage: {
-                  client: curatedTarget?.slackClient ?? {
-                    sendMessage: () =>
-                      Promise.reject(
-                        new Error('Provider outside controlled HTTP fixture'),
-                      ),
-                  },
-                },
-                emailSendNotification: {
-                  client: {
-                    sendNotification: () =>
-                      Promise.reject(
-                        new Error('Provider outside controlled HTTP fixture'),
-                      ),
-                  },
+            registry: createPlatformNodeRegistry({
+              httpRequest: { httpClient: controlledHttpClient },
+              // Never allow unused provider executors to fall back to real networking.
+              slackSendMessage: {
+                client: curatedTarget?.slackClient ?? {
+                  sendMessage: () =>
+                    Promise.reject(
+                      new Error('Provider outside controlled HTTP fixture'),
+                    ),
                 },
               },
-            ),
+              emailSendNotification: {
+                client: {
+                  sendNotification: () =>
+                    Promise.reject(
+                      new Error('Provider outside controlled HTTP fixture'),
+                    ),
+                },
+              },
+            }),
             runtimeCapabilities: {
               ...controlledCapabilities.factories,
               artifacts: () => ({

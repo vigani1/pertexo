@@ -248,7 +248,7 @@ now, as one ordered program — not "whenever we touch it".
         move to `test/support`, files are named by role and version
         suffixes go. The compatibility-release functions stay until the
         node-sdk pass removes release machinery.
-  - [ ] Release machinery (crosses node-sdk, node-catalog, the engine and
+  - [x] Release machinery (crosses node-sdk, node-catalog, the engine and
         the database):
     - [x] The API and worker serve one release with every node; successor
           releases, release history and lifecycle transitions go
@@ -256,8 +256,12 @@ now, as one ordered program — not "whenever we touch it".
     - [x] Published executables and preview runs no longer pin a release:
           the engine checks a stored executable against the served catalog,
           and migration 0017 drops the epoch and fingerprint columns.
-    - [ ] The node catalog has no lifecycles or release fingerprints, and
-          node manifests have one grammar.
+    - [x] The node catalog has no lifecycles, epoch or fingerprint, and
+          node manifests have one grammar. `RegistryRelease` becomes
+          `NodeCatalog`; the API and worker serve `PLATFORM_NODE_CATALOG`.
+          Draft and import compatibility use the definition-list
+          fingerprint, and portable manifests no longer carry a selection
+          fingerprint.
   - [ ] node-sdk
   - [ ] nodes-core
   - [ ] integrations

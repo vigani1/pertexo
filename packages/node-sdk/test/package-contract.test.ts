@@ -6,24 +6,19 @@ import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 
 import * as browserEntry from '../src/index.js';
-import * as releaseEntry from '../src/release.js';
 
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const execFileAsync = promisify(execFile);
 
 describe('@pertexo/node-sdk package contract', () => {
-  it('publishes only browser-safe default/release exports and an explicit server subpath', async () => {
+  it('publishes a browser-safe default entry and an explicit server subpath', async () => {
     const packageJson = JSON.parse(
       await readFile(resolve(packageDirectory, 'package.json'), 'utf8'),
     ) as {
       readonly exports: Readonly<Record<string, unknown>>;
       readonly browser: Readonly<Record<string, unknown>>;
     };
-    expect(Object.keys(packageJson.exports).sort()).toEqual([
-      '.',
-      './release',
-      './server',
-    ]);
+    expect(Object.keys(packageJson.exports).sort()).toEqual(['.', './server']);
     expect(packageJson.browser['./dist/server.js']).toBe(false);
     expect(packageJson.browser['./dist/server-only.js']).toBe(false);
     expect(packageJson.exports['./server']).toEqual({
@@ -32,10 +27,7 @@ describe('@pertexo/node-sdk package contract', () => {
       node: './dist/server.js',
     });
     expect(Object.keys(browserEntry)).not.toContain('createNodeRegistry');
-    expect(Object.keys(browserEntry)).not.toContain('bindRegistryRelease');
-    expect(Object.keys(browserEntry).sort()).toEqual(
-      Object.keys(releaseEntry).sort(),
-    );
+    expect(Object.keys(browserEntry)).not.toContain('bindNodeCatalog');
   });
 
   it('keeps browser entries transitively free of Node/server modules', async () => {
@@ -48,7 +40,7 @@ describe('@pertexo/node-sdk package contract', () => {
         '--root',
         resolve(packageDirectory, '../..'),
         'packages/node-sdk/src/index.ts',
-        'packages/node-sdk/src/release.ts',
+        'packages/node-sdk/src/catalog.ts',
       ]),
     ).resolves.toMatchObject({ stderr: '' });
   });

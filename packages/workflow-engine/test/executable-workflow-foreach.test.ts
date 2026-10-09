@@ -3,17 +3,17 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
 } from '../src/index.js';
-import { forEachGraph, nodeRelease } from './executable-workflow.fixtures.js';
+import { forEachGraph, nodeCatalog } from './executable-workflow.fixtures.js';
 
 async function startForEach() {
   const executable = buildWorkflowExecutable({
     graph: forEachGraph(),
-    release: composeExecutableCompatibilityRelease(
-      nodeRelease({ forEach: true, setRetryClass: 'idempotent-with-key' }),
+    catalog: composeExecutableCatalog(
+      nodeCatalog({ forEach: true, setRetryClass: 'idempotent-with-key' }),
     ),
   });
   const base = {
@@ -605,8 +605,8 @@ describe('For Each production operations', () => {
       Object.assign(bodyNode, { disabled: true });
     const skippedExecutable = buildWorkflowExecutable({
       graph: skippedGraph,
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true, setRetryClass: 'idempotent-with-key' }),
+      catalog: composeExecutableCatalog(
+        nodeCatalog({ forEach: true, setRetryClass: 'idempotent-with-key' }),
       ),
     });
     const skippedDeclaration = await advanceWorkflow({
@@ -861,8 +861,8 @@ describe('For Each production operations', () => {
     Object.assign(concurrentControl.structured, { maxConcurrency: 2 });
     const concurrentExecutable = buildWorkflowExecutable({
       graph: concurrentGraph,
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true, setRetryClass: 'idempotent-with-key' }),
+      catalog: composeExecutableCatalog(
+        nodeCatalog({ forEach: true, setRetryClass: 'idempotent-with-key' }),
       ),
     });
     const concurrent = await advanceWorkflow({

@@ -106,15 +106,6 @@ function stepMarks(data: WorkflowFlowNode['data']): ReactNode[] {
         Disabled
       </Mark>,
     );
-  if (
-    data.lifecycle === 'deprecated' ||
-    data.lifecycle === 'migration_required'
-  )
-    marks.push(
-      <Mark key="lifecycle" tone="warning">
-        {data.lifecycle === 'deprecated' ? 'Deprecated' : 'Needs migration'}
-      </Mark>,
-    );
   return marks;
 }
 

@@ -23,7 +23,6 @@ function definition(
   configSchema: NodeDefinitionCatalogItem['configSchema'] = {},
 ): NodeDefinitionCatalogItem {
   return {
-    schemaVersion: 1,
     definition: { key, version: 1 },
     family: 'logic',
     configVersion: 1,
@@ -36,9 +35,6 @@ function definition(
     retryClass: 'safe',
     resourceClass: 'cpu',
     capabilities: [],
-    lifecycle: 'active',
-    available: true,
-    publishable: true,
   };
 }
 

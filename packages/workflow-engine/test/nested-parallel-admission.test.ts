@@ -11,7 +11,7 @@ import type {
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   parseCheckpoint,
   type AdvanceWorkflowInput,
@@ -19,7 +19,7 @@ import {
 } from '../src/index.js';
 import {
   forEachGraph,
-  nodeRelease,
+  nodeCatalog,
   pairedParallelGraph,
 } from './executable-workflow.fixtures.js';
 
@@ -85,8 +85,8 @@ function executableWithNestedParallel(
           : node,
       ),
     },
-    release: composeExecutableCompatibilityRelease(
-      nodeRelease({
+    catalog: composeExecutableCatalog(
+      nodeCatalog({
         forEach: true,
         parallel: true,
         merge: true,
@@ -380,8 +380,8 @@ describe('nested Parallel admission through the public engine', () => {
       const graph = rootParallelWithDescendantLoop(maxConcurrency, 1);
       const executable = buildWorkflowExecutable({
         graph,
-        release: composeExecutableCompatibilityRelease(
-          nodeRelease({
+        catalog: composeExecutableCatalog(
+          nodeCatalog({
             forEach: true,
             parallel: true,
             merge: true,
@@ -515,8 +515,8 @@ describe('nested Parallel admission through the public engine', () => {
   it('keys a nested Parallel cap by the complete enclosing loop path', async () => {
     const executable = buildWorkflowExecutable({
       graph: parallelInsideNestedLoops(1, 1),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true, parallel: true, merge: true }),
+      catalog: composeExecutableCatalog(
+        nodeCatalog({ forEach: true, parallel: true, merge: true }),
       ),
     });
     const base = {

@@ -35,7 +35,6 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
   ];
   const catalog = nodeDefinitionListResponseSchema.parse({
     schemaVersion: 1,
-    release: realCatalog.release,
     items: realCatalog.definitions.filter(
       ({ definition }) =>
         keys.includes(definition.key) && definition.version === 1,

@@ -2,20 +2,14 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { expect } from 'vitest';
 import { z } from 'zod';
-import { catalogReleaseSchema } from '@pertexo/contracts/schemas/catalog';
 import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
-  platformBrowserNodeDefinitionCatalog,
-  PLATFORM_REGISTRY_RELEASE,
-} from '@pertexo/node-catalog';
-import {
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   verifyWorkflowExecutable,
 } from '@pertexo/workflow-engine';
 
-const executable = composeExecutableCompatibilityRelease(
-  PLATFORM_REGISTRY_RELEASE,
-);
+const executable = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
 export const httpScopeSchema = z.strictObject({
   workspaceId: z.uuid(),
   workflowId: z.uuid(),
@@ -35,7 +29,6 @@ export const httpEvidenceSchema = httpScopeSchema.extend({
   mapId: z.string().min(1).max(256),
   conditionId: z.string().min(1).max(256),
   httpId: z.string().min(1).max(256),
-  catalogRelease: catalogReleaseSchema,
 });
 export const httpEffectsSchema = z.strictObject({
   phase: z.literal('controlled-http-effects'),
@@ -137,9 +130,6 @@ export async function verifyHttpEvidence(
     bodyHashes: [hash(httpActionBody)],
   });
   expect(evidence.trueRunId).not.toBe(evidence.falseRunId);
-  expect(evidence.catalogRelease).toEqual(
-    platformBrowserNodeDefinitionCatalog().release,
-  );
   const versions = await database.query<{
     id: string;
     graph_json: unknown;
@@ -156,7 +146,7 @@ export async function verifyHttpEvidence(
   verifyWorkflowExecutable({
     envelope: version.executable_json,
     checksum: version.checksum,
-    release: executable,
+    catalog: executable,
   });
   const graph = workflowGraphSchema.parse(version.graph_json);
   expect(graph.nodes.map(({ definition }) => definition.key).sort()).toEqual([

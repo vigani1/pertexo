@@ -6,14 +6,11 @@ import {
   CORE_PARALLEL_EXECUTOR,
 } from '@pertexo/nodes-core';
 
-import { PLATFORM_REGISTRY_RELEASE } from '../src/registry.js';
-import { createPlatformNodeRegistryForRelease } from '../src/server.js';
+import { createPlatformNodeRegistry } from '../src/server.js';
 
-describe('platform cohort execution smoke contracts', () => {
-  it('executes a settled Merge ledger in its active release', async () => {
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+describe('platform structured node execution', () => {
+  it('executes a settled Merge ledger', async () => {
+    const registry = createPlatformNodeRegistry();
     const input = {
       ledger: {
         'branch-01': { disposition: 'arrived' },
@@ -33,10 +30,8 @@ describe('platform cohort execution smoke contracts', () => {
     ).resolves.toEqual({ kind: 'succeeded', output: input });
   });
 
-  it('executes a bounded Parallel declaration in its active release', async () => {
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+  it('executes a bounded Parallel declaration', async () => {
+    const registry = createPlatformNodeRegistry();
 
     await expect(
       registry.execute({

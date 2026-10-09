@@ -63,20 +63,12 @@ function authenticatedHandlers() {
     http.get('http://pertexo.test/v1/node-definitions', () =>
       HttpResponse.json({
         schemaVersion: 1,
-        release: {
-          epoch: 1,
-          fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-        },
         items: [],
       }),
     ),
     http.get('http://pertexo.test/v1/integrations', () =>
       HttpResponse.json({
         schemaVersion: 1,
-        release: {
-          epoch: 1,
-          fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-        },
         items: [],
       }),
     ),

@@ -45,7 +45,6 @@ const manifest = {
   graph,
   requirements: {
     definitions: [{ key: 'slack.send_message', version: 1, configVersion: 1 }],
-    selectionFingerprint: `node-select:v1:sha256:${'a'.repeat(64)}`,
   },
   connectionSlots: [
     {
@@ -160,7 +159,7 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
       await route.fulfill({
         json: {
           manifestDigest: 'a'.repeat(64),
-          compatibilityFingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
+          compatibilityFingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
           compatible: true,
           issues: [],
           truncated: false,
@@ -298,7 +297,7 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
     manifest,
     bindings: [{ nodeId: 'sender', slot: 'slack_bot_token', connectionId }],
     name: 'Explicit independent import',
-    expectedCompatibilityFingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
+    expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
   });
   await importing.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(importing).toHaveCount(0);
@@ -358,7 +357,7 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
     manifest,
     bindings: [{ nodeId: 'sender', slot: 'slack_bot_token', connectionId }],
     name: 'Deliberate second draft',
-    expectedCompatibilityFingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
+    expectedCompatibilityFingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
   });
   await importing.getByRole('button', { name: 'Close', exact: true }).click();
 });

@@ -250,26 +250,6 @@
             "type": "number",
             "const": 1
           },
-          "release": {
-            "readOnly": true,
-            "type": "object",
-            "properties": {
-              "epoch": {
-                "type": "integer",
-                "exclusiveMinimum": 0,
-                "maximum": 9007199254740991
-              },
-              "fingerprint": {
-                "type": "string",
-                "pattern": "^node-compat:v1:sha256:[a-f0-9]{64}$"
-              }
-            },
-            "required": [
-              "epoch",
-              "fingerprint"
-            ],
-            "additionalProperties": false
-          },
           "items": {
             "maxItems": 256,
             "type": "array",
@@ -277,18 +257,6 @@
               "readOnly": true,
               "type": "object",
               "properties": {
-                "schemaVersion": {
-                  "anyOf": [
-                    {
-                      "type": "number",
-                      "const": 1
-                    },
-                    {
-                      "type": "number",
-                      "const": 2
-                    }
-                  ]
-                },
                 "definition": {
                   "readOnly": true,
                   "type": "object",
@@ -452,27 +420,9 @@
                     "minLength": 1,
                     "maxLength": 128
                   }
-                },
-                "lifecycle": {
-                  "type": "string",
-                  "enum": [
-                    "active",
-                    "deprecated",
-                    "migration_required",
-                    "retired"
-                  ]
-                },
-                "available": {
-                  "type": "boolean",
-                  "description": "Definition is available for new workflow placement."
-                },
-                "publishable": {
-                  "type": "boolean",
-                  "description": "Definition may be selected for publication after full workflow validation."
                 }
               },
               "required": [
-                "schemaVersion",
                 "definition",
                 "family",
                 "configVersion",
@@ -484,10 +434,7 @@
                 "connectionRequirements",
                 "retryClass",
                 "resourceClass",
-                "capabilities",
-                "lifecycle",
-                "available",
-                "publishable"
+                "capabilities"
               ],
               "additionalProperties": false
             }
@@ -495,7 +442,6 @@
         },
         "required": [
           "schemaVersion",
-          "release",
           "items"
         ],
         "additionalProperties": false,
@@ -542,26 +488,6 @@
             "type": "number",
             "const": 1
           },
-          "release": {
-            "readOnly": true,
-            "type": "object",
-            "properties": {
-              "epoch": {
-                "type": "integer",
-                "exclusiveMinimum": 0,
-                "maximum": 9007199254740991
-              },
-              "fingerprint": {
-                "type": "string",
-                "pattern": "^node-compat:v1:sha256:[a-f0-9]{64}$"
-              }
-            },
-            "required": [
-              "epoch",
-              "fingerprint"
-            ],
-            "additionalProperties": false
-          },
           "items": {
             "maxItems": 128,
             "type": "array",
@@ -606,22 +532,12 @@
                     ],
                     "additionalProperties": false
                   }
-                },
-                "available": {
-                  "type": "boolean",
-                  "description": "At least one operation definition is available for placement."
-                },
-                "publishable": {
-                  "type": "boolean",
-                  "description": "At least one operation definition may be published after full validation."
                 }
               },
               "required": [
                 "providerKey",
                 "operationKey",
-                "nodeDefinitions",
-                "available",
-                "publishable"
+                "nodeDefinitions"
               ],
               "additionalProperties": false
             }
@@ -629,7 +545,6 @@
         },
         "required": [
           "schemaVersion",
-          "release",
           "items"
         ],
         "additionalProperties": false

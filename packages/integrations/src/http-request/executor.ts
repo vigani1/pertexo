@@ -437,13 +437,11 @@ async function consumeResponseBody(
 
 export function createHttpRequestExecutorRegistration(
   dependencies: HttpRequestExecutorDependencies,
-  lifecycle: NodeExecutorRegistration['lifecycle'] = 'staged',
 ): NodeExecutorRegistration {
   return Object.freeze({
     abiVersion: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
     definitions: Object.freeze([HTTP_REQUEST_DEFINITION]),
     executor: HTTP_REQUEST_EXECUTOR,
-    lifecycle,
     policyReferences: Object.freeze([
       HTTP_REQUEST_NETWORK_POLICY,
       HTTP_REQUEST_VALUE_POLICY,

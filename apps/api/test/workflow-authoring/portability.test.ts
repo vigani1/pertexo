@@ -13,14 +13,13 @@ const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const actorId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const tag = `"draft-v1.${'a'.repeat(43)}"`;
-const fingerprint = `node-compat:v1:sha256:${'a'.repeat(64)}`;
+const fingerprint = `wf-compat:v1:sha256:${'a'.repeat(64)}`;
 const manifest = {
   format: 'pertexo.workflow',
   formatVersion: 1,
   graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
   requirements: {
     definitions: [],
-    selectionFingerprint: `node-select:v1:sha256:${'a'.repeat(64)}`,
   },
   connectionSlots: [],
 };

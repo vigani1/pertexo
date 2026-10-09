@@ -6,11 +6,11 @@ import {
   parseDatabaseConfig,
   type DatabaseConfig,
 } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { QUEUE_NAME } from '@pertexo/queue';
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
@@ -26,11 +26,10 @@ import { createRedisTestNamespace } from './redis-test-namespace.js';
 function scheduleAuthoringOptions(
   validator: Pick<WorkflowAuthoringValidator, 'validate'>,
 ) {
-  const nodeRelease = PLATFORM_REGISTRY_RELEASE;
-  const release = composeExecutableCompatibilityRelease(nodeRelease);
+  const nodeCatalog = PLATFORM_NODE_CATALOG;
+  const catalog = composeExecutableCatalog(nodeCatalog);
   const authoringPolicies = {
-    releaseFingerprint: release.fingerprint,
-    definitions: nodeRelease.definitions.map((manifest) => ({
+    definitions: nodeCatalog.definitions.map((manifest) => ({
       definition: {
         key: manifest.definition.key,
         version: manifest.definition.version,
@@ -41,46 +40,29 @@ function scheduleAuthoringOptions(
       })),
     })),
   };
-  const catalog = (placement: boolean) =>
-    Object.freeze({
-      schemaVersion: 1 as const,
-      releaseFingerprint: release.fingerprint,
-      definitions: Object.freeze(
-        nodeRelease.definitions
-          .filter(
-            (manifest) =>
-              (manifest.lifecycle === 'active' ||
-                (!placement && manifest.lifecycle === 'deprecated')) &&
-              nodeRelease.executors.some(
-                (executor) =>
-                  executor.lifecycle === 'active' &&
-                  executor.executor.key === manifest.executor.key &&
-                  executor.executor.version === manifest.executor.version,
-              ),
-          )
-          .map(({ definition, integration, connectionRequirements }) =>
-            Object.freeze({
-              ...definition,
-              ...(integration === undefined
-                ? {}
-                : {
-                    integration: Object.freeze({
-                      ...integration,
-                      connectionSlots: Object.freeze([
-                        ...connectionRequirements,
-                      ]),
-                    }),
+  const definitionCatalog = Object.freeze({
+    schemaVersion: 1 as const,
+    definitions: Object.freeze(
+      nodeCatalog.definitions.map(
+        ({ definition, integration, connectionRequirements }) =>
+          Object.freeze({
+            ...definition,
+            ...(integration === undefined
+              ? {}
+              : {
+                  integration: Object.freeze({
+                    ...integration,
+                    connectionSlots: Object.freeze([...connectionRequirements]),
                   }),
-            }),
-          ),
+                }),
+          }),
       ),
-    });
-  const definitionCatalog = catalog(false);
+    ),
+  });
   return Object.freeze({
     definitionCatalog,
     databaseOptions: Object.freeze({
       definitionCatalog,
-      placementDefinitionCatalog: catalog(true),
       validateAuthoringGraph: (
         graph: WorkflowGraph,
         command: Readonly<{ signal?: AbortSignal }>,
@@ -88,7 +70,7 @@ function scheduleAuthoringOptions(
       executableCompiler: (
         graph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
       ) => {
-        const compiled = buildWorkflowExecutable({ graph, release });
+        const compiled = buildWorkflowExecutable({ graph, catalog });
         return {
           checksum: compiled.checksum,
           executableSchemaVersion: 2 as const,
@@ -342,7 +324,7 @@ export function createScheduleTriggerFixture(
         workerEvidence = undefined;
       }
       if (redisNamespaceAcquired) {
-        await attempt('release Redis namespace', () => redisNamespace.close());
+        await attempt('catalog Redis namespace', () => redisNamespace.close());
         redisNamespaceAcquired = false;
       }
       await attempt('drop disposable database', dropDatabase);

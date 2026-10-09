@@ -181,9 +181,6 @@ const manifestObject = z
               .strict(),
           )
           .max(WORKFLOW_PORTABILITY_LIMITS.requirements),
-        selectionFingerprint: z
-          .string()
-          .regex(/^node-select:v1:sha256:[a-f0-9]{64}$/u),
       })
       .strict(),
     connectionSlots: z

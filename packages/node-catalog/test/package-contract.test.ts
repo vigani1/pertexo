@@ -8,7 +8,7 @@ import * as browserEntry from '../src/index.js';
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('@pertexo/node-catalog package contract', () => {
-  it('keeps browser release metadata separate from server registry composition', async () => {
+  it('keeps browser catalog metadata separate from server registry composition', async () => {
     const packageJson = JSON.parse(
       await readFile(resolve(packageDirectory, 'package.json'), 'utf8'),
     ) as {
@@ -19,11 +19,9 @@ describe('@pertexo/node-catalog package contract', () => {
     expect(packageJson.browser['./dist/server.js']).toBe(false);
     expect(packageJson.browser['./dist/server-only.js']).toBe(false);
     expect(Object.keys(browserEntry)).not.toContain(
-      'createPlatformNodeRegistryForRelease',
+      'createPlatformNodeRegistry',
     );
-    expect(browserEntry.resolvePlatformNodeDefinitionForRelease).toBeTypeOf(
-      'function',
-    );
+    expect(browserEntry.resolvePlatformNodeDefinition).toBeTypeOf('function');
     const indexSource = await readFile(
       resolve(packageDirectory, 'src/index.ts'),
       'utf8',

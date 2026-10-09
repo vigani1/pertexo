@@ -81,9 +81,6 @@ importers:
       '@pertexo/node-catalog':
         specifier: workspace:*
         version: link:../../packages/node-catalog
-      '@pertexo/node-sdk':
-        specifier: workspace:*
-        version: link:../../packages/node-sdk
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../../packages/nodes-core

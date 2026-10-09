@@ -38,9 +38,6 @@
       "path": "../../packages/node-catalog/tsconfig.json"
     },
     {
-      "path": "../../packages/node-sdk/tsconfig.json"
-    },
-    {
       "path": "../../packages/nodes-core/tsconfig.json"
     },
     {

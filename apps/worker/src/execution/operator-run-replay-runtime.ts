@@ -13,14 +13,14 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   unrecoverableQueueError,
   type QueueDelivery,
   type QueueHandlerContext,
 } from '@pertexo/queue';
 import {
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 import { initialCheckpointFactory } from '@pertexo/execution';
@@ -40,7 +40,7 @@ export function createDatabaseOperatorRunReplayStore(
   runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
   const checkpointFactory = initialCheckpointFactory({
-    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
+    catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
   });
   return createOperatorRunReplayStore(
     database,

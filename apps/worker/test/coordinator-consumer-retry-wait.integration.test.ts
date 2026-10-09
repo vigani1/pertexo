@@ -7,8 +7,7 @@ import {
   parseDatabaseConfig,
   type RunAdvanceStore,
 } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {
   invocationKey,
@@ -564,9 +563,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
         workerId: `wait-control-${randomUUID()}`,
       },
       {
-        registry: createPlatformNodeRegistryForRelease(
-          PLATFORM_REGISTRY_RELEASE,
-        ),
+        registry: createPlatformNodeRegistry(),
         runtimeCapabilities: {
           connections: () => ({
             resolve: () => Promise.reject(new Error('not used')),

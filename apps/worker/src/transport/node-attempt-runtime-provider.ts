@@ -1,7 +1,6 @@
 import type { Provider } from '@nestjs/common';
 import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../config/worker-config.js';
@@ -92,9 +91,7 @@ export function nodeAttemptRuntimeProvider(
       let previewInvoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
       try {
         previewInvoker = factories.createPreviewInvoker({
-          registry: createPlatformNodeRegistryForRelease(
-            PLATFORM_REGISTRY_RELEASE,
-          ),
+          registry: createPlatformNodeRegistry(),
         });
       } catch (error: unknown) {
         return closePreviewStoreAfterFailure(previewRunStore, error);

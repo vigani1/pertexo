@@ -3,14 +3,11 @@ import {
   HTTP_REQUEST_DEFINITION_REGISTRATION,
   SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
 } from '@pertexo/integrations';
-import {
-  definitionIdentitySchema,
-  parseRegistryRelease,
-} from '@pertexo/node-sdk';
+import { definitionIdentitySchema, type NodeManifest } from '@pertexo/node-sdk';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
 
-import { PLATFORM_REGISTRY_RELEASE } from './registry.js';
+import { PLATFORM_NODE_CATALOG } from './registry.js';
 
 export type PlatformNodeDefinition = NodeDefinitionRegistration;
 
@@ -20,7 +17,6 @@ export type PlatformNodeDefinition = NodeDefinitionRegistration;
  * references remain private runtime implementation details.
  */
 export type PlatformNodeDefinitionBrowserProjection = Readonly<{
-  readonly schemaVersion: 1 | 2;
   readonly definition: Readonly<{ key: string; version: number }>;
   readonly family: NodeDefinitionRegistration['manifest']['family'];
   readonly configVersion: number;
@@ -40,17 +36,10 @@ export type PlatformNodeDefinitionBrowserProjection = Readonly<{
   readonly retryClass: NodeDefinitionRegistration['manifest']['retryClass'];
   readonly resourceClass: NodeDefinitionRegistration['manifest']['resourceClass'];
   readonly capabilities: readonly string[];
-  readonly lifecycle: NodeDefinitionRegistration['manifest']['lifecycle'];
-  readonly available: boolean;
-  readonly publishable: boolean;
 }>;
 
 export type PlatformNodeDefinitionBrowserCatalog = Readonly<{
   readonly schemaVersion: 1;
-  readonly release: Readonly<{
-    readonly epoch: number;
-    readonly fingerprint: string;
-  }>;
   readonly definitions: readonly PlatformNodeDefinitionBrowserProjection[];
 }>;
 
@@ -68,51 +57,38 @@ const PLATFORM_NODE_DEFINITION_REGISTRATIONS_BY_IDENTITY = new Map(
   ]),
 );
 
-export function platformIdentityToken(
+function platformIdentityToken(
   identity: Readonly<{ key: string; version: number }>,
 ): string {
   return `${identity.key}\u0000${String(identity.version)}`;
 }
 
-export function parseSupportedPlatformRelease(releaseInput: unknown) {
-  const release = parseRegistryRelease(releaseInput);
-  if (
-    release.epoch !== PLATFORM_REGISTRY_RELEASE.epoch ||
-    release.fingerprint !== PLATFORM_REGISTRY_RELEASE.fingerprint
-  )
-    throw new Error('Platform compatibility release identity is not supported');
-  return release;
-}
-
 /**
- * Resolve definition schemas, validators, and compatibility metadata without
- * loading an executor. HTTP discovery uses the narrower projection below;
- * compatibility identities returned by this resolver are not HTTP response fields.
+ * Resolve a definition's schemas and validators without loading an executor.
+ * HTTP discovery uses the narrower browser projection below.
  */
-export function resolvePlatformNodeDefinitionForRelease(
-  releaseInput: unknown,
+export function resolvePlatformNodeDefinition(
   definitionInput: unknown,
 ): PlatformNodeDefinition {
-  const release = parseSupportedPlatformRelease(releaseInput);
   const definition = definitionIdentitySchema.parse(definitionInput);
-  const manifest = release.definitions.find(
+  const manifest = PLATFORM_NODE_CATALOG.definitions.find(
     (candidate) =>
       candidate.definition.key === definition.key &&
       candidate.definition.version === definition.version,
   );
   if (manifest === undefined)
-    throw new Error('Platform compatibility definition is not implemented');
+    throw new Error('Platform node definition is not implemented');
   return resolveRegisteredPlatformManifest(manifest);
 }
 
 function resolveRegisteredPlatformManifest(
-  manifest: ReturnType<typeof parseRegistryRelease>['definitions'][number],
+  manifest: NodeManifest,
 ): PlatformNodeDefinition {
   const registration = PLATFORM_NODE_DEFINITION_REGISTRATIONS_BY_IDENTITY.get(
     platformIdentityToken(manifest.definition),
   );
   if (registration === undefined)
-    throw new Error('Platform compatibility definition is not implemented');
+    throw new Error('Platform node definition is not implemented');
   return Object.freeze({ ...registration, manifest });
 }
 
@@ -127,29 +103,9 @@ function compareDefinitionIdentity(
       : left.version - right.version;
 }
 
-/**
- * Return only release-backed definitions that clients may use or publish.
- * Staged, migration-required, and retired definitions are intentionally not
- * surfaced.  The active-executor check prevents a definition from appearing
- * available while its release is still staged.
- */
+/** Every definition in the served catalog, without executor or policy details. */
 export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBrowserCatalog {
-  const release = PLATFORM_REGISTRY_RELEASE;
-  const activeExecutors = new Set(
-    release.executors
-      .filter(({ lifecycle }) => lifecycle === 'active')
-      .map(({ executor }) => platformIdentityToken(executor)),
-  );
-  const definitions = release.definitions
-    .filter((manifest) => {
-      const executorIsActive = activeExecutors.has(
-        platformIdentityToken(manifest.executor),
-      );
-      return (
-        executorIsActive &&
-        (manifest.lifecycle === 'active' || manifest.lifecycle === 'deprecated')
-      );
-    })
+  const definitions = [...PLATFORM_NODE_CATALOG.definitions]
     .sort((left, right) =>
       compareDefinitionIdentity(left.definition, right.definition),
     )
@@ -157,7 +113,6 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
       const registration = resolveRegisteredPlatformManifest(manifest);
       const projection = registration.manifest;
       return Object.freeze({
-        schemaVersion: projection.schemaVersion,
         definition: Object.freeze({ ...projection.definition }),
         family: projection.family,
         configVersion: projection.configVersion,
@@ -180,19 +135,10 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
         retryClass: projection.retryClass,
         resourceClass: projection.resourceClass,
         capabilities: Object.freeze([...projection.capabilities]),
-        lifecycle: projection.lifecycle,
-        available: projection.lifecycle === 'active',
-        publishable:
-          projection.lifecycle === 'active' ||
-          projection.lifecycle === 'deprecated',
       });
     });
   return Object.freeze({
     schemaVersion: 1,
-    release: Object.freeze({
-      epoch: release.epoch,
-      fingerprint: release.fingerprint,
-    }),
     definitions: Object.freeze(definitions),
   });
 }

@@ -2,7 +2,6 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Pool } from 'pg';
-import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
 import { createEditorHttpControl } from './support/editor-http-control.js';
 import {
   httpEvidenceSchema,
@@ -35,7 +34,6 @@ it('failed qualification retains only submitted IDs without a verified success o
     mapId: 'map',
     conditionId: 'condition',
     httpId: 'http',
-    catalogRelease: platformBrowserNodeDefinitionCatalog().release,
     authorization: secret,
     requestBody: secret,
   };

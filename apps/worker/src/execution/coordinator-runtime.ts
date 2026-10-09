@@ -12,7 +12,7 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { advanceRun } from '@pertexo/execution';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   createQueueTraceRunner,
   type StructuredLogger,
@@ -29,7 +29,7 @@ import {
   type RunEventNotificationPublisher,
   unrecoverableQueueError,
 } from '@pertexo/queue';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import {
   createCoordinatorTelemetry,
@@ -171,9 +171,7 @@ export async function createCoordinatorRuntime(
     throw new TypeError(
       'Background task shutdown timeout must be between 1 and 120000',
     );
-  const release = composeExecutableCompatibilityRelease(
-    PLATFORM_REGISTRY_RELEASE,
-  );
+  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();
   let runStore: RunAdvanceStore | undefined;
@@ -203,7 +201,7 @@ export async function createCoordinatorRuntime(
     const clock = dependencies.clock ?? systemClock();
     const advanceDependencies = Object.freeze({
       runs: runStore,
-      verification: { release },
+      verification: { catalog },
       maximumAdmissions: options.maximumAdmissions,
       now: () => clock.now(),
     });

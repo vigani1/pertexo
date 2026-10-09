@@ -2,13 +2,13 @@ import type {
   NodeAttemptLease,
   PublishedWorkflowV2Projection,
 } from '@pertexo/database/testing';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   invocationKey,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
@@ -278,11 +278,11 @@ function nestedBranchGraph() {
 
 function compiledProjection(
   workflowGraph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
-  release: ReturnType<typeof composeExecutableCompatibilityRelease>,
+  catalog: ReturnType<typeof composeExecutableCatalog>,
 ): PublishedWorkflowV2Projection {
   const executable = buildWorkflowExecutable({
     graph: workflowGraph,
-    release,
+    catalog,
   });
   return {
     id: VERSION_ID,
@@ -297,8 +297,8 @@ function compiledProjection(
 }
 
 function fixture(nodeId: 'manual' | 'terminate') {
-  const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
-  const executable = buildWorkflowExecutable({ graph: graph(), release });
+  const catalog = composeExecutableCatalog(CORE_NODE_CATALOG);
+  const executable = buildWorkflowExecutable({ graph: graph(), catalog });
   const projection: PublishedWorkflowV2Projection = {
     id: VERSION_ID,
     workspaceId: WORKSPACE_ID,
@@ -325,14 +325,14 @@ function fixture(nodeId: 'manual' | 'terminate') {
     leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
     delivery: { outboxEventId: OUTBOX_ID, payloadChecksum: 'a'.repeat(64) },
   };
-  return { release, projection, lease };
+  return { catalog, projection, lease };
 }
 
 describe('node attempt execution engine', () => {
   it('verifies the pinned executable and executes Manual using only run input', async () => {
-    const { release, projection, lease } = fixture('manual');
+    const { catalog, projection, lease } = fixture('manual');
     const engine = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     });
     const prepared = engine.prepare({ projection, lease });
 
@@ -355,19 +355,17 @@ describe('node attempt execution engine', () => {
   });
 
   it('hands the resolved input to be recorded, except for a step that uses a connection', async () => {
-    const release = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(CORE_NODE_CATALOG);
     const run = async (connectionRefs: Readonly<Record<string, string>>) => {
       const base = graph();
       const [manual, ...rest] = base.nodes;
       if (manual === undefined) throw new Error('fixture graph is missing');
       const projection = compiledProjection(
         { ...base, nodes: [{ ...manual, connectionRefs }, ...rest] },
-        release,
+        catalog,
       );
       const engine = createNodeAttemptExecutionEngine({
-        release: release,
+        catalog: catalog,
       });
       const onInputResolved = vi.fn(() => Promise.resolve());
       await engine
@@ -391,14 +389,14 @@ describe('node attempt execution engine', () => {
   });
 
   it('rejects a branch scope without executable ancestry', () => {
-    const { release, projection, lease } = fixture('manual');
+    const { catalog, projection, lease } = fixture('manual');
     const scopedLease: NodeAttemptLease = {
       ...lease,
       invocationKey: `${VERSION_ID}|manual|b:condition%3Atrue|i:`,
       branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
     };
     const engine = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     });
 
     expect(() => engine.prepare({ projection, lease: scopedLease })).toThrow(
@@ -407,12 +405,10 @@ describe('node attempt execution engine', () => {
   });
 
   it('uses the parent scope for the branch node that introduces a selected path', () => {
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const executable = buildWorkflowExecutable({
       graph: branchGraph('condition'),
-      release,
+      catalog,
     });
     const projection: PublishedWorkflowV2Projection = {
       id: VERSION_ID,
@@ -438,7 +434,7 @@ describe('node attempt execution engine', () => {
 
     expect(
       createNodeAttemptExecutionEngine({
-        release: release,
+        catalog: catalog,
       }).prepare({ projection, lease }).upstreamNodeOutputs,
     ).toEqual([
       {
@@ -452,9 +448,9 @@ describe('node attempt execution engine', () => {
   });
 
   it('derives the exact direct-upstream set and rejects a changed side-effect pin', () => {
-    const { release, projection, lease } = fixture('terminate');
+    const { catalog, projection, lease } = fixture('terminate');
     const engine = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     });
 
     expect(engine.prepare({ projection, lease }).upstreamNodeOutputs).toEqual([
@@ -469,9 +465,9 @@ describe('node attempt execution engine', () => {
   });
 
   it('rejects projection drift, a missing node, and a forged invocation pin independently', () => {
-    const { release, projection, lease } = fixture('manual');
+    const { catalog, projection, lease } = fixture('manual');
     const engine = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     });
 
     expect(() =>
@@ -502,15 +498,15 @@ describe('node attempt execution engine', () => {
   });
 
   it.each([
-    ['condition', PLATFORM_REGISTRY_RELEASE, 'true', 'false'],
-    ['switch', PLATFORM_REGISTRY_RELEASE, 'case-01', 'default'],
+    ['condition', PLATFORM_NODE_CATALOG, 'true', 'false'],
+    ['switch', PLATFORM_NODE_CATALOG, 'case-01', 'default'],
   ] as const)(
     'requires the exact %s branch path without omissions or duplicates',
-    (kind, registryRelease, selectedPort, wrongPort) => {
-      const release = composeExecutableCompatibilityRelease(registryRelease);
-      const projection = compiledProjection(branchGraph(kind), release);
+    (kind, nodeCatalog, selectedPort, wrongPort) => {
+      const catalog = composeExecutableCatalog(nodeCatalog);
+      const projection = compiledProjection(branchGraph(kind), catalog);
       const engine = createNodeAttemptExecutionEngine({
-        release: release,
+        catalog: catalog,
       });
       const selectedPath = [
         { nodeId: kind, outputPort: selectedPort },
@@ -562,12 +558,10 @@ describe('node attempt execution engine', () => {
   );
 
   it('preserves ordered nested branch ancestry and only removes the introducing source scope', () => {
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
-    const projection = compiledProjection(nestedBranchGraph(), release);
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
+    const projection = compiledProjection(nestedBranchGraph(), catalog);
     const engine = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     });
     const branchPath = [
       { nodeId: 'condition', outputPort: 'true' },
@@ -616,12 +610,10 @@ describe('node attempt execution engine', () => {
   });
 
   it('pins Parallel branches while treating Merge and its downstream as unbranched', () => {
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
-    const projection = compiledProjection(parallelMergeGraph(), release);
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
+    const projection = compiledProjection(parallelMergeGraph(), catalog);
     const engine = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     });
     const baseLease = fixture('manual').lease;
     const leftPath = [{ nodeId: 'parallel', outputPort: 'branch-01' }] as const;
@@ -680,9 +672,9 @@ describe('node attempt execution engine', () => {
   });
 
   it('rejects an already-aborted prepared execution before registry dispatch', async () => {
-    const { release, projection, lease } = fixture('manual');
+    const { catalog, projection, lease } = fixture('manual');
     const prepared = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     }).prepare({ projection, lease });
     const execute = vi.fn();
 
@@ -699,12 +691,10 @@ describe('node attempt execution engine', () => {
   });
 
   it('executes a prepared core-catalog node', async () => {
-    const release = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(CORE_NODE_CATALOG);
     const executable = buildWorkflowExecutable({
       graph: graph(),
-      release,
+      catalog,
     });
     const { lease } = fixture('manual');
     const projection: PublishedWorkflowV2Projection = {
@@ -717,7 +707,7 @@ describe('node attempt execution engine', () => {
       executableSchemaVersion: 2,
       executableJson: executable.envelope,
     };
-    const engine = createNodeAttemptExecutionEngine({ release });
+    const engine = createNodeAttemptExecutionEngine({ catalog });
     const prepared = engine.prepare({ projection, lease });
 
     await expect(
@@ -732,12 +722,10 @@ describe('node attempt execution engine', () => {
   });
 
   it('recursively prepares a For Each body node with exact ordinal-scoped upstream identity', async () => {
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const executable = buildWorkflowExecutable({
       graph: forEachGraph(),
-      release,
+      catalog,
     });
     const projection: PublishedWorkflowV2Projection = {
       id: VERSION_ID,
@@ -767,7 +755,7 @@ describe('node attempt execution engine', () => {
       iterationPath,
     };
     const prepared = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     }).prepare({ projection, lease });
 
     expect(prepared.upstreamNodeOutputs).toEqual([
@@ -792,21 +780,17 @@ describe('node attempt execution engine', () => {
             'f5ca319099f6b777b72517eb1fd6c40d5fd45f43acd86c0ce687aed7b8a7a0f9',
         },
         abortRequested: false,
-        registry: createPlatformNodeRegistryForRelease(
-          PLATFORM_REGISTRY_RELEASE,
-        ),
+        registry: createPlatformNodeRegistry(),
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({ nodeId: 'body-sink', kind: 'succeeded' });
   });
 
   it('rejects body preparation outside its exact iteration ancestry', () => {
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+    const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
     const executable = buildWorkflowExecutable({
       graph: forEachGraph(),
-      release,
+      catalog,
     });
     const projection: PublishedWorkflowV2Projection = {
       id: VERSION_ID,
@@ -820,7 +804,7 @@ describe('node attempt execution engine', () => {
     };
 
     const engine = createNodeAttemptExecutionEngine({
-      release: release,
+      catalog: catalog,
     });
     for (const iterationPath of [
       undefined,

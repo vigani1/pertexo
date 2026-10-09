@@ -25,7 +25,7 @@ export {
   parseWorkflowExecutable,
   verifyWorkflowExecutable,
 } from './compilation/boundary.js';
-export { composeExecutableCompatibilityRelease } from './compilation/compatibility.js';
+export { composeExecutableCatalog } from './compilation/compatibility.js';
 export {
   buildWorkflowExecutable,
   computeWorkflowExecutableChecksum,

@@ -19,7 +19,6 @@ export const AUTHORING_VALIDATION_BUDGET = Object.freeze({
 
 export const policyProjectionSchema = z
   .object({
-    releaseFingerprint: z.string().min(1),
     definitions: z
       .array(
         z
@@ -47,7 +46,7 @@ export const policyProjectionSchema = z
   })
   .strict();
 
-/** Narrow server-only projection of the exact selected registry release. */
+/** The policies each catalog definition allows its expressions to use. */
 export type WorkflowExpressionPolicyProjection = z.infer<
   typeof policyProjectionSchema
 >;

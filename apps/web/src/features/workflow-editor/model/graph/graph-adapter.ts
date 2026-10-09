@@ -49,7 +49,6 @@ interface WorkflowNodeData extends Record<string, unknown> {
   definitionKey: string;
   definitionVersion: number;
   family: NodeDefinitionCatalogItem['family'] | 'unknown';
-  lifecycle: NodeDefinitionCatalogItem['lifecycle'] | undefined;
   /** The ports the card draws (branching steps: only the configured ones). */
   inputPorts: readonly string[];
   outputPorts: readonly string[];
@@ -272,7 +271,6 @@ function projectNode(
       definitionKey: node.definition.key,
       definitionVersion: node.definition.version,
       family: definition?.family ?? 'unknown',
-      lifecycle: definition?.lifecycle,
       inputPorts: shownPorts(node, definition, level, 'inputs'),
       outputPorts: shownPorts(node, definition, level, 'outputs'),
       branching: {

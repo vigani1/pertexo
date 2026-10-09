@@ -3,17 +3,17 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
 } from '../src/index.js';
-import { graph, nodeRelease } from './executable-workflow.fixtures.js';
+import { graph, nodeCatalog } from './executable-workflow.fixtures.js';
 
 describe('wait and control production operations', () => {
   it('reconciles running cancellation and preserves reported unsafe uncertainty', async () => {
     const executable = buildWorkflowExecutable({
       graph: graph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ manualRetryClass: 'unsafe' }),
+      catalog: composeExecutableCatalog(
+        nodeCatalog({ manualRetryClass: 'unsafe' }),
       ),
     });
     const input = {
@@ -83,10 +83,10 @@ describe('wait and control production operations', () => {
   });
 
   it('consumes persisted waits with attempt fencing and resumes due work as engine-owned readiness', async () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
+    const catalog = composeExecutableCatalog(
+      nodeCatalog({ manualRetryClass: 'idempotent-with-key' }),
     );
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -257,7 +257,7 @@ describe('wait and control production operations', () => {
   });
 
   it('orders simultaneous due resumptions independently of loader row order', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const catalog = composeExecutableCatalog(nodeCatalog());
     const sourceGraph = graph();
     const executable = buildWorkflowExecutable({
       graph: {
@@ -268,7 +268,7 @@ describe('wait and control production operations', () => {
           inputMappings: {},
         })),
       },
-      release,
+      catalog,
     });
     const started = await advanceWorkflow({
       runId: 'run-1',
@@ -324,8 +324,8 @@ describe('wait and control production operations', () => {
   });
 
   it('applies persisted cancel and deadline controls before materializing work', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const initial = createCheckpoint({
       engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
@@ -385,8 +385,8 @@ describe('wait and control production operations', () => {
   });
 
   it('persists deadline state while active work reconciles before run timeout', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -453,8 +453,8 @@ describe('wait and control production operations', () => {
   });
 
   it('settles durable waiting work on deadline or cancellation without reconciliation', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutable({ graph: graph(), release });
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const executable = buildWorkflowExecutable({ graph: graph(), catalog });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -607,8 +607,8 @@ describe('wait and control production operations', () => {
   });
 
   it('plans every materialized node run independently of the attempt cap', async () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({
+    const catalog = composeExecutableCatalog(
+      nodeCatalog({
         manualRetryClass: 'unsafe',
         setRetryClass: 'idempotent-with-key',
       }),
@@ -622,7 +622,7 @@ describe('wait and control production operations', () => {
         inputMappings: {},
       })),
     };
-    const executable = buildWorkflowExecutable({ graph: parallel, release });
+    const executable = buildWorkflowExecutable({ graph: parallel, catalog });
     const input = {
       runId: 'run-1',
       executable,
@@ -653,7 +653,7 @@ describe('wait and control production operations', () => {
     Object.assign(disabledGraph.nodes[0], { disabled: true });
     const disabledExecutable = buildWorkflowExecutable({
       graph: disabledGraph,
-      release,
+      catalog,
     });
     const skipped = await advanceWorkflow({
       ...input,

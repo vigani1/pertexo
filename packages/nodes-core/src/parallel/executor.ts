@@ -18,7 +18,6 @@ export const coreParallelExecutor: NodeExecutorRegistration = Object.freeze({
   abiVersion: 1,
   definitions: Object.freeze([CORE_PARALLEL_DEFINITION]),
   executor: CORE_PARALLEL_EXECUTOR,
-  lifecycle: 'active',
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) => {
     const config = invocation.config as CoreParallelConfig;

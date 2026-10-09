@@ -19,8 +19,6 @@ import {
 
 export interface WorkflowDefinitionCatalog {
   readonly schemaVersion: 1;
-  /** Full durable release identity selected by the serving artifact. */
-  readonly releaseFingerprint?: string;
   readonly definitions: readonly {
     readonly key: string;
     readonly version: number;
@@ -58,17 +56,10 @@ function compareOrdinal(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function definitionCatalogFingerprint(
+/** Identifies which definitions a catalog offers; it changes when one is added or removed. */
+export function workflowDefinitionCatalogFingerprint(
   catalog: WorkflowDefinitionCatalog,
 ): string {
-  if (catalog.releaseFingerprint !== undefined) {
-    if (
-      !/^node-compat:v1:sha256:[0-9a-f]{64}$/u.test(catalog.releaseFingerprint)
-    ) {
-      throw new TypeError('Workflow definition catalog release is invalid');
-    }
-    return catalog.releaseFingerprint;
-  }
   const digest = createHash('sha256')
     .update(
       canonicalJson({
@@ -180,7 +171,7 @@ function compatibilityForGraph(
   );
   return {
     compatible: issues.length === 0,
-    fingerprint: definitionCatalogFingerprint(catalog),
+    fingerprint: workflowDefinitionCatalogFingerprint(catalog),
     issues,
   };
 }

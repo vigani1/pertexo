@@ -14,8 +14,7 @@ import {
   RESEND_API_KEY_CONNECTION_SLOT,
 } from '@pertexo/integrations';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -199,12 +198,9 @@ describe('platform preview node invoker', () => {
       sideEffectClass: 'idempotent_with_key' as const,
     };
     const invoker = createPlatformPreviewNodeInvoker({
-      registry: createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE,
-        {
-          emailSendNotification: { client: { sendNotification } },
-        },
-      ),
+      registry: createPlatformNodeRegistry({
+        emailSendNotification: { client: { sendNotification } },
+      }),
     });
     await expect(
       invoker.invoke({
@@ -299,10 +295,9 @@ describe('platform preview node invoker', () => {
       sideEffectClass: 'unsafe' as const,
     };
     const invoker = createPlatformPreviewNodeInvoker({
-      registry: createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE,
-        { slackSendMessage: { client: { sendMessage } } },
-      ),
+      registry: createPlatformNodeRegistry({
+        slackSendMessage: { client: { sendMessage } },
+      }),
     });
 
     await expect(
@@ -479,7 +474,7 @@ describe('platform preview node invoker', () => {
 
   it('rejects a mismatched config version through the real core registry path', async () => {
     const invoker = createPlatformPreviewNodeInvoker({
-      registry: createPlatformNodeRegistryForRelease(PLATFORM_REGISTRY_RELEASE),
+      registry: createPlatformNodeRegistry(),
     });
     const lease = leaseFixture({
       config: {},

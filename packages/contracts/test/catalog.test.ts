@@ -4,7 +4,6 @@ import {
   catalogClientContract,
   catalogOpenApiDocument,
   catalogQuerySchema,
-  catalogReleaseSchema,
   catalogLimitsV1,
   nodeDefinitionCatalogItemSchema,
 } from '../src/catalog.js';
@@ -12,7 +11,6 @@ import {
 describe('catalog discovery contracts', () => {
   it('bounds schema documents while accepting the exact property limit', () => {
     const item = {
-      schemaVersion: 1,
       definition: { key: 'core.map', version: 1 },
       family: 'transform',
       configVersion: 1,
@@ -25,9 +23,6 @@ describe('catalog discovery contracts', () => {
       retryClass: 'safe',
       resourceClass: 'cpu',
       capabilities: [],
-      lifecycle: 'active',
-      available: true,
-      publishable: true,
     };
     const document = Object.fromEntries(
       Array.from({ length: catalogLimitsV1.schemaProperties }, (_, index) => [
@@ -55,21 +50,6 @@ describe('catalog discovery contracts', () => {
           }),
         ]);
     }
-  });
-
-  it('preserves the registry release identity invariant', () => {
-    const release = {
-      epoch: 1,
-      fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-    };
-    expect(catalogReleaseSchema.parse(release)).toEqual(release);
-    for (const invalid of [
-      { ...release, epoch: 0 },
-      { ...release, epoch: 1.5 },
-      { ...release, fingerprint: 'bad' },
-      { ...release, fingerprint: `node-compat:v1:sha256:${'g'.repeat(64)}` },
-    ])
-      expect(catalogReleaseSchema.safeParse(invalid).success).toBe(false);
   });
 
   it('documents authenticated, unfiltered reads and their failure responses', () => {

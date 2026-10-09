@@ -60,7 +60,7 @@ describe('workflow-authoring public contracts', () => {
       workflowCompatibilityReportSchema.safeParse({
         compatible: true,
         fingerprint:
-          'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          'wf-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         issues: [],
       }).success,
     ).toBe(true);

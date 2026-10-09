@@ -281,13 +281,11 @@ async function execute(
 
 export function createSlackSendMessageExecutorRegistration(
   dependencies: SlackSendMessageExecutorDependencies,
-  lifecycle: NodeExecutorRegistration['lifecycle'] = 'staged',
 ): NodeExecutorRegistration {
   return Object.freeze({
     abiVersion: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
     definitions: Object.freeze([SLACK_SEND_MESSAGE_DEFINITION]),
     executor: SLACK_SEND_MESSAGE_EXECUTOR,
-    lifecycle,
     policyReferences: Object.freeze([SLACK_SEND_MESSAGE_POLICY]),
     execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
       (dependencies.telemetry ?? NOOP_TELEMETRY).measure(() =>

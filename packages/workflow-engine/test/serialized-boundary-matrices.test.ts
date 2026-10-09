@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
   parseCheckpoint,
 } from '../src/index.js';
 import {
-  nodeRelease,
+  nodeCatalog,
   pairedParallelGraph,
   forEachGraph,
 } from './executable-workflow.fixtures.js';
@@ -35,7 +35,7 @@ function executable() {
       ],
       edges: [],
     },
-    release: composeExecutableCompatibilityRelease(nodeRelease()),
+    catalog: composeExecutableCatalog(nodeCatalog()),
   });
 }
 
@@ -192,8 +192,8 @@ describe('serialized workflow boundary matrices', () => {
   it('rejects an altered serialized join ledger after the paired-graph check', async () => {
     const executableWithJoin = buildWorkflowExecutable({
       graph: pairedParallelGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ parallel: true, merge: true }),
+      catalog: composeExecutableCatalog(
+        nodeCatalog({ parallel: true, merge: true }),
       ),
     });
     const mergeKey = invocationKey({ workflowVersionId, nodeId: 'merge' });
@@ -236,9 +236,7 @@ describe('serialized workflow boundary matrices', () => {
   it('rejects altered serialized loop bounds after authentic body topology is checked', async () => {
     const executableWithLoop = buildWorkflowExecutable({
       graph: forEachGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true }),
-      ),
+      catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
     });
     const loopKey = invocationKey({ workflowVersionId, nodeId: 'loop' });
     const source = createCheckpoint({

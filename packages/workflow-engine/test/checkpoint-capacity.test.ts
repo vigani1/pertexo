@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   WORKFLOW_CHECKPOINT_LIMITS,
 } from '../src/index.js';
@@ -19,7 +19,7 @@ import {
   forEachGraph,
   graph as chainGraph,
   nestedForEachGraph,
-  nodeRelease,
+  nodeCatalog,
 } from './executable-workflow.fixtures.js';
 
 // A checkpoint keeps one record per invocation and repeats node IDs in each
@@ -124,9 +124,7 @@ async function runToCompletion(
   const workflowVersionId = randomUUID();
   const executable = buildWorkflowExecutable({
     graph,
-    release: composeExecutableCompatibilityRelease(
-      nodeRelease({ forEach: true }),
-    ),
+    catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
   });
   const base = {
     runId: 'checkpoint-capacity',

@@ -6,14 +6,14 @@ import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   type WorkflowCheckpoint,
 } from '../src/index.js';
 import {
   forEachGraph,
   nestedForEachGraph,
-  nodeRelease,
+  nodeCatalog,
   pairedParallelGraph,
 } from './executable-workflow.fixtures.js';
 
@@ -26,8 +26,8 @@ async function drive(
   const workflowVersionId = randomUUID();
   const executable = buildWorkflowExecutable({
     graph,
-    release: composeExecutableCompatibilityRelease(
-      nodeRelease({
+    catalog: composeExecutableCatalog(
+      nodeCatalog({
         forEach: true,
         condition: true,
         switch: true,

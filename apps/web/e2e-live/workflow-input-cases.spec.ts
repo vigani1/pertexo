@@ -64,12 +64,7 @@ async function publish(page: Page, path: string, label: string) {
     await catalogResponse.json(),
   );
   const definition = catalog.items
-    .filter(
-      (entry) =>
-        entry.definition.key === 'core.set' &&
-        entry.available &&
-        entry.publishable,
-    )
+    .filter((entry) => entry.definition.key === 'core.set')
     .sort((a, b) => b.definition.version - a.definition.version)[0];
   if (definition === undefined)
     throw new Error('Live core.set catalog entry missing');

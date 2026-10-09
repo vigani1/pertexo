@@ -16,9 +16,7 @@ import {
   type WorkflowPortabilityCatalog,
 } from '../src/portability/projection.js';
 
-const fingerprint = `node-select:v1:sha256:${'1'.repeat(64)}`;
 const catalog: WorkflowPortabilityCatalog = {
-  fingerprint: `node-compat:v1:sha256:${'2'.repeat(64)}`,
   definitions: ['core.set', 'core.foreach', 'http.request'].map((key) => ({
     key,
     version: 1,
@@ -35,7 +33,6 @@ const catalog: WorkflowPortabilityCatalog = {
           ]
         : [],
   })),
-  selectionFingerprint: () => fingerprint,
 };
 const node = (
   id: string,
@@ -335,8 +332,10 @@ describe('portable authoring projection and rebinding', () => {
       {
         ...manifest,
         requirements: {
-          ...manifest.requirements,
-          selectionFingerprint: `node-select:v1:sha256:${'3'.repeat(64)}`,
+          definitions: manifest.requirements.definitions.map((definition) => ({
+            ...definition,
+            configVersion: definition.configVersion + 1,
+          })),
         },
       },
     ])

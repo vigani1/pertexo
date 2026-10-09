@@ -17,7 +17,6 @@ export const CORE_MANUAL_EXECUTOR = Object.freeze({
 });
 
 export const CORE_MANUAL_MANIFEST: NodeManifest = Object.freeze({
-  schemaVersion: 1,
   definition: CORE_MANUAL_DEFINITION,
   family: 'trigger',
   configVersion: 1,
@@ -33,7 +32,6 @@ export const CORE_MANUAL_MANIFEST: NodeManifest = Object.freeze({
   retryClass: 'safe',
   resourceClass: 'cpu',
   capabilities: Object.freeze(['manual']),
-  lifecycle: 'active',
   executor: CORE_MANUAL_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),

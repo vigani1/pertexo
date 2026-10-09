@@ -13,7 +13,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import type { StructuredLogger } from '@pertexo/observability';
 import {
@@ -24,7 +24,7 @@ import {
   type QueueConsumer,
   type QueueConsumerObserver,
 } from '@pertexo/queue';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import { createTriggerReconciliationHandler } from './trigger-handler.js';
 import {
@@ -120,7 +120,7 @@ export async function createTriggerRuntime(
   const checkpointFactory: InitialCheckpointFactory =
     dependencies.checkpointFactory ??
     initialCheckpointFactory({
-      release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
+      catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
     });
   // Telemetry owns no closeable resources. Construct it before acquiring the
   // database and queue owners so constructor failure cannot strand them.

@@ -53,16 +53,13 @@ const WORKFLOW_STARTERS: readonly WorkflowStarter[] = [
 export type AvailableStarter = WorkflowStarter &
   Readonly<{ definitions: readonly NodeDefinitionCatalogItem[] }>;
 
-/** The newest definition for a key that can be placed and published. */
+/** The newest definition for a key. */
 function usableDefinition(
   catalog: NodeDefinitionListResponse,
   key: string,
 ): NodeDefinitionCatalogItem | undefined {
   return catalog.items
-    .filter(
-      (item) =>
-        item.definition.key === key && item.available && item.publishable,
-    )
+    .filter((item) => item.definition.key === key)
     .reduce<NodeDefinitionCatalogItem | undefined>(
       (newest, item) =>
         newest === undefined ||
@@ -74,8 +71,8 @@ function usableDefinition(
 }
 
 /**
- * Starters whose every step is available and publishable in this catalog,
- * and whose consecutive steps can actually be connected.
+ * Starters whose every step is in this catalog, and whose consecutive steps
+ * can actually be connected.
  */
 export function availableStarters(
   catalog: NodeDefinitionListResponse,

@@ -6,14 +6,14 @@ import { safeParseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
-  composeExecutableCompatibilityRelease,
+  composeExecutableCatalog,
   createCheckpoint,
   executeNodeAttempt,
   verifyWorkflowExecutable,
   invocationKey,
 } from '../src/index.js';
 import {
-  nodeRelease,
+  nodeCatalog,
   forEachGraph,
   nestedForEachGraph,
 } from './executable-workflow.fixtures.js';
@@ -21,9 +21,7 @@ import {
 function structuredAttemptFixture() {
   const executable = buildWorkflowExecutable({
     graph: forEachGraph(),
-    release: composeExecutableCompatibilityRelease(
-      nodeRelease({ forEach: true }),
-    ),
+    catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
   });
   const iterationPath = [{ loopNodeId: 'loop', ordinal: 1 }] as const;
   const collection = [{ name: 'first' }, { name: 'nearest' }] as const;
@@ -63,9 +61,7 @@ describe('For Each production operations', () => {
     async ({ nodeId, iterationPath, message }) => {
       const executable = buildWorkflowExecutable({
         graph: nestedForEachGraph(),
-        release: composeExecutableCompatibilityRelease(
-          nodeRelease({ forEach: true }),
-        ),
+        catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
       });
       const workflowVersionId = '00000000-0000-4000-8000-000000000001';
       let executions = 0;
@@ -101,9 +97,7 @@ describe('For Each production operations', () => {
   it('advances a nested For Each through inner and outer completion', async () => {
     const executable = buildWorkflowExecutable({
       graph: nestedForEachGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true }),
-      ),
+      catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
     });
     const base = {
       runId: 'run-nested-foreach',
@@ -476,9 +470,7 @@ describe('For Each production operations', () => {
   it('resolves the nearest item in a nested structured scope', async () => {
     const nestedExecutable = buildWorkflowExecutable({
       graph: nestedForEachGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true }),
-      ),
+      catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
     });
     const nestedIterationPath = [
       { loopNodeId: 'loop', ordinal: 0 },
@@ -547,10 +539,8 @@ describe('For Each production operations', () => {
         value: { kind: 'node_output', nodeId: reservedId, path: '$' },
       };
 
-      const release = composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true }),
-      );
-      const compiled = buildWorkflowExecutable({ graph, release });
+      const catalog = composeExecutableCatalog(nodeCatalog({ forEach: true }));
+      const compiled = buildWorkflowExecutable({ graph, catalog });
       const compiledSink = compiled.envelope.graph.nodes
         .find(({ id }) => id === 'loop')
         ?.structured?.body.nodes.find(({ id }) => id === 'body-sink');
@@ -558,7 +548,7 @@ describe('For Each production operations', () => {
       const recovered = verifyWorkflowExecutable({
         envelope: JSON.parse(JSON.stringify(compiled.envelope)),
         checksum: compiled.checksum,
-        release: release,
+        catalog: catalog,
       });
       const recoveredSink = recovered.envelope.graph.nodes
         .find(({ id }) => id === 'loop')
@@ -650,9 +640,7 @@ describe('For Each production operations', () => {
 
       const executable = buildWorkflowExecutable({
         graph,
-        release: composeExecutableCompatibilityRelease(
-          nodeRelease({ forEach: true }),
-        ),
+        catalog: composeExecutableCatalog(nodeCatalog({ forEach: true })),
       });
       const compiledSink = executable.envelope.graph.nodes
         .find(({ id }) => id === 'loop')

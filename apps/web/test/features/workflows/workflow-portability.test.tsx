@@ -37,14 +37,13 @@ import {
   problem,
 } from './workflow-list.fixtures';
 
-const fingerprint = `node-compat:v1:sha256:${'a'.repeat(64)}`;
+const fingerprint = `wf-compat:v1:sha256:${'a'.repeat(64)}`;
 const manifest = {
   format: 'pertexo.workflow',
   formatVersion: 1,
   graph: emptyGraph,
   requirements: {
     definitions: [],
-    selectionFingerprint: `node-select:v1:sha256:${'a'.repeat(64)}`,
   },
   connectionSlots: [],
 };

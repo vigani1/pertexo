@@ -1,5 +1,4 @@
-import { resolvePlatformNodeDefinitionForRelease } from '@pertexo/node-catalog';
-import type { RegistryRelease } from '@pertexo/node-sdk';
+import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
 import {
   canonicalizeJson,
   type JsonValue,
@@ -98,7 +97,6 @@ export async function prepareNodeValidation(
   input: Readonly<{
     graph: WorkflowGraph;
     nodeId: string;
-    release: RegistryRelease;
     sampleInput?: JsonValue;
     deferInput?: boolean;
     expressionEvaluator?: ExpressionEvaluator;
@@ -119,15 +117,12 @@ export async function prepareNodeValidation(
 
   let definition;
   try {
-    definition = resolvePlatformNodeDefinitionForRelease(
-      input.release,
-      node.definition,
-    );
+    definition = resolvePlatformNodeDefinition(node.definition);
   } catch {
     issue(issues, {
       path: '$.definition',
       code: 'node.definition_unavailable',
-      message: 'Selected node definition is unavailable in the pinned release',
+      message: 'Selected node definition is unavailable',
     });
     return Object.freeze({ issues: Object.freeze(issues) });
   }
