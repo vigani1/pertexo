@@ -238,7 +238,9 @@ now, as one ordered program — not "whenever we touch it".
   - [ ] nodes-core
   - [ ] integrations
   - [ ] node-catalog
-  - [ ] templates (new)
+  - [ ] templates (new) — the curated templates, their origin schema and
+        setup checks now live in `@pertexo/templates`; the registered setup
+        check still in node-catalog moves with the node-catalog pass.
   - [ ] contracts
   - [ ] queue
   - [ ] artifact-store
