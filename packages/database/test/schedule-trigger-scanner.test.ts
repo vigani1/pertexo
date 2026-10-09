@@ -52,7 +52,7 @@ vi.mock('../src/tenant-access/transactions.js', () => ({
 }));
 
 import type { DatabaseConfig } from '../src/config.js';
-import { createScheduleTriggerScanner } from '../src/triggers/schedule-trigger-scanner.js';
+import { createScheduleTriggerScanner } from '../src/triggers/schedules/scanner.js';
 
 const claimConfig = {
   connectionString: 'postgresql://worker:secret@db/pertexo',

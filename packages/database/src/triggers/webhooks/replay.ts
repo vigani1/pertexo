@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 
-import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { WebhookDeliveryReplayMismatchError } from './webhook-trigger-errors.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
+import { WebhookDeliveryReplayMismatchError } from './errors.js';
 
 /** Endpoint-scoped deduplication records for ADR 026 webhook replay. */
 export type WebhookReplayRecord = Readonly<{

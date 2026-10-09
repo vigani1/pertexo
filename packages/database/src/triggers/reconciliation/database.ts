@@ -1,25 +1,25 @@
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../../platform/database-runtime.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
 
-import type { DatabaseConfig } from '../config.js';
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
-import { reconcileActiveWorkflowTriggers } from './workflow-trigger-materialization.js';
+import type { DatabaseConfig } from '../../config.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
+import { reconcileActiveWorkflowTriggers } from './materialization.js';
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from './workflow-trigger-errors.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
-import { deactivateArchivedWorkflowTriggers } from './workflow-trigger-activation.js';
+} from './errors.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import { deactivateArchivedWorkflowTriggers } from './activation.js';
 import {
   readHealth,
   refreshWorkflowActivation,
   type WorkflowTriggerHealth,
-} from './workflow-trigger-health.js';
-export type { WorkflowTriggerHealth } from './workflow-trigger-health.js';
+} from './health.js';
+export type { WorkflowTriggerHealth } from './health.js';
 
 const uuidSchema = z.uuid();
 const reconciliationPayloadSchema = z
@@ -61,7 +61,7 @@ export interface WorkflowTriggerReconciliationDatabase {
 export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from './workflow-trigger-errors.js';
+} from './errors.js';
 
 const reconciliationConsumerName = 'trigger-runtime.reconciliation.v1';
 const transportChecksumMismatch = Symbol('transport-checksum-mismatch');

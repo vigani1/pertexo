@@ -14,7 +14,7 @@ async function observeCron(input: {
   // A separate process makes a synchronous recurrence regression fail within
   // a deadline instead of trapping the test runner's own event loop.
   const moduleUrl = new URL(
-    '../src/triggers/schedule-recurrence.ts',
+    '../src/triggers/schedules/recurrence.ts',
     import.meta.url,
   ).href;
   const { stdout } = await runNode(
@@ -52,7 +52,7 @@ async function observeCronWithMockedCursor(
   // under test is synchronous, so an uncapped loop would otherwise freeze
   // Vitest before its timeout can run.
   const moduleUrl = new URL(
-    '../src/triggers/schedule-recurrence.ts',
+    '../src/triggers/schedules/recurrence.ts',
     import.meta.url,
   ).href;
   const observedAt = '2026-10-25T01:30:00.000Z';

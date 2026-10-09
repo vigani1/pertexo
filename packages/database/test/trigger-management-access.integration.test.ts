@@ -4,8 +4,8 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { ScheduleTriggerError } from '../src/triggers/schedule-trigger-errors.js';
-import { createScheduleTriggerDatabase } from '../src/triggers/schedule-trigger-database.js';
+import { ScheduleTriggerError } from '../src/triggers/schedules/errors.js';
+import { createScheduleTriggerDatabase } from '../src/triggers/schedules/database.js';
 import {
   scopedConnectionUrl,
   waitForApplicationLock,

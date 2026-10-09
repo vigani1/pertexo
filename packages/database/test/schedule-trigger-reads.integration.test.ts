@@ -3,8 +3,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { ScheduleTriggerError } from '../src/triggers/schedule-trigger-errors.js';
-import type { ScheduleOccurrencePosition } from '../src/triggers/schedule-trigger-reads.js';
+import { ScheduleTriggerError } from '../src/triggers/schedules/errors.js';
+import type { ScheduleOccurrencePosition } from '../src/triggers/schedules/reads.js';
 import { createScheduleTriggerTestEnvironment } from './support/schedule-triggers.integration.support.js';
 
 const schedule = createScheduleTriggerTestEnvironment();

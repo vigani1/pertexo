@@ -1,27 +1,27 @@
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
 
-import type { DatabaseConfig } from '../config.js';
-import { ScheduleTriggerError } from './schedule-trigger-errors.js';
+import type { DatabaseConfig } from '../../config.js';
+import { ScheduleTriggerError } from './errors.js';
 import {
   parsePersistedScheduleRecurrence,
   resolveScheduleObservation,
-} from './schedule-recurrence.js';
+} from './recurrence.js';
 import {
   authorizeScheduleReader,
   createScheduleTriggerReads,
   type ScheduleTriggerReads,
-} from './schedule-trigger-reads.js';
-import { refreshWorkflowActivation } from './workflow-triggers.js';
-import { canManageWorkflowTrigger } from './trigger-management-access.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
+} from './reads.js';
+import { refreshWorkflowActivation } from '../reconciliation/database.js';
+import { canManageWorkflowTrigger } from '../management-access.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 const uuidSchema = z.uuid();
 const scheduleTriggerSchema = z
@@ -93,7 +93,7 @@ export interface ScheduleTriggerDatabase extends ScheduleTriggerReads {
   close(): Promise<void>;
 }
 
-export { ScheduleTriggerError } from './schedule-trigger-errors.js';
+export { ScheduleTriggerError } from './errors.js';
 
 function mapScheduleTrigger(
   row: Record<string, unknown>,
