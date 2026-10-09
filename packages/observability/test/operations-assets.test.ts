@@ -33,8 +33,6 @@ const allowedReferencedSeries = [
   'pertexo_database_pool_waiters',
   'pertexo_database_query_duration_seconds_bucket',
   'pertexo_database_transaction_duration_seconds_bucket',
-  'pertexo_lifecycle_command_process_count_total',
-  'pertexo_maintenance_operator_rerun_count_total',
   'pertexo_object_store_request_count_total',
   'pertexo_object_store_request_duration_seconds_bucket',
   'pertexo_object_store_safety_violation_count_total',
@@ -82,8 +80,6 @@ const requiredEmitterMetrics = [
   'pertexo.database.pool.waiters',
   'pertexo.database.query.duration',
   'pertexo.database.transaction.duration',
-  'pertexo.lifecycle_command.process.count',
-  'pertexo.maintenance.operator_rerun.count',
   'pertexo.object_store.request.count',
   'pertexo.object_store.request.duration',
   'pertexo.object_store.safety.violation.count',
@@ -174,9 +170,9 @@ describe('operations observability assets', () => {
   it('defines distinct documented dashboard panels with nonempty PromQL text', async () => {
     const { dashboard } = await operationsAssets;
 
-    expect(dashboard.panels).toHaveLength(21);
-    expect(new Set(dashboard.panels.map(({ id }) => id)).size).toBe(21);
-    expect(new Set(dashboard.panels.map(({ title }) => title)).size).toBe(21);
+    expect(dashboard.panels).toHaveLength(19);
+    expect(new Set(dashboard.panels.map(({ id }) => id)).size).toBe(19);
+    expect(new Set(dashboard.panels.map(({ title }) => title)).size).toBe(19);
     for (const panel of dashboard.panels) {
       expect(panel.description?.length).toBeGreaterThan(20);
       if (panel.type !== 'text') {
@@ -192,7 +188,7 @@ describe('operations observability assets', () => {
     const { alerts, runbook } = await operationsAssets;
     const alertBlocks = alerts.split('\n      - alert: ').slice(1);
 
-    expect(alertBlocks).toHaveLength(22);
+    expect(alertBlocks).toHaveLength(20);
     for (const block of alertBlocks) {
       const [alertName = ''] = block.split('\n', 1);
       expect(alertName).toMatch(/^Pertexo[A-Za-z]+$/u);
