@@ -3,31 +3,16 @@ import { z } from 'zod';
 import type {
   ApiIdentityConfig,
   IdentityEnvironment,
-  LegacyOidcConfig,
 } from './identity-config.js';
 
 /*
  * Parsers for the credential- and key-bearing identity sections. Their errors
- * can describe secret values, so parseIdentityConfig sanitizes every failure
- * except the explicit deployment rule for HTTPS identity endpoints.
+ * can describe secret values, so parseIdentityConfig sanitizes every failure.
  */
-
-export const OIDC_SIGNING_ALGORITHMS = [
-  'ES256',
-  'ES384',
-  'ES512',
-  'EdDSA',
-  'PS256',
-  'PS384',
-  'PS512',
-  'RS256',
-  'RS384',
-  'RS512',
-] as const;
 
 export function parseDurableAuthenticationMail(
   environment: IdentityEnvironment,
-): NonNullable<ApiIdentityConfig['betterAuth']>['durableMail'] {
+): ApiIdentityConfig['betterAuth']['durableMail'] {
   const values = [
     environment.AUTH_MAIL_FROM,
     environment.AUTH_MAIL_KEY,
@@ -52,70 +37,9 @@ export function parseDurableAuthenticationMail(
   });
 }
 
-export function parseOidcConfig(
-  environment: IdentityEnvironment,
-  deployed: boolean,
-): LegacyOidcConfig {
-  const issuer = requiredIdentityValue(environment.OIDC_ISSUER);
-  const authorizationEndpoint = requiredIdentityValue(
-    environment.OIDC_AUTHORIZATION_ENDPOINT,
-  );
-  const tokenEndpoint = requiredIdentityValue(environment.OIDC_TOKEN_ENDPOINT);
-  const jwksUri = requiredIdentityValue(environment.OIDC_JWKS_URI);
-  const clientId = requiredIdentityValue(environment.OIDC_CLIENT_ID);
-  const redirectUri = requiredIdentityValue(environment.OIDC_REDIRECT_URI);
-  const encryptionKey = requiredIdentityValue(environment.OIDC_TRANSACTION_KEY);
-  const encryptionKeyVersion = requiredIdentityValue(
-    environment.OIDC_TRANSACTION_KEY_VERSION,
-  );
-  if (
-    deployed &&
-    [issuer, authorizationEndpoint, tokenEndpoint, jwksUri, redirectUri].some(
-      (value) => new URL(value).protocol !== 'https:',
-    )
-  )
-    throw new Error('HTTPS identity endpoints are required when deployed');
-  return Object.freeze({
-    oidc: Object.freeze({
-      issuer,
-      authorizationEndpoint,
-      tokenEndpoint,
-      jwksUri,
-      clientId,
-      callbackLandingPath: environment.OIDC_CALLBACK_LANDING_PATH,
-      ...(environment.OIDC_CLIENT_SECRET === undefined
-        ? {}
-        : { clientSecret: environment.OIDC_CLIENT_SECRET }),
-      redirectUri,
-      scopes: parseDelimitedValues(
-        environment.OIDC_SCOPES ?? 'openid profile email',
-        /\s+/u,
-        z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/u),
-        16,
-      ),
-      allowedAlgorithms: parseDelimitedValues(
-        environment.OIDC_ALLOWED_ALGORITHMS ?? 'RS256',
-        /,/u,
-        z.enum(OIDC_SIGNING_ALGORITHMS),
-        OIDC_SIGNING_ALGORITHMS.length,
-      ),
-      timeoutMillis: environment.OIDC_TIMEOUT_MILLIS,
-      transactionTtlMillis: environment.OIDC_TRANSACTION_TTL_MILLIS,
-      allowInsecureHttpForTests: environment.NODE_ENV === 'test',
-    }),
-    secretEncryption: Object.freeze({
-      current: Object.freeze({
-        version: encryptionKeyVersion,
-        key: encryptionKey,
-      }),
-      previous: parsePreviousKeys(environment.OIDC_TRANSACTION_PREVIOUS_KEYS),
-    }),
-  });
-}
-
 export function parseAuthenticationProviders(
   environment: IdentityEnvironment,
-): NonNullable<ApiIdentityConfig['betterAuth']>['providers'] {
+): ApiIdentityConfig['betterAuth']['providers'] {
   const google = authenticationProviderPair(
     'Google',
     environment.AUTH_GOOGLE_CLIENT_ID,
@@ -169,19 +93,6 @@ function requiredIdentityValue(value: string | undefined): string {
     throw new Error('Identity configuration is incomplete');
   }
   return value;
-}
-
-function parseDelimitedValues<T extends string>(
-  input: string,
-  delimiter: RegExp,
-  schema: z.ZodType<T>,
-  maximum: number,
-): readonly T[] {
-  const values = input
-    .split(delimiter)
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
-  return Object.freeze(z.array(schema).min(1).max(maximum).parse(values));
 }
 
 export function parsePreviousKeys(

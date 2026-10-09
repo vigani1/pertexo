@@ -47,25 +47,6 @@ export type UserProfileUpdateResult = Readonly<{
   changed: boolean;
   replayed: boolean;
 }>;
-export type AuthIdentityRecord = Readonly<{
-  id: string;
-  userId: string;
-  issuer: string;
-  providerSubject: string;
-  profileMetadata: Record<string, unknown>;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-export type SessionRecord = Readonly<{
-  id: string;
-  userId: string;
-  tokenDigest: string;
-  expiresAt: Date;
-  revokedAt: Date | null;
-  userAgent: string | null;
-  ipAddress: string | null;
-  createdAt: Date;
-}>;
 export type WorkspaceRecord = Readonly<{
   id: string;
   name: string;
@@ -84,24 +65,6 @@ export type CreateUserInput = Readonly<{
   id?: string;
   email: string;
   displayName: string;
-}>;
-export type CreateAuthIdentityInput = Readonly<{
-  id?: string;
-  userId: string;
-  issuer: string;
-  providerSubject: string;
-  profileMetadata?: Record<string, unknown>;
-}>;
-export type ResolveOrCreateIdentityInput = Readonly<{
-  issuer: string;
-  providerSubject: string;
-  email: string;
-  displayName: string;
-  profileMetadata?: Record<string, unknown>;
-}>;
-export type ResolvedIdentity = Readonly<{
-  user: UserRecord;
-  identity: AuthIdentityRecord;
 }>;
 export type WorkspaceAccessRecord = Readonly<{
   actorId: string;
@@ -269,21 +232,14 @@ export type ResolveInvitationAcceptanceInput = Readonly<{
     bindingDigest: string;
   }>;
 }>;
-/**
- * The browser session that replaces every session of a user, stored where the
- * deployment's single session authority resolves it: Better Auth keeps its
- * random session token, while legacy opaque sessions persist only a digest.
- */
+/** The Better Auth session that replaces every session of a user. */
 export type ReplacementSessionInput = Readonly<{
   id: string;
+  token: string;
   expiresAt: Date;
   userAgent?: string | null;
   ipAddress?: string | null;
-}> &
-  (
-    | Readonly<{ authority: 'better_auth'; token: string }>
-    | Readonly<{ authority: 'opaque'; tokenDigest: string }>
-  );
+}>;
 export type CompleteInvitationAcceptanceInput = Readonly<{
   workspaceId: string;
   intentId: string;
@@ -316,14 +272,6 @@ export type AccessibleWorkspacesPage = Readonly<{
   items: readonly AccessibleWorkspaceRecord[];
   nextCursor?: string;
 }>;
-export type CreateSessionInput = Readonly<{
-  id?: string;
-  userId: string;
-  tokenDigest: string;
-  expiresAt: Date;
-  userAgent?: string | null;
-  ipAddress?: string | null;
-}>;
 export type WorkspaceWithOwnerInput = Readonly<{
   id?: string;
   name: string;
@@ -336,7 +284,6 @@ export type WorkspaceWithOwnerInput = Readonly<{
 }>;
 export type WorkspaceCreationResult = Readonly<{
   workspace: WorkspaceRecord;
-  revokedSessionCount: number;
 }>;
 export type RenameWorkspaceInput = Readonly<{
   workspaceId: string;
@@ -364,10 +311,6 @@ export type RequestWorkspaceLifecycleOperationInput = Readonly<{
 export type IdentityWorkspaceDatabase = Readonly<{
   createUser(input: CreateUserInput): Promise<UserRecord>;
   findUserById(userId: string): Promise<UserRecord | null>;
-  linkAuthIdentity(input: CreateAuthIdentityInput): Promise<AuthIdentityRecord>;
-  resolveOrCreateIdentity(
-    input: ResolveOrCreateIdentityInput,
-  ): Promise<ResolvedIdentity>;
   findWorkspaceAccess(
     actorId: string,
     workspaceId: string,
@@ -448,17 +391,6 @@ export type IdentityWorkspaceDatabase = Readonly<{
     actorId: string,
     input?: Readonly<{ limit?: number; after?: string }>,
   ): Promise<AccessibleWorkspacesPage>;
-  findAuthIdentity(
-    issuer: string,
-    providerSubject: string,
-  ): Promise<AuthIdentityRecord | null>;
-  createSession(input: CreateSessionInput): Promise<SessionRecord>;
-  findActiveSessionByDigest(
-    tokenDigest: string,
-    options?: Readonly<{ signal?: AbortSignal }>,
-  ): Promise<SessionRecord | null>;
-  revokeSession(sessionId: string): Promise<boolean>;
-  revokeSessionByDigest(tokenDigest: string): Promise<boolean>;
   createWorkspaceWithOwner(
     input: WorkspaceWithOwnerInput,
   ): Promise<WorkspaceRecord>;

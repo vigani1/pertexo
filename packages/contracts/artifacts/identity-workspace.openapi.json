@@ -435,42 +435,6 @@
         }
       }
     },
-    "/v1/auth/legacy-migration/start": {
-      "post": {
-        "operationId": "startLegacyMethodMigration",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LegacyMethodMigrationStartRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Legacy method proof started",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LegacyMethodMigrationStartResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "404": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
-          }
-        }
-      }
-    },
     "/v1/auth/account-security/sessions/revoke": {
       "post": {
         "operationId": "revokeAccountSecuritySession",
@@ -579,78 +543,6 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
-          }
-        }
-      }
-    },
-    "/v1/auth/oidc/start": {
-      "get": {
-        "operationId": "startOidcLogin",
-        "responses": {
-          "200": {
-            "description": "OIDC authorization transaction",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OidcStartResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/Unexpected"
-          }
-        }
-      }
-    },
-    "/v1/auth/oidc/callback": {
-      "get": {
-        "operationId": "completeOidcLogin",
-        "parameters": [
-          {
-            "name": "code",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 4096
-            }
-          },
-          {
-            "name": "state",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 16,
-              "maxLength": 512
-            }
-          }
-        ],
-        "responses": {
-          "303": {
-            "description": "Browser session established; return to the web app",
-            "headers": {
-              "Location": {
-                "description": "Configured same-origin application landing path",
-                "schema": {
-                  "type": "string",
-                  "pattern": "^/(?!/)"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "500": {
-            "$ref": "#/components/responses/Unexpected"
-          },
-          "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
       }
@@ -2319,59 +2211,6 @@
         }
       }
     },
-    "/v1/invitation-acceptance/oidc": {
-      "post": {
-        "operationId": "startInvitationAcceptanceOidc",
-        "security": [
-          {
-            "invitationBinding": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "X-Invitation-Csrf-Token",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 512
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InvitationAcceptanceOidcRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OIDC authorization transaction",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OidcStartResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "500": {
-            "$ref": "#/components/responses/Unexpected"
-          }
-        }
-      }
-    },
     "/v1/invitation-acceptance/session": {
       "post": {
         "operationId": "verifyInvitationAcceptanceSession",
@@ -2701,46 +2540,6 @@
           "status",
           "code",
           "requestId"
-        ],
-        "additionalProperties": false
-      },
-      "OidcCallbackRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          },
-          "state": {
-            "type": "string",
-            "minLength": 16,
-            "maxLength": 512
-          }
-        },
-        "required": [
-          "code",
-          "state"
-        ]
-      },
-      "OidcStartResponse": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "authorizationUrl": {
-            "type": "string",
-            "format": "uri"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-          }
-        },
-        "required": [
-          "authorizationUrl",
-          "expiresAt"
         ],
         "additionalProperties": false
       },
@@ -3737,12 +3536,6 @@
         ],
         "additionalProperties": false
       },
-      "InvitationAcceptanceOidcRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
       "InvitationAcceptanceSessionRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -4279,16 +4072,11 @@
                 "apple"
               ]
             }
-          },
-          "legacyMigrationAvailable": {
-            "default": false,
-            "type": "boolean"
           }
         },
         "required": [
           "password",
-          "socialProviders",
-          "legacyMigrationAvailable"
+          "socialProviders"
         ],
         "additionalProperties": false
       },
@@ -4651,45 +4439,6 @@
         },
         "required": [
           "authorizationUrl"
-        ],
-        "additionalProperties": false
-      },
-      "LegacyMethodMigrationStartRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "provider": {
-            "type": "string",
-            "enum": [
-              "google",
-              "microsoft",
-              "github",
-              "apple"
-            ]
-          }
-        },
-        "required": [
-          "provider"
-        ],
-        "additionalProperties": false
-      },
-      "LegacyMethodMigrationStartResponse": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "authorizationUrl": {
-            "type": "string",
-            "format": "uri"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-          }
-        },
-        "required": [
-          "authorizationUrl",
-          "expiresAt"
         ],
         "additionalProperties": false
       }

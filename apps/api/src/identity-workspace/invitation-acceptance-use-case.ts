@@ -7,13 +7,10 @@ import {
   encodeBase64Url,
   type IdentityClock,
   type IdentityCrypto,
-  type OidcLoginResult,
   type SignInEvidence,
   IdentityError,
 } from '../identity/index.js';
-import type { OidcLoginPort } from './use-cases.js';
 import type {
-  IdentitySessionAuthority,
   IdentityWorkspaceConfig,
   IdentityWorkspacePersistence,
   InvitationAcceptanceIntentPersistenceRecord,
@@ -23,7 +20,6 @@ import {
   invitationAcceptanceJourneySchema,
   invitationAcceptanceReceiptSchema,
   invitationAcceptanceResolveRequestSchema,
-  oidcStartResponseSchema,
   type InvitationAcceptanceJourney,
   type InvitationAcceptanceReceipt,
 } from './types.js';
@@ -54,15 +50,9 @@ type AcceptancePersistence = Required<
 export class InvitationAcceptanceUseCase {
   public constructor(
     private readonly persistence: AcceptancePersistence,
-    /** Legacy OIDC verification; absent when the deployment has none. */
-    private readonly oidc: OidcLoginPort | undefined,
     private readonly crypto: IdentityCrypto,
     private readonly clock: IdentityClock,
     private readonly config: IdentityWorkspaceConfig,
-    private readonly sessions: Pick<
-      IdentitySessionAuthority,
-      'replacementCredential'
-    >,
   ) {}
 
   public async resolve(
@@ -150,54 +140,10 @@ export class InvitationAcceptanceUseCase {
         );
   }
 
-  public async startOidc(
-    binding: string | undefined,
-    csrfToken: string | undefined,
-  ) {
-    if (this.oidc === undefined)
-      throw new IdentityError('identity.provider_unavailable');
-    const selected = await this.requireBoundJourney(binding, csrfToken);
-    const result = await this.oidc.startLogin({
-      kind: 'invitation_acceptance',
-      workspaceId: selected.workspaceId,
-      intentId: selected.intentId,
-      bindingDigest: digestSha256Hex(selected.bindingSecret, this.crypto),
-    });
-    return Object.freeze({
-      response: oidcStartResponseSchema.parse({
-        authorizationUrl: result.authorizationUrl,
-        expiresAt: result.expiresAt.toISOString(),
-      }),
-      oidcBinding: result.browserBinding,
-      oidcBindingExpiresAt: result.expiresAt,
-      oidcBindingMaxAgeSeconds: result.browserBindingMaxAgeSeconds,
-    });
-  }
-
-  public async recordProof(result: OidcLoginResult): Promise<void> {
-    const continuation = result.continuation;
-    if (continuation?.kind !== 'invitation_acceptance') return;
-    if (result.verifiedProfile.emailVerified !== true)
-      throw new IdentityError('identity.callback_rejected');
-    const recorded = await this.persistence.recordInvitationAcceptanceProof({
-      workspaceId: continuation.workspaceId,
-      intentId: continuation.intentId,
-      bindingDigest: continuation.bindingDigest,
-      userId: result.internalIdentity.userId,
-      verifiedEmail: result.verifiedProfile.email,
-      verifiedAt: this.clock.now(),
-    });
-    if (recorded === null)
-      throw new InvitationAcceptanceConflictError(
-        'unavailable',
-        'Invitation acceptance is unavailable',
-      );
-  }
-
   /**
    * Records the signed-in account as the journey's verified recipient. The
-   * sign-in must have verified its email and be at most five minutes old,
-   * the same bound as a fresh OIDC result (ADR 038, ADR 043).
+   * sign-in must have verified its email and be at most five minutes old
+   * (ADR 038, ADR 043).
    */
   public async recordSessionProof(
     input: Readonly<{
@@ -212,7 +158,7 @@ export class InvitationAcceptanceUseCase {
     );
     const { evidence } = input;
     if (!evidence.emailVerified)
-      throw new IdentityError('identity.callback_rejected');
+      throw new IdentityError('identity.email_unverified');
     const now = this.clock.now();
     if (now.getTime() - evidence.signedInAt.getTime() > PROOF_TTL_MILLIS)
       throw new InvitationAcceptanceConflictError(
@@ -277,11 +223,9 @@ export class InvitationAcceptanceUseCase {
       invitationRevision: request.expectedRevision,
       actorUserId: input.authenticatedUserId,
       idempotencyKey: input.idempotencyKey,
-      // The replacement must live in the store of the active session
-      // authority, or the rotated browser would be signed out.
       replacementSession: {
         id: randomUUID(),
-        ...this.sessions.replacementCredential(rawToken),
+        token: rawToken,
         expiresAt,
         ...(input.userAgent === undefined
           ? {}

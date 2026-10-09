@@ -1,9 +1,5 @@
-import type {
-  IdentityWorkspaceDatabase,
-  SessionRecord as DatabaseSessionRecord,
-} from '@pertexo/database/tenant-access';
+import type { IdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
 
-import type { SessionRecord } from '../identity/index.js';
 import type {
   IdentityWorkspacePersistence,
   InvitationAcceptanceIntentPersistenceRecord,
@@ -20,16 +16,6 @@ export class DatabaseIdentityWorkspaceAdapter
   implements IdentityWorkspacePersistence, WorkspaceAuthorizationReader
 {
   public constructor(private readonly database: IdentityWorkspaceDatabase) {}
-
-  public async resolveOrCreateIdentity(
-    input: Parameters<IdentityWorkspaceDatabase['resolveOrCreateIdentity']>[0],
-  ) {
-    const result = await this.database.resolveOrCreateIdentity(input);
-    return Object.freeze({
-      userId: result.user.id,
-      authenticationIdentityId: result.identity.id,
-    });
-  }
 
   public async findUserById(
     userId: string,
@@ -223,49 +209,6 @@ export class DatabaseIdentityWorkspaceAdapter
   ): Promise<WorkspaceLifecycleOperationRecord | null> {
     return this.database.readWorkspaceLifecycleOperation(...input);
   }
-
-  public async create(record: SessionRecord): Promise<void> {
-    await this.database.createSession({
-      id: record.sessionId,
-      userId: record.userId,
-      tokenDigest: record.tokenDigest,
-      expiresAt: record.expiresAt,
-      userAgent: record.clientMetadata.userAgent ?? null,
-      ipAddress: record.clientMetadata.ipAddress ?? null,
-    });
-  }
-
-  public async findByDigest(
-    tokenDigest: string,
-    options: Readonly<{ signal?: AbortSignal }> = {},
-  ): Promise<SessionRecord | undefined> {
-    const record = await this.database.findActiveSessionByDigest(
-      tokenDigest,
-      options,
-    );
-    return record === null ? undefined : mapSession(record);
-  }
-
-  public async revokeByDigest(
-    tokenDigest: string,
-    _revokedAt: Date,
-  ): Promise<boolean> {
-    return this.database.revokeSessionByDigest(tokenDigest);
-  }
-}
-
-function mapSession(record: DatabaseSessionRecord): SessionRecord {
-  return Object.freeze({
-    sessionId: record.id,
-    tokenDigest: record.tokenDigest,
-    userId: record.userId,
-    expiresAt: record.expiresAt,
-    ...(record.revokedAt === null ? {} : { revokedAt: record.revokedAt }),
-    clientMetadata: Object.freeze({
-      ...(record.userAgent === null ? {} : { userAgent: record.userAgent }),
-      ...(record.ipAddress === null ? {} : { ipAddress: record.ipAddress }),
-    }),
-  });
 }
 
 function mapUserProfile(

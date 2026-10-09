@@ -1,10 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { createAuthenticationMailEnqueueStore } from '@pertexo/database/identity';
-import {
-  createIdentityWorkspaceDatabase,
-  createOidcLoginTransactionStore,
-} from '@pertexo/database/tenant-access';
+import { createIdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
 import {
   migrateDatabase,
   parseDatabaseConfig,
@@ -19,11 +16,6 @@ import {
   type BetterAuthRuntime,
 } from '../src/identity-infrastructure/better-auth.js';
 import type { LinkProviderGateway } from '../src/identity-infrastructure/account-linking.js';
-import { createOidcSecretEncryptionAdapter } from '../src/identity-infrastructure/oidc-secret-encryption.js';
-import type {
-  OidcAuthorizationRequest,
-  OidcProviderPort,
-} from '../src/identity/index.js';
 import {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,
@@ -108,248 +100,7 @@ afterAll(async () => {
   }
 });
 
-describe('Better Auth PostgreSQL cutover', () => {
-  it('migrates only an exact legacy issuer/subject after a second provider proof', async () => {
-    const userId = randomUUID();
-    const identityId = randomUUID();
-    const email = `legacy-${randomUUID()}@example.test`;
-    const issuer = 'https://legacy-identity.example.test';
-    const subject = `broker-${randomUUID()}`;
-    const admin = new Pool({ connectionString: databaseUrl(adminUrl), max: 1 });
-    await admin.query(
-      `insert into app.users(id,email,display_name,email_verified)
-       values($1,$2,'Legacy User',true)`,
-      [userId, email],
-    );
-    await admin.query(
-      `insert into app.auth_identities(id,user_id,issuer,provider_subject)
-       values($1,$2,$3,$4)`,
-      [identityId, userId, issuer, subject],
-    );
-    const oldSessionId = randomUUID();
-    await admin.query(
-      `insert into app.sessions(id,user_id,token_digest,expires_at)
-       values($1,$2,$3,clock_timestamp()+interval '1 hour')`,
-      [
-        oldSessionId,
-        userId,
-        createHash('sha256').update(oldSessionId).digest('hex'),
-      ],
-    );
-    const legacyAuthorizations = new Map<string, OidcAuthorizationRequest>();
-    const oldProvider: OidcProviderPort = {
-      authorizationUrl: (request) => {
-        legacyAuthorizations.set(request.state, request);
-        return `https://legacy-identity.example.test/authorize?state=${request.state}`;
-      },
-      exchangeCode: ({ code, codeVerifier, redirectUri }) => {
-        const state = code.split(':', 2)[1] ?? '';
-        const expected = legacyAuthorizations.get(state);
-        if (
-          expected?.redirectUri !== redirectUri ||
-          expected.codeChallenge !==
-            createHash('sha256').update(codeVerifier).digest('base64url')
-        )
-          throw new Error('Invalid old provider code');
-        return Promise.resolve({
-          issuer,
-          subject: code.startsWith('unknown:') ? 'unknown' : subject,
-          audience: 'legacy-migration-fixture',
-          nonce: expected.nonce,
-          email,
-          displayName: 'Legacy User',
-          emailVerified: true,
-        });
-      },
-    };
-    const providerAuthorizations = new Map<
-      string,
-      { codeVerifier: string; nonce: string }
-    >();
-    const newProvider: LinkProviderGateway = {
-      available: ['google'],
-      authorize: (input) => {
-        providerAuthorizations.set(input.state, input);
-        return Promise.resolve(
-          `https://new-provider.example.test/authorize?state=${input.state}`,
-        );
-      },
-      verify: (input) => {
-        const state = input.code.split(':', 2)[1] ?? '';
-        const expected = providerAuthorizations.get(state);
-        if (
-          expected?.codeVerifier !== input.codeVerifier ||
-          expected.nonce !== input.nonce ||
-          input.issuer !== null
-        )
-          return Promise.resolve(undefined);
-        return Promise.resolve({
-          accountId: `direct-google-${randomUUID()}`,
-          email,
-          emailVerified: true,
-        });
-      },
-    };
-    const transactions = createOidcLoginTransactionStore(
-      {
-        connectionString: apiUrl,
-        connectionTimeoutMillis: 5_000,
-        idleTimeoutMillis: 5_000,
-        max: 2,
-        ownerRole: 'pertexo_owner',
-      },
-      createOidcSecretEncryptionAdapter({
-        current: {
-          version: 'fixture-v1',
-          key: Buffer.alloc(32, 0x4c).toString('base64'),
-        },
-      }),
-    );
-    const migrationRuntime = createBetterAuthRuntime({
-      baseUrl: 'http://pertexo.test',
-      secret: 'postgres-integration-secret-with-at-least-32-characters',
-      database: {
-        connectionString: apiUrl,
-        connectionTimeoutMillis: 5_000,
-        idleTimeoutMillis: 5_000,
-        max: 2,
-      },
-      secureCookies: false,
-      sessionTtlSeconds: 3_600,
-      trustedOrigins: ['http://pertexo.test'],
-      mail,
-      linkProviderGateway: newProvider,
-      legacyOidc: {
-        configuration: {
-          issuer,
-          authorizationEndpoint: `${issuer}/authorize`,
-          clientId: 'legacy-migration-fixture',
-          redirectUri:
-            'http://pertexo.test/v1/auth/legacy-migration/oidc/callback',
-          scopes: ['openid', 'email'],
-          transactionTtlMillis: 300_000,
-        },
-        transactions,
-        provider: oldProvider,
-      },
-    });
-    const browserRequest = (
-      path: string,
-      method: 'GET' | 'POST',
-      cookies = '',
-      body?: object,
-    ) =>
-      migrationRuntime.auth.handler(
-        new Request(`http://pertexo.test${path}`, {
-          method,
-          headers: {
-            origin: 'http://pertexo.test',
-            cookie: cookies,
-            ...(body === undefined
-              ? {}
-              : { 'content-type': 'application/json' }),
-          },
-          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        }),
-      );
-    try {
-      const started = await browserRequest(
-        '/v1/auth/legacy-migration/start',
-        'POST',
-        '',
-        { provider: 'google' },
-      );
-      expect(started.status).toBe(200);
-      const browserCookie = started.headers
-        .getSetCookie()
-        .find((cookie) => cookie.startsWith('pertexo_legacy_migration='))
-        ?.split(';', 1)[0];
-      const oidcCookie = started.headers
-        .getSetCookie()
-        .find((cookie) => cookie.startsWith('pertexo_legacy_oidc='))
-        ?.split(';', 1)[0];
-      expect(browserCookie).toBeDefined();
-      expect(oidcCookie).toBeDefined();
-      const oldUrl = new URL(
-        ((await started.json()) as { authorizationUrl: string })
-          .authorizationUrl,
-      );
-      const oldState = required(oldUrl.searchParams.get('state'));
-      const oldCallback = `/v1/auth/legacy-migration/oidc/callback?state=${oldState}&code=legacy:${oldState}`;
-      const wrongBrowser = await browserRequest(
-        oldCallback,
-        'GET',
-        `${required(oidcCookie)}; pertexo_legacy_migration=wrong`,
-      );
-      expect(wrongBrowser.headers.get('location')).toContain(
-        'migration_failed',
-      );
-      const provedOld = await browserRequest(
-        oldCallback,
-        'GET',
-        `${required(browserCookie)}; ${required(oidcCookie)}`,
-      );
-      expect(provedOld.status).toBe(302);
-      const targetUrl = new URL(
-        provedOld.headers.get('location') ?? 'http://invalid',
-      );
-      expect(targetUrl.hostname).toBe('new-provider.example.test');
-      const targetState = required(targetUrl.searchParams.get('state'));
-      const targetCallback = `/v1/auth/legacy-migration/provider/callback/google?state=${targetState}&code=new:${targetState}`;
-      const [first, second] = await Promise.all([
-        browserRequest(targetCallback, 'GET', browserCookie),
-        browserRequest(targetCallback, 'GET', browserCookie),
-      ]);
-      const outcomes = [
-        first.headers.get('location'),
-        second.headers.get('location'),
-      ];
-      expect(
-        outcomes.filter((location) => location?.endsWith('/workspaces')),
-      ).toHaveLength(1);
-      expect(
-        outcomes.filter((location) => location?.includes('migration_failed')),
-      ).toHaveLength(1);
-      const accepted = outcomes[0]?.endsWith('/workspaces') ? first : second;
-      const newCookie = cookieValue(accepted.headers.getSetCookie());
-      expect(newCookie).toBeDefined();
-      expect(
-        (await migrationRuntime.sessions.authenticate(newCookie ?? ''))?.userId,
-      ).toBe(userId);
-      const replay = await browserRequest(targetCallback, 'GET', browserCookie);
-      expect(replay.headers.get('location')).toContain('migration_failed');
-      const durable = await admin.query<{
-        accounts: number;
-        audits: number;
-        sessions: number;
-        old_revoked: boolean;
-        migrated: boolean;
-      }>(
-        `select
-          (select count(*)::integer from app.auth_accounts where user_id=$1) accounts,
-          (select count(*)::integer from app.identity_security_audit_facts
-            where user_id=$1 and event_type='legacy.method_migrated') audits,
-          (select count(*)::integer from app.auth_sessions where user_id=$1) sessions,
-          (select revoked_at is not null from app.sessions where id=$2) old_revoked,
-          (select native_method_verified_at is not null from app.auth_identities where id=$3) migrated`,
-        [userId, oldSessionId, identityId],
-      );
-      expect(durable.rows).toEqual([
-        {
-          accounts: 1,
-          audits: 1,
-          sessions: 1,
-          old_revoked: true,
-          migrated: true,
-        },
-      ]);
-    } finally {
-      await migrationRuntime.close();
-      await transactions.close();
-      await admin.end();
-    }
-  });
-
+describe('Better Auth on PostgreSQL', () => {
   const callbackOrderings = [
     'uncontrolled callbacks',
     'loser authentication after commit',
@@ -2093,7 +1844,7 @@ describe('Better Auth PostgreSQL cutover', () => {
         idempotencyKey: randomUUID(),
         replacementSession: {
           id: randomUUID(),
-          ...sessions.replacementCredential(replacementToken),
+          token: replacementToken,
           expiresAt: new Date(Date.now() + 60 * 60_000),
         },
       };
@@ -2109,7 +1860,6 @@ describe('Better Auth PostgreSQL cutover', () => {
       ).resolves.toBeUndefined();
       const delivered: string[] = [];
       await sessions.deliver(replacementToken, {
-        writeSessionCookie: () => undefined,
         writeSessionCookieHeaders: (setCookies) => {
           delivered.push(...setCookies);
         },

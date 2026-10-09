@@ -3,7 +3,6 @@ import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 
 import {
   createIdentityWorkspaceDatabase,
-  createOidcLoginTransactionStore,
   createWorkspaceDatabase,
   parseDatabaseConfig,
   type IdentityWorkspaceDatabase,
@@ -16,15 +15,13 @@ import type {
 } from '@pertexo/observability';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createApiApplication } from '../../src/app.js';
-import { createOidcSecretEncryptionAdapter } from '../../src/identity-infrastructure/index.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { Pool, type PoolClient } from 'pg';
 import { expect } from 'vitest';
 import {
-  createFakeOidcProvider,
-  loginThroughOidc,
+  issueBrowserSession,
   type HttpSessionCookies,
-} from './real-oidc-http.fixture.js';
+} from './browser-session.fixture.js';
 import {
   FixtureResourceOwner,
   rethrowFixtureSetupFailure,
@@ -46,9 +43,7 @@ assertIntegrationGateConfigured({
     REDIS_URL: redisUrl,
   },
 });
-const issuer = `https://${randomUUID()}.workflow-lifecycle.integration.test`;
-const clientId = 'workflow-lifecycle-real-api';
-const encryptionKey = Buffer.alloc(32, 0x6b).toString('base64');
+const emailDomain = 'workflow-lifecycle.integration.test';
 
 export const workflowLifecycleIntegrationEnabled =
   workflowLifecycleIntegrationRequested;
@@ -145,25 +140,10 @@ const telemetry: TelemetryLifecycle = {
 export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifecycleApiFixture> {
   const resources = new FixtureResourceOwner();
   try {
-    const provider = createFakeOidcProvider({
-      issuer,
-      clientId,
-      displayNamePrefix: 'Lifecycle',
-    });
     const identityDatabase = resources.acquire(
       'identity database',
       createIdentityWorkspaceDatabase(workflowLifecycleDatabaseConfig),
       (database) => database.close(),
-    );
-    const transactions = resources.acquire(
-      'OIDC transaction store',
-      createOidcLoginTransactionStore(
-        workflowLifecycleDatabaseConfig,
-        createOidcSecretEncryptionAdapter({
-          current: { version: 'workflow-lifecycle-v1', key: encryptionKey },
-        }),
-      ),
-      (store) => store.close(),
     );
     const identityConfig = apiConfig().identity;
     if (identityConfig === undefined)
@@ -171,16 +151,12 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
     // The runtime takes ownership as soon as construction starts and also
     // closes these dependencies if its own construction fails.
     resources.transfer(identityDatabase);
-    resources.transfer(transactions);
     const identityRuntime = resources.acquire(
       'identity runtime',
       await createApiIdentityRuntime(
         identityConfig,
         workflowLifecycleDatabaseConfig,
-        {
-          provider,
-          persistence: { database: identityDatabase, transactions },
-        },
+        { persistence: { database: identityDatabase } },
       ),
       (runtime) => runtime.close(),
     );
@@ -271,7 +247,7 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
       await createApiApplication(apiConfig(), {
         database: borrowedWorkspaceDatabase(workspaceDatabase),
         identityRuntime: {
-          dependencies: identityRuntime.dependencies,
+          ...identityRuntime,
           close: () => Promise.resolve(),
         },
         rateLimitConsumer: {
@@ -293,7 +269,10 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
       viewerUserId: subjects.viewer.user.id,
       ids,
       login: (subject: 'owner' | 'builder' | 'operator' | 'viewer') =>
-        loginThroughOidc(application, subject),
+        issueBrowserSession(
+          identityRuntime.dependencies.sessions,
+          subjects[subject].user.id,
+        ),
       withOwner,
       setWorkspaceStatus: (status) =>
         setWorkspaceStatusWithOwner(
@@ -356,12 +335,12 @@ async function resolveIdentity(
   database: IdentityWorkspaceDatabase,
   subject: string,
 ) {
-  return database.resolveOrCreateIdentity({
-    issuer,
-    providerSubject: subject,
-    email: `${subject}@${new URL(issuer).hostname}`,
-    displayName: `Lifecycle ${subject}`,
-  });
+  return {
+    user: await database.createUser({
+      email: `${subject}-${randomUUID()}@${emailDomain}`,
+      displayName: `Lifecycle ${subject}`,
+    }),
+  };
 }
 
 function apiConfig(): ApiConfig {
@@ -369,27 +348,16 @@ function apiConfig(): ApiConfig {
     database: workflowLifecycleDatabaseConfig,
     host: '127.0.0.1',
     identity: {
-      oidc: {
-        issuer,
-        authorizationEndpoint: `${issuer}/authorize`,
-        tokenEndpoint: `${issuer}/token`,
-        jwksUri: `${issuer}/jwks`,
-        clientId,
-        redirectUri: 'https://api.integration.test/v1/auth/oidc/callback',
-        scopes: ['openid', 'profile', 'email'],
-        allowedAlgorithms: ['RS256'],
-        timeoutMillis: 5_000,
-        transactionTtlMillis: 30_000,
-        allowInsecureHttpForTests: false,
-      },
-      secretEncryption: {
-        current: { version: 'workflow-lifecycle-v1', key: encryptionKey },
-        previous: [],
-      },
+      publicWebOrigin: 'https://api.integration.test',
       session: {
         ttlMillis: 300_000,
         secureCookie: true,
         sameSite: 'lax',
+      },
+      betterAuth: {
+        secret: 'workflow-lifecycle-integration-secret-with-32-plus-characters',
+        mailMode: 'disabled',
+        providers: {},
       },
     },
     nodeEnv: 'test',

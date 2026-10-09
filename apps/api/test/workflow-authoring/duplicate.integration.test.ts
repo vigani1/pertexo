@@ -263,11 +263,13 @@ describeIntegration(
       );
       await fixture.setWorkspaceStatus('suspended');
       try {
+        // Suspension revokes members' sessions (ADR 013); a fresh sign-in
+        // still finds the source hidden.
         expectProblem(
           await application.inject({
             method: 'POST',
             url,
-            headers: mutationHeaders(owner),
+            headers: mutationHeaders(await fixture.login('owner')),
             payload,
           }),
           404,

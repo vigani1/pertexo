@@ -4,7 +4,6 @@ import {
   check,
   foreignKey,
   index,
-  inet,
   integer,
   jsonb,
   text,
@@ -105,101 +104,6 @@ export const authVerifications = appSchema.table(
     index('auth_verifications_expiry_idx').on(table.expiresAt, table.id),
   ],
 );
-export const authIdentities = appSchema.table(
-  'auth_identities',
-  {
-    id: uuid('id').primaryKey(),
-    userId: uuid('user_id').notNull(),
-    issuer: varchar('issuer', { length: 2048 }).notNull(),
-    providerSubject: varchar('provider_subject', { length: 255 }).notNull(),
-    nativeMethodVerifiedAt: timestamp('native_method_verified_at', {
-      withTimezone: true,
-      mode: 'date',
-    }),
-    profileMetadata: jsonb('profile_metadata').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('auth_identities_issuer_subject_unique').on(
-      table.issuer,
-      table.providerSubject,
-    ),
-    index('auth_identities_user_idx').on(table.userId, table.id),
-  ],
-);
-export const sessions = appSchema.table(
-  'sessions',
-  {
-    id: uuid('id').primaryKey(),
-    userId: uuid('user_id').notNull(),
-    tokenDigest: varchar('token_digest', { length: 64 }).notNull(),
-    expiresAt: timestamp('expires_at', {
-      withTimezone: true,
-      mode: 'date',
-    }).notNull(),
-    revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
-    userAgent: varchar('user_agent', { length: 512 }),
-    ipAddress: inet('ip_address'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('sessions_token_digest_unique').on(table.tokenDigest),
-    index('sessions_user_active_idx').on(
-      table.userId,
-      table.expiresAt,
-      table.id,
-    ),
-    index('sessions_expiry_idx').on(table.expiresAt, table.id),
-  ],
-);
-export const oidcLoginTransactions = appSchema.table(
-  'oidc_login_transactions',
-  {
-    stateDigest: varchar('state_digest', { length: 64 }).primaryKey(),
-    browserBindingDigest: char('browser_binding_digest', {
-      length: 64,
-    }).notNull(),
-    codeVerifierCiphertext: text('code_verifier_ciphertext').notNull(),
-    codeVerifierNonce: varchar('code_verifier_nonce', {
-      length: 128,
-    }).notNull(),
-    codeVerifierTag: varchar('code_verifier_tag', { length: 256 }).notNull(),
-    codeVerifierKeyVersion: varchar('code_verifier_key_version', {
-      length: 64,
-    }).notNull(),
-    nonceCiphertext: text('nonce_ciphertext').notNull(),
-    nonceNonce: varchar('nonce_nonce', { length: 128 }).notNull(),
-    nonceTag: varchar('nonce_tag', { length: 256 }).notNull(),
-    nonceKeyVersion: varchar('nonce_key_version', { length: 64 }).notNull(),
-    continuationKind: varchar('continuation_kind', { length: 32 }),
-    continuationRef: jsonb('continuation_ref'),
-    expiresAt: timestamp('expires_at', {
-      withTimezone: true,
-      mode: 'date',
-    }).notNull(),
-    consumedAt: timestamp('consumed_at', {
-      withTimezone: true,
-      mode: 'date',
-    }),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    index('oidc_login_transactions_expiry_idx').on(
-      table.expiresAt,
-      table.stateDigest,
-    ),
-  ],
-);
-
 export const userProfileCommandReceipts = appSchema.table(
   'user_profile_command_receipts',
   {
@@ -238,78 +142,6 @@ export const userProfileCommandReceipts = appSchema.table(
       columns: [table.actorUserId],
       foreignColumns: [users.id],
     }).onDelete('cascade'),
-  ],
-);
-
-export const authLegacyMethodMigrationAttempts = appSchema.table(
-  'auth_legacy_method_migration_attempts',
-  {
-    id: uuid().primaryKey().notNull(),
-    browserDigest: bytea('browser_digest').notNull(),
-    oidcStateDigest: bytea('oidc_state_digest').notNull(),
-    targetStateDigest: bytea('target_state_digest'),
-    targetProvider: varchar('target_provider', { length: 32 }).notNull(),
-    legacyIdentityId: uuid('legacy_identity_id'),
-    userId: uuid('user_id'),
-    phase: varchar({ length: 16 }).default('legacy').notNull(),
-    expiresAt: timestamp('expires_at', {
-      withTimezone: true,
-      mode: 'string',
-    }).notNull(),
-    completedAt: timestamp('completed_at', {
-      withTimezone: true,
-      mode: 'string',
-    }),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`clock_timestamp()`)
-      .notNull(),
-  },
-  (table) => [
-    check(
-      'auth_legacy_migration_completion_valid',
-      sql`((phase)::text = 'completed'::text) = (completed_at IS NOT NULL)`,
-    ),
-    check(
-      'auth_legacy_migration_digest_valid',
-      sql`(octet_length(browser_digest) = 32) AND (octet_length(oidc_state_digest) = 32) AND ((target_state_digest IS NULL) OR (octet_length(target_state_digest) = 32))`,
-    ),
-    check('auth_legacy_migration_expiry_valid', sql`expires_at > created_at`),
-    check(
-      'auth_legacy_migration_phase_valid',
-      sql`(phase)::text = ANY (ARRAY[('legacy'::character varying)::text, ('target'::character varying)::text, ('completed'::character varying)::text, ('abandoned'::character varying)::text])`,
-    ),
-    check(
-      'auth_legacy_migration_proof_valid',
-      sql`(((phase)::text = 'legacy'::text) AND (user_id IS NULL) AND (legacy_identity_id IS NULL) AND (target_state_digest IS NULL)) OR (((phase)::text <> 'legacy'::text) AND (user_id IS NOT NULL) AND (legacy_identity_id IS NOT NULL))`,
-    ),
-    check(
-      'auth_legacy_migration_provider_valid',
-      sql`(target_provider)::text = ANY (ARRAY[('google'::character varying)::text, ('github'::character varying)::text, ('microsoft'::character varying)::text, ('apple'::character varying)::text])`,
-    ),
-    unique('auth_legacy_method_migration_attempts_oidc_state_digest_key').on(
-      table.oidcStateDigest,
-    ),
-    unique('auth_legacy_method_migration_attempts_target_state_digest_key').on(
-      table.targetStateDigest,
-    ),
-    index('auth_legacy_method_migration_retention_idx').on(
-      table.expiresAt,
-      table.id,
-    ),
-    index('auth_legacy_method_migration_user_idx').on(
-      table.userId,
-      table.createdAt,
-    ),
-    foreignKey({
-      name: 'auth_legacy_method_migration_attempts_legacy_identity_id_fkey',
-      columns: [table.legacyIdentityId],
-      foreignColumns: [authIdentities.id],
-    }).onDelete('restrict'),
-    foreignKey({
-      name: 'auth_legacy_method_migration_attempts_user_id_fkey',
-      columns: [table.userId],
-      foreignColumns: [users.id],
-    }).onDelete('restrict'),
   ],
 );
 
@@ -524,7 +356,7 @@ export const identitySecurityAuditFacts = appSchema.table(
   (table) => [
     check(
       'identity_security_audit_event_valid',
-      sql`(event_type)::text = ANY (ARRAY[('email.initial_verified'::character varying)::text, ('email.old_confirmed'::character varying)::text, ('email.change_verified'::character varying)::text, ('method.linked'::character varying)::text, ('method.unlinked'::character varying)::text, ('legacy.method_migrated'::character varying)::text, ('password.changed'::character varying)::text, ('password.configured'::character varying)::text, ('password.reset'::character varying)::text, ('profile.display_name_changed'::character varying)::text])`,
+      sql`(event_type)::text = ANY (ARRAY[('email.initial_verified'::character varying)::text, ('email.old_confirmed'::character varying)::text, ('email.change_verified'::character varying)::text, ('method.linked'::character varying)::text, ('method.unlinked'::character varying)::text, ('password.changed'::character varying)::text, ('password.configured'::character varying)::text, ('password.reset'::character varying)::text, ('profile.display_name_changed'::character varying)::text])`,
     ),
     index('identity_security_audit_retention_idx').on(
       table.occurredAt,

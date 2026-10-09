@@ -1,22 +1,13 @@
 import {
   Controller,
-  Get,
   HttpCode,
   Inject,
-  Optional,
   Post,
-  Query,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
 
-import {
-  DoubleSubmitCsrfPolicy,
-  OidcLoginService,
-  OpaqueSessionService,
-  type SessionCookieOptions,
-} from '../identity/index.js';
 import {
   applicationError,
   throwApplicationError,
@@ -25,22 +16,15 @@ import { RateLimit } from '../platform/rate-limit/metadata.js';
 import {
   CSRF_COOKIE_NAME,
   CsrfProtectionGuard,
-  OIDC_BROWSER_BINDING_COOKIE_NAME,
   readCookie,
   SESSION_COOKIE_NAME,
   SessionAuthenticationGuard,
 } from './guards.js';
-import type { SessionCookiePolicy } from './ports.js';
-import type { IdentityWorkspaceConfig } from './ports.js';
-import {
-  oidcStartResponseSchema,
-  type CookieResponse,
-  type IdentityWorkspaceRequest,
-} from './types.js';
+import type { IdentitySessionAuthority, SessionCookiePolicy } from './ports.js';
+import type { CookieResponse, IdentityWorkspaceRequest } from './types.js';
 import {
   IDENTITY_WORKSPACE_TELEMETRY,
-  IDENTITY_WORKSPACE_CONFIG,
-  OIDC_CALLBACK_LANDING_PATH,
+  SESSION_AUTHORITY,
   SESSION_COOKIE_POLICY,
 } from './tokens.js';
 import {
@@ -48,114 +32,12 @@ import {
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
-import { OidcApplicationService } from './use-cases.js';
-import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
-import {
-  serializeOidcBindingCookie,
-  clearOidcBindingCookie,
-} from './legacy-oidc-binding-cookie.js';
-
-@Controller('v1/auth/oidc')
-export class OidcController {
-  private readonly application: OidcApplicationService;
-  private readonly genericLoginEnabled: boolean;
-
-  public constructor(
-    oidc: OidcLoginService,
-    sessions: OpaqueSessionService,
-    private readonly csrf: DoubleSubmitCsrfPolicy,
-    @Inject(SESSION_COOKIE_POLICY)
-    private readonly cookiePolicy: SessionCookiePolicy,
-    @Inject(OIDC_CALLBACK_LANDING_PATH)
-    private readonly callbackLandingPath = '/',
-    @Inject(IDENTITY_WORKSPACE_TELEMETRY)
-    telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
-    @Optional()
-    invitationAcceptance?: InvitationAcceptanceUseCase,
-    @Optional()
-    @Inject(IDENTITY_WORKSPACE_CONFIG)
-    config?: IdentityWorkspaceConfig,
-  ) {
-    this.genericLoginEnabled = config?.allowGenericOidcLogin !== false;
-    this.application = new OidcApplicationService(
-      oidc,
-      sessions,
-      telemetry,
-      async (result) => {
-        if (
-          !this.genericLoginEnabled &&
-          result.continuation?.kind !== 'invitation_acceptance'
-        )
-          return throwApplicationError(applicationError('auth.forbidden'));
-        await invitationAcceptance?.recordProof(result);
-      },
-    );
-  }
-
-  @Get('start')
-  @RateLimit('identity_start')
-  public async start(
-    @Res({ passthrough: true }) response: CookieResponse,
-  ): Promise<Readonly<{ authorizationUrl: string; expiresAt: string }>> {
-    if (!this.genericLoginEnabled)
-      return throwApplicationError(applicationError('auth.forbidden'));
-    const result = await this.application.start();
-    response.header(
-      'set-cookie',
-      serializeOidcBindingCookie(
-        result.browserBinding,
-        result.expiresAt,
-        result.browserBindingMaxAgeSeconds,
-        this.cookiePolicy,
-      ),
-    );
-    return oidcStartResponseSchema.parse({
-      authorizationUrl: result.authorizationUrl,
-      expiresAt: result.expiresAt.toISOString(),
-    });
-  }
-
-  @Get('callback')
-  @RateLimit('identity_callback')
-  @HttpCode(303)
-  public async callback(
-    @Query() query: unknown,
-    @Req() request: IdentityWorkspaceRequest,
-    @Res({ passthrough: true }) response: CookieResponse,
-  ): Promise<void> {
-    const clearedBinding = clearOidcBindingCookie(this.cookiePolicy);
-    try {
-      const cookies = new ResponseCookieBoundary(
-        response,
-        this.csrf.issueToken(),
-        clearedBinding,
-      );
-      const result = await this.application.complete(
-        query,
-        readCookie(request, OIDC_BROWSER_BINDING_COOKIE_NAME),
-        cookies,
-      );
-      response.header(
-        'location',
-        result.continuation?.kind === 'invitation_acceptance'
-          ? '/invitations/accept'
-          : this.callbackLandingPath,
-      );
-    } catch (error: unknown) {
-      try {
-        response.header('set-cookie', clearedBinding);
-      } catch {
-        // Preserve the original callback error if the response boundary failed.
-      }
-      throw error;
-    }
-  }
-}
 
 @Controller('v1/auth')
 export class SessionController {
   public constructor(
-    private readonly sessions: OpaqueSessionService,
+    @Inject(SESSION_AUTHORITY)
+    private readonly sessions: IdentitySessionAuthority,
     @Inject(SESSION_COOKIE_POLICY)
     private readonly cookiePolicy: SessionCookiePolicy,
     @Inject(IDENTITY_WORKSPACE_TELEMETRY)
@@ -184,54 +66,6 @@ export class SessionController {
       },
     );
   }
-}
-
-class ResponseCookieBoundary {
-  public constructor(
-    private readonly response: CookieResponse,
-    private readonly csrfToken: string,
-    private readonly clearedOidcBinding: string,
-  ) {}
-
-  public writeSessionCookie(
-    token: string,
-    options: SessionCookieOptions,
-  ): void {
-    this.response.header('set-cookie', [
-      this.clearedOidcBinding,
-      serializeCookie(SESSION_COOKIE_NAME, token, options),
-      serializeCookie(CSRF_COOKIE_NAME, this.csrfToken, options, false),
-    ]);
-  }
-
-  public writeSessionCookieHeaders(
-    setCookies: readonly string[],
-    options: SessionCookieOptions,
-  ): void {
-    this.response.header('set-cookie', [
-      this.clearedOidcBinding,
-      ...setCookies,
-      serializeCookie(CSRF_COOKIE_NAME, this.csrfToken, options, false),
-    ]);
-  }
-}
-
-function serializeCookie(
-  name: string,
-  value: string,
-  options: SessionCookieOptions,
-  httpOnly = true,
-): string {
-  return [
-    `${name}=${encodeURIComponent(value)}`,
-    'Path=/',
-    httpOnly ? 'HttpOnly' : undefined,
-    options.secure ? 'Secure' : undefined,
-    `SameSite=${capitalize(options.sameSite)}`,
-    `Max-Age=${String(options.maxAgeSeconds)}`,
-  ]
-    .filter((part): part is string => part !== undefined)
-    .join('; ');
 }
 
 function clearCookie(

@@ -72,7 +72,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "db:migrate": "tsx src/migrate.ts",
-    "auth:cutover:preflight": "tsx src/identity/check-better-auth-cutover.ts",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"

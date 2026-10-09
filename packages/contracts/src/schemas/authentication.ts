@@ -1,14 +1,5 @@
 import { z } from 'zod';
 
-export const oidcAuthorizationCodeSchema = z.string().min(1).max(4_096);
-export const oidcStateSchema = z.string().min(16).max(512);
-/** OAuth callback wire input: validate known fields and ignore extensions. */
-export const oidcCallbackRequestSchema = z
-  .object({ code: oidcAuthorizationCodeSchema, state: oidcStateSchema })
-  .strip();
-export const oidcStartResponseSchema = z
-  .object({ authorizationUrl: z.url(), expiresAt: z.iso.datetime() })
-  .strict();
 /**
  * Where a sign-in may return. Only same-origin app paths matching these
  * known routes are accepted: no scheme, host, `//`, query or fragment.
@@ -40,7 +31,6 @@ export const authenticationCapabilitiesResponseSchema = z
       })
       .strict(),
     socialProviders: z.array(authenticationProviderSchema).max(4),
-    legacyMigrationAvailable: z.boolean().default(false),
   })
   .strict();
 export const accountSecuritySessionSchema = z
@@ -108,12 +98,6 @@ export const accountSecurityLinkStartRequestSchema = z
   .strict();
 export const accountSecurityLinkStartResponseSchema = z
   .object({ authorizationUrl: z.url() })
-  .strict();
-export const legacyMethodMigrationStartRequestSchema = z
-  .object({ provider: authenticationProviderSchema })
-  .strict();
-export const legacyMethodMigrationStartResponseSchema = z
-  .object({ authorizationUrl: z.url(), expiresAt: z.iso.datetime() })
   .strict();
 export const accountSecurityPasswordChangeRequestSchema = z
   .object({

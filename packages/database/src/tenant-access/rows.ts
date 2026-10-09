@@ -1,13 +1,6 @@
 import { z } from 'zod';
-import { sha256HexSchema } from '../platform/persisted-primitives.js';
-import { parsePersistedIdentityMetadata } from './support.js';
 
-import type {
-  AuthIdentityRecord,
-  SessionRecord,
-  UserRecord,
-  WorkspaceRecord,
-} from './contracts.js';
+import type { UserRecord, WorkspaceRecord } from './contracts.js';
 
 const uuidSchema = z.uuid();
 const userRowSchema = z
@@ -19,29 +12,6 @@ const userRowSchema = z
     profile_revision: z.number().int().positive(),
     created_at: z.coerce.date(),
     updated_at: z.coerce.date(),
-  })
-  .strict();
-const authIdentityRowSchema = z
-  .object({
-    id: uuidSchema,
-    user_id: uuidSchema,
-    issuer: z.url().max(2048),
-    provider_subject: z.string().min(1).max(255),
-    profile_metadata: z.unknown(),
-    created_at: z.coerce.date(),
-    updated_at: z.coerce.date(),
-  })
-  .strict();
-const sessionRowSchema = z
-  .object({
-    id: uuidSchema,
-    user_id: uuidSchema,
-    token_digest: sha256HexSchema,
-    expires_at: z.coerce.date(),
-    revoked_at: z.coerce.date().nullable(),
-    user_agent: z.string().max(512).nullable(),
-    ip_address: z.string().nullable(),
-    created_at: z.coerce.date(),
   })
   .strict();
 const workspaceRowSchema = z
@@ -76,35 +46,6 @@ export function mapUser(row: Record<string, unknown>): UserRecord {
     profileRevision: parsed.profile_revision,
     createdAt: parsed.created_at,
     updatedAt: parsed.updated_at,
-  });
-}
-
-export function mapAuthIdentity(
-  row: Record<string, unknown>,
-): AuthIdentityRecord {
-  const parsed = authIdentityRowSchema.parse(row);
-  return Object.freeze({
-    id: parsed.id,
-    userId: parsed.user_id,
-    issuer: parsed.issuer,
-    providerSubject: parsed.provider_subject,
-    profileMetadata: parsePersistedIdentityMetadata(parsed.profile_metadata),
-    createdAt: parsed.created_at,
-    updatedAt: parsed.updated_at,
-  });
-}
-
-export function mapSession(row: Record<string, unknown>): SessionRecord {
-  const parsed = sessionRowSchema.parse(row);
-  return Object.freeze({
-    id: parsed.id,
-    userId: parsed.user_id,
-    tokenDigest: parsed.token_digest,
-    expiresAt: parsed.expires_at,
-    revokedAt: parsed.revoked_at,
-    userAgent: parsed.user_agent,
-    ipAddress: parsed.ip_address,
-    createdAt: parsed.created_at,
   });
 }
 

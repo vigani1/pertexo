@@ -205,7 +205,6 @@ export const workspaceInvitationsQuerySchema = z
 export const invitationAcceptanceResolveRequestSchema = z
   .object({ token: z.string().min(1).max(1_024) })
   .strict();
-export const invitationAcceptanceOidcRequestSchema = z.object({}).strict();
 export const invitationAcceptanceSessionRequestSchema = z.object({}).strict();
 export const invitationAcceptanceCompleteRequestSchema = z
   .object({

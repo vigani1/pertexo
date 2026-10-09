@@ -1,4 +1,3 @@
-import type { IdentityWorkspaceDependencies } from '../../src/identity-workspace/index.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import type { WorkflowRunPersistence } from '../../src/workflow-runs/ports.js';
 import {
@@ -12,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApiApplication } from '../../src/app.js';
 import {
   createApiPlatformFixture,
+  createStubIdentityRuntime,
   createStubApiWorkflowRuntime,
 } from '../support/api-platform.fixture.js';
 import { usageCapacitySnapshot } from '../support/usage-capacity.fixture.js';
@@ -32,63 +32,20 @@ function identityRuntime(
   role: 'builder' | 'owner' | 'viewer' = 'owner',
   workspaceStatus: WorkspaceStatus = 'active',
 ): ApiIdentityRuntime {
-  const dependencies: IdentityWorkspaceDependencies = {
-    config: {
-      oidc: {
-        issuer: 'https://identity.example.test',
-        authorizationEndpoint: 'https://identity.example.test/authorize',
-        clientId: 'client',
-        redirectUri: 'https://api.example.test/v1/auth/oidc/callback',
-        scopes: ['openid'],
-        transactionTtlMillis: 300_000,
-      },
-    },
-    provider: {
-      authorizationUrl: () => 'https://identity.example.test/authorize',
-      exchangeCode: () => Promise.reject(new Error('not used')),
-    },
-    transactions: {
-      create: () => Promise.resolve(),
-      consume: () => Promise.resolve({ status: 'missing' }),
-    },
-    persistence: {
-      create: () => Promise.resolve(),
-      findByDigest: () =>
-        Promise.resolve({
-          sessionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-          tokenDigest: 'a'.repeat(64),
-          userId: actorId,
-          expiresAt: new Date('2099-08-22T20:00:00.000Z'),
-          clientMetadata: {},
-        }),
-      revokeByDigest: () => Promise.resolve(false),
-      findUserById: () => Promise.resolve(null),
-      listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
-      listWorkspaceMembers: () => Promise.resolve({ items: [] }),
-      changeWorkspaceMemberRole: () => Promise.reject(new Error('not used')),
-      resolveOrCreateIdentity: () => Promise.resolve({ userId: actorId }),
-      createWorkspaceWithOwner: () => Promise.reject(new Error('not used')),
-      requestWorkspaceLifecycleOperation: () =>
-        Promise.reject(new Error('not used')),
-      readWorkspaceLifecycleOperation: () =>
-        Promise.reject(new Error('not used')),
-    },
-    authorization: {
-      findAccess: (query: Readonly<{ actorId: string; workspaceId: string }>) =>
-        Promise.resolve(
-          query.actorId === actorId && query.workspaceId === workspaceId
-            ? {
-                actorId,
-                workspaceId,
-                role,
-                membershipStatus: 'active' as const,
-                workspaceStatus,
-              }
-            : undefined,
-        ),
-    },
-  };
-  return Object.freeze({ dependencies, close: () => Promise.resolve() });
+  return createStubIdentityRuntime(actorId, {
+    findAccess: (query: Readonly<{ actorId: string; workspaceId: string }>) =>
+      Promise.resolve(
+        query.actorId === actorId && query.workspaceId === workspaceId
+          ? {
+              actorId,
+              workspaceId,
+              role,
+              membershipStatus: 'active' as const,
+              workspaceStatus,
+            }
+          : undefined,
+      ),
+  });
 }
 
 function persistenceFixture() {

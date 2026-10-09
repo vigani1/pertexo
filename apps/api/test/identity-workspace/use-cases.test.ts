@@ -7,7 +7,6 @@ import {
   GetCurrentUserUseCase,
   ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
-  OidcApplicationService,
   WorkspaceLifecycleUseCase,
   workspaceCreateRequestSchema,
 } from '../../src/identity-workspace/index.js';
@@ -18,7 +17,6 @@ import {
 } from '../../src/workspaces/index.js';
 import type { WorkspaceAuthorizationReader } from '../../src/identity-workspace/ports.js';
 import type { WorkspaceAccess } from '../../src/workspaces/index.js';
-import { OpaqueSessionService } from '../../src/identity/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -376,142 +374,6 @@ describe('identity/workspace application use cases', () => {
     ).toThrow();
   });
 
-  it('maps OIDC identity into an opaque session and hands cookies to the boundary', async () => {
-    const oidc = {
-      startLogin: () =>
-        Promise.resolve({
-          authorizationUrl: 'https://issuer.example.test/authorize',
-          expiresAt: new Date('2026-08-20T20:00:00.000Z'),
-          browserBindingMaxAgeSeconds: 300,
-          browserBinding: 'browser-binding-secret',
-        }),
-      completeLogin: vi.fn().mockResolvedValue({
-        externalIdentity: {
-          issuer: 'https://issuer.example',
-          subject: 'sub-1',
-        },
-        internalIdentity: { userId: actorId },
-        verifiedProfile: {
-          email: 'person@example.test',
-          displayName: 'Person',
-        },
-      }),
-    };
-    const sessions = {
-      issue: vi.fn().mockResolvedValue({
-        sessionId,
-        expiresAt: new Date('2026-08-20T20:00:00.000Z'),
-        cookieOptions: {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'lax',
-          path: '/',
-          maxAgeSeconds: 28_800,
-        },
-      }),
-    };
-    const app = new OidcApplicationService(oidc, sessions);
-    const cookieBoundary = { writeSessionCookie: vi.fn() };
-
-    const result = await app.complete(
-      {
-        code: 'code',
-        state: 'state-value-123456',
-        provider_extension: 'ignored',
-      },
-      'browser-binding-secret',
-      cookieBoundary,
-    );
-
-    expect(result.userId).toBe(actorId);
-    expect(oidc.completeLogin).toHaveBeenCalledWith(
-      { code: 'code', state: 'state-value-123456' },
-      'browser-binding-secret',
-    );
-    expect(sessions.issue).toHaveBeenCalledWith(
-      { userId: actorId },
-      cookieBoundary,
-    );
-  });
-
-  it('returns a verified invitation continuation after issuing the session', async () => {
-    const continuation = {
-      kind: 'invitation_acceptance' as const,
-      workspaceId,
-      intentId: '99999999-9999-4999-8999-999999999999',
-      bindingDigest: 'a'.repeat(64),
-    };
-    const oidc = {
-      startLogin: vi.fn(),
-      completeLogin: vi.fn().mockResolvedValue({
-        externalIdentity: {
-          issuer: 'https://issuer.example',
-          subject: 'sub-1',
-        },
-        internalIdentity: { userId: actorId },
-        verifiedProfile: {
-          email: 'person@example.test',
-          displayName: 'Person',
-        },
-        continuation,
-      }),
-    };
-    const sessions = {
-      issue: vi.fn().mockResolvedValue({
-        sessionId,
-        expiresAt: new Date('2026-08-20T20:00:00.000Z'),
-        cookieOptions: {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'lax' as const,
-          path: '/',
-          maxAgeSeconds: 28_800,
-        },
-      }),
-    };
-
-    await expect(
-      new OidcApplicationService(oidc, sessions).complete(
-        { code: 'code', state: 'state-value-123456' },
-        'browser-binding-secret',
-        { writeSessionCookie: vi.fn() },
-      ),
-    ).resolves.toMatchObject({ continuation });
-  });
-
-  it.each([
-    [
-      'repeated code',
-      { code: ['first', 'second'], state: 'state-value-123456' },
-    ],
-    ['repeated state', { code: 'code', state: ['first', 'second'] }],
-    ['missing code', { state: 'state-value-123456' }],
-    ['missing state', { code: 'code' }],
-    ['empty code', { code: '', state: 'state-value-123456' }],
-    ['short state', { code: 'code', state: 'short' }],
-    [
-      'oversized code',
-      { code: 'x'.repeat(4_097), state: 'state-value-123456' },
-    ],
-    ['oversized state', { code: 'code', state: 'x'.repeat(513) }],
-  ] as const)('rejects OIDC callback %s before login', async (_case, input) => {
-    const oidc = {
-      startLogin: vi.fn(),
-      completeLogin: vi.fn(),
-    };
-    const sessions = { issue: vi.fn() };
-
-    await expect(
-      new OidcApplicationService(oidc, sessions).complete(
-        input,
-        'browser-binding',
-        { writeSessionCookie: vi.fn() },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(oidc.completeLogin).not.toHaveBeenCalled();
-    expect(sessions.issue).not.toHaveBeenCalled();
-  });
-
   it('creates a workspace with owner and request/trace audit identity atomically through one persistence port', async () => {
     const store = persistence();
     const app = new CreateWorkspaceUseCase(store);
@@ -736,19 +598,5 @@ describe('identity/workspace application use cases', () => {
         reason: 'retiring the temporary workspace',
       }),
     ).rejects.toBe(failure);
-  });
-});
-
-describe('session authentication boundary', () => {
-  it('does not allow a revoked session to become an authenticated request', async () => {
-    const sessions = new OpaqueSessionService({
-      create: vi.fn(),
-      findByDigest: vi.fn().mockResolvedValue(undefined),
-      revokeByDigest: vi.fn(),
-    });
-
-    await expect(sessions.authenticate('x'.repeat(32))).rejects.toMatchObject({
-      code: 'identity.session_invalid',
-    });
   });
 });

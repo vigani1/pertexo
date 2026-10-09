@@ -4,16 +4,14 @@ import {
   Delete,
   Get,
   HttpCode,
+  Inject,
   Post,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
 
-import {
-  DoubleSubmitCsrfPolicy,
-  OpaqueSessionService,
-} from '../identity/index.js';
+import { DoubleSubmitCsrfPolicy } from '../identity/index.js';
 import {
   throwApplicationError,
   applicationError,
@@ -32,10 +30,12 @@ import {
 import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
 import type { IdentitySessionAuthority, SessionCookiePolicy } from './ports.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
-import { INVITATION_ALLOWED_ORIGIN, SESSION_COOKIE_POLICY } from './tokens.js';
+import {
+  INVITATION_ALLOWED_ORIGIN,
+  SESSION_AUTHORITY,
+  SESSION_COOKIE_POLICY,
+} from './tokens.js';
 import type { CookieResponse, IdentityWorkspaceRequest } from './types.js';
-import { serializeOidcBindingCookie } from './legacy-oidc-binding-cookie.js';
-import { Inject } from '@nestjs/common';
 
 const INVITATION_BINDING_COOKIE_NAME = 'pertexo_invitation_intent';
 const INVITATION_CSRF_HEADER = 'x-invitation-csrf-token';
@@ -44,7 +44,7 @@ const INVITATION_CSRF_HEADER = 'x-invitation-csrf-token';
 export class InvitationAcceptanceController {
   public constructor(
     private readonly acceptance: InvitationAcceptanceUseCase,
-    @Inject(OpaqueSessionService)
+    @Inject(SESSION_AUTHORITY)
     private readonly sessions: IdentitySessionAuthority,
     private readonly csrf: DoubleSubmitCsrfPolicy,
     @Inject(SESSION_COOKIE_POLICY)
@@ -88,10 +88,7 @@ export class InvitationAcceptanceController {
     );
   }
 
-  /**
-   * Verifies the invited account from a fresh sign-in by the active session
-   * authority (ADR 043), for deployments whose sign-in is not legacy OIDC.
-   */
+  /** Verifies the invited account from a fresh sign-in (ADR 043). */
   @Post('session')
   @HttpCode(200)
   @RateLimit('identity_start')
@@ -138,31 +135,15 @@ export class InvitationAcceptanceController {
       result.replacementToken !== undefined &&
       result.replacementExpiresAt !== undefined
     ) {
-      const csrfToken = this.csrf.issueToken();
-      if (this.sessions.deliver === undefined) {
-        cookies.push(
-          serializeSessionCookie(
-            SESSION_COOKIE_NAME,
-            result.replacementToken,
-            result.replacementExpiresAt,
-            true,
-            this.cookiePolicy,
-          ),
-        );
-      } else {
-        await this.sessions.deliver(result.replacementToken, {
-          writeSessionCookie: () => undefined,
-          writeSessionCookieHeaders: (setCookies) => {
-            cookies.push(...setCookies);
-          },
-        });
-      }
+      await this.sessions.deliver(result.replacementToken, {
+        writeSessionCookieHeaders: (setCookies) => {
+          cookies.push(...setCookies);
+        },
+      });
       cookies.push(
-        serializeSessionCookie(
-          CSRF_COOKIE_NAME,
-          csrfToken,
+        serializeCsrfCookie(
+          this.csrf.issueToken(),
           result.replacementExpiresAt,
-          false,
           this.cookiePolicy,
         ),
       );
@@ -184,42 +165,6 @@ export class InvitationAcceptanceController {
     );
     response.header('Cache-Control', 'no-store');
     response.header('set-cookie', clearBindingCookie(this.cookiePolicy));
-  }
-}
-
-/** Legacy OIDC verification, registered only when OIDC is configured. */
-@Controller('v1/invitation-acceptance')
-export class InvitationAcceptanceOidcController {
-  public constructor(
-    private readonly acceptance: InvitationAcceptanceUseCase,
-    @Inject(SESSION_COOKIE_POLICY)
-    private readonly cookiePolicy: SessionCookiePolicy,
-  ) {}
-
-  @Post('oidc')
-  @HttpCode(200)
-  @RateLimit('identity_start')
-  public async oidc(
-    @Req() request: IdentityWorkspaceRequest,
-    @Body() body: unknown,
-    @Res({ passthrough: true }) response: CookieResponse,
-  ) {
-    requireEmptyBody(body);
-    const result = await this.acceptance.startOidc(
-      readCookie(request, INVITATION_BINDING_COOKIE_NAME),
-      readHeader(request, INVITATION_CSRF_HEADER),
-    );
-    response.header('Cache-Control', 'no-store');
-    response.header(
-      'set-cookie',
-      serializeOidcBindingCookie(
-        result.oidcBinding,
-        result.oidcBindingExpiresAt,
-        result.oidcBindingMaxAgeSeconds,
-        this.cookiePolicy,
-      ),
-    );
-    return result.response;
   }
 }
 
@@ -298,17 +243,14 @@ function clearBindingCookie(policy: SessionCookiePolicy): string {
     .join('; ');
 }
 
-function serializeSessionCookie(
-  name: string,
+function serializeCsrfCookie(
   value: string,
   expiresAt: Date,
-  httpOnly: boolean,
   policy: SessionCookiePolicy,
 ): string {
   return [
-    `${name}=${encodeURIComponent(value)}`,
+    `${CSRF_COOKIE_NAME}=${encodeURIComponent(value)}`,
     'Path=/',
-    httpOnly ? 'HttpOnly' : undefined,
     policy.secure ? 'Secure' : undefined,
     `SameSite=${capitalize(policy.sameSite)}`,
     `Max-Age=${String(Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1_000)))}`,

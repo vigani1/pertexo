@@ -125,14 +125,6 @@ describe('identity and problem public contracts', () => {
       ],
     ).toEqual({ $ref: '#/components/responses/Conflict' });
     expect(
-      identityWorkspaceOpenApiDocument.paths['/v1/auth/oidc/callback'].get
-        .responses['503'],
-    ).toEqual({ $ref: '#/components/responses/ServiceUnavailable' });
-    expect(
-      identityWorkspaceOpenApiDocument.paths['/v1/auth/oidc/callback'].get
-        .responses['303'].headers.Location,
-    ).toBeDefined();
-    expect(
       identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].get.responses[
         '200'
       ],

@@ -5,7 +5,6 @@ export type WorkflowOrganizationConfig = Readonly<{
 
 const KEY_NAME = 'WORKFLOW_ORGANIZATION_CURSOR_KEY';
 const OTHER_SECRET_NAMES = [
-  'OIDC_TRANSACTION_KEY',
   'INVITATION_TOKEN_KEY',
   'AUTH_MAIL_KEY',
   'BETTER_AUTH_SECRET',

@@ -16,14 +16,7 @@ import {
   createTrustedSessions,
   type BetterAuthTrustedSessions,
 } from './better-auth-trusted-sessions.js';
-import { LegacyMethodMigration } from './legacy-method-migration.js';
 import { OwnedEmailProofs } from './owned-email-proofs.js';
-import { OidcLoginService } from '../identity/oidc.js';
-import type {
-  OidcLoginTransactionStore,
-  OidcProviderPort,
-} from '../identity/ports.js';
-import type { OidcConfiguration } from '../identity/types.js';
 
 export type BetterAuthRuntimeConfig = Readonly<{
   baseUrl: string;
@@ -41,13 +34,6 @@ export type BetterAuthRuntimeConfig = Readonly<{
   socialProviders?: BetterAuthOptions['socialProviders'];
   /** Local provider fixtures may use this seam; production uses pinned providers. */
   linkProviderGateway?: LinkProviderGateway;
-  legacyOidc?: LegacyOidcConfig;
-}>;
-
-type LegacyOidcConfig = Readonly<{
-  configuration: OidcConfiguration;
-  transactions: OidcLoginTransactionStore;
-  provider: OidcProviderPort;
 }>;
 
 export type BetterAuthRuntime = Readonly<{
@@ -110,20 +96,12 @@ export function createBetterAuthRuntime(
       verifyCredentialPassword(auth, pool, userId, password),
     deliver,
   });
-  const legacyMigration =
-    config.legacyOidc === undefined
-      ? undefined
-      : legacyMethodMigration(pool, config, config.legacyOidc, {
-          providers,
-          deliver,
-        });
 
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     auth: Object.freeze({
       handler: async (request: Request): Promise<Response> => {
         const owned =
-          (await legacyMigration?.handle(request)) ??
           (await linking.handle(request)) ??
           (await emailProofs.handle(request));
         if (owned !== undefined) return owned;
@@ -155,47 +133,4 @@ async function verifyCredentialPassword(
     hash !== undefined &&
     (await auth.$context).password.verify({ hash, password })
   );
-}
-
-/**
- * The legacy issuer only proves an existing identity: its mapper is read-only
- * and resolves active users, so it can neither create nor claim an account.
- */
-function legacyMethodMigration(
-  pool: Pool,
-  config: BetterAuthRuntimeConfig,
-  legacy: LegacyOidcConfig,
-  journey: Readonly<{
-    providers: LinkProviderGateway;
-    deliver: DeliverSessionCookies;
-  }>,
-): LegacyMethodMigration {
-  const oidc = new OidcLoginService(
-    legacy.configuration,
-    legacy.transactions,
-    legacy.provider,
-    {
-      mapExternalIdentity: async (identity) => {
-        const mapped = await pool.query<{ user_id: string }>(
-          `select identity.user_id from app.auth_identities identity
-             join app.users users on users.id=identity.user_id
-            where identity.issuer=$1 and identity.provider_subject=$2
-              and users.status='active'`,
-          [identity.issuer, identity.subject],
-        );
-        const userId = mapped.rows[0]?.user_id;
-        return userId === undefined ? undefined : { userId };
-      },
-    },
-  );
-  return new LegacyMethodMigration({
-    pool,
-    oidc,
-    providers: journey.providers,
-    secret: config.secret,
-    baseUrl: config.baseUrl,
-    secureCookies: config.secureCookies,
-    sessionTtlSeconds: config.sessionTtlSeconds,
-    deliver: journey.deliver,
-  });
 }

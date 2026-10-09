@@ -69,11 +69,9 @@ function useCase(recorded = intent('verified')) {
       completeInvitationAcceptance: vi.fn(),
       abandonInvitationAcceptance: vi.fn(),
     },
-    undefined,
     nodeIdentityCrypto,
     { now: () => now },
     { publicWebOrigin: 'https://app.example.test' },
-    { replacementCredential: vi.fn() },
   );
   return { acceptance, recordInvitationAcceptanceProof };
 }
@@ -119,7 +117,7 @@ describe('invitation acceptance under the active session authority', () => {
     [
       'an unverified email',
       evidence({ emailVerified: false }),
-      { code: 'identity.callback_rejected' },
+      { code: 'identity.email_unverified' },
     ],
     [
       'a sign-in older than five minutes',
@@ -134,7 +132,7 @@ describe('invitation acceptance under the active session authority', () => {
     expect(recordInvitationAcceptanceProof).not.toHaveBeenCalled();
   });
 
-  it('fails closed on a wrong CSRF token, a vanished intent and a missing OIDC path', async () => {
+  it('fails closed on a wrong CSRF token and a vanished intent', async () => {
     const { acceptance } = useCase(null as never);
     await expect(
       acceptance.recordSessionProof({
@@ -150,9 +148,6 @@ describe('invitation acceptance under the active session authority', () => {
         evidence: evidence(),
       }),
     ).rejects.toMatchObject({ reason: 'unavailable' });
-    await expect(
-      acceptance.startOidc(binding, csrfToken),
-    ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
   });
 
   it('asks the session authority for evidence of the authenticated user only', async () => {
@@ -180,9 +175,6 @@ describe('invitation acceptance under the active session authority', () => {
     };
     const signInEvidence = vi.fn().mockResolvedValue(evidence());
 
-    await expect(
-      controllerWith({}).verifySession(request, {}, response),
-    ).rejects.toMatchObject({ code: 'resource.not_found' });
     await expect(
       controllerWith({
         signInEvidence: vi

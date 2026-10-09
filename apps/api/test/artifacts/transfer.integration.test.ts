@@ -241,10 +241,21 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     const owner = await fixture.login('owner');
     await fixture.setWorkspaceStatus('suspended');
     try {
+      // Suspension revokes members' sessions (ADR 013).
+      const revoked = await fixture.application.inject({
+        method: 'POST',
+        url: uploadUrl(fixture),
+        headers: mutationHeaders(owner, 'denial-revoked'),
+        payload: requestMetadata(Buffer.from('revoked denial')),
+      });
+      expectProblem(revoked, 401, 'auth.unauthenticated');
       const suspended = await fixture.application.inject({
         method: 'POST',
         url: uploadUrl(fixture),
-        headers: mutationHeaders(owner, 'denial-suspended'),
+        headers: mutationHeaders(
+          await fixture.login('owner'),
+          'denial-suspended',
+        ),
         payload: requestMetadata(Buffer.from('suspended denial')),
       });
       expectProblem(suspended, 404, 'resource.not_found');

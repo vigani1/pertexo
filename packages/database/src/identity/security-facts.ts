@@ -9,7 +9,6 @@ export type IdentitySecurityEvent =
   | 'email.change_verified'
   | 'method.linked'
   | 'method.unlinked'
-  | 'legacy.method_migrated'
   | 'password.changed'
   | 'password.configured'
   | 'password.reset'

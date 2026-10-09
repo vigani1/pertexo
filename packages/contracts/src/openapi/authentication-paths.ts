@@ -5,7 +5,6 @@ import {
   jsonResponse,
   jsonSchema,
   problemResponse,
-  queryParameter,
   responseReference,
 } from './primitives.js';
 import {
@@ -23,10 +22,6 @@ import {
   accountSecuritySessionRevokeResponseSchema,
   accountSecuritySessionsResponseSchema,
   authenticationCapabilitiesResponseSchema,
-  legacyMethodMigrationStartRequestSchema,
-  legacyMethodMigrationStartResponseSchema,
-  oidcAuthorizationCodeSchema,
-  oidcStateSchema,
 } from '../schemas/authentication.js';
 
 /**
@@ -86,14 +81,6 @@ export const authenticationContractSchemas = Object.freeze({
   ),
   AccountSecurityLinkStartResponse: jsonSchema(
     accountSecurityLinkStartResponseSchema,
-    'output',
-  ),
-  LegacyMethodMigrationStartRequest: jsonSchema(
-    legacyMethodMigrationStartRequestSchema,
-    'input',
-  ),
-  LegacyMethodMigrationStartResponse: jsonSchema(
-    legacyMethodMigrationStartResponseSchema,
     'output',
   ),
 });
@@ -246,21 +233,6 @@ export const authenticationContractPaths = Object.freeze({
       },
     },
   },
-  '/v1/auth/legacy-migration/start': {
-    post: {
-      operationId: 'startLegacyMethodMigration',
-      requestBody: jsonRequest('LegacyMethodMigrationStartRequest'),
-      responses: {
-        '200': jsonResponse(
-          'Legacy method proof started',
-          'LegacyMethodMigrationStartResponse',
-        ),
-        '400': responseReference('BadRequest'),
-        '404': responseReference('Forbidden'),
-        '503': responseReference('ServiceUnavailable'),
-      },
-    },
-  },
   '/v1/auth/account-security/sessions/revoke': {
     post: {
       operationId: 'revokeAccountSecuritySession',
@@ -299,41 +271,6 @@ export const authenticationContractPaths = Object.freeze({
         ),
         '401': responseReference('Unauthenticated'),
         '403': responseReference('Forbidden'),
-        '500': responseReference('Unexpected'),
-      },
-    },
-  },
-  '/v1/auth/oidc/start': {
-    get: {
-      operationId: 'startOidcLogin',
-      responses: {
-        '200': jsonResponse(
-          'OIDC authorization transaction',
-          'OidcStartResponse',
-        ),
-        '500': responseReference('Unexpected'),
-      },
-    },
-  },
-  '/v1/auth/oidc/callback': {
-    get: {
-      operationId: 'completeOidcLogin',
-      parameters: [
-        queryParameter('code', oidcAuthorizationCodeSchema, true),
-        queryParameter('state', oidcStateSchema, true),
-      ],
-      responses: {
-        '303': {
-          description: 'Browser session established; return to the web app',
-          headers: {
-            Location: {
-              description: 'Configured same-origin application landing path',
-              schema: { type: 'string', pattern: '^/(?!/)' },
-            },
-          },
-        },
-        '400': responseReference('BadRequest'),
-        '503': responseReference('ServiceUnavailable'),
         '500': responseReference('Unexpected'),
       },
     },

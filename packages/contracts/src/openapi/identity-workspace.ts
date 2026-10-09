@@ -4,10 +4,6 @@ import {
   authenticationContractSchemas,
 } from './authentication-paths.js';
 import {
-  oidcCallbackRequestSchema,
-  oidcStartResponseSchema,
-} from '../schemas/authentication.js';
-import {
   authenticatedComponents,
   csrfHeaderParameter,
   idempotencyHeaderParameter,
@@ -52,8 +48,6 @@ import {
 
 const schemas = Object.freeze({
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
-  OidcCallbackRequest: jsonSchema(oidcCallbackRequestSchema, 'input'),
-  OidcStartResponse: jsonSchema(oidcStartResponseSchema, 'output'),
   WorkspaceCreateRequest: jsonSchema(workspaceCreateRequestSchema, 'input'),
   WorkspaceRenameRequest: jsonSchema(workspaceRenameRequestSchema, 'input'),
   WorkspaceRenameResponse: jsonSchema(workspaceRenameResponseSchema, 'output'),

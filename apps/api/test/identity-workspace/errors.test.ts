@@ -52,30 +52,10 @@ describe('identity/workspace conflict mapping', () => {
     });
   });
 
-  it('maps identity provider outages to the stable safe 503 catalog code', () => {
-    const error = mapIdentityWorkspaceError(
-      new IdentityError('identity.provider_unavailable'),
-    );
-
-    expect(error).toMatchObject({
-      code: 'provider.unavailable',
-      safeDetail: 'The identity provider is temporarily unavailable.',
-    });
-    expect(APPLICATION_ERROR_CATALOG[error.code]).toMatchObject({
-      status: 503,
-      title: 'Provider unavailable',
-    });
-  });
-
-  it.each([
-    'identity.provider_rejected',
-    'identity.transaction_replayed',
-    'identity.nonce_mismatch',
-  ] as const)('keeps rejected identity callback %s on a safe 4xx', (code) => {
-    const identityError = new IdentityError(code);
+  it('keeps an unverified sign-in email on a safe 400', () => {
+    const identityError = new IdentityError('identity.email_unverified');
     const error = mapIdentityWorkspaceError(identityError);
 
-    expect(identityError.status).toBe(400);
     expect(error).toEqual({
       code: 'request.invalid',
       safeDetail: identityError.message,
@@ -111,14 +91,10 @@ describe('identity/workspace conflict mapping', () => {
     expect(JSON.stringify(error)).not.toContain('credential secret');
   });
 
-  it.each([
-    'identity.session_invalid',
-    'identity.session_expired',
-    'identity.session_revoked',
-  ] as const)('maps %s to unauthenticated', (code) => {
-    expect(mapIdentityWorkspaceError(new IdentityError(code))).toEqual({
-      code: 'auth.unauthenticated',
-    });
+  it('maps an invalid session to unauthenticated', () => {
+    expect(
+      mapIdentityWorkspaceError(new IdentityError('identity.session_invalid')),
+    ).toEqual({ code: 'auth.unauthenticated' });
   });
 
   it('maps CSRF failure separately from session authentication', () => {

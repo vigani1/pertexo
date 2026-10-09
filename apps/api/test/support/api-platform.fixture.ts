@@ -5,8 +5,13 @@ import type {
 } from '@pertexo/observability';
 import { vi } from 'vitest';
 
-import type { IdentityWorkspaceDependencies } from '../../src/identity-workspace/index.js';
+import type { BetterAuthRuntime } from '../../src/identity-infrastructure/index.js';
+import type {
+  IdentitySessionAuthority,
+  IdentityWorkspaceDependencies,
+} from '../../src/identity-workspace/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import type { ApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
 
 export function createApiPlatformFixture(migrationHead: string) {
@@ -113,5 +118,47 @@ export function createStubApiWorkflowRuntime(
       },
     },
     close,
+  });
+}
+
+/**
+ * An identity runtime whose session authority signs every presented session
+ * cookie in as `userId`; access comes from `authorization`.
+ */
+export function createStubIdentityRuntime(
+  userId: string,
+  authorization: IdentityWorkspaceDependencies['authorization'],
+): ApiIdentityRuntime {
+  const notUsed = () => Promise.reject(new Error('not used'));
+  const sessions: IdentitySessionAuthority = {
+    issue: notUsed,
+    authenticate: () =>
+      Promise.resolve({
+        userId,
+        sessionId: '99999999-9999-4999-8999-999999999999',
+        expiresAt: new Date('2099-08-22T20:00:00.000Z'),
+        clientMetadata: {},
+      }),
+    revoke: () => Promise.resolve(),
+    deliver: notUsed,
+    signInEvidence: notUsed,
+  };
+  return Object.freeze({
+    dependencies: {
+      config: { publicWebOrigin: 'https://app.example.test' },
+      persistence: {
+        findUserById: () => Promise.resolve(null),
+        listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
+        listWorkspaceMembers: () => Promise.resolve({ items: [] }),
+        changeWorkspaceMemberRole: notUsed,
+        createWorkspaceWithOwner: notUsed,
+        requestWorkspaceLifecycleOperation: notUsed,
+        readWorkspaceLifecycleOperation: notUsed,
+      },
+      authorization,
+      sessions,
+    },
+    betterAuth: {} as BetterAuthRuntime,
+    close: () => Promise.resolve(),
   });
 }

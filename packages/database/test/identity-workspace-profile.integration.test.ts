@@ -46,10 +46,7 @@ describe('self-service display name (ADR 043)', () => {
       displayName: 'Ada Lovelace',
       profileRevision: 2,
     });
-    await expect(database.liveSessions(user.id)).resolves.toEqual({
-      opaque: 1,
-      betterAuth: 1,
-    });
+    await expect(database.liveSessions(user.id)).resolves.toBe(1);
 
     await expect(
       database.identity().updateUserProfile(command),

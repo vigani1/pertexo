@@ -160,46 +160,6 @@
       ],
       "additionalProperties": false
     },
-    "OidcCallbackRequest": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 4096
-        },
-        "state": {
-          "type": "string",
-          "minLength": 16,
-          "maxLength": 512
-        }
-      },
-      "required": [
-        "code",
-        "state"
-      ]
-    },
-    "OidcStartResponse": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {
-        "authorizationUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "expiresAt": {
-          "type": "string",
-          "format": "date-time",
-          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-        }
-      },
-      "required": [
-        "authorizationUrl",
-        "expiresAt"
-      ],
-      "additionalProperties": false
-    },
     "WorkspaceCreateRequest": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1193,12 +1153,6 @@
       ],
       "additionalProperties": false
     },
-    "InvitationAcceptanceOidcRequest": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {},
-      "additionalProperties": false
-    },
     "InvitationAcceptanceSessionRequest": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1735,16 +1689,11 @@
               "apple"
             ]
           }
-        },
-        "legacyMigrationAvailable": {
-          "default": false,
-          "type": "boolean"
         }
       },
       "required": [
         "password",
-        "socialProviders",
-        "legacyMigrationAvailable"
+        "socialProviders"
       ],
       "additionalProperties": false
     },
@@ -2107,45 +2056,6 @@
       },
       "required": [
         "authorizationUrl"
-      ],
-      "additionalProperties": false
-    },
-    "LegacyMethodMigrationStartRequest": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {
-        "provider": {
-          "type": "string",
-          "enum": [
-            "google",
-            "microsoft",
-            "github",
-            "apple"
-          ]
-        }
-      },
-      "required": [
-        "provider"
-      ],
-      "additionalProperties": false
-    },
-    "LegacyMethodMigrationStartResponse": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {
-        "authorizationUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "expiresAt": {
-          "type": "string",
-          "format": "date-time",
-          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-        }
-      },
-      "required": [
-        "authorizationUrl",
-        "expiresAt"
       ],
       "additionalProperties": false
     }

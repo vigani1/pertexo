@@ -114,9 +114,9 @@ beforeAll(async () => {
       [workspaceId, ownerUserId],
     );
     await owner.query(
-      `insert into app.sessions(id,user_id,token_digest,expires_at)
+      `insert into app.auth_sessions(id,user_id,token,expires_at)
        values($1,$2,$3,clock_timestamp()+interval '1 day')`,
-      [randomUUID(), ownerUserId, '7'.repeat(64)],
+      [randomUUID(), ownerUserId, randomUUID()],
     );
     await owner.query(
       `insert into app.workflows(id,workspace_id,name,lifecycle_status,
@@ -337,7 +337,7 @@ describe('workspace deletion and restore', () => {
         (select bool_and(status='disabled') from app.workflow_triggers
           where workspace_id=$1) triggers_disabled,
         (select activation_status from app.workflows where id=$5) workflow_status,
-        (select bool_and(revoked_at is not null) from app.sessions
+        (select count(*)=0 from app.auth_sessions
           where user_id=$6) sessions_revoked,
         (select count(*) from app.audit_events where workspace_id=$1
           and action='workspace.deletion_requested') audit`,

@@ -148,11 +148,10 @@ export function parseApiConfig(
   });
   const identity = parseIdentityConfig(parsed, environment);
   const workflowOrganization = parseWorkflowOrganizationConfig(environment, [
-    ...(identity?.secretEncryption?.previous ?? []).map(({ key }) => key),
     ...(identity?.invitationTokenEncryption?.previous ?? []).map(
       ({ key }) => key,
     ),
-    ...(identity?.betterAuth?.durableMail?.encryption.previous ?? []).map(
+    ...(identity?.betterAuth.durableMail?.encryption.previous ?? []).map(
       ({ key }) => key,
     ),
   ]);

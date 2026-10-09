@@ -4,10 +4,8 @@ import { Test } from '@nestjs/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  DoubleSubmitCsrfPolicy,
-  OpaqueSessionService,
-} from '../../src/identity/index.js';
+import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
+import { SESSION_AUTHORITY } from '../../src/identity-workspace/index.js';
 import { NodeTestingController } from '../../src/node-testing/controller.js';
 import { NodeTestingModule } from '../../src/node-testing/module.js';
 import {
@@ -33,7 +31,7 @@ Module({
       useValue: { setActor: () => undefined, setWorkspace: () => undefined },
     },
     {
-      provide: OpaqueSessionService,
+      provide: SESSION_AUTHORITY,
       useValue: {
         authenticate: () =>
           Promise.resolve({
@@ -49,7 +47,7 @@ Module({
       useValue: { assertMutationAllowed: () => undefined },
     },
   ],
-  exports: [RequestContextStore, OpaqueSessionService, DoubleSubmitCsrfPolicy],
+  exports: [RequestContextStore, SESSION_AUTHORITY, DoubleSubmitCsrfPolicy],
 })(FakeIdentityModule);
 
 function dependencies() {

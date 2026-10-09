@@ -1,9 +1,8 @@
 import { HttpResponse, http } from 'msw';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
-import { LegacyMigrationPage } from '@/features/auth/pages/legacy-migration';
 import { LoginPage } from '@/features/auth/pages/login';
 import { mockServer } from '../../support/mock-server';
 import {
@@ -17,7 +16,6 @@ function capabilities(
   options: Readonly<{
     minimumLength?: number;
     socialProviders?: readonly string[];
-    legacyMigrationAvailable?: boolean;
   }> = {},
 ) {
   return http.get('http://pertexo.test/v1/auth/capabilities', () =>
@@ -28,7 +26,6 @@ function capabilities(
         verificationRequired: true,
       },
       socialProviders: options.socialProviders ?? [],
-      legacyMigrationAvailable: options.legacyMigrationAvailable ?? false,
     }),
   );
 }
@@ -283,50 +280,5 @@ describe('sign-in family forms', () => {
       screen.getByRole('link', { name: 'Request a new one' }),
     ).toHaveAttribute('href', '/forgot-password');
     expect(screen.queryByLabelText('New password')).toBeNull();
-  });
-
-  it('shows the five-minute window after choosing a new method and closes it when time runs out', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    mockServer.use(
-      capabilities({
-        socialProviders: ['google'],
-        legacyMigrationAvailable: true,
-      }),
-      http.post('*/v1/auth/legacy-migration/start', () =>
-        HttpResponse.json({
-          authorizationUrl: 'https://legacy.example.test/authorize?state=s',
-          expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
-        }),
-      ),
-    );
-    const navigate = vi.fn();
-    renderInRouter(
-      <LegacyMigrationPage
-        apiClient={apiClient()}
-        navigateToProvider={navigate}
-      />,
-    );
-    const actor = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    await actor.click(
-      await screen.findByRole('button', { name: 'Continue with Google' }),
-    );
-    const steps = screen.getByRole('list', { name: 'Steps' });
-    expect(
-      await within(steps).findByText('Confirm your old account'),
-    ).toBeVisible();
-    expect(screen.getByText(/^(5:00|4:59)$/u)).toBeVisible();
-    await actor.click(
-      screen.getByRole('button', { name: 'Continue to your old sign-in' }),
-    );
-    expect(navigate).toHaveBeenCalledWith(
-      'https://legacy.example.test/authorize?state=s',
-    );
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5 * 60_000 + 1_000);
-    });
-    await waitFor(() => {
-      expect(screen.getByText(/5-minute window closed/u)).toBeVisible();
-    });
   });
 });

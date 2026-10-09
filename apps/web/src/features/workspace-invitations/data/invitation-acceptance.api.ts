@@ -1,11 +1,9 @@
 import {
   invitationAcceptanceCompleteRequestSchema,
   invitationAcceptanceJourneySchema,
-  invitationAcceptanceOidcRequestSchema,
   invitationAcceptanceReceiptSchema,
   invitationAcceptanceResolveRequestSchema,
   invitationAcceptanceSessionRequestSchema,
-  oidcStartResponseSchema,
   type InvitationAcceptanceJourney,
   type InvitationAcceptanceReceipt,
 } from '@pertexo/contracts';
@@ -40,25 +38,6 @@ export function readInvitation(
     response: {
       kind: 'json',
       decode: (value) => invitationAcceptanceJourneySchema.parse(value),
-    },
-  });
-}
-
-export function startInvitationOidc(
-  apiClient: ApiClient,
-  csrfToken: string,
-  signal?: AbortSignal,
-) {
-  return apiClient.request({
-    path: '/v1/invitation-acceptance/oidc',
-    method: 'POST',
-    csrf: 'external',
-    headers: { 'X-Invitation-Csrf-Token': csrfToken },
-    body: invitationAcceptanceOidcRequestSchema.parse({}),
-    ...(signal === undefined ? {} : { signal }),
-    response: {
-      kind: 'json',
-      decode: (value) => oidcStartResponseSchema.parse(value),
     },
   });
 }
