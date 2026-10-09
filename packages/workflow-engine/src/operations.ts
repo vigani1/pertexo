@@ -26,9 +26,9 @@ import {
 import { executableNodes } from './compilation/graph.js';
 import {
   assertAuthenticExecutableIdentity,
-  type CompiledWorkflowExecutableV2,
-  type WorkflowExecutableNodeV2,
-  type WorkflowExecutableGraphV2,
+  type CompiledWorkflowExecutable,
+  type WorkflowExecutableNode,
+  type WorkflowExecutableGraph,
 } from './compilation/foundation.js';
 import { normalizeBoundedEngineJson } from './compilation/validation.js';
 import type { WorkflowObservation } from './types.js';
@@ -63,7 +63,7 @@ export type {
 
 export interface AdvanceWorkflowInput {
   readonly runId: string;
-  readonly executable: CompiledWorkflowExecutableV2;
+  readonly executable: CompiledWorkflowExecutable;
   readonly workflowVersionId: string;
   readonly checkpoint: unknown;
   readonly observations?: unknown;
@@ -83,9 +83,9 @@ function assertIdentity(
 }
 
 export function projectSchedulerState(
-  graph: WorkflowExecutableGraphV2,
+  graph: WorkflowExecutableGraph,
 ): SchedulerState {
-  const projectGraph = (graph: WorkflowExecutableGraphV2): SchedulerState => {
+  const projectGraph = (graph: WorkflowExecutableGraph): SchedulerState => {
     const nodes = graph.nodes.map(
       ({
         id,
@@ -119,7 +119,7 @@ export function projectSchedulerState(
 }
 
 function schedulerState(
-  executable: CompiledWorkflowExecutableV2,
+  executable: CompiledWorkflowExecutable,
 ): SchedulerState {
   return projectSchedulerState(executable.envelope.graph);
 }
@@ -289,7 +289,7 @@ function isNodeExecutorFailure(error: unknown): error is NodeExecutorFailure {
 }
 
 async function resolveMappedNodeInput(
-  node: Pick<WorkflowExecutableNodeV2, 'definition' | 'inputMappings'>,
+  node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>,
   runInput: JsonValue,
   completedOutputs: Readonly<Record<string, JsonValue>>,
   directUpstream: ReadonlySet<string>,
@@ -354,7 +354,7 @@ export async function resolveSingleNodePreviewInput(
     expressionEvaluator?: ExpressionEvaluator;
   }>,
 ): Promise<JsonValue> {
-  let node: Pick<WorkflowExecutableNodeV2, 'definition' | 'inputMappings'>;
+  let node: Pick<WorkflowExecutableNode, 'definition' | 'inputMappings'>;
   let runInput: JsonValue;
   try {
     runInput = normalizeBoundedEngineJson(input.runInput);

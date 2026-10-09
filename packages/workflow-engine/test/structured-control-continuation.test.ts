@@ -5,7 +5,7 @@ import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   type WorkflowCheckpoint,
@@ -24,7 +24,7 @@ async function drive(
   stopKind: 'cancel' | 'deadline' | 'failure' = 'cancel',
 ) {
   const workflowVersionId = randomUUID();
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph,
     release: composeExecutableCompatibilityRelease(
       nodeRelease({

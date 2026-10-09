@@ -20,7 +20,7 @@ export const isRecord = (value: unknown): value is Record<string, unknown> =>
 export const isInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value);
 
-export const WORKFLOW_CHECKPOINT_LIMITS_V1 = Object.freeze({
+export const WORKFLOW_CHECKPOINT_LIMITS = Object.freeze({
   bytes: 262_144,
   depth: 64,
   members: 10_000,
@@ -91,7 +91,7 @@ export function assertBoundedCheckpointJson(value: unknown): void {
   const addBytes = (current: number, added: number): number => {
     const next = current + added;
     assertCheckpoint(
-      next <= WORKFLOW_CHECKPOINT_LIMITS_V1.bytes,
+      next <= WORKFLOW_CHECKPOINT_LIMITS.bytes,
       'checkpoint exceeds maximum bytes',
     );
     return next;
@@ -164,7 +164,7 @@ export function assertBoundedCheckpointJson(value: unknown): void {
       'checkpoint must not contain proxy objects',
     );
     assertCheckpoint(
-      current.depth <= WORKFLOW_CHECKPOINT_LIMITS_V1.depth,
+      current.depth <= WORKFLOW_CHECKPOINT_LIMITS.depth,
       'checkpoint exceeds maximum depth',
     );
     assertCheckpoint(
@@ -180,7 +180,7 @@ export function assertBoundedCheckpointJson(value: unknown): void {
     );
     if (isArray) {
       assertCheckpoint(
-        item.length <= WORKFLOW_CHECKPOINT_LIMITS_V1.arrayItems,
+        item.length <= WORKFLOW_CHECKPOINT_LIMITS.arrayItems,
         'checkpoint array is oversized',
       );
       bytes = addBytes(bytes, 2 + Math.max(0, item.length - 1));
@@ -202,7 +202,7 @@ export function assertBoundedCheckpointJson(value: unknown): void {
       );
       members += 1;
       assertCheckpoint(
-        members <= WORKFLOW_CHECKPOINT_LIMITS_V1.members,
+        members <= WORKFLOW_CHECKPOINT_LIMITS.members,
         'checkpoint exceeds maximum members',
       );
       if (isArray)
@@ -226,8 +226,7 @@ export function assertBoundedCheckpointJson(value: unknown): void {
     // arrays immediately after comparing hidden names and symbols.
     const ownNames = Object.getOwnPropertyNames(item);
     assertCheckpoint(
-      ownNames.length <=
-        WORKFLOW_CHECKPOINT_LIMITS_V1.members + (isArray ? 1 : 0),
+      ownNames.length <= WORKFLOW_CHECKPOINT_LIMITS.members + (isArray ? 1 : 0),
       'checkpoint exceeds maximum own properties',
     );
     assertCheckpoint(

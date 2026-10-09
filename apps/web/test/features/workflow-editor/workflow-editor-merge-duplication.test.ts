@@ -1,7 +1,7 @@
 // Test-only admission proof against built public packages; never browser imports.
 import { platformServingRegistryRelease } from '../../../../../packages/node-catalog/dist/index.js';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
 } from '../../../../../packages/workflow-engine/dist/index.js';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
@@ -94,7 +94,7 @@ function smallLoop(loop: ReturnType<typeof loopStep>) {
 }
 
 function admit(graph: WorkflowGraphContract) {
-  return buildWorkflowExecutableV2({ graph, release });
+  return buildWorkflowExecutable({ graph, release });
 }
 
 describe('duplicating a paired Parallel/Merge group', () => {

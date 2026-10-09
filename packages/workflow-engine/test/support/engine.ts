@@ -70,7 +70,7 @@ export type {
 } from '../../src/transition/scheduling.js';
 export {
   decideRetry,
-  ENGINE_RETRY_POLICY_V1,
+  ENGINE_RETRY_POLICY,
   providerIdempotencyKey,
   resolveRetryPolicy,
 } from '../../src/attempt/retries.js';

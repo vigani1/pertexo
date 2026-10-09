@@ -4,7 +4,7 @@ import {
   CORE_REGISTRY_RELEASE_SUPPORT,
 } from '@pertexo/nodes-core';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   createExecutableCompatibilityReleaseSupport,
@@ -26,7 +26,7 @@ describe('advanceRun decisions', () => {
     const release = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,
     );
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const checkpoint = createCheckpoint({
       engineVersion: 'phase3-engine-v1',
       workflowVersionId: VERSION_ID,
@@ -102,7 +102,7 @@ describe('advanceRun decisions', () => {
     const release = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,
     );
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const engine = createDecisionEngine({
       admissionRelease: release,
       currentRelease: release,
@@ -141,7 +141,7 @@ describe('advanceRun decisions', () => {
     const release = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,
     );
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const projection = {
       id: VERSION_ID,
       workspaceId: WORKSPACE_ID,
@@ -229,7 +229,7 @@ describe('advanceRun decisions', () => {
     const target = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE_SUCCESSOR,
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: target,
     });
@@ -280,7 +280,7 @@ describe('advanceRun decisions', () => {
     const target = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE_SUCCESSOR,
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: target,
     });

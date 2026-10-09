@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
 } from '../src/index.js';
@@ -11,7 +11,7 @@ import { graph, nodeRelease } from './executable-workflow.fixtures.js';
 
 describe('attempt outcome production operations', () => {
   it('rejects a non-array completed-output boundary before derivation', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: composeExecutableCompatibilityRelease(nodeRelease()),
     });
@@ -41,7 +41,7 @@ describe('attempt outcome production operations', () => {
         setRetryClass: 'idempotent-with-key',
       }),
     );
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const checkpoint = createCheckpoint({
       engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
@@ -102,7 +102,7 @@ describe('attempt outcome production operations', () => {
   });
 
   it('assigns the same provider key before capacity admission', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
@@ -149,7 +149,7 @@ describe('attempt outcome production operations', () => {
   });
 
   it('resolves typed attempt failure into one coordinator retry transition', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: composeExecutableCompatibilityRelease(nodeRelease()),
     });
@@ -206,7 +206,7 @@ describe('attempt outcome production operations', () => {
   });
 
   it('preserves a definite executor cancellation as canceled', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: composeExecutableCompatibilityRelease(nodeRelease()),
     });
@@ -257,7 +257,7 @@ describe('attempt outcome production operations', () => {
   });
 
   it('settles possibly-dispatched idempotent cancellation as outcome_unknown', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
@@ -312,7 +312,7 @@ describe('attempt outcome production operations', () => {
   });
 
   it('preserves an explicit executor outcome_unknown through coordination', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
@@ -367,7 +367,7 @@ describe('attempt outcome production operations', () => {
   });
 
   it('rejects an untyped attempt failure observation', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: composeExecutableCompatibilityRelease(nodeRelease()),
     });
@@ -391,7 +391,7 @@ describe('attempt outcome production operations', () => {
 
   it('consumes contiguous persisted facts without re-emitting their semantic events', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const checkpoint = createCheckpoint({
       engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
@@ -454,7 +454,7 @@ describe('attempt outcome production operations', () => {
 
   it('rejects cursor gaps, reorder, conflicts, and stale attempt outcomes', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -556,7 +556,7 @@ describe('attempt outcome production operations', () => {
     const sourceGraph = graph();
     const manualNode = sourceGraph.nodes[0];
     const singleNode = { ...sourceGraph, nodes: [manualNode], edges: [] };
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: singleNode,
       release,
     });

@@ -3,7 +3,7 @@ import {
   CORE_REGISTRY_RELEASE_SUCCESSOR,
 } from '@pertexo/nodes-core';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   describeExecutableCompatibilityRelease,
   parseCheckpoint,
@@ -51,7 +51,7 @@ const actorId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 function executable(nodeRelease: unknown = CORE_REGISTRY_RELEASE) {
   const release = composeExecutableCompatibilityRelease(nodeRelease);
-  return buildWorkflowExecutableV2({
+  return buildWorkflowExecutable({
     release,
     graph: {
       schemaVersion: 1,
@@ -104,7 +104,7 @@ function forEachExecutable() {
   });
   return {
     release,
-    compiled: buildWorkflowExecutableV2({
+    compiled: buildWorkflowExecutable({
       release,
       graph: {
         schemaVersion: 1,
@@ -210,7 +210,7 @@ function parallelExecutable(version: 1 | 2 | 3) {
   });
   return {
     release,
-    compiled: buildWorkflowExecutableV2({
+    compiled: buildWorkflowExecutable({
       release,
       graph: {
         schemaVersion: 1,
@@ -791,7 +791,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     const release = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
     );
-    const compiled = buildWorkflowExecutableV2({
+    const compiled = buildWorkflowExecutable({
       release,
       graph: {
         schemaVersion: 1,
@@ -876,7 +876,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     const release = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
     );
-    const compiled = buildWorkflowExecutableV2({
+    const compiled = buildWorkflowExecutable({
       release,
       graph: {
         schemaVersion: 1,

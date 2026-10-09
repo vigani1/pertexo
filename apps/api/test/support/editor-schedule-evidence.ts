@@ -9,7 +9,7 @@ import {
 import {
   composeExecutableCompatibilityRelease,
   describeExecutableCompatibilityRelease,
-  verifyWorkflowExecutableV2,
+  verifyWorkflowExecutable,
 } from '@pertexo/workflow-engine';
 import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { catalogReleaseSchema } from '@pertexo/contracts/schemas/catalog';
@@ -169,7 +169,7 @@ export async function verifyScheduleEvidence(
   );
   // This new version was published by this fixture's current cohort. Retained
   // historical versions need their own admission release, not this expectation.
-  verifyWorkflowExecutableV2({
+  verifyWorkflowExecutable({
     envelope: version.executable_json,
     checksum: version.checksum,
     admissionRelease: scheduleExecutableRelease,

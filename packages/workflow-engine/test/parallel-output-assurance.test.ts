@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   invocationKey,
@@ -28,7 +28,7 @@ function setup() {
   const release = composeExecutableCompatibilityRelease(
     nodeRelease({ parallel: true, merge: true }),
   );
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph: pairedParallelGraph(),
     release,
   });

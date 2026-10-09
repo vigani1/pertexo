@@ -26,7 +26,7 @@ import {
   platformExecutableRegistryHistory,
 } from '@pertexo/node-catalog';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   createExecutableCompatibilityReleaseHistory,
@@ -244,7 +244,7 @@ async function seedIdentity(): Promise<void> {
         actorUserId,
       ],
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: validateWorkflowGraph,
       release: composeExecutableCompatibilityRelease(
         PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,

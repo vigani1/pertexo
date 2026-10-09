@@ -13,16 +13,16 @@ import {
   executorManifest,
 } from './graph-rules.js';
 import {
-  computeWorkflowExecutableChecksumV2,
+  computeWorkflowExecutableChecksum,
   selectionFingerprint,
 } from './identity.js';
 import {
-  type CompiledWorkflowExecutableV2,
-  BASELINE_RUNTIME_POLICIES_V1,
-  type VerifiedWorkflowExecutableV2,
-  type WorkflowExecutableGraphV2,
-  type WorkflowExecutableNodeV2,
-  type WorkflowExecutableV2,
+  type CompiledWorkflowExecutable,
+  BASELINE_RUNTIME_POLICIES,
+  type VerifiedWorkflowExecutable,
+  type WorkflowExecutableGraph,
+  type WorkflowExecutableNode,
+  type WorkflowExecutable,
   compareIdentity,
   compareOrdinal,
   fail,
@@ -34,12 +34,12 @@ import {
 } from './foundation.js';
 import { sideEffectClass } from './validation.js';
 
-export { computeWorkflowExecutableChecksumV2 } from './identity.js';
+export { computeWorkflowExecutableChecksum } from './identity.js';
 
 function executableNode(
   node: WorkflowNode,
   release: RegistryRelease,
-): WorkflowExecutableNodeV2 {
+): WorkflowExecutableNode {
   const definition = definitionManifest(release, node.definition);
   const executor = executorManifest(release, definition.executor);
   if (
@@ -59,7 +59,7 @@ function executableNode(
   )
     fail('node executor ABI is incompatible');
   assertExpressionPolicies(node, definition.policyReferences);
-  const executable: WorkflowExecutableNodeV2 = {
+  const executable: WorkflowExecutableNode = {
     id: node.id,
     definition: definition.definition,
     configVersion: node.configVersion,
@@ -91,7 +91,7 @@ function executableNode(
 function compileExecutableGraph(
   graph: WorkflowGraph,
   release: RegistryRelease,
-): WorkflowExecutableGraphV2 {
+): WorkflowExecutableGraph {
   const index = graphValidationIndex(graph);
   assertGraphPorts(graph, release, index);
   assertBranchesDoNotReconverge(graph, index);
@@ -107,35 +107,35 @@ function compileExecutableGraph(
 function buildBoundary(input: {
   readonly graph: unknown;
   readonly release: unknown;
-}): CompiledWorkflowExecutableV2 {
+}): CompiledWorkflowExecutable {
   const release = parseRegistryRelease(input.release);
-  validateGlobals(BASELINE_RUNTIME_POLICIES_V1, release);
+  validateGlobals(BASELINE_RUNTIME_POLICIES, release);
   const graph = parseWorkflowGraphForPublish(input.graph, {
     schemaVersion: 1,
     definitions: release.definitions.map(({ definition }) => definition),
   });
   const executableGraph = compileExecutableGraph(graph, release);
-  const envelope: WorkflowExecutableV2 = {
+  const envelope: WorkflowExecutable = {
     schemaVersion: 2,
     sourceGraphSchemaVersion: 1,
     graph: executableGraph,
-    runtimePolicies: BASELINE_RUNTIME_POLICIES_V1,
+    runtimePolicies: BASELINE_RUNTIME_POLICIES,
     configMigrations: [],
     compatibilitySelectionFingerprint: selectionFingerprint(
       release,
       executableNodes(executableGraph),
-      BASELINE_RUNTIME_POLICIES_V1,
+      BASELINE_RUNTIME_POLICIES,
     ),
     compatibilityReleaseEpoch: release.epoch,
     compatibilityReleaseFingerprint: release.fingerprint,
   };
   const normalizedEnvelope = freezeExecutable(
     parseBoundary({ envelope, admissionRelease: release }),
-  ) as VerifiedWorkflowExecutableV2;
+  ) as VerifiedWorkflowExecutable;
   return registerExecutableIdentity(
     Object.freeze({
       envelope: normalizedEnvelope,
-      checksum: computeWorkflowExecutableChecksumV2(normalizedEnvelope),
+      checksum: computeWorkflowExecutableChecksum(normalizedEnvelope),
     }),
   );
 }
@@ -145,10 +145,10 @@ function buildBoundary(input: {
  * each node's versioned config schema. This module owns executable identity;
  * config-schema execution remains at the injected registry seam.
  */
-export function buildWorkflowExecutableV2(input: {
+export function buildWorkflowExecutable(input: {
   readonly graph: unknown;
   readonly release: unknown;
-}): CompiledWorkflowExecutableV2 {
+}): CompiledWorkflowExecutable {
   try {
     return buildBoundary(input);
   } catch (error) {

@@ -9,7 +9,7 @@ export interface RetryPolicy {
   readonly retryableErrorCodes: readonly string[];
 }
 
-export const ENGINE_RETRY_POLICY_V1 = Object.freeze({
+export const ENGINE_RETRY_POLICY = Object.freeze({
   reference: Object.freeze({ key: 'engine.retry', version: 1 }),
   maximumAttempts: 3,
   baseDelayMs: 1_000,
@@ -31,11 +31,11 @@ export function resolveRetryPolicy(
   }>,
 ): RetryPolicy {
   if (
-    reference.key !== ENGINE_RETRY_POLICY_V1.reference.key ||
-    reference.version !== ENGINE_RETRY_POLICY_V1.reference.version
+    reference.key !== ENGINE_RETRY_POLICY.reference.key ||
+    reference.version !== ENGINE_RETRY_POLICY.reference.version
   )
     throw new TypeError('Unsupported retry policy');
-  return ENGINE_RETRY_POLICY_V1;
+  return ENGINE_RETRY_POLICY;
 }
 
 export type AttemptObservation =

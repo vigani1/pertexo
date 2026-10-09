@@ -7,7 +7,7 @@ import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   executeNodeAttempt,
@@ -39,7 +39,7 @@ function mappedExecutable() {
       },
     },
   });
-  return buildWorkflowExecutableV2({
+  return buildWorkflowExecutable({
     graph: mappedGraph,
     release: composeExecutableCompatibilityRelease(nodeRelease()),
   });
@@ -64,7 +64,7 @@ describe('input resolution production operations', () => {
         },
         inputMappings: {},
       });
-      const executable = buildWorkflowExecutableV2({
+      const executable = buildWorkflowExecutable({
         graph: scheduledGraph,
         release,
       });
@@ -107,7 +107,7 @@ describe('input resolution production operations', () => {
 
   it('requires canonical UUID output locators bound to inline attempt identity', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -239,7 +239,7 @@ describe('input resolution production operations', () => {
         omitted: { kind: 'run_input', path: '$.notProvided' },
       },
     });
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: mappedGraph,
       release: composeExecutableCompatibilityRelease(nodeRelease()),
     });
@@ -509,7 +509,7 @@ describe('input resolution production operations', () => {
 
   it('contains hostile registry and expression-evaluator rejections', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const expressionGraph = structuredClone(graph());
     Object.assign(expressionGraph.nodes[1], {
       inputMappings: {
@@ -521,7 +521,7 @@ describe('input resolution production operations', () => {
         },
       },
     });
-    const expressionExecutable = buildWorkflowExecutableV2({
+    const expressionExecutable = buildWorkflowExecutable({
       graph: expressionGraph,
       release,
     });
@@ -608,7 +608,7 @@ describe('input resolution production operations', () => {
       const triggerGraph = structuredClone(graph());
       const trigger = triggerGraph.nodes[0];
       Object.assign(trigger, { definition: { key, version: 1 } });
-      const executable = buildWorkflowExecutableV2({
+      const executable = buildWorkflowExecutable({
         graph: triggerGraph,
         release: composeExecutableCompatibilityRelease(
           nodeRelease(releaseOptions),
@@ -701,7 +701,7 @@ describe('input resolution production operations', () => {
         second: { kind: 'run_input', path: '$.large' },
       },
     });
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: repeatedGraph,
       release,
     });

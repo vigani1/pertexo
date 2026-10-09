@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
 } from '../src/index.js';
@@ -10,7 +10,7 @@ import { graph, nodeRelease } from './executable-workflow.fixtures.js';
 
 describe('wait and control production operations', () => {
   it('reconciles running cancellation and preserves reported unsafe uncertainty', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: graph(),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ manualRetryClass: 'unsafe' }),
@@ -86,7 +86,7 @@ describe('wait and control production operations', () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
     );
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -259,7 +259,7 @@ describe('wait and control production operations', () => {
   it('orders simultaneous due resumptions independently of loader row order', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const sourceGraph = graph();
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: {
         ...sourceGraph,
         edges: [],
@@ -325,7 +325,7 @@ describe('wait and control production operations', () => {
 
   it('applies persisted cancel and deadline controls before materializing work', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const initial = createCheckpoint({
       engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
@@ -386,7 +386,7 @@ describe('wait and control production operations', () => {
 
   it('persists deadline state while active work reconciles before run timeout', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -454,7 +454,7 @@ describe('wait and control production operations', () => {
 
   it('settles durable waiting work on deadline or cancellation without reconciliation', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
@@ -622,7 +622,7 @@ describe('wait and control production operations', () => {
         inputMappings: {},
       })),
     };
-    const executable = buildWorkflowExecutableV2({ graph: parallel, release });
+    const executable = buildWorkflowExecutable({ graph: parallel, release });
     const input = {
       runId: 'run-1',
       executable,
@@ -651,7 +651,7 @@ describe('wait and control production operations', () => {
 
     const disabledGraph = structuredClone(graph());
     Object.assign(disabledGraph.nodes[0], { disabled: true });
-    const disabledExecutable = buildWorkflowExecutableV2({
+    const disabledExecutable = buildWorkflowExecutable({
       graph: disabledGraph,
       release,
     });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   executeNodeAttempt,
@@ -20,7 +20,7 @@ import {
 describe('branching production operations', () => {
   it('advances only through the verified V2 graph and rejects malformed observations', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const executable = buildWorkflowExecutable({ graph: graph(), release });
     const checkpoint = createCheckpoint({
       engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
@@ -109,7 +109,7 @@ describe('branching production operations', () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ condition: true }),
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: conditionGraph('true'),
       release,
     });
@@ -211,7 +211,7 @@ describe('branching production operations', () => {
       nodeRelease({ condition: true }),
     );
     const condition = conditionGraph('true');
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: {
         ...condition,
         nodes: [
@@ -317,7 +317,7 @@ describe('branching production operations', () => {
       nodeRelease({ switch: true }),
     );
     const selected = switchGraph('case-02');
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: {
         ...selected,
         nodes: [
@@ -431,7 +431,7 @@ describe('branching production operations', () => {
       const release = composeExecutableCompatibilityRelease(
         nodeRelease({ parallel: true, merge: true, structuredVersion }),
       );
-      const executable = buildWorkflowExecutableV2({
+      const executable = buildWorkflowExecutable({
         graph: pairedParallelGraph(structuredVersion),
         release,
       });
@@ -654,7 +654,7 @@ describe('branching production operations', () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ parallel: true, merge: true }),
     );
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: directPairedParallelGraph(),
       release,
     });

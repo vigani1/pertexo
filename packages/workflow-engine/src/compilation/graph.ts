@@ -1,16 +1,16 @@
 import type {
-  WorkflowExecutableGraphV2,
-  WorkflowExecutableNodeV2,
+  WorkflowExecutableGraph,
+  WorkflowExecutableNode,
 } from './foundation.js';
 
 export function findExecutableNodeContext(
-  graph: WorkflowExecutableGraphV2,
+  graph: WorkflowExecutableGraph,
   nodeId: string,
   ancestors: readonly string[] = [],
 ):
   | Readonly<{
-      node: WorkflowExecutableNodeV2;
-      graph: WorkflowExecutableGraphV2;
+      node: WorkflowExecutableNode;
+      graph: WorkflowExecutableGraph;
       ancestors: readonly string[];
     }>
   | undefined {
@@ -27,8 +27,8 @@ export function findExecutableNodeContext(
 }
 
 export function executableNodes(
-  graph: WorkflowExecutableGraphV2,
-): readonly WorkflowExecutableNodeV2[] {
+  graph: WorkflowExecutableGraph,
+): readonly WorkflowExecutableNode[] {
   return graph.nodes.flatMap((node) => [
     node,
     ...(node.structured === undefined
@@ -38,8 +38,8 @@ export function executableNodes(
 }
 
 export function executableEdges(
-  graph: WorkflowExecutableGraphV2,
-): readonly WorkflowExecutableGraphV2['edges'][number][] {
+  graph: WorkflowExecutableGraph,
+): readonly WorkflowExecutableGraph['edges'][number][] {
   return [
     ...graph.edges,
     ...graph.nodes.flatMap((node) =>

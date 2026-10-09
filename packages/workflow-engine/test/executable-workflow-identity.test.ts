@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
-  computeWorkflowExecutableChecksumV2,
+  computeWorkflowExecutableChecksum,
   createExecutableCompatibilityReleaseSupport,
   createExecutableCompatibilityReleaseHistory,
   describeExecutableCompatibilityRelease,
-  parseWorkflowExecutableV2,
-  verifyWorkflowExecutableV2,
-  WORKFLOW_EXECUTABLE_LIMITS_V2,
+  parseWorkflowExecutable,
+  verifyWorkflowExecutable,
+  WORKFLOW_EXECUTABLE_LIMITS,
 } from '../src/index.js';
 import {
   nodeRelease,
@@ -29,7 +29,7 @@ describe('workflow executable V2 identity', () => {
     );
 
     expect(() =>
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: conditionGraph('out'),
         release,
       }),
@@ -43,7 +43,7 @@ describe('workflow executable V2 identity', () => {
     const reconverging = conditionGraph('true');
 
     expect(() =>
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: {
           ...reconverging,
           edges: [
@@ -65,7 +65,7 @@ describe('workflow executable V2 identity', () => {
       nodeRelease({ switch: true }),
     );
     expect(() =>
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: switchGraph('case-03'),
         release,
       }),
@@ -73,7 +73,7 @@ describe('workflow executable V2 identity', () => {
 
     const reconverging = switchGraph('case-02');
     expect(() =>
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: {
           ...reconverging,
           edges: [
@@ -95,21 +95,21 @@ describe('workflow executable V2 identity', () => {
       nodeRelease({ parallel: true }),
     );
     expect(() =>
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: parallelGraph('branch-03'),
         release,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     const missing = parallelGraph();
     expect(() =>
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: { ...missing, edges: missing.edges.slice(0, 2) },
         release,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     const reconverging = parallelGraph();
     expect(() =>
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: {
           ...reconverging,
           edges: [
@@ -133,7 +133,7 @@ describe('workflow executable V2 identity', () => {
         nodeRelease({ parallel: true, merge: true, structuredVersion }),
       );
       expect(() =>
-        buildWorkflowExecutableV2({
+        buildWorkflowExecutable({
           graph: directPairedParallelGraph(structuredVersion),
           release,
         }),
@@ -176,9 +176,9 @@ describe('workflow executable V2 identity', () => {
       'not supported by this artifact',
     );
     expect(
-      buildWorkflowExecutableV2({ graph: graph(), release: current }).checksum,
+      buildWorkflowExecutable({ graph: graph(), release: current }).checksum,
     ).toBe(
-      buildWorkflowExecutableV2({ graph: graph(), release: target }).checksum,
+      buildWorkflowExecutable({ graph: graph(), release: target }).checksum,
     );
     expect(() =>
       createExecutableCompatibilityReleaseSupport([
@@ -227,7 +227,7 @@ describe('workflow executable V2 identity', () => {
 
   it('composes engine-owned policies and produces the pre-publication golden checksum', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
+    const compiled = buildWorkflowExecutable({ graph: graph(), release });
     expect(compiled.envelope.graph.nodes.map(({ id }) => id)).toEqual([
       'manual',
       'set',
@@ -242,7 +242,7 @@ describe('workflow executable V2 identity', () => {
       'wf:v2:sha256:83af8d0f5a0827ce0036124d7bcfb2da4935b2f633d1f5f92d3fc3873f0faeff',
     );
     expect(
-      verifyWorkflowExecutableV2({
+      verifyWorkflowExecutable({
         ...compiled,
         admissionRelease: release,
       }),
@@ -254,11 +254,11 @@ describe('workflow executable V2 identity', () => {
     const laterRelease = composeExecutableCompatibilityRelease(
       nodeRelease({ epoch: 2, unrelated: true }),
     );
-    const first = buildWorkflowExecutableV2({
+    const first = buildWorkflowExecutable({
       graph: graph(),
       release: firstRelease,
     });
-    const later = buildWorkflowExecutableV2({
+    const later = buildWorkflowExecutable({
       graph: graph(true),
       release: laterRelease,
     });
@@ -270,7 +270,7 @@ describe('workflow executable V2 identity', () => {
     explicitFalse.nodes.forEach((node) =>
       Object.assign(node, { disabled: false }),
     );
-    const explicit = buildWorkflowExecutableV2({
+    const explicit = buildWorkflowExecutable({
       graph: explicitFalse,
       release: firstRelease,
     });
@@ -286,9 +286,9 @@ describe('workflow executable V2 identity', () => {
       nodeRelease({ epoch: 2, mutateSet: true }),
     );
     expect(
-      buildWorkflowExecutableV2({ graph: graph(), release: changed }).checksum,
+      buildWorkflowExecutable({ graph: graph(), release: changed }).checksum,
     ).not.toBe(
-      buildWorkflowExecutableV2({ graph: graph(), release: original }).checksum,
+      buildWorkflowExecutable({ graph: graph(), release: original }).checksum,
     );
   });
 
@@ -297,11 +297,11 @@ describe('workflow executable V2 identity', () => {
     const idempotentRelease = composeExecutableCompatibilityRelease(
       nodeRelease({ setRetryClass: 'idempotent-with-key' }),
     );
-    const safe = buildWorkflowExecutableV2({
+    const safe = buildWorkflowExecutable({
       graph: graph(),
       release: safeRelease,
     });
-    const idempotent = buildWorkflowExecutableV2({
+    const idempotent = buildWorkflowExecutable({
       graph: graph(),
       release: idempotentRelease,
     });
@@ -315,11 +315,9 @@ describe('workflow executable V2 identity', () => {
     const set = mutated.graph.nodes.find(({ id }) => id === 'set');
     if (set === undefined) throw new Error('fixture set node missing');
     Object.assign(set, { sideEffectClass: 'unsafe' });
-    expect(computeWorkflowExecutableChecksumV2(mutated)).not.toBe(
-      safe.checksum,
-    );
+    expect(computeWorkflowExecutableChecksum(mutated)).not.toBe(safe.checksum);
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: mutated,
         admissionRelease: safeRelease,
       }),
@@ -331,7 +329,7 @@ describe('workflow executable V2 identity', () => {
       if (wrongSet === undefined) throw new Error('fixture set node missing');
       Object.assign(wrongSet, { sideEffectClass: invalidClass });
       expect(() =>
-        parseWorkflowExecutableV2({
+        parseWorkflowExecutable({
           envelope: wrong,
           admissionRelease: safeRelease,
         }),
@@ -343,7 +341,7 @@ describe('workflow executable V2 identity', () => {
     if (missingSet === undefined) throw new Error('fixture set node missing');
     Reflect.deleteProperty(missingSet, 'sideEffectClass');
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: missing,
         admissionRelease: safeRelease,
       }),
@@ -353,7 +351,7 @@ describe('workflow executable V2 identity', () => {
       nodeRelease({ epoch: 2, setRetryClass: 'idempotent-with-key' }),
     );
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: safe.envelope,
         admissionRelease: safeRelease,
         currentRelease: driftedCurrent,
@@ -369,7 +367,7 @@ describe('workflow executable V2 identity', () => {
       }),
     );
     expect(
-      buildWorkflowExecutableV2({
+      buildWorkflowExecutable({
         graph: graph(),
         release,
       }).envelope.graph.nodes.map(({ sideEffectClass }) => sideEffectClass),
@@ -381,11 +379,11 @@ describe('workflow executable V2 identity', () => {
     const current = composeExecutableCompatibilityRelease(
       nodeRelease({ epoch: 2, executorLifecycle: 'retained' }),
     );
-    const compiled = buildWorkflowExecutableV2({
+    const compiled = buildWorkflowExecutable({
       graph: graph(),
       release: admission,
     });
-    const retained = parseWorkflowExecutableV2({
+    const retained = parseWorkflowExecutable({
       envelope: compiled.envelope,
       admissionRelease: admission,
       currentRelease: current,
@@ -395,19 +393,19 @@ describe('workflow executable V2 identity', () => {
       retained.graph.nodes.map(({ sideEffectClass }) => sideEffectClass),
     ).toEqual(['safe', 'safe', 'safe']);
     expect(() =>
-      buildWorkflowExecutableV2({ graph: graph(), release: current }),
+      buildWorkflowExecutable({ graph: graph(), release: current }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     const blocked = composeExecutableCompatibilityRelease(
       nodeRelease({ epoch: 3, executorLifecycle: 'retirement_blocked' }),
     );
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: compiled.envelope,
         admissionRelease: admission,
         currentRelease: blocked,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
-    const retirementBlocked = parseWorkflowExecutableV2({
+    const retirementBlocked = parseWorkflowExecutable({
       envelope: compiled.envelope,
       admissionRelease: admission,
       currentRelease: blocked,
@@ -420,7 +418,7 @@ describe('workflow executable V2 identity', () => {
       ),
     ).toEqual(['safe', 'safe', 'safe']);
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: compiled.envelope,
         admissionRelease: admission,
         currentRelease: composeExecutableCompatibilityRelease(
@@ -429,7 +427,7 @@ describe('workflow executable V2 identity', () => {
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: compiled.envelope,
         admissionRelease: admission,
         execution: { alreadyAdmitted: 'yes' as unknown as boolean },
@@ -439,32 +437,32 @@ describe('workflow executable V2 identity', () => {
 
   it('fails closed for mutated pins, checksum, malformed envelopes, and V1 input', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
+    const compiled = buildWorkflowExecutable({ graph: graph(), release });
     const mutated = structuredClone(compiled.envelope);
     const set = mutated.graph.nodes.find(({ id }) => id === 'set');
     if (set === undefined) throw new Error('fixture set node missing');
     Object.assign(set.executor, { version: 2 });
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: mutated,
         admissionRelease: release,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(() =>
-      verifyWorkflowExecutableV2({
+      verifyWorkflowExecutable({
         envelope: compiled.envelope,
         checksum: compiled.checksum.replace(/.$/u, '0'),
         admissionRelease: release,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: { ...compiled.envelope, unknown: true },
         admissionRelease: release,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: { schemaVersion: 1 },
         admissionRelease: release,
       }),
@@ -477,7 +475,7 @@ describe('workflow executable V2 identity', () => {
       },
     });
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: hostile,
         admissionRelease: release,
       }),
@@ -505,8 +503,8 @@ describe('workflow executable V2 identity', () => {
       },
     });
 
-    const compiled = buildWorkflowExecutableV2({ graph: source, release });
-    const parsed = parseWorkflowExecutableV2({
+    const compiled = buildWorkflowExecutable({ graph: source, release });
+    const parsed = parseWorkflowExecutable({
       envelope: compiled.envelope,
       admissionRelease: release,
     });
@@ -533,7 +531,7 @@ describe('workflow executable V2 identity', () => {
 
   it('rejects hostile raw executable JSON without invoking accessors', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
+    const compiled = buildWorkflowExecutable({ graph: graph(), release });
     let getterCalls = 0;
     const accessor = Object.defineProperty({}, 'secret', {
       enumerable: true,
@@ -565,10 +563,10 @@ describe('workflow executable V2 identity', () => {
       cursor = next;
     }
     const oversizedArray = new Array<unknown>(
-      WORKFLOW_EXECUTABLE_LIMITS_V2.members + 1,
+      WORKFLOW_EXECUTABLE_LIMITS.members + 1,
     ).fill(null);
     const tooManyMembers = Array.from({ length: 1_001 }, () =>
-      new Array<number>(WORKFLOW_EXECUTABLE_LIMITS_V2.members / 1_000).fill(0),
+      new Array<number>(WORKFLOW_EXECUTABLE_LIMITS.members / 1_000).fill(0),
     );
     const proxy = new Proxy(
       {},
@@ -606,8 +604,7 @@ describe('workflow executable V2 identity', () => {
         literal: { kind: 'literal', value: hostile },
       });
       expect(
-        () =>
-          parseWorkflowExecutableV2({ envelope, admissionRelease: release }),
+        () => parseWorkflowExecutable({ envelope, admissionRelease: release }),
         name,
       ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     }
@@ -616,10 +613,10 @@ describe('workflow executable V2 identity', () => {
 
   it('rejects malformed raw envelope and policy records at the public parser', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
+    const compiled = buildWorkflowExecutable({ graph: graph(), release });
 
     expect(() =>
-      parseWorkflowExecutableV2({ envelope: null, admissionRelease: release }),
+      parseWorkflowExecutable({ envelope: null, admissionRelease: release }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
 
     for (const mutate of [
@@ -651,7 +648,7 @@ describe('workflow executable V2 identity', () => {
       >;
       mutate(envelope);
       expect(() =>
-        parseWorkflowExecutableV2({ envelope, admissionRelease: release }),
+        parseWorkflowExecutable({ envelope, admissionRelease: release }),
       ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     }
   });
@@ -690,8 +687,8 @@ describe('workflow executable V2 identity', () => {
         },
       ],
     } as const;
-    const original = buildWorkflowExecutableV2({ graph: base, release });
-    const compiled = buildWorkflowExecutableV2({ graph: repeated, release });
+    const original = buildWorkflowExecutable({ graph: base, release });
+    const compiled = buildWorkflowExecutable({ graph: repeated, release });
     expect(compiled.envelope.compatibilitySelectionFingerprint).toBe(
       original.envelope.compatibilitySelectionFingerprint,
     );
@@ -702,7 +699,7 @@ describe('workflow executable V2 identity', () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ forEach: true }),
     );
-    const compiled = buildWorkflowExecutableV2({
+    const compiled = buildWorkflowExecutable({
       graph: forEachGraph(true),
       release,
     });
@@ -718,10 +715,10 @@ describe('workflow executable V2 identity', () => {
       ),
     ).toBe(true);
     expect(compiled.checksum).toBe(
-      buildWorkflowExecutableV2({ graph: forEachGraph(), release }).checksum,
+      buildWorkflowExecutable({ graph: forEachGraph(), release }).checksum,
     );
     expect(
-      verifyWorkflowExecutableV2({ ...compiled, admissionRelease: release }),
+      verifyWorkflowExecutable({ ...compiled, admissionRelease: release }),
     ).toEqual(compiled);
 
     const mutated = structuredClone(compiled.envelope);
@@ -732,7 +729,7 @@ describe('workflow executable V2 identity', () => {
       version: 2,
     });
     expect(() =>
-      parseWorkflowExecutableV2({
+      parseWorkflowExecutable({
         envelope: mutated,
         admissionRelease: release,
       }),
@@ -747,10 +744,10 @@ describe('workflow executable V2 identity', () => {
       nodeRelease({ epoch: 2, forEach: true, mutateSet: true }),
     );
     expect(
-      buildWorkflowExecutableV2({ graph: forEachGraph(), release: changed })
+      buildWorkflowExecutable({ graph: forEachGraph(), release: changed })
         .checksum,
     ).not.toBe(
-      buildWorkflowExecutableV2({ graph: forEachGraph(), release }).checksum,
+      buildWorkflowExecutable({ graph: forEachGraph(), release }).checksum,
     );
 
     const invalid = structuredClone(forEachGraph());
@@ -760,9 +757,9 @@ describe('workflow executable V2 identity', () => {
     Object.assign(loop.structured.body.edges[0]?.source ?? {}, {
       port: 'missing',
     });
-    expect(() =>
-      buildWorkflowExecutableV2({ graph: invalid, release }),
-    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+    expect(() => buildWorkflowExecutable({ graph: invalid, release })).toThrow(
+      expect.objectContaining({ code: 'executable_invalid' }),
+    );
   });
 
   it('rejects unpinned expression policy versions', () => {
@@ -779,13 +776,13 @@ describe('workflow executable V2 identity', () => {
       },
     });
     expect(() =>
-      buildWorkflowExecutableV2({ graph: expression, release }),
+      buildWorkflowExecutable({ graph: expression, release }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('enforces exact V2 byte accounting before canonical allocation', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
+    const compiled = buildWorkflowExecutable({ graph: graph(), release });
     const exact = structuredClone(compiled.envelope);
     const set = exact.graph.nodes.find(({ id }) => id === 'set');
     if (set === undefined) throw new Error('fixture set node missing');
@@ -794,14 +791,14 @@ describe('workflow executable V2 identity', () => {
     const baseBytes = encoder.encode(JSON.stringify(exact)).byteLength;
     Object.assign(set, {
       config: {
-        padding: 'x'.repeat(WORKFLOW_EXECUTABLE_LIMITS_V2.bytes - baseBytes),
+        padding: 'x'.repeat(WORKFLOW_EXECUTABLE_LIMITS.bytes - baseBytes),
       },
     });
     expect(encoder.encode(JSON.stringify(exact)).byteLength).toBe(
-      WORKFLOW_EXECUTABLE_LIMITS_V2.bytes,
+      WORKFLOW_EXECUTABLE_LIMITS.bytes,
     );
     expect(
-      parseWorkflowExecutableV2({ envelope: exact, admissionRelease: release })
+      parseWorkflowExecutable({ envelope: exact, admissionRelease: release })
         .schemaVersion,
     ).toBe(2);
     const over = structuredClone(exact);
@@ -809,7 +806,7 @@ describe('workflow executable V2 identity', () => {
     if (overSet === undefined) throw new Error('fixture set node missing');
     Object.assign(overSet, { config: { padding: 'x'.repeat(4 * 1_048_576) } });
     expect(() =>
-      parseWorkflowExecutableV2({ envelope: over, admissionRelease: release }),
+      parseWorkflowExecutable({ envelope: over, admissionRelease: release }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
@@ -823,16 +820,14 @@ describe('workflow executable V2 identity', () => {
     const baseBytes = encoder.encode(JSON.stringify(nearLimit)).byteLength;
     Object.assign(set, {
       config: {
-        padding: 'x'.repeat(
-          WORKFLOW_EXECUTABLE_LIMITS_V2.bytes - baseBytes - 1,
-        ),
+        padding: 'x'.repeat(WORKFLOW_EXECUTABLE_LIMITS.bytes - baseBytes - 1),
       },
     });
     expect(encoder.encode(JSON.stringify(nearLimit)).byteLength).toBe(
-      WORKFLOW_EXECUTABLE_LIMITS_V2.bytes - 1,
+      WORKFLOW_EXECUTABLE_LIMITS.bytes - 1,
     );
     expect(() =>
-      buildWorkflowExecutableV2({ graph: nearLimit, release }),
+      buildWorkflowExecutable({ graph: nearLimit, release }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
@@ -862,7 +857,7 @@ describe('workflow executable V2 identity', () => {
     }));
     const startedAt = performance.now();
 
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: {
         schemaVersion: 1,
         settings: { maxRunDurationMs: 60_000 },

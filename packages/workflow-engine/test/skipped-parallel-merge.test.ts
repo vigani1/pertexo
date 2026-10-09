@@ -8,13 +8,13 @@ import type {
 } from '../src/index.js';
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   executeNodeAttempt,
   invocationKey,
   parseCheckpoint,
-  verifyWorkflowExecutableV2,
+  verifyWorkflowExecutable,
 } from '../src/index.js';
 import {
   nodeRelease,
@@ -369,11 +369,11 @@ async function runBypass(kind: 'condition' | 'switch') {
       merge: true,
     }),
   );
-  const built = buildWorkflowExecutableV2({
+  const built = buildWorkflowExecutable({
     graph: conditionParallelGraph(kind),
     release,
   });
-  let executable = verifyWorkflowExecutableV2({
+  let executable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(built.envelope)),
     checksum: built.checksum,
     admissionRelease: release,
@@ -530,7 +530,7 @@ async function runBypass(kind: 'condition' | 'switch') {
     ]),
   );
   // Rebuild while work is still running, not just after terminal completion.
-  executable = verifyWorkflowExecutableV2({
+  executable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(executable.envelope)),
     checksum: executable.checksum,
     admissionRelease: release,
@@ -601,7 +601,7 @@ async function runBypass(kind: 'condition' | 'switch') {
     expect.objectContaining({ nodeId: 'terminate', status: 'skipped' }),
   );
 
-  const reconstructedExecutable = verifyWorkflowExecutableV2({
+  const reconstructedExecutable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(executable.envelope)),
     checksum: executable.checksum,
     admissionRelease: release,

@@ -9,7 +9,7 @@ import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import {
   executeNodeAttempt,
   invocationKey,
-  type WorkflowExecutableNodeV2,
+  type WorkflowExecutableNode,
 } from '@pertexo/workflow-engine';
 
 import type {
@@ -37,7 +37,7 @@ function ordinal(left: string, right: string): number {
 }
 
 type ExecutableGraph = Readonly<{
-  nodes: readonly WorkflowExecutableNodeV2[];
+  nodes: readonly WorkflowExecutableNode[];
   edges: readonly Readonly<{
     source: Readonly<{ nodeId: string; port: string }>;
     target: Readonly<{ nodeId: string; port: string }>;
@@ -51,7 +51,7 @@ type ExecutableScope = Readonly<{
 
 type LocatedExecutableNode = Readonly<{
   graph: ExecutableGraph;
-  node: WorkflowExecutableNodeV2;
+  node: WorkflowExecutableNode;
   iterationAncestors: readonly string[];
   scopes: readonly ExecutableScope[];
 }>;
@@ -84,7 +84,7 @@ function locateNode(
 }
 
 function scopedOutputPorts(
-  node: WorkflowExecutableNodeV2,
+  node: WorkflowExecutableNode,
 ): readonly string[] | undefined {
   if (node.definition.key === 'core.condition' && node.definition.version === 1)
     return ['false', 'true'];
@@ -211,7 +211,7 @@ function validateExecutableScope(
 }
 
 function assertLeasePins(
-  node: WorkflowExecutableNodeV2,
+  node: WorkflowExecutableNode,
   lease: NodeAttemptLease,
 ): void {
   const expectedInvocationKey = invocationKey({
@@ -234,7 +234,7 @@ function assertLeasePins(
 
 function deriveUpstreamNodeOutputs(
   graph: ExecutableGraph,
-  node: WorkflowExecutableNodeV2,
+  node: WorkflowExecutableNode,
   lease: NodeAttemptLease,
 ): PreparedNodeAttempt['upstreamNodeOutputs'] {
   if (isWorkerCoreMergeDefinition(node.definition)) return Object.freeze([]);

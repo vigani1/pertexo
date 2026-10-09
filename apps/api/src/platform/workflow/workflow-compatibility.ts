@@ -11,7 +11,7 @@ import {
   platformRegistryReleaseSupport,
 } from '@pertexo/node-catalog';
 import {
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
@@ -209,9 +209,9 @@ export function createCoreAuthoringOptions(
           options: Readonly<{ signal?: AbortSignal }>,
         ) => validator.validate(graph, authoringPolicies, options),
         executableCompiler: (
-          graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
+          graph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
         ) => {
-          const compiled = buildWorkflowExecutableV2({
+          const compiled = buildWorkflowExecutable({
             graph,
             release: compatibilityRelease,
           });

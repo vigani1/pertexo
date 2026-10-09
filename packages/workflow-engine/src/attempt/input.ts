@@ -4,8 +4,8 @@ import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
 
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import type {
-  WorkflowExecutableGraphV2,
-  WorkflowExecutableNodeV2,
+  WorkflowExecutableGraph,
+  WorkflowExecutableNode,
 } from '../compilation/foundation.js';
 import { normalizeBoundedEngineJson } from '../compilation/validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
@@ -15,7 +15,7 @@ import { invocationKey as createInvocationKey } from '../transition/scheduling.j
 export type PreparedNodeAttemptInput = Readonly<{
   completedOutputs: Readonly<Record<string, JsonValue>>;
   directUpstream: ReadonlySet<string>;
-  node: WorkflowExecutableNodeV2;
+  node: WorkflowExecutableNode;
   runInput: JsonValue;
   structuredInputs?: Readonly<Record<string, JsonValue>>;
 }>;
@@ -62,8 +62,8 @@ function expectedInvocationKey(
 function parseCompletedDescriptor(
   candidate: JsonValue,
   input: ExecuteNodeAttemptInput,
-  node: WorkflowExecutableNodeV2,
-  graph: WorkflowExecutableGraphV2,
+  node: WorkflowExecutableNode,
+  graph: WorkflowExecutableGraph,
   directUpstream: ReadonlySet<string>,
 ): readonly [string, JsonValue] {
   const descriptor = record(candidate, 'attempt_invalid', 'completed output');
@@ -120,8 +120,8 @@ function parseCompletedDescriptor(
 function parseCompletedOutputs(
   completed: JsonValue,
   input: ExecuteNodeAttemptInput,
-  node: WorkflowExecutableNodeV2,
-  graph: WorkflowExecutableGraphV2,
+  node: WorkflowExecutableNode,
+  graph: WorkflowExecutableGraph,
   directUpstream: ReadonlySet<string>,
 ): Readonly<Record<string, JsonValue>> {
   if (Array.isArray(completed)) {

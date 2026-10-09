@@ -17,7 +17,7 @@ import { WorkflowEngineError } from '../errors.js';
 import type { SideEffectClass } from '../types.js';
 export { compareOrdinal } from '../ordering.js';
 
-export const BASELINE_RUNTIME_POLICIES_V1 = Object.freeze({
+export const BASELINE_RUNTIME_POLICIES = Object.freeze({
   scheduler: Object.freeze({ key: 'engine.scheduler', version: 1 }),
   checkpoint: Object.freeze({ key: 'engine.checkpoint', version: 1 }),
   retry: Object.freeze({ key: 'engine.retry', version: 1 }),
@@ -28,13 +28,13 @@ export const BASELINE_RUNTIME_POLICIES_V1 = Object.freeze({
  * An executable holds the whole graph, so its member limit is sized for the
  * graph's node limit rather than for one node's input or output.
  */
-export const WORKFLOW_EXECUTABLE_LIMITS_V2 = Object.freeze({
+export const WORKFLOW_EXECUTABLE_LIMITS = Object.freeze({
   bytes: NODE_JSON_LIMITS_V1.bytes,
   depth: NODE_JSON_LIMITS_V1.depth,
   members: 100_000,
 });
 
-export interface ExecutableRuntimePoliciesV1 {
+export interface ExecutableRuntimePolicies {
   readonly scheduler: PolicyReference;
   readonly checkpoint: PolicyReference;
   readonly retry: PolicyReference;
@@ -42,7 +42,7 @@ export interface ExecutableRuntimePoliciesV1 {
   readonly cancellation: PolicyReference;
 }
 
-export interface WorkflowExecutableNodeV2 {
+export interface WorkflowExecutableNode {
   readonly id: string;
   readonly definition: DefinitionIdentity;
   readonly configVersion: number;
@@ -54,58 +54,58 @@ export interface WorkflowExecutableNodeV2 {
   readonly executor: ExecutorIdentity;
   readonly executorAbi: number;
   readonly policyReferences: readonly PolicyReference[];
-  readonly structured?: WorkflowExecutableForEachV2 | undefined;
+  readonly structured?: WorkflowExecutableForEach | undefined;
 }
 
-export interface WorkflowExecutableGraphV2 {
+export interface WorkflowExecutableGraph {
   readonly settings: WorkflowGraph['settings'];
-  readonly nodes: readonly WorkflowExecutableNodeV2[];
+  readonly nodes: readonly WorkflowExecutableNode[];
   readonly edges: readonly WorkflowEdge[];
 }
 
-interface WorkflowExecutableStructuredBodyV2 extends WorkflowExecutableGraphV2 {
+interface WorkflowExecutableStructuredBody extends WorkflowExecutableGraph {
   readonly inputPorts: readonly string[];
   readonly outputPorts: readonly string[];
 }
 
-export interface WorkflowExecutableForEachV2 {
+export interface WorkflowExecutableForEach {
   readonly kind: 'for_each';
   readonly maxIterations: number;
   readonly maxConcurrency: number;
-  readonly body: WorkflowExecutableStructuredBodyV2;
+  readonly body: WorkflowExecutableStructuredBody;
 }
 
-export interface WorkflowExecutableV2 {
+export interface WorkflowExecutable {
   readonly schemaVersion: 2;
   readonly sourceGraphSchemaVersion: 1;
-  readonly graph: WorkflowExecutableGraphV2;
-  readonly runtimePolicies: ExecutableRuntimePoliciesV1;
+  readonly graph: WorkflowExecutableGraph;
+  readonly runtimePolicies: ExecutableRuntimePolicies;
   readonly configMigrations: readonly [];
   readonly compatibilitySelectionFingerprint: string;
   readonly compatibilityReleaseEpoch: number;
   readonly compatibilityReleaseFingerprint: string;
 }
 
-declare const verifiedExecutableV2: unique symbol;
-export type VerifiedWorkflowExecutableV2 = WorkflowExecutableV2 & {
-  readonly [verifiedExecutableV2]: true;
+declare const verifiedExecutable: unique symbol;
+export type VerifiedWorkflowExecutable = WorkflowExecutable & {
+  readonly [verifiedExecutable]: true;
 };
 
-export interface CompiledWorkflowExecutableV2 {
-  readonly envelope: VerifiedWorkflowExecutableV2;
+export interface CompiledWorkflowExecutable {
+  readonly envelope: VerifiedWorkflowExecutable;
   readonly checksum: `wf:v2:sha256:${string}`;
 }
 const authenticExecutableIdentities = new WeakSet<object>();
 
 export function registerExecutableIdentity(
-  value: CompiledWorkflowExecutableV2,
-): CompiledWorkflowExecutableV2 {
+  value: CompiledWorkflowExecutable,
+): CompiledWorkflowExecutable {
   authenticExecutableIdentities.add(value);
   return value;
 }
 
 export function assertAuthenticExecutableIdentity(
-  value: CompiledWorkflowExecutableV2,
+  value: CompiledWorkflowExecutable,
 ): void {
   if (!authenticExecutableIdentities.has(value))
     fail('workflow executable identity was not verified in this process');
@@ -171,7 +171,7 @@ export function digest(domain: string, value: unknown): string {
 }
 
 export function globalPolicies(
-  policies: ExecutableRuntimePoliciesV1,
+  policies: ExecutableRuntimePolicies,
 ): readonly PolicyReference[] {
   return [
     policies.scheduler,
@@ -183,11 +183,11 @@ export function globalPolicies(
 }
 
 export function validateGlobals(
-  policies: ExecutableRuntimePoliciesV1,
+  policies: ExecutableRuntimePolicies,
   release: RegistryRelease,
 ): void {
   const selected = globalPolicies(policies);
-  const expected = globalPolicies(BASELINE_RUNTIME_POLICIES_V1);
+  const expected = globalPolicies(BASELINE_RUNTIME_POLICIES);
   if (
     !selected.every((value, index) => {
       const expectedValue = expected[index];

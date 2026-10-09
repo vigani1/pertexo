@@ -5,11 +5,11 @@ import { safeParseWorkflowGraphDraft } from '@pertexo/workflow-model';
 
 import {
   advanceWorkflow,
-  buildWorkflowExecutableV2,
+  buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
   executeNodeAttempt,
-  verifyWorkflowExecutableV2,
+  verifyWorkflowExecutable,
   invocationKey,
 } from '../src/index.js';
 import {
@@ -19,7 +19,7 @@ import {
 } from './executable-workflow.fixtures.js';
 
 function structuredAttemptFixture() {
-  const executable = buildWorkflowExecutableV2({
+  const executable = buildWorkflowExecutable({
     graph: forEachGraph(),
     release: composeExecutableCompatibilityRelease(
       nodeRelease({ forEach: true }),
@@ -61,7 +61,7 @@ describe('For Each production operations', () => {
   ])(
     'rejects a missing node or mismatched ancestry before execution %#',
     async ({ nodeId, iterationPath, message }) => {
-      const executable = buildWorkflowExecutableV2({
+      const executable = buildWorkflowExecutable({
         graph: nestedForEachGraph(),
         release: composeExecutableCompatibilityRelease(
           nodeRelease({ forEach: true }),
@@ -99,7 +99,7 @@ describe('For Each production operations', () => {
   );
 
   it('advances a nested For Each through inner and outer completion', async () => {
-    const executable = buildWorkflowExecutableV2({
+    const executable = buildWorkflowExecutable({
       graph: nestedForEachGraph(),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ forEach: true }),
@@ -474,7 +474,7 @@ describe('For Each production operations', () => {
   });
 
   it('resolves the nearest item in a nested structured scope', async () => {
-    const nestedExecutable = buildWorkflowExecutableV2({
+    const nestedExecutable = buildWorkflowExecutable({
       graph: nestedForEachGraph(),
       release: composeExecutableCompatibilityRelease(
         nodeRelease({ forEach: true }),
@@ -550,12 +550,12 @@ describe('For Each production operations', () => {
       const release = composeExecutableCompatibilityRelease(
         nodeRelease({ forEach: true }),
       );
-      const compiled = buildWorkflowExecutableV2({ graph, release });
+      const compiled = buildWorkflowExecutable({ graph, release });
       const compiledSink = compiled.envelope.graph.nodes
         .find(({ id }) => id === 'loop')
         ?.structured?.body.nodes.find(({ id }) => id === 'body-sink');
       expect(compiledSink?.inputMappings).toHaveProperty('value');
-      const recovered = verifyWorkflowExecutableV2({
+      const recovered = verifyWorkflowExecutable({
         envelope: JSON.parse(JSON.stringify(compiled.envelope)),
         checksum: compiled.checksum,
         admissionRelease: release,
@@ -648,7 +648,7 @@ describe('For Each production operations', () => {
         reservedKey,
       );
 
-      const executable = buildWorkflowExecutableV2({
+      const executable = buildWorkflowExecutable({
         graph,
         release: composeExecutableCompatibilityRelease(
           nodeRelease({ forEach: true }),
