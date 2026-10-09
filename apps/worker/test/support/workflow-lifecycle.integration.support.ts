@@ -4,7 +4,6 @@ import { lockManualFixtureClient } from './attempts/manual-start.js';
 import {
   createIdentityWorkspaceDatabase,
   createOutboxDispatcherDatabase,
-  createPublishedWorkflowReader,
   createWorkflowAuthoringDatabase,
   createWorkflowTriggerReconciliationDatabase,
   migrateDatabase,
@@ -937,10 +936,6 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     );
 
   const createRuntime = async (leaseOwner: string): Promise<TriggerRuntime> => {
-    const reader = registerCloseable(
-      'published workflow reader',
-      createPublishedWorkflowReader(workerConfig),
-    );
     const reconciliation = registerCloseable(
       'trigger reconciliation database',
       createWorkflowTriggerReconciliationDatabase(workerConfig),
@@ -955,9 +950,8 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
         pollIntervalMillis: 25,
         redisUrl: redisNamespace.redisUrl,
       },
-      { reader, reconciliation, scanner: noOpScanner() },
+      { reconciliation, scanner: noOpScanner() },
     );
-    transferResource(reader);
     transferResource(reconciliation);
     const runtime = await runtimePromise;
     registerCloseable('trigger runtime', runtime);

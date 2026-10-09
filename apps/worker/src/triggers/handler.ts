@@ -4,7 +4,6 @@ import {
   WorkflowTriggerStalePublicationError,
   type WorkflowTriggerReconciliationDatabase,
 } from '@pertexo/database/triggers';
-import type { PublishedWorkflowReader } from '@pertexo/database/runs';
 import {
   unrecoverableQueueError,
   type QueueDelivery,
@@ -25,7 +24,6 @@ export interface TriggerReconciliationHandler {
 
 export function createTriggerReconciliationHandler(
   dependencies: Readonly<{
-    reader: PublishedWorkflowReader;
     reconciliation: WorkflowTriggerReconciliationDatabase;
   }>,
 ): TriggerReconciliationHandler {
@@ -34,23 +32,8 @@ export function createTriggerReconciliationHandler(
       delivery: TriggerReconciliationDelivery,
       context: QueueHandlerContext,
     ) => {
-      const publication = await dependencies.reader.readForExecution({
-        workspaceId: delivery.data.workspaceId,
-        workflowVersionId: delivery.data.publishedVersionId,
-        signal: context.signal,
-      });
-      if (
-        publication !== null &&
-        (publication.id !== delivery.data.publishedVersionId ||
-          publication.workflowId !== delivery.data.workflowId ||
-          publication.workspaceId !== delivery.data.workspaceId)
-      )
-        throw unrecoverableQueueError(
-          'Trigger reconciliation publication identity is invalid',
-        );
-
-      // No durable command has started yet; a canceled delivery must not
-      // open a new transaction after publication loading finishes.
+      // Reconciliation checks the publication itself; a canceled delivery
+      // must not open its transaction.
       context.signal.throwIfAborted();
 
       try {
