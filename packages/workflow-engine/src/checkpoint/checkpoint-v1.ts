@@ -5,7 +5,6 @@ import type {
 } from '../types.js';
 import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '../ordering.js';
-import { invocationKey } from '../transition/scheduling.js';
 import {
   assertCheckpoint,
   assertExactKeys,
@@ -184,7 +183,7 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     'join invocation keys must be unique',
   );
   const loops = value.loops
-    .map((loop) => parseLoop(loop, workflowVersionId))
+    .map(parseLoop)
     .sort((left, right) =>
       compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
     );
@@ -218,18 +217,7 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     invocations.map((invocation) => [invocation.invocationKey, invocation]),
   );
   for (const join of joins) {
-    const joinInvocation = invocationByKey.get(
-      join.joinInvocationKey === join.joinId
-        ? invocationKey({
-            workflowVersionId,
-            nodeId: join.joinId,
-          })
-        : (join.joinInvocationKey ??
-            invocationKey({
-              workflowVersionId,
-              nodeId: join.joinId,
-            })),
-    );
+    const joinInvocation = invocationByKey.get(join.joinInvocationKey);
     assertCheckpoint(
       joinInvocation !== undefined,
       'join invocation is missing',
@@ -265,48 +253,6 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
       ),
       'loop parent invocation is inconsistent',
     );
-    const syntheticLegacyLoop =
-      loop.bodyRootNodeIds.length === 1 &&
-      loop.bodyRootNodeIds[0] === loop.loopId &&
-      loop.bodySinkNodeId === loop.loopId;
-    if (!syntheticLegacyLoop) continue;
-    const iterationFor = (ordinal: number) =>
-      invocationByKey.get(
-        invocationKey({
-          workflowVersionId,
-          nodeId: loop.loopId,
-          branchPath: loop.branchPath.map(
-            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-          ),
-          iterationPath: [
-            ...loop.iterationPath,
-            { loopNodeId: loop.loopId, ordinal },
-          ],
-        }),
-      );
-    for (const ordinal of loop.activeOrdinals) {
-      const iteration = iterationFor(ordinal);
-      assertCheckpoint(
-        iteration !== undefined &&
-          ['ready', 'running', 'waiting'].includes(iteration.status),
-        'active loop invocation is inconsistent',
-      );
-    }
-    for (const ordinal of loop.terminalOrdinals) {
-      const iteration = iterationFor(ordinal);
-      assertCheckpoint(
-        iteration !== undefined &&
-          [
-            'succeeded',
-            'skipped',
-            'failed',
-            'canceled',
-            'timed_out',
-            'outcome_unknown',
-          ].includes(iteration.status),
-        'terminal loop invocation is inconsistent',
-      );
-    }
   }
   const loopControlKeys = new Set(
     loops.map(({ controlInvocationKey }) => controlInvocationKey),

@@ -55,11 +55,10 @@ export function parseJoin(value: unknown): JoinState {
   assertCheckpoint(isRecord(value), 'join must be an object');
   assertExactKeys(
     value,
-    ['joinId', 'policy', 'ledger'],
+    ['joinId', 'joinInvocationKey', 'policy', 'ledger'],
     [
       'selectedBranchIds',
       'unsatisfiedReasonCode',
-      'joinInvocationKey',
       'branchPath',
       'iterationPath',
     ],
@@ -69,12 +68,11 @@ export function parseJoin(value: unknown): JoinState {
     'joinId is required',
   );
   assertCheckpoint(
-    value.joinInvocationKey === undefined ||
-      (typeof value.joinInvocationKey === 'string' &&
-        value.joinInvocationKey.length > 0),
+    typeof value.joinInvocationKey === 'string' &&
+      value.joinInvocationKey.length > 0,
     'join invocation key is invalid',
   );
-  const joinInvocationKey = value.joinInvocationKey ?? value.joinId;
+  const joinInvocationKey = value.joinInvocationKey;
   const branchPath = parseBranchPath(value.branchPath, 'join');
   const iterationPath = parseIterationPath(value.iterationPath, 'join');
   assertCheckpoint(isRecord(value.policy), 'join policy is required');

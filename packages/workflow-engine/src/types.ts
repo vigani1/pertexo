@@ -125,7 +125,7 @@ export type WorkflowObservation =
   | {
       readonly kind: 'join_declared';
       readonly joinId: string;
-      readonly joinInvocationKey?: string;
+      readonly joinInvocationKey: string;
       readonly branchPath?: readonly BranchScopePart[];
       readonly iterationPath?: readonly IterationScopePart[];
       readonly policy: JoinPolicy;
@@ -135,18 +135,18 @@ export type WorkflowObservation =
   | {
       readonly kind: 'branch_disposition';
       readonly joinId: string;
-      readonly joinInvocationKey?: string;
+      readonly joinInvocationKey: string;
       readonly branch: BranchLedgerEntry;
       readonly coordinatorDerived?: true;
     }
   | {
       readonly kind: 'loop_started';
       readonly loopId: string;
-      readonly controlInvocationKey?: string;
-      readonly branchPath?: readonly BranchScopePart[];
-      readonly iterationPath?: readonly IterationScopePart[];
-      readonly bodyRootNodeIds?: readonly string[];
-      readonly bodySinkNodeId?: string;
+      readonly controlInvocationKey: string;
+      readonly branchPath: readonly BranchScopePart[];
+      readonly iterationPath: readonly IterationScopePart[];
+      readonly bodyRootNodeIds: readonly string[];
+      readonly bodySinkNodeId: string;
       readonly coordinatorDerived?: true;
       readonly collection: OutputReference;
       readonly collectionChecksum: string;
@@ -157,8 +157,8 @@ export type WorkflowObservation =
   | {
       readonly kind: 'loop_iteration_completed';
       readonly loopId: string;
-      readonly controlInvocationKey?: string;
-      readonly invocationKey?: string;
+      readonly controlInvocationKey: string;
+      readonly invocationKey: string;
       readonly ordinal: number;
       readonly status?: Extract<
         NodeStatus,
@@ -175,7 +175,7 @@ export type WorkflowObservation =
     };
 
 export interface JoinState {
-  readonly joinInvocationKey?: string;
+  readonly joinInvocationKey: string;
   readonly joinId: string;
   readonly branchPath?: readonly BranchScopePart[];
   readonly iterationPath?: readonly IterationScopePart[];

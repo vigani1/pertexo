@@ -80,7 +80,7 @@ function loopObservationKey(observation: WorkflowObservation): string {
     observation.kind !== 'loop_iteration_completed'
   )
     return '';
-  const controlKey = observation.controlInvocationKey ?? observation.loopId;
+  const controlKey = observation.controlInvocationKey;
   if (observation.kind === 'loop_started') return `${controlKey}:0:`;
   return `${controlKey}:1:${String(observation.ordinal).padStart(16, '0')}`;
 }

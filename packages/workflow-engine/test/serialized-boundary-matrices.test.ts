@@ -107,6 +107,7 @@ describe('serialized workflow boundary matrices', () => {
         checkpoint.joins = [
           {
             joinId: 'set',
+            joinInvocationKey: joinKey,
             policy: { kind: 'all' },
             ledger: [{ branchId: 'branch-01', disposition: 'pending' }],
           },
@@ -130,6 +131,11 @@ describe('serialized workflow boundary matrices', () => {
         checkpoint.loops = [
           {
             loopId: 'set',
+            controlInvocationKey: key,
+            branchPath: [],
+            iterationPath: [],
+            bodyRootNodeIds: ['body'],
+            bodySinkNodeId: 'body',
             collection: {
               kind: 'inline',
               attemptId: '00000000-0000-4000-8000-000000000902',
@@ -227,51 +233,6 @@ describe('serialized workflow boundary matrices', () => {
     expect(source.joins).toEqual([]);
   });
 
-  it('accepts the serialized legacy root join key through the public operation', async () => {
-    const executableWithJoin = buildWorkflowExecutableV2({
-      graph: pairedParallelGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ parallel: true, merge: true }),
-      ),
-    });
-    const mergeKey = invocationKey({ workflowVersionId, nodeId: 'merge' });
-    const source = createCheckpoint({
-      engineVersion: 'engine-v2',
-      workflowVersionId,
-      iterationBudget: 10,
-    });
-    const raw = serialized({
-      ...source,
-      invocations: [
-        {
-          invocationKey: mergeKey,
-          nodeId: 'merge',
-          status: 'pending',
-          attemptNumber: 0,
-        },
-      ],
-      joins: [
-        {
-          joinId: 'merge',
-          joinInvocationKey: 'merge',
-          policy: { kind: 'all' },
-          ledger: [
-            { branchId: 'branch-01', disposition: 'pending' },
-            { branchId: 'branch-02', disposition: 'pending' },
-          ],
-        },
-      ],
-    });
-    const plan = await advanceWorkflow({
-      ...advanceInput(raw),
-      executable: executableWithJoin,
-    });
-    expect(plan.attempts).toEqual([]);
-    expect(plan.checkpoint.joins).toEqual([
-      expect.objectContaining({ joinId: 'merge', joinInvocationKey: 'merge' }),
-    ]);
-  });
-
   it('rejects altered serialized loop bounds after authentic body topology is checked', async () => {
     const executableWithLoop = buildWorkflowExecutableV2({
       graph: forEachGraph(),
@@ -303,6 +264,8 @@ describe('serialized workflow boundary matrices', () => {
         {
           loopId: 'loop',
           controlInvocationKey: loopKey,
+          branchPath: [],
+          iterationPath: [],
           collection: {
             kind: 'inline',
             attemptId: '00000000-0000-4000-8000-000000000903',

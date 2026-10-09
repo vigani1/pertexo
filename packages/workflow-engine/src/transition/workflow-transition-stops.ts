@@ -5,7 +5,6 @@ import { completeLoopIteration } from './scheduling.js';
 import { assertNodeTransition } from './transitions.js';
 import type { InvocationState } from '../types.js';
 import {
-  isSyntheticLegacyLoop,
   isTerminalNodeStatus,
   nodeEventName,
   transitionEvent as event,
@@ -105,7 +104,6 @@ export function applyWorkflowStops(
         right.iterationPath.length - left.iterationPath.length ||
         compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
     )) {
-      if (isSyntheticLegacyLoop(initialLoop)) continue;
       const initialControl = invocations.get(initialLoop.controlInvocationKey);
       // Stopping the run cannot rewrite a loop that already settled. Its
       // successor may not have been admitted by the next coordinator pass yet.

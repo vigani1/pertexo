@@ -7,7 +7,6 @@ import {
   sameBranchPath,
   sameIterationPath,
 } from '../scope.js';
-import { invocationKey as createInvocationKey } from './scheduling.js';
 import type {
   AttemptAdmissionPlan,
   BranchSelection,
@@ -127,9 +126,9 @@ function observationKey(observation: WorkflowObservation): string {
     case 'branch_selected':
       return `2:branch:${observation.invocationKey}:${observation.nodeId}`;
     case 'loop_started':
-      return `1:loop:${observation.controlInvocationKey ?? observation.loopId}`;
+      return `1:loop:${observation.controlInvocationKey}`;
     case 'loop_iteration_completed':
-      return `2:loop:${observation.controlInvocationKey ?? observation.loopId}:${String(observation.ordinal).padStart(16, '0')}`;
+      return `2:loop:${observation.controlInvocationKey}:${String(observation.ordinal).padStart(16, '0')}`;
     default:
       return `3:invocation:${observation.invocationKey}`;
   }
@@ -161,7 +160,7 @@ export function declaredJoin(
       'count join exceeds declared branches',
     );
   return {
-    joinInvocationKey: observation.joinInvocationKey ?? observation.joinId,
+    joinInvocationKey: observation.joinInvocationKey,
     joinId: observation.joinId,
     branchPath: observation.branchPath ?? [],
     iterationPath: observation.iterationPath ?? [],
@@ -213,13 +212,6 @@ export function sameLoopDeclaration(
   );
 }
 
-export function rootInvocationKey(
-  workflowVersionId: string,
-  nodeId: string,
-): string {
-  return createInvocationKey({ workflowVersionId, nodeId });
-}
-
 export function schedulerNodeSideEffectClass(
   schedulerNodes: SchedulerNodeLookup | undefined,
   nodeId: string,
@@ -243,14 +235,6 @@ export function schedulerNodeDisabled(
   nodeId: string,
 ): boolean {
   return schedulerNodes?.get(nodeId)?.node.disabled === true;
-}
-
-export function isSyntheticLegacyLoop(loop: LoopState): boolean {
-  return (
-    loop.bodyRootNodeIds.length === 1 &&
-    loop.bodyRootNodeIds[0] === loop.loopId &&
-    loop.bodySinkNodeId === loop.loopId
-  );
 }
 
 export function scopedLoopSinkInvocation(
@@ -277,7 +261,6 @@ export function scopedLoopSinkInvocation(
 }
 
 export function assertLoopInvocations(
-  workflowVersionId: string,
   loop: LoopState,
   invocations: ReadonlyMap<string, InvocationState>,
 ): void {
@@ -286,22 +269,11 @@ export function assertLoopInvocations(
       ...loop.iterationPath,
       { loopNodeId: loop.loopId, ordinal },
     ];
-    const invocation = isSyntheticLegacyLoop(loop)
-      ? invocations.get(
-          createInvocationKey({
-            workflowVersionId,
-            nodeId: loop.loopId,
-            branchPath: loop.branchPath.map(
-              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-            ),
-            iterationPath,
-          }),
-        )
-      : [...invocations.values()].find(
-          (candidate) =>
-            sameIterationPath(candidate.iterationPath, iterationPath) &&
-            branchPathHasPrefix(candidate.branchPath, loop.branchPath),
-        );
+    const invocation = [...invocations.values()].find(
+      (candidate) =>
+        sameIterationPath(candidate.iterationPath, iterationPath) &&
+        branchPathHasPrefix(candidate.branchPath, loop.branchPath),
+    );
     if (invocation === undefined)
       throw new WorkflowEngineError(
         'checkpoint_invalid',
@@ -315,18 +287,7 @@ export function assertLoopInvocations(
     ];
     const invocation =
       loop.terminalStatus === undefined
-        ? isSyntheticLegacyLoop(loop)
-          ? invocations.get(
-              createInvocationKey({
-                workflowVersionId,
-                nodeId: loop.bodySinkNodeId,
-                branchPath: loop.branchPath.map(
-                  ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-                ),
-                iterationPath,
-              }),
-            )
-          : scopedLoopSinkInvocation(loop, ordinal, invocations.values())
+        ? scopedLoopSinkInvocation(loop, ordinal, invocations.values())
         : [...invocations.values()].find(
             (candidate) =>
               sameIterationPath(candidate.iterationPath, iterationPath) &&

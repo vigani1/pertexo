@@ -31,7 +31,7 @@ function pendingJoin(join: Record<string, unknown>, status = 'pending') {
         attemptNumber: 0,
       },
     ],
-    joins: [join],
+    joins: [{ joinInvocationKey: rootKey('join'), ...join }],
   };
 }
 
@@ -58,6 +58,11 @@ function loopCheckpoint(
 
 const emptyLoop = {
   loopId: 'loop',
+  controlInvocationKey: rootKey('loop'),
+  branchPath: [],
+  iterationPath: [],
+  bodyRootNodeIds: ['body'],
+  bodySinkNodeId: 'body',
   collection: {
     kind: 'inline',
     attemptId: '00000000-0000-4000-8000-000000000001',

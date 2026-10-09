@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   advanceWorkflow as advanceWorkflowAtSeam,
+  invocationKey,
   type AdvanceWorkflowInput,
 } from '../src/testing.js';
 import {
@@ -10,6 +11,9 @@ import {
   occurredAt,
   withExplicitSchedulerState,
 } from './support/advance-workflow.fixture.js';
+
+const joinKey = (nodeId: string) =>
+  invocationKey({ workflowVersionId: checkpoint().workflowVersionId, nodeId });
 
 function advanceWorkflow(input: AdvanceWorkflowInput) {
   return advanceWorkflowAtSeam(withExplicitSchedulerState(input));
@@ -337,17 +341,20 @@ describe('AdvanceWorkflow transitions', () => {
         {
           kind: 'join_declared',
           joinId: 'join',
+          joinInvocationKey: joinKey('join'),
           policy: { kind: 'any' },
           branchIds: ['b', 'a'],
         },
         {
           kind: 'branch_disposition',
           joinId: 'join',
+          joinInvocationKey: joinKey('join'),
           branch: { branchId: 'b', disposition: 'arrived' },
         },
         {
           kind: 'branch_disposition',
           joinId: 'join',
+          joinInvocationKey: joinKey('join'),
           branch: { branchId: 'a', disposition: 'arrived' },
         },
       ],
@@ -375,6 +382,7 @@ describe('AdvanceWorkflow transitions', () => {
         {
           kind: 'branch_disposition',
           joinId: 'join',
+          joinInvocationKey: joinKey('join'),
           branch: { branchId: 'b', disposition: 'arrived' },
         },
       ],
@@ -392,17 +400,20 @@ describe('AdvanceWorkflow transitions', () => {
         {
           kind: 'join_declared',
           joinId: 'join',
+          joinInvocationKey: joinKey('join'),
           policy: { kind: 'count', count: 2 },
           branchIds: ['a', 'b'],
         },
         {
           kind: 'branch_disposition',
           joinId: 'join',
+          joinInvocationKey: joinKey('join'),
           branch: { branchId: 'a', disposition: 'arrived' },
         },
         {
           kind: 'branch_disposition',
           joinId: 'join',
+          joinInvocationKey: joinKey('join'),
           branch: { branchId: 'b', disposition: 'missing' },
         },
       ],
