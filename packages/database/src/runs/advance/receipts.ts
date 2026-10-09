@@ -13,13 +13,13 @@ import {
   type AcknowledgeAdvanceDeliveryResult,
   type CommitAdvancePlanResult,
   type CoordinatorAdvanceDelivery,
-} from './coordinator-run-store-contract.js';
+} from './contract.js';
 import {
   assertCoordinatorNotAborted,
   withCoordinatorWriteClient,
-} from './coordinator-run-store-transactions.js';
-import { canonicalOutboxPayloadChecksum } from '../transport/outbox.js';
-import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
+} from './transactions.js';
+import { canonicalOutboxPayloadChecksum } from '../../execution/transport/outbox.js';
+import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
 
 const coordinatorConsumerName = 'workflow-coordinator';
 

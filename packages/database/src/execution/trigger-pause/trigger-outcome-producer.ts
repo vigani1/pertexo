@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import type { ParsedTransitionPlan } from '../coordinator/coordinator-run-store-plan.js';
+import type { ParsedTransitionPlan } from '../../runs/advance/plan.js';
 
 const countedTriggers: ReadonlySet<string> = new Set(['schedule', 'webhook']);
 const failureStatuses: ReadonlySet<string> = new Set([

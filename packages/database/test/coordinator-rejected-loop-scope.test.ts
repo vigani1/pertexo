@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { workflowForEachBoundsV2 } from '@pertexo/workflow-model/graph';
-import { isRejectedForEachCollection } from '../src/execution/coordinator/coordinator-rejected-loop-proof.js';
+import { isRejectedForEachCollection } from '../src/runs/advance/rejected-loop-proof.js';
 
 const bounds = workflowForEachBoundsV2({
   schemaVersion: 2,

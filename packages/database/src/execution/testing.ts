@@ -11,8 +11,8 @@ export {
   type FailureNotificationDestinationDatabase,
   type FailureNotificationDestinationRecord,
 } from './notifications/failure-notification-destinations.js';
-export { createDueNodeWakeupScanner } from './coordinator/due-node-wakeup-scanner.js';
-export type { DueNodeWakeupScanner } from './coordinator/due-node-wakeup-scanner.js';
+export { createDueNodeWakeupScanner } from '../runs/wakeups/due-node-scanner.js';
+export type { DueNodeWakeupScanner } from '../runs/wakeups/due-node-scanner.js';
 export {
   createFailureNotificationStore,
   FailureNotificationStateError,
@@ -23,8 +23,8 @@ export type {
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
 } from './notifications/failure-notifications.js';
-export { createDeadlineWakeupScanner } from './coordinator/deadline-wakeup-scanner.js';
-export type { DeadlineWakeupScanner } from './coordinator/deadline-wakeup-scanner.js';
+export { createDeadlineWakeupScanner } from '../runs/wakeups/deadline-scanner.js';
+export type { DeadlineWakeupScanner } from '../runs/wakeups/deadline-scanner.js';
 export {
   ARTIFACT_STATUS,
   ArtifactFinalizeConflictError,

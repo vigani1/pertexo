@@ -7,15 +7,15 @@ import {
   coordinatorIdentitySchema,
   type LoadAdvanceStateInput,
   type LoadAdvanceStateResult,
-} from './coordinator-run-store-contract.js';
+} from './contract.js';
 import {
   assertCoordinatorNotAborted,
   withCoordinatorReadClient,
-} from './coordinator-run-store-transactions.js';
+} from './transactions.js';
 import {
   assertAvailableArtifacts,
   validateLoadedCheckpointPhysicalState,
-} from './coordinator-run-store-physical-state.js';
+} from './physical-state.js';
 import {
   parsePersistedWorkflowCheckpoint,
   type PersistedWorkflowCheckpoint,
@@ -23,17 +23,17 @@ import {
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
-} from '../stored-execution-value.js';
+} from '../../execution/stored-execution-value.js';
 import {
   attachPhysicalAttempts,
   readPhysicalAttempts,
   type CoordinatorEventRow,
   type PersistedCoordinatorEventRow,
-} from './coordinator-run-store-fact-physical-state.js';
+} from './fact-attempts.js';
 import {
   appendPendingFailureObservations,
   type PendingFailureRow,
-} from './coordinator-pending-failure-observations.js';
+} from './pending-failures.js';
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;

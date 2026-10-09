@@ -1,7 +1,7 @@
 import type { Pool, PoolClient, QueryResult } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { observeScheduleToStartSeconds } from '../src/execution/coordinator/coordinator-schedule-observation.js';
+import { observeScheduleToStartSeconds } from '../src/runs/advance/schedule-observation.js';
 
 type Deferred<T> = Readonly<{
   promise: Promise<T>;

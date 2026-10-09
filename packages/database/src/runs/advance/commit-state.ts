@@ -5,13 +5,13 @@ import {
   CoordinatorRunStateCorruptError,
   type CommitAdvancePlanResult,
   type CoordinatorAdvanceDelivery,
-} from './coordinator-run-store-contract.js';
+} from './contract.js';
 import {
   claimCoordinatorReceipt,
   completeCoordinatorReceipt,
   deferCoordinatorForActiveCapacity,
   validateAuthoritativeAdvanceDelivery,
-} from './coordinator-run-store-delivery.js';
+} from './receipts.js';
 import {
   mapEvent,
   maximumPersistedFacts,
@@ -19,20 +19,20 @@ import {
   readPersistedFacts,
   record,
   validatePersistedFactBatch,
-} from './coordinator-run-store-observations.js';
+} from './facts.js';
 import {
   allowedRunTransitions,
   type ParsedTransitionPlan,
   validateStatusTransitions,
   validateTransitionDelta,
-} from './coordinator-run-store-plan.js';
+} from './plan.js';
 import {
   parsePersistedWorkflowCheckpoint,
   type PersistedWorkflowCheckpoint,
 } from '../../compatibility/persisted-workflow-checkpoint.js';
-import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
-import type { RejectedForEachDeclaration } from './coordinator-rejected-loop-proof.js';
-import { loadRejectedForEachDeclarations } from './coordinator-rejected-loop-load.js';
+import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
+import type { RejectedForEachDeclaration } from './rejected-loop-proof.js';
+import { loadRejectedForEachDeclarations } from './rejected-loop-load.js';
 
 export type CoordinatorCommitRow = Readonly<{
   revision: number;

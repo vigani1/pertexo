@@ -7,14 +7,14 @@ import {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   coordinatorIdentitySchema as identitySchema,
-} from './coordinator-run-store-contract.js';
-import { normalizedJson } from './coordinator-run-store-observations.js';
+} from './contract.js';
+import { normalizedJson } from './facts.js';
 import {
   assertTransitionPlanValid,
   invocationScope,
   sameKeys,
-} from './coordinator-run-store-plan-validation.js';
-import { assertStatusTransitionsValid } from './coordinator-run-store-status-validation.js';
+} from './plan-validation.js';
+import { assertStatusTransitionsValid } from './status-validation.js';
 import {
   parsePersistedWorkflowCheckpoint,
   type PersistedWorkflowCheckpoint,
@@ -22,7 +22,7 @@ import {
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
-} from '../stored-execution-value.js';
+} from '../../execution/stored-execution-value.js';
 
 export const scheduleRunInputSchema = z
   .object({

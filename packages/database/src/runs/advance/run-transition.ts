@@ -1,21 +1,21 @@
 import type { PoolClient } from 'pg';
 
-import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
-import type { CoordinatorCommitRow } from './coordinator-run-store-commit-state.js';
-import { canonicalTimestamp } from './coordinator-run-store-observations.js';
+import { CoordinatorRunStateCorruptError } from './contract.js';
+import type { CoordinatorCommitRow } from './commit-state.js';
+import { canonicalTimestamp } from './facts.js';
 import {
   scheduleRunInputSchema,
   terminalRunStatuses,
   type ParsedTransitionPlan,
-} from './coordinator-run-store-plan.js';
-import { persistFailureNotificationIntent } from './coordinator-run-store-terminal.js';
-import { persistWorkspaceInboxEvent } from '../workspace-inbox/inbox-producer.js';
-import { persistWorkflowTriggerOutcome } from '../trigger-pause/trigger-outcome-producer.js';
-import { canonicalOutboxPayloadChecksum } from '../transport/outbox.js';
+} from './plan.js';
+import { persistFailureNotificationIntent } from './failure-notification.js';
+import { persistWorkspaceInboxEvent } from '../../execution/workspace-inbox/inbox-producer.js';
+import { persistWorkflowTriggerOutcome } from '../../execution/trigger-pause/trigger-outcome-producer.js';
+import { canonicalOutboxPayloadChecksum } from '../../execution/transport/outbox.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
-} from '../stored-execution-value.js';
+} from '../../execution/stored-execution-value.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 async function persistDerivedContinuation(

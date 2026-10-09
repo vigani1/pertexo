@@ -1,9 +1,6 @@
-import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
+import type { ParsedTransitionPlan } from './plan.js';
 import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
-import {
-  assertPlan,
-  sameStoredValue,
-} from './coordinator-run-store-validation-values.js';
+import { assertPlan, sameStoredValue } from './stored-values.js';
 
 type CheckpointInvocation = PersistedWorkflowCheckpoint['invocations'][number];
 type Attempt = ParsedTransitionPlan['attempts'][number];

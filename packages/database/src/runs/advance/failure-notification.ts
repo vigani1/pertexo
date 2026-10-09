@@ -9,10 +9,10 @@ import {
   FailureNotificationContextV1Schema,
 } from '@pertexo/workflow-model/failure-notification';
 
-import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
-import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
-import { canonicalOutboxPayloadChecksum } from '../transport/outbox.js';
-import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
+import { CoordinatorRunStateCorruptError } from './contract.js';
+import type { ParsedTransitionPlan } from './plan.js';
+import { canonicalOutboxPayloadChecksum } from '../../execution/transport/outbox.js';
+import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
 
 const failureNotificationNamespace = '9fe280d8-40ca-4a20-930e-1bf77e48c817';
 

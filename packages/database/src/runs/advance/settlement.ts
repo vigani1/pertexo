@@ -3,9 +3,9 @@ import type { PoolClient } from 'pg';
 import {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
-} from './coordinator-run-store-contract.js';
+} from './contract.js';
 import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
-import type { RejectedForEachDeclaration } from './coordinator-rejected-loop-proof.js';
+import type { RejectedForEachDeclaration } from './rejected-loop-proof.js';
 
 export async function persistRejectedForEachDeclarations(
   client: PoolClient,

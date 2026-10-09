@@ -7,7 +7,7 @@ import type { PersistedWorkflowCheckpoint } from '../src/compatibility/persisted
 import {
   type ParsedTransitionPlan,
   validateTransitionDelta,
-} from '../src/execution/coordinator/coordinator-run-store-plan.js';
+} from '../src/runs/advance/plan.js';
 
 type Invocation = PersistedWorkflowCheckpoint['invocations'][number];
 

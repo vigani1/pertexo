@@ -1,18 +1,18 @@
 import { workflowForEachBoundsV2 } from '@pertexo/workflow-model/graph';
 import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
 import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
-import { parseStoredExecutionValueV1 } from '../stored-execution-value.js';
-import { CoordinatorPlanInvalidError } from './coordinator-run-store-contract.js';
-import type { CoordinatorEventRow } from './coordinator-run-store-fact-physical-state.js';
-import { mapEvent, record } from './coordinator-run-store-observations.js';
-import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
-import { sameStoredValue } from './coordinator-run-store-validation-values.js';
+import { parseStoredExecutionValueV1 } from '../../execution/stored-execution-value.js';
+import { CoordinatorPlanInvalidError } from './contract.js';
+import type { CoordinatorEventRow } from './fact-attempts.js';
+import { mapEvent, record } from './facts.js';
+import type { ParsedTransitionPlan } from './plan.js';
+import { sameStoredValue } from './stored-values.js';
 
 import {
   isRejectedForEachCollection,
   rejectedForEachCollectionCount as collectionCount,
-} from './coordinator-rejected-loop-collection.js';
-export { isRejectedForEachCollection } from './coordinator-rejected-loop-collection.js';
+} from './rejected-loop-collection.js';
+export { isRejectedForEachCollection } from './rejected-loop-collection.js';
 export type RejectedForEachDeclaration = Readonly<{
   attemptId: string;
   nodeId: string;

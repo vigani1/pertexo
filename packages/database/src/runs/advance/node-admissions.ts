@@ -5,13 +5,13 @@ import type { PoolClient } from 'pg';
 import {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
-} from './coordinator-run-store-contract.js';
-import type { PendingCoordinatorFailure } from './coordinator-run-store-commit-state.js';
-import { terminalStatus } from './coordinator-run-store-observations.js';
-import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
-import { canonicalOutboxPayloadChecksum } from '../transport/outbox.js';
-import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
-import type { RejectedForEachDeclarations } from './coordinator-rejected-loop-proof.js';
+} from './contract.js';
+import type { PendingCoordinatorFailure } from './commit-state.js';
+import { terminalStatus } from './facts.js';
+import type { ParsedTransitionPlan } from './plan.js';
+import { canonicalOutboxPayloadChecksum } from '../../execution/transport/outbox.js';
+import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
+import type { RejectedForEachDeclarations } from './rejected-loop-proof.js';
 
 export type CoordinatorExecutionIdentity = Readonly<{
   nodeRunId: string;

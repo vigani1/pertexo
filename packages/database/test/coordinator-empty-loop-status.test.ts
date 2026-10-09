@@ -3,7 +3,7 @@ import type { PersistedWorkflowCheckpoint } from '../src/compatibility/persisted
 import {
   validateStatusTransitions,
   type ParsedTransitionPlan,
-} from '../src/execution/coordinator/coordinator-run-store-plan.js';
+} from '../src/runs/advance/plan.js';
 
 function emptyLoopFixture() {
   const output = {

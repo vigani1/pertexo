@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
-import { createCoordinatorRunStore } from '../src/execution/coordinator/coordinator-run-store.js';
+import { createCoordinatorRunStore } from '../src/runs/advance/store.js';
 import type { LeasedOutboxEvent } from '../src/execution/transport/dispatcher-contracts.js';
 import {
   canonicalOutboxPayloadChecksum,
