@@ -20,11 +20,11 @@ import {
 } from '../../retention/runtime.js';
 import {
   COORDINATOR_RUNTIME,
-  OUTBOX_DISPATCHER,
   MAINTENANCE_RUNTIME,
+  NODE_ATTEMPT_RUNTIME,
+  OUTBOX_DISPATCHER,
+  TRIGGER_RUNTIME,
 } from '../../transport/module.js';
-import { NODE_ATTEMPT_RUNTIME } from '../../transport/module.js';
-import { TRIGGER_RUNTIME } from '../../transport/module.js';
 import type { TriggerRuntime } from '../../triggers/runtime.js';
 import type { OutboxDispatcher } from '../../transport/outbox/dispatcher.js';
 import type { NodeAttemptRuntime } from '../../attempts/runtime.js';
@@ -55,18 +55,16 @@ export class WorkerReadiness {
     private readonly coordinatorRuntime: CoordinatorRuntime,
     @Inject(MAINTENANCE_RUNTIME)
     private readonly maintenanceRuntime: MaintenanceRuntime,
+    @Inject(WORKSPACE_INBOX_RUNTIME)
+    private readonly workspaceInboxRuntime: WorkspaceInboxRuntime,
+    @Inject(WORKFLOW_AUTO_PAUSE_RUNTIME)
+    private readonly workflowAutoPauseRuntime: WorkflowAutoPauseRuntime,
+    @Inject(RETENTION_RUNTIME)
+    private readonly retentionRuntime: RetentionRuntime,
+    // Absent until authentication mail is configured.
     @Optional()
     @Inject(AUTHENTICATION_MAIL_RUNTIME)
     private readonly authenticationMailRuntime?: AuthenticationMailRuntime,
-    @Optional()
-    @Inject(WORKSPACE_INBOX_RUNTIME)
-    private readonly workspaceInboxRuntime?: WorkspaceInboxRuntime,
-    @Optional()
-    @Inject(WORKFLOW_AUTO_PAUSE_RUNTIME)
-    private readonly workflowAutoPauseRuntime?: WorkflowAutoPauseRuntime,
-    @Optional()
-    @Inject(RETENTION_RUNTIME)
-    private readonly retentionRuntime?: RetentionRuntime,
   ) {}
 
   public assertCanAcceptWork(): void {
@@ -84,9 +82,9 @@ export class WorkerReadiness {
       this.nodeAttemptRuntime.checkReadiness(),
       this.coordinatorRuntime.checkReadiness(),
       this.maintenanceRuntime.checkReadiness(),
-      this.workspaceInboxRuntime?.checkReadiness(),
-      this.workflowAutoPauseRuntime?.checkReadiness(),
-      this.retentionRuntime?.checkReadiness(),
+      this.workspaceInboxRuntime.checkReadiness(),
+      this.workflowAutoPauseRuntime.checkReadiness(),
+      this.retentionRuntime.checkReadiness(),
     ]);
     this.authenticationMailRuntime?.checkReadiness();
     this.assertCanAcceptWork();

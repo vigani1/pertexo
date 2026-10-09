@@ -327,7 +327,7 @@ describe('worker application bootstrap', () => {
     try {
       expect('getHttpServer' in app).toBe(false);
       expect(selected.workerProcessStart).toHaveBeenCalledOnce();
-      expect(checkReadiness).toHaveBeenCalledTimes(2);
+      expect(checkReadiness).toHaveBeenCalledOnce();
     } finally {
       await app.close();
     }
@@ -354,15 +354,13 @@ describe('worker application bootstrap', () => {
     }
   });
 
-  it('keeps startup successful when process metrics and warning diagnostics both fail', async () => {
+  it('keeps startup successful when the process start metric fails', async () => {
     const selected = dependencies();
     const metricFailure = new Error('process metric unavailable');
     selected.workerProcessStart.mockImplementation(() => {
       throw metricFailure;
     });
-    const warn = vi.fn(() => {
-      throw new Error('warning sink unavailable');
-    });
+    const warn = vi.fn();
 
     const app = await createWorkerApplication(workerConfig, {
       ...selected,

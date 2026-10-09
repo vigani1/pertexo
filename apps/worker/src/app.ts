@@ -115,9 +115,6 @@ export async function createWorkerApplication(
   });
 
   try {
-    await application
-      .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
-      .checkReadiness();
     const readinessMonitor = application.get(WorkerReadinessMonitor);
     await readinessMonitor.check();
     const dispatcher = application.get<OutboxDispatcher>(OUTBOX_DISPATCHER);
@@ -141,15 +138,7 @@ export async function createWorkerApplication(
       metrics.recordWorkerProcessStart();
       await dependencies.telemetry.flush?.();
     } catch (error: unknown) {
-      try {
-        dependencies.logger.warn(
-          'worker.process_start_metric_failed',
-          {},
-          error,
-        );
-      } catch {
-        // Diagnostics cannot turn a successful worker startup into a failure.
-      }
+      dependencies.logger.warn('worker.process_start_metric_failed', {}, error);
     }
     readinessMonitor.start();
   } catch (error: unknown) {
@@ -188,8 +177,7 @@ function throwWorkerStartupFailure(
 }
 
 function flattenCleanupError(error: unknown): readonly unknown[] {
-  if (!(error instanceof AggregateError)) return [error];
-  const nested: unknown = (error as { errors: unknown }).errors;
-  if (!Array.isArray(nested)) return [error];
-  return nested.flatMap((failure: unknown) => flattenCleanupError(failure));
+  return error instanceof AggregateError
+    ? (error.errors as unknown[]).flatMap(flattenCleanupError)
+    : [error];
 }

@@ -62,14 +62,7 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
       error: unknown,
     ) => void = markProcessUnhealthy,
     private readonly operationTimeoutMillis = 5_000,
-  ) {
-    if (
-      !Number.isSafeInteger(operationTimeoutMillis) ||
-      operationTimeoutMillis < 1 ||
-      operationTimeoutMillis > 120_000
-    )
-      throw new RangeError('Worker readiness timeout is invalid');
-  }
+  ) {}
 
   public start(): void {
     if (
