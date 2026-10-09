@@ -241,7 +241,10 @@ function cookiePolicy(secureCookies: boolean) {
   return {
     database: { generateId: () => randomUUID() },
     cookiePrefix: 'pertexo-auth',
-    useSecureCookies: secureCookies,
+    // A `__Secure-` name prefix would rename `pertexo_session`, which the
+    // guards, the CSRF bridge and session lookup read by name; HTTPS
+    // deployments still get the Secure attribute below.
+    useSecureCookies: false,
     defaultCookieAttributes: {
       httpOnly: true,
       secure: secureCookies,
