@@ -105,11 +105,13 @@ export default tseslint.config(
                 '@pertexo/queue/*',
                 '@pertexo/worker',
                 '@pertexo/worker/*',
+                '@pertexo/execution',
+                '@pertexo/execution/*',
                 'bullmq',
                 'ioredis',
               ],
               message:
-                'The database package is a server persistence leaf and cannot depend on frameworks, queues, observability, or applications.',
+                'The database package is a server persistence leaf and cannot depend on actions, frameworks, queues, observability, or applications.',
             },
           ],
         },
@@ -327,6 +329,42 @@ export default tseslint.config(
               ],
               message:
                 'Core nodes own pure definitions and executors, not application infrastructure or providers.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/execution/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@pertexo/database',
+              message:
+                'Execution uses the @pertexo/database/execution surface.',
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                'bullmq',
+                'ioredis',
+                'pg',
+              ],
+              message:
+                'Execution holds run actions; transactions, queues and transport belong to the database package and the apps.',
             },
           ],
         },

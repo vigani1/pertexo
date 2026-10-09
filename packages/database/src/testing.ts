@@ -31,18 +31,15 @@ export {
 export type { DatabaseReadiness } from './platform/readiness.js';
 export {
   CoordinatorDeliveryMismatchError,
-  CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
-  createCoordinatorRunStore,
-} from './runs/advance/store.js';
+} from './runs/advance/contract.js';
 export type {
-  AcknowledgeAdvanceDeliveryResult,
-  CommitAdvancePlanResult,
   CoordinatorAdvanceDelivery,
-  CoordinatorRunStore,
-  CoordinatorRunStoreOptions,
-  LoadAdvanceStateResult,
-} from './runs/advance/store.js';
+  RunAdvanceResult,
+  RunAdvanceStore,
+} from './runs/advance/contract.js';
+export { createRunAdvanceStore } from './runs/advance/store.js';
+export type { RunAdvanceStoreOptions } from './runs/advance/store.js';
 export {
   artifacts,
   auditEvents,

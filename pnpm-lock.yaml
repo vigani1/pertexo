@@ -263,6 +263,9 @@ importers:
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@pertexo/execution':
+        specifier: workspace:*
+        version: link:../../packages/execution
       '@pertexo/integrations':
         specifier: workspace:*
         version: link:../../packages/integrations
@@ -355,6 +358,9 @@ importers:
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../nodes-core
+      '@pertexo/workflow-engine':
+        specifier: workspace:*
+        version: link:../workflow-engine
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../workflow-model
@@ -377,6 +383,19 @@ importers:
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
+
+  packages/execution:
+    dependencies:
+      '@pertexo/database':
+        specifier: workspace:*
+        version: link:../database
+      '@pertexo/workflow-engine':
+        specifier: workspace:*
+        version: link:../workflow-engine
+    devDependencies:
+      '@pertexo/nodes-core':
+        specifier: workspace:*
+        version: link:../nodes-core
 
   packages/integrations:
     dependencies:

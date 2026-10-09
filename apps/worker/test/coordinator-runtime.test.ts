@@ -1,7 +1,4 @@
-import type {
-  CoordinatorRunStore,
-  PublishedWorkflowReader,
-} from '@pertexo/database/testing';
+import type { RunAdvanceStore } from '@pertexo/database/testing';
 import { CoordinatorDeliveryMismatchError } from '@pertexo/database/testing';
 import {
   JOB_NAME,
@@ -21,7 +18,6 @@ import {
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '22222222-2222-4222-8222-222222222222';
-const VERSION_ID = '33333333-3333-4333-8333-333333333333';
 const OUTBOX_EVENT_ID = '44444444-4444-4444-8444-444444444444';
 type RuntimeDependencies = NonNullable<
   Parameters<typeof createCoordinatorRuntime>[1]
@@ -54,19 +50,12 @@ function runtimeDependencies(
 ): RuntimeDependencies {
   return {
     consumerFactory: () => consumer,
-    engine: { advance: vi.fn() },
     notifications: {
       close: vi.fn().mockResolvedValue(undefined),
       publish: vi.fn(),
       resync: vi.fn(),
     },
-    reader: { close: vi.fn(), readForExecution: vi.fn() },
-    runStore: {
-      acknowledgeAdvanceDelivery: vi.fn(),
-      close: vi.fn(),
-      commitAdvancePlan: vi.fn(),
-      loadAdvanceState: vi.fn(),
-    },
+    runStore: { advance: vi.fn(), close: vi.fn() },
     dueWakeupScanner,
     deadlineWakeupScanner,
   };
@@ -77,13 +66,12 @@ describe('coordinator runtime', () => {
     ['telemetry', []],
     ['traceRunner', []],
     ['runStore', []],
-    ['reader', ['runStore']],
-    ['notifications', ['runStore', 'reader']],
-    ['dueScanner', ['runStore', 'reader', 'notifications']],
-    ['deadlineScanner', ['runStore', 'reader', 'notifications', 'dueScanner']],
+    ['notifications', ['runStore']],
+    ['dueScanner', ['runStore', 'notifications']],
+    ['deadlineScanner', ['runStore', 'notifications', 'dueScanner']],
     [
       'consumer',
-      ['runStore', 'reader', 'notifications', 'dueScanner', 'deadlineScanner'],
+      ['runStore', 'notifications', 'dueScanner', 'deadlineScanner'],
     ],
   ] as const)(
     'rolls back every owner acquired before %s construction fails',
@@ -92,20 +80,11 @@ describe('coordinator runtime', () => {
       const closed: string[] = [];
       const owned = {
         runStore: {
-          acknowledgeAdvanceDelivery: vi.fn(),
+          advance: vi.fn(),
           close: vi.fn(() => {
             closed.push('runStore');
             return Promise.resolve();
           }),
-          commitAdvancePlan: vi.fn(),
-          loadAdvanceState: vi.fn(),
-        },
-        reader: {
-          close: vi.fn(() => {
-            closed.push('reader');
-            return Promise.resolve();
-          }),
-          readForExecution: vi.fn(),
         },
         notifications: {
           close: vi.fn(() => {
@@ -149,18 +128,13 @@ describe('coordinator runtime', () => {
         notifications: vi.fn(() =>
           acquire('notifications', owned.notifications),
         ),
-        reader: vi.fn(() => acquire('reader', owned.reader)),
         runStore: vi.fn(() => acquire('runStore', owned.runStore)),
         telemetry: vi.fn(() => acquire('telemetry', {})),
         traceRunner: vi.fn(() => acquire('traceRunner', {})),
       } as unknown as CoordinatorCompositionFactories;
 
       await expect(
-        createCoordinatorRuntime(
-          runtimeOptions(),
-          { engine: { advance: vi.fn() } },
-          factories,
-        ),
+        createCoordinatorRuntime(runtimeOptions(), {}, factories),
       ).rejects.toBe(constructionFailure);
       expect(new Set(closed)).toEqual(new Set(expectedClosed));
       expect(closed).toHaveLength(expectedClosed.length);
@@ -252,7 +226,6 @@ describe('coordinator runtime', () => {
       due: new Error('due close failed'),
       deadline: new Error('deadline close failed'),
       notifications: new Error('notifications close failed'),
-      reader: new Error('reader close failed'),
       runStore: new Error('run store close failed'),
     };
     const runtime = await createCoordinatorRuntime(runtimeOptions(), {
@@ -263,7 +236,6 @@ describe('coordinator runtime', () => {
         isReady: vi.fn().mockReturnValue(true),
         waitUntilReady: vi.fn().mockResolvedValue(undefined),
       }),
-      engine: { advance: vi.fn() },
       dueWakeupScanner: {
         claimDueWakeups: vi.fn().mockResolvedValue(0),
         close: vi.fn(() => {
@@ -281,17 +253,11 @@ describe('coordinator runtime', () => {
         publish: vi.fn(),
         resync: vi.fn(),
       },
-      reader: {
-        close: vi.fn().mockRejectedValue(failures.reader),
-        readForExecution: vi.fn(),
-      },
       runStore: {
-        acknowledgeAdvanceDelivery: vi.fn(),
+        advance: vi.fn(),
         close: vi.fn(() => {
           throw failures.runStore;
         }),
-        commitAdvancePlan: vi.fn(),
-        loadAdvanceState: vi.fn(),
       },
     });
     await runtime.checkReadiness();
@@ -305,7 +271,6 @@ describe('coordinator runtime', () => {
       failures.due,
       failures.deadline,
       failures.notifications,
-      failures.reader,
       failures.runStore,
     ]);
   });
@@ -350,15 +315,8 @@ describe('coordinator runtime', () => {
       },
       {
         consumerFactory: () => consumer,
-        engine: { advance: vi.fn() },
         notifications,
-        reader: { ...adapter, readForExecution: vi.fn() },
-        runStore: {
-          ...adapter,
-          acknowledgeAdvanceDelivery: vi.fn(),
-          loadAdvanceState: vi.fn(),
-          commitAdvancePlan: vi.fn(),
-        },
+        runStore: { ...adapter, advance: vi.fn() },
         dueWakeupScanner: scanner,
         deadlineWakeupScanner: {
           claimDueWakeups: vi.fn().mockResolvedValue(0),
@@ -475,43 +433,9 @@ describe('coordinator runtime', () => {
       isReady: vi.fn().mockReturnValue(true),
       waitUntilReady: vi.fn().mockResolvedValue(undefined),
     };
-    const runStore: CoordinatorRunStore = {
-      acknowledgeAdvanceDelivery: vi.fn().mockResolvedValue({
-        kind: 'acknowledged',
-      }),
+    const runStore: RunAdvanceStore = {
+      advance: vi.fn().mockResolvedValue({ kind: 'no_change', revision: 0 }),
       close: vi.fn().mockResolvedValue(undefined),
-      loadAdvanceState: vi.fn().mockResolvedValue({
-        kind: 'ready',
-        state: {
-          runId: RUN_ID,
-          workflowVersionId: VERSION_ID,
-          checkpoint: {},
-          observations: [],
-        },
-      }),
-      commitAdvancePlan: vi.fn().mockResolvedValue({
-        kind: 'committed',
-        revision: 1,
-        admittedAttempts: [],
-      }),
-    };
-    const reader: PublishedWorkflowReader = {
-      close: vi.fn().mockResolvedValue(undefined),
-      readForExecution: vi.fn().mockResolvedValue({
-        kind: 'v2_projection',
-        workflowVersion: {
-          id: VERSION_ID,
-          workspaceId: WORKSPACE_ID,
-          workflowId: '55555555-5555-4555-8555-555555555555',
-          versionNumber: 1,
-          schemaVersion: 1,
-          checksum:
-            'wf:v2:sha256:1111111111111111111111111111111111111111111111111111111111111111',
-          executableSchemaVersion: 2,
-          executableJson: {},
-          compatibilityReleaseEpoch: 1,
-        },
-      }),
     };
     const runtime = await createCoordinatorRuntime(
       {
@@ -531,12 +455,6 @@ describe('coordinator runtime', () => {
           consumerOptions = options;
           return consumer;
         },
-        engine: {
-          advance: vi.fn().mockResolvedValue({
-            kind: 'no_change',
-            revision: 0,
-          }),
-        },
         dueWakeupScanner: {
           claimDueWakeups: vi.fn().mockResolvedValue(0),
           close: vi.fn().mockResolvedValue(undefined),
@@ -545,7 +463,6 @@ describe('coordinator runtime', () => {
           claimDueWakeups: vi.fn().mockResolvedValue(0),
           close: vi.fn().mockResolvedValue(undefined),
         },
-        reader,
         runStore,
       },
     );
@@ -575,7 +492,7 @@ describe('coordinator runtime', () => {
         { signal: new AbortController().signal },
       ),
     ).resolves.toBeUndefined();
-    vi.mocked(runStore.acknowledgeAdvanceDelivery).mockRejectedValueOnce(
+    vi.mocked(runStore.advance).mockRejectedValueOnce(
       new CoordinatorDeliveryMismatchError(),
     );
     await expect(
@@ -597,7 +514,6 @@ describe('coordinator runtime', () => {
     await runtime.close();
     await runtime.close();
     expect(consumer.close).toHaveBeenCalledOnce();
-    expect(reader.close).toHaveBeenCalledOnce();
     expect(runStore.close).toHaveBeenCalledOnce();
   });
 });

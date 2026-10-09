@@ -1,8 +1,4 @@
-export function rejectedLoopGraph(
-  items: readonly string[],
-  ordinary = false,
-  maxIterations = 3,
-) {
+export function rejectedLoopGraph(items: readonly string[]) {
   const node = (id: string, key: string) => ({
     id,
     definition: { key, version: 1 },
@@ -18,27 +14,21 @@ export function rejectedLoopGraph(
     nodes: [
       node('manual', 'core.manual'),
       {
-        ...node('loop', ordinary ? 'core.set' : 'core.foreach'),
-        inputMappings: ordinary
-          ? { value: { kind: 'literal', value: items } }
-          : { items: { kind: 'literal', value: items } },
-        ...(ordinary
-          ? {}
-          : {
-              structured: {
-                kind: 'for_each',
-                maxIterations,
-                maxConcurrency: 1,
-                body: {
-                  schemaVersion: 1,
-                  settings: {},
-                  nodes: [node('body', 'core.set')],
-                  edges: [],
-                  inputPorts: ['item', 'ordinal'],
-                  outputPorts: ['result'],
-                },
-              },
-            }),
+        ...node('loop', 'core.foreach'),
+        inputMappings: { items: { kind: 'literal', value: items } },
+        structured: {
+          kind: 'for_each',
+          maxIterations: 3,
+          maxConcurrency: 1,
+          body: {
+            schemaVersion: 1,
+            settings: {},
+            nodes: [node('body', 'core.set')],
+            edges: [],
+            inputPorts: ['item', 'ordinal'],
+            outputPorts: ['result'],
+          },
+        },
       },
       node('terminate', 'core.terminate'),
     ],

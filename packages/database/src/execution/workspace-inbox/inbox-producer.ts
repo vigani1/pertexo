@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import type { ParsedTransitionPlan } from '../../runs/advance/plan.js';
+import type { RunTransitionPlan } from '../../runs/advance/plan.js';
 
 const inboxKinds: ReadonlySet<string> = new Set([
   'failed',
@@ -22,7 +22,7 @@ export async function persistWorkspaceInboxEvent(
     workflowId: string;
     runId: string;
     cancellationRequested: boolean;
-    plan: ParsedTransitionPlan;
+    plan: RunTransitionPlan;
   }>,
 ): Promise<void> {
   const status = input.plan.checkpoint.runStatus;

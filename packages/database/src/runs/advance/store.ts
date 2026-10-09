@@ -1,37 +1,45 @@
-import { acquireDatabasePool } from '../../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import type { Pool } from 'pg';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
-  CoordinatorDeliveryMismatchError,
-  CoordinatorPlanInvalidError,
-  CoordinatorRunStateCorruptError,
-  type AcknowledgeAdvanceDeliveryInput,
-  type AcknowledgeAdvanceDeliveryResult,
-  type CommitAdvancePlanInput,
-  type CommitAdvancePlanResult,
-  type CoordinatorAdvanceDelivery,
-  type CoordinatorRunStore,
-  type LoadAdvanceStateInput,
-  type LoadAdvanceStateResult,
+  parseCompatibilityReleaseExpectation,
+  parseCompatibilityReleaseExpectationSet,
+  selectServingCompatibilityRelease,
+  type CompatibilityReleaseExpectation,
+  type CompatibilityReleaseExpectationSet,
+} from '../../compatibility/compatibility-release.js';
+import {
+  acquireDatabasePool,
+  type DatabaseRuntime,
+} from '../../platform/database-runtime.js';
+import { saveRunTransition, type RunAdvanceSettings } from './commit.js';
+import {
+  coordinatorDeliverySchema,
+  coordinatorIdentitySchema,
+  type RunAdvanceDecision,
+  type RunAdvanceInput,
+  type RunAdvanceResult,
+  type RunAdvanceState,
+  type RunAdvanceStore,
 } from './contract.js';
-import { commitCoordinatorAdvancePlan } from './commit.js';
-import { acknowledgeCoordinatorDelivery } from './receipts.js';
-import { loadCoordinatorAdvanceState } from './facts.js';
+import {
+  auditCoordinatorDeliveryMismatch,
+  claimCoordinatorReceipt,
+  completeCoordinatorReceipt,
+  DeliveryMismatch,
+  validateAuthoritativeAdvanceDelivery,
+} from './receipts.js';
+import { observeScheduleToStartSeconds } from './schedule-observation.js';
+import { loadRunForAdvance } from './state.js';
+import {
+  assertCoordinatorNotAborted,
+  withCoordinatorWriteClient,
+} from './transactions.js';
 
-export {
-  CoordinatorDeliveryMismatchError,
-  CoordinatorPlanInvalidError,
-  CoordinatorRunStateCorruptError,
-};
-export type {
-  AcknowledgeAdvanceDeliveryResult,
-  CommitAdvancePlanResult,
-  CoordinatorAdvanceDelivery,
-  CoordinatorRunStore,
-  LoadAdvanceStateResult,
-};
-export type CoordinatorRunStoreOptions = Readonly<{
+export type RunAdvanceStoreOptions = Readonly<{
+  /** The releases this worker serves; the newest is the current one. */
+  compatibilityReleases:
+    CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet;
   runTimeoutFailureContextEnabled?: boolean;
   /** ADR 055: record terminal failures for the workspace inbox. */
   workspaceInboxProducerEnabled?: boolean;
@@ -39,27 +47,115 @@ export type CoordinatorRunStoreOptions = Readonly<{
   workflowTriggerOutcomesEnabled?: boolean;
 }>;
 
-export function createCoordinatorRunStore(
-  config: DatabaseConfig,
-  runtime?: DatabaseRuntime,
-  options: CoordinatorRunStoreOptions = {},
-): CoordinatorRunStore {
-  const lease = acquireDatabasePool(config, runtime);
-  const { pool } = lease;
+async function advance(
+  pool: Pool,
+  input: RunAdvanceInput,
+  decide: (state: RunAdvanceState) => Promise<RunAdvanceDecision>,
+  context: Readonly<{
+    servingRelease: CompatibilityReleaseExpectation;
+    settings: RunAdvanceSettings;
+  }>,
+): Promise<RunAdvanceResult> {
+  assertCoordinatorNotAborted(input.signal);
+  const workspaceId = coordinatorIdentitySchema.parse(input.workspaceId);
+  const runId = coordinatorIdentitySchema.parse(input.runId);
+  const delivery = coordinatorDeliverySchema.parse(input.delivery);
+  const { signal, traceparent } = input;
+  let result: RunAdvanceResult & Readonly<{ scheduleDueAt?: string }>;
+  try {
+    result = await withCoordinatorWriteClient(
+      pool,
+      workspaceId,
+      signal,
+      async (client) => {
+        await validateAuthoritativeAdvanceDelivery(
+          client,
+          workspaceId,
+          runId,
+          delivery,
+        );
+        const loaded = await loadRunForAdvance(client, {
+          workspaceId,
+          runId,
+          servingRelease: context.servingRelease,
+        });
+        if (loaded.kind !== 'loaded') return loaded;
+        assertCoordinatorNotAborted(signal);
+        const decision = await decide(loaded.state);
+        assertCoordinatorNotAborted(signal);
+        if (decision.kind === 'no_change') {
+          if (
+            (await claimCoordinatorReceipt(client, workspaceId, delivery)) ===
+            'new'
+          )
+            await completeCoordinatorReceipt(client, workspaceId, delivery);
+          return Object.freeze({
+            kind: 'no_change',
+            revision: loaded.row.revision,
+          });
+        }
+        return saveRunTransition(client, {
+          delivery,
+          pendingFailures: loaded.pendingFailures,
+          plan: decision.plan,
+          previous: decision.previous,
+          row: loaded.row,
+          runId,
+          settings: context.settings,
+          ...(traceparent === undefined ? {} : { traceparent }),
+          workspaceId,
+        });
+      },
+    );
+  } catch (error: unknown) {
+    if (error instanceof DeliveryMismatch)
+      return auditCoordinatorDeliveryMismatch(
+        pool,
+        workspaceId,
+        delivery,
+        signal,
+      );
+    throw error;
+  }
+  if (result.kind !== 'committed' || !('scheduleDueAt' in result))
+    return result;
+  const { scheduleDueAt, ...committed } = result;
+  const scheduleToStartSeconds = await observeScheduleToStartSeconds(
+    pool,
+    scheduleDueAt,
+    signal,
+  );
   return Object.freeze({
-    acknowledgeAdvanceDelivery: (input: AcknowledgeAdvanceDeliveryInput) =>
-      acknowledgeCoordinatorDelivery(pool, input),
-    loadAdvanceState: (input: LoadAdvanceStateInput) =>
-      loadCoordinatorAdvanceState(pool, input),
-    commitAdvancePlan: (input: CommitAdvancePlanInput) =>
-      commitCoordinatorAdvancePlan(pool, input, {
-        runTimeoutFailureContextEnabled:
-          options.runTimeoutFailureContextEnabled ?? false,
-        workspaceInboxProducerEnabled:
-          options.workspaceInboxProducerEnabled ?? false,
-        workflowTriggerOutcomesEnabled:
-          options.workflowTriggerOutcomesEnabled ?? false,
-      }),
-    close: () => lease.close(),
+    ...committed,
+    ...(scheduleToStartSeconds === undefined ? {} : { scheduleToStartSeconds }),
   });
+}
+
+export function createRunAdvanceStore(
+  config: DatabaseConfig,
+  runtime: DatabaseRuntime | undefined,
+  options: RunAdvanceStoreOptions,
+): RunAdvanceStore {
+  const releases = Array.isArray(options.compatibilityReleases)
+    ? parseCompatibilityReleaseExpectationSet(options.compatibilityReleases)
+    : Object.freeze([
+        parseCompatibilityReleaseExpectation(options.compatibilityReleases),
+      ]);
+  const context = Object.freeze({
+    servingRelease: selectServingCompatibilityRelease(releases),
+    settings: Object.freeze({
+      runTimeoutFailureContextEnabled:
+        options.runTimeoutFailureContextEnabled ?? false,
+      workspaceInboxProducerEnabled:
+        options.workspaceInboxProducerEnabled ?? false,
+      workflowTriggerOutcomesEnabled:
+        options.workflowTriggerOutcomesEnabled ?? false,
+    }),
+  });
+  const lease = acquireDatabasePool(config, runtime);
+  const store: RunAdvanceStore = {
+    advance: (input, decide) => advance(lease.pool, input, decide, context),
+    close: () => lease.close(),
+  };
+  return Object.freeze(store);
 }

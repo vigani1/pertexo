@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ParsedTransitionPlan } from '../src/runs/advance/plan.js';
+import type { RunTransitionPlan } from '../src/runs/advance/plan.js';
 import { persistWorkspaceInboxEvent } from '../src/execution/workspace-inbox/inbox-producer.js';
 
 const workspaceId = '018f2d7a-1c9b-7a42-9c3e-2f5a6b7c8d90';
@@ -11,19 +11,19 @@ const runId = '018f2d7a-1c9b-7a42-9c3e-2f5a6b7c8d92';
 function plan(
   runStatus: string,
   events: readonly { name: string; sequence: number }[],
-): ParsedTransitionPlan {
+): RunTransitionPlan {
   return {
     checkpoint: { runStatus },
     events: events.map((event) => ({
       ...event,
       occurredAt: '2026-09-28T10:01:00.000Z',
     })),
-  } as unknown as ParsedTransitionPlan;
+  } as unknown as RunTransitionPlan;
 }
 
 async function produce(
   input: Readonly<{
-    plan: ParsedTransitionPlan;
+    plan: RunTransitionPlan;
     cancellationRequested?: boolean;
   }>,
 ) {

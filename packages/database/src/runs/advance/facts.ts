@@ -1,25 +1,7 @@
-import type { Pool, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model/observation-window';
-import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model/graph';
 
-import {
-  CoordinatorRunStateCorruptError,
-  coordinatorIdentitySchema,
-  type LoadAdvanceStateInput,
-  type LoadAdvanceStateResult,
-} from './contract.js';
-import {
-  assertCoordinatorNotAborted,
-  withCoordinatorReadClient,
-} from './transactions.js';
-import {
-  assertAvailableArtifacts,
-  validateLoadedCheckpointPhysicalState,
-} from './physical-state.js';
-import {
-  parsePersistedWorkflowCheckpoint,
-  type PersistedWorkflowCheckpoint,
-} from '../../compatibility/persisted-workflow-checkpoint.js';
+import { CoordinatorRunStateCorruptError } from './contract.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
@@ -30,10 +12,6 @@ import {
   type CoordinatorEventRow,
   type PersistedCoordinatorEventRow,
 } from './fact-attempts.js';
-import {
-  appendPendingFailureObservations,
-  type PendingFailureRow,
-} from './pending-failures.js';
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -50,7 +28,7 @@ const maximumPersistedFactRowsPerFetch = 1_000;
 // PostgreSQL JSON value may exceed it after numeric text expansion.
 const targetPersistedFactWirePageBytes = 4 * 1_024 * 1_024;
 
-export function normalizedJson(value: unknown): unknown {
+function normalizedJson(value: unknown): unknown {
   try {
     return JSON.parse(serializeStoredExecutionJsonValue(value)) as unknown;
   } catch {
@@ -58,7 +36,7 @@ export function normalizedJson(value: unknown): unknown {
   }
 }
 
-export function record(value: unknown): Readonly<Record<string, unknown>> {
+function record(value: unknown): Readonly<Record<string, unknown>> {
   const normalized = normalizedJson(value);
   if (
     normalized === null ||
@@ -104,27 +82,27 @@ export async function persistedFactCapacity(
   workspaceId: string,
   runId: string,
   firstSequence: number,
-  lastSequence?: number,
 ): Promise<
   Readonly<{
     count: number;
+    lastSequence: number;
     maximumStorageBytes: number;
     storageBytes: number;
   }>
 > {
   const result = await client.query<{
     fact_count: number;
+    last_sequence: number | null;
     maximum_storage_bytes: string;
     storage_bytes: string;
   }>(
-    `select count(*)::int as fact_count,
+    `select count(*)::int as fact_count, max(sequence)::int as last_sequence,
             coalesce(sum(octet_length(payload::text)),0)::bigint as storage_bytes,
             coalesce(max(octet_length(payload::text)),0)::bigint
               as maximum_storage_bytes
      from app.run_events
-     where workspace_id=$1 and workflow_run_id=$2 and sequence >= $3
-       and ($4::int is null or sequence <= $4::int)`,
-    [workspaceId, runId, firstSequence, lastSequence ?? null],
+     where workspace_id=$1 and workflow_run_id=$2 and sequence >= $3`,
+    [workspaceId, runId, firstSequence],
   );
   const row = result.rows[0];
   const count = row?.fact_count;
@@ -141,7 +119,12 @@ export async function persistedFactCapacity(
     maximumStorageBytes > storageBytes
   )
     throw new CoordinatorRunStateCorruptError();
-  return Object.freeze({ count, maximumStorageBytes, storageBytes });
+  return Object.freeze({
+    count,
+    lastSequence: row?.last_sequence ?? firstSequence - 1,
+    maximumStorageBytes,
+    storageBytes,
+  });
 }
 
 export function canonicalTimestamp(value: unknown): string {
@@ -176,7 +159,7 @@ export async function readPersistedFacts(
   input: Readonly<{
     count: number;
     firstSequence: number;
-    lastSequence?: number;
+    lastSequence: number;
     maximumStorageBytes: number;
     runId: string;
     workspaceId: string;
@@ -206,14 +189,14 @@ export async function readPersistedFacts(
        from app.run_events event
        where event.workspace_id=$1 and event.workflow_run_id=$2
          and event.sequence >= $3
-         and ($4::int is null or event.sequence <= $4::int)
+         and event.sequence <= $4
        order by event.sequence
        limit $5`,
       [
         input.workspaceId,
         input.runId,
         nextSequence,
-        input.lastSequence ?? null,
+        input.lastSequence,
         rowsPerFetch,
       ],
     );
@@ -283,50 +266,6 @@ function attemptFact(
     attemptNumber: row.attempt_number,
     invocationKey: row.invocation_key,
   };
-}
-
-function requiredLaterFactType(row: EventRow): string | undefined {
-  if (row.node_status === 'waiting') {
-    if (row.attempt_status === 'succeeded') return 'node.waiting';
-    if (row.attempt_status === 'failed') return 'node.retry_scheduled';
-    return undefined;
-  }
-  return row.attempt_status === row.node_status && row.node_status !== null
-    ? `node.${row.node_status}`
-    : undefined;
-}
-export function validatePersistedFactBatch(rows: readonly EventRow[]): void {
-  const laterTypesByAttempt = new Map<string, Set<string>>();
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const row = rows[index];
-    if (row === undefined) throw new CoordinatorRunStateCorruptError();
-    if (
-      (row.type !== 'node.started' && row.type !== 'node.progress') ||
-      (row.attempt_status === 'running' && row.node_status === 'running') ||
-      (row.attempt_status === 'failed' &&
-        row.node_status === 'running' &&
-        row.executor_failure_kind !== null &&
-        row.retry_decision === 'pending')
-    ) {
-      if (row.attempt_id !== null) {
-        const types =
-          laterTypesByAttempt.get(row.attempt_id) ?? new Set<string>();
-        types.add(row.type);
-        laterTypesByAttempt.set(row.attempt_id, types);
-      }
-      continue;
-    }
-    const requiredLaterType = requiredLaterFactType(row);
-    if (
-      row.attempt_id === null ||
-      requiredLaterType === undefined ||
-      !laterTypesByAttempt.get(row.attempt_id)?.has(requiredLaterType)
-    )
-      throw new CoordinatorRunStateCorruptError();
-    const types = laterTypesByAttempt.get(row.attempt_id) ?? new Set<string>();
-    types.add(row.type);
-    laterTypesByAttempt.set(row.attempt_id, types);
-  }
 }
 
 export function mapEvent(row: EventRow): unknown {
@@ -428,7 +367,7 @@ export function mapEvent(row: EventRow): unknown {
   };
 }
 
-function completedInlineOutput(
+export function completedInlineOutput(
   row: EventRow,
   controlOutputNodeIds: ReadonlySet<string>,
 ): readonly unknown[] {
@@ -458,291 +397,29 @@ function completedInlineOutput(
     : [];
 }
 
-function freshSemanticFacts(
+/** Artifact outputs the engine will reference must still be stored. */
+export async function assertAvailableArtifacts(
+  client: PoolClient,
+  workspaceId: string,
   observations: readonly unknown[],
-): ReadonlyMap<string, Readonly<Record<string, unknown>>> {
-  const facts = new Map<string, Readonly<Record<string, unknown>>>();
-  for (const observation of observations) {
-    const value = record(observation);
-    if (
-      (value.kind === 'wait' ||
-        value.kind === 'outcome' ||
-        value.kind === 'attempt_failure') &&
-      typeof value.invocationKey === 'string'
-    ) {
-      facts.set(value.invocationKey, value);
-    }
-  }
-  return facts;
-}
-
-type CoordinatorObservation = ReturnType<typeof mapEvent>;
-type CheckpointInvocation = PersistedWorkflowCheckpoint['invocations'][number];
-function assertObservationInvocationBindings(
-  checkpoint: PersistedWorkflowCheckpoint,
-  observations: readonly CoordinatorObservation[],
-): Map<string, CheckpointInvocation> {
-  const checkpointInvocations = new Map<string, CheckpointInvocation>();
-  for (const invocation of checkpoint.invocations)
-    checkpointInvocations.set(invocation.invocationKey, invocation);
-  for (const observation of observations) {
-    const value = record(observation);
-    if (value.kind === 'cancel_requested') continue;
-    if (
-      typeof value.invocationKey !== 'string' ||
-      typeof value.attemptNumber !== 'number'
-    )
-      throw new CoordinatorRunStateCorruptError();
-    const invocation = checkpointInvocations.get(value.invocationKey);
-    if (
-      invocation?.status !== 'running' ||
-      invocation.attemptNumber !== value.attemptNumber
-    )
-      throw new CoordinatorRunStateCorruptError();
-  }
-  return checkpointInvocations;
-}
-function assertPersistedControlState(
-  checkpoint: PersistedWorkflowCheckpoint,
-  observations: readonly CoordinatorObservation[],
-  row: Readonly<{
-    cancel_requested_at: Date | null;
-    deadline_at: Date | null;
-    database_now: Date;
-  }>,
-): boolean {
-  let hasFreshCancellation = false;
-  for (const observation of observations)
-    if (record(observation).kind === 'cancel_requested') {
-      hasFreshCancellation = true;
-      break;
-    }
-  const cancellationEvidenceIsConsistent =
-    (!checkpoint.cancelRequested && !hasFreshCancellation) ||
-    row.cancel_requested_at !== null;
-  if (!cancellationEvidenceIsConsistent)
-    throw new CoordinatorRunStateCorruptError();
-  if (
-    checkpoint.deadlineExpired &&
-    (row.deadline_at === null || row.deadline_at > row.database_now)
-  )
-    throw new CoordinatorRunStateCorruptError();
-  return hasFreshCancellation;
-}
-export async function loadCoordinatorAdvanceState(
-  pool: Pool,
-  input: LoadAdvanceStateInput,
-): Promise<LoadAdvanceStateResult> {
-  assertCoordinatorNotAborted(input.signal);
-  const workspaceId = coordinatorIdentitySchema.parse(input.workspaceId);
-  const runId = coordinatorIdentitySchema.parse(input.runId);
-  return withCoordinatorReadClient(
-    pool,
-    workspaceId,
-    input.signal,
-    async (client) => {
-      const result = await client.query<{
-        run_id: string;
-        workflow_version_id: string;
-        status: string;
-        cancel_requested_at: Date | null;
-        deadline_at: Date | null;
-        database_now: Date;
-        revision: number;
-        engine_version: string;
-        scheduler_state: unknown;
-        executable_schema_version: number | null;
-        executable_json: unknown;
-        event_high_water: number;
-      }>(
-        `select run.id as run_id, run.workflow_version_id, run.status,
-                    run.cancel_requested_at, run.deadline_at,
-                    clock_timestamp() as database_now,
-                    checkpoint.revision, checkpoint.engine_version,
-                    checkpoint.scheduler_state,
-                    version.executable_schema_version,version.executable_json,
-                    coalesce((select max(event.sequence) from app.run_events event
-                              where event.workspace_id = run.workspace_id
-                                and event.workflow_run_id = run.id), 0)::int as event_high_water
-             from app.workflow_runs run
-             join app.run_checkpoints checkpoint
-               on checkpoint.workspace_id = run.workspace_id
-              and checkpoint.workflow_run_id = run.id
-              and checkpoint.workflow_version_id = run.workflow_version_id
-             left join app.workflow_versions version
-               on version.workspace_id = run.workspace_id
-              and version.id = run.workflow_version_id
-             where run.workspace_id = $1 and run.id = $2`,
-        [workspaceId, runId],
-      );
-      assertCoordinatorNotAborted(input.signal);
-      const row = result.rows[0];
-      if (row === undefined) return Object.freeze({ kind: 'not_found' });
-      if (row.executable_schema_version !== 2)
-        return Object.freeze({ kind: 'not_executable' });
-      let checkpoint: PersistedWorkflowCheckpoint;
-      try {
-        checkpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
-      } catch {
-        return Object.freeze({ kind: 'unsupported_checkpoint' });
-      }
-      if (
-        checkpoint.revision !== row.revision ||
-        checkpoint.engineVersion !== row.engine_version ||
-        checkpoint.workflowVersionId !== row.workflow_version_id ||
-        checkpoint.runStatus !== row.status
-      )
-        throw new CoordinatorRunStateCorruptError();
-
-      const factCapacity = await persistedFactCapacity(
-        client,
-        workspaceId,
-        runId,
-        checkpoint.nextEventSequence,
-      );
-      if (factCapacity.count > maximumPersistedFacts)
-        return Object.freeze({ kind: 'capacity_exceeded' });
-      const events = await readPersistedFacts(client, {
-        count: factCapacity.count,
-        firstSequence: checkpoint.nextEventSequence,
-        maximumStorageBytes: factCapacity.maximumStorageBytes,
-        runId,
-        workspaceId,
-      });
-      if (events.length !== factCapacity.count)
-        throw new CoordinatorRunStateCorruptError();
-      for (const [index, event] of events.entries()) {
-        if (event.sequence !== checkpoint.nextEventSequence + index)
-          throw new CoordinatorRunStateCorruptError();
-      }
-      const observedHighWater =
-        checkpoint.nextEventSequence + events.length - 1;
-      if (observedHighWater !== row.event_high_water)
-        throw new CoordinatorRunStateCorruptError();
-      validatePersistedFactBatch(events);
-      const observations = events.map(mapEvent);
-      let controlOutputNodeIds: ReadonlySet<string>;
-      try {
-        controlOutputNodeIds = workflowControlOutputNodeIdsV2(
-          row.executable_json,
-        );
-      } catch {
-        throw new CoordinatorRunStateCorruptError();
-      }
-      const completedOutputs = events.flatMap((event) =>
-        completedInlineOutput(event, controlOutputNodeIds),
-      );
-      const pendingFailures = await client.query<PendingFailureRow>(
-        `select attempt.id attempt_id,attempt.attempt_number,
-                    attempt.completed_at,attempt.executor_failure_kind,
-                    attempt.executor_error_kind,
-                    attempt.executor_possibly_dispatched,
-                    attempt.safe_error_code,node.invocation_key
-             from app.node_attempts attempt
-             join app.node_runs node
-               on node.workspace_id=attempt.workspace_id
-              and node.id=attempt.node_run_id
-             where attempt.workspace_id=$1 and node.workflow_run_id=$2
-               and node.current_attempt_id=attempt.id
-               and node.current_attempt_number=attempt.attempt_number
-               and node.status='running' and attempt.status='failed'
-               and attempt.retry_decision='pending'
-             order by node.invocation_key,attempt.id`,
-        [workspaceId, runId],
-      );
-      appendPendingFailureObservations(observations, pendingFailures.rows);
-      const checkpointInvocations = assertObservationInvocationBindings(
-        checkpoint,
-        observations,
-      );
-      await validateLoadedCheckpointPhysicalState(
-        client,
-        workspaceId,
-        runId,
-        checkpoint,
-        freshSemanticFacts(observations),
-        row.executable_json,
-      );
-      const hasFreshCancellation = assertPersistedControlState(
-        checkpoint,
-        observations,
-        row,
-      );
-      const artifactIds = observations.flatMap((observation) => {
-        const value = record(observation);
-        const output = value.output;
-        if (output === undefined) return [];
-        const parsedOutput = record(output);
-        return parsedOutput.kind === 'artifact' &&
-          typeof parsedOutput.artifactId === 'string'
-          ? [parsedOutput.artifactId]
-          : [];
-      });
-      await assertAvailableArtifacts(client, workspaceId, new Set(artifactIds));
-      if (
-        row.cancel_requested_at !== null &&
-        !checkpoint.cancelRequested &&
-        !hasFreshCancellation
-      )
-        throw new CoordinatorRunStateCorruptError();
-      if (
-        row.deadline_at !== null &&
-        row.deadline_at <= row.database_now &&
-        !checkpoint.deadlineExpired
-      )
-        observations.push({
-          kind: 'deadline_expired',
-          occurredAt: row.deadline_at.toISOString(),
-        });
-
-      const due = await client.query<{
-        invocation_key: string;
-        due_at: Date;
-      }>(
-        `select invocation_key, coalesce(retry_due_at, resume_at) as due_at
-             from app.node_runs
-             where workspace_id = $1 and workflow_run_id = $2
-               and status = 'waiting'
-               and coalesce(retry_due_at, resume_at) <= $3
-               and invocation_key = any($4::varchar[])
-             order by invocation_key
-             limit 10001`,
-        [
-          workspaceId,
-          runId,
-          row.database_now,
-          checkpoint.invocations
-            .filter(({ status }) => status === 'waiting')
-            .map(({ invocationKey }) => invocationKey),
-        ],
-      );
-      if (due.rows.length > 10_000) throw new CoordinatorRunStateCorruptError();
-      observations.push(
-        ...due.rows.map(({ invocation_key: invocationKey, due_at: dueAt }) => {
-          const invocation = checkpointInvocations.get(invocationKey);
-          if (
-            invocation?.status !== 'waiting' ||
-            invocation.resumeAt !== dueAt.toISOString()
-          )
-            throw new CoordinatorRunStateCorruptError();
-          return {
-            kind: 'due_at',
-            invocationKey,
-            occurredAt: dueAt.toISOString(),
-          };
-        }),
-      );
-      assertCoordinatorNotAborted(input.signal);
-      return Object.freeze({
-        kind: 'ready',
-        state: Object.freeze({
-          runId: row.run_id,
-          workflowVersionId: row.workflow_version_id,
-          checkpoint,
-          observations: Object.freeze(observations.map(Object.freeze)),
-          completedOutputs: Object.freeze(completedOutputs.map(Object.freeze)),
-        }),
-      });
-    },
+): Promise<void> {
+  const artifactIds = new Set(
+    observations.flatMap((observation) => {
+      const output = record(observation).output;
+      if (output === undefined) return [];
+      const value = record(output);
+      return value.kind === 'artifact' && typeof value.artifactId === 'string'
+        ? [value.artifactId]
+        : [];
+    }),
   );
+  if (artifactIds.size === 0) return;
+  const available = await client.query<{ id: string }>(
+    `select id from app.artifacts
+     where workspace_id=$1 and id=any($2::uuid[])
+       and status='available' and deleted_at is null`,
+    [workspaceId, [...artifactIds]],
+  );
+  if (available.rows.length !== artifactIds.size)
+    throw new CoordinatorRunStateCorruptError();
 }

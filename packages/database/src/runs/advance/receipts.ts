@@ -7,17 +7,10 @@ import type { Pool, PoolClient } from 'pg';
 import {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
-  coordinatorDeliverySchema,
-  coordinatorIdentitySchema,
-  type AcknowledgeAdvanceDeliveryInput,
-  type AcknowledgeAdvanceDeliveryResult,
-  type CommitAdvancePlanResult,
   type CoordinatorAdvanceDelivery,
+  type RunAdvanceResult,
 } from './contract.js';
-import {
-  assertCoordinatorNotAborted,
-  withCoordinatorWriteClient,
-} from './transactions.js';
+import { withCoordinatorWriteClient } from './transactions.js';
 import { canonicalOutboxPayloadChecksum } from '../../execution/transport/outbox.js';
 import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
 
@@ -129,6 +122,7 @@ export async function completeCoordinatorReceipt(
   );
 }
 
+/** Re-queues a delivery whose receipt the caller has claimed. */
 export async function deferCoordinatorForActiveCapacity(
   client: PoolClient,
   input: Readonly<{
@@ -139,7 +133,7 @@ export async function deferCoordinatorForActiveCapacity(
     delivery: CoordinatorAdvanceDelivery;
     traceparent?: string;
   }>,
-): Promise<CommitAdvancePlanResult | undefined> {
+): Promise<RunAdvanceResult | undefined> {
   const capacity = await client.query<{ available: boolean }>(
     `select app.workflow_run_active_capacity_available($1,$2,$3) as available`,
     [input.workspaceId, input.entitlementVersion, input.runId],
@@ -147,14 +141,6 @@ export async function deferCoordinatorForActiveCapacity(
   const row = capacity.rows[0];
   if (row === undefined) throw new CoordinatorRunStateCorruptError();
   if (row.available) return undefined;
-
-  const receipt = await claimCoordinatorReceipt(
-    client,
-    input.workspaceId,
-    input.delivery,
-  );
-  if (receipt === 'duplicate')
-    return Object.freeze({ kind: 'deferred', revision: input.revision });
 
   const outboxEventId = generatePersistedId();
   const payload = {
@@ -220,54 +206,4 @@ export async function auditCoordinatorDeliveryMismatch(
     },
   );
   throw new CoordinatorDeliveryMismatchError();
-}
-
-export async function acknowledgeCoordinatorDelivery(
-  pool: Pool,
-  input: AcknowledgeAdvanceDeliveryInput,
-): Promise<AcknowledgeAdvanceDeliveryResult> {
-  assertCoordinatorNotAborted(input.signal);
-  let workspaceId: string;
-  let runId: string;
-  let delivery: CoordinatorAdvanceDelivery;
-  try {
-    workspaceId = coordinatorIdentitySchema.parse(input.workspaceId);
-    runId = coordinatorIdentitySchema.parse(input.runId);
-    delivery = coordinatorDeliverySchema.parse(input.delivery);
-  } catch {
-    throw new CoordinatorDeliveryMismatchError();
-  }
-  try {
-    return await withCoordinatorWriteClient(
-      pool,
-      workspaceId,
-      input.signal,
-      async (client) => {
-        await validateAuthoritativeAdvanceDelivery(
-          client,
-          workspaceId,
-          runId,
-          delivery,
-        );
-        const receipt = await claimCoordinatorReceipt(
-          client,
-          workspaceId,
-          delivery,
-        );
-        if (receipt === 'duplicate')
-          return Object.freeze({ kind: 'duplicate' as const });
-        await completeCoordinatorReceipt(client, workspaceId, delivery);
-        return Object.freeze({ kind: 'acknowledged' as const });
-      },
-    );
-  } catch (error: unknown) {
-    if (error instanceof DeliveryMismatch)
-      return auditCoordinatorDeliveryMismatch(
-        pool,
-        workspaceId,
-        delivery,
-        input.signal,
-      );
-    throw error;
-  }
 }

@@ -11,7 +11,7 @@ import {
 } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
-import { createCoordinatorAdvanceEngine } from '../src/execution/coordinator-engine.js';
+import { createDecisionEngine } from '../support/decide.js';
 
 import {
   RUN_ID,
@@ -19,9 +19,9 @@ import {
   WORKFLOW_ID,
   WORKSPACE_ID,
   graph,
-} from './support/execution-engine.fixture.js';
+} from '../support/workflow.fixture.js';
 
-describe('coordinator advance engine', () => {
+describe('advanceRun decisions', () => {
   it('verifies the persisted projection before advancing the exact executable', async () => {
     const release = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,
@@ -33,7 +33,7 @@ describe('coordinator advance engine', () => {
       iterationBudget: 0,
       nextEventSequence: 2,
     });
-    const engine = createCoordinatorAdvanceEngine({
+    const engine = createDecisionEngine({
       admissionRelease: release,
       currentRelease: release,
     });
@@ -103,7 +103,7 @@ describe('coordinator advance engine', () => {
       CORE_REGISTRY_RELEASE,
     );
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });
-    const engine = createCoordinatorAdvanceEngine({
+    const engine = createDecisionEngine({
       admissionRelease: release,
       currentRelease: release,
     });
@@ -153,7 +153,7 @@ describe('coordinator advance engine', () => {
       executableJson: executable.envelope,
       compatibilityReleaseEpoch: release.epoch,
     };
-    const engine = createCoordinatorAdvanceEngine({
+    const engine = createDecisionEngine({
       admissionRelease: release,
       currentRelease: release,
     });
@@ -236,7 +236,7 @@ describe('coordinator advance engine', () => {
     const currentCompatibilityRelease = releaseSupport.descriptions.at(-1);
     if (currentCompatibilityRelease === undefined)
       throw new Error('target release fixture is missing');
-    const engine = createCoordinatorAdvanceEngine({
+    const engine = createDecisionEngine({
       admissionRelease: composeExecutableCompatibilityRelease(
         CORE_REGISTRY_RELEASE,
       ),
@@ -287,7 +287,7 @@ describe('coordinator advance engine', () => {
     const currentCompatibilityRelease = releaseSupport.descriptions.at(-1);
     if (currentCompatibilityRelease === undefined)
       throw new Error('target release fixture is missing');
-    const engine = createCoordinatorAdvanceEngine({
+    const engine = createDecisionEngine({
       admissionRelease: composeExecutableCompatibilityRelease(
         CORE_REGISTRY_RELEASE,
       ),

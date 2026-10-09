@@ -2,24 +2,27 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "composite": true,
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+    "sourceMap": true,
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "test"],
   "references": [
     {
-      "path": "../nodes-core/tsconfig.json"
+      "path": "../database/tsconfig.json"
     },
     {
       "path": "../workflow-engine/tsconfig.json"
-    },
-    {
-      "path": "../workflow-model/tsconfig.json"
     }
   ]
 }

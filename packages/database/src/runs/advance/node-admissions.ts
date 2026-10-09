@@ -2,16 +2,12 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
 
-import {
-  CoordinatorPlanInvalidError,
-  CoordinatorRunStateCorruptError,
-} from './contract.js';
-import type { PendingCoordinatorFailure } from './commit-state.js';
+import { CoordinatorRunStateCorruptError } from './contract.js';
+import type { PendingCoordinatorFailure } from './state.js';
 import { terminalStatus } from './facts.js';
-import type { ParsedTransitionPlan } from './plan.js';
+import type { RunTransitionPlan } from './plan.js';
 import { canonicalOutboxPayloadChecksum } from '../../execution/transport/outbox.js';
 import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
-import type { RejectedForEachDeclarations } from './rejected-loop-proof.js';
 
 export type CoordinatorExecutionIdentity = Readonly<{
   nodeRunId: string;
@@ -23,7 +19,7 @@ type ExecutionIdentityMap = Map<string, CoordinatorExecutionIdentity>;
 
 async function persistPendingFailureDecisions(
   client: PoolClient,
-  plan: ParsedTransitionPlan,
+  plan: RunTransitionPlan,
   pendingFailures: readonly PendingCoordinatorFailure[],
   workspaceId: string,
   runId: string,
@@ -51,7 +47,7 @@ async function persistPendingFailureDecisions(
   for (const failure of pendingFailures) {
     const event = decisionEvents.get(failure.invocation_key);
     if (event === undefined || !invocations.has(failure.invocation_key))
-      throw new CoordinatorPlanInvalidError();
+      throw new CoordinatorRunStateCorruptError();
     const decision =
       event.name === 'node.retry_scheduled'
         ? 'retry'
@@ -61,7 +57,7 @@ async function persistPendingFailureDecisions(
         decision,
       )
     )
-      throw new CoordinatorPlanInvalidError();
+      throw new CoordinatorRunStateCorruptError();
     const finalized = await client.query(
       `update app.node_attempts
          set retry_decision=$3,updated_at=clock_timestamp()
@@ -98,7 +94,7 @@ async function persistPendingFailureDecisions(
 
 async function persistNodeAdmissions(
   client: PoolClient,
-  plan: ParsedTransitionPlan,
+  plan: RunTransitionPlan,
   workspaceId: string,
   runId: string,
 ): Promise<ExecutionIdentityMap> {
@@ -115,7 +111,7 @@ async function persistNodeAdmissions(
   const rows: Readonly<Record<string, unknown>>[] = [];
   for (const admission of plan.nodeRunAdmissions) {
     const invocation = invocations.get(admission.invocationKey);
-    if (invocation === undefined) throw new CoordinatorPlanInvalidError();
+    if (invocation === undefined) throw new CoordinatorRunStateCorruptError();
     const attempt = attempts.get(admission.invocationKey);
     const nodeRunId = generatePersistedId();
     const attemptId = attempt === undefined ? undefined : generatePersistedId();
@@ -130,13 +126,12 @@ async function persistNodeAdmissions(
       node_id: admission.nodeId,
       invocation_key: admission.invocationKey,
       branch_context: serializeStoredExecutionJsonValue({
-        ...('branchPath' in invocation && invocation.branchPath !== undefined
-          ? { branchPath: invocation.branchPath }
-          : {}),
-        ...('iterationPath' in invocation &&
-        invocation.iterationPath !== undefined
-          ? { iterationPath: invocation.iterationPath }
-          : {}),
+        ...(invocation.branchPath === undefined
+          ? {}
+          : { branchPath: invocation.branchPath }),
+        ...(invocation.iterationPath === undefined
+          ? {}
+          : { iterationPath: invocation.iterationPath }),
       }),
       status,
       side_effect_class: admission.sideEffectClass,
@@ -179,7 +174,7 @@ async function persistAttemptAdmissions(
   client: PoolClient,
   input: Readonly<{
     physical: ExecutionIdentityMap;
-    plan: ParsedTransitionPlan;
+    plan: RunTransitionPlan;
     runId: string;
     traceparent?: string;
     workspaceId: string;
@@ -191,42 +186,15 @@ async function persistAttemptAdmissions(
   for (const attempt of plan.attempts) {
     let ids = physical.get(attempt.invocationKey);
     if (ids === undefined) {
-      const existing = await client.query<{
-        id: string;
-        current_attempt_number: number | null;
-        provider_idempotency_key: string | null;
-        side_effect_class: string;
-        status: string;
-        is_due: boolean;
-      }>(
-        `select id, current_attempt_number, side_effect_class,
-                provider_idempotency_key, status,
-                coalesce(retry_due_at, resume_at) is not null
-                  and coalesce(retry_due_at, resume_at) <= clock_timestamp()
-                  as is_due
-           from app.node_runs
+      const existing = await client.query<{ id: string }>(
+        `select id from app.node_runs
            where workspace_id = $1 and workflow_run_id = $2
              and invocation_key = $3
            for update`,
         [workspaceId, runId, attempt.invocationKey],
       );
       const node = existing.rows[0];
-      const isFirstReadyAttempt =
-        (node?.status === 'ready' || node?.status === 'pending') &&
-        (node.current_attempt_number === null
-          ? attempt.attemptNumber === 1
-          : node.current_attempt_number === attempt.attemptNumber - 1);
-      const isDueAttempt =
-        node?.status === 'waiting' &&
-        node.is_due &&
-        node.current_attempt_number === attempt.attemptNumber - 1;
-      if (
-        node?.side_effect_class !== attempt.sideEffectClass ||
-        node.provider_idempotency_key !==
-          (attempt.providerIdempotencyKey ?? null) ||
-        (!isFirstReadyAttempt && !isDueAttempt)
-      )
-        throw new CoordinatorPlanInvalidError();
+      if (node === undefined) throw new CoordinatorRunStateCorruptError();
       ids = {
         nodeRunId: node.id,
         attemptId: generatePersistedId(),
@@ -253,7 +221,8 @@ async function persistAttemptAdmissions(
         ],
       );
     }
-    if (ids.attemptId === undefined) throw new CoordinatorPlanInvalidError();
+    if (ids.attemptId === undefined)
+      throw new CoordinatorRunStateCorruptError();
     attemptRows.push({
       id: ids.attemptId,
       node_run_id: ids.nodeRunId,
@@ -312,7 +281,7 @@ async function persistAttemptAdmissions(
 async function loadEventExecutionIdentities(
   client: PoolClient,
   physical: ExecutionIdentityMap,
-  plan: ParsedTransitionPlan,
+  plan: RunTransitionPlan,
   workspaceId: string,
   runId: string,
 ): Promise<void> {
@@ -360,10 +329,10 @@ async function persistRunEvents(
   input: Readonly<{
     pendingFailures: readonly PendingCoordinatorFailure[];
     physical: ExecutionIdentityMap;
-    plan: ParsedTransitionPlan;
+    plan: RunTransitionPlan;
     runId: string;
     workspaceId: string;
-    rejectedForEachDeclarations: RejectedForEachDeclarations;
+    rejectedForEachDeclarations: ReadonlySet<string>;
   }>,
 ): Promise<void> {
   const { pendingFailures, physical, plan, runId, workspaceId } = input;
@@ -448,11 +417,11 @@ export async function persistCoordinatorExecutionTransitions(
   client: PoolClient,
   input: Readonly<{
     pendingFailures: readonly PendingCoordinatorFailure[];
-    plan: ParsedTransitionPlan;
+    plan: RunTransitionPlan;
     runId: string;
     traceparent?: string;
     workspaceId: string;
-    rejectedForEachDeclarations?: RejectedForEachDeclarations;
+    rejectedForEachDeclarations: ReadonlySet<string>;
   }>,
 ): Promise<ReadonlyMap<string, CoordinatorExecutionIdentity>> {
   const { pendingFailures, plan, runId, traceparent, workspaceId } = input;
@@ -489,7 +458,7 @@ export async function persistCoordinatorExecutionTransitions(
     plan,
     runId,
     workspaceId,
-    rejectedForEachDeclarations: input.rejectedForEachDeclarations ?? new Map(),
+    rejectedForEachDeclarations: input.rejectedForEachDeclarations,
   });
   return physical;
 }

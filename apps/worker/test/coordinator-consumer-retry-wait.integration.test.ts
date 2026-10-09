@@ -3,18 +3,28 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   createDeadlineWakeupScanner,
   createDueNodeWakeupScanner,
+  createRunAdvanceStore,
   parseDatabaseConfig,
+  type RunAdvanceStore,
 } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE } from '@pertexo/node-catalog';
+import {
+  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+  platformRegistryReleaseSupport,
+} from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
-import { invocationKey, parseCheckpoint } from '@pertexo/workflow-engine';
+import {
+  composeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseSupport,
+  invocationKey,
+  parseCheckpoint,
+  type WorkflowTransitionPlan,
+} from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
-import type { CoordinatorAdvanceEngine } from '../src/execution/coordinator-handler.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
 import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
@@ -255,71 +265,76 @@ describeIntegration('Retry and Wait outage recovery', () => {
       [workspaceId, runId, dueAt],
     );
 
-    const retryEngine: CoordinatorAdvanceEngine = {
-      advance: (input) => {
-        const current = parseCheckpoint(input.checkpoint);
-        if (current.revision > 0)
-          return Promise.resolve({
-            kind: 'no_change',
-            revision: current.revision,
-          });
-        const invocations = current.invocations.map((invocation) => {
-          const {
-            resumeAt: _resumeAt,
-            waitKind: _waitKind,
-            ...active
-          } = invocation;
-          return {
-            ...active,
-            status: 'running' as const,
-            attemptNumber: 2,
-          };
-        });
-        return Promise.resolve({
-          kind: 'transition',
-          plan: {
-            expectedRevision: 0,
-            expectedNextEventSequence: 2,
-            consumedThroughEventSequence: 1,
-            checkpoint: {
-              ...current,
-              revision: 1,
-              runStatus: 'running',
-              nextEventSequence: 4,
-              invocations,
-            },
-            events: nodeIds.map((nodeId, index) => ({
-              schemaVersion: 1 as const,
-              sequence: index + 2,
-              name: 'node.ready' as const,
-              occurredAt: input.occurredAt,
-              invocationKey: invocationKey({ workflowVersionId, nodeId }),
-              nodeId,
-              attemptNumber: 1,
-            })),
-            nodeRunAdmissions: [],
-            attempts: nodeIds.map((nodeId) => ({
-              invocationKey: invocationKey({ workflowVersionId, nodeId }),
-              nodeId,
-              attemptNumber: 2,
-              admissionKind:
-                nodeId === 'manual'
-                  ? ('retry' as const)
-                  : ('wait_resume' as const),
-              sideEffectClass:
-                nodeId === 'manual'
-                  ? ('idempotent_with_key' as const)
-                  : ('safe' as const),
-              ...(nodeId === 'manual'
-                ? {
-                    providerIdempotencyKey: `due-wakeup-provider-key:${runId}:${nodeId}`,
-                  }
-                : {}),
-            })),
-          },
-        });
-      },
+    // A scripted decision that admits both due nodes on the first advance.
+    const retryDecide: Parameters<RunAdvanceStore['advance']>[1] = (state) => {
+      const current = parseCheckpoint(state.checkpoint);
+      const occurredAt = new Date().toISOString();
+      if (current.revision > 0) return Promise.resolve({ kind: 'no_change' });
+      const invocations = current.invocations.map((invocation) => {
+        const {
+          resumeAt: _resumeAt,
+          waitKind: _waitKind,
+          ...active
+        } = invocation;
+        return {
+          ...active,
+          status: 'running' as const,
+          attemptNumber: 2,
+        };
+      });
+      const plan: WorkflowTransitionPlan = {
+        expectedRevision: 0,
+        expectedNextEventSequence: 2,
+        consumedThroughEventSequence: 1,
+        checkpoint: {
+          ...current,
+          revision: 1,
+          runStatus: 'running',
+          nextEventSequence: 4,
+          invocations,
+        },
+        events: nodeIds.map((nodeId, index) => ({
+          schemaVersion: 1 as const,
+          sequence: index + 2,
+          name: 'node.ready' as const,
+          occurredAt,
+          invocationKey: invocationKey({ workflowVersionId, nodeId }),
+          nodeId,
+          attemptNumber: 1,
+        })),
+        nodeRunAdmissions: [],
+        attempts: nodeIds.map((nodeId) => ({
+          invocationKey: invocationKey({ workflowVersionId, nodeId }),
+          nodeId,
+          attemptNumber: 2,
+          admissionKind:
+            nodeId === 'manual' ? ('retry' as const) : ('wait_resume' as const),
+          sideEffectClass:
+            nodeId === 'manual'
+              ? ('idempotent_with_key' as const)
+              : ('safe' as const),
+          ...(nodeId === 'manual'
+            ? {
+                providerIdempotencyKey: `due-wakeup-provider-key:${runId}:${nodeId}`,
+              }
+            : {}),
+        })),
+      };
+      return Promise.resolve({ kind: 'transition', previous: current, plan });
     };
+    const retryStore = createRunAdvanceStore(
+      parseDatabaseConfig({ connectionString: databaseUrl(workerUrl), max: 2 }),
+      undefined,
+      {
+        compatibilityReleases: createExecutableCompatibilityReleaseSupport(
+          platformRegistryReleaseSupport().map(
+            composeExecutableCompatibilityRelease,
+          ),
+        ).descriptions,
+      },
+    );
+    const advance = (input: Parameters<RunAdvanceStore['advance']>[0]) =>
+      retryStore.advance(input, retryDecide);
     const runtimeOptions = {
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
@@ -331,7 +346,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
       redisUrl,
     };
     const beforeDue = await createCoordinatorRuntime(runtimeOptions, {
-      engine: retryEngine,
+      advance,
     });
     try {
       await beforeDue.consumer.waitUntilReady(5_000);
@@ -360,7 +375,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
       setTimeout(resolve, Math.max(0, Date.parse(dueAt) - Date.now() + 25)),
     );
     const afterClaim = await createCoordinatorRuntime(runtimeOptions, {
-      engine: retryEngine,
+      advance,
     });
     try {
       await afterClaim.consumer.waitUntilReady(5_000);
@@ -526,7 +541,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
         await dispatcher.close();
       }
     } finally {
-      await afterClaim.close();
+      await Promise.all([afterClaim.close(), retryStore.close()]);
     }
   });
 

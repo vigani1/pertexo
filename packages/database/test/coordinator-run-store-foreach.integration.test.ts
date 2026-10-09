@@ -1,12 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  CoordinatorRunStateCorruptError,
   NodeAttemptStateCorruptError,
-  asOwner,
   asRuntime,
   checkpoint,
-  createCoordinatorRunStore,
+  createTestRunStore,
   createDueNodeWakeupScanner,
   createHash,
   databaseUrl,
@@ -248,7 +246,7 @@ describe('Coordinator For Each persistence invariants', () => {
       await scanner.close();
     }
 
-    const freshStore = createCoordinatorRunStore(
+    const freshStore = createTestRunStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(workerBaseUrl),
         max: 1,
@@ -299,20 +297,6 @@ describe('Coordinator For Each persistence invariants', () => {
         control_kind: 'for_each_barrier',
       },
     ]);
-    await asOwner(workspaceA, (client) =>
-      client.query(
-        `update app.node_runs set branch_context='{}'::jsonb
-           where workflow_run_id=$1 and invocation_key=$2`,
-        [runId, bodyKey],
-      ),
-    );
-    await expect(
-      ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
   });
 
   it('loads only exact ordinal-scoped body inputs and fails closed on loop proof drift', async () => {

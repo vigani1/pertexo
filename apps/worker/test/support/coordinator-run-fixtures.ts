@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
-  createCoordinatorRunStore,
+  createRunAdvanceStore,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
 import { createWorkflowRunDatabase } from '@pertexo/database/api';
@@ -13,6 +13,8 @@ import {
   createCheckpointV2,
   createExecutableCompatibilityReleaseSupport,
   invocationKey,
+  parseCheckpoint,
+  type WorkflowTransitionPlan,
 } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
 import { expect } from 'vitest';
@@ -521,8 +523,16 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
       attemptId,
     ],
   );
-  const store = createCoordinatorRunStore(
+  const store = createRunAdvanceStore(
     parseDatabaseConfig({ connectionString: databaseUrl(workerUrl), max: 2 }),
+    undefined,
+    {
+      compatibilityReleases: createExecutableCompatibilityReleaseSupport(
+        platformRegistryReleaseSupport().map(
+          composeExecutableCompatibilityRelease,
+        ),
+      ).descriptions,
+    },
   );
   try {
     const [acceptedDelivery] = await workerQuery<{
@@ -535,61 +545,69 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
     );
     if (acceptedDelivery === undefined)
       throw new Error('Accepted coordinator delivery is missing');
-    await expect(
-      store.commitAdvancePlan({
-        delivery: {
-          outboxEventId: acceptedDelivery.id,
-          payloadChecksum: acceptedDelivery.payload_checksum,
-        },
-        workspaceId,
-        runId,
-        workflowVersionId,
-        signal: new AbortController().signal,
-        plan: {
-          expectedRevision: 0,
-          expectedNextEventSequence: 2,
-          consumedThroughEventSequence: 1,
-          checkpoint: {
-            ...createCheckpoint({
-              engineVersion,
-              workflowVersionId,
-              iterationBudget: 0,
-              nextEventSequence: 4,
-            }),
-            revision: 1,
-            runStatus: 'failed' as const,
-            admittedInvocationKeys: [failedInvocationKey],
-            invocations: [
-              {
-                invocationKey: failedInvocationKey,
-                nodeId: 'set',
-                status: 'failed',
-                attemptNumber: 1,
-              },
-            ],
+    const plan: WorkflowTransitionPlan = {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: {
+        ...createCheckpoint({
+          engineVersion,
+          workflowVersionId,
+          iterationBudget: 0,
+          nextEventSequence: 4,
+        }),
+        revision: 1,
+        runStatus: 'failed' as const,
+        admittedInvocationKeys: [failedInvocationKey],
+        invocations: [
+          {
+            invocationKey: failedInvocationKey,
+            nodeId: 'set',
+            status: 'failed',
+            attemptNumber: 1,
           },
-          events: [
-            {
-              schemaVersion: 1,
-              sequence: 2,
-              name: 'node.failed',
-              occurredAt: '2026-08-24T10:01:00.000Z',
-              invocationKey: failedInvocationKey,
-              nodeId: 'set',
-              attemptNumber: 1,
-              reasonCode: 'provider.unavailable',
-            },
-            {
-              schemaVersion: 1,
-              sequence: 3,
-              name: 'run.failed',
-              occurredAt: '2026-08-24T10:01:00.000Z',
-            },
-          ],
-          nodeRunAdmissions: [],
-          attempts: [],
+        ],
+      },
+      events: [
+        {
+          schemaVersion: 1,
+          sequence: 2,
+          name: 'node.failed',
+          occurredAt: '2026-08-24T10:01:00.000Z',
+          invocationKey: failedInvocationKey,
+          nodeId: 'set',
+          attemptNumber: 1,
+          reasonCode: 'provider.unavailable',
         },
-      }),
+        {
+          schemaVersion: 1,
+          sequence: 3,
+          name: 'run.failed',
+          occurredAt: '2026-08-24T10:01:00.000Z',
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    };
+    // Saves a hand-written failed transition through the real advance store.
+    await expect(
+      store.advance(
+        {
+          delivery: {
+            outboxEventId: acceptedDelivery.id,
+            payloadChecksum: acceptedDelivery.payload_checksum,
+          },
+          workspaceId,
+          runId,
+          signal: new AbortController().signal,
+        },
+        (state) =>
+          Promise.resolve({
+            kind: 'transition' as const,
+            previous: parseCheckpoint(state.checkpoint),
+            plan,
+          }),
+      ),
     ).resolves.toMatchObject({ kind: 'committed' });
   } finally {
     await store.close();

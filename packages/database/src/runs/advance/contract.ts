@@ -1,35 +1,50 @@
+import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import type { PublishedWorkflowV2Projection } from '../../execution/published-workflow-reader.js';
+import type { RunTransitionPlan } from './plan.js';
 
 export const coordinatorIdentitySchema = z.uuid();
-const checksumSchema = sha256HexSchema;
 export const coordinatorDeliverySchema = z
   .object({
     outboxEventId: z.uuid(),
-    payloadChecksum: checksumSchema,
+    payloadChecksum: sha256HexSchema,
   })
   .strict();
 
-export type LoadAdvanceStateResult =
+export type CoordinatorAdvanceDelivery = Readonly<
+  z.input<typeof coordinatorDeliverySchema>
+>;
+
+/** Everything the engine needs, read under the run lock. */
+export type RunAdvanceState = Readonly<{
+  runId: string;
+  workflowVersionId: string;
+  /** Stored checkpoint JSON; the engine parses it. */
+  checkpoint: unknown;
+  observations: readonly unknown[];
+  completedOutputs: readonly unknown[];
+  workflow: PublishedWorkflowV2Projection;
+}>;
+
+export type RunAdvanceDecision =
+  | Readonly<{ kind: 'no_change' }>
   | Readonly<{
-      kind:
-        | 'not_found'
-        | 'not_executable'
-        | 'unsupported_checkpoint'
-        | 'capacity_exceeded';
-    }>
-  | Readonly<{
-      kind: 'ready';
-      state: Readonly<{
-        runId: string;
-        workflowVersionId: string;
-        checkpoint: unknown;
-        observations: readonly unknown[];
-        completedOutputs?: readonly unknown[];
-      }>;
+      kind: 'transition';
+      /** The stored checkpoint as the engine parsed it. */
+      previous: WorkflowCheckpoint;
+      plan: RunTransitionPlan;
     }>;
 
-export type CommitAdvancePlanResult =
+export type RunAdvanceInput = Readonly<{
+  delivery: CoordinatorAdvanceDelivery;
+  workspaceId: string;
+  runId: string;
+  traceparent?: string;
+  signal: AbortSignal;
+}>;
+
+export type RunAdvanceResult =
   | Readonly<{
       kind: 'committed';
       revision: number;
@@ -41,64 +56,23 @@ export type CommitAdvancePlanResult =
       scheduleToStartSeconds?: number;
     }>
   | Readonly<{
-      kind: 'already_committed' | 'deferred' | 'stale';
+      kind: 'already_committed' | 'deferred' | 'no_change';
       revision: number;
     }>
-  | Readonly<{ kind: 'not_found' }>;
+  | Readonly<{
+      kind: 'not_found' | 'not_executable' | 'capacity_exceeded';
+    }>;
 
-export type CoordinatorAdvanceDelivery = Readonly<
-  z.input<typeof coordinatorDeliverySchema>
->;
-
-export type AcknowledgeAdvanceDeliveryResult = Readonly<{
-  kind: 'acknowledged' | 'duplicate';
-}>;
-
-export interface CoordinatorRunStore {
-  loadAdvanceState(
-    input: Readonly<{
-      workspaceId: string;
-      runId: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<LoadAdvanceStateResult>;
-  commitAdvancePlan(
-    input: Readonly<{
-      delivery: CoordinatorAdvanceDelivery;
-      workspaceId: string;
-      runId: string;
-      workflowVersionId: string;
-      plan: unknown;
-      traceparent?: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<CommitAdvancePlanResult>;
-  acknowledgeAdvanceDelivery(
-    input: Readonly<{
-      delivery: CoordinatorAdvanceDelivery;
-      workspaceId: string;
-      runId: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<AcknowledgeAdvanceDeliveryResult>;
+export interface RunAdvanceStore {
+  /**
+   * Locks the run, reads its state, lets `decide` compute the transition and
+   * saves it, all in one transaction.
+   */
+  advance(
+    input: RunAdvanceInput,
+    decide: (state: RunAdvanceState) => Promise<RunAdvanceDecision>,
+  ): Promise<RunAdvanceResult>;
   close(): Promise<void>;
-}
-
-export type LoadAdvanceStateInput = Parameters<
-  CoordinatorRunStore['loadAdvanceState']
->[0];
-export type CommitAdvancePlanInput = Parameters<
-  CoordinatorRunStore['commitAdvancePlan']
->[0];
-export type AcknowledgeAdvanceDeliveryInput = Parameters<
-  CoordinatorRunStore['acknowledgeAdvanceDelivery']
->[0];
-
-export class CoordinatorPlanInvalidError extends Error {
-  public override readonly name = 'CoordinatorPlanInvalidError';
-  public constructor() {
-    super('Coordinator advance plan is invalid');
-  }
 }
 
 export class CoordinatorRunStateCorruptError extends Error {
