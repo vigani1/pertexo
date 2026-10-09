@@ -210,7 +210,12 @@ now, as one ordered program — not "whenever we touch it".
           health "protocol" marker trigger and the observation cleanup trigger
           go.
   - [ ] Triggers: schedules and webhooks.
-  - [ ] Notifications and inbox.
+  - [x] Notifications and inbox: the policy and dispatch locks are
+        statements in TypeScript, run and intent pins are checked once where
+        they are made, inbox reads only move forward in TypeScript, and idle
+        inbox threads are a retention rule. The cross-workspace fold and
+        notification recovery claims stay in SQL, as does the recipient check
+        the inbox row policies use.
   - [ ] Consumer-named entry points (`/api`, `/worker`, `/maintenance`,
         `/lifecycle`).
 - [ ] **8. Package-by-package pass** — read every file of every package and app,

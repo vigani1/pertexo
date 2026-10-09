@@ -1,12 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { count, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import {
   acceptWorkflowRun,
   WorkspaceRunAdmissionDeniedError,
 } from '../src/runs/commands/acceptance.js';
-import { workflowRuns } from '../src/schema.js';
 import {
   acceptanceInput,
   apiDatabase,
@@ -42,70 +41,13 @@ function hasPostgresConstraint(expected: string): (error: unknown) => boolean {
 }
 
 describe('workflow run notification pinning', () => {
-  it('rejects malformed destination pins and inactive acceptance identities atomically', async () => {
+  it('rejects runs in a suspended workspace and malformed pins by constraint', async () => {
     const valid = await createNotificationFixture();
-    const unrelated = await createNotificationFixture();
-    const wrongProvider = await createNotificationFixture({
-      connectionKind: 'slack',
-      destinationKind: 'email',
-    });
     const validPin = {
       destinationId: valid.destinationId,
       secretVersionId: valid.secretVersionId,
       sideEffectClass: 'idempotent_with_key' as const,
     };
-    const expectRejected = async (
-      operation: () => Promise<void>,
-    ): Promise<void> => {
-      await expect(operation()).rejects.toSatisfy(hasPostgresCode('23514'));
-      await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
-        expect(await db.select({ count: count() }).from(workflowRuns)).toEqual([
-          { count: 0 },
-        ]);
-      });
-    };
-
-    await expectRejected(() =>
-      insertDirectPinnedRun({ ...validPin, sideEffectClass: 'unsafe' }),
-    );
-    await expectRejected(() =>
-      insertDirectPinnedRun({
-        ...validPin,
-        secretVersionId: unrelated.secretVersionId,
-      }),
-    );
-    await expectRejected(() =>
-      insertDirectPinnedRun({
-        ...validPin,
-        destinationId: wrongProvider.destinationId,
-        secretVersionId: wrongProvider.secretVersionId,
-      }),
-    );
-
-    await setFixtureStatus(
-      'failure_notification_destinations',
-      valid.destinationId,
-      'disabled',
-    );
-    await expectRejected(() => insertDirectPinnedRun(validPin));
-    await setFixtureStatus(
-      'failure_notification_destinations',
-      valid.destinationId,
-      'enabled',
-    );
-    const revoked = await createNotificationFixture();
-    await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
-      await db.execute(sql`update app.connections set status='revoked',health_revision=health_revision+1,
-        last_health_transition_at=clock_timestamp(),last_health_transition_source='revoke'
-        where workspace_id=${workspaceA} and id=${revoked.connectionId}`);
-    });
-    await expectRejected(() =>
-      insertDirectPinnedRun({
-        ...validPin,
-        destinationId: revoked.destinationId,
-        secretVersionId: revoked.secretVersionId,
-      }),
-    );
     await setFixtureStatus('workspaces', workspaceA, 'suspended');
     await expect(insertDirectPinnedRun(validPin)).rejects.toSatisfy(
       hasPostgresCode('PTA01'),

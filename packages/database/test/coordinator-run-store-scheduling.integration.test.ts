@@ -2524,25 +2524,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         status: 'outcome_unknown',
         possibly_dispatched: true,
       });
-
-      await expect(
-        asRuntime(workerBaseUrl, workspaceA, (client) =>
-          client.query(
-            `insert into app.run_failure_notification_intents (
-               id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
-               destination_id,destination_config_version,side_effect_class,
-               context,context_checksum,status,delivery_attempts,dispatch_marked_at,recovery_at
-             ) select $1,workspace_id,workflow_run_id,terminal_event_sequence+1,policy_version,
-                       destination_id,destination_config_version,'unsafe',context,context_checksum,
-                      'dispatching',1,clock_timestamp()-interval '2 seconds',
-                      clock_timestamp()-interval '1 second'
-               from app.run_failure_notification_intents where id=$2`,
-            [randomUUID(), first.intent_id],
-          ),
-        ),
-      ).rejects.toThrow(
-        'new failure notification intent must exactly match its run pin',
-      );
     } finally {
       await closeFailureNotificationFixture(deliveryStore);
     }

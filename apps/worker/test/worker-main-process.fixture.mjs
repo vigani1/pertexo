@@ -43,7 +43,6 @@ const config = {
   workspaceInbox: {
     foldBatchSize: 500,
     foldPollMillis: 1_000,
-    expiryPollMillis: 300_000,
   },
   workflowAutoPause: {
     mode: 'off',

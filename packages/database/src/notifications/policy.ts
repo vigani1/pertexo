@@ -75,9 +75,25 @@ export async function resolveWorkflowFailureNotificationPolicy(
     side_effect_class: 'idempotent_with_key' | 'unsafe';
     kind: 'email' | 'slack';
   }>(sql`
-    select * from app.lock_workflow_failure_notification_policy(
-      ${transaction.workspaceId},${workflowId}
-    )
+    select destination.id destination_id, destination.current_config_version,
+           destination.status destination_status, version.kind,
+           version.side_effect_class,
+           case when jsonb_typeof(version.config) = 'object'
+             and version.config ? 'connectionId'
+             and (version.config->>'connectionId') ~
+               '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+             then (version.config->>'connectionId')::uuid end connection_id
+    from app.workflow_failure_notification_policies policy
+    join app.failure_notification_destinations destination
+      on destination.workspace_id = policy.workspace_id
+     and destination.id = policy.destination_id
+    join app.failure_notification_destination_versions version
+      on version.workspace_id = destination.workspace_id
+     and version.destination_id = destination.id
+     and version.version = destination.current_config_version
+    where policy.workspace_id = ${transaction.workspaceId}
+      and policy.workflow_id = ${workflowId}
+    for share of policy, destination
   `);
   const destination = destinationResult.rows[0];
   if (!eligibleNotificationDestination(destination)) return undefined;

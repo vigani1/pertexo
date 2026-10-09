@@ -74,7 +74,6 @@ describe('parseWorkerConfig', () => {
       workspaceInbox: {
         foldBatchSize: 500,
         foldPollMillis: 1_000,
-        expiryPollMillis: 300_000,
       },
       workflowAutoPause: {
         mode: 'off',
@@ -465,14 +464,12 @@ describe('parseWorkerConfig', () => {
       WORKSPACE_INBOX_PRODUCER: 'true',
       WORKSPACE_INBOX_FOLD_BATCH_SIZE: '1000',
       WORKSPACE_INBOX_FOLD_POLL_MILLIS: '250',
-      WORKSPACE_INBOX_EXPIRY_POLL_MILLIS: '60000',
     });
 
     expect(config.coordinator.workspaceInboxProducerEnabled).toBe(true);
     expect(config.workspaceInbox).toEqual({
       foldBatchSize: 1_000,
       foldPollMillis: 250,
-      expiryPollMillis: 60_000,
     });
   });
 
@@ -482,7 +479,6 @@ describe('parseWorkerConfig', () => {
     ['WORKSPACE_INBOX_FOLD_BATCH_SIZE', '0'],
     ['WORKSPACE_INBOX_FOLD_BATCH_SIZE', '1001'],
     ['WORKSPACE_INBOX_FOLD_POLL_MILLIS', '99'],
-    ['WORKSPACE_INBOX_EXPIRY_POLL_MILLIS', '999'],
   ])('rejects an invalid workspace inbox setting (%s=%s)', (name, value) => {
     expect(() =>
       parseWorkerConfig({

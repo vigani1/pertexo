@@ -19,8 +19,6 @@ export type WorkspaceInboxRuntimeOptions = Readonly<{
   foldBatchSize: number;
   /** Idle wait between folds once nothing is pending. */
   foldPollMillis: number;
-  /** Wait between sweeps for threads idle past their window. */
-  expiryPollMillis: number;
 }>;
 
 export type WorkspaceInboxDiagnostics = Readonly<{
@@ -30,13 +28,11 @@ export type WorkspaceInboxDiagnostics = Readonly<{
 
 /** Folds back to back while a burst is pending, then yields to the poll. */
 const MAX_FOLDS_PER_CYCLE = 20;
-const EXPIRY_BATCH_SIZE = 1_000;
-const MAX_EXPIRY_BATCHES_PER_SWEEP = 20;
 
 /**
- * ADR 055: folds pending inbox failures into their workflows' threads, expires
- * idle threads, and hints each changed workspace's open inboxes. Every worker
- * may run it; the database commands take disjoint work.
+ * ADR 055: folds pending inbox failures into their workflows' threads and
+ * hints each changed workspace's open inboxes. Every worker may run it; the
+ * fold takes disjoint work. Retention removes idle threads.
  */
 export function createWorkspaceInboxRuntime(
   store: WorkspaceInboxFoldStore,
@@ -44,7 +40,6 @@ export function createWorkspaceInboxRuntime(
   options: WorkspaceInboxRuntimeOptions,
   diagnostics: WorkspaceInboxDiagnostics,
 ): WorkspaceInboxRuntime {
-  let nextExpiryAt = 0;
   const hint = async (changes: readonly WorkspaceInboxChange[]) => {
     const published = await Promise.allSettled(
       changes.map((change) => publisher.publish(change)),
@@ -60,24 +55,11 @@ export function createWorkspaceInboxRuntime(
       await hint(changes);
     }
   };
-  const expire = async (signal: AbortSignal) => {
-    if (Date.now() < nextExpiryAt) return;
-    for (let batch = 0; batch < MAX_EXPIRY_BATCHES_PER_SWEEP; batch += 1)
-      if (
-        (await store.expireThreads(EXPIRY_BATCH_SIZE, signal)) <
-        EXPIRY_BATCH_SIZE
-      )
-        break;
-    nextExpiryAt = Date.now() + options.expiryPollMillis;
-  };
   return createPollingRuntime({
     name: 'Workspace inbox',
     pollMillis: options.foldPollMillis,
     checkCompatibility: (signal) => store.checkReadiness(signal),
-    cycle: async (signal) => {
-      await fold(signal);
-      await expire(signal);
-    },
+    cycle: fold,
     cycleFailed: diagnostics.cycleFailed,
     release: async () => {
       const closed = await Promise.allSettled([
