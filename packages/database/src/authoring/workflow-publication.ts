@@ -84,11 +84,6 @@ type PublicationVariant = Readonly<{
 }>;
 
 export type WorkflowPublicationDependencies = Readonly<{
-  durableResult(
-    value: unknown,
-    expectedWorkspaceId: string,
-    expectedWorkflowId: string,
-  ): Omit<PublishWorkflowResult, 'replayed'>;
   requireAuthor(
     client: PoolClient,
     workspaceId: string,
@@ -118,10 +113,14 @@ type CompiledPublication = Readonly<{
   schemaVersion: number;
 }>;
 
+/** A retry gets back the version its first attempt published. */
+const storedPublicationSchema = z
+  .object({ versionId: uuidSchema, reused: z.boolean() })
+  .strict();
+
 async function claimPublication(
   client: PoolClient,
   input: PublishWorkflowInput,
-  dependencies: WorkflowPublicationDependencies,
 ): Promise<PublicationClaim> {
   const workflowId = uuidSchema.parse(input.workflowId);
   const command: CommandIdentity = {
@@ -135,19 +134,20 @@ async function claimPublication(
     request: digestSchema.parse(input.requestHash),
     resourceId: workflowId,
   });
+  if (stored === null)
+    return Object.freeze({ command, replay: null, workflowId });
+  const { versionId, reused } = storedPublicationSchema.parse(stored);
+  const version = await client.query<Record<string, unknown>>(
+    `select ${workflowVersionRowSelection} from app.workflow_versions
+     where workspace_id=$1 and workflow_id=$2 and id=$3`,
+    [input.workspaceId, workflowId, versionId],
+  );
+  const row = version.rows[0];
+  if (row === undefined)
+    throw new WorkflowNotFoundError('Workflow version is not visible');
   return Object.freeze({
     command,
-    replay:
-      stored === null
-        ? null
-        : Object.freeze({
-            ...dependencies.durableResult(
-              stored,
-              input.workspaceId,
-              workflowId,
-            ),
-            replayed: true,
-          }),
+    replay: Object.freeze({ version: mapVersion(row), reused, replayed: true }),
     workflowId,
   });
 }
@@ -386,7 +386,7 @@ async function finalizePublication(
   );
   await hooks?.afterPublishStep?.('audit');
   await completeCommand(client, claim.command, {
-    version: { ...version, publishedAt: version.publishedAt.toISOString() },
+    versionId: version.id,
     reused,
   });
   await hooks?.afterPublishStep?.('idempotency');
@@ -405,7 +405,7 @@ export function createWorkflowPublisher(
           input.workspaceId,
           input.actorId,
         );
-        const claim = await claimPublication(client, input, dependencies);
+        const claim = await claimPublication(client, input);
         if (claim.replay !== null) return claim.replay;
         const publication = await lockAndCompilePublication(
           client,

@@ -321,7 +321,29 @@ describe('snapshot validation and publication ordering', () => {
     const query = vi.fn((sql: string) => {
       if (sql.includes('select request_hash'))
         return Promise.resolve({
-          rows: [{ request_hash: requestHash, status, result_ref: {} }],
+          rows: [
+            {
+              request_hash: requestHash,
+              status,
+              result_ref: { versionId: workflowId, reused: false },
+            },
+          ],
+        });
+      if (sql.includes('from app.workflow_versions'))
+        return Promise.resolve({
+          rows: [
+            {
+              id: workflowId,
+              workspace_id: workspaceId,
+              workflow_id: workflowId,
+              version_number: 1,
+              schema_version: 1,
+              graph_json: graph,
+              checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+              published_by: actorId,
+              published_at: row.updated_at,
+            },
+          ],
         });
       if (sql.includes('select id from app.workflows'))
         return Promise.resolve({ rows: [{ id: workflowId }] });
@@ -348,7 +370,7 @@ describe('snapshot validation and publication ordering', () => {
         versionNumber: 1,
         schemaVersion: 1,
         graphJson: graph,
-        checksum: `wf:v1:sha256:${'a'.repeat(64)}` as const,
+        checksum: `wf:v2:sha256:${'a'.repeat(64)}` as const,
         publishedBy: actorId,
         publishedAt: row.updated_at,
       },
@@ -356,7 +378,6 @@ describe('snapshot validation and publication ordering', () => {
     const requireAuthor = vi.fn().mockResolvedValue(undefined);
     const transact = vi.fn();
     const publish = createWorkflowPublisher({
-      durableResult: () => replay,
       requireAuthor,
       selectVariant,
       testHooks: undefined,

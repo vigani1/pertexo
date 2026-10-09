@@ -23,7 +23,7 @@ export const workflowVersionRowSelection =
   'id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,published_by,published_at';
 export const workflowRowSelection =
   'id,workspace_id,name,name_revision,lifecycle_status,lifecycle_revision,activation_status,published_version_id,created_by,created_at,updated_at';
-export const checksumSchema = z.union([
+const checksumSchema = z.union([
   retainedChecksumSchema,
   z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
 ]);
