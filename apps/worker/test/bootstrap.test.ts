@@ -182,7 +182,6 @@ function idleRuntimes() {
   const maintenanceRuntime: MaintenanceRuntime = {
     consumer: idleConsumer(),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
-    whenIdle: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   };
   const triggerRuntime: TriggerRuntime = {

@@ -605,7 +605,7 @@ describe('preview reconciliation handler', () => {
     await runtime.close();
   });
 
-  it('does not start a recovery timer when notification delivery is disabled', async () => {
+  it('is ready without failure-notification delivery', async () => {
     vi.useFakeTimers();
     try {
       const runtime = await createMaintenanceRuntime(
@@ -627,7 +627,6 @@ describe('preview reconciliation handler', () => {
       );
 
       await expect(runtime.checkReadiness()).resolves.toBeUndefined();
-      expect(vi.getTimerCount()).toBe(0);
       await runtime.close();
     } finally {
       vi.useRealTimers();
@@ -733,7 +732,6 @@ describe('preview reconciliation handler', () => {
     expect(notificationClose).not.toHaveBeenCalled();
 
     detached.resolve(undefined);
-    await expect(runtime.whenIdle()).resolves.toBeUndefined();
     await vi.waitFor(() => {
       expect(notificationClose).toHaveBeenCalledOnce();
     });

@@ -5,7 +5,7 @@ import { boundedBackgroundTask } from './background-task-deadline.js';
 import { reportDiagnostic } from './polling.js';
 
 /** A resource the runtime owns; undefined when it was never acquired. */
-type Owner = Readonly<{ close(): unknown }> | undefined;
+export type Owner = Readonly<{ close?(): unknown }> | undefined;
 
 export type ScannerRuntime = Readonly<{
   consumer: QueueConsumer;
@@ -22,7 +22,11 @@ export type ScannerRuntimeDefinition = Readonly<{
   pollIntervalMillis: number;
   shutdownTimeoutMillis: number;
   scan(signal: AbortSignal): Promise<void>;
-  scanFailed(error: unknown): void;
+  scanFailed?(error: unknown): void;
+  /** Further readiness, checked once the latest scan succeeded. */
+  checkReadiness?(): Promise<void>;
+  /** Work to settle after the consumer stops and before the owners close. */
+  afterConsumerClose?(): Promise<void>;
 }>;
 
 function rejectedReasons(
@@ -42,7 +46,7 @@ export async function closeOwners(
     await Promise.allSettled(
       owners.map((owner) =>
         boundedBackgroundTask(
-          Promise.resolve().then(() => owner?.close()),
+          Promise.resolve().then(() => owner?.close?.()),
           timeoutMillis,
         ),
       ),
@@ -75,7 +79,7 @@ export function createScannerRuntime(
         if (!signal.aborted) {
           latestScanFailed = true;
           reportDiagnostic(() => {
-            definition.scanFailed(error);
+            definition.scanFailed?.(error);
           });
         }
       }
@@ -88,10 +92,15 @@ export function createScannerRuntime(
   const close = async (): Promise<void> => {
     controller.abort();
     firstScan.resolve(undefined);
-    const drain = Promise.allSettled([
-      Promise.resolve().then(() => definition.consumer.close()),
-      loop,
-    ]);
+    const drain = (async () => [
+      ...(await Promise.allSettled([
+        Promise.resolve().then(() => definition.consumer.close()),
+        loop,
+      ])),
+      ...(await Promise.allSettled([
+        Promise.resolve().then(() => definition.afterConsumerClose?.()),
+      ])),
+    ])();
     let drained: PromiseSettledResult<unknown>[];
     try {
       drained = await boundedBackgroundTask(
@@ -131,6 +140,7 @@ export function createScannerRuntime(
       if (signal.aborted) throw closed();
       if (latestScanFailed)
         throw new Error(`${definition.name} latest scan failed`);
+      await definition.checkReadiness?.();
     },
     close: (): Promise<void> => {
       closePromise ??= close();

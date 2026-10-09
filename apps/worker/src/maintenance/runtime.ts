@@ -30,22 +30,18 @@ import type {
 } from '../notifications/failure-handler.js';
 import { failureNotificationFactories } from '../notifications/failure-composition.js';
 import {
-  closeMaintenanceDependencies,
-  createMaintenanceLifecycle,
-  type MaintenanceComposition,
-} from './lifecycle.js';
+  closeOwners,
+  createScannerRuntime,
+  type Owner,
+  type ScannerRuntime,
+} from '../runtime/scanner.js';
 import type { WorkspaceInvitationDeliveryHandler } from '../identity/invitation-delivery.js';
 import {
   maintenanceDeliveryHandler,
   type MaintenanceHandlers,
 } from './delivery-handler.js';
 
-export interface MaintenanceRuntime {
-  readonly consumer: QueueConsumer;
-  checkReadiness(): Promise<void>;
-  whenIdle(): Promise<void>;
-  close(): Promise<void>;
-}
+export type MaintenanceRuntime = ScannerRuntime;
 
 export type MaintenanceRuntimeFactories = Readonly<{
   connectionHealth: typeof connectionHealthObservationFactories;
@@ -87,6 +83,8 @@ type MaintenanceOptions = Readonly<{
   redisUrl: string;
   failureNotificationDelivery?: FailureNotificationDeliveryCapability;
   workspaceInvitationDelivery?: WorkspaceInvitationDeliveryHandler;
+  /** Resources the deliveries use; the runtime closes them once built. */
+  deliveryOwners?: readonly Owner[];
 }>;
 
 type MaintenanceDependencies = Readonly<{
@@ -118,21 +116,6 @@ export async function createMaintenanceRuntime(
 ): Promise<MaintenanceRuntime> {
   const shutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
-  const composition = await composeMaintenanceRuntime(
-    options,
-    dependencies,
-    factories,
-    shutdownTimeoutMillis,
-  );
-  return createMaintenanceLifecycle(composition, shutdownTimeoutMillis);
-}
-
-async function composeMaintenanceRuntime(
-  options: MaintenanceOptions,
-  dependencies: MaintenanceDependencies,
-  factories: MaintenanceRuntimeFactories,
-  shutdownTimeoutMillis: number,
-): Promise<MaintenanceComposition> {
   const traceRunner = factories.traceRunner();
   let reconciliationStore:
     (PreviewReconciliationStore & { close?: () => Promise<void> }) | undefined;
@@ -154,13 +137,19 @@ async function composeMaintenanceRuntime(
     reconciliationStore =
       dependencies.reconciliationStore ??
       factories.preview.store(options.database, options.databaseRuntime);
-    if (options.failureNotificationDelivery !== undefined)
+    if (options.failureNotificationDelivery !== undefined) {
       failureNotificationStore =
         dependencies.failureNotificationStore ??
         factories.notifications.store(
           options.database,
           options.databaseRuntime,
         );
+      failureNotification = factories.notifications.handler({
+        store: failureNotificationStore,
+        delivery: options.failureNotificationDelivery,
+        ...FAILURE_NOTIFICATION_DELIVERY,
+      });
+    }
     unknownOutcomeStore =
       dependencies.unknownOutcomeStore ??
       factories.unknownOutcome.store(options.database, options.databaseRuntime);
@@ -168,15 +157,6 @@ async function composeMaintenanceRuntime(
       dependencies.runReplayStore ??
       factories.replay.store(options.database, options.databaseRuntime);
 
-    if (
-      options.failureNotificationDelivery !== undefined &&
-      failureNotificationStore !== undefined
-    )
-      failureNotification = factories.notifications.handler({
-        store: failureNotificationStore,
-        delivery: options.failureNotificationDelivery,
-        ...FAILURE_NOTIFICATION_DELIVERY,
-      });
     const handlers: MaintenanceHandlers = {
       connectionHealth: factories.connectionHealth.handler(
         connectionHealthStore,
@@ -200,14 +180,14 @@ async function composeMaintenanceRuntime(
       traceRunner,
     });
   } catch (error: unknown) {
-    const cleanup = await closeMaintenanceDependencies(
-      {
+    const cleanup = await closeOwners(
+      [
+        connectionHealthStore,
         reconciliationStore,
         unknownOutcomeStore,
         runReplayStore,
         failureNotificationStore,
-        connectionHealthStore,
-      },
+      ],
       shutdownTimeoutMillis,
     );
     if (cleanup.length > 0)
@@ -218,17 +198,41 @@ async function composeMaintenanceRuntime(
     throw error;
   }
 
-  return {
+  const healthStore = connectionHealthStore;
+  const recoveryStore = failureNotificationStore;
+  const notifications = failureNotification;
+  return createScannerRuntime({
+    name: 'Maintenance',
     consumer,
-    ...(failureNotification === undefined ? {} : { failureNotification }),
-    stores: {
+    owners: [
       connectionHealthStore,
       reconciliationStore,
-      ...(failureNotificationStore === undefined
-        ? {}
-        : { failureNotificationStore }),
       unknownOutcomeStore,
       runReplayStore,
+      failureNotificationStore,
+      ...(options.deliveryOwners ?? []),
+    ],
+    // Recovers failure-notification deliveries whose worker stopped.
+    pollIntervalMillis: 1_000,
+    shutdownTimeoutMillis,
+    scan: async (signal) => {
+      await recoveryStore?.recoverDue(25, 3, signal);
     },
-  };
+    checkReadiness: async () => {
+      await healthStore.checkReadiness?.();
+    },
+    afterConsumerClose: async () => {
+      const settled = await Promise.allSettled(
+        notifications?.pendingOperations() ?? [],
+      );
+      const failures = settled.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason as unknown] : [],
+      );
+      if (failures.length > 0)
+        throw new AggregateError(
+          failures,
+          'Failure notification deliveries did not settle',
+        );
+    },
+  });
 }

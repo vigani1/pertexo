@@ -85,7 +85,6 @@ const idleRuntime = (consumer = idleConsumer) => ({
   consumer,
   start: () => undefined,
   checkReadiness: () => Promise.resolve(),
-  whenIdle: () => Promise.resolve(),
   close: () => consumer.close().then(() => undefined),
 });
 
