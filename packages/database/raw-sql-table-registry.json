@@ -35,13 +35,6 @@
     "reason": "Each member reads and writes only their own favorites in their workspace."
   },
   {
-    "name": "workflow_portability_rollout",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role"],
-    "rls": "not_applicable",
-    "reason": "Non-tenant singleton writer admission is globally default-off and owner-controlled; API may read and lock but cannot change import_enabled or insert/delete authority."
-  },
-  {
     "name": "node_attempt_connection_dispatches",
     "owner": "owner_role",
     "accessRoles": ["worker_runtime_role", "maintenance_role"],

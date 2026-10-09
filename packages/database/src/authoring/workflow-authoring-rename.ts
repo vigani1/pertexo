@@ -1,12 +1,12 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
 
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import {
   claimWorkflowCommand,
   completeWorkflowCommand,
+  type WorkflowCommand,
 } from './workflow-authoring-command-receipts.js';
 import {
   WorkflowNameRevisionConflictError,
@@ -36,7 +36,7 @@ const requestIdSchema = z.string().max(128);
 type WorkflowRenameStore = Pick<WorkflowAuthoringDatabase, 'renameWorkflow'>;
 type WorkflowRenameContext = Pick<
   WorkflowAuthoringWriteContext,
-  'keyDigest' | 'requireAuthor' | 'testHooks' | 'transact'
+  'requireAuthor' | 'testHooks' | 'transact'
 >;
 
 type RenameCommand = Readonly<{
@@ -147,25 +147,21 @@ async function renameWorkflow(
     command.actorId,
     async (client) => {
       await context.requireAuthor(client, command.workspaceId, command.actorId);
-      const claim = await claimWorkflowCommand(client, {
-        label: 'rename',
-        operation: 'workflow.rename',
-        digest: context.keyDigest(input.idempotencyKey),
-        requestHash: canonicalOutboxPayloadChecksum({
-          actorId: command.actorId,
-          command: 'rename',
-          expectedNameRevision: command.expectedNameRevision,
-          name: command.name,
-          workflowId: command.workflowId,
-          workspaceId: command.workspaceId,
-        }),
-        workflowId: command.workflowId,
+      const claim: WorkflowCommand = {
         workspaceId: command.workspaceId,
+        workflowId: command.workflowId,
         actorId: command.actorId,
-      });
+        operation: 'workflow.rename',
+        idempotencyKey: input.idempotencyKey,
+        request: {
+          name: command.name,
+          expectedNameRevision: command.expectedNameRevision,
+        },
+      };
+      const replay = await claimWorkflowCommand(client, claim);
       await context.testHooks?.afterRenameStep?.('claim');
-      if (claim.replay !== null)
-        return Object.freeze({ replayed: true, workflow: claim.replay });
+      if (replay !== null)
+        return Object.freeze({ replayed: true, workflow: replay });
 
       const current = await lockActiveWorkflow(client, command);
       const workflow =

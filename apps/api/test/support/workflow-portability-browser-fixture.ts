@@ -80,9 +80,6 @@ export async function prepareWorkflowPortabilityBrowserFixture(
         [secretId, workspaceId, id, actorId],
       );
     }
-    await client.query(
-      'update app.workflow_portability_rollout set import_enabled=true where singleton',
-    );
     await client.query('commit');
   } catch (error) {
     await client.query('rollback');

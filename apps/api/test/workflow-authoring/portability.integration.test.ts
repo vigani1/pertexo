@@ -21,27 +21,11 @@ describeIntegration(
   'reviewed portability authenticated real HTTP and atomic command (ADR062)',
   () => {
     let fixture: WorkflowLifecycleApiFixture;
-    let gateBefore: boolean;
     beforeEach(async () => {
       fixture = await createWorkflowLifecycleApiFixture();
-      gateBefore = await fixture.withOwner(async (client) => {
-        const result = await client.query<{ import_enabled: boolean }>(
-          'select import_enabled from app.workflow_portability_rollout where singleton',
-        );
-        return result.rows[0]?.import_enabled ?? false;
-      });
     });
     afterEach(async () => {
-      try {
-        await fixture.withOwner((client) =>
-          client.query(
-            'update app.workflow_portability_rollout set import_enabled=$1 where singleton',
-            [gateBefore],
-          ),
-        );
-      } finally {
-        await closeWorkflowLifecycleApiFixture(fixture);
-      }
+      await closeWorkflowLifecycleApiFixture(fixture);
     });
     async function exported() {
       const session = await fixture.login('builder');
@@ -77,7 +61,7 @@ describeIntegration(
       };
     }
 
-    it('exports exact reviewed content; previews without writes; creates once and recovers after writer rollback', async () => {
+    it('exports exact reviewed content; previews without writes; creates once and replays a retry', async () => {
       const { session, manifest } = await exported();
       const base = `/v1/workspaces/${fixture.workspaceId}/workflows/import`;
       const previewResponse = await fixture.application.inject({
@@ -107,21 +91,6 @@ describeIntegration(
           expectedCompatibilityFingerprint: preview.compatibilityFingerprint,
         },
       };
-      await fixture.withOwner((client) =>
-        client.query(
-          'update app.workflow_portability_rollout set import_enabled=false where singleton',
-        ),
-      );
-      expectProblem(
-        await fixture.application.inject(command),
-        503,
-        'workflow.portability_unavailable',
-      );
-      await fixture.withOwner((client) =>
-        client.query(
-          'update app.workflow_portability_rollout set import_enabled=true where singleton',
-        ),
-      );
       const responses = await Promise.all([
         fixture.application.inject(command),
         fixture.application.inject(command),
@@ -143,11 +112,6 @@ describeIntegration(
         activationStatus: 'inactive',
         publishedVersionId: null,
       });
-      await fixture.withOwner((client) =>
-        client.query(
-          'update app.workflow_portability_rollout set import_enabled=false where singleton',
-        ),
-      );
       // A lost response has the same explicit retry transport: discover, never create again.
       expect((await fixture.application.inject(command)).json()).toEqual(
         result,
@@ -228,11 +192,6 @@ describeIntegration(
         }),
         404,
         'resource.not_found',
-      );
-      await fixture.withOwner((client) =>
-        client.query(
-          'update app.workflow_portability_rollout set import_enabled=true where singleton',
-        ),
       );
       expectProblem(
         await fixture.application.inject({

@@ -1,5 +1,4 @@
 import { acquireDatabasePool } from '../platform/database-runtime.js';
-import { createHash } from 'node:crypto';
 
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
@@ -48,12 +47,6 @@ export type {
 } from './workflow-authoring-types.js';
 
 const uuidSchema = z.uuid();
-const idempotencyKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u)
-  .refine((value) => !value.includes(','));
 
 export {
   WorkflowIdempotencyConflictError,
@@ -176,12 +169,6 @@ async function requireWorkspaceReader(
     throw new WorkflowNotFoundError('Workflow is not visible');
 }
 
-function keyDigest(key: string): string {
-  return createHash('sha256')
-    .update(idempotencyKeySchema.parse(key))
-    .digest('hex');
-}
-
 function durablePublishResult(
   value: unknown,
   expectedWorkspaceId: string,
@@ -285,7 +272,6 @@ export function createWorkflowAuthoringDatabase(
     }
   }
   const authoringContext: WorkflowAuthoringWriteContext = {
-    keyDigest,
     requireAuthor: requireWorkspaceAuthor,
     requirePlaceable: requirePlaceableDefinitionAdditions,
     selectCatalogs: selectCompatibilityVariant,
@@ -296,7 +282,6 @@ export function createWorkflowAuthoringDatabase(
   };
   const publishWorkflow = createWorkflowPublisher({
     durableResult: durablePublishResult,
-    keyDigest,
     requireAuthor: requireWorkspaceAuthor,
     selectVariant: selectCompatibilityVariant,
     testHooks: options.testHooks,

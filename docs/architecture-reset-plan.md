@@ -179,7 +179,13 @@ now, as one ordered program — not "whenever we touch it".
         receipt tables go. A limit change still takes the run admission lock,
         through one small database function, because admission counters stay
         in the database.
-  - [ ] Authoring: drafts, publication, portability and input cases.
+  - [x] Workflow creation: create, duplicate and import write their rows in
+        TypeScript, and every workflow command (create, duplicate, import,
+        rename, archive and restore, publish) keys through the shared
+        idempotency helper. The SQL copies that re-validated imports, the
+        database copy of the curated templates (templates live in code) and
+        the import rollout switches go.
+  - [ ] Authoring: input cases.
   - [ ] Workspaces and access: memberships, invitations (including the
         replacement-claim scan's unused purge mode), ownership, identity.
   - [ ] Connections.

@@ -17,6 +17,7 @@ import {
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
+import { IdempotencyConflictError } from '../../src/platform/idempotency.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
 import {
   WorkflowIdempotencyConflictError,
@@ -531,6 +532,7 @@ export {
   CONNECTION_AUTH_TYPE,
   EMPTY_DEFINITION_CATALOG_V1,
   BASELINE_COMPATIBILITY_EXPECTATION,
+  IdempotencyConflictError,
   Pool,
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,

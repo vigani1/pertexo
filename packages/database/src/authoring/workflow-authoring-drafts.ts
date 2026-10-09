@@ -7,9 +7,8 @@ import {
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/graph';
 
-import { canonicalApplicationPayloadChecksum } from '../outbox/events.js';
+import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import {
-  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring-errors.js';
@@ -33,6 +32,7 @@ type DraftStore = Pick<
 >;
 
 const uuidSchema = z.uuid();
+const createdResultSchema = z.object({ workflowId: uuidSchema }).strict();
 const nameSchema = z.string().trim().min(1).max(128);
 const workflowDraftTagSchema = z
   .string()
@@ -53,47 +53,56 @@ async function createWorkflow(
       graph,
       placementDefinitionCatalog,
     );
-    const requestHash = canonicalApplicationPayloadChecksum(
-      {
-        actorId: input.actorId,
-        graph,
-        name: nameSchema.parse(input.name),
-        requestedWorkflowId: input.id ?? null,
-        schemaVersion: graph.schemaVersion,
-        workspaceId: input.workspaceId,
-      },
-      2_097_152,
-    );
-    let createdId: string;
-    try {
-      const creation = await client.query<{ workflow_id: string }>(
-        `select app.create_workflow_with_draft(
-           $1, $2, $3::varchar, $4, $5, $6::jsonb, $7::char(64),
-           $8::char(64), $9::varchar, $10::varchar
-         ) as workflow_id`,
+    const name = nameSchema.parse(input.name);
+    const command = {
+      workspaceId: input.workspaceId,
+      operation: 'workflow.create',
+      scope: input.actorId,
+      idempotencyKey: input.idempotencyKey,
+    };
+    const stored = await claimCommand(client, {
+      ...command,
+      request: { name, graph, requestedWorkflowId: input.id ?? null },
+      resourceId: workflowId,
+    });
+    let createdId = workflowId;
+    if (stored !== null)
+      createdId = createdResultSchema.parse(stored).workflowId;
+    else {
+      await client.query(
+        `insert into app.workflows
+           (id, workspace_id, name, lifecycle_status, activation_status, created_by)
+         values ($1, $2, $3, 'active', 'inactive', $4)`,
+        [workflowId, input.workspaceId, name, input.actorId],
+      );
+      await client.query(
+        `insert into app.workflow_drafts
+           (workflow_id, workspace_id, revision, schema_version, graph_json, updated_by)
+         values ($1, $2, 1, $3, $4::jsonb, $5)`,
         [
           workflowId,
           input.workspaceId,
-          nameSchema.parse(input.name),
-          input.actorId,
           graph.schemaVersion,
           JSON.stringify(graph),
-          context.keyDigest(input.idempotencyKey),
-          requestHash,
+          input.actorId,
+        ],
+      );
+      await client.query(
+        `insert into app.audit_events
+           (id, workspace_id, actor_user_id, action, target_type, target_id,
+            request_id, trace_id, metadata)
+         values ($1, $2, $3, 'workflow.created', 'workflow', $4, $5, $6,
+                 '{"revision":1}'::jsonb)`,
+        [
+          generatePersistedId(),
+          input.workspaceId,
+          input.actorId,
+          workflowId,
           input.requestId ?? null,
           input.traceId ?? null,
         ],
       );
-      createdId = uuidSchema.parse(creation.rows[0]?.workflow_id);
-    } catch (error: unknown) {
-      if (
-        error instanceof Error &&
-        (error as Error & { code?: string }).code === '23505'
-      )
-        throw new WorkflowIdempotencyConflictError(
-          'Workflow create idempotency key request mismatch',
-        );
-      throw error;
+      await completeCommand(client, command, { workflowId });
     }
     const created = await client.query<Record<string, unknown>>(
       `select row_to_json(workflow.*) as workflow,
@@ -105,6 +114,8 @@ async function createWorkflow(
        where workflow.workspace_id = $1 and workflow.id = $2`,
       [input.workspaceId, createdId],
     );
+    if (created.rows[0] === undefined)
+      throw new WorkflowNotFoundError('Workflow is not visible');
     const row = createdWorkflowRowSchema.parse(created.rows[0]);
     return Object.freeze({
       workflowId: createdId,

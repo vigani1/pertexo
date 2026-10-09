@@ -130,7 +130,7 @@ describe('workflow publication projections', () => {
           ...original,
           requestHash: 'b'.repeat(64),
         }),
-      ).rejects.toMatchObject({ name: 'WorkflowIdempotencyConflictError' });
+      ).rejects.toMatchObject({ name: 'IdempotencyConflictError' });
       await expect(
         unavailableAuthoring.publishWorkflow({
           ...original,

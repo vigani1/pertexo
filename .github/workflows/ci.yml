@@ -154,16 +154,14 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
-            --exclude test/workflow-template-origin-boundary.integration.test.ts \
             --exclude test/workflow-organization.integration.test.ts \
             --exclude test/workflow-organization-read.integration.test.ts \
             --exclude test/workflow-organization-maintenance-plans.integration.test.ts \
             --exclude test/workflow-folders-batch.integration.test.ts \
             --exclude test/workflow-organization-adapters.integration.test.ts \
             --exclude test/workflow-tags.integration.test.ts
-          EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F06_ORIGIN_BOUNDARY_OWNED_FIXTURE=true \
+          EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
-            test/workflow-template-origin-boundary.integration.test.ts \
             test/workflow-organization.integration.test.ts \
             test/workflow-organization-read.integration.test.ts \
             test/workflow-organization-maintenance-plans.integration.test.ts \
@@ -187,13 +185,11 @@ jobs:
             --exclude test/workflow-concurrency-browser.integration.test.ts \
             --exclude test/connection-health-browser.integration.test.ts \
             --exclude test/workflow-organization-browser.integration.test.ts \
-            --exclude test/curated-template-origin-guard.integration.test.ts \
             --exclude test/workflow-authoring/organization.integration.test.ts \
             --exclude test/workflow-authoring/favorite-persistence.integration.test.ts \
             --exclude test/workflow-authoring/folders-bulk.integration.test.ts
-          EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F06_ORIGIN_GUARD_OWNED_FIXTURE=true \
+          EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/curated-template-origin-guard.integration.test.ts \
             test/workflow-authoring/organization.integration.test.ts \
             test/workflow-authoring/favorite-persistence.integration.test.ts \
             test/workflow-authoring/folders-bulk.integration.test.ts

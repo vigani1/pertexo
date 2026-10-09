@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  WorkflowIdempotencyConflictError,
+  IdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   CONNECTION_AUTH_TYPE,
   Pool,
   actorId,
-  apiPool,
   apiUrl,
   enforceTestRetention,
   authoring,
@@ -18,7 +17,6 @@ import {
   draftNode,
   emptyGraph,
   executeAsOwner,
-  finishTransactionClient,
   identity,
   finishControlledScenario,
   otherActorId,
@@ -411,13 +409,13 @@ describe('same-workspace workflow duplication through the runtime database role'
       ).rejects.toBeInstanceOf(WorkflowRevisionConflictError);
       await expect(
         restarted.duplicateWorkflow({ ...input, name: 'Changed command' }),
-      ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+      ).rejects.toBeInstanceOf(IdempotencyConflictError);
       await expect(
         restarted.duplicateWorkflow({
           ...input,
           source: { kind: 'version', versionId: otherVersionId },
         }),
-      ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+      ).rejects.toBeInstanceOf(IdempotencyConflictError);
     } finally {
       await restarted.close();
     }
@@ -519,7 +517,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       settled.filter((result) => result.status === 'fulfilled'),
     ).toHaveLength(1);
     const rejected = settled.find((result) => result.status === 'rejected');
-    expect(rejected?.reason).toBeInstanceOf(WorkflowIdempotencyConflictError);
+    expect(rejected?.reason).toBeInstanceOf(IdempotencyConflictError);
     expect((await commandFacts())[0]?.workflows).toBe(
       Number(before[0]?.workflows) + 1,
     );
@@ -762,7 +760,7 @@ describe('same-workspace workflow duplication through the runtime database role'
     expect(await commandFacts()).toEqual(before);
   });
 
-  it('rolls back a failure inside the atomic creation function between workflow and draft INSERTs', async () => {
+  it('rolls back a failure between the workflow and draft inserts', async () => {
     const original = await source();
     const input = {
       ...(await command(original.workflowId)),
@@ -938,6 +936,57 @@ describe('same-workspace workflow duplication through the runtime database role'
     }
   });
 
+  it('copies a template origin as inherited and shows it only to members of the workspace', async () => {
+    const original = await source();
+    const origin = {
+      schemaVersion: 1,
+      templateId: 'controlled-http-notification',
+      templateVersion: 1,
+      baseManifestDigest: 'a'.repeat(64),
+      creationCommandDigest: 'b'.repeat(64),
+      derivation: 'direct',
+    };
+    await queryAsOwner(
+      'insert into app.workflow_template_origins (workspace_id, workflow_id, origin) values ($1, $2, $3::jsonb)',
+      [workspaceId, original.workflowId, JSON.stringify(origin)],
+      workspaceId,
+    );
+    const input = await command(original.workflowId);
+    const copy = await authoring.duplicateWorkflow(input);
+    expect(await authoring.duplicateWorkflow(input)).toEqual(copy);
+    expect(
+      await authoring.getWorkflowWithTemplateOrigin(
+        workspaceId,
+        copy.workflowId,
+        actorId,
+      ),
+    ).toMatchObject({ templateOrigin: { ...origin, derivation: 'inherited' } });
+    expect(
+      await authoring.getWorkflowWithTemplateOrigin(
+        workspaceId,
+        original.workflowId,
+        actorId,
+      ),
+    ).toMatchObject({ templateOrigin: origin });
+    const copyOfCopy = await authoring.duplicateWorkflow(
+      await command(copy.workflowId),
+    );
+    expect(
+      await authoring.getWorkflowWithTemplateOrigin(
+        workspaceId,
+        copyOfCopy.workflowId,
+        actorId,
+      ),
+    ).toMatchObject({ templateOrigin: { ...origin, derivation: 'inherited' } });
+    await expect(
+      authoring.getWorkflowWithTemplateOrigin(
+        workspaceId,
+        copy.workflowId,
+        otherActorId,
+      ),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+  });
+
   it('removes an expired duplicate receipt without erasing either workflow and admits a new copy after expiry', async () => {
     const original = await source();
     const input = await command(original.workflowId);
@@ -954,66 +1003,6 @@ describe('same-workspace workflow duplication through the runtime database role'
     expect((await facts(copied.workflowId)).receipts).toBe(0);
     const afterExpiry = await authoring.duplicateWorkflow(input);
     expect(afterExpiry.workflowId).not.toBe(copied.workflowId);
-  });
-
-  it('grants only app execution, not direct creation, and rejects direct function calls with forged tenant/actor/claim context', async () => {
-    const signature =
-      'app.create_workflow_duplicate_draft(uuid,uuid,uuid,uuid,varchar,integer,jsonb,char,char,text,uuid)';
-    const privileges = await queryAsOwner<{ role: string; allowed: boolean }>(
-      `select role,has_function_privilege(role,$1,'EXECUTE') allowed
-      from unnest(array['pertexo_app','pertexo_maintenance']) role order by role`,
-      [signature],
-    );
-    expect(privileges).toEqual([
-      { role: 'pertexo_app', allowed: true },
-      { role: 'pertexo_maintenance', allowed: false },
-    ]);
-    expect(
-      await queryAsOwner(`select has_table_privilege('pertexo_app','app.workflows','INSERT') workflow,
-      has_table_privilege('pertexo_app','app.workflow_drafts','INSERT') draft`),
-    ).toEqual([{ workflow: false, draft: false }]);
-    const original = await source();
-    const before = await commandFacts();
-    for (const context of ['tenant', 'actor', 'claim'] as const) {
-      const client = await apiPool.connect();
-      let transactionOpen = false;
-      let primaryError: unknown;
-      try {
-        await client.query('begin');
-        transactionOpen = true;
-        await client.query(
-          "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
-          [
-            context === 'tenant' ? otherWorkspaceId : workspaceId,
-            context === 'actor' ? otherActorId : actorId,
-          ],
-        );
-        await expect(
-          client.query(
-            'select app.create_workflow_duplicate_draft($1,$2,$3,$4,$5,1,$6::jsonb,$7,$8,$9,null)',
-            [
-              randomUUID(),
-              workspaceId,
-              original.workflowId,
-              actorId,
-              'Forged copy',
-              JSON.stringify(emptyGraph),
-              'a'.repeat(64),
-              'b'.repeat(64),
-              'draft',
-            ],
-          ),
-        ).rejects.toMatchObject({ code: '42501' });
-      } catch (error) {
-        primaryError = error;
-      }
-      await finishTransactionClient(client, {
-        label: `duplicate function ${context} guard`,
-        transactionOpen,
-        primaryError,
-      });
-    }
-    expect(await commandFacts()).toEqual(before);
   });
 
   it('reaps expired source-scoped duplication receipts, then erases them through bounded workspace purge', async () => {

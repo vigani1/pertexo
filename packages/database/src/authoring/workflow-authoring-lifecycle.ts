@@ -1,14 +1,13 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
 
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
-import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { planWorkflowLifecycleCommand } from '@pertexo/workflow-model/lifecycle';
 
 import {
   claimWorkflowCommand,
   completeWorkflowCommand,
-  type WorkflowCommandClaim,
+  type WorkflowCommand,
 } from './workflow-authoring-command-receipts.js';
 import {
   WorkflowLifecycleRevisionConflictError,
@@ -42,36 +41,8 @@ type WorkflowLifecycleStore = Pick<
 
 type WorkflowLifecycleContext = Pick<
   WorkflowAuthoringWriteContext,
-  'keyDigest' | 'requireAuthor' | 'testHooks' | 'transact'
+  'requireAuthor' | 'testHooks' | 'transact'
 >;
-
-async function claimLifecycle(
-  client: PoolClient,
-  input: TransitionWorkflowLifecycleInput,
-  context: WorkflowLifecycleContext,
-): Promise<WorkflowCommandClaim> {
-  const command = commandSchema.parse(input.command);
-  const workspaceId = uuidSchema.parse(input.workspaceId);
-  const workflowId = uuidSchema.parse(input.workflowId);
-  const actorId = uuidSchema.parse(input.actorId);
-  return claimWorkflowCommand(client, {
-    label: 'lifecycle',
-    operation: `workflow.${command}`,
-    digest: context.keyDigest(input.idempotencyKey),
-    requestHash: canonicalOutboxPayloadChecksum({
-      actorId,
-      command,
-      expectedLifecycleRevision: lifecycleRevisionSchema.parse(
-        input.expectedLifecycleRevision,
-      ),
-      workflowId,
-      workspaceId,
-    }),
-    workflowId,
-    workspaceId,
-    actorId,
-  });
-}
 
 async function transitionWorkflowLifecycle(
   context: WorkflowLifecycleContext,
@@ -95,16 +66,24 @@ async function transitionWorkflowLifecycle(
 
   return context.transact(workspaceId, actorId, async (client) => {
     await context.requireAuthor(client, workspaceId, actorId);
-    const claim = await claimLifecycle(client, input, context);
+    const claim: WorkflowCommand = {
+      workspaceId,
+      workflowId,
+      actorId,
+      operation: `workflow.${command}`,
+      idempotencyKey: input.idempotencyKey,
+      request: { expectedLifecycleRevision },
+    };
+    const replay = await claimWorkflowCommand(client, claim);
     await context.testHooks?.afterLifecycleStep?.('claim');
-    if (claim.replay !== null) {
+    if (replay !== null) {
       const visible = await client.query(
         `select 1 from app.workflows where workspace_id=$1 and id=$2 for share`,
         [workspaceId, workflowId],
       );
       if (visible.rowCount !== 1)
         throw new WorkflowNotFoundError('Workflow is not visible');
-      return Object.freeze({ replayed: true, workflow: claim.replay });
+      return Object.freeze({ replayed: true, workflow: replay });
     }
 
     const currentResult = await client.query<Record<string, unknown>>(

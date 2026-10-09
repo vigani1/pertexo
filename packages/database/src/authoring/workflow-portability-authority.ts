@@ -11,44 +11,11 @@ import type {
 } from '@pertexo/workflow-model/portability-contract';
 import type { ExportWorkflowInput } from './workflow-authoring-contracts.js';
 import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
-import { rolesForCapability } from '../tenant-access/workspace-policy.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring-errors.js';
 import { mapDraft } from './workflow-authoring-rows.js';
-
-/** Never rely on a joined SELECT's planner to choose the authority lock order. */
-export async function requirePortabilityAuthority(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-  write: boolean,
-): Promise<void> {
-  const workspace = await client.query<{ status: string }>(
-    'select app.lock_workspace_run_admission($1) status',
-    [workspaceId],
-  );
-  if (workspace.rows[0]?.status !== 'active')
-    throw new WorkflowNotFoundError('Workflow workspace is not visible');
-  const actor = await client.query(
-    "select id from app.users where id=$1 and status='active' for share",
-    [actorId],
-  );
-  if (actor.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow actor is not visible');
-  const membership = await client.query(
-    `select user_id from app.workspace_memberships where workspace_id=$1 and user_id=$2
-     and status='active' and role=any($3::text[]) for share`,
-    [
-      workspaceId,
-      actorId,
-      [...rolesForCapability(write ? 'workflow:create' : 'workflow:read')],
-    ],
-  );
-  if (membership.rowCount !== 1)
-    throw new WorkflowNotFoundError('Workflow workspace is not visible');
-}
 
 /** Lock workflow before its selected source; select catalog only after source. */
 export async function lockPortableSource(
@@ -67,13 +34,13 @@ export async function lockPortableSource(
           'select * from app.workflow_drafts where workspace_id=$1 and workflow_id=$2 for share',
           [input.workspaceId, input.workflowId],
         )
-      : await client.query<Record<string, unknown>>(
-          'select app.lock_workflow_portable_version($1,$2,$3,$4) graph_json',
+      : // A version never changes; the workflow lock keeps it from being purged.
+        await client.query<Record<string, unknown>>(
+          'select graph_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3',
           [
             input.workspaceId,
             input.workflowId,
             z.uuid().parse(input.source.versionId),
-            input.actorId,
           ],
         );
   const row = selected.rows[0];

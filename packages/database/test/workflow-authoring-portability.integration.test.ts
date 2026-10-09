@@ -1,20 +1,18 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import {
-  canonicalWorkflowPortableJson,
-  portableGraphDigest,
-} from '@pertexo/workflow-model/portability-contract';
+import { afterEach, describe, expect, it } from 'vitest';
+import { portableGraphDigest } from '@pertexo/workflow-model/portability-contract';
 import {
   projectWorkflowPortableManifest,
   type WorkflowPortabilityCatalog,
 } from '@pertexo/workflow-model/portability';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
-  WorkflowPortabilityUnavailableError,
   WorkflowPortabilityValidationError,
 } from '../src/authoring/workflow-authoring-errors.js';
 import type { ImportWorkflowInput } from '../src/authoring/workflow-authoring-contracts.js';
+import { workflowImportCommandDigest } from '../src/authoring/workflow-authoring-portability.js';
 import type { WorkflowAuthoringDatabaseOptions } from '../src/authoring/workflow-authoring-types.js';
 import {
   actorId,
@@ -24,7 +22,6 @@ import {
   otherVersionId,
   apiUrl,
   enforceTestRetention,
-  apiPool,
   migrationUrl,
   createWorkflowAuthoringDatabase,
   parseDatabaseConfig,
@@ -37,7 +34,7 @@ import {
   queryAsOwner,
   identity,
   authoring,
-  WorkflowIdempotencyConflictError,
+  IdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   Pool,
@@ -51,7 +48,6 @@ import {
   finishControlledScenario,
   finishTransactionClient,
   saveCurrentDraft,
-  checkDatabaseReadiness,
   purgeTestWorkspace,
 } from './support/workflow-authoring.integration.support.js';
 
@@ -105,12 +101,6 @@ function command(
     ...extra,
   };
 }
-async function gate(enabled: boolean) {
-  await executeAsOwner(
-    'update app.workflow_portability_rollout set import_enabled=$1 where singleton',
-    [enabled],
-  );
-}
 async function facts() {
   return queryAsOwner(
     `select (select count(*)::int from app.workflows where workspace_id=$1) workflows,
@@ -126,41 +116,63 @@ async function firstFacts() {
   if (row === undefined) throw new Error('Expected import fact counts');
   return row;
 }
-beforeAll(async () => {
-  await gate(true);
-});
 afterEach(async () => {
   await Promise.all(databases.splice(0).map((db) => db.close()));
 });
 
 describe('portable workflow persistence under the API role', () => {
-  it('has default-off gate migration, independent readers and disabled exact completed replay', async () => {
-    const db = database();
-    const input = command();
-    const result = await db.importWorkflow(input);
-    await gate(false);
-    try {
-      expect(
-        (await db.previewWorkflowImport(inputForPreview(input))).compatible,
-      ).toBe(true);
-      expect(await db.importWorkflow(input)).toEqual(result);
-      const before = await facts();
-      await expect(db.importWorkflow(command())).rejects.toBeInstanceOf(
-        WorkflowPortabilityUnavailableError,
-      );
-      expect(await facts()).toEqual(before);
-      const gateRows = await apiPool.query(
-        'select import_enabled from app.workflow_portability_rollout',
-      );
-      expect(gateRows.rows).toEqual([{ import_enabled: false }]);
-      await expect(
-        apiPool.query(
-          'update app.workflow_portability_rollout set import_enabled=true',
-        ),
-      ).rejects.toMatchObject({ code: '42501' });
-    } finally {
-      await gate(true);
-    }
+  it('stores a curated template origin with its import command digest', async () => {
+    const template = CURATED_WORKFLOW_TEMPLATES.find(
+      ({ templateId }) => templateId === 'webhook-validation-routing',
+    );
+    if (template === undefined) throw new Error('Expected a curated template');
+    const { definitions, selectionFingerprint } =
+      template.manifest.requirements;
+    const templateCatalog = {
+      ...catalog,
+      definitions: definitions.map(({ key, version }) => ({ key, version })),
+    };
+    const db = database({
+      definitionCatalog: templateCatalog,
+      placementDefinitionCatalog: templateCatalog,
+      portableCatalog: {
+        fingerprint: catalog.releaseFingerprint,
+        definitions: definitions.map((definition) => ({
+          ...definition,
+          slots: [],
+          validateConfig: () => true,
+        })),
+        selectionFingerprint: () => selectionFingerprint,
+        validateTemplateSetup: () => true,
+      },
+    });
+    const templateOrigin = {
+      schemaVersion: 1 as const,
+      templateId: template.templateId,
+      templateVersion: template.templateVersion,
+      baseManifestDigest: template.baseManifestDigest,
+    };
+    const input = command({ manifest: template.manifest, templateOrigin });
+    const { workflowId } = await db.importWorkflow(input);
+    expect(
+      await db.getWorkflowWithTemplateOrigin(workspaceId, workflowId, actorId),
+    ).toMatchObject({
+      templateOrigin: {
+        ...templateOrigin,
+        creationCommandDigest: workflowImportCommandDigest(input),
+        derivation: 'direct',
+      },
+    });
+    const changed = {
+      ...template.manifest,
+      graph: {
+        ...template.manifest.graph,
+        settings: { maxRunDurationMs: 1000 },
+      },
+    };
+    await expect(
+      db.importWorkflow(command({ manifest: changed, templateOrigin })),
+    ).rejects.toBeInstanceOf(WorkflowPortabilityValidationError);
   });
 
   it('creates one normal-default unpublished revision-1 draft, safe audit and identifier-only receipt atomically', async () => {
@@ -237,7 +249,7 @@ describe('portable workflow persistence under the API role', () => {
     ]) {
       await expect(
         restarted.importWorkflow({ ...input, ...changed }),
-      ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+      ).rejects.toBeInstanceOf(IdempotencyConflictError);
     }
   });
 
@@ -266,9 +278,7 @@ describe('portable workflow persistence under the API role', () => {
       settled.filter((entry) => entry.status === 'fulfilled'),
     ).toHaveLength(1);
     const rejected = settled.find((entry) => entry.status === 'rejected');
-    expect(rejected?.reason instanceof WorkflowIdempotencyConflictError).toBe(
-      true,
-    );
+    expect(rejected?.reason instanceof IdempotencyConflictError).toBe(true);
   });
 
   it.each([
@@ -599,12 +609,7 @@ describe('portable workflow persistence under the API role', () => {
   );
 
   it('holds ordered authority/catalog locks until import commits so later writers lose the race', async () => {
-    for (const surface of [
-      'workspace',
-      'actor',
-      'membership',
-      'gate',
-    ] as const) {
+    for (const surface of ['workspace', 'actor', 'membership'] as const) {
       const entered = deferred(),
         released = deferred();
       const db = database({
@@ -643,7 +648,6 @@ describe('portable workflow persistence under the API role', () => {
           actor: 'update app.users set display_name=display_name where id=$1',
           membership:
             'update app.workspace_memberships set role=role where workspace_id=$1 and user_id=$2',
-          gate: 'update app.workflow_portability_rollout set import_enabled=import_enabled where singleton',
         }[surface];
         writer = owner.query(
           sql,
@@ -1101,130 +1105,6 @@ describe('portable workflow persistence under the API role', () => {
     );
     expect(await facts()).toEqual(before);
   });
-
-  it('qualifies the API-only creator and rejects SQL-level graph substitution under an exact claim', async () => {
-    expect((await checkDatabaseReadiness(apiPool)).role).toBe('pertexo_app');
-    const db = database({
-      testHooks: {
-        afterImportStep: (step) =>
-          step === 'connections'
-            ? Promise.reject(new Error('claim probe'))
-            : Promise.resolve(),
-      },
-    });
-    await expect(db.importWorkflow(command())).rejects.toThrow('claim probe');
-    const client = await apiPool.connect();
-    try {
-      await client.query('begin');
-      await client.query(
-        "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
-        [workspaceId, actorId],
-      );
-      const input = command(),
-        destination = randomUUID(),
-        keyHash = createHash('sha256')
-          .update(input.idempotencyKey)
-          .digest('hex');
-      const text = canonicalWorkflowPortableJson({
-        name: input.name,
-        manifest: input.manifest,
-        bindings: [],
-        expectedCompatibilityFingerprint:
-          input.expectedCompatibilityFingerprint,
-      });
-      const requestHash = createHash('sha256').update(text).digest('hex');
-      await client.query(
-        "insert into app.idempotency_records(id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref) values($1,$2,'workflow.import',$3,$4,$5,'in_progress',$6,'{}')",
-        [randomUUID(), workspaceId, actorId, keyHash, requestHash, destination],
-      );
-      await expect(
-        client.query(
-          'select app.create_workflow_import_draft($1,$2,$3,$4::jsonb,$5,$6,$7)',
-          [
-            destination,
-            workspaceId,
-            actorId,
-            JSON.stringify({
-              ...emptyGraph,
-              settings: { maxRunDurationMs: 1000 },
-            }),
-            keyHash,
-            requestHash,
-            text,
-          ],
-        ),
-      ).rejects.toMatchObject({ code: '42501' });
-    } finally {
-      await client.query('rollback');
-      client.release();
-    }
-  });
-
-  it.each([
-    { schemaVersion: 1 },
-    { ...emptyGraph, nodes: null },
-    { ...emptyGraph, edges: null },
-    { ...emptyGraph, settings: [] },
-    {
-      ...emptyGraph,
-      nodes: [{ id: 'not-an-authoring-node', connectionRefs: {} }],
-    },
-  ])(
-    'rejects a direct creator claim with malformed source graph %# without persisting facts',
-    async (graph) => {
-      const before = await facts();
-      const client = await apiPool.connect();
-      try {
-        await client.query('begin');
-        await client.query(
-          "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
-          [workspaceId, actorId],
-        );
-        const input = command(),
-          destination = randomUUID(),
-          keyHash = createHash('sha256')
-            .update(input.idempotencyKey)
-            .digest('hex');
-        const text = JSON.stringify({
-          name: input.name,
-          manifest: { ...input.manifest, graph },
-          bindings: [],
-          expectedCompatibilityFingerprint:
-            input.expectedCompatibilityFingerprint,
-        });
-        const requestHash = createHash('sha256').update(text).digest('hex');
-        await client.query(
-          "insert into app.idempotency_records(id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref) values($1,$2,'workflow.import',$3,$4,$5,'in_progress',$6,'{}')",
-          [
-            randomUUID(),
-            workspaceId,
-            actorId,
-            keyHash,
-            requestHash,
-            destination,
-          ],
-        );
-        await expect(
-          client.query(
-            'select app.create_workflow_import_draft($1,$2,$3,$4::jsonb,$5,$6,$7)',
-            [
-              destination,
-              workspaceId,
-              actorId,
-              JSON.stringify(graph),
-              keyHash,
-              requestHash,
-              text,
-            ],
-          ),
-        ).rejects.toMatchObject({ code: '42501' });
-      } finally {
-        await client.query('rollback');
-        client.release();
-      }
-      expect(await facts()).toEqual(before);
-    },
-  );
 });
 
 function inputForPreview(input: ImportWorkflowInput) {

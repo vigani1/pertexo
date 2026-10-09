@@ -72,7 +72,7 @@ describe('workflow lifecycle command persistence', () => {
       await expect(
         authoring.transitionWorkflowLifecycle(command),
       ).rejects.toThrow(
-        'Durable workflow lifecycle result identity does not match its claim',
+        'Stored workflow command result names another workflow',
       );
     },
   );

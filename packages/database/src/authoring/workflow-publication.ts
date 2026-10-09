@@ -1,3 +1,8 @@
+import {
+  claimCommand,
+  completeCommand,
+  type CommandIdentity,
+} from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 
 import {
@@ -19,7 +24,6 @@ import type { CompatibilityReleaseExpectation } from '../compatibility/compatibi
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import {
   WorkflowNotFoundError,
-  WorkflowIdempotencyConflictError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring-errors.js';
 import type {
@@ -85,7 +89,6 @@ export type WorkflowPublicationDependencies = Readonly<{
     expectedWorkspaceId: string,
     expectedWorkflowId: string,
   ): Omit<PublishWorkflowResult, 'replayed'>;
-  keyDigest(key: string): string;
   requireAuthor(
     client: PoolClient,
     workspaceId: string,
@@ -102,9 +105,8 @@ export type WorkflowPublicationDependencies = Readonly<{
 }>;
 
 type PublicationClaim = Readonly<{
-  digest: string;
+  command: CommandIdentity;
   replay: PublishWorkflowResult | null;
-  scope: string;
   workflowId: string;
 }>;
 
@@ -122,54 +124,30 @@ async function claimPublication(
   dependencies: WorkflowPublicationDependencies,
 ): Promise<PublicationClaim> {
   const workflowId = uuidSchema.parse(input.workflowId);
-  const requestHash = digestSchema.parse(input.requestHash);
-  const scope = `${input.actorId}:${workflowId}`;
-  const digest = dependencies.keyDigest(input.idempotencyKey);
-  await client.query(
-    `insert into app.idempotency_records
-       (id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref)
-     values($1,$2,'workflow.publish',$3,$4,$5,'in_progress',$6,'{}'::jsonb)
-     on conflict (workspace_id,operation,scope,key_hash) do nothing`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      scope,
-      digest,
-      requestHash,
-      workflowId,
-    ],
-  );
-  const result = await client.query<{
-    request_hash: string;
-    result_ref: unknown;
-    status: string;
-  }>(
-    `select request_hash,status,result_ref from app.idempotency_records
-     where workspace_id=$1 and operation='workflow.publish'
-       and scope=$2 and key_hash=$3 for update`,
-    [input.workspaceId, scope, digest],
-  );
-  const claimed = result.rows[0];
-  if (claimed === undefined)
-    throw new Error('Publish idempotency claim is unavailable');
-  if (claimed.request_hash !== requestHash)
-    throw new WorkflowIdempotencyConflictError(
-      'Idempotency key request mismatch',
-    );
+  const command: CommandIdentity = {
+    workspaceId: input.workspaceId,
+    operation: 'workflow.publish',
+    scope: `${input.actorId}:${workflowId}`,
+    idempotencyKey: input.idempotencyKey,
+  };
+  const stored = await claimCommand(client, {
+    ...command,
+    request: digestSchema.parse(input.requestHash),
+    resourceId: workflowId,
+  });
   return Object.freeze({
-    digest,
+    command,
     replay:
-      claimed.status === 'completed'
-        ? Object.freeze({
+      stored === null
+        ? null
+        : Object.freeze({
             ...dependencies.durableResult(
-              claimed.result_ref,
+              stored,
               input.workspaceId,
               workflowId,
             ),
             replayed: true,
-          })
-        : null,
-    scope,
+          }),
     workflowId,
   });
 }
@@ -407,21 +385,10 @@ async function finalizePublication(
     ],
   );
   await hooks?.afterPublishStep?.('audit');
-  await client.query(
-    `update app.idempotency_records set status='completed',result_ref=$1::jsonb,
-       updated_at=transaction_timestamp()
-     where workspace_id=$2 and operation='workflow.publish'
-       and scope=$3 and key_hash=$4`,
-    [
-      JSON.stringify({
-        version: { ...version, publishedAt: version.publishedAt.toISOString() },
-        reused,
-      }),
-      input.workspaceId,
-      claim.scope,
-      claim.digest,
-    ],
-  );
+  await completeCommand(client, claim.command, {
+    version: { ...version, publishedAt: version.publishedAt.toISOString() },
+    reused,
+  });
   await hooks?.afterPublishStep?.('idempotency');
 }
 

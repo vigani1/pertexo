@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { describe, expect, it, vi } from 'vitest';
 import type { PoolClient } from 'pg';
 import { Pool } from 'pg';
@@ -15,10 +17,8 @@ import {
 } from '../src/authoring/workflow-authoring-admission.js';
 import { createWorkflowAuthoringReadStore } from '../src/authoring/workflow-authoring-reads.js';
 import { createWorkflowPublisher } from '../src/authoring/workflow-publication.js';
-import {
-  WorkflowIdempotencyConflictError,
-  WorkflowRevisionConflictError,
-} from '../src/authoring/workflow-authoring-errors.js';
+import { WorkflowRevisionConflictError } from '../src/authoring/workflow-authoring-errors.js';
+import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 
@@ -314,7 +314,9 @@ describe('snapshot validation and publication ordering', () => {
 
   function publisher(
     status = 'in_progress',
-    requestHash = command.requestHash,
+    requestHash = createHash('sha256')
+      .update(JSON.stringify(command.requestHash))
+      .digest('hex'),
   ) {
     const query = vi.fn((sql: string) => {
       if (sql.includes('select request_hash'))
@@ -355,7 +357,6 @@ describe('snapshot validation and publication ordering', () => {
     const transact = vi.fn();
     const publish = createWorkflowPublisher({
       durableResult: () => replay,
-      keyDigest: () => 'a'.repeat(64),
       requireAuthor,
       selectVariant,
       testHooks: undefined,
@@ -401,7 +402,7 @@ describe('snapshot validation and publication ordering', () => {
   it('rejects changed exact-key bodies before reading or admitting the draft', async () => {
     const fixture = publisher('completed', 'b'.repeat(64));
     await expect(fixture.publish(command)).rejects.toBeInstanceOf(
-      WorkflowIdempotencyConflictError,
+      IdempotencyConflictError,
     );
     expect(fixture.selectVariant).not.toHaveBeenCalled();
   });
