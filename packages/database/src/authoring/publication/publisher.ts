@@ -2,8 +2,8 @@ import {
   claimCommand,
   completeCommand,
   type CommandIdentity,
-} from '../platform/idempotency.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
+} from '../../platform/idempotency.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import {
   InvalidWorkflowGraphError,
@@ -17,37 +17,37 @@ import {
   workflowExecutableChecksum,
   workflowIntegrationUsage,
 } from '@pertexo/workflow-model/server';
-import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
+import { admitWorkflowAuthoring } from '../workflows/admission.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from './workflow-authoring-errors.js';
+} from '../workflows/errors.js';
 import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
-} from './workflow-authoring-contracts.js';
+} from '../workflows/contracts.js';
 import type {
   WorkflowAuthoringTestHooks,
   WorkflowExecutableCompiler,
   WorkflowAuthoringGraphValidator,
-} from './workflow-authoring-types.js';
-import type { WorkflowVersionRecord } from './workflow-authoring-records.js';
+} from '../workflows/types.js';
+import type { WorkflowVersionRecord } from '../workflows/records.js';
 import {
   mapDraft,
   mapVersion,
   workflowVersionRowSelection,
-} from './workflow-authoring-rows.js';
+} from '../workflows/rows.js';
 import {
   reconcileWorkflowTriggersPayload,
   persistPublishedWorkflowTriggers,
-} from './workflow-trigger-reconciliation.js';
+} from './trigger-reconciliation.js';
 
-export { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
+export { reconcileWorkflowTriggersPayload } from './trigger-reconciliation.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = sha256HexSchema;

@@ -1,4 +1,4 @@
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -7,22 +7,19 @@ import {
   claimWorkflowCommand,
   completeWorkflowCommand,
   type WorkflowCommand,
-} from './workflow-authoring-command-receipts.js';
+} from '../command-receipts.js';
 import {
   WorkflowNameRevisionConflictError,
   WorkflowNotFoundError,
-} from './workflow-authoring-errors.js';
+} from '../errors.js';
 import type {
   RenameWorkflowInput,
   RenameWorkflowResult,
   WorkflowAuthoringDatabase,
-} from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
-import type { WorkflowRecord } from './workflow-authoring-records.js';
-import {
-  mapWorkflow,
-  workflowRowSelection,
-} from './workflow-authoring-rows.js';
+} from '../contracts.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
+import type { WorkflowRecord } from '../records.js';
+import { mapWorkflow, workflowRowSelection } from '../rows.js';
 
 const uuidSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(128);

@@ -1,24 +1,24 @@
 import { z } from 'zod';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from './workflow-authoring-errors.js';
+} from '../errors.js';
 import type {
   RestoreWorkflowVersionInput,
   WorkflowAuthoringDatabase,
-} from './workflow-authoring-contracts.js';
-import type { WorkflowDraftRecord } from './workflow-authoring-records.js';
-import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
+} from '../contracts.js';
+import type { WorkflowDraftRecord } from '../records.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
 import {
   mapDraft,
   mapVersion,
   mapWorkflow,
   workflowRowSelection,
   workflowVersionRowSelection,
-} from './workflow-authoring-rows.js';
+} from '../rows.js';
 
 type VersionRestoreStore = Pick<
   WorkflowAuthoringDatabase,

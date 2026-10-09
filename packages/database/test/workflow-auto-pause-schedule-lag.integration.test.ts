@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
+import { createWorkflowAuthoringDatabase } from '../src/authoring/workflows/database.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { databaseSchema } from '../src/schema.js';
 import {

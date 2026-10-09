@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import { WorkflowNotFoundError } from '../workflow-authoring-errors.js';
+import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type { OrganizationScope } from './command.js';
 import {
   WorkflowFolderConflictError,

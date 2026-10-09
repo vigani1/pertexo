@@ -1,11 +1,11 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { claimCommand, completeCommand } from '../platform/idempotency.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { ROLES, type Role } from '../tenant-access/workspace-policy.js';
-import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
-import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { ROLES, type Role } from '../../tenant-access/workspace-policy.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
+import { WorkflowNotFoundError } from '../workflows/errors.js';
 
 export type WorkflowAutoPauseSettings = Readonly<{
   enabled: boolean;

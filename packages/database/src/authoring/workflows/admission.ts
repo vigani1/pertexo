@@ -4,7 +4,7 @@ import {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
 } from '@pertexo/workflow-model/server';
-import type { WorkflowAuthoringGraphValidator } from './workflow-authoring-types.js';
+import type { WorkflowAuthoringGraphValidator } from './types.js';
 
 const parserWaitMs =
   AUTHORING_VALIDATION_BUDGET.queueMs +

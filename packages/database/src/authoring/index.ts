@@ -53,32 +53,32 @@ export {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
-} from './workflow-input-cases.js';
+} from './input-cases.js';
 export type {
   WorkflowInputCaseDatabase,
   WorkflowInputCaseMetadata,
   WorkflowInputCaseResult,
-} from './workflow-input-cases.js';
+} from './input-cases.js';
 export {
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
   WorkflowConcurrencyRevisionConflictError,
-} from './workflow-concurrency.js';
+} from './settings/concurrency.js';
 export type {
   WorkflowConcurrencyDatabase,
   WorkflowConcurrencySettings,
-} from './workflow-concurrency.js';
+} from './settings/concurrency.js';
 export {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-} from './workflow-auto-pause.js';
+} from './settings/auto-pause.js';
 export type {
   AutoPauseCommandResult,
   WorkflowAutoPauseDatabase,
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
-} from './workflow-auto-pause.js';
+} from './settings/auto-pause.js';
 export {
   createWorkflowAuthoringDatabase,
   WorkflowDefinitionPlacementError,
@@ -91,7 +91,7 @@ export {
   WorkflowPortabilityValidationError,
   WorkflowRevisionConflictError,
   WorkflowTemplateOriginUnavailableError,
-} from './workflow-authoring.js';
+} from './workflows/database.js';
 export type {
   DuplicateWorkflowInput,
   DuplicateWorkflowResult,
@@ -108,4 +108,4 @@ export type {
   WorkflowLifecycleCommand,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './workflow-authoring.js';
+} from './workflows/database.js';

@@ -9,8 +9,8 @@ import {
   claimCommand,
   completeCommand,
   type CommandIdentity,
-} from '../platform/idempotency.js';
-import type { WorkflowRecord } from './workflow-authoring-records.js';
+} from '../../platform/idempotency.js';
+import type { WorkflowRecord } from './records.js';
 
 const uuidSchema = z.uuid();
 const revisionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);

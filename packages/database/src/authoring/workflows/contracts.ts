@@ -4,20 +4,20 @@ import type {
   PreviewRunRecord,
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
-} from '../previews/repository.js';
+} from '../../previews/repository.js';
 import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './workflow-authoring-records.js';
+} from './records.js';
 import type {
   GraphValidationResult,
   PortableConnectionBinding,
   PortableIssue,
   WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
-import type { WorkflowAutoPauseDatabase } from './workflow-auto-pause.js';
-import type { WorkflowConcurrencyDatabase } from './workflow-concurrency.js';
+import type { WorkflowAutoPauseDatabase } from '../settings/auto-pause.js';
+import type { WorkflowConcurrencyDatabase } from '../settings/concurrency.js';
 import type {
   WorkflowTemplateOriginRequest,
   WorkflowTemplateOrigin,

@@ -1,4 +1,4 @@
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { z } from 'zod';
 import {
@@ -7,24 +7,23 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 
-import { claimCommand, completeCommand } from '../platform/idempotency.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from './workflow-authoring-errors.js';
-import {
-  createdWorkflowRowSchema,
-  mapDraft,
-  mapWorkflow,
-} from './workflow-authoring-rows.js';
+} from '../errors.js';
+import { createdWorkflowRowSchema, mapDraft, mapWorkflow } from '../rows.js';
 import type {
   CreateWorkflowInput,
   CreateWorkflowResult,
   SaveWorkflowDraftInput,
   WorkflowAuthoringDatabase,
-} from './workflow-authoring-contracts.js';
-import type { WorkflowDraftRecord } from './workflow-authoring-records.js';
-import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
+} from '../contracts.js';
+import type { WorkflowDraftRecord } from '../records.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
 
 type DraftStore = Pick<
   WorkflowAuthoringDatabase,

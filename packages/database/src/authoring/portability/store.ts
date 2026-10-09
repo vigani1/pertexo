@@ -20,31 +20,31 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
 
-import { claimCommand, completeCommand } from '../platform/idempotency.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { rolesForCapability } from '../tenant-access/workspace-policy.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rolesForCapability } from '../../tenant-access/workspace-policy.js';
 import type {
   ExportWorkflowInput,
   ImportWorkflowInput,
   PreviewWorkflowImportInput,
   WorkflowAuthoringDatabase,
-} from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
-import type { PortableCatalog } from './workflow-authoring-types.js';
+} from '../workflows/contracts.js';
+import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
+import type { PortableCatalog } from '../workflows/types.js';
 import {
   WorkflowNotFoundError,
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityUnavailableError,
   WorkflowPortabilityValidationError,
-} from './workflow-authoring-errors.js';
-import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
-import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
+} from '../workflows/errors.js';
+import { admitWorkflowAuthoring } from '../workflows/admission.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import {
   inspectPortableConnections,
   lockPortableSource,
   reviewedSourceGraph,
-} from './workflow-portability-authority.js';
+} from './source-authority.js';
 
 const scope = z.object({
   workspaceId: z.uuid(),

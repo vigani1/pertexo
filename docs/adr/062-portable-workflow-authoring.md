@@ -25,7 +25,7 @@ number after that reviewed decision, despite its absence from this main baseline
 ## Current-source reconciliation
 
 - [ADR060](060-workflow-duplication-identity.md) governs same-workspace copies.
-  [Duplication persistence](../../packages/database/src/authoring/workflow-authoring-duplication.ts)
+  [Duplication persistence](../../packages/database/src/authoring/workflows/commands/duplication.ts)
   preserves IDs and dynamic JSONata; it did not introduce a remapper. Import
   creates a different workflow, so preserving IDs avoids breaking dynamic
   `$lookup(nodeOutputs, runInput.stepId)` references without runtime aliases.
@@ -39,7 +39,7 @@ number after that reviewed decision, despite its absence from this main baseline
   graph config/literal records declares arbitrary text secret-safe. HTTP config
   already rejects credential-bearing headers and query names in
   [validation](../../packages/integrations/src/http-request/validation.ts).
-- [Authoring draft store](../../packages/database/src/authoring/workflow-authoring-drafts.ts)
+- [Authoring draft store](../../packages/database/src/authoring/workflows/commands/drafts.ts)
   and [duplication migration](../../packages/database/migrations/0129_workflow_duplication.sql)
   supply creation/receipt patterns, not an import command to call in a second
   transaction. Current authoring creation has no workflow-count entitlement;

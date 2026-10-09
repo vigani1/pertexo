@@ -9,7 +9,7 @@ import type {
   WorkflowAuthoringDatabaseOptions,
   WorkflowExecutableCompiler,
   WorkflowAuthoringGraphValidator,
-} from './workflow-authoring-types.js';
+} from './types.js';
 
 type WorkflowAuthoringCompatibilitySelection = Readonly<{
   portableCatalog: PortableCatalog | undefined;

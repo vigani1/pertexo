@@ -10,18 +10,21 @@ import {
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { claimCommand, completeCommand } from '../platform/idempotency.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
+import {
+  claimCommand,
+  completeCommand,
+} from '../../../platform/idempotency.js';
 import type {
   DuplicateWorkflowInput,
   WorkflowAuthoringDatabase,
-} from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
+} from '../contracts.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from './workflow-authoring-errors.js';
-import { mapDraft } from './workflow-authoring-rows.js';
+} from '../errors.js';
+import { mapDraft } from '../rows.js';
 
 const uuid = z.uuid();
 const inputSchema = z

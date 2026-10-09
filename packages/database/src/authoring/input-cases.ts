@@ -11,8 +11,8 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
 import { rolesForCapability } from '../tenant-access/workspace-policy.js';
-import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
-import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
+import { lockWorkflowAuthoringAuthority } from './workflows/authority.js';
+import { WorkflowNotFoundError } from './workflows/errors.js';
 
 export type WorkflowInputCaseMetadata = Readonly<{
   id: string;

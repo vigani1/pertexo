@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
-import { createWorkflowAuthoringDatabase as createUnwiredAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
+import { createWorkflowAuthoringDatabase as createUnwiredAuthoringDatabase } from '../src/authoring/workflows/database.js';
 
 import {
   CONNECTION_AUTH_TYPE,

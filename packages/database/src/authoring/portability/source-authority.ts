@@ -7,13 +7,13 @@ import {
   type WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
-import type { ExportWorkflowInput } from './workflow-authoring-contracts.js';
-import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
+import type { ExportWorkflowInput } from '../workflows/contracts.js';
+import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from './workflow-authoring-errors.js';
-import { mapDraft } from './workflow-authoring-rows.js';
+} from '../workflows/errors.js';
+import { mapDraft } from '../workflows/rows.js';
 
 /** Lock workflow before its selected source; select catalog only after source. */
 export async function lockPortableSource(
