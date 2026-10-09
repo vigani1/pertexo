@@ -4,7 +4,7 @@ import {
   encodeRunEventReference,
   encodeRunEventResync,
   runEventChannel,
-} from '../src/run-event-notifications.js';
+} from '../src/pubsub/run-events.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const runId = '22222222-2222-4222-8222-222222222222';
