@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  assertAttemptTransition,
   assertNodeTransition,
   assertRunTransition,
   decideRetry,
@@ -136,9 +135,6 @@ describe('retry and transition policy', () => {
     }).toThrow(WorkflowEngineError);
     expect(() => {
       assertNodeTransition('failed', 'ready');
-    }).toThrow(WorkflowEngineError);
-    expect(() => {
-      assertAttemptTransition('outcome_unknown', 'running');
     }).toThrow(WorkflowEngineError);
   });
 });

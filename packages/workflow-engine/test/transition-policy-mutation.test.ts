@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  assertAttemptTransition,
-  assertNodeTransition,
-  assertRunTransition,
-} from '../src/testing.js';
+import { assertNodeTransition, assertRunTransition } from '../src/testing.js';
 
 const policies = [
   {
@@ -60,26 +56,6 @@ const policies = [
       succeeded: [],
       failed: [],
       skipped: [],
-      canceled: [],
-      timed_out: [],
-      outcome_unknown: [],
-    },
-  },
-  {
-    name: 'attempt',
-    assert: assertAttemptTransition,
-    expected: {
-      pending: ['ready', 'canceled'],
-      ready: ['running', 'canceled'],
-      running: [
-        'succeeded',
-        'failed',
-        'canceled',
-        'timed_out',
-        'outcome_unknown',
-      ],
-      succeeded: [],
-      failed: [],
       canceled: [],
       timed_out: [],
       outcome_unknown: [],

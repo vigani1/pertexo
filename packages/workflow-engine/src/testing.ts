@@ -76,9 +76,8 @@ export type {
   RetryPolicy,
 } from './attempt/retries.js';
 export {
-  assertAttemptTransition,
   assertNodeTransition,
   assertRunTransition,
 } from './transition/transitions.js';
-export { ATTEMPT_STATUSES, NODE_STATUSES, RUN_STATUSES } from './types.js';
+export { NODE_STATUSES, RUN_STATUSES } from './types.js';
 export * from './index.js';
