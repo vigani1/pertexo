@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { WorkflowTagConflictError } from '../src/authoring/workflow-tags.js';
+import type { WorkflowTagConflictError } from '../src/authoring/organization/tags.repository.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
 } from '../src/authoring/workflow-authoring-errors.js';
-import { WorkflowOrganizationUnavailableError } from '../src/authoring/workflow-favorites.js';
+import { WorkflowOrganizationUnavailableError } from '../src/authoring/organization/favorites.repository.js';
 import {
   createOrganizationOwnedFixture,
   organizationFixtureEnabled,

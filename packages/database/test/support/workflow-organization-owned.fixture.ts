@@ -10,16 +10,16 @@ import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identit
 import { createArtifactMigrationConfig } from './artifact-migration-fixture.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 import { createWorkflowAuthoringFixtureDatabase } from './workflow-authoring-admission.fixture.js';
-import { createWorkflowTagDatabase } from '../../src/authoring/workflow-tags.js';
+import { createWorkflowTagDatabase } from '../../src/authoring/organization/tags.repository.js';
 import {
   createWorkflowFolderDatabase,
   createWorkflowOrganizationBatchDatabase,
 } from '../../src/api.js';
-import { createWorkflowOrganizationReadDatabase } from '../../src/authoring/workflow-organization-read.js';
+import { createWorkflowOrganizationReadDatabase } from '../../src/authoring/organization/workflows.queries.js';
 import {
   createWorkflowFavoriteDatabase,
   type WorkflowFavoriteAbsenceTokenAuthority,
-} from '../../src/authoring/workflow-favorites.js';
+} from '../../src/authoring/organization/favorites.repository.js';
 
 const roles = {
   DATABASE_ADMIN_URL: 'postgres',

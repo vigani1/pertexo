@@ -1,19 +1,19 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import type { DatabaseConfig } from '../config.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
-import { ROLES } from '../tenant-access/workspace-policy.js';
-import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
+import type { DatabaseConfig } from '../../config.js';
+import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import { ROLES } from '../../tenant-access/workspace-policy.js';
+import { lockWorkflowAuthoringAuthority } from '../workflow-authoring-authority.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
-} from './workflow-authoring-errors.js';
+} from '../workflow-authoring-errors.js';
 import {
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
-} from './workflow-organization-errors.js';
-import { WorkflowTagConflictError } from './workflow-tags.js';
-import { createOrganizationDatabaseSession } from './organization-database-session.js';
+} from './errors.js';
+import { WorkflowTagConflictError } from './tags.repository.js';
+import { createOrganizationDatabaseSession } from './session.js';
 
 type Scope = Readonly<{
   workspaceId: string;

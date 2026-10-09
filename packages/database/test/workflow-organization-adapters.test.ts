@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createWorkflowFolderDatabase,
   WorkflowFolderConflictError,
-} from '../src/authoring/workflow-folders.js';
-import { createWorkflowOrganizationBatchDatabase } from '../src/authoring/workflow-organization-batches.js';
+} from '../src/authoring/organization/folders.repository.js';
+import { createWorkflowOrganizationBatchDatabase } from '../src/authoring/organization/batches.repository.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
@@ -13,11 +13,11 @@ import {
 import {
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
-} from '../src/authoring/workflow-organization-errors.js';
+} from '../src/authoring/organization/errors.js';
 import {
   createWorkflowTagDatabase,
   WorkflowTagConflictError,
-} from '../src/authoring/workflow-tags.js';
+} from '../src/authoring/organization/tags.repository.js';
 import { parseDatabaseConfig } from '../src/config.js';
 
 const mocks = vi.hoisted(() => ({

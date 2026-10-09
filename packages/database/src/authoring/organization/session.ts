@@ -1,10 +1,10 @@
 import type { PoolClient } from 'pg';
-import type { DatabaseConfig } from '../config.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+} from '../../platform/database-runtime.js';
+import { withTenantScopedClient } from '../../tenant-access/workspace.js';
 
 type Scope = Readonly<{
   workspaceId: string;

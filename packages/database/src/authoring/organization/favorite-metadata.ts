@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import type { WorkflowFavoriteAbsenceTokenAuthority } from './workflow-favorites.js';
+import type { WorkflowFavoriteAbsenceTokenAuthority } from './favorites.repository.js';
 
 type Scope = Readonly<{
   workspaceId: string;
