@@ -7,7 +7,7 @@ import {
   encodeWorkspaceInboxHint,
   parseWorkspaceInboxHint,
   workspaceInboxChannel,
-} from '../src/workspace-inbox-notifications.js';
+} from '../src/pubsub/workspace-inbox.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const otherWorkspaceId = '22222222-2222-4222-8222-222222222222';

@@ -6,9 +6,9 @@ import {
   observeRedisOperation,
   type RedisClientRole,
   type RedisTelemetryObserver,
-} from './redis-telemetry-contracts.js';
-import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
-import { normalizeRedisEndpoint } from './redis-endpoint.js';
+} from '../redis/telemetry-contracts.js';
+import { createProductionRedisTelemetryObserver } from '../redis/telemetry.js';
+import { normalizeRedisEndpoint } from '../redis/endpoint.js';
 
 const DEFAULT_PUBLISH_TIMEOUT_MS = 2_000;
 

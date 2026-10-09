@@ -104,7 +104,7 @@ import type {
   QueueHandlerObservation,
   QueueTraceRunner,
 } from '../src/consumer.js';
-import { JOB_NAME, QUEUE_NAME } from '../src/names.js';
+import { JOB_NAME, QUEUE_NAME } from '../src/jobs/names.js';
 
 const IDS = {
   workspaceId: '11111111-1111-4111-8111-111111111111',

@@ -13,7 +13,7 @@ export {
   UnknownQueueJobError,
   parseQueueJob,
   safeParseQueueJob,
-} from './contracts.js';
+} from './jobs/contracts.js';
 export type {
   AdvanceWorkflowRunJob,
   ApplyConnectionHealthObservationJob,
@@ -27,15 +27,15 @@ export type {
   ReconcilePreviewAttemptJob,
   ReconcileUnknownOutcomeJob,
   ReplayWorkflowRunJob,
-} from './contracts.js';
-export { JOB_NAME, QUEUE_FOR_JOB, QUEUE_NAME } from './names.js';
-export type { JobName, QueueName } from './names.js';
-export { normalizeRedisEndpoint } from './redis-endpoint.js';
-export type { RedisEndpointErrorReason } from './redis-endpoint.js';
+} from './jobs/contracts.js';
+export { JOB_NAME, QUEUE_FOR_JOB, QUEUE_NAME } from './jobs/names.js';
+export type { JobName, QueueName } from './jobs/names.js';
+export { normalizeRedisEndpoint } from './redis/endpoint.js';
+export type { RedisEndpointErrorReason } from './redis/endpoint.js';
 export {
   QUEUE_CLASS_DEFAULTS,
   type QueueClassJobDefaults,
-} from './defaults.js';
+} from './jobs/defaults.js';
 export {
   BullMqQueueProducer,
   QueueConfigurationError,
@@ -62,7 +62,7 @@ export {
   REDIS_METRIC_NAME,
   createProductionRedisTelemetryObserver,
   createRedisTelemetryObserver,
-} from './redis-telemetry.js';
+} from './redis/telemetry.js';
 export type {
   RedisClientRole,
   RedisConnectionEvent,
@@ -70,7 +70,7 @@ export type {
   RedisOperationErrorClass,
   RedisOperationObservation,
   RedisTelemetryObserver,
-} from './redis-telemetry-contracts.js';
+} from './redis/telemetry-contracts.js';
 export {
   RedisRunEventNotificationPublisher,
   RunEventNotificationConfigurationError,
@@ -78,13 +78,13 @@ export {
   encodeRunEventReference,
   encodeRunEventResync,
   runEventChannel,
-} from './run-event-notifications.js';
+} from './pubsub/run-events.js';
 export type {
   RunEventIdentity,
   RunEventNotificationPublisher,
   RunEventNotificationPublisherOptions,
   RunEventReference,
-} from './run-event-notifications.js';
+} from './pubsub/run-events.js';
 export {
   RedisWorkspaceInboxHintPublisher,
   WorkspaceInboxHintConfigurationError,
@@ -92,12 +92,12 @@ export {
   encodeWorkspaceInboxHint,
   parseWorkspaceInboxHint,
   workspaceInboxChannel,
-} from './workspace-inbox-notifications.js';
+} from './pubsub/workspace-inbox.js';
 export type {
   WorkspaceInboxChangeHint,
   WorkspaceInboxHint,
   WorkspaceInboxHintPublisher,
-} from './workspace-inbox-notifications.js';
+} from './pubsub/workspace-inbox.js';
 export type {
   QueueConsumer,
   QueueConsumerCloseResult,
