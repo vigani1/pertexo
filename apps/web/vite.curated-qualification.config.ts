@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       ...baseConfig.resolve,
       alias: [
         {
-          find: '@/features/workflows/model/template-feature-gates',
+          find: '@/features/workflows/model/templates/feature-gates',
           replacement: fileURLToPath(
             new URL(
               './e2e-live/support/curated-template-qualification-gates.ts',
