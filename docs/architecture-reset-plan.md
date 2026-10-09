@@ -127,7 +127,7 @@ now, as one ordered program — not "whenever we touch it".
         `workflow-engine/test/checkpoint-capacity.test.ts`; recorded in the
         ADR 020 amendment. Raising the limits means dropping finished
         iterations from the checkpoint (step 10).
-- [ ] **7. Database feature areas** — authoring, workspaces, connections,
+- [x] **7. Database feature areas** — authoring, workspaces, connections,
       triggers, notifications, inbox, workspace lifecycle and retention: rules
       to TypeScript, thin repositories, validate once, unused SQL functions
       dropped. Workspace lifecycle and retention drop the database's own
@@ -190,8 +190,11 @@ now, as one ordered program — not "whenever we touch it".
         that re-checked them, the case receipt table and the rollout switch
         go, with the checked-start gate that read it; the web no longer has
         an "input cases not enabled" state.
-  - [ ] Workspaces and access: memberships, invitations (including the
-        replacement-claim scan's unused purge mode), ownership, identity.
+  - [x] Workspaces and access: memberships, invitations (the replacement-claim
+        scan and its unused purge mode went with transient retention),
+        ownership, identity. The replacement-claim reapability check stays
+        in SQL: retention and purge share its recursive lineage walk and the
+        advisory locks it takes per binding.
     - [x] Rename, invitation, acceptance, role, removal, departure,
           suspension and ownership commands key through the shared
           idempotency helper; their seven receipt tables go. Profile
@@ -201,7 +204,7 @@ now, as one ordered program — not "whenever we touch it".
           statements in TypeScript; stale sign-in transactions are a
           retention rule. The session-revocation triggers stay because
           Better Auth writes users and sessions too.
-  - [ ] Connections.
+  - [x] Connections.
     - [x] History and version tables are append-only through grants alone;
           the eight immutability triggers and the purge "armed" check go.
     - [x] Run-time connection checks (dispatch fence, Slack dispatch binding,
