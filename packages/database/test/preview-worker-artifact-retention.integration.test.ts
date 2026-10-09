@@ -111,56 +111,6 @@ describe('preview artifact retention lifecycle', () => {
     expect(rolledBack.rows[0]).toEqual({ count: '0' });
   });
 
-  it('cannot invoke or stage preview destruction with worker authority', async () => {
-    const previewDeadline = new Date(Date.now() + 15 * 60_000);
-    const accepted = await acceptFixture({ expiresAt: previewDeadline });
-    const artifactId = randomUUID();
-    await withTenantScopedClient(workerPool, { workspaceId }, (client) =>
-      createPendingPreviewArtifact(
-        {
-          db: drizzle(client, { schema: databaseSchema }),
-          workspaceId: parseWorkspaceId(workspaceId),
-        },
-        {
-          artifactId,
-          byteLength: 3,
-          expiresAt: previewDeadline,
-          mediaType: 'application/octet-stream',
-          previewRunId: accepted.previewRunId,
-          purpose: 'node-output',
-          sha256: '7'.repeat(64),
-          storageKey: artifactStorageKey(workspaceId, artifactId),
-        },
-      ),
-    );
-    await expect(
-      withTenantScopedClient(workerPool, { workspaceId }, (client) =>
-        client.query(
-          `select app.complete_preview_cleanup($1,$2) as completed`,
-          [workspaceId, accepted.previewRunId],
-        ),
-      ),
-    ).rejects.toSatisfy(expectPgCode('42501'));
-    await expect(
-      withTenantScopedClient(workerPool, { workspaceId }, async (client) => {
-        await client.query(
-          "select set_config('app.preview_retention_transition','on',true)",
-        );
-        return client.query(
-          `update app.artifacts set status='deleting',updated_at=clock_timestamp()
-              where workspace_id=$1 and id=$2`,
-          [workspaceId, artifactId],
-        );
-      }),
-    ).rejects.toSatisfy(expectPgCode('42501'));
-    const state = await scopedQuery<{ status: string }>(
-      `select status from app.artifacts
-       where workspace_id=$1 and id=$2`,
-      [workspaceId, artifactId],
-    );
-    expect(state.rows[0]).toEqual({ status: 'pending' });
-  });
-
   it('does not emit ordinary-worker cleanup deliveries for new previews', async () => {
     const previewDeadline = new Date(Date.now() + 15 * 60_000);
     const reusableKeyHash = '9'.repeat(64);

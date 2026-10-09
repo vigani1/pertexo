@@ -1,15 +1,10 @@
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import { retentionQuery as query } from './retention-transaction.js';
-import {
-  inRetentionTransaction,
-  withWorkspaceDestructiveAuthorization,
-} from './retention-transaction.js';
-
-const uuidSchema = z.uuid();
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { inRetentionTransaction } from './retention-transaction.js';
 
 export interface RunArtifactRetentionStore {
   delete(input: {
@@ -28,7 +23,7 @@ export type RunArtifactRetentionProcessResult =
   | Readonly<{ status: 'idle' }>
   | Readonly<{
       artifactId: string;
-      status: 'completed' | 'held' | 'referenced' | 'stale' | 'waiting';
+      status: 'completed' | 'referenced' | 'waiting';
       workspaceId: string;
     }>;
 
@@ -61,161 +56,148 @@ const optionsSchema = z
   })
   .strict();
 
+const candidateSchema = z.object({ id: z.uuid(), workspace_id: z.uuid() });
+
+/**
+ * An expired upload or artifact is due unless something still refers to it.
+ * A `deleting` artifact waits for its retry time, which also keeps a second
+ * worker away while the first erases its bytes.
+ */
+const DUE_ARTIFACT = `
+  select artifact.id, artifact.workspace_id
+  from app.artifacts artifact
+  where ((artifact.status = 'pending' and artifact.purpose = 'user-upload'
+          and artifact.expires_at <= clock_timestamp())
+      or (artifact.status = 'available' and artifact.expires_at <= clock_timestamp())
+      or artifact.status = 'deleting')
+    and (artifact.retention_retry_at is null
+      or artifact.retention_retry_at <= clock_timestamp())
+    and not exists (select 1 from app.artifact_links link
+      where link.workspace_id = artifact.workspace_id and link.artifact_id = artifact.id)
+  order by artifact.expires_at, artifact.id
+  limit 1 for update skip locked`;
+
+/** Run inputs, outputs, events and checkpoints that still name the artifact. */
+const REFERENCED = `
+  select exists (select 1 from app.workflow_runs run
+      where run.workspace_id = $1
+        and (app.jsonb_references_artifact(run.input_ref, $2)
+          or app.jsonb_references_artifact(run.output_ref, $2)))
+    or exists (select 1 from app.node_runs node
+      where node.workspace_id = $1
+        and (app.jsonb_references_artifact(node.input_ref, $2)
+          or app.jsonb_references_artifact(node.output_ref, $2)))
+    or exists (select 1 from app.node_attempts attempt
+      where attempt.workspace_id = $1
+        and (app.jsonb_references_artifact(attempt.output_ref, $2)
+          or app.jsonb_references_artifact(attempt.reconciliation_ref, $2)))
+    or exists (select 1 from app.run_events event
+      where event.workspace_id = $1
+        and app.jsonb_references_artifact(event.payload, $2))
+    or exists (select 1 from app.run_checkpoints checkpoint
+      where checkpoint.workspace_id = $1
+        and app.jsonb_references_artifact(checkpoint.scheduler_state, $2))
+    referenced`;
+
+async function retryLater(
+  client: PoolClient,
+  artifactId: string,
+  delay: string,
+): Promise<void> {
+  await client.query(
+    `update app.artifacts
+     set retention_retry_at = clock_timestamp() + $2::interval,
+         updated_at = clock_timestamp()
+     where id = $1`,
+    [artifactId, delay],
+  );
+}
+
+/**
+ * Deletes expired run artifacts and abandoned uploads: the artifact is marked
+ * deleting, its bytes are erased outside any transaction, and its row goes
+ * once the store no longer has them.
+ */
 export function createRunArtifactRetentionCoordinator(
   config: DatabaseConfig,
   artifacts: RunArtifactRetentionStore,
   inputOptions: RunArtifactRetentionCoordinatorOptions = {},
   runtime?: DatabaseRuntime,
 ): RunArtifactRetentionCoordinator {
-  if (config.max < 2)
-    throw new RangeError(
-      'Run artifact retention coordination requires a database pool of at least 2 connections',
-    );
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
+  const transaction = <T>(
+    signal: AbortSignal | undefined,
+    workspaceId: string | undefined,
+    work: (client: PoolClient) => Promise<T>,
+  ): Promise<T> =>
+    inRetentionTransaction(pool, options, signal, async (client) => {
+      // Artifact capacity is charged in the artifact's own workspace.
+      if (workspaceId !== undefined)
+        await client.query("select set_config('app.workspace_id', $1, true)", [
+          workspaceId,
+        ]);
+      return work(client);
+    });
 
   return Object.freeze({
     close: () => lease.close(),
-    processNext: async (signal?: AbortSignal) => {
-      const transactionOptions = {
-        lockTimeoutMs: options.lockTimeoutMs,
-        statementTimeoutMs: options.statementTimeoutMs,
-      };
-      const due = await inRetentionTransaction(
-        pool,
-        transactionOptions,
-        signal,
-        (client) =>
-          query<{ artifact_id: string; workspace_id: string }>(
-            client,
-            'select * from app.find_due_run_artifact_retention(1)',
-            [],
-            signal,
-          ),
-      );
-      const candidate = due.rows[0];
-      if (candidate === undefined)
-        return Object.freeze({ status: 'idle' as const });
-      const artifactId = uuidSchema.parse(candidate.artifact_id);
-      const workspaceId = uuidSchema.parse(candidate.workspace_id);
-      return withWorkspaceDestructiveAuthorization(
-        pool,
-        transactionOptions,
-        signal,
-        workspaceId,
-        options.externalOperationTimeoutMs,
-        async (highWater, externalSignal) => {
-          const outcome = await inRetentionTransaction(
-            pool,
-            transactionOptions,
-            signal,
-            async (client) => {
-              await query(
-                client,
-                "select set_config('app.workspace_id',$1,true)",
-                [workspaceId],
-                signal,
-              );
-              const prepared = await query<{ outcome: string }>(
-                client,
-                'select app.prepare_run_artifact_retention($1,$2,$3,$4) outcome',
-                [workspaceId, artifactId, highWater.sequence, highWater.hash],
-                signal,
-              );
-              return z
-                .enum(['artifact', 'held', 'referenced', 'stale'])
-                .parse(prepared.rows[0]?.outcome);
-            },
-          );
-          if (outcome !== 'artifact')
-            return Object.freeze({ artifactId, status: outcome, workspaceId });
-          const defer = async (): Promise<boolean> =>
-            inRetentionTransaction(
-              pool,
-              transactionOptions,
-              signal,
-              async (client) => {
-                await query(
-                  client,
-                  "select set_config('app.workspace_id',$1,true)",
-                  [workspaceId],
-                  signal,
-                );
-                const deferred = await query<{ deferred: boolean }>(
-                  client,
-                  'select app.defer_run_artifact_retention($1,$2,$3,$4) deferred',
-                  [workspaceId, artifactId, highWater.sequence, highWater.hash],
-                  signal,
-                );
-                return z.boolean().parse(deferred.rows[0]?.deferred);
-              },
-            );
+    processNext: async (
+      signal?: AbortSignal,
+    ): Promise<RunArtifactRetentionProcessResult> => {
+      const prepared = await transaction(signal, undefined, async (client) => {
+        const due = await client.query(DUE_ARTIFACT);
+        if (due.rows[0] === undefined) return undefined;
+        const artifact = candidateSchema.parse(due.rows[0]);
+        await client.query("select set_config('app.workspace_id', $1, true)", [
+          artifact.workspace_id,
+        ]);
+        const referenced = await client.query<{ referenced: boolean }>(
+          REFERENCED,
+          [artifact.workspace_id, artifact.id],
+        );
+        if (referenced.rows[0]?.referenced === true) {
+          await retryLater(client, artifact.id, '1 day');
+          return { ...artifact, referenced: true };
+        }
+        await client.query(
+          `update app.artifacts
+           set status = 'deleting', retention_retry_at = clock_timestamp() + interval '1 minute',
+               updated_at = clock_timestamp()
+           where id = $1`,
+          [artifact.id],
+        );
+        return { ...artifact, referenced: false };
+      });
+      if (prepared === undefined) return Object.freeze({ status: 'idle' });
+      const artifactId = prepared.id;
+      const workspaceId = prepared.workspace_id;
+      if (prepared.referenced)
+        return Object.freeze({ artifactId, status: 'referenced', workspaceId });
 
-          let remaining: object | null;
-          try {
-            await artifacts.delete({
-              artifactId,
-              signal: externalSignal,
-              workspaceId,
-            });
-            remaining = await artifacts.head({
-              artifactId,
-              signal: externalSignal,
-              workspaceId,
-            });
-          } catch (error: unknown) {
-            signal?.throwIfAborted();
-            try {
-              if (!(await defer()))
-                throw new Error('Run artifact retention deferral was lost');
-            } catch (deferError: unknown) {
-              throw new AggregateError(
-                [error, deferError],
-                'Run artifact retention failure and deferral both failed',
-              );
-            }
-            throw error;
-          }
-          if (remaining !== null) {
-            if (!(await defer()))
-              throw new Error('Run artifact retention deferral was lost');
-            return Object.freeze({
-              artifactId,
-              status: 'waiting' as const,
-              workspaceId,
-            });
-          }
+      const external = AbortSignal.any([
+        ...(signal === undefined ? [] : [signal]),
+        AbortSignal.timeout(options.externalOperationTimeoutMs),
+      ]);
+      await artifacts.delete({ artifactId, signal: external, workspaceId });
+      if (
+        (await artifacts.head({
+          artifactId,
+          signal: external,
+          workspaceId,
+        })) !== null
+      )
+        // The store still has the bytes; the retry time brings it back.
+        return Object.freeze({ artifactId, status: 'waiting', workspaceId });
 
-          const completed = await inRetentionTransaction(
-            pool,
-            transactionOptions,
-            signal,
-            async (client) => {
-              await query(
-                client,
-                "select set_config('app.workspace_id',$1,true)",
-                [workspaceId],
-                signal,
-              );
-              const completed = await query<{ completed: boolean }>(
-                client,
-                'select app.complete_run_artifact_retention($1,$2,$3,$4) completed',
-                [workspaceId, artifactId, highWater.sequence, highWater.hash],
-                signal,
-              );
-              return z.boolean().parse(completed.rows[0]?.completed);
-            },
-          );
-          if (!completed)
-            throw new Error('Run artifact retention completion was lost');
-          return Object.freeze({
-            artifactId,
-            status: 'completed' as const,
-            workspaceId,
-          });
-        },
+      await transaction(signal, workspaceId, (client) =>
+        client.query(
+          `delete from app.artifacts where id = $1 and status = 'deleting'`,
+          [artifactId],
+        ),
       );
+      return Object.freeze({ artifactId, status: 'completed', workspaceId });
     },
   });
 }

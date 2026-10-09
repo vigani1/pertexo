@@ -148,9 +148,12 @@ now, as one ordered program — not "whenever we touch it".
         call from a TypeScript step order, scrubs kept audit and usage facts,
         erases objects outside any transaction and leaves a tombstone. A test
         checks every workspace table is purged or kept on purpose.
-  - [ ] Preview cleanup and run-artifact retention: port to TypeScript, then
-        drop the workspace control columns (`retention_control_*`, now
-        constant) and `lock_workspace_control_ledger`.
+  - [x] Preview cleanup and run-artifact retention run in TypeScript
+        (`lifecycle/preview-retention.ts`, `run-artifact-retention.ts`): row
+        locks and the artifact's retry time keep workers apart, so the
+        workspace control columns, `lock_workspace_control_ledger`, the
+        session-level destruction lock and the preview destruction capability
+        rows are gone.
   - [ ] Legal-hold table: drop once the reapers that still check it are ported
         (favorites, inbox expiry, invitation reapers, manual-start
         rejections, transient data).
