@@ -119,114 +119,10 @@ describe('connection health runtime boundary', () => {
         role,
       });
   });
-
-  it('allows only API and worker tenant-bound notification connection locks', async () => {
-    const connection = await createHealthConnection();
-    for (const pool of [api, worker]) {
-      const tenant = await pool.query<{ tenant: string | null }>(
-        "select nullif(current_setting('app.workspace_id',true),'') tenant",
-      );
-      expect(tenant.rows).toEqual([{ tenant: null }]);
-      const omitted = await pool.query(
-        'select * from app.lock_notification_connection($1,$2)',
-        [workspaceA, connection.connectionId],
-      );
-      expect(omitted.rows).toEqual([]);
-    }
-    for (const base of [apiBaseUrl, workerBaseUrl]) {
-      const allowed = await asRuntime(base, workspaceA, (client) =>
-        client.query('select * from app.lock_notification_connection($1,$2)', [
-          workspaceA,
-          connection.connectionId,
-        ]),
-      );
-      expect(allowed.rows).toEqual([
-        {
-          auth_type: 'slack_bot_token',
-          current_secret_version_id: connection.secretVersionId,
-          provider_key: 'slack',
-          status: 'active',
-        },
-      ]);
-      for (const tenant of ['', randomUUID()]) {
-        const denied = await asRuntime(base, workspaceA, async (client) => {
-          await client.query("select set_config('app.workspace_id',$1,true)", [
-            tenant,
-          ]);
-          return client.query(
-            'select * from app.lock_notification_connection($1,$2)',
-            [workspaceA, connection.connectionId],
-          );
-        });
-        expect(denied.rows).toEqual([]);
-      }
-      const otherWorkspace = await asRuntime(base, workspaceA, (client) =>
-        client.query('select * from app.lock_notification_connection($1,$2)', [
-          randomUUID(),
-          connection.connectionId,
-        ]),
-      );
-      expect(otherWorkspace.rows).toEqual([]);
-    }
-    await expect(
-      asRuntime(dispatcherBase, workspaceA, (client) =>
-        client.query('select * from app.lock_notification_connection($1,$2)', [
-          workspaceA,
-          connection.connectionId,
-        ]),
-      ),
-    ).rejects.toMatchObject({ code: '42501' });
-  });
-
-  it('denies maintenance health writes and fences app health functions', async () => {
-    await expect(
-      asRuntime(dispatcherBase, workspaceA, (client) =>
-        client.query(
-          "select app.apply_connection_health_observation($1,$2,'enforce',$3,$4)",
-          [workspaceA, randomUUID(), randomUUID(), 'a'.repeat(64)],
-        ),
-      ),
-    ).rejects.toMatchObject({ code: '42501' });
-    await expect(
-      asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query(
-          "update app.connections set status='reauthorization_required' where workspace_id=$1",
-          [workspaceA],
-        ),
-      ),
-    ).rejects.toThrow('connection health requires revision-aware writer');
-    await expect(
-      asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query('insert into app.connection_events(id) values($1)', [
-          randomUUID(),
-        ]),
-      ),
-    ).rejects.toMatchObject({ code: '42501' });
-    await expect(
-      asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query(
-          "select app.apply_connection_health_observation($1,$2,'enforce',$3,$4)",
-          [randomUUID(), randomUUID(), randomUUID(), 'a'.repeat(64)],
-        ),
-      ),
-    ).rejects.toMatchObject({ code: 'PTH04' });
-    const connection = await createHealthConnection();
-    await expect(
-      asRuntime(apiBaseUrl, workspaceA, async (client) => {
-        await client.query("select set_config('app.actor_id',$1,true)", [
-          actorId,
-        ]);
-        return client.query(
-          'update app.connections set last_tested_at=clock_timestamp() where workspace_id=$1 and id=$2',
-          [workspaceA, connection.connectionId],
-        );
-      }),
-    ).rejects.toMatchObject({ code: 'PTH01' });
-  });
 });
 
 describe('connection health retention and tenant purge', () => {
-  it('cascades evidence with source-attempt retention, removes its command and receipts late delivery as a no-op', async () => {
+  it('cascades evidence with source-attempt retention and applies its late command as a no-op', async () => {
     const evidence = await completedEvidence();
     const before = await readHealth(evidence.connection.connectionId);
     await asOwner(workspaceA, async (client) => {
@@ -261,7 +157,7 @@ describe('connection health retention and tenant purge', () => {
           evidence.lease.attemptId,
           evidence.command.delivery.outboxEventId,
         ),
-      ).toEqual({ dispatches: 0, observations: 0, commands: 0 });
+      ).toEqual({ dispatches: 0, observations: 0, commands: 1 });
       await expect(
         asRuntime(workerBaseUrl, workspaceA, (client) =>
           client.query(

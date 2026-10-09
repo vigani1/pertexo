@@ -204,6 +204,11 @@ now, as one ordered program — not "whenever we touch it".
   - [ ] Connections.
     - [x] History and version tables are append-only through grants alone;
           the eight immutability triggers and the purge "armed" check go.
+    - [x] Run-time connection checks (dispatch fence, Slack dispatch binding,
+          credential-access audit, health observations and their application,
+          notification connection lock) run as statements in TypeScript; the
+          health "protocol" marker trigger and the observation cleanup trigger
+          go.
   - [ ] Triggers: schedules and webhooks.
   - [ ] Notifications and inbox.
   - [ ] Consumer-named entry points (`/api`, `/worker`, `/maintenance`,

@@ -12,6 +12,7 @@ import type {
   FailureNotificationStore,
 } from '../contracts.js';
 import { withTenantScopedClient } from '../../tenant-access/workspace.js';
+import { recordCredentialAccess } from '../../connections/dispatch-fence.js';
 import { parseFailureNotificationAttemptNumber } from '../input-validation.js';
 
 type DestinationStore = Pick<
@@ -84,18 +85,14 @@ export function createFailureNotificationDestinationStore(
           const secretVersionId = failureNotificationIdentitySchema.parse(
             row.connection_secret_version_id,
           );
-          await client.query(
-            `select app.audit_connection_secret_access($1,$2,$3,$4,$5,$6,$7)`,
-            [
-              workspaceId,
-              connectionId,
-              secretVersionId,
-              workerId,
-              null,
-              null,
-              'failure_notification.deliver',
-            ],
-          );
+          await recordCredentialAccess(client, {
+            workspaceId,
+            connectionId,
+            secretVersionId,
+            workerId,
+            traceId: null,
+            purpose: 'failure_notification.deliver',
+          });
           const resolved = {
             connectionId,
             secretVersionId,
@@ -179,10 +176,8 @@ export function createFailureNotificationDestinationStore(
               and connection.current_secret_version_id=intent.connection_secret_version_id
               and (($4::text is null and intent.delivery_binding is null)
                 or ($4 is not null and (intent.delivery_binding is null or intent.delivery_binding=$4)))
-              and app.connection_dispatch_fence_current(
-                intent.workspace_id,connection.id,version.kind,
-                case version.kind when 'slack' then 'slack_bot_token' else 'resend_api_key' end,
-                intent.connection_secret_version_id)
+              and exists (select 1 from app.workspaces workspace
+                where workspace.id=intent.workspace_id and workspace.status='active')
             returning intent.id`,
             [workspaceId, intentId, attemptNumber, parsedBinding],
           );

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { describe, it, expect } from 'vitest';
 
 import { NodeAttemptReconciliationRequiredError } from '../src/testing.js';
+import { isConnectionFenceCurrent } from '../src/connections/dispatch-fence.js';
 import { createOperatorCommandDatabase } from '../src/operator/operator-commands.js';
 import {
   UnknownOutcomeReconciliationMismatchError,
@@ -1118,9 +1119,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
         ],
       );
       await client.query(
-        "select set_config('app.connection_health_protocol','1',true)",
-      );
-      await client.query(
         `update app.connections set current_secret_version_id=$3,health_revision=health_revision+1
            where workspace_id=$1 and id=$2`,
         [workspaceA, connectionId, nextSecretVersionId],
@@ -1135,9 +1133,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
       }),
     ).rejects.toBeInstanceOf(NodeAttemptConnectionFenceError);
     await asOwner(workspaceA, async (client) => {
-      await client.query(
-        "select set_config('app.connection_health_protocol','1',true)",
-      );
       await client.query(
         `update app.connections set status='revoked',health_revision=health_revision+1
            where workspace_id=$1 and id=$2`,
@@ -1528,19 +1523,14 @@ describe('Coordinator node-attempt persistence invariants', () => {
         secretVersionId,
       );
       const preflight = await asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query<{ fence_current: boolean }>(
-          `select app.connection_dispatch_fence_current($1,$2,$3,$4,$5)
-             fence_current`,
-          [
-            workspaceA,
-            connectionId,
-            target.providerKey,
-            target.authType,
-            secretVersionId,
-          ],
-        ),
+        isConnectionFenceCurrent(client, workspaceA, {
+          connectionId,
+          providerKey: target.providerKey,
+          authType: target.authType,
+          secretVersionId,
+        }),
       );
-      expect(preflight.rows[0]?.fence_current).toBe(true);
+      expect(preflight).toBe(true);
 
       await asOwner(workspaceA, async (client) => {
         await client.query(
@@ -1556,9 +1546,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
             'b'.repeat(22),
             actorId,
           ],
-        );
-        await client.query(
-          "select set_config('app.connection_health_protocol','1',true)",
         );
         await client.query(
           `update app.connections set current_secret_version_id=$3,health_revision=health_revision+1

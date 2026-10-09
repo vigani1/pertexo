@@ -92,9 +92,10 @@ export async function resolveWorkflowFailureNotificationPolicy(
            connection.current_secret_version_id,
            connection.provider_key,
            connection.status
-    from app.lock_notification_connection(
-      ${transaction.workspaceId},${destination.connection_id}
-    ) connection
+    from app.connections connection
+    where connection.workspace_id = ${transaction.workspaceId}
+      and connection.id = ${destination.connection_id}
+    for share
   `);
   const connection = connectionResult.rows[0];
   if (!eligibleNotificationConnection(destination.kind, connection))

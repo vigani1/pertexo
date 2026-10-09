@@ -72,18 +72,12 @@ async function applyDeletionSideEffects(
     workspace,
   );
   await client.query(
-    "select set_config('app.connection_health_protocol', '1', true)",
-  );
-  await client.query(
     `update app.connections
      set status = 'reauthorization_required', health_revision = health_revision + 1,
          last_health_transition_at = null, last_health_transition_source = null,
          last_error_code = 'workspace.pending_deletion', updated_at = clock_timestamp()
      where workspace_id = $1 and status = 'active'`,
     workspace,
-  );
-  await client.query(
-    "select set_config('app.connection_health_protocol', '', true)",
   );
   await client.query(
     `update app.webhook_trigger_endpoints

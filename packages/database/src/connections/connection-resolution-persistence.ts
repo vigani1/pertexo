@@ -1,5 +1,10 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
+
+import {
+  isConnectionFenceCurrent,
+  recordCredentialAccess,
+} from './dispatch-fence.js';
 import {
   uuidSchema,
   providerKeySchema,
@@ -76,32 +81,24 @@ export function createConnectionResolutionPersistence(
           const secretVersionId = uuidSchema.parse(row.secret_id);
           if (secretVersionId !== connection.currentSecretVersionId)
             throw new Error('Connection secret pointer is corrupt');
-          const fence = await client.query<{ current: boolean }>(
-            'select app.connection_dispatch_fence_current($1,$2,$3,$4,$5) current',
-            [
-              workspaceId,
-              connectionId,
-              connection.providerKey,
-              connection.authType,
-              secretVersionId,
-            ],
-          );
-          if (fence.rows[0]?.current !== true)
+          const current = await isConnectionFenceCurrent(client, workspaceId, {
+            connectionId,
+            providerKey: connection.providerKey,
+            authType: connection.authType,
+            secretVersionId,
+          });
+          if (!current)
             throw new ConnectionUnavailableError(
               'Connection changed before credential resolution',
             );
-          await client.query(
-            `select app.audit_connection_secret_access($1,$2,$3,$4,$5,$6,$7)`,
-            [
-              workspaceId,
-              connectionId,
-              secretVersionId,
-              workerId,
-              null,
-              traceId,
-              purpose,
-            ],
-          );
+          await recordCredentialAccess(client, {
+            workspaceId,
+            connectionId,
+            secretVersionId,
+            workerId,
+            traceId,
+            purpose,
+          });
           return Object.freeze({
             connection,
             secretVersionId,
