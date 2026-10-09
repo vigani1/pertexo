@@ -71,12 +71,19 @@ export interface WorkflowGraph {
   readonly settings: WorkflowSettings;
 }
 
+/**
+ * Node and loop counts are sized so a run's checkpoint, which keeps one record
+ * per invocation, fits the engine's checkpoint limits even with
+ * maximum-length identifiers (measured in workflow-engine's
+ * checkpoint-capacity test).
+ */
 export const WORKFLOW_GRAPH_CONTRACT_LIMITS = Object.freeze({
-  nodes: 1_000,
+  nodes: 200,
   edges: 4_000,
   graphBytes: 1_048_576,
-  maxLoopIterations: 1_000,
-  maxLoopConcurrency: 1_000,
+  identifierLength: 64,
+  maxLoopIterations: 200,
+  maxLoopConcurrency: 200,
   structuredDepth: 32,
   inputDepth: 256,
 });
@@ -85,7 +92,10 @@ export const WORKFLOW_EXECUTION_LIMITS_V1 = Object.freeze({
 });
 export const WORKFLOW_VALIDATION_MAX_ISSUES = 100;
 
-const identifierSchema = z.string().min(1);
+const identifierSchema = z
+  .string()
+  .min(1)
+  .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength);
 const positiveVersionSchema = z.number().int().positive();
 const jsonRecordSchema = z.record(z.string(), z.json());
 const valueSourceSchema = z.discriminatedUnion('kind', [

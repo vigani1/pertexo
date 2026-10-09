@@ -111,18 +111,20 @@ describe('compiled For Each bounds selection', () => {
           structured: { ...node.structured, maxIterations, maxConcurrency },
         },
       ]);
+    const { maxLoopIterations, maxLoopConcurrency } =
+      WORKFLOW_GRAPH_CONTRACT_LIMITS;
     expect(
-      workflowForEachBoundsV2(withBounds(1000, 1000)).get('n')?.maxIterations,
-    ).toBe(1000);
-    expect(() =>
       workflowForEachBoundsV2(
-        withBounds(WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopIterations + 1, 1),
-      ),
+        withBounds(maxLoopIterations, maxLoopConcurrency),
+      ).get('n')?.maxIterations,
+    ).toBe(maxLoopIterations);
+    expect(() =>
+      workflowForEachBoundsV2(withBounds(maxLoopIterations + 1, 1)),
     ).toThrow();
     expect(() => workflowForEachBoundsV2(withBounds(3, 4))).toThrow();
     expect(() =>
       workflowForEachBoundsV2(
-        withBounds(1000, WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopConcurrency + 1),
+        withBounds(maxLoopIterations, maxLoopConcurrency + 1),
       ),
     ).toThrow();
   });

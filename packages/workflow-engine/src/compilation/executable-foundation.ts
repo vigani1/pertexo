@@ -30,10 +30,14 @@ export const BASELINE_RUNTIME_POLICIES_V1 = Object.freeze({
  * @deprecated Use BASELINE_RUNTIME_POLICIES_V1. Retained for source compatibility.
  */
 export const PHASE3_RUNTIME_POLICIES_V1 = BASELINE_RUNTIME_POLICIES_V1;
+/**
+ * An executable holds the whole graph, so its member limit is sized for the
+ * graph's node limit rather than for one node's input or output.
+ */
 export const WORKFLOW_EXECUTABLE_LIMITS_V2 = Object.freeze({
   bytes: NODE_JSON_LIMITS_V1.bytes,
   depth: NODE_JSON_LIMITS_V1.depth,
-  members: NODE_JSON_LIMITS_V1.members,
+  members: 100_000,
 });
 
 export interface ExecutableRuntimePoliciesV1 {

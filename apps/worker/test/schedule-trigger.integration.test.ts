@@ -13,6 +13,7 @@ import {
   jobIdForOutboxEvent,
 } from '@pertexo/queue';
 import { createCheckpoint } from '@pertexo/workflow-engine';
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
 import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
@@ -474,7 +475,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
       checkpoint: createCheckpoint({
         engineVersion: 'phase3-engine-v1',
         workflowVersionId: publication.version.id,
-        iterationBudget: 1_000,
+        iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
         nextEventSequence: 2,
       }),
     });

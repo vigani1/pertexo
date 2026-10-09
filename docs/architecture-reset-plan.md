@@ -86,7 +86,7 @@ now, as one ordered program — not "whenever we touch it".
   - Tables defined once: the 42 raw-SQL tables get Drizzle definitions as their
     areas are ported in step 7 (tables that step 7 deletes are never typed);
     drizzle-kit generates migrations once every table is typed (step 9).
-- [ ] **6. Execution package** — run actions and the coordinator move out of the
+- [x] **6. Execution package** — run actions and the coordinator move out of the
       database package; the engine's rules exist once.
   - [x] Advancing a run: `@pertexo/execution` `advanceRun` locks the run,
         lets the engine decide and saves the transition in one transaction
@@ -117,7 +117,16 @@ now, as one ordered program — not "whenever we touch it".
         notifications (with destinations), outbox, inbox, trigger pause and
         artifacts each have their own area. Claim, heartbeat, completion and
         delivery stay storage there.
-  - [ ] For Each overflow check.
+  - [x] For Each overflow check. It reproduces on ordinary workflows, and the
+        cause is total invocations, not concurrency: the checkpoint keeps every
+        finished iteration, and each record repeats its node IDs. With editor
+        IDs, one For Each overflowed between 400 and 500 items. The authoring
+        limits now fit: 200 nodes, invocations and loop items, 64-character
+        identifiers, and the same run iteration budget. The engine's executable
+        gets its own member limit so 200-node graphs publish. Measured by
+        `workflow-engine/test/checkpoint-capacity.test.ts`; recorded in the
+        ADR 020 amendment. Raising the limits means dropping finished
+        iterations from the checkpoint (step 10).
 - [ ] **7. Database feature areas** — authoring, workspaces, connections,
       triggers, notifications, inbox, workspace lifecycle and retention: rules
       to TypeScript, thin repositories, validate once, unused SQL functions
@@ -160,6 +169,8 @@ now, as one ordered program — not "whenever we touch it".
 7. Tests check behavior; structure-only tests and test hooks are removed.
 8. The PR reports lines before/after and what was removed and why.
 - [ ] **10. Re-plan F08** on the new structure (separate plan, after the reset).
+      Include dropping finished loop iterations from the checkpoint, which is
+      what lets the 200-invocation limit grow.
 
 ## Target structure: where everything lives
 

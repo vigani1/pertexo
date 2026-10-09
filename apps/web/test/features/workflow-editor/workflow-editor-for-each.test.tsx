@@ -1,4 +1,7 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  type WorkflowGraphContract,
+} from '@pertexo/contracts/schemas/workflow-authoring';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -252,21 +255,30 @@ describe('building a For each body', { timeout: 30_000 }, () => {
     await event.click(screen.getByRole('button', { name: /Redo/u }));
     expect(items).toHaveValue('1');
     expect(concurrent).toHaveValue('1');
-    fireEvent.change(items, { target: { value: '1000' } });
-    fireEvent.change(concurrent, { target: { value: '1000' } });
+    const maximum = WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopIterations;
+    fireEvent.change(items, { target: { value: String(maximum) } });
+    fireEvent.change(concurrent, { target: { value: String(maximum) } });
     pressSave();
     await waitFor(() => {
       expect(
         saved.graph?.nodes.find((node) => node.id === 'loop')?.structured,
       ).toEqual({
         ...graph.nodes[1]?.structured,
-        maxIterations: 1000,
-        maxConcurrency: 1000,
+        maxIterations: maximum,
+        maxConcurrency: maximum,
       });
     });
   });
 
-  it.each(['', '0', '-1', '-', '1e', '1.5', '1001'])(
+  it.each([
+    '',
+    '0',
+    '-1',
+    '-',
+    '1e',
+    '1.5',
+    String(WORKFLOW_GRAPH_CONTRACT_LIMITS.maxLoopIterations + 1),
+  ])(
     'keeps incomplete or invalid bounds %j as scratch and protects selection',
     async (text) => {
       const { saved, event } = await openEditor(orderLoopGraph());

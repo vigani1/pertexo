@@ -7,6 +7,7 @@ import {
   createCheckpointV2,
   type WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
 
 import {
   verifyPersistedWorkflowProjection,
@@ -14,7 +15,6 @@ import {
 } from '../workflows/verify-projection.js';
 
 export const ENGINE_VERSION = 'phase3-engine-v1';
-const ITERATION_BUDGET = 1_000;
 
 /** Branching, looping and parallel nodes need the structured (v2) checkpoint. */
 export function requiresStructuredCheckpoint(
@@ -54,7 +54,7 @@ export function createInitialCheckpoint(
     checkpoint: create({
       engineVersion: ENGINE_VERSION,
       workflowVersionId: projection.id,
-      iterationBudget: ITERATION_BUDGET,
+      iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
       nextEventSequence: 2,
     }),
   });

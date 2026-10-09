@@ -74,7 +74,7 @@ function graph(version: 1 | 2 | 3, nested: boolean): WorkflowGraphContract {
     schemaVersion: 1,
     settings: {},
     nodes: nested
-      ? [start, loopStep('loop', 'Loop', group), end]
+      ? [start, smallLoop(loopStep('loop', 'Loop', group)), end]
       : [start, ...group.nodes, end],
     edges: nested
       ? [edge('start-loop', 'start', 'loop'), edge('loop-end', 'loop', 'end')]
@@ -84,6 +84,13 @@ function graph(version: 1 | 2 | 3, nested: boolean): WorkflowGraphContract {
           edge('m-end', 'merge', 'end'),
         ],
   };
+}
+
+/** Few enough items that the duplicated body stays within the invocation limit. */
+function smallLoop(loop: ReturnType<typeof loopStep>) {
+  const { structured } = loop;
+  if (structured === undefined) throw new Error('For each fixture missing');
+  return { ...loop, structured: { ...structured, maxIterations: 20 } };
 }
 
 function admit(graph: WorkflowGraphContract) {

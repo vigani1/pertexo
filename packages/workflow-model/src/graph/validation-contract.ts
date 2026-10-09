@@ -15,8 +15,8 @@ export interface WorkflowGraphLimits {
 
 export const WORKFLOW_GRAPH_LIMITS: WorkflowGraphLimits = Object.freeze({
   ...WORKFLOW_GRAPH_CONTRACT_LIMITS,
-  maxTotalLoopIterations: 1_000,
-  maxExpandedInvocations: 1_000,
+  maxTotalLoopIterations: WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes,
+  maxExpandedInvocations: WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes,
   structuredDepth: 32,
   jsonValueDepth: 64,
 });

@@ -83,7 +83,7 @@ describe('the nested graph layer', () => {
     );
     expect(placed.nodes[0]?.structured).toEqual({
       kind: 'for_each',
-      maxIterations: 100,
+      maxIterations: 50,
       maxConcurrency: 1,
       body: {
         schemaVersion: 1,
