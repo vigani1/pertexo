@@ -14,6 +14,7 @@ import { createWorkspaceInboxFoldStore } from '../src/inbox/fold-store.js';
 import { persistWorkspaceInboxEvent } from '../src/inbox/producer.js';
 import { createWorkspaceInboxDatabase } from '../src/inbox/read-store.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
+import { purgeWorkspace } from './support/workspace-purge.js';
 
 type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
 type Kind = 'failed' | 'timed_out' | 'outcome_unknown';
@@ -40,6 +41,10 @@ const apiUrl = url(
 const workerUrl = url(
   'DATABASE_URL',
   'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+);
+const maintenanceUrl = url(
+  'DATABASE_MAINTENANCE_URL',
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 
 let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
@@ -92,30 +97,6 @@ async function asAdmin<Row extends Record<string, unknown>>(
   values: unknown[] = [],
 ): Promise<Row[]> {
   return (await admin.query<Row>(text, values)).rows;
-}
-
-/** Runs one statement as a runtime role inside a workspace's tenant context. */
-async function asMaintenance<Row extends Record<string, unknown>>(
-  workspaceId: string,
-  text: string,
-  values: unknown[] = [],
-): Promise<Row[]> {
-  const client = await admin.connect();
-  try {
-    await client.query('begin');
-    await client.query('set local role pertexo_maintenance');
-    await client.query("select set_config('app.workspace_id',$1,true)", [
-      workspaceId,
-    ]);
-    const { rows } = await client.query<Row>(text, values);
-    await client.query('commit');
-    return rows;
-  } catch (error: unknown) {
-    await client.query('rollback');
-    throw error;
-  } finally {
-    client.release();
-  }
 }
 
 async function user(name: string): Promise<string> {
@@ -656,68 +637,15 @@ describe('workspace inbox threads (ADR 055)', () => {
       { events: 1, threads: 1, reads: 1 },
     ]);
 
-    // Arrange ledger projections with the existing maintenance authority.
-    const maintenance = (text: string, values: unknown[]) =>
-      asMaintenance<Record<string, unknown>>(workspaceId, text, values);
-    const requestedHash = '1'.repeat(64);
-    const startedHash = '2'.repeat(64);
-    await maintenance(
-      `select app.project_workspace_deletion(
-         $1,1,$2,'deletion_requested',$1,$3,$4,$5,null,
-         'Inbox purge qualification',clock_timestamp()-interval '31 days')`,
-      [workspaceId, randomUUID(), '0'.repeat(64), requestedHash, members.owner],
-    );
-    const [prepared] = await maintenance(
-      `select * from app.prepare_workspace_purge_job(
-         $1,1,$2,'inbox-threads-test',interval '1 minute')`,
-      [workspaceId, requestedHash],
-    );
-    if (prepared === undefined) throw new Error('Expected a purge job');
-    await maintenance(
-      'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
-      [
-        prepared.job_id,
-        prepared.lease_token,
-        prepared.lease_fence,
-        requestedHash,
-        startedHash,
-      ],
-    );
-    const claim = async () => {
-      const [step] = await maintenance(
-        `select * from app.claim_workspace_purge_step(
-           $1,2,$2,'inbox-threads-test',interval '1 minute')`,
-        [prepared.job_id, startedHash],
-      );
-      if (step === undefined) throw new Error('Expected a purge step');
-      return step;
-    };
-    const objects = await claim();
-    expect(objects.step_name).toBe('object_versions');
-    await maintenance(
-      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,2,$4)',
-      [prepared.job_id, objects.lease_token, objects.lease_fence, startedHash],
-    );
-
-    const erased: unknown[] = [];
-    let lease = await claim();
-    for (let page = 0; page < 100; page += 1) {
-      expect(lease.step_name).toBe('tenant_rows');
-      const [result] = await maintenance(
-        `select * from app.execute_workspace_tenant_rows_page(
-           $1,$2,$3,1,2,$4)`,
-        [prepared.job_id, lease.lease_token, lease.lease_fence, startedHash],
-      );
-      if (result === undefined) throw new Error('Expected a purge page');
-      if (
-        typeof result.surface === 'string' &&
-        result.surface.startsWith('workspace_inbox_') &&
-        !erased.includes(result.surface)
-      )
-        erased.push(result.surface);
-      if (result.completed === true) break;
-      lease = await claim();
-    }
+    const steps = await purgeWorkspace({
+      adminUrl: fixture.databaseUrl(adminUrl),
+      maintenanceUrl,
+      workspaceId,
+      pageSize: 1,
+    });
+    const erased = [
+      ...new Set(steps.filter((step) => step.startsWith('workspace_inbox_'))),
+    ];
     expect(erased).toEqual([
       'workspace_inbox_reads',
       'workspace_inbox_threads',

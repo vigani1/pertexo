@@ -214,14 +214,12 @@ describe('workflow run persistence security and compatibility', () => {
       `);
       expect(privileges.rows).toHaveLength(8);
       for (const row of privileges.rows) {
-        // Maintenance reads and deletes only what retention removes.
-        const retained =
-          row.roleName === 'pertexo_maintenance' &&
-          row.tableName !== 'idempotency_records';
-        expect(row.canSelect).toBe(row.roleName === 'pertexo_app' || retained);
-        expect(row.canInsert).toBe(row.roleName === 'pertexo_app');
+        // Maintenance reads and deletes workspace rows for retention and purge.
+        const maintenance = row.roleName === 'pertexo_maintenance';
+        expect(row.canSelect).toBe(true);
+        expect(row.canInsert).toBe(!maintenance);
         expect(row.canUpdate).toBe(false);
-        expect(row.canDelete).toBe(retained);
+        expect(row.canDelete).toBe(maintenance);
       }
 
       const idempotencyUpdatePrivileges = await owner.query<{
@@ -318,8 +316,9 @@ describe('workflow run persistence security and compatibility', () => {
           can_update: false,
         },
         {
+          // Maintenance reads workspace tables to purge them.
           role_name: 'pertexo_maintenance',
-          can_select: false,
+          can_select: true,
           can_insert: false,
           can_update: false,
         },

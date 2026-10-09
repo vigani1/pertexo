@@ -862,7 +862,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expectProblem(changedExactRetry, 409, 'request.idempotency_conflict');
   });
 
-  it('accepts and exposes one safe asynchronous deletion operation without projecting state', async () => {
+  it('applies a deletion request at once and restores it during recovery', async () => {
     const deletionCookies = await login();
     const primaryWorkspaceId = await createWorkspace(
       deletionCookies,
@@ -883,24 +883,28 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(deletion.json()).toMatchObject({
       workspaceId: primaryWorkspaceId,
       commandType: 'deletion_requested',
-      status: 'pending',
-      completedAt: null,
+      status: 'completed',
       errorCode: null,
-      result: null,
+      result: { workspaceId: primaryWorkspaceId },
     });
     const operationId = deletion.json<{ id: string }>().id;
     expect(deletion.payload).not.toContain(
       'customer requested integration deletion',
     );
-    expect(deletion.payload).not.toContain('controlSequence');
-    expect(deletion.payload).not.toContain('controlRecordHash');
+
+    // Deletion signs out the workspace's members.
+    const signedOut = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${primaryWorkspaceId}/lifecycle-operations/${operationId}`,
+      headers: { cookie: deletionCookies.cookieHeader },
+    });
+    expect(signedOut.statusCode).toBe(401);
+    const cookies = await login();
 
     const deletionRetry = await application.inject({
       method: 'POST',
       url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
-      headers: mutationHeaders(deletionCookies, {
-        'idempotency-key': deletionKey,
-      }),
+      headers: mutationHeaders(cookies, { 'idempotency-key': deletionKey }),
       payload: { reason: 'customer requested integration deletion' },
     });
     expect(deletionRetry.statusCode).toBe(202);
@@ -909,39 +913,44 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const operation = await application.inject({
       method: 'GET',
       url: `/v1/workspaces/${primaryWorkspaceId}/lifecycle-operations/${operationId}`,
-      headers: { cookie: deletionCookies.cookieHeader },
+      headers: { cookie: cookies.cookieHeader },
     });
     expect(operation.statusCode).toBe(200);
     expect(operation.json()).toEqual(deletion.json());
 
-    const unchanged = await workspaceAggregate(primaryWorkspaceId);
-    expect(unchanged.workspace).toMatchObject({
-      status: 'active',
-      deletionReason: null,
+    const deleted = await workspaceAggregate(primaryWorkspaceId);
+    expect(deleted.workspace).toMatchObject({
+      status: 'pending_deletion',
+      deletionReason: 'customer requested integration deletion',
     });
-    expect(unchanged.events.map(({ action }) => action)).toEqual([
+    expect(deleted.events.map(({ action }) => action)).toEqual([
       'workspace.created',
+      'workspace.deletion_requested',
     ]);
 
     const changedReplay = await application.inject({
       method: 'POST',
       url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
-      headers: mutationHeaders(deletionCookies, {
-        'idempotency-key': deletionKey,
-      }),
+      headers: mutationHeaders(cookies, { 'idempotency-key': deletionKey }),
       payload: { reason: 'changed deletion request' },
     });
     expectProblem(changedReplay, 409, 'request.idempotency_conflict');
 
-    const restoreKey = `restore-${randomUUID()}`;
     const restore = await application.inject({
       method: 'DELETE',
       url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
-      headers: mutationHeaders(deletionCookies, {
-        'idempotency-key': restoreKey,
+      headers: mutationHeaders(cookies, {
+        'idempotency-key': `restore-${randomUUID()}`,
       }),
     });
-    expectProblem(restore, 409, 'workspace.conflict');
+    expect(restore.statusCode).toBe(202);
+    expect(restore.json()).toMatchObject({
+      commandType: 'deletion_restored',
+      status: 'completed',
+    });
+    expect(
+      (await workspaceAggregate(primaryWorkspaceId)).workspace,
+    ).toMatchObject({ status: 'active', deletionReason: null });
   });
 
   it('serves a private current-user projection and bounded authorized member pages', async () => {

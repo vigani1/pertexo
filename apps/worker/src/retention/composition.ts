@@ -1,5 +1,4 @@
 import { createArtifactStore } from '@pertexo/artifact-store';
-import { createWorkspaceLifecycleCommandCoordinator } from '@pertexo/database/lifecycle';
 import {
   createDatabaseRuntime,
   createPreviewRetentionCoordinator,
@@ -26,7 +25,6 @@ export function configuredRetentionRuntime(
   });
   const artifacts = createArtifactStore(artifactStore);
   const database = retention.maintenanceDatabase;
-  const leaseOwner = retention.leaseOwner;
   const release = async (): Promise<void> => {
     artifacts.close();
     await databaseRuntime.close();
@@ -35,10 +33,6 @@ export function configuredRetentionRuntime(
     return createRetentionRuntime(
       {
         database: createRetentionDatabase(database, {}, databaseRuntime),
-        lifecycleCommands: createWorkspaceLifecycleCommandCoordinator(
-          retention.maintenanceDatabase,
-          { leaseOwner },
-        ),
         preview: createPreviewRetentionCoordinator(
           database,
           artifacts,
@@ -60,7 +54,7 @@ export function configuredRetentionRuntime(
         workspacePurge: createWorkspacePurgeCoordinator(
           database,
           artifacts,
-          { leaseOwner },
+          {},
           databaseRuntime,
         ),
         release,

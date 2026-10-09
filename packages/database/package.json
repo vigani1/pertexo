@@ -12,10 +12,6 @@
       "types": "./dist/execution.d.ts",
       "default": "./dist/execution.js"
     },
-    "./lifecycle": {
-      "types": "./dist/lifecycle.d.ts",
-      "default": "./dist/lifecycle.js"
-    },
     "./maintenance": {
       "types": "./dist/maintenance.d.ts",
       "default": "./dist/maintenance.js"

@@ -1,38 +1,12 @@
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
-import type { Pool, PoolClient, QueryResult } from 'pg';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
-import { workspaceControlRecordHash } from './control-record.js';
-import { retentionQuery as query } from './retention-transaction.js';
-import {
-  inRetentionTransaction,
-  withWorkspaceDestructiveOperationLock,
-} from './retention-transaction.js';
-import {
-  isRecoverablePurgeClaimError,
-  isRecoverablePurgeCompletionError,
-  releasePurgeCompletionClaimAfterFailure,
-  releasePurgeJobClaimAfterFailure,
-} from './workspace-purge-claim-release.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { inRetentionTransaction } from './retention-transaction.js';
 
-const uuidSchema = z.uuid();
-
-export type WorkspacePurgeProcessResult =
-  | Readonly<{ status: 'idle' }>
-  | Readonly<{
-      jobId: string;
-      status: 'completed' | 'progressed' | 'released' | 'stale' | 'started';
-      workspaceId: string;
-    }>;
-
-export interface WorkspacePurgeCoordinator {
-  close(): Promise<void>;
-  processNext(signal?: AbortSignal): Promise<WorkspacePurgeProcessResult>;
-}
-
+/** Deletes a workspace's stored objects, one page per call. */
 export interface WorkspacePurgeObjectStore {
   purgeWorkspacePage(input: {
     readonly maxObjects: number;
@@ -44,27 +18,336 @@ export interface WorkspacePurgeObjectStore {
   }>;
 }
 
-interface MaintenancePool {
-  connect(): Promise<PoolClient>;
-  end(): Promise<void>;
-  readonly options: Readonly<{ max: number }>;
-  query<Row extends Record<string, unknown>>(
-    text: string,
-    values?: unknown[],
-  ): Promise<QueryResult<Row>>;
+export type WorkspacePurgeProcessResult =
+  | Readonly<{ status: 'idle' }>
+  | Readonly<{ status: 'started' | 'completed'; workspaceId: string }>
+  | Readonly<{
+      status: 'progressed';
+      workspaceId: string;
+      /** The purge step that changed rows, or `objects`. */
+      step: string;
+    }>;
+
+export interface WorkspacePurgeCoordinator {
+  close(): Promise<void>;
+  processNext(signal?: AbortSignal): Promise<WorkspacePurgeProcessResult>;
 }
+
+/** One bounded change to a purging workspace's rows: `$1` workspace, `$2` limit. */
+type PurgeStep = Readonly<{ name: string; statement: string }>;
+
+const deleteRows = (table: string): PurgeStep => ({
+  name: table,
+  statement: `
+    with page as (
+      select ctid from app.${table} where workspace_id = $1::uuid limit $2
+    )
+    delete from app.${table} row using page where row.ctid = page.ctid`,
+});
+
+/**
+ * Tables a purge keeps after scrubbing what identifies people or requests:
+ * the workspace tombstone, audit and usage facts, and transport security facts.
+ */
+export const PURGE_PRESERVED_TABLES = Object.freeze([
+  'workspaces',
+  'audit_events',
+  'usage_events',
+  'transport_security_audit_facts',
+]);
+
+/**
+ * Everything a purge removes, in dependency order. Each step changes at most
+ * one page; a later step runs only once every earlier one has nothing left.
+ */
+export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
+  // Workflow organization.
+  ...[
+    'workflow_favorite_receipts',
+    'workflow_favorite_held_evidence',
+    'workflow_favorites',
+    'workflow_organization_receipts',
+    'workflow_tag_assignments',
+    'workflow_organization_state',
+  ].map(deleteRows),
+  {
+    // Folders nest; leaves go first.
+    name: 'workflow_folders',
+    statement: `
+      with page as (
+        select folder.ctid from app.workflow_folders folder
+        where folder.workspace_id = $1::uuid
+          and not exists (select 1 from app.workflow_folders child
+            where child.workspace_id = folder.workspace_id
+              and child.parent_id = folder.id)
+        limit $2
+      )
+      delete from app.workflow_folders row using page where row.ctid = page.ctid`,
+  },
+  ...[
+    'workflow_tags',
+    'workflow_favorite_membership_generations',
+    'workflow_organization_coordination',
+    'workflow_input_case_receipts',
+  ].map(deleteRows),
+  {
+    // Payloads are large; a page stays under 1 MiB.
+    name: 'workflow_input_case_payloads',
+    statement: `
+      with page as (
+        select case_id, revision,
+          sum(canonical_bytes) over (order by case_id, revision) bytes
+        from app.workflow_input_case_payloads
+        where workspace_id = $1::uuid order by case_id, revision limit least($2::int, 100)
+      )
+      delete from app.workflow_input_case_payloads payload using page
+      where payload.workspace_id = $1::uuid and payload.case_id = page.case_id
+        and payload.revision = page.revision and page.bytes <= 1048576`,
+  },
+  deleteRows('workflow_input_cases'),
+  {
+    // A node run points at its current attempt; clear it before attempts go.
+    name: 'node_run_current_attempts',
+    statement: `
+      with page as (
+        select ctid from app.node_runs
+        where workspace_id = $1::uuid and current_attempt_id is not null limit $2
+      )
+      update app.node_runs row
+      set current_attempt_id = null, current_attempt_number = null
+      from page where row.ctid = page.ctid`,
+  },
+  {
+    // Audit and usage facts stay as anonymous counts.
+    name: 'audit_events_scrubbed',
+    statement: `
+      with page as (
+        select ctid from app.audit_events
+        where workspace_id = $1::uuid
+          and (actor_user_id is not null or request_id is not null
+            or trace_id is not null or metadata <> '{}'::jsonb
+            or target_id is distinct from $1::uuid)
+        limit $2
+      )
+      update app.audit_events row
+      set actor_user_id = null, request_id = null, trace_id = null,
+          metadata = '{}'::jsonb, target_id = $1::uuid
+      from page where row.ctid = page.ctid`,
+  },
+  {
+    name: 'usage_events_scrubbed',
+    statement: `
+      with page as (
+        select ctid from app.usage_events
+        where workspace_id = $1::uuid
+          and (metadata <> '{}'::jsonb or resource_id <> $1::uuid
+            or resource_type <> 'workspace-tombstone' or idempotency_key <> id::text)
+        limit $2
+      )
+      update app.usage_events row
+      set metadata = '{}'::jsonb, resource_id = $1::uuid,
+          resource_type = 'workspace-tombstone', idempotency_key = id::text
+      from page where row.ctid = page.ctid`,
+  },
+  {
+    name: 'transport_security_audit_facts_scrubbed',
+    statement: `
+      with page as (
+        select ctid from app.transport_security_audit_facts
+        where workspace_id = $1::uuid and (consumer_name <> 'purged' or message_id <> id)
+        limit $2
+      )
+      update app.transport_security_audit_facts row
+      set consumer_name = 'purged', message_id = id
+      from page where row.ctid = page.ctid`,
+  },
+  {
+    // Workspace creation is idempotent on the created workspace's id.
+    name: 'workspace_creation_idempotency_records',
+    statement: `
+      with page as (
+        select ctid from app.workspace_creation_idempotency_records
+        where resource_id = $1::uuid limit $2
+      )
+      delete from app.workspace_creation_idempotency_records row
+      using page where row.ctid = page.ctid`,
+  },
+  {
+    // Invitation replacement claims name both workspaces of a replacement.
+    name: 'workspace_invitation_binding_replacement_claims',
+    statement: `
+      with page as (
+        select prior_workspace_id, prior_intent_id, prior_binding_digest
+        from app.workspace_invitation_binding_replacement_claims
+        where (prior_workspace_id = $1::uuid or successor_workspace_id = $1::uuid)
+          and app.workspace_invitation_replacement_claim_is_reapable(
+            prior_workspace_id, prior_intent_id, prior_binding_digest)
+        limit $2
+      )
+      delete from app.workspace_invitation_binding_replacement_claims claim
+      using page
+      where claim.prior_workspace_id = page.prior_workspace_id
+        and claim.prior_intent_id = page.prior_intent_id
+        and claim.prior_binding_digest = page.prior_binding_digest`,
+  },
+  ...[
+    'webhook_trigger_replay_records',
+    'webhook_trigger_deliveries',
+    'run_failure_notification_audit_facts',
+    'run_failure_notification_intents',
+    'workflow_run_active_admissions',
+    'connection_health_observations',
+    'node_attempt_connection_dispatches',
+    'operator_unknown_outcome_evidence',
+    'operator_run_replay_requests',
+    'node_attempts',
+    'node_runs',
+    'run_events',
+    'run_checkpoints',
+    'artifact_links',
+    'preview_attempts',
+    'webhook_endpoint_ingress_limits',
+    'trigger_schedule_occurrences',
+    'trigger_schedules',
+    'webhook_trigger_endpoints',
+    'webhook_trigger_secret_versions',
+    'workflow_triggers',
+    'workflow_failure_notification_policies',
+    'workspace_inbox_reads',
+    'workspace_inbox_threads',
+    'workspace_inbox_events',
+    'workflow_concurrency_policies',
+    'workflow_concurrency_command_receipts',
+    'workflow_auto_pause_command_receipts',
+    'workflow_trigger_pause_periods',
+    'workflow_failure_streaks',
+    'workflow_trigger_outcomes',
+    'workflow_manual_start_rejections',
+    'workflow_runs',
+    'workflow_integration_usage',
+    'workflow_drafts',
+    'connection_events',
+    'artifacts',
+    'workspace_artifact_capacity',
+    'outbox_events',
+    'inbox_receipts',
+    'idempotency_records',
+    'workspace_execution_entitlements',
+    'workspace_execution_entitlement_versions',
+    'workspace_execution_admission_counters',
+    'workspace_lifecycle_operations',
+    'workspace_invitation_acceptance_intents',
+    'workspace_invitation_delivery_attempts',
+    'workspace_invitation_command_receipts',
+    'workspace_invitations',
+    'workspace_rename_command_receipts',
+    'workspace_member_departure_command_receipts',
+    'workspace_member_suspension_command_receipts',
+    'workspace_ownership_transfer_command_receipts',
+    'workspace_member_removal_command_receipts',
+    'workspace_member_role_command_receipts',
+    'workspace_memberships',
+    'workspace_invitation_claim_cleanup_cursors',
+    'workspace_legal_holds',
+    'rls_probe_records',
+  ].map(deleteRows),
+  {
+    // Previews chain to their prior preview; leaves go first.
+    name: 'preview_runs',
+    statement: `
+      with page as (
+        select preview.ctid from app.preview_runs preview
+        where preview.workspace_id = $1::uuid
+          and not exists (select 1 from app.preview_runs child
+            where child.workspace_id = $1::uuid
+              and child.prior_preview_run_id = preview.id)
+        limit $2
+      )
+      delete from app.preview_runs row using page where row.ctid = page.ctid`,
+  },
+  {
+    // A workflow points at its published version; clear it before versions go.
+    name: 'workflow_published_versions',
+    statement: `
+      with page as (
+        select ctid from app.workflows
+        where workspace_id = $1::uuid and published_version_id is not null limit $2
+      )
+      update app.workflows row set published_version_id = null
+      from page where row.ctid = page.ctid`,
+  },
+  deleteRows('workflow_versions'),
+  deleteRows('workflow_template_origins'),
+  deleteRows('workflows'),
+  {
+    // A connection points at its current secret, so the two go together.
+    name: 'connection_secret_versions',
+    statement: `
+      with page as (
+        select version.ctid from app.connection_secret_versions version
+        join app.connections connection on connection.id = version.connection_id
+        where version.workspace_id = $1::uuid
+          and version.id <> connection.current_secret_version_id
+        limit $2
+      )
+      delete from app.connection_secret_versions row using page
+      where row.ctid = page.ctid`,
+  },
+  {
+    name: 'connections',
+    statement: `
+      with page as (
+        select id, current_secret_version_id from app.connections
+        where workspace_id = $1::uuid limit greatest(1, $2::int / 2)
+      ), versions as (
+        delete from app.connection_secret_versions version using page
+        where version.id = page.current_secret_version_id
+        returning version.connection_id
+      )
+      delete from app.connections connection using page
+      where connection.id = page.id
+        and exists (select 1 from versions where versions.connection_id = connection.id)`,
+  },
+  {
+    // A destination points at its current version, so the two go together.
+    name: 'failure_notification_destination_versions',
+    statement: `
+      with page as (
+        select version.ctid from app.failure_notification_destination_versions version
+        join app.failure_notification_destinations destination
+          on destination.id = version.destination_id
+        where version.workspace_id = $1::uuid
+          and version.version <> destination.current_config_version
+        limit $2
+      )
+      delete from app.failure_notification_destination_versions row using page
+      where row.ctid = page.ctid`,
+  },
+  {
+    name: 'failure_notification_destinations',
+    statement: `
+      with page as (
+        select id, current_config_version from app.failure_notification_destinations
+        where workspace_id = $1::uuid limit greatest(1, $2::int / 2)
+      ), versions as (
+        delete from app.failure_notification_destination_versions version
+        using page where version.destination_id = page.id
+          and version.version = page.current_config_version
+        returning version.destination_id
+      )
+      delete from app.failure_notification_destinations destination using page
+      where destination.id = page.id
+        and exists (select 1 from versions
+          where versions.destination_id = destination.id)`,
+  },
+]);
 
 const optionsSchema = z
   .object({
-    externalOperationTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(120_000)
-      .default(30_000),
-    leaseOwner: z.string().trim().min(1).max(128),
-    leaseSeconds: z.number().int().min(1).max(300).default(300),
     lockTimeoutMs: z.number().int().min(100).max(60_000).default(10_000),
+    objectPageSize: z.number().int().min(1).max(1_000).default(500),
+    objectTimeoutMs: z.number().int().min(1_000).max(120_000).default(30_000),
+    pageSize: z.number().int().min(1).max(1_000).default(500),
     statementTimeoutMs: z
       .number()
       .int()
@@ -72,520 +355,147 @@ const optionsSchema = z
       .max(120_000)
       .default(30_000),
   })
-  .refine(
-    ({ externalOperationTimeoutMs, leaseSeconds, statementTimeoutMs }) =>
-      externalOperationTimeoutMs + statementTimeoutMs < leaseSeconds * 1_000,
-    { message: 'Purge timeout budget must be shorter than the lease' },
+  .strict();
+
+export type WorkspacePurgeOptions = z.input<typeof optionsSchema>;
+
+const candidateSchema = z.object({
+  id: z.uuid(),
+  status: z.enum(['pending_deletion', 'purging']),
+});
+
+/** Fails if a workspace table still holds the purged workspace's rows. */
+async function assertNothingLeft(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  const tables = await client.query<{ name: string }>(
+    `select distinct table_class.relname as name
+     from pg_attribute attribute
+     join pg_class table_class on table_class.oid = attribute.attrelid
+     join pg_namespace namespace on namespace.oid = table_class.relnamespace
+     where namespace.nspname = 'app' and table_class.relkind = 'r'
+       and attribute.attname = 'workspace_id' and not attribute.attisdropped
+       and not table_class.relname = any($1::text[])
+     order by 1`,
+    [PURGE_PRESERVED_TABLES],
   );
-
-type WorkspacePurgeOptions = z.input<typeof optionsSchema> & {
-  readonly pool?: MaintenancePool;
-};
-
-const objectPageSchema = z
-  .object({
-    completed: z.boolean(),
-    deletedCount: z.number().int().min(0).max(500),
-  })
-  .refine(
-    ({ completed, deletedCount }) =>
-      (completed && deletedCount === 0) || (!completed && deletedCount > 0),
-    { message: 'Invalid workspace object purge page result' },
-  );
-
-function sequence(value: number | string): number {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 0)
-    throw new Error('Invalid workspace purge control sequence');
-  return parsed;
+  for (const { name } of tables.rows) {
+    const left = await client.query(
+      `select 1 from app.${name} where workspace_id = $1 limit 1`,
+      [workspaceId],
+    );
+    if (left.rowCount !== 0)
+      throw new Error(`Workspace purge left rows in ${name}`);
+  }
 }
 
-interface PreparedJob extends Record<string, unknown> {
-  actor_ref: string;
-  command_id: string;
-  job_id: string;
-  lease_fence: number | string;
-  lease_token: string;
-  occurred_at: Date | string;
-  reason: string;
-}
-
-interface PreparedCompletion extends Record<string, unknown> {
-  actor_ref: string;
-  command_id: string;
-  lease_fence: number | string;
-  lease_token: string;
-  occurred_at: Date | string;
-  reason: string;
-}
-
-interface PurgeAnchor {
-  readonly hash: string;
-  readonly sequence: number;
-}
-
-interface PurgeStepClaim {
-  readonly anchor: PurgeAnchor;
-  readonly leaseFence: number;
-  readonly leaseToken: string;
-  readonly stepName: 'object_versions' | 'tenant_rows';
-}
-
+/**
+ * Purges workspaces whose recovery period has ended. Each call does one
+ * bounded unit of work for one workspace: it starts a purge, removes one
+ * page of rows or stored objects, or finishes the purge by leaving a
+ * tombstone. Any number of workers can call it; each takes a different
+ * workspace while it changes rows.
+ */
 export function createWorkspacePurgeCoordinator(
   config: DatabaseConfig,
   objectStore: WorkspacePurgeObjectStore,
-  inputOptions: WorkspacePurgeOptions,
+  inputOptions: WorkspacePurgeOptions = {},
   runtime?: DatabaseRuntime,
 ): WorkspacePurgeCoordinator {
-  const { pool: suppliedPool, ...rawOptions } = inputOptions;
-  const options = optionsSchema.parse(rawOptions);
-  if (suppliedPool !== undefined && runtime !== undefined)
-    throw new TypeError('Workspace purge database ownership is ambiguous');
-  const lease =
-    suppliedPool === undefined
-      ? acquireDatabasePool(config, runtime, { role: 'maintenance' })
-      : undefined;
-  const pool = suppliedPool ?? lease?.pool;
-  if (pool === undefined)
-    throw new Error('Workspace purge database pool was not initialized');
-  if (pool.options.max < 2)
-    throw new RangeError(
-      'Workspace purge coordination requires a database pool of at least 2 connections',
-    );
-
-  const transaction = async <T>(
+  const options = optionsSchema.parse(inputOptions);
+  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  const { pool } = lease;
+  const transaction = <T>(
     signal: AbortSignal | undefined,
     work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> => inRetentionTransaction(pool as Pool, options, signal, work);
+  ): Promise<T> => inRetentionTransaction(pool, options, signal, work);
 
-  const platformQuery = <Row extends Record<string, unknown>>(
-    text: string,
-    values: readonly unknown[] = [],
-    signal?: AbortSignal,
-  ): Promise<QueryResult<Row>> =>
-    transaction(signal, (client) => query<Row>(client, text, values, signal));
-
-  const lockAnchor = async (
-    client: PoolClient,
-    workspaceId: string,
-    signal?: AbortSignal,
-  ): Promise<PurgeAnchor> => {
-    const locked = await query<{
-      retention_control_hash: string;
-      retention_control_sequence: number | string;
-    }>(
-      client,
-      'select * from app.lock_workspace_control_ledger($1)',
-      [workspaceId],
-      signal,
-    );
-    const anchor = locked.rows[0];
-    if (anchor === undefined)
-      throw new Error('Workspace purge control lock was not returned');
-    return Object.freeze({
-      hash: hashSchema.parse(anchor.retention_control_hash),
-      sequence: sequence(anchor.retention_control_sequence),
+  const purgeRows = (
+    signal: AbortSignal | undefined,
+  ): Promise<WorkspacePurgeProcessResult | Readonly<{ rowsPurged: string }>> =>
+    transaction(signal, async (client) => {
+      const candidates = await client.query(
+        `select id, status from app.workspaces
+         where (status = 'pending_deletion' and purge_after <= clock_timestamp())
+            or status = 'purging'
+         order by purge_after, id limit 1 for update skip locked`,
+      );
+      if (candidates.rows[0] === undefined) return { status: 'idle' as const };
+      const workspace = candidateSchema.parse(candidates.rows[0]);
+      if (workspace.status === 'pending_deletion') {
+        await client.query(
+          `update app.workspaces set status = 'purging', updated_at = clock_timestamp()
+           where id = $1`,
+          [workspace.id],
+        );
+        return { status: 'started' as const, workspaceId: workspace.id };
+      }
+      await client.query("select set_config('app.workspace_id', $1, true)", [
+        workspace.id,
+      ]);
+      for (const step of PURGE_STEPS) {
+        const changed = await client.query(step.statement, [
+          workspace.id,
+          options.pageSize,
+        ]);
+        if ((changed.rowCount ?? 0) > 0)
+          return {
+            status: 'progressed' as const,
+            workspaceId: workspace.id,
+            step: step.name,
+          };
+      }
+      return { rowsPurged: workspace.id };
     });
-  };
 
-  const operationSignal = (signal?: AbortSignal): AbortSignal =>
-    AbortSignal.any([
-      ...(signal === undefined ? [] : [signal]),
-      AbortSignal.timeout(options.externalOperationTimeoutMs),
-    ]);
-
-  const findDueStep = (signal?: AbortSignal) =>
-    platformQuery<{ job_id: string; workspace_id: string }>(
-      'select * from app.find_due_workspace_purge_step()',
-      [],
-      signal,
-    );
-  const findDueCompletion = (signal?: AbortSignal) =>
-    platformQuery<{ job_id: string; workspace_id: string }>(
-      'select * from app.find_due_workspace_purge_completion()',
-      [],
-      signal,
-    );
-  const findDuePurge = (signal?: AbortSignal) =>
-    platformQuery<{ workspace_id: string }>(
-      'select * from app.find_due_workspace_purge()',
-      [],
-      signal,
-    );
-
-  const processStep = async (
-    signal?: AbortSignal,
-  ): Promise<WorkspacePurgeProcessResult | undefined> => {
-    const dueStep = await findDueStep(signal);
-    const stepCandidate = dueStep.rows[0];
-    if (stepCandidate === undefined) return undefined;
-    {
-      const stepJobId = uuidSchema.parse(stepCandidate.job_id);
-      const stepWorkspaceId = uuidSchema.parse(stepCandidate.workspace_id);
-      let stepClaim: PurgeStepClaim | undefined;
-      try {
-        stepClaim = await withWorkspaceDestructiveOperationLock(
-          pool,
-          stepWorkspaceId,
-          signal,
-          async () => {
-            const preparedAnchor = await transaction(signal, (client) =>
-              lockAnchor(client, stepWorkspaceId, signal),
-            );
-            const claimedStep = await transaction(signal, async (client) => {
-              const anchor = await lockAnchor(client, stepWorkspaceId, signal);
-              if (
-                anchor.sequence !== preparedAnchor.sequence ||
-                anchor.hash !== preparedAnchor.hash
-              )
-                return undefined;
-              const claimed = await query<{
-                lease_fence: number | string;
-                lease_token: string;
-                step_name: string;
-              }>(
-                client,
-                `select * from app.claim_workspace_purge_step(
-                $1,$2,$3,$4,make_interval(secs=>$5)
-              )`,
-                [
-                  stepJobId,
-                  anchor.sequence,
-                  anchor.hash,
-                  options.leaseOwner,
-                  options.leaseSeconds,
-                ],
-                signal,
-              );
-              const row = claimed.rows[0];
-              if (row === undefined) return undefined;
-              const stepName = z
-                .enum(['object_versions', 'tenant_rows'])
-                .parse(row.step_name);
-              const leaseToken = uuidSchema.parse(row.lease_token);
-              const leaseFence = sequence(row.lease_fence);
-              if (stepName === 'object_versions')
-                return Object.freeze({
-                  anchor,
-                  leaseFence,
-                  leaseToken,
-                  stepName,
-                } satisfies PurgeStepClaim);
-              await query(
-                client,
-                "select set_config('app.workspace_id',$1,true)",
-                [stepWorkspaceId],
-                signal,
-              );
-              await query<{
-                affected_count: number | string;
-                completed: boolean;
-                surface: string;
-              }>(
-                client,
-                `select * from app.execute_workspace_tenant_rows_page(
-                $1,$2,$3,$4,$5,$6
-              )`,
-                [
-                  stepJobId,
-                  leaseToken,
-                  leaseFence,
-                  500,
-                  anchor.sequence,
-                  anchor.hash,
-                ],
-                signal,
-              );
-              return Object.freeze({
-                anchor,
-                leaseFence,
-                leaseToken,
-                stepName,
-              } satisfies PurgeStepClaim);
-            });
-            stepClaim = claimedStep;
-            if (claimedStep?.stepName === 'object_versions') {
-              const objectPage = objectPageSchema.parse(
-                await objectStore.purgeWorkspacePage({
-                  maxObjects: 500,
-                  signal: operationSignal(signal),
-                  workspaceId: stepWorkspaceId,
-                }),
-              );
-              await transaction(signal, async (client) => {
-                const anchor = await lockAnchor(
-                  client,
-                  stepWorkspaceId,
-                  signal,
-                );
-                if (
-                  anchor.sequence !== claimedStep.anchor.sequence ||
-                  anchor.hash !== claimedStep.anchor.hash
-                )
-                  throw new Error('Workspace purge control fence changed');
-                await query(
-                  client,
-                  `select app.checkpoint_workspace_object_versions_page(
-                      $1,$2,$3,$4,$5,$6,$7
-                    )`,
-                  [
-                    stepJobId,
-                    claimedStep.leaseToken,
-                    claimedStep.leaseFence,
-                    objectPage.deletedCount,
-                    objectPage.completed,
-                    anchor.sequence,
-                    anchor.hash,
-                  ],
-                  signal,
-                );
-              });
-            }
-            return claimedStep;
-          },
-        );
-        if (stepClaim === undefined) return { status: 'idle' as const };
-        return {
-          jobId: stepJobId,
-          status: 'progressed' as const,
-          workspaceId: stepWorkspaceId,
-        };
-      } catch (error: unknown) {
-        if (signal?.aborted === true) throw signal.reason;
-        if (stepClaim !== undefined)
-          await platformQuery(
-            'select app.release_workspace_purge_step($1,$2,$3)',
-            [stepJobId, stepClaim.leaseToken, stepClaim.leaseFence],
-            signal,
-          );
-        if (isRecoverablePurgeCompletionError(error))
-          return { status: 'idle' as const };
-        throw error;
-      }
-    }
-  };
-
-  const processCompletion = async (
-    signal?: AbortSignal,
-  ): Promise<WorkspacePurgeProcessResult | undefined> => {
-    const dueCompletion = await findDueCompletion(signal);
-    const completionCandidate = dueCompletion.rows[0];
-    if (completionCandidate === undefined) return undefined;
-    {
-      const completionJobId = uuidSchema.parse(completionCandidate.job_id);
-      const completionWorkspaceId = uuidSchema.parse(
-        completionCandidate.workspace_id,
+  const finish = (
+    workspaceId: string,
+    signal: AbortSignal | undefined,
+  ): Promise<WorkspacePurgeProcessResult> =>
+    transaction(signal, async (client) => {
+      const locked = await client.query(
+        `select 1 from app.workspaces where id = $1 and status = 'purging'
+         for update skip locked`,
+        [workspaceId],
       );
-      let completion: PreparedCompletion | undefined;
-      try {
-        completion = await transaction(signal, async (client) => {
-          const anchor = await lockAnchor(
-            client,
-            completionWorkspaceId,
-            signal,
-          );
-          const prepared = await query<PreparedCompletion>(
-            client,
-            `select * from app.prepare_workspace_purge_completion(
-                $1,$2,$3,$4,make_interval(secs=>$5)
-              )`,
-            [
-              completionJobId,
-              anchor.sequence,
-              anchor.hash,
-              options.leaseOwner,
-              options.leaseSeconds,
-            ],
-            signal,
-          );
-          const value = prepared.rows[0];
-          if (value === undefined)
-            throw new Error('Workspace purge completion was not prepared');
-          return value;
-        });
-        const preparedCompletion = completion;
-        await withWorkspaceDestructiveOperationLock(
-          pool,
-          completionWorkspaceId,
-          signal,
-          () =>
-            transaction(signal, async (client) => {
-              const anchor = await lockAnchor(
-                client,
-                completionWorkspaceId,
-                signal,
-              );
-              const leaseFence = sequence(preparedCompletion.lease_fence);
-              await query(
-                client,
-                'select app.authorize_workspace_purge_completion_append($1,$2,$3,$4,$5)',
-                [
-                  completionJobId,
-                  preparedCompletion.lease_token,
-                  leaseFence,
-                  anchor.sequence,
-                  anchor.hash,
-                ],
-                signal,
-              );
-              const nextSequence = anchor.sequence + 1;
-              await query(
-                client,
-                'select app.project_workspace_purge_completion($1,$2,$3,$4,$5,$6)',
-                [
-                  completionJobId,
-                  preparedCompletion.lease_token,
-                  leaseFence,
-                  nextSequence,
-                  anchor.hash,
-                  workspaceControlRecordHash({
-                    actorRef: preparedCompletion.actor_ref,
-                    commandId: preparedCompletion.command_id,
-                    commandType: 'deletion_completed',
-                    occurredAt: preparedCompletion.occurred_at,
-                    previousHash: anchor.hash,
-                    reason: preparedCompletion.reason,
-                    sequence: nextSequence,
-                    workspaceId: completionWorkspaceId,
-                  }),
-                ],
-                signal,
-              );
-            }),
-        );
-        return {
-          jobId: completionJobId,
-          status: 'completed' as const,
-          workspaceId: completionWorkspaceId,
-        };
-      } catch (error: unknown) {
-        if (signal?.aborted === true) throw signal.reason;
-        if (completion === undefined) {
-          if (isRecoverablePurgeCompletionError(error))
-            return { status: 'idle' as const };
-          throw error;
-        }
-        const released = await releasePurgeCompletionClaimAfterFailure(
-          platformQuery,
-          completionJobId,
-          completion.lease_token,
-          sequence(completion.lease_fence),
-          error,
-          signal,
-        );
-        if (!isRecoverablePurgeCompletionError(error)) throw error;
-        return {
-          jobId: completionJobId,
-          status: released ? ('released' as const) : ('stale' as const),
-          workspaceId: completionWorkspaceId,
-        };
-      }
-    }
-  };
-
-  const processStart = async (
-    signal?: AbortSignal,
-  ): Promise<WorkspacePurgeProcessResult | undefined> => {
-    const due = await findDuePurge(signal);
-    const candidate = due.rows[0];
-    if (candidate === undefined) return undefined;
-    const workspaceId = uuidSchema.parse(candidate.workspace_id);
-    let job: PreparedJob | undefined;
-
-    try {
-      job = await transaction(signal, async (client) => {
-        const anchor = await lockAnchor(client, workspaceId, signal);
-        const prepared = await query<PreparedJob>(
-          client,
-          `select * from app.prepare_workspace_purge_job(
-              $1,$2,$3,$4,make_interval(secs=>$5)
-            )`,
-          [
-            workspaceId,
-            anchor.sequence,
-            anchor.hash,
-            options.leaseOwner,
-            options.leaseSeconds,
-          ],
-          signal,
-        );
-        const value = prepared.rows[0];
-        if (value === undefined)
-          throw new Error('Workspace purge job was not prepared');
-        return value;
-      });
-      const preparedJob = job;
-
-      await withWorkspaceDestructiveOperationLock(
-        pool,
-        workspaceId,
-        signal,
-        () =>
-          transaction(signal, async (client) => {
-            const anchor = await lockAnchor(client, workspaceId, signal);
-            const nextSequence = anchor.sequence + 1;
-            await query(
-              client,
-              'select app.project_workspace_purge_started($1,$2,$3,$4,$5,$6)',
-              [
-                preparedJob.job_id,
-                preparedJob.lease_token,
-                sequence(preparedJob.lease_fence),
-                nextSequence,
-                anchor.hash,
-                workspaceControlRecordHash({
-                  actorRef: preparedJob.actor_ref,
-                  commandId: preparedJob.command_id,
-                  commandType: 'purge_started',
-                  occurredAt: preparedJob.occurred_at,
-                  previousHash: anchor.hash,
-                  reason: preparedJob.reason,
-                  sequence: nextSequence,
-                  workspaceId,
-                }),
-              ],
-              signal,
-            );
-          }),
+      // Another worker is on it, or already finished it.
+      if (locked.rowCount !== 1) return { status: 'idle' as const };
+      await assertNothingLeft(client, workspaceId);
+      await client.query(
+        `update app.workspaces
+         set status = 'deleted', name = 'Deleted workspace',
+             slug = 'deleted-' || id::text, created_by = null,
+             deletion_requested_by = null, deletion_reason = 'purged',
+             updated_at = clock_timestamp()
+         where id = $1`,
+        [workspaceId],
       );
-      return {
-        jobId: preparedJob.job_id,
-        status: 'started' as const,
-        workspaceId,
-      };
-    } catch (error: unknown) {
-      if (signal?.aborted === true) throw signal.reason;
-      if (job === undefined) {
-        if (isRecoverablePurgeClaimError(error))
-          return { status: 'idle' as const };
-        throw error;
-      }
-      const released = await releasePurgeJobClaimAfterFailure(
-        platformQuery,
-        job.job_id,
-        job.lease_token,
-        sequence(job.lease_fence),
-        error,
-        signal,
-      );
-      if (!isRecoverablePurgeClaimError(error)) throw error;
-      return {
-        jobId: job.job_id,
-        status: released ? ('released' as const) : ('stale' as const),
-        workspaceId,
-      };
-    }
-  };
+      return { status: 'completed' as const, workspaceId };
+    });
 
   return Object.freeze({
-    close: () => lease?.close() ?? Promise.resolve(),
+    close: () => lease.close(),
     processNext: async (signal?: AbortSignal) => {
-      signal?.throwIfAborted();
-      return (
-        (await processStep(signal)) ??
-        (await processCompletion(signal)) ??
-        (await processStart(signal)) ?? { status: 'idle' as const }
-      );
+      const rows = await purgeRows(signal);
+      if (!('rowsPurged' in rows)) return rows;
+      const workspaceId = rows.rowsPurged;
+      // Stored objects go after rows and outside any transaction.
+      const objects = await objectStore.purgeWorkspacePage({
+        maxObjects: options.objectPageSize,
+        signal: AbortSignal.any([
+          ...(signal === undefined ? [] : [signal]),
+          AbortSignal.timeout(options.objectTimeoutMs),
+        ]),
+        workspaceId,
+      });
+      if (!objects.completed)
+        return Object.freeze({
+          status: 'progressed' as const,
+          workspaceId,
+          step: 'objects',
+        });
+      return finish(workspaceId, signal);
     },
   });
 }

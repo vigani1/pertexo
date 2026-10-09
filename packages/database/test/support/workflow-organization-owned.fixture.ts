@@ -240,6 +240,12 @@ export async function createOrganizationOwnedFixture() {
       throw new Error('F07 expected PostgreSQL blocker was not observed');
     }
     return {
+      urls: {
+        admin: disposable.databaseUrl(attestation.urls.DATABASE_ADMIN_URL),
+        maintenance: disposable.databaseUrl(
+          attestation.urls.DATABASE_MAINTENANCE_URL,
+        ),
+      },
       owner,
       api,
       worker,

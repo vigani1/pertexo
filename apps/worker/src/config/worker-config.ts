@@ -3,8 +3,10 @@ import {
   parseArtifactStoreConfig,
   type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import type { DatabaseConfig } from '@pertexo/database/lifecycle';
-import { parseMaintenanceDatabaseConfig } from '@pertexo/database/maintenance';
+import {
+  parseMaintenanceDatabaseConfig,
+  type DatabaseConfig,
+} from '@pertexo/database/maintenance';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { platformServingReleaseRequiresHttpCapabilities } from '@pertexo/node-catalog';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
@@ -417,7 +419,6 @@ export type WorkerConfig = Readonly<
 
 export type RetentionConfig = Readonly<{
   maintenanceDatabase: DatabaseConfig;
-  leaseOwner: string;
 }>;
 
 function stringEnvironment(
@@ -492,7 +493,6 @@ function artifactStoreConfig(
 function retentionConfig(
   environment: Readonly<Record<string, string | undefined>>,
   deployed: boolean,
-  workerId: string,
   artifactStore: ArtifactStoreConfig | undefined,
 ): RetentionConfig | undefined {
   if (artifactStore === undefined) {
@@ -501,7 +501,6 @@ function retentionConfig(
   }
   return Object.freeze({
     maintenanceDatabase: parseMaintenanceDatabaseConfig(environment),
-    leaseOwner: `retention:${workerId}`,
   });
 }
 
@@ -519,12 +518,7 @@ export function parseWorkerConfig(
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
     const connectionEncryption = connectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
-    const retention = retentionConfig(
-      raw,
-      deployed,
-      result.data.nodeAttempt.workerId,
-      artifactStore,
-    );
+    const retention = retentionConfig(raw, deployed, artifactStore);
     const invitationDelivery = parseInvitationDeliveryConfig(
       raw,
       result.data.outboxDispatcher.enabledJobNames.includes(

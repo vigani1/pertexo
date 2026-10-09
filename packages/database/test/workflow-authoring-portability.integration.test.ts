@@ -51,6 +51,7 @@ import {
   finishTransactionClient,
   saveCurrentDraft,
   checkDatabaseReadiness,
+  purgeTestWorkspace,
 } from './support/workflow-authoring.integration.support.js';
 
 const catalog = {
@@ -936,71 +937,7 @@ describe('portable workflow persistence under the API role', () => {
     ).toEqual([]);
     const fresh = await db.importWorkflow(input);
     expect(fresh.workflowId).not.toBe(accepted.workflowId);
-    await queryAsOwner(
-      "select app.project_workspace_deletion($1,1,$2,'deletion_requested',$1,$3,$4,$5,null,'Portable import erasure',clock_timestamp()-interval '31 days')",
-      [scoped, randomUUID(), '0'.repeat(64), 'd'.repeat(64), actorId],
-      scoped,
-    );
-    const [job] = await queryAsOwner<{
-      job_id: string;
-      lease_token: string;
-      lease_fence: string;
-    }>(
-      "select * from app.prepare_workspace_purge_job($1,1,$2,'owned-portable',interval '1 minute')",
-      [scoped, 'd'.repeat(64)],
-      scoped,
-    );
-    if (job === undefined) throw new Error('Expected portability purge job');
-    await queryAsOwner(
-      'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
-      [
-        job.job_id,
-        job.lease_token,
-        job.lease_fence,
-        'd'.repeat(64),
-        'e'.repeat(64),
-      ],
-      scoped,
-    );
-    const [object] = await queryAsOwner<{
-      lease_token: string;
-      lease_fence: string;
-      step_name: string;
-    }>(
-      "select * from app.claim_workspace_purge_step($1,2,$2,'owned-portable',interval '1 minute')",
-      [job.job_id, 'e'.repeat(64)],
-      scoped,
-    );
-    if (object === undefined)
-      throw new Error('Expected portability object purge lease');
-    expect(object.step_name).toBe('object_versions');
-    await queryAsOwner(
-      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,2,$4)',
-      [job.job_id, object.lease_token, object.lease_fence, 'e'.repeat(64)],
-      scoped,
-    );
-    let completed = false;
-    for (let page = 0; page < 100 && !completed; page += 1) {
-      const [claim] = await queryAsOwner<{
-        lease_token: string;
-        lease_fence: string;
-        step_name: string;
-      }>(
-        "select * from app.claim_workspace_purge_step($1,2,$2,'owned-portable',interval '1 minute')",
-        [job.job_id, 'e'.repeat(64)],
-        scoped,
-      );
-      if (claim === undefined)
-        throw new Error('Expected portability tenant purge lease');
-      expect(claim.step_name).toBe('tenant_rows');
-      const rows = await queryAsOwner<{ completed: boolean }>(
-        'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,500,2,$4)',
-        [job.job_id, claim.lease_token, claim.lease_fence, 'e'.repeat(64)],
-        scoped,
-      );
-      completed = rows[0]?.completed === true;
-    }
-    expect(completed).toBe(true);
+    await purgeTestWorkspace(scoped);
     expect(
       await queryAsOwner(
         `select (select count(*)::int from app.idempotency_records where workspace_id=$1) receipts,

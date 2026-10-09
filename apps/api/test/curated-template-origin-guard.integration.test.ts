@@ -8,6 +8,7 @@ import {
   createIdentityWorkspaceDatabase,
 } from '@pertexo/database/api';
 import {
+  createWorkspacePurgeCoordinator,
   parseDatabaseConfig,
   WorkflowNotFoundError,
   checkDatabaseReadiness,
@@ -670,67 +671,37 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
         )?.templateOrigin?.derivation,
       ).toBe('direct');
       await ownerQuery(
-        "select app.project_workspace_deletion($1,1,$2,'deletion_requested',$1,$3,$4,$5,null,'Owned origin erasure',clock_timestamp()-interval '31 days')",
-        [scoped, randomUUID(), '0'.repeat(64), 'd'.repeat(64), actorId],
+        `update app.workspaces
+         set status='pending_deletion',
+             deletion_requested_at=clock_timestamp()-interval '31 days',
+             deletion_requested_by=$2, deletion_reason='Owned origin erasure',
+             purge_after=clock_timestamp()-interval '1 day'
+         where id=$1`,
+        [scoped, actorId],
         scoped,
       );
-      const job = (
-        await ownerQuery(
-          "select * from app.prepare_workspace_purge_job($1,1,$2,'owned-f06-guard',interval '1 minute')",
-          [scoped, 'd'.repeat(64)],
-          scoped,
-        )
-      ).rows[0];
-      if (job === undefined) throw new Error('Expected bounded purge job');
-      await ownerQuery(
-        'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
-        [
-          job.job_id,
-          job.lease_token,
-          job.lease_fence,
-          'd'.repeat(64),
-          'e'.repeat(64),
-        ],
-        scoped,
+      const purge = createWorkspacePurgeCoordinator(
+        parseDatabaseConfig({
+          connectionString: fixture.maintenanceUrl,
+          max: 2,
+        }),
+        {
+          purgeWorkspacePage: () =>
+            Promise.resolve({ completed: true, deletedCount: 0 }),
+        },
       );
-      const object = (
-        await ownerQuery(
-          "select * from app.claim_workspace_purge_step($1,2,$2,'owned-f06-guard',interval '1 minute')",
-          [job.job_id, 'e'.repeat(64)],
-          scoped,
-        )
-      ).rows[0];
-      expect(object?.step_name).toBe('object_versions');
-      await ownerQuery(
-        'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,2,$4)',
-        [job.job_id, object?.lease_token, object?.lease_fence, 'e'.repeat(64)],
-        scoped,
-      );
-      let complete = false;
-      for (let page = 0; page < 100 && !complete; page++) {
-        const claim = (
-          await ownerQuery(
-            "select * from app.claim_workspace_purge_step($1,2,$2,'owned-f06-guard',interval '1 minute')",
-            [job.job_id, 'e'.repeat(64)],
-            scoped,
-          )
-        ).rows[0];
-        expect(claim?.step_name).toBe('tenant_rows');
-        complete =
-          (
-            await ownerQuery(
-              'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,500,2,$4)',
-              [
-                job.job_id,
-                claim?.lease_token,
-                claim?.lease_fence,
-                'e'.repeat(64),
-              ],
-              scoped,
-            )
-          ).rows[0]?.completed === true;
+      try {
+        let outcome = await purge.processNext();
+        while (!(
+          outcome.status === 'completed' && outcome.workspaceId === scoped
+        )) {
+          if (outcome.status === 'idle')
+            throw new Error('Expected the workspace to be purged');
+          outcome = await purge.processNext();
+        }
+      } finally {
+        await purge.close();
       }
-      expect(complete).toBe(true);
       expect(
         (
           await ownerQuery(

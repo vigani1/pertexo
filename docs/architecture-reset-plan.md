@@ -133,6 +133,36 @@ now, as one ordered program — not "whenever we touch it".
       dropped. Workspace lifecycle and retention drop the database's own
       control record chain (`retention_control_*`, the ledger projection and
       audit facts) and the parked legal-hold tables and checks.
+  - [x] Retention runs as TypeScript rules under the maintenance role
+        (`lifecycle/retention.ts`): one page per rule per pass, one worker per
+        rule. Batches, schedules, dry runs and the ops `retention.rerun` and
+        `purge.rerun` commands are gone.
+  - [x] Workspace deletion and restore change the workspace in the request's
+        transaction, with their side effects in TypeScript
+        (`lifecycle/workspace-deletion.ts`); runs are canceled through the run
+        cancel path. The leased lifecycle command worker, the control ledger
+        projection and audit facts, and the purge jobs, steps and completions
+        are gone. The API keeps its response shape; it now always reports a
+        completed operation (simplify with the web in step 8).
+  - [x] Workspace purge (`lifecycle/workspace-purge.ts`) deletes one page per
+        call from a TypeScript step order, scrubs kept audit and usage facts,
+        erases objects outside any transaction and leaves a tombstone. A test
+        checks every workspace table is purged or kept on purpose.
+  - [ ] Preview cleanup and run-artifact retention: port to TypeScript, then
+        drop the workspace control columns (`retention_control_*`, now
+        constant) and `lock_workspace_control_ledger`.
+  - [ ] Legal-hold table: drop once the reapers that still check it are ported
+        (favorites, inbox expiry, invitation reapers, manual-start
+        rejections, transient data).
+  - [ ] Authoring: organization (folders, tags, favorites, batches), drafts,
+        publication, portability, input cases, concurrency and auto-pause.
+  - [ ] Workspaces and access: memberships, invitations (including the
+        replacement-claim scan's unused purge mode), ownership, identity.
+  - [ ] Connections.
+  - [ ] Triggers: schedules and webhooks.
+  - [ ] Notifications and inbox.
+  - [ ] Consumer-named entry points (`/api`, `/worker`, `/maintenance`,
+        `/lifecycle`).
 - [ ] **8. Package-by-package pass** — read every file of every package and app,
       bottom of the dependency graph first, and redo, remove or improve using
       the checklist below. One PR per package (several for the large ones):

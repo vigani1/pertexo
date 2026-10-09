@@ -257,22 +257,6 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "Workspace deletion and restore command outcomes.",
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 39 },
-      "id": 14,
-      "targets": [
-        {
-          "expr": "sum by (command_type, outcome) (increase(pertexo_lifecycle_command_process_count_total[15m]))",
-          "legendFormat": "lifecycle {{command_type}} {{outcome}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Lifecycle Commands",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Aggregate saturation, connection waiters, and sampled lock-waiting backends across repository-owned PostgreSQL pools.",
       "fieldConfig": { "defaults": {}, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 39 },

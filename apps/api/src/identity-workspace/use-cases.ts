@@ -33,6 +33,7 @@ import {
 import type {
   IdentityWorkspacePersistence,
   WorkspaceAuthorizationSource,
+  WorkspaceLifecycleOperationRecord,
 } from './ports.js';
 import {
   IDENTITY_WORKSPACE_OPERATION,
@@ -435,29 +436,21 @@ export class WorkspaceLifecycleUseCase {
   }
 }
 
-function toWorkspaceLifecycleOperationResponse(operation: {
-  id: string;
-  workspaceId: string;
-  commandType: 'deletion_requested' | 'deletion_restored';
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  submittedAt: Date;
-  updatedAt: Date;
-  completedAt: Date | null;
-  errorCode: string | null;
-}): WorkspaceLifecycleOperationResponse {
+/** A request is applied when it is submitted, so its receipt is complete. */
+function toWorkspaceLifecycleOperationResponse(
+  operation: WorkspaceLifecycleOperationRecord,
+): WorkspaceLifecycleOperationResponse {
+  const at = operation.submittedAt.toISOString();
   return workspaceLifecycleOperationResponseSchema.parse({
     id: operation.id,
     workspaceId: operation.workspaceId,
     commandType: operation.commandType,
-    status: operation.status,
-    submittedAt: operation.submittedAt.toISOString(),
-    updatedAt: operation.updatedAt.toISOString(),
-    completedAt: operation.completedAt?.toISOString() ?? null,
-    errorCode: operation.errorCode,
-    result:
-      operation.status === 'completed'
-        ? { workspaceId: operation.workspaceId }
-        : null,
+    status: 'completed',
+    submittedAt: at,
+    updatedAt: at,
+    completedAt: at,
+    errorCode: null,
+    result: { workspaceId: operation.workspaceId },
   });
 }
 

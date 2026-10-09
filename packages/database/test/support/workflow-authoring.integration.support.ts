@@ -27,6 +27,7 @@ import {
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/workflow-integration-usage.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
+import { purgeWorkspace } from './workspace-purge.js';
 
 const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -62,6 +63,23 @@ export const migrationUrl = databaseFixture.databaseUrl(migrationBaseUrl);
 export const apiUrl = databaseFixture.databaseUrl(apiBaseUrl);
 export const workerUrl = databaseFixture.databaseUrl(workerBaseUrl);
 export const dispatcherUrl = databaseFixture.databaseUrl(dispatcherBaseUrl);
+const adminDatabaseUrl = databaseFixture.databaseUrl(adminUrl);
+
+/** Purges a workspace through the maintenance role; returns each page's step. */
+export function purgeTestWorkspace(
+  workspaceId: string,
+  options: Pick<
+    Parameters<typeof purgeWorkspace>[0],
+    'afterPage' | 'objectStore' | 'pageSize'
+  > = {},
+): Promise<readonly string[]> {
+  return purgeWorkspace({
+    ...options,
+    adminUrl: adminDatabaseUrl,
+    maintenanceUrl: dispatcherUrl,
+    workspaceId,
+  });
+}
 export const migrationConfig = {
   appRole: 'pertexo_app',
   connectionString: migrationUrl,

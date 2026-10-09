@@ -282,29 +282,3 @@ groups:
             A retention operation failed; the operation label identifies the
             correctly attributed stage.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoretentionoperationfailure
-      - alert: PertexoWorkspacePurgeReleasedOrStale
-        expr:
-          increase(pertexo_purge_batch_count_total{outcome=~"released|stale"}[15m])
-          > 0
-        for: 1m
-        labels:
-          severity: ticket
-        annotations:
-          summary: Workspace purge lost progress authority
-          description:
-            A purge attempt released its lease or observed stale fencing and
-            requires backlog inspection.
-          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkspacepurgereleasedorstale
-      - alert: PertexoLifecycleCommandFailure
-        expr:
-          increase(pertexo_lifecycle_command_process_count_total{outcome="failed"}[15m])
-          > 0
-        for: 1m
-        labels:
-          severity: page
-        annotations:
-          summary: Lifecycle command processing failed
-          description:
-            A workspace deletion or restore command failed before reaching a
-            durable result.
-          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexolifecyclecommandfailure

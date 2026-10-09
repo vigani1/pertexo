@@ -11,6 +11,7 @@ import type {
   UserProfilePersistenceRecord,
   WorkspaceMemberPersistenceRecord,
   WorkspaceAuthorizationReader,
+  WorkspaceLifecycleOperationRecord,
 } from './ports.js';
 import type { WorkspaceAccess } from '../workspaces/index.js';
 
@@ -211,7 +212,7 @@ export class DatabaseIdentityWorkspaceAdapter
     ...input: Parameters<
       IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']
     >
-  ) {
+  ): Promise<WorkspaceLifecycleOperationRecord> {
     return this.database.requestWorkspaceLifecycleOperation(...input);
   }
 
@@ -219,7 +220,7 @@ export class DatabaseIdentityWorkspaceAdapter
     ...input: Parameters<
       IdentityWorkspaceDatabase['readWorkspaceLifecycleOperation']
     >
-  ) {
+  ): Promise<WorkspaceLifecycleOperationRecord | null> {
     return this.database.readWorkspaceLifecycleOperation(...input);
   }
 

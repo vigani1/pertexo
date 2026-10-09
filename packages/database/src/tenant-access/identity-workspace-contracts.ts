@@ -1,3 +1,5 @@
+import type { WorkspaceLifecycleOperation } from '../lifecycle/workspace-deletion.js';
+
 export const USER_STATUS = {
   active: 'active',
   suspended: 'suspended',
@@ -350,16 +352,7 @@ export type WorkspaceRenameResult = Readonly<{
   changed: boolean;
   replayed: boolean;
 }>;
-export type WorkspaceLifecycleOperation = Readonly<{
-  id: string;
-  workspaceId: string;
-  commandType: 'deletion_requested' | 'deletion_restored';
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  submittedAt: Date;
-  updatedAt: Date;
-  completedAt: Date | null;
-  errorCode: string | null;
-}>;
+export type { WorkspaceLifecycleOperation } from '../lifecycle/workspace-deletion.js';
 export type RequestWorkspaceLifecycleOperationInput = Readonly<{
   workspaceId: string;
   actorUserId: string;

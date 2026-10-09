@@ -7,12 +7,14 @@ import {
   acceptWorkflowRun,
   WorkspaceRunAdmissionDeniedError,
 } from '../src/runs/commands/acceptance.js';
-import { runEvents, workflowRuns } from '../src/schema.js';
+import { changeWorkspaceLifecycle } from '../src/lifecycle/workspace-deletion.js';
+import { runEvents } from '../src/schema.js';
 import {
   acceptanceInput,
   apiDatabase,
   expectAcceptanceRecordCounts,
   installExecutionAcceptanceFixture,
+  apiUrl,
   migrationUrl,
   waitForDatabaseLock,
   workspaceA,
@@ -111,26 +113,27 @@ describe('workflow run lifecycle serialization', () => {
     ]);
     if (beforeBarrier instanceof Error) throw beforeBarrier;
 
-    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
-    const deletionClient = await owner.connect();
+    const app = new Pool({ connectionString: apiUrl, max: 1 });
+    const deletionClient = await app.connect();
     const deletionProcessId = await deletionClient
       .query<{ process_id: number }>('select pg_backend_pid() process_id')
       .then(({ rows }) => rows[0]?.process_id);
     if (deletionProcessId === undefined)
       throw new Error('Expected racing-deletion database process');
     await deletionClient.query('begin');
-    await deletionClient.query('set local role pertexo_owner');
-    const deletion = deletionClient.query(
-      `update app.workspaces
-       set status = 'pending_deletion',
-           deletion_requested_at = now(),
-           deletion_requested_by = $2,
-           deletion_reason = 'concurrent deletion',
-           purge_after = now() + interval '30 days'
-       where id = $1
-       returning status`,
+    await deletionClient.query(
+      "select set_config('app.workspace_id',$1,true), set_config('app.actor_id',$2,true)",
       [workspaceA, workspaceCreatorId],
     );
+    const deletion = changeWorkspaceLifecycle(deletionClient, {
+      operationId: randomUUID(),
+      workspaceId: workspaceA,
+      actorUserId: workspaceCreatorId,
+      commandType: 'deletion_requested',
+      reason: 'concurrent deletion',
+      idempotencyKeyHash: 'c'.repeat(64),
+      requestHash: 'd'.repeat(64),
+    });
     try {
       await waitForDatabaseLock(deletionProcessId, 'waiter');
 
@@ -141,16 +144,12 @@ describe('workflow run lifecycle serialization', () => {
         status: 'queued',
       });
       await expect(deletion).resolves.toMatchObject({
-        rows: [{ status: 'pending_deletion' }],
+        commandType: 'deletion_requested',
       });
       await deletionClient.query('commit');
+      // The deletion requests the admitted run's cancellation; the
+      // coordinator finishes it.
       await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
-        await expect(
-          db
-            .select({ status: workflowRuns.status })
-            .from(workflowRuns)
-            .where(eq(workflowRuns.id, accepted.runId)),
-        ).resolves.toEqual([{ status: 'canceled' }]);
         await expect(
           db
             .select({ type: runEvents.type })
@@ -160,7 +159,6 @@ describe('workflow run lifecycle serialization', () => {
         ).resolves.toEqual([
           { type: 'run.queued' },
           { type: 'run.cancel_requested' },
-          { type: 'run.canceled' },
         ]);
       });
     } finally {
@@ -168,7 +166,7 @@ describe('workflow run lifecycle serialization', () => {
       await Promise.allSettled([admission, deletion]);
       await deletionClient.query('rollback').catch(() => undefined);
       deletionClient.release();
-      await owner.end();
+      await app.end();
     }
   });
 });

@@ -14,7 +14,6 @@ import type {
 const supportedSurfaces = [
   'api',
   'execution',
-  'lifecycle',
   'maintenance',
   'operator',
 ] as const;

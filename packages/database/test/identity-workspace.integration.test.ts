@@ -1327,7 +1327,7 @@ describe('identity/workspace persistence', () => {
     }
   }, 15_000);
 
-  it('serializes role mutation with the workspace lifecycle command lock', async () => {
+  it('serializes a role change behind a deletion request', async () => {
     const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Role lifecycle lock',
       slug: `role-lifecycle-${randomUUID().slice(0, 8)}`,
@@ -1379,9 +1379,10 @@ describe('identity/workspace persistence', () => {
       await expect(lifecycle).resolves.toMatchObject({
         commandType: 'deletion_requested',
       });
-      await expect(roleChange).resolves.toMatchObject({
-        role: 'builder',
-        roleRevision: 2,
+      // Deletion takes effect first, so the role change finds the workspace
+      // no longer active.
+      await expect(roleChange).rejects.toMatchObject({
+        message: 'The workspace is not active',
       });
     } finally {
       await blocker.query('rollback').catch(() => undefined);
@@ -1456,9 +1457,9 @@ describe('identity/workspace persistence', () => {
     }
   });
 
-  it('accepts and reads one exact lifecycle operation without projecting workspace state', async () => {
+  it('applies one deletion request once and reads its receipt', async () => {
     const workspace = await identityDatabase.createWorkspaceWithOwner({
-      name: 'Asynchronous lifecycle workspace',
+      name: 'Lifecycle workspace',
       slug: `lifecycle-${randomUUID().slice(0, 12)}`,
       ownerUserId,
     });
@@ -1479,9 +1480,6 @@ describe('identity/workspace persistence', () => {
     expect(deletedLeft).toMatchObject({
       workspaceId: workspace.id,
       commandType: 'deletion_requested',
-      status: 'pending',
-      completedAt: null,
-      errorCode: null,
     });
     await expect(
       identityDatabase.readWorkspaceLifecycleOperation(
@@ -1492,7 +1490,7 @@ describe('identity/workspace persistence', () => {
     ).resolves.toEqual(deletedLeft);
     await expect(
       identityDatabase.findWorkspaceAccess(ownerUserId, workspace.id),
-    ).resolves.toMatchObject({ workspaceStatus: 'active' });
+    ).resolves.toMatchObject({ workspaceStatus: 'pending_deletion' });
     await expect(
       identityDatabase.requestWorkspaceLifecycleOperation({
         workspaceId: workspace.id,
@@ -1509,24 +1507,6 @@ describe('identity/workspace persistence', () => {
         ownerUserId,
       ),
     ).resolves.toBeNull();
-  });
-
-  it('denies direct lifecycle projection to the API credential', async () => {
-    const api = new Pool({ connectionString: apiUrl, max: 1 });
-    try {
-      await expect(
-        api.query(
-          `update app.workspaces set status='pending_deletion',
-             deletion_requested_at=clock_timestamp(),deletion_requested_by=$2,
-             deletion_reason='direct projection is forbidden',
-             purge_after=clock_timestamp()+interval '30 days'
-           where id=$1`,
-          [workspaceId, ownerUserId],
-        ),
-      ).rejects.toMatchObject({ code: '42501' });
-    } finally {
-      await api.end();
-    }
   });
 
   it('denies audit updates and deletes to the API runtime role', async () => {

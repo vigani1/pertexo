@@ -165,20 +165,6 @@ beforeEach(async () => {
        where workspace_id=$1`,
       [workspaceId],
     );
-    for (const table of [
-      'retention_control_audit_facts',
-      'workspace_legal_holds',
-      'workspace_control_ledger_projection',
-    ]) {
-      await client.query(`alter table app.${table} disable trigger user`);
-      await client.query(`delete from app.${table} where workspace_id=$1`, [
-        workspaceId,
-      ]);
-      await client.query(`alter table app.${table} enable trigger user`);
-    }
-    await client.query(
-      "select set_config('app.retention_control_transition','on',true)",
-    );
     await client.query(
       `update app.workspaces
          set retention_control_sequence=0,
