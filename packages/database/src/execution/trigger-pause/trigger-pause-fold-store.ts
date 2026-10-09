@@ -6,7 +6,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/database-runtime.js';
 import { withPlatformTransaction } from '../../tenant-access/workspace.js';
-import { checkWorkflowTriggerPauseReadiness } from './trigger-pause-readiness.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.js';
 
 /**
  * A workflow whose failure streak reached its threshold in this fold:
@@ -53,13 +53,10 @@ export function createWorkflowTriggerPauseFoldStore(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
-    checkReadiness: (signal?: AbortSignal) =>
-      checkWorkflowTriggerPauseReadiness(
-        pool,
-        config.ownerRole,
-        config.workerRuntimeRole,
-        signal,
-      ),
+    checkReadiness: async (signal?: AbortSignal) => {
+      signal?.throwIfAborted();
+      await checkDatabaseReadiness(pool);
+    },
     foldPending: (limit: number, enforce: boolean, signal?: AbortSignal) => {
       const bounded = limitSchema.parse(limit);
       const mode = z.boolean().parse(enforce);

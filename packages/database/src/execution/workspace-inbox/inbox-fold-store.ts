@@ -6,7 +6,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/database-runtime.js';
 import { withPlatformTransaction } from '../../tenant-access/workspace.js';
-import { checkWorkspaceInboxFoldReadiness } from './inbox-fold-readiness.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.js';
 
 /** A workspace whose inbox changed, with its newest thread revision. */
 export type WorkspaceInboxChange = Readonly<{
@@ -51,13 +51,10 @@ export function createWorkspaceInboxFoldStore(
     statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS,
   });
   return Object.freeze({
-    checkReadiness: (signal?: AbortSignal) =>
-      checkWorkspaceInboxFoldReadiness(
-        pool,
-        config.ownerRole,
-        config.workerRuntimeRole,
-        signal,
-      ),
+    checkReadiness: async (signal?: AbortSignal) => {
+      signal?.throwIfAborted();
+      await checkDatabaseReadiness(pool);
+    },
     foldPending: (limit: number, signal?: AbortSignal) => {
       const bounded = limitSchema.parse(limit);
       return withPlatformTransaction(

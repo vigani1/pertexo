@@ -253,14 +253,9 @@ function decodeCommandRecord(
 
 export function createOperatorCommandDatabase(
   config: DatabaseConfig,
-  operatorRole = 'pertexo_operator',
   inputOptions: OperatorCommandDatabaseOptions = {},
 ): OperatorCommandDatabase {
-  const runtime = createOperatorCommandRuntime(
-    config,
-    operatorRole,
-    inputOptions,
-  );
+  const runtime = createOperatorCommandRuntime(config, inputOptions);
 
   return Object.freeze({
     checkReadiness: (signal?: AbortSignal) => runtime.checkReadiness(signal),
