@@ -18,7 +18,6 @@ import {
   acceptRun,
   claimRuns,
   publishClaims,
-  proveLegacyConcurrencyUpgrade,
   readTickets,
   reapConcurrencyReceipts,
   setLimit,
@@ -448,10 +447,6 @@ describe('current workflow concurrency and ordered production admission', () => 
       },
     ]);
   });
-
-  it('upgrades legacy queued ordering and reservations from 0126', async () => {
-    await proveLegacyConcurrencyUpgrade();
-  }, 30_000);
 
   it('projects current timestamped blockers without labeling every queued run workflow-limited', async () => {
     await setLimit(1);

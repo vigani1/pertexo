@@ -1,7 +1,4 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { Pool, type PoolClient } from 'pg';
 import {
   verifyCuratedFixtureOwnership,
@@ -10,10 +7,7 @@ import {
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
-import {
-  createArtifactMigrationConfig,
-  copyMigrationsBefore,
-} from './artifact-migration-fixture.js';
+import { createArtifactMigrationConfig } from './artifact-migration-fixture.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 import { createWorkflowAuthoringFixtureDatabase } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowTagDatabase } from '../../src/authoring/workflow-tags.js';
@@ -70,11 +64,7 @@ async function ownership() {
   };
 }
 
-export async function createOrganizationOwnedFixture(
-  options: Readonly<{
-    initialMigrationHead?: '0134_workflow_organization.sql';
-  }> = {},
-) {
+export async function createOrganizationOwnedFixture() {
   if (!organizationFixtureEnabled)
     throw new Error('Explicit F07 owned fixture flag is required');
   const attestation = await ownership();
@@ -121,18 +111,7 @@ export async function createOrganizationOwnedFixture(
       attestation.urls.DATABASE_MIGRATION_URL,
     );
     const migrationConfig = createArtifactMigrationConfig(migrationUrl);
-    if (options.initialMigrationHead === undefined)
-      await migrateDatabase(migrationConfig);
-    else {
-      const directory = await mkdtemp(
-        path.join(tmpdir(), 'pertexo-f07-upgrade-migrations-'),
-      );
-      resources.push({
-        close: () => rm(directory, { recursive: true, force: true }),
-      });
-      await copyMigrationsBefore(directory, '0135_');
-      await migrateDatabase(migrationConfig, directory);
-    }
+    await migrateDatabase(migrationConfig);
     async function upgrade() {
       await recheck();
       return migrateDatabase(migrationConfig);

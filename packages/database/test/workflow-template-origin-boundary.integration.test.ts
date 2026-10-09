@@ -1,5 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -44,8 +43,6 @@ const apiUrl = fixture.databaseUrl(
 const workerUrl = fixture.databaseUrl(
   owned?.workerUrl ?? 'postgresql://disabled:disabled@invalid:1/pertexo',
 );
-const candidateDigest =
-  '2b2a99f8237d64dd64a19b0b12551ccf72338205de8f360e4d4c6f883356a393';
 const template = CURATED_WORKFLOW_TEMPLATES.find(
   (item) => item.templateId === 'webhook-validation-routing',
 );
@@ -146,22 +143,10 @@ async function cleanup() {
 }
 
 describe.skipIf(!enabled)(
-  `0133 owned PostgreSQL metadata boundaries (${candidateDigest.slice(0, 12)}; owner-seeded origin; writer on)`,
+  'owned PostgreSQL template-origin metadata boundaries (owner-seeded origin; writer on)',
   () => {
     beforeAll(async () => {
       try {
-        expect(
-          createHash('sha256')
-            .update(
-              readFileSync(
-                new URL(
-                  '../migrations/0133_curated_template_origin.sql',
-                  import.meta.url,
-                ),
-              ),
-            )
-            .digest('hex'),
-        ).toBe(candidateDigest);
         await fixture.create();
         created = true;
         // Installed only in this disposable fixture. Seeded metadata does not
@@ -257,17 +242,17 @@ describe.skipIf(!enabled)(
     afterAll(cleanup, 30_000);
 
     it('requires the current head and preserved 0133 inventory on API and worker; is not an old-image cutover proof', async () => {
-      expect(EXPECTED_MIGRATION_HEAD).toBe('0137_single_region_storage.sql');
+      expect(EXPECTED_MIGRATION_HEAD).toBe('0000_baseline.sql');
       expect(
         (
           await apiPool.query(
             'select name from pertexo_internal.schema_migrations order by name desc limit 1',
           )
         ).rows,
-      ).toEqual([{ name: '0137_single_region_storage.sql' }]);
+      ).toEqual([{ name: '0000_baseline.sql' }]);
       for (const pool of [apiPool, workerPool])
         await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
-          migrationHead: '0137_single_region_storage.sql',
+          migrationHead: '0000_baseline.sql',
         });
     });
 

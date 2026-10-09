@@ -9,7 +9,6 @@ import {
   actorId,
   apiBaseUrl,
   migrationBaseUrl,
-  retainedRunId,
 } from './coordinator-run-store.fixtures.js';
 import {
   applyHealthCommand,
@@ -26,7 +25,6 @@ import {
   workerBaseUrl,
   workspaceA,
 } from './support/connection-run-health.fixture.js';
-import { createConnectionHealthUpgradeFixture } from './support/connection-health-upgrade.fixture.js';
 
 const dispatcherBase =
   process.env.DATABASE_DISPATCHER_URL ??
@@ -50,7 +48,6 @@ const maintenance = new Pool({
   connectionString: databaseUrl(maintenanceBase),
   max: 1,
 });
-const upgrade = createConnectionHealthUpgradeFixture();
 
 beforeAll(async () => {
   const admin = new Pool({ connectionString: adminBase, max: 1 });
@@ -64,7 +61,6 @@ beforeAll(async () => {
   } finally {
     await admin.end();
   }
-  await upgrade.create();
 }, 120_000);
 
 afterAll(async () => {
@@ -73,7 +69,6 @@ afterAll(async () => {
     worker.end(),
     dispatcher.end(),
     maintenance.end(),
-    upgrade.close(),
   ]);
   const failures = outcomes
     .filter((result) => result.status === 'rejected')
@@ -122,64 +117,7 @@ async function evidenceCounts(attemptId: string, outboxId: string) {
   });
 }
 
-describe('connection health migration and runtime boundary', () => {
-  it('upgrades exact 0127 retained metadata and lets an unversioned in-flight claim finish without changing health', async () => {
-    await expect(upgrade.upgrade()).resolves.toEqual([
-      '0128_connection_health.sql',
-      '0129_workflow_duplication.sql',
-      '0130_workflow_input_cases.sql',
-      '0131_checked_manual_start.sql',
-      '0132_workflow_portability.sql',
-      '0133_curated_template_origin.sql',
-      '0134_workflow_organization.sql',
-      '0135_workflow_folders_batch_identity.sql',
-      '0136_remove_release_machinery.sql',
-      '0137_single_region_storage.sql',
-    ]);
-    const retained = await upgrade.asOwner((client) =>
-      client.query(
-        `select health_revision::text,last_tested_at,last_healthy_at,last_error_code,last_run_observed_at,last_health_transition_at,last_health_transition_source
-       from app.connections where id=$1`,
-        [upgrade.connectionId],
-      ),
-    );
-    expect(retained.rows).toEqual([
-      {
-        health_revision: '1',
-        last_tested_at: upgrade.historicalTime,
-        last_healthy_at: upgrade.historicalTime,
-        last_error_code: 'connection.historical_test',
-        last_run_observed_at: null,
-        last_health_transition_at: null,
-        last_health_transition_source: null,
-      },
-    ]);
-    const completed = await upgrade.completeLegacy();
-    expect(completed.outcome).toMatchObject({ ok: true, httpStatus: 200 });
-    expect(completed.connection).toMatchObject({
-      lastTestedAt: upgrade.historicalTime,
-      lastHealthyAt: upgrade.historicalTime,
-      lastErrorCode: 'connection.historical_test',
-    });
-    const facts = await upgrade.asOwner((client) =>
-      client.query(
-        `select (select count(*)::int from app.connection_events where connection_id=$1 and event_type='connection.test_failed') historical,
-         (select count(*)::int from app.connection_events where connection_id=$1 and event_type='connection.test_succeeded') completed,
-         (select count(*)::int from app.connection_events where connection_id=$1 and event_type='connection.health_changed') transitions,
-         (select status from app.idempotency_records where resource_id=$1 and operation='connection.test') claim_status`,
-        [upgrade.connectionId],
-      ),
-    );
-    expect(facts.rows).toEqual([
-      {
-        historical: 1,
-        completed: 1,
-        transitions: 0,
-        claim_status: 'completed',
-      },
-    ]);
-  });
-
+describe('connection health runtime boundary', () => {
   it('accepts the fresh protocol for every serving role without activating run health', async () => {
     for (const [pool, role] of [
       [api, 'pertexo_api'],
@@ -417,28 +355,6 @@ describe('connection health retention and tenant purge', () => {
 
   it('includes both private health tables in bounded workspace tenant purge without dangling health commands', async () => {
     const evidence = await completedEvidence();
-    // The shared fixture retains one phase-0 queued row and legacy node for
-    // migration/CAS tests. Its old checkpoint isn't a current cancellation
-    // checkpoint or entitlement. Terminalize only that explicit seed, not the
-    // evidence run, with the current admission guard restored before commit.
-    await asOwner(workspaceA, async (client) => {
-      await client.query(
-        'alter table app.workflow_runs no force row level security',
-      );
-      await client.query(
-        'alter table app.workflow_runs disable trigger workflow_runs_execution_admission',
-      );
-      await client.query(
-        "update app.workflow_runs set status='failed',completed_at=clock_timestamp() where workspace_id=$1 and id=$2 and status='queued'",
-        [workspaceA, retainedRunId],
-      );
-      await client.query(
-        'alter table app.workflow_runs enable trigger workflow_runs_execution_admission',
-      );
-      await client.query(
-        'alter table app.workflow_runs force row level security',
-      );
-    });
     const requestHash = 'd'.repeat(64);
     const control = await currentControl();
     const beforeDeletion = await readHealth(evidence.connection.connectionId);

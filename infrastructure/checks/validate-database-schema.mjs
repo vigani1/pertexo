@@ -113,7 +113,7 @@ export function validateDatabaseSchemaSources({
     if (entry.rls === 'forced') {
       for (const clause of ['ENABLE', 'FORCE']) {
         const pattern = new RegExp(
-          `ALTER\\s+TABLE\\s+app\\.${entry.name}\\s+${clause}\\s+ROW\\s+LEVEL\\s+SECURITY`,
+          `ALTER\\s+TABLE\\s+(?:ONLY\\s+)?app\\.${entry.name}\\s+${clause}\\s+ROW\\s+LEVEL\\s+SECURITY`,
           'iu',
         );
         if (!pattern.test(migrationSql))

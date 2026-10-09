@@ -388,7 +388,7 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
     it('current compatible API and worker readiness passes without enabling or running providers', async () => {
       for (const pool of [api, worker])
         expect((await checkDatabaseReadiness(pool)).migrationHead).toBe(
-          '0137_single_region_storage.sql',
+          '0000_baseline.sql',
         );
     });
     it('records authoritative PostgreSQL helper body and inventory witnesses', async () => {

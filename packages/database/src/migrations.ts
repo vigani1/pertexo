@@ -6,11 +6,6 @@ import { fileURLToPath } from 'node:url';
 import { Pool, type PoolClient } from 'pg';
 
 import type { MigrationConfig } from './config.js';
-import { applyMigrationExecution } from './migration-application.js';
-import {
-  loadMigrationExecutionPlan,
-  type MigrationExecution,
-} from './migration-execution-plan.js';
 
 // Stable application namespace for serializing Pertexo schema migrations.
 const MIGRATION_LOCK_ID = 7_166_118_812;
@@ -49,18 +44,9 @@ function preserveMigrationFailureDuringCleanup(
   );
 }
 
-export type MigrationProgressEvent = Readonly<{
-  batchesCompleted?: number;
-  mode: MigrationExecution['mode'];
-  name: string;
-  phase: 'completed' | 'started';
-  rowsProcessed?: number;
-}>;
-
 export interface MigrationRunnerOptions {
   readonly connectionTimeoutMs?: number;
   readonly lockTimeoutMs?: number;
-  readonly onProgress?: (event: MigrationProgressEvent) => void;
   readonly statementTimeoutMs?: number;
 }
 
@@ -81,26 +67,6 @@ function parseMigrationTimeout(
     );
   return selected;
 }
-
-// These checksums were published before corrections were folded back into the
-// numbered migration files. They remain accepted only when the corrected file
-// produces the same final schema or lets an affected database reach a
-// forward-only reconciliation migration.
-const publishedMigrationChecksums: Readonly<
-  Record<string, ReadonlySet<string>>
-> = Object.freeze({
-  '0037_failure_notification_destinations.sql': new Set([
-    '9f76e5fefc3914a808cb000f796760e17902876a4418d006bb82674d7778eede',
-  ]),
-  '0038_execution_admission.sql': new Set([
-    '89117c0311337b655503557f7a66f63c04aa9eb6736be6ddfc4b02dea4eedf95',
-    '0b7c70eee52daefeacbd092e1831852aa4260b60b899832b565ec524e47b2be2',
-    '27ca68dc5e20560d80fbaab2524b3cd0c9fe0361b68792538a69aac30d4f9857',
-  ]),
-  '0070_preview_execution_deadline.sql': new Set([
-    'beabac6354d519a98878e57645d74c8afa8c46454bf13fc3886835774da0c914',
-  ]),
-});
 
 export const MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL('../migrations/', import.meta.url),
@@ -137,36 +103,10 @@ function renderMigration(sql: string, config: MigrationConfig): string {
   );
 }
 
-export function isCompatibleMigrationChecksum(
-  name: string,
-  expectedChecksum: string,
-  appliedChecksum: string,
-): boolean {
-  return (
-    appliedChecksum === expectedChecksum ||
-    publishedMigrationChecksums[name]?.has(appliedChecksum) === true
-  );
-}
-
-async function loadMigrations(migrationsDirectory: string): Promise<
-  Readonly<{
-    names: readonly string[];
-    executionPlan: Awaited<ReturnType<typeof loadMigrationExecutionPlan>>;
-  }>
-> {
-  const names = (await readdir(migrationsDirectory))
+async function migrationNames(directory: string): Promise<string[]> {
+  return (await readdir(directory))
     .filter((name) => migrationNamePattern.test(name))
     .sort();
-  const executionPlan = await loadMigrationExecutionPlan(
-    migrationsDirectory,
-    names,
-    {
-      required:
-        path.resolve(migrationsDirectory) ===
-        path.resolve(MIGRATIONS_DIRECTORY),
-    },
-  );
-  return { names, executionPlan };
 }
 
 export async function migrateDatabase(
@@ -213,14 +153,6 @@ export async function migrateDatabase(
     // Preserve legacy non-Error adapter rejection values.
     throw error;
   }
-  const emitProgress = (event: MigrationProgressEvent): void => {
-    try {
-      runnerOptions.onProgress?.(event);
-    } catch {
-      // Migration observability must not change schema execution outcomes.
-    }
-  };
-
   const transaction = async <T>(work: () => Promise<T>): Promise<T> => {
     await client.query('begin');
     try {
@@ -242,8 +174,7 @@ export async function migrateDatabase(
 
   let migration = { error: undefined as unknown, failed: false };
   try {
-    const { names: migrationNames, executionPlan } =
-      await loadMigrations(migrationsDirectory);
+    const names = await migrationNames(migrationsDirectory);
 
     await client.query("select set_config('statement_timeout',$1,false)", [
       `${String(statementTimeoutMs)}ms`,
@@ -268,62 +199,36 @@ export async function migrateDatabase(
           applied_at timestamptz not null default now()
         )
       `);
-      await client.query(`
-        create table if not exists pertexo_internal.migration_jobs (
-          name text primary key,
-          checksum text not null,
-          batches_completed bigint not null default 0 check (batches_completed>=0),
-          rows_processed bigint not null default 0 check (rows_processed>=0),
-          status text not null default 'pending' check (status in ('pending','completed')),
-          updated_at timestamptz not null default now()
-        )
-      `);
     });
 
-    for (const name of migrationNames) {
+    const known = new Set(names);
+    const recorded = await client.query<{ name: string; checksum: string }>(
+      'select name,checksum from pertexo_internal.schema_migrations',
+    );
+    const appliedChecksums = new Map(
+      recorded.rows.map((row) => [row.name, row.checksum]),
+    );
+    if (recorded.rows.some((row) => !known.has(row.name)))
+      throw new Error(
+        'Database was migrated from an older migration history; recreate it',
+      );
+    for (const name of names) {
       const sql = await readFile(path.join(migrationsDirectory, name), 'utf8');
       const checksum = createHash('sha256').update(sql).digest('hex');
-      const existing = await client.query<{ checksum: string }>(
-        'select checksum from pertexo_internal.schema_migrations where name = $1',
-        [name],
-      );
-
-      if (existing.rows[0] !== undefined) {
-        if (
-          !isCompatibleMigrationChecksum(
-            name,
-            checksum,
-            existing.rows[0].checksum,
-          )
-        ) {
+      const appliedChecksum = appliedChecksums.get(name);
+      if (appliedChecksum !== undefined) {
+        if (appliedChecksum !== checksum)
           throw new Error(`Applied migration checksum changed: ${name}`);
-        }
         continue;
       }
-      const execution = executionPlan.executionFor(name);
-      emitProgress({
-        mode: execution.mode,
-        name,
-        phase: 'started',
-      });
-      const rendered = renderMigration(sql, config);
-      await applyMigrationExecution({
-        checksum,
-        client,
-        config,
-        emitProgress,
-        execution,
-        lockTimeoutMs,
-        name,
-        rendered,
-        transaction,
+      await transaction(async () => {
+        await client.query(renderMigration(sql, config));
+        await client.query(
+          'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
+          [name, checksum],
+        );
       });
       applied.push(name);
-      emitProgress({
-        mode: execution.mode,
-        name,
-        phase: 'completed',
-      });
     }
 
     await transaction(async () => {

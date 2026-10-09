@@ -1,7 +1,4 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 
 import { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
@@ -27,7 +24,7 @@ import {
 } from '../../src/execution/notifications/failure-notification-destinations.js';
 import { createFailureNotificationStore } from '../../src/execution/notifications/failure-notifications.js';
 import { parseDatabaseConfig } from '../../src/config.js';
-import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
+import { migrateDatabase } from '../../src/migrations.js';
 import { canonicalOutboxPayloadChecksum } from '../../src/execution/transport/outbox.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
@@ -46,8 +43,6 @@ export const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
 export const databaseName = `pertexo_test_connections_${randomUUID().replaceAll('-', '')}`;
-export const upgradeDatabaseName = `pertexo_test_connections_upgrade_${randomUUID().replaceAll('-', '')}`;
-export const priorDatabaseName = `pertexo_test_connections_prior_${randomUUID().replaceAll('-', '')}`;
 export const workspaceA = randomUUID();
 export const workspaceB = randomUUID();
 export const ownerA = randomUUID();
@@ -125,29 +120,6 @@ export function migrationConfig(name = databaseName) {
   } as const;
 }
 
-export async function migrateBefore(
-  name: string,
-  boundary: string,
-): Promise<void> {
-  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-prior-'));
-  try {
-    const migrations = (await readdir(MIGRATIONS_DIRECTORY)).filter(
-      (migration) => /^\d{4}_.+\.sql$/u.test(migration) && migration < boundary,
-    );
-    await Promise.all(
-      migrations.map((migration) =>
-        copyFile(
-          path.join(MIGRATIONS_DIRECTORY, migration),
-          path.join(directory, migration),
-        ),
-      ),
-    );
-    await migrateDatabase(migrationConfig(name), directory);
-  } finally {
-    await rm(directory, { force: true, recursive: true });
-  }
-}
-
 export async function seedWorkspaces(): Promise<void> {
   const pool = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
   let client: PoolClient | undefined;
@@ -180,119 +152,6 @@ export async function seedWorkspaces(): Promise<void> {
         [workspaceId, ownerId],
       );
     }
-    await client.query('commit');
-  } catch (error: unknown) {
-    await client?.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client?.release();
-    await pool.end();
-  }
-}
-
-export async function seedPriorNotificationRows(): Promise<void> {
-  const pool = new Pool({
-    connectionString: databaseUrl(migrationBaseUrl, priorDatabaseName),
-  });
-  let client: PoolClient | undefined;
-  try {
-    client = await pool.connect();
-    await client.query('begin');
-    await client.query('set local role pertexo_owner');
-    await client.query(
-      'alter table app.workflow_runs no force row level security',
-    );
-    await client.query(
-      'alter table app.run_failure_notification_intents no force row level security',
-    );
-    await client.query(
-      `insert into app.users (id,email,display_name,status)
-       values ($1,$2,'Historical notification owner','active')`,
-      [historicalOwnerId, `historical-${historicalOwnerId}@example.test`],
-    );
-    await client.query(
-      `insert into app.workspaces (id,name,slug,status,created_by)
-       values ($1,'Historical notifications',$2,'active',$3)`,
-      [
-        historicalWorkspaceId,
-        `historical-${historicalWorkspaceId.slice(0, 8)}`,
-        historicalOwnerId,
-      ],
-    );
-    await client.query("select set_config('app.workspace_id',$1,true)", [
-      historicalWorkspaceId,
-    ]);
-    await client.query(
-      `insert into app.workflow_runs (
-         id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
-         failure_notification_policy_version,failure_notification_destination_id,
-         failure_notification_destination_config_version,
-         failure_notification_side_effect_class
-       ) values ($1,$2,$3,$4,'manual','failed',1,$5,7,'safe')`,
-      [
-        historicalRunId,
-        historicalWorkspaceId,
-        randomUUID(),
-        randomUUID(),
-        historicalDestinationId,
-      ],
-    );
-    for (const [intentId, sequence, status] of [
-      [historicalIntentId, 1, 'pending'],
-      [historicalRetryIntentId, 2, 'retry'],
-      [historicalDispatchingIntentId, 3, 'dispatching'],
-    ] as const) {
-      await client.query(
-        `insert into app.run_failure_notification_intents (
-           id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
-           destination_id,destination_config_version,side_effect_class,context,
-           context_checksum,status,delivery_attempts,dispatch_marked_at,recovery_at,
-           next_delivery_at
-         ) values ($1,$2,$3,$4,1,$5,7,'safe','{}'::jsonb,$6,$7::varchar,
-           case when $7::text='pending' then 0 else 1 end,
-           case when $7::text='dispatching' then clock_timestamp() end,
-           case when $7::text='dispatching' then clock_timestamp()+interval '1 minute' end,
-           case when $7::text='retry' then clock_timestamp() end)`,
-        [
-          intentId,
-          historicalWorkspaceId,
-          historicalRunId,
-          sequence,
-          historicalDestinationId,
-          'a'.repeat(64),
-          status,
-        ],
-      );
-      const outboxEventId = historicalOutboxByIntent.get(intentId);
-      if (outboxEventId === undefined)
-        throw new Error('Historical outbox fixture is incomplete');
-      const payload = {
-        schemaVersion: 1 as const,
-        workspaceId: historicalWorkspaceId,
-        notificationIntentId: intentId,
-        outboxEventId,
-      };
-      await client.query(
-        `insert into app.outbox_events (
-           id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
-           payload,payload_checksum
-         ) values ($1,$2,'deliver-run-failure-notification',1,
-           'run-failure-notification',$3,$4::jsonb,$5)`,
-        [
-          outboxEventId,
-          historicalWorkspaceId,
-          intentId,
-          JSON.stringify(payload),
-          canonicalOutboxPayloadChecksum(payload),
-        ],
-      );
-    }
-    await client.query(
-      'alter table app.workflow_runs force row level security',
-    );
-    await client.query(
-      'alter table app.run_failure_notification_intents force row level security',
-    );
     await client.query('commit');
   } catch (error: unknown) {
     await client?.query('rollback').catch(() => undefined);

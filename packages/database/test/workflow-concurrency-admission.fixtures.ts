@@ -1,12 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { sql } from 'drizzle-orm';
 import { Pool, type PoolClient } from 'pg';
-import { expect } from 'vitest';
-import { migrateDatabase } from '../src/migrations.js';
-import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
 import type { WorkflowConcurrencyDatabase } from '../src/authoring/workflow-concurrency.js';
 import { parseDatabaseConfig } from '../src/config.js';
@@ -22,11 +16,6 @@ import {
   workspaceCreatorId,
   workflowId,
 } from './execution-acceptance.fixtures.js';
-import {
-  copyMigrationsBefore,
-  createArtifactMigrationConfig,
-} from './support/artifact-migration-fixture.js';
-import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 export async function setLimit(limit: number | null, id = workflowId) {
   await withOwner(async (client) => {
@@ -240,149 +229,4 @@ export async function publishClaims(
     if (!(await dispatcherDatabase.markPublished(event.id, event.leaseToken)))
       throw new Error('Fixture could not publish claimed delivery');
   }
-}
-
-export async function proveLegacyConcurrencyUpgrade() {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-  const apiBase =
-    process.env.DATABASE_API_URL ??
-    'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-  const migrationBase =
-    process.env.DATABASE_MIGRATION_URL ??
-    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-  const fixture = createDisposableDatabaseFixture({
-    adminUrl,
-    databaseName: `pertexo_test_conc_upgrade_${randomUUID().replaceAll('-', '')}`,
-    ownerRole: 'pertexo_owner',
-    connectRoles: [
-      'pertexo_migration',
-      'pertexo_api',
-      'pertexo_worker',
-      'pertexo_dispatcher',
-    ],
-  });
-  const directory = await mkdtemp(
-    path.join(tmpdir(), 'pertexo-concurrency-0126-'),
-  );
-  const owner = new Pool({
-    connectionString: fixture.databaseUrl(adminUrl),
-    max: 1,
-  });
-  const api = new Pool({
-    connectionString: fixture.databaseUrl(apiBase),
-    max: 1,
-  });
-  const worker = new Pool({
-    connectionString: fixture.databaseUrl(
-      process.env.DATABASE_WORKER_URL ??
-        'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo',
-    ),
-    max: 1,
-  });
-  const dispatcher = new Pool({
-    connectionString: fixture.databaseUrl(
-      process.env.DATABASE_DISPATCHER_URL ??
-        'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo',
-    ),
-    max: 1,
-  });
-  let cleanup: PromiseSettledResult<void>[] = [];
-  try {
-    await fixture.create();
-    await copyMigrationsBefore(directory, '0127_');
-    const config = createArtifactMigrationConfig(
-      fixture.databaseUrl(migrationBase),
-    );
-    expect((await migrateDatabase(config, directory)).at(-1)).toBe(
-      '0126_workspace_usage_capacity.sql',
-    );
-    const legacy = await seedLegacyConcurrencyRuns(owner);
-    await expect(checkDatabaseReadiness(api)).rejects.toThrow();
-    expect(await migrateDatabase(config)).toEqual([
-      '0127_workflow_concurrency.sql',
-      '0128_connection_health.sql',
-      '0129_workflow_duplication.sql',
-      '0130_workflow_input_cases.sql',
-      '0131_checked_manual_start.sql',
-      '0132_workflow_portability.sql',
-      '0133_curated_template_origin.sql',
-      '0134_workflow_organization.sql',
-      '0135_workflow_folders_batch_identity.sql',
-      '0136_remove_release_machinery.sql',
-      '0137_single_region_storage.sql',
-    ]);
-    expect(await migrateDatabase(config)).toEqual([]);
-    const tickets = await owner.query<{ id: string; ticket: string }>(
-      'select id,admission_ticket::text ticket from app.workflow_runs order by admission_ticket',
-    );
-    expect(tickets.rows).toEqual([
-      { id: legacy.first, ticket: '1' },
-      { id: legacy.second, ticket: '2' },
-    ]);
-    expect(
-      (
-        await owner.query<{ exempt: boolean }>(
-          'select workflow_concurrency_order_exempt exempt from app.workflow_run_active_admissions',
-        )
-      ).rows,
-    ).toEqual([{ exempt: true }]);
-    await expect(checkDatabaseReadiness(api)).resolves.toMatchObject({
-      migrationHead: '0137_single_region_storage.sql',
-    });
-  } finally {
-    cleanup = await Promise.allSettled([
-      owner.end(),
-      api.end(),
-      worker.end(),
-      dispatcher.end(),
-    ]);
-    await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
-  }
-  const failed = cleanup.find((result) => result.status === 'rejected');
-  if (failed?.status === 'rejected') throw failed.reason;
-}
-
-async function seedLegacyConcurrencyRuns(owner: Pool) {
-  const actor = randomUUID(),
-    workspace = randomUUID(),
-    workflow = randomUUID();
-  const first = randomUUID(),
-    second = randomUUID(),
-    event = randomUUID();
-  await owner.query(
-    "insert into app.users(id,email,display_name,status) values($1,$2,'Owner','active')",
-    [actor, `${actor}@example.test`],
-  );
-  await owner.query(
-    "insert into app.workspaces(id,name,slug,status,created_by) values($1,'Legacy concurrency',$2,'active',$3)",
-    [workspace, `legacy-${workspace}`, actor],
-  );
-  await owner.query(
-    "insert into app.workflows(id,workspace_id,name,created_by) values($1,$2,'Legacy FIFO',$3)",
-    [workflow, workspace, actor],
-  );
-  for (const [id, offset] of [
-    [first, 2],
-    [second, 1],
-  ] as const) {
-    await owner.query(
-      `with tenant as(select set_config('app.workspace_id',$2::uuid::text,true))
-      insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,created_at)
-      select $1::uuid,$2::uuid,$3::uuid,$4::uuid,'manual','queued',clock_timestamp()-$5::int*interval '1 second' from tenant`,
-      [id, workspace, workflow, randomUUID(), offset],
-    );
-  }
-  await owner.query(
-    `insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum)
-    values($1,$2,'advance-workflow-run',1,'workflow-run',$3,'{}'::jsonb,$4)`,
-    [event, workspace, first, '0'.repeat(64)],
-  );
-  await owner.query(
-    'insert into app.workflow_run_active_admissions(workspace_id,workflow_run_id,outbox_event_id) values($1,$2,$3)',
-    [workspace, first, event],
-  );
-  return { first, second };
 }
