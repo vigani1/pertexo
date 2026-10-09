@@ -241,7 +241,13 @@ now, as one ordered program — not "whenever we touch it".
         both the API and the worker, so they stay next to the code that starts
         them. Dead code (retained V1 reader, for-each bounds selection, policy
         schema) and version suffixes go.
-  - [ ] workflow-engine
+  - [x] workflow-engine — one checkpoint format (every run starts on the
+        structured shape; the v1 parser, type and creator go) and one
+        identity format for loops, joins and completed outputs (the legacy
+        fallbacks go). The unused attempt state machine goes, test helpers
+        move to `test/support`, files are named by role and version
+        suffixes go. The compatibility-release functions stay until the
+        node-sdk pass removes release machinery.
   - [ ] node-sdk
   - [ ] nodes-core
   - [ ] integrations
