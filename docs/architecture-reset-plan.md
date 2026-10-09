@@ -334,9 +334,9 @@ now, as one ordered program — not "whenever we touch it".
           workspace rows. Eleven functions and the result trigger go
           (migration 0018), with the operator's own transaction runtime.
     - [x] The SQL that stays is listed with its reason under *Database
-          design*. Left for the execution and API passes: the manual-start
-          writer fence (an authority check the API already makes), the
-          preview artifact retention trigger and the lifecycle time trigger.
+          design*. The manual-start writer fence (an authority check the API
+          already makes), the preview artifact retention trigger and the
+          lifecycle time trigger are SQL; they go in step 9's re-squash.
     - [x] Repository review.
       - Every area is grouped by sub-area (authoring `workflows/`,
         `portability/`, `publication/`, `settings/`; tenant access
@@ -359,7 +359,13 @@ now, as one ordered program — not "whenever we touch it".
           advance outcome and workflow-model's V1 checksum helpers go.
           Authoring reads one `AuthoringCatalogs` value instead of selecting
           catalogs per transaction.
-  - [ ] execution
+  - [x] execution
+    - [x] Attempt inputs are projected, not re-verified: loading an
+          attempt's inputs no longer re-checks the upstream scope the worker
+          just derived, or the loop item's size, ordinal and checksum, which
+          the engine verifies when it runs the attempt. Run start
+          (`initialCheckpointFactory`) and `advanceRun` were already the one
+          place for their rules.
   - [x] worker
     - [x] Files grouped by the feature they serve: `runs/`, `attempts/`
           (with `artifacts/`), `previews/`, `providers/`, `notifications/`,
@@ -469,6 +475,10 @@ now, as one ordered program — not "whenever we touch it".
         prints the result. Read in full; nothing to cut.
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
+  - [ ] SQL the reset moved out of the passes goes with the re-squash: the
+        manual-start writer fence and the workflow input case writer fence
+        (authority checks the API already makes), the preview artifact
+        retention trigger and the lifecycle time trigger.
   - [ ] Numbered stored formats go with the re-squash: digest prefixes
         (`wf:v2:sha256:`, `wf-compat:v1:`, `trigger:v1:`, `email:v1:`) lose
         their versions with the check constraints that pin them, and the
