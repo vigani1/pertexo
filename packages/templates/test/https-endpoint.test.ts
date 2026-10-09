@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isCuratedHttpsEndpointV1,
   validateCuratedTemplateSetupValue,
-} from '../src/curated-templates.js';
+} from '../src/index.js';
 
 interface CorpusCase {
   readonly name: string;
@@ -12,10 +12,7 @@ interface CorpusCase {
 }
 const corpus = JSON.parse(
   await readFile(
-    new URL(
-      './fixtures/curated-https-endpoint-v1-corpus.json',
-      import.meta.url,
-    ),
+    new URL('./fixtures/https-endpoint-corpus.json', import.meta.url),
     'utf8',
   ),
 ) as readonly CorpusCase[];

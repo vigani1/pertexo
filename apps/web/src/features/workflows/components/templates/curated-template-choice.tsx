@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';

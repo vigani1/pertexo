@@ -126,6 +126,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@pertexo/templates": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "zod": "4.4.3"
   },

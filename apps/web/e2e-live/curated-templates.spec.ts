@@ -9,7 +9,7 @@ import {
   parsePortableJson,
   workflowPortableManifestSchema,
 } from '@pertexo/contracts/schemas/workflow-portability';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { test } from './support/browser-fixture';
 
 interface Seed {

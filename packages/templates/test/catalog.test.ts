@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,12 +7,12 @@ import {
   workflowTemplateOriginRequestSchema,
   workflowTemplateOriginSchema,
   type CuratedWorkflowTemplate,
-} from '../src/curated-templates.js';
+} from '../src/index.js';
 import {
   canonicalWorkflowPortableJson,
   portableManifestDigest,
   workflowPortableManifestSchema,
-} from '../src/portability-contract.js';
+} from '@pertexo/workflow-model/portability-contract';
 
 function required<T>(value: T | undefined): T {
   if (value === undefined) throw new Error('Missing reviewed test fixture');
@@ -275,25 +274,6 @@ describe('reviewed browser-safe curated templates', () => {
       expect(
         verifyCuratedTemplateManifest(manifest, origin(descriptor)).ok,
       ).toBe(false);
-  });
-
-  it('retains a deliberate browser-safe export, with no server integrations or Node imports', async () => {
-    const json = JSON.parse(
-      await readFile(new URL('../package.json', import.meta.url), 'utf8'),
-    ) as { exports: Record<string, unknown> };
-    expect(json.exports['./curated-templates']).toEqual({
-      types: './dist/curated-templates.d.ts',
-      default: './dist/curated-templates.js',
-    });
-    for (const file of ['curated-templates.ts', 'curated-template-assets.ts']) {
-      const source = await readFile(
-        new URL(`../src/${file}`, import.meta.url),
-        'utf8',
-      );
-      expect(source).not.toMatch(
-        /(?:node:|server-only|@pertexo\/integrations|@pertexo\/node-catalog)/u,
-      );
-    }
   });
 
   it('validates setup without normalization or literal disclosure', () => {

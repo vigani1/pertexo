@@ -1,5 +1,4 @@
 import type { PoolClient } from 'pg';
-import type { WorkflowPortabilityCatalog } from '@pertexo/workflow-model/portability';
 import {
   EMPTY_DEFINITION_CATALOG_V1,
   type WorkflowDefinitionCatalogV1,
@@ -13,13 +12,14 @@ import {
   type CompatibilityReleaseExpectation,
 } from '../compatibility/compatibility-release.js';
 import type {
+  PortableCatalog,
   WorkflowAuthoringDatabaseOptions,
   WorkflowExecutableCompiler,
   WorkflowAuthoringGraphValidator,
 } from './workflow-authoring-types.js';
 
 type WorkflowAuthoringCompatibilitySelection = Readonly<{
-  portableCatalog: WorkflowPortabilityCatalog | undefined;
+  portableCatalog: PortableCatalog | undefined;
   compatibilityRelease: CompatibilityReleaseExpectation | undefined;
   definitionCatalog: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog: WorkflowDefinitionCatalogV1 | undefined;

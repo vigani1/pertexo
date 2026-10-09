@@ -1,5 +1,4 @@
 import './server-only.js';
-import type { WorkflowTemplateOriginRequest } from './curated-templates.js';
 
 import { parseWorkflowGraphDraft, type WorkflowGraph } from './graph.js';
 import type { JsonValue } from './graph-contract.js';
@@ -15,11 +14,6 @@ import {
 
 export type WorkflowPortabilityCatalog = Readonly<{
   fingerprint: string;
-  /** ADR063: separate registered typed setup admission, not F05 config policy. */
-  validateTemplateSetup?: (
-    manifest: WorkflowPortableManifest,
-    origin: WorkflowTemplateOriginRequest,
-  ) => boolean;
   definitions: readonly Readonly<{
     key: string;
     version: number;

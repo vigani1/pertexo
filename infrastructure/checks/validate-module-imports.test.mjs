@@ -118,7 +118,7 @@ test('web source allows only reviewed workspace package subpaths', () => {
     'apps/web/src/features/workflow-editor/model/input-mappings.ts':
       "import { parseJsonPath } from '@pertexo/workflow-model/json-path';",
     'apps/web/src/features/workflows/model/curated-templates.ts':
-      "import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';",
+      "import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';",
   };
   assert.deepEqual(validateModuleImports(allowed), []);
 

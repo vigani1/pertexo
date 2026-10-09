@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { workflowTemplateOriginSchema } from '@pertexo/workflow-model/curated-templates';
-export type { WorkflowTemplateOrigin } from '@pertexo/workflow-model/curated-templates';
+import { workflowTemplateOriginSchema } from '@pertexo/templates';
+export type { WorkflowTemplateOrigin } from '@pertexo/templates';
 export * from './workflow-auto-pause.js';
 export * from './workflow-concurrency.js';
 export * from './workflow-organization.js';

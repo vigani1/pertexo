@@ -16,7 +16,7 @@ import type { WorkflowConcurrencyDatabase } from './workflow-concurrency.js';
 import type {
   WorkflowTemplateOriginRequest,
   WorkflowTemplateOrigin,
-} from '@pertexo/workflow-model/curated-templates';
+} from '@pertexo/templates';
 import type {
   WorkflowPortableManifest,
   PortableConnectionBinding,

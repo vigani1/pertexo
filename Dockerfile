@@ -48,6 +48,7 @@ COPY --from=build --chown=10001:10001 /workspace/packages/nodes-core/dist ./pack
 COPY --from=build --chown=10001:10001 /workspace/packages/observability/dist ./packages/observability/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/queue/dist ./packages/queue/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/rate-limit/dist ./packages/rate-limit/dist
+COPY --from=build --chown=10001:10001 /workspace/packages/templates/dist ./packages/templates/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/workflow-engine/dist ./packages/workflow-engine/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/workflow-model/dist ./packages/workflow-model/dist
 USER 10001:10001

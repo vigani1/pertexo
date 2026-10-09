@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { platformServingRegistryRelease } from '@pertexo/node-catalog';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/workflow-model/curated-templates';
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   advanceWorkflow,
   buildWorkflowExecutableV2,

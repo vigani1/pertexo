@@ -1,6 +1,6 @@
 import './server-only.js';
 
-import { verifyCuratedTemplateManifest } from '@pertexo/workflow-model/curated-templates';
+import { verifyCuratedTemplateManifest } from '@pertexo/templates';
 import { workflowPortableManifestSchema } from '@pertexo/workflow-model/portability-contract';
 import type {
   WorkflowGraph,

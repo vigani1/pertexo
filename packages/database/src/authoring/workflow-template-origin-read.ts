@@ -1,7 +1,7 @@
 import type { WorkflowAuthoringDatabase } from './workflow-authoring-contracts.js';
 import type { WorkflowAuthoringReadContext } from './workflow-authoring-reads.js';
 import { WorkflowTemplateOriginUnavailableError } from './workflow-authoring-errors.js';
-import { workflowTemplateOriginSchema } from '@pertexo/workflow-model/curated-templates';
+import { workflowTemplateOriginSchema } from '@pertexo/templates';
 import { mapWorkflow } from './workflow-authoring-rows.js';
 import { z } from 'zod';
 
