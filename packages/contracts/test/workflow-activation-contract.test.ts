@@ -8,7 +8,7 @@ import {
   workflowActivationStatusSchema,
   workflowLifecycleStatusSchema,
   workflowSummarySchema,
-} from '../src/http/workflow-authoring.js';
+} from '../src/schemas/workflow-authoring.js';
 
 describe('workflow activation response contract', () => {
   it('uses the canonical browser-safe domain schemas without a second vocabulary', () => {

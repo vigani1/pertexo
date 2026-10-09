@@ -1,5 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 
 export function canDuplicateWorkflow(
   workspace: Pick<AccessibleWorkspace, 'status' | 'capabilities'>,

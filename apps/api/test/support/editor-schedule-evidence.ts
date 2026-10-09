@@ -7,7 +7,7 @@ import {
   composeExecutableCatalog,
   verifyWorkflowExecutable,
 } from '@pertexo/workflow-engine';
-import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowGraphSchema } from '@pertexo/contracts';
 
 const scheduleExecutableCatalog = composeExecutableCatalog(
   PLATFORM_NODE_CATALOG,

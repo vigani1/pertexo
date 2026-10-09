@@ -1,4 +1,4 @@
-import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { removeWorkspaceMember } from '../../workspaces.api';
 import {

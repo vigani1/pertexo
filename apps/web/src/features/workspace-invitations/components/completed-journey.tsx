@@ -1,4 +1,4 @@
-import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
+import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import { useEffect, useEffectEvent, useState, type CSSProperties } from 'react';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';

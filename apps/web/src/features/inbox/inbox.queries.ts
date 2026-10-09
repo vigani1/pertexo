@@ -1,4 +1,4 @@
-import type { WorkspaceInboxFilter } from '@pertexo/contracts/schemas/workspace-inbox';
+import type { WorkspaceInboxFilter } from '@pertexo/contracts';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getInboxSummary, getInboxThreads } from './inbox.api';

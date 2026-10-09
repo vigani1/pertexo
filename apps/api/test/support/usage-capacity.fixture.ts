@@ -1,4 +1,4 @@
-import type { UsageCapacityResponse } from '@pertexo/contracts/workflow-runs';
+import type { UsageCapacityResponse } from '@pertexo/contracts';
 
 export function usageCapacitySnapshot(): UsageCapacityResponse {
   return {

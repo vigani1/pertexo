@@ -1,4 +1,4 @@
-import { authenticationReturnPathSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { authenticationReturnPathSchema } from '@pertexo/contracts';
 
 /**
  * Where sign-in may return (ADR 043): only the known same-origin app paths

@@ -1,6 +1,4 @@
-export * from './http/workspace-inbox.js';
-
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   workspaceInboxCursorSchema,
   workspaceInboxFilterSchema,
@@ -12,7 +10,7 @@ import {
   workspaceInboxReadResponseSchema,
   workspaceInboxStreamEventSchema,
   workspaceInboxSummaryResponseSchema,
-} from './http/workspace-inbox.js';
+} from '../schemas/workspace-inbox.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -23,7 +21,7 @@ import {
   queryParameter,
   responseReference,
   simpleUuidPathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
 const workspace = simpleUuidPathParameter('workspaceId');
 const security = [{ cookieSession: [] }] as const;

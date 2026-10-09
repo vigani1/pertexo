@@ -2,8 +2,8 @@ import { expect, type Page } from '@playwright/test';
 import {
   workflowDraftResponseSchema,
   workflowVersionsResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import { workflowRunResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
+  workflowRunResponseSchema,
+} from '@pertexo/contracts';
 
 /** The existing New workflow form; never seeds a graph or a version. */
 export async function createEditorWorkflow(

@@ -1,4 +1,4 @@
-import type { WorkspaceInvitation } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceInvitation } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 
 const DAY_MS = 86_400_000;

@@ -1,4 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';

@@ -9,11 +9,11 @@ import {
   workflowRunStatisticsQuerySchema,
   workflowRunStatisticsResponseSchema,
   WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT,
-} from '../src/http/workflow-runs.js';
+} from '../src/schemas/workflow-runs.js';
 import {
   workflowRunsClientContract,
   workflowRunsOpenApiDocument,
-} from '../src/workflow-runs.js';
+} from '../src/server.js';
 
 describe('workflow-run public contracts', () => {
   it('accepts explicit public commands without exposing engine state', () => {

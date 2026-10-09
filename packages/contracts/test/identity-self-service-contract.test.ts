@@ -8,8 +8,8 @@ import {
   userProfileUpdateRequestSchema,
   workspaceMemberRemovalRequestSchema,
   workspaceMemberRemovalResponseSchema,
-} from '../src/http/identity-workspace.js';
-import { identityWorkspaceOpenApiDocument } from '../src/identity-workspace.js';
+} from '../src/schemas/identity-workspace.js';
+import { identityWorkspaceOpenApiDocument } from '../src/server.js';
 
 const workspaceId = '0199a4a2-5c1e-7000-8000-000000000001';
 

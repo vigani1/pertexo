@@ -16,7 +16,7 @@ import {
 } from '@pertexo/database/authoring';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
-import { apiProblemIssueSchema } from '@pertexo/contracts/errors';
+import { apiProblemIssueSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
 import {

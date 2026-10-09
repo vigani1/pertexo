@@ -3,7 +3,7 @@ import type {
   UserProfileResponse,
   WorkspaceMember,
   WorkspaceMembersResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import type {
   InfiniteData,
   UseInfiniteQueryResult,

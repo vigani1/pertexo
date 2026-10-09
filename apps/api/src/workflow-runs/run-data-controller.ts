@@ -5,7 +5,7 @@ import {
   workflowStepHealthParamsSchema,
   workflowStepRunsParamsSchema,
   workflowStepRunsQuerySchema,
-} from '@pertexo/contracts/workflow-runs';
+} from '@pertexo/contracts';
 
 import { SessionAuthenticationGuard } from '../identity-workspace/index.js';
 import { optionalAuthorizedWorkspace } from '../identity-workspace/authenticated-command-context.js';

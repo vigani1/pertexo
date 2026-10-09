@@ -1,7 +1,7 @@
 import type {
   NodeValidationResponse,
   PreviewRunSummary,
-} from '@pertexo/contracts/schemas/node-testing';
+} from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { getWorkflowNodePreview } from '../node-test.api';

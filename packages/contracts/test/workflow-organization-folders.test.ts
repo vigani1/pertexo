@@ -1,15 +1,15 @@
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
-import * as schemas from '../src/http/workflow-authoring.js';
+import * as schemas from '../src/schemas/workflow-authoring.js';
 import {
   API_PROBLEM_MANIFEST,
   apiProblemSchema,
 } from '../src/errors/api-problem.js';
-import { workflowOrganizationContractPaths } from '../src/workflow-organization-contract.js';
+import { workflowOrganizationContractPaths } from '../src/openapi/workflow-organization-paths.js';
 import {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
-} from '../src/workflow-authoring.js';
+} from '../src/server.js';
 
 const a = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const b = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

@@ -11,7 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
+import { idempotencyKeySchema } from '@pertexo/contracts';
 
 import {
   CsrfProtectionGuard,

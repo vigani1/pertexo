@@ -1,4 +1,4 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { parseJsonPath } from '@pertexo/workflow-model';
 import { stepTitle } from '../graph/graph-adapter';
 import type { GraphLevel, WorkflowNode } from '../graph/graph-scopes';

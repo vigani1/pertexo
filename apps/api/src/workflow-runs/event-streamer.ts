@@ -1,7 +1,7 @@
 import {
   workflowRunEventPayloadSchema,
   workflowRunEventSchema,
-} from '@pertexo/contracts/workflow-runs';
+} from '@pertexo/contracts';
 import { z } from 'zod';
 
 import {

@@ -1,49 +1,16 @@
-export * from './artifact-transfer.js';
-export * from './catalog.js';
-export {
-  connectionsClientContract,
-  connectionsOpenApiDocument,
-} from './connections.js';
-export * from './http/connections.js';
-export * from './http/failure-notification-destinations.js';
-export {
-  API_PROBLEM_CODES,
-  API_PROBLEM_MANIFEST,
-  apiProblemCodeSchema,
-  apiProblemIssueSchema,
-  apiProblemSchema,
-  type ApiProblem,
-  type ApiProblemCode,
-  type ApiProblemIssue,
-  type ApiProblemManifestEntry,
-} from './errors/api-problem.js';
-export {
-  identityWorkspaceClientContract,
-  identityWorkspaceOpenApiDocument,
-} from './identity-workspace.js';
-export * from './http/identity-workspace.js';
-export * from './http/transport-headers.js';
-export {
-  nodeTestingClientContract,
-  nodeTestingOpenApiDocument,
-} from './node-testing.js';
-export * from './http/node-testing.js';
-export {
-  workflowAuthoringClientContract,
-  workflowAuthoringOpenApiDocument,
-} from './workflow-authoring.js';
-export * from './http/workflow-authoring.js';
-export * from './workflow-portability.js';
-export {
-  workflowRunsClientContract,
-  workflowRunsOpenApiDocument,
-} from './workflow-runs.js';
-export * from './http/workflow-runs.js';
-export { webhooksClientContract, webhooksOpenApiDocument } from './webhooks.js';
-export * from './http/webhooks.js';
-export {
-  schedulesClientContract,
-  schedulesOpenApiDocument,
-} from './schedules.js';
-export * from './http/schedules.js';
-export * from './workspace-inbox.js';
+// Browser-safe HTTP contracts: request, response and problem schemas.
+// OpenAPI documents are built in ./server.ts.
+export * from './errors/api-problem.js';
+export * from './schemas/artifact-transfer.js';
+export * from './schemas/catalog.js';
+export * from './schemas/connections.js';
+export * from './schemas/failure-notification-destinations.js';
+export * from './schemas/identity-workspace.js';
+export * from './schemas/node-testing.js';
+export * from './schemas/schedules.js';
+export * from './schemas/transport-headers.js';
+export * from './schemas/webhooks.js';
+export * from './schemas/workflow-authoring.js';
+export * from './schemas/workflow-portability.js';
+export * from './schemas/workflow-runs.js';
+export * from './schemas/workspace-inbox.js';

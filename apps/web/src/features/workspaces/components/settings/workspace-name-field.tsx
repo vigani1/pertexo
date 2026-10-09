@@ -1,5 +1,5 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import { workspaceRenameRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { workspaceRenameRequestSchema } from '@pertexo/contracts';
 import { InlineRename } from '@/components/patterns/inline-rename';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';

@@ -1,4 +1,4 @@
-import type { ScheduleStepConfig } from '@pertexo/contracts/schemas/schedules';
+import type { ScheduleStepConfig } from '@pertexo/contracts';
 import { use, useEffect, useEffectEvent, useState } from 'react';
 import { isApiError } from '@/lib/api/api-error';
 import { describeReadError } from '@/lib/api/api-error-copy';

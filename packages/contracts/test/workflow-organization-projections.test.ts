@@ -9,7 +9,7 @@ import {
   workflowOrganizationProjectionResponseSchema,
   workflowSummaryResponseSchema,
   workflowTemplateOriginProjectionQuerySchema,
-} from '../src/http/workflow-authoring.js';
+} from '../src/schemas/workflow-authoring.js';
 
 const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflow = {

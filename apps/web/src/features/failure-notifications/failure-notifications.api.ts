@@ -6,7 +6,7 @@ import {
   failureNotificationDestinationStatusRequestSchema,
   type FailureNotificationDestinationConfig,
   type FailureNotificationDestinationResponse,
-} from '@pertexo/contracts/schemas/failure-notifications';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 function destinationsPath(workspaceId: string): `/v1${string}` {

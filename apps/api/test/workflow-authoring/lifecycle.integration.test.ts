@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { WorkflowLifecycleResponse } from '@pertexo/contracts/workflow-authoring';
+import type { WorkflowLifecycleResponse } from '@pertexo/contracts';
 
 import {
   closeWorkflowLifecycleApiFixture,

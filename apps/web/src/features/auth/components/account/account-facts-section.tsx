@@ -1,4 +1,4 @@
-import type { UserProfileResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { UserProfileResponse } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { CopyButton } from '@/components/ui/copy-button';
 import {

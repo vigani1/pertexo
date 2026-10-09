@@ -1,7 +1,7 @@
 import type {
   WorkflowNodeRunSummary,
   WorkflowRunSummary,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import type { CoreOrbState } from '@/components/patterns/core-orb';
 import type { StatusTone } from '@/components/ui/status';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { apiProblemSchema } from '@pertexo/contracts/errors';
+import { apiProblemSchema } from '@pertexo/contracts';
 
 import {
   accessibleWorkspacesResponseSchema,

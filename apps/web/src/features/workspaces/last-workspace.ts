@@ -1,4 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { QueryClient } from '@tanstack/react-query';
 
 // A per-browser convenience: open the workspace someone used last. Storage can

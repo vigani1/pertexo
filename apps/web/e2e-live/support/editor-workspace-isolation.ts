@@ -1,7 +1,9 @@
 import { expect, type APIRequestContext, type Browser } from '@playwright/test';
-import { apiProblemSchema } from '@pertexo/contracts/schemas/errors';
-import { accessibleWorkspacesResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import { workflowListResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  apiProblemSchema,
+  accessibleWorkspacesResponseSchema,
+  workflowListResponseSchema,
+} from '@pertexo/contracts';
 import {
   createEditorWorkspace,
   registerEditorUser,

@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type {
+  AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,
   WorkflowListResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import type {
   InfiniteData,
   UseInfiniteQueryResult,

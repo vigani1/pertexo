@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { stepLabel } from '@/features/workflows/shape.public';
 import { canonicalizeJson } from '@/lib/canonical-json';
 

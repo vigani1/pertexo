@@ -1,5 +1,7 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  NodeDefinitionCatalogItem,
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
 import type { FinalConnectionState } from '@xyflow/react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type {
   InlineRenameCommand,
   InlineRenameError,

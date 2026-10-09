@@ -1,4 +1,4 @@
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   workflowPortableManifestSchema,
   workflowExportRequestSchema,
@@ -6,7 +6,7 @@ import {
   workflowImportRequestSchema,
   workflowImportPreviewResponseSchema,
   workflowImportResponseSchema,
-} from './http/workflow-portability.js';
+} from '../schemas/workflow-portability.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -16,11 +16,9 @@ import {
   problemResponse,
   responseReference,
   uuidPathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 import { projectContractSchema } from './schema-projection.js';
 import type { z } from 'zod';
-
-export * from './http/workflow-portability.js';
 
 function contractSchemas(target: 'client' | 'openapi') {
   const project = (name: string, schema: z.ZodType, io: 'input' | 'output') =>

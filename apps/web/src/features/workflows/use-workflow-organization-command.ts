@@ -3,7 +3,7 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   accessibleWorkspaceSchema,
   type AccessibleWorkspace,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,

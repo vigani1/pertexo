@@ -1,4 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useState } from 'react';
 import { CoreOrb } from '@/components/patterns/core-orb';
 import type { ApiClient } from '@/lib/api/client';

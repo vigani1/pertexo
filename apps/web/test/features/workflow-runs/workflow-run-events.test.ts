@@ -1,4 +1,4 @@
-import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunEvent } from '@pertexo/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { createElement, StrictMode, type ReactNode } from 'react';

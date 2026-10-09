@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import type { WorkflowImportRequest } from '@pertexo/contracts/schemas/workflow-portability';
+import type { WorkflowImportRequest } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   describeCommandError,

@@ -1,4 +1,4 @@
-import type { WorkspaceLifecycleOperationResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceLifecycleOperationResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Notice } from '@/components/ui/notice';

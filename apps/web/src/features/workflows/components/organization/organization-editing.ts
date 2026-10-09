@@ -1,8 +1,8 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type {
+  AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,
   WorkflowOrganizationBulkItemOutcome,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,

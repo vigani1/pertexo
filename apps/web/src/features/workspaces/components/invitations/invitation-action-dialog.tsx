@@ -1,4 +1,4 @@
-import type { WorkspaceInvitation } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceInvitation } from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import type { InvitationAction } from './invitation-list';
 

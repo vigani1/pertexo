@@ -1,7 +1,7 @@
 import {
   workflowRunStatisticsResponseSchema,
   type WorkflowRunStatisticsResponse,
-} from '@pertexo/contracts/workflow-runs';
+} from '@pertexo/contracts';
 
 import {
   authorizeWorkspaceOperation,

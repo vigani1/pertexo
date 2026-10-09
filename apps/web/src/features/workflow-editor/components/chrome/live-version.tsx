@@ -1,4 +1,4 @@
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { statusToneText } from '@/components/ui/status-tone';
 import { describeWorkflowState } from '@/features/workflows/hub.public';

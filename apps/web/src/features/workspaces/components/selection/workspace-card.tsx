@@ -1,4 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { ArrowRightIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Status } from '@/components/ui/status';

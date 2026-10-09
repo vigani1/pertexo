@@ -3,7 +3,7 @@ import {
   type WebhookDeliveryPage,
   type WebhookTriggerDatabase,
 } from '@pertexo/database/testing';
-import { webhookDeliveryListResponseSchema } from '@pertexo/contracts/webhooks';
+import { webhookDeliveryListResponseSchema } from '@pertexo/contracts';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 

@@ -9,12 +9,12 @@ import {
   workspaceInboxStreamEventSchema,
   workspaceInboxSummaryResponseSchema,
   workspaceInboxThreadSchema,
-} from '../src/http/workspace-inbox.js';
+} from '../src/schemas/workspace-inbox.js';
 import {
   workspaceInboxClientContract,
   workspaceInboxOpenApiDocument,
-} from '../src/workspace-inbox.js';
-import { CONTRACT_ARTIFACTS } from '../src/artifacts.js';
+} from '../src/server.js';
+import { CONTRACT_ARTIFACTS } from '../src/server.js';
 
 const thread = {
   workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',

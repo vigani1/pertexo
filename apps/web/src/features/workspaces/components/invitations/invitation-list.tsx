@@ -1,4 +1,4 @@
-import type { WorkspaceInvitation } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceInvitation } from '@pertexo/contracts';
 import { MoreHorizontalIcon, RotateCwIcon, XCircleIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {

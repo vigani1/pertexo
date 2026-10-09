@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { ArrowUpFromLineIcon, MonitorIcon } from 'lucide-react';
 import { useRef } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';

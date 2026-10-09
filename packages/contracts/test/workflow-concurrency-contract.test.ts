@@ -3,10 +3,12 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import {
   workflowConcurrencySettingsSchema,
   workflowConcurrencySettingsRequestSchema,
+} from '../src/index.js';
+import {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
-} from '../src/workflow-authoring.js';
-import { workflowRunAdmissionBlockersSchema } from '../src/http/workflow-runs.js';
+} from '../src/server.js';
+import { workflowRunAdmissionBlockersSchema } from '../src/schemas/workflow-runs.js';
 import { API_PROBLEM_MANIFEST } from '../src/errors/api-problem.js';
 
 describe('workflow queue-only concurrency contracts', () => {

@@ -1,7 +1,7 @@
 import {
   legacyMethodMigrationStartResponseSchema,
   type AuthenticationCapabilitiesResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 export type LegacyMigrationStart = Readonly<{

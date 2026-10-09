@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query';
-import type { WorkflowInputCase } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowInputCase } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import {
   assertSessionIdentity,

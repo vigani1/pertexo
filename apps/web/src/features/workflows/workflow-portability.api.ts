@@ -8,11 +8,9 @@ import {
   type WorkflowExportRequest,
   type WorkflowImportPreviewRequest,
   type WorkflowImportRequest,
-} from '@pertexo/contracts/schemas/workflow-portability';
-import {
   strongEtagSchema,
   workflowDraftResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
 import type { ApiClient } from '@/lib/api/client';
 

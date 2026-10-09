@@ -6,11 +6,11 @@ import {
   failureNotificationDestinationCreateRequestSchema,
   failureNotificationDestinationListResponseSchema,
   workflowFailureNotificationPolicyResponseSchema,
-} from '../src/http/failure-notification-destinations.js';
+} from '../src/schemas/failure-notification-destinations.js';
 import {
   connectionsClientContract,
   connectionsOpenApiDocument,
-} from '../src/connections.js';
+} from '../src/server.js';
 
 describe('failure notification destination contracts', () => {
   it('accepts only the canonical Slack and normalized email configurations', () => {

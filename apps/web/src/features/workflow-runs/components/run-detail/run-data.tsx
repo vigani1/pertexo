@@ -1,5 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowRunData } from '@pertexo/contracts/schemas/workflow-runs';
+import type { AccessibleWorkspace, WorkflowRunData } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ChevronDownIcon, Maximize2Icon, RefreshCwIcon } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';

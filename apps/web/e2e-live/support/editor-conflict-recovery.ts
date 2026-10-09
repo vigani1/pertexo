@@ -6,11 +6,9 @@ import {
   workflowRevisionConflictProblemSchema,
   workflowVersionsResponseSchema,
   type WorkflowVersionResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   workflowNodeRunOutputResponseSchema,
   workflowRunResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { signInEditorUser } from './ordinary-editor-session';
 
 /** Holds dispatch, not the response: the server itself must reject the stale ETag. */

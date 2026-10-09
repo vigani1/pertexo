@@ -1,8 +1,8 @@
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkspaceInboxFilter } from '@pertexo/contracts/schemas/workspace-inbox';
+  WorkspaceInboxFilter,
+} from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { CheckCheckIcon, InboxIcon } from 'lucide-react';
 import { LoadMore } from '@/components/patterns/load-more';

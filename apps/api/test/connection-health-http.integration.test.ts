@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { connectionUsageResponseSchema } from '@pertexo/contracts/connections';
+import { connectionUsageResponseSchema } from '@pertexo/contracts';
 import { betterAuthIntegrationEnabled } from './support/better-auth-real-api.integration.support.js';
 import { useConnectionHealthFixture } from './support/connection-health.fixture.js';
 

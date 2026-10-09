@@ -1,7 +1,7 @@
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';

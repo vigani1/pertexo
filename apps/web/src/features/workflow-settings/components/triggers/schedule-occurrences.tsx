@@ -1,4 +1,4 @@
-import type { ScheduleOccurrenceResponse } from '@pertexo/contracts/schemas/schedules';
+import type { ScheduleOccurrenceResponse } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { RecentLog, RecentLogEntry } from '@/components/patterns/recent-log';
 import type { ApiClient } from '@/lib/api/client';

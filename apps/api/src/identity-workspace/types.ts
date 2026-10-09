@@ -72,7 +72,7 @@ export {
   type WorkspaceInvitationsResponse,
   type InvitationAcceptanceJourney,
   type InvitationAcceptanceReceipt,
-} from '@pertexo/contracts/identity-workspace';
+} from '@pertexo/contracts';
 import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 
 export interface CookieResponse {

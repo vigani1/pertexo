@@ -1,4 +1,4 @@
-import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
+import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import {

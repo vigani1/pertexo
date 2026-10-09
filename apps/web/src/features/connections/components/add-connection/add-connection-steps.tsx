@@ -1,4 +1,4 @@
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';

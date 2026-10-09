@@ -15,7 +15,7 @@ import {
   type ConnectionTestResponse,
   type ConnectionUsageResponse,
   type SlackChannelLookupResponse,
-} from '@pertexo/contracts/schemas/connections';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { collectPages, searchParams } from '@/lib/api/pagination';
 

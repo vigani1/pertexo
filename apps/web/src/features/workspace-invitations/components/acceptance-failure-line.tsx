@@ -1,4 +1,4 @@
-import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
+import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import {

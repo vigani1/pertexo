@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { CONTRACT_ARTIFACTS } from '../src/artifacts.js';
+import { CONTRACT_ARTIFACTS } from '../src/server.js';
 
 function collectReferences(
   value: unknown,

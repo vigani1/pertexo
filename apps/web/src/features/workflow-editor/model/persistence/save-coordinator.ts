@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { EditorStore } from '../editor.store';
 import type { WorkflowDraftSnapshot } from '../../workflow-editor.api';
 

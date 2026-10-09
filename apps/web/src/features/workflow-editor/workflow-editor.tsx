@@ -1,10 +1,10 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type {
+  NodeDefinitionCatalogItem,
+  WorkflowGraphContract,
+  ConnectionResponse,
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import {
   useQuery,
   useQueryClient,

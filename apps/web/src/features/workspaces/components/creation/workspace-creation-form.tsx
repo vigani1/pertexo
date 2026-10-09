@@ -1,4 +1,4 @@
-import { workspaceCreateRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { workspaceCreateRequestSchema } from '@pertexo/contracts';
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';

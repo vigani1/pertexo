@@ -1,4 +1,4 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/editor-store-context';

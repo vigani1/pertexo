@@ -1,4 +1,4 @@
-import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunEvent } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';

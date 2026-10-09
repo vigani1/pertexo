@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Separator } from '@/components/ui/separator';

@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   catalogClientContract,
   catalogOpenApiDocument,
+} from '../src/server.js';
+import {
   catalogQuerySchema,
   catalogLimitsV1,
   nodeDefinitionCatalogItemSchema,
-} from '../src/catalog.js';
+} from '../src/index.js';
 
 describe('catalog discovery contracts', () => {
   it('bounds schema documents while accepting the exact property limit', () => {

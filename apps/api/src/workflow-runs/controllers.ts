@@ -22,8 +22,8 @@ import {
   workflowRunStartParamsSchema,
   workflowRunStartRequestSchema,
   workflowRunStatisticsQuerySchema,
-} from '@pertexo/contracts/workflow-runs';
-import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
+  idempotencyKeySchema,
+} from '@pertexo/contracts';
 import type { FastifyReply } from 'fastify';
 
 import {

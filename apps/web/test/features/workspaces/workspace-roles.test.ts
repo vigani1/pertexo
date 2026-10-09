@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceMember } from '@pertexo/contracts';
 import {
   describeInvitationDelivery,
   describeInvitationExpiry,

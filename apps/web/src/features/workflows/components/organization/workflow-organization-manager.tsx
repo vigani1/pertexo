@@ -1,16 +1,16 @@
 import { useId, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type {
+  AccessibleWorkspace,
+  WorkflowFolder,
+  WorkflowTag,
+} from '@pertexo/contracts';
 import {
   workflowFolderNameInputSchema,
   workflowTagKeyInputSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import type {
-  WorkflowFolder,
-  WorkflowTag,
-} from '@pertexo/contracts/schemas/workflow-authoring';
 import type { ApiClient } from '@/lib/api/client';
 import {
   Dialog,

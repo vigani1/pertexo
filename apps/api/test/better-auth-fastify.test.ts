@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { betterAuth } from 'better-auth';
 import { memoryAdapter } from 'better-auth/adapters/memory';
-import { apiProblemSchema } from '@pertexo/contracts/schemas/errors';
+import { apiProblemSchema } from '@pertexo/contracts';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

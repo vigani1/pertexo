@@ -5,13 +5,11 @@ import {
   workflowDraftResponseSchema,
   workflowPublishResponseSchema,
   workflowTemplateOriginProjectionResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   workflowRunStartResponseSchema,
   workflowRunResponseSchema,
   workflowNodeRunStatusSchema,
   workflowRunStatusSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import type { useBetterAuthRealApi } from './better-auth-real-api.integration.support.js';
 import {

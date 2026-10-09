@@ -1,4 +1,4 @@
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 import { SearchIcon } from 'lucide-react';
 import { useState, type SyntheticEvent } from 'react';
 import {

@@ -1,7 +1,7 @@
 import type {
   WorkflowRunReadSummary,
   WorkflowRunSummary,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { formatDayHeading } from '@/lib/format-time';
 import { localDateValue } from './run-search';
 import { isActiveRunStatus, type RunTriggerType } from '../run-status';

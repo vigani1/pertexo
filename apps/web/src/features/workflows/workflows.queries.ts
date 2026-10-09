@@ -4,10 +4,7 @@ import {
   type InfiniteData,
   type QueryClient,
 } from '@tanstack/react-query';
-import type {
-  WorkflowListResponse,
-  WorkflowSummary,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowListResponse, WorkflowSummary } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowListOrder } from './model/workflow-list-view';
 import {

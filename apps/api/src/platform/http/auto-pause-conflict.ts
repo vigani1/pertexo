@@ -1,4 +1,4 @@
-import type { ApiProblem } from '@pertexo/contracts/errors';
+import type { ApiProblem } from '@pertexo/contracts';
 import {
   autoPauseSettingsRevisionSchema,
   workflowPauseRevisionSchema,
@@ -8,7 +8,7 @@ import {
   type WorkflowPauseConflictProblem,
   type WorkflowAutoPauseSettingsConflictProblem,
   type WorkspaceAutoPauseSettingsConflictProblem,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 
 import type { ApplicationError } from './application-error.js';
 

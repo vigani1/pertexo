@@ -1,4 +1,4 @@
-import type { WorkflowRunData } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunData } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';

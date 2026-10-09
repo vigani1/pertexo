@@ -2,13 +2,13 @@ import { HttpResponse, http } from 'msw';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import { workflowSummarySchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
+  accessibleWorkspaceSchema,
+  workflowSummarySchema,
   portableGraphDigest,
   workflowPortableManifestSchema,
   WORKFLOW_PORTABILITY_LIMITS,
-} from '@pertexo/contracts/schemas/workflow-portability';
+} from '@pertexo/contracts';
 import { WorkflowExportDialog } from '@/features/workflows/portability.public';
 import { WorkflowImportDialog } from '@/features/workflows/components/portability/workflow-import-dialog';
 import { createApiClient } from '@/lib/api/client';

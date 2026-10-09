@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { WorkflowFolder } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowFolder } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
 import { workflowFolderOptions } from '../../model/workflow-folder-navigation';
 import {

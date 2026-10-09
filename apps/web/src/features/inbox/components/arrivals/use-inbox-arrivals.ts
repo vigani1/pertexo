@@ -1,7 +1,7 @@
 import type {
   WorkspaceInboxSummaryResponse,
   WorkspaceInboxThread,
-} from '@pertexo/contracts/schemas/workspace-inbox';
+} from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useEffectEvent, useRef } from 'react';
 import type { InboxScope } from '../../inbox.mutations';

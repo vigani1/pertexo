@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import {
+  accessibleWorkspaceSchema,
   workflowOrganizationProjectionResponseSchema,
   workflowOrganizationBulkResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   validOrganizationSelection,
   organizationEditAttempt,

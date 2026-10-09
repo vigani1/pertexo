@@ -11,7 +11,7 @@ import {
   workflowFolderDeleteResponseSchema,
   workflowFolderPlacementRequestSchema,
   workflowFolderPlacementResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import type { WorkflowFolderDatabase } from '@pertexo/database/authoring';
 import type { WorkspaceAuthorizationSource } from '../workspaces/index.js';
 import {

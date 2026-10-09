@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type {
   WorkflowRenameResponse,
   WorkflowSummaryResponse,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 
 import {
   closeWorkflowLifecycleApiFixture,

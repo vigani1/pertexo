@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { workflowConcurrencyCommandResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowConcurrencyCommandResponseSchema } from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 
 test('sets cap one, sees the real blocked run across restart, then removes the cap', async ({

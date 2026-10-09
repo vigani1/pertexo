@@ -4,11 +4,9 @@ import {
   workflowDraftResponseSchema,
   workflowTemplateOriginProjectionResponseSchema,
   workflowDuplicateResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   parsePortableJson,
   workflowPortableManifestSchema,
-} from '@pertexo/contracts/schemas/workflow-portability';
+} from '@pertexo/contracts';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { test } from './support/browser-fixture';
 

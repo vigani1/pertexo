@@ -1,5 +1,7 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  NodeDefinitionCatalogItem,
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
 import { mappingDefinition, setDefinition } from './workflow-editor-fixtures';
 
 // Contract-valid For each graphs (ADR 020) for the editor's body tests.

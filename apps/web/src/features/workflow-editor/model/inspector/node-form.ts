@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { WorkflowNodeUpdate } from '../graph/graph-commands';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];

@@ -1,4 +1,4 @@
-import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunEvent } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';

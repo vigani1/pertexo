@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   csrfTokenSchema,
   webhookJsonContentTypeSchema,
-} from '../src/http/transport-headers.js';
-import { idempotencyKeySchema } from '../src/http/identity-workspace.js';
+} from '../src/schemas/transport-headers.js';
+import { idempotencyKeySchema } from '../src/schemas/identity-workspace.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
-} from '../src/openapi-primitives.js';
-import { webhooksOpenApiDocument } from '../src/webhooks.js';
+} from '../src/openapi/primitives.js';
+import { webhooksOpenApiDocument } from '../src/server.js';
 
 describe('transport header contracts', () => {
   it('keeps CSRF and idempotency runtime bounds aligned with parameters', () => {

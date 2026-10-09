@@ -1,6 +1,6 @@
 import { ChevronRightIcon } from 'lucide-react';
 import { useRef } from 'react';
-import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,

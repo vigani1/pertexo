@@ -6,13 +6,15 @@ import {
   workflowAutoPauseCommandResponseSchema,
   workflowAutoPauseSettingsRequestSchema,
   workflowAutoPauseSettingsSchema,
-  workflowAuthoringClientContract,
-  workflowAuthoringOpenApiDocument,
   workflowPauseConflictProblemSchema,
   workflowPauseRevisionSchema,
   workflowResumeRequestSchema,
   workspaceAutoPauseSettingsRequestSchema,
-} from '../src/workflow-authoring.js';
+} from '../src/index.js';
+import {
+  workflowAuthoringClientContract,
+  workflowAuthoringOpenApiDocument,
+} from '../src/server.js';
 import { API_PROBLEM_MANIFEST } from '../src/errors/api-problem.js';
 
 const settings = {

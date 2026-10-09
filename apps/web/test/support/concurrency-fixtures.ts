@@ -1,4 +1,4 @@
-import type { WorkflowConcurrencySettings } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowConcurrencySettings } from '@pertexo/contracts';
 
 export const defaultConcurrencySettings: WorkflowConcurrencySettings = {
   asOf: '2026-10-01T10:00:00.000000Z',

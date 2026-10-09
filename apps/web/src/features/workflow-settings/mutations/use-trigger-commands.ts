@@ -1,4 +1,4 @@
-import type { WebhookManagementCommandResponse } from '@pertexo/contracts/schemas/webhooks';
+import type { WebhookManagementCommandResponse } from '@pertexo/contracts';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';

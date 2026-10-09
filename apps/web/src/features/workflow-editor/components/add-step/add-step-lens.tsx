@@ -1,4 +1,4 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react';
 import { useDeferredValue, useState, type Ref } from 'react';
 import { Button } from '@/components/ui/button';

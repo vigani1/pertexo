@@ -23,7 +23,7 @@ import {
   type WorkflowFolderPlacementRequest,
   type WorkflowOrganizationBulkRequest,
   type WorkflowTagCleanupDetachRequest,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 
 /** The wire contract owns literal normalization, including U+0020 and NUL. */
 export function normalizeWorkflowOrganizationListQuery(input: unknown = {}) {

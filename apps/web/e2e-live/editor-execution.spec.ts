@@ -10,12 +10,10 @@ import { verifyEditorWorkspaceIsolation } from './support/editor-workspace-isola
 import {
   workflowDraftResponseSchema,
   workflowVersionsResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 
 test('real nested execution, two-context conflict, immutable version and workspace isolation', async ({
   browser,

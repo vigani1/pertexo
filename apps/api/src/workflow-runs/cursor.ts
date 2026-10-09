@@ -1,4 +1,4 @@
-import { workflowRunStatusSchema } from '@pertexo/contracts/workflow-runs';
+import { workflowRunStatusSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
 const filterSchema = z

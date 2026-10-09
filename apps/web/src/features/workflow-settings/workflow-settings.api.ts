@@ -2,8 +2,6 @@ import {
   workflowFailureNotificationPolicyRequestSchema,
   workflowFailureNotificationPolicyResponseSchema,
   type WorkflowFailureNotificationPolicyResponse,
-} from '@pertexo/contracts/schemas/failure-notifications';
-import {
   scheduleFireTimesResponseSchema,
   scheduleManagementCommandResponseSchema,
   scheduleOccurrenceListResponseSchema,
@@ -11,15 +9,13 @@ import {
   type ScheduleFireTimesResponse,
   type ScheduleManagementCommandResponse,
   type ScheduleOccurrenceListResponse,
-} from '@pertexo/contracts/schemas/schedules';
-import {
   webhookDeliveryListResponseSchema,
   webhookManagementCommandResponseSchema,
   webhookRotateSecretRequestSchema,
   webhookTriggerListResponseSchema,
   type WebhookDeliveryListResponse,
   type WebhookManagementCommandResponse,
-} from '@pertexo/contracts/schemas/webhooks';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { searchParams } from '@/lib/api/pagination';
 

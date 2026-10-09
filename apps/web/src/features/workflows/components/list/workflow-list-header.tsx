@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 import { PlusIcon } from 'lucide-react';
 import {
   PageHeader,

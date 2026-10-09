@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Switch } from '@/components/ui/switch';

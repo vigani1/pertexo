@@ -1,5 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { WorkflowNameField } from '@/features/workflows/rename.public';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';

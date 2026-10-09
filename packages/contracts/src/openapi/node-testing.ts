@@ -10,9 +10,9 @@ import {
   problemResponse,
   responseReference,
   uuidPathParameter as pathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   nodeSideEffectDisclosureSchema,
   nodeTestExecuteAcceptedResponseSchema,
@@ -20,10 +20,8 @@ import {
   nodeValidationResponseSchema,
   previewRunResponseSchema,
   previewRunSummarySchema,
-} from './http/node-testing.js';
+} from '../schemas/node-testing.js';
 import { projectContractSchema } from './schema-projection.js';
-
-export * from './http/node-testing.js';
 
 function contractSchemas(target: 'client' | 'openapi') {
   return Object.freeze({

@@ -5,8 +5,8 @@ import type {
   WebhookDeliveryResponse,
   WebhookManagementCommandResponse,
   WebhookTriggerHealthResponse,
-} from '@pertexo/contracts/webhooks';
-import { webhookCredentialSchema } from '@pertexo/contracts/webhooks';
+} from '@pertexo/contracts';
+import { webhookCredentialSchema } from '@pertexo/contracts';
 import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,

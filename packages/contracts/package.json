@@ -5,117 +5,14 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./workflow-portability": {
-      "types": "./dist/workflow-portability.d.ts",
-      "default": "./dist/workflow-portability.js"
-    },
-    "./schemas/workflow-portability": {
-      "types": "./dist/http/workflow-portability.d.ts",
-      "default": "./dist/http/workflow-portability.js"
-    },
-    "./workspace-inbox": {
-      "types": "./dist/workspace-inbox.d.ts",
-      "default": "./dist/workspace-inbox.js"
-    },
-    "./schemas/workspace-inbox": {
-      "types": "./dist/http/workspace-inbox.d.ts",
-      "default": "./dist/http/workspace-inbox.js"
-    },
-    "./artifacts": {
-      "types": "./dist/artifact-transfer.d.ts",
-      "default": "./dist/artifact-transfer.js"
-    },
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./errors": {
-      "types": "./dist/errors/api-problem.d.ts",
-      "default": "./dist/errors/api-problem.js"
-    },
-    "./connections": {
-      "types": "./dist/connections.d.ts",
-      "default": "./dist/connections.js"
-    },
-    "./catalog": {
-      "types": "./dist/catalog.d.ts",
-      "default": "./dist/catalog.js"
-    },
-    "./identity-workspace": {
-      "types": "./dist/identity-workspace.d.ts",
-      "default": "./dist/identity-workspace.js"
-    },
-    "./transport": {
-      "types": "./dist/http/transport-headers.d.ts",
-      "default": "./dist/http/transport-headers.js"
-    },
-    "./node-testing": {
-      "types": "./dist/node-testing.d.ts",
-      "default": "./dist/node-testing.js"
-    },
-    "./workflow-authoring": {
-      "types": "./dist/workflow-authoring.d.ts",
-      "default": "./dist/workflow-authoring.js"
-    },
-    "./workflow-runs": {
-      "types": "./dist/workflow-runs.d.ts",
-      "default": "./dist/workflow-runs.js"
-    },
-    "./webhooks": {
-      "types": "./dist/webhooks.d.ts",
-      "default": "./dist/webhooks.js"
-    },
-    "./schedules": {
-      "types": "./dist/schedules.d.ts",
-      "default": "./dist/schedules.js"
-    },
-    "./schemas/artifacts": {
-      "types": "./dist/http/artifact-transfer.d.ts",
-      "default": "./dist/http/artifact-transfer.js"
-    },
-    "./schemas/catalog": {
-      "types": "./dist/http/catalog.d.ts",
-      "default": "./dist/http/catalog.js"
-    },
-    "./schemas/connections": {
-      "types": "./dist/http/connections.d.ts",
-      "default": "./dist/http/connections.js"
-    },
-    "./schemas/errors": {
-      "types": "./dist/errors/api-problem.d.ts",
-      "default": "./dist/errors/api-problem.js"
-    },
-    "./schemas/identity-workspace": {
-      "types": "./dist/http/identity-workspace.d.ts",
-      "default": "./dist/http/identity-workspace.js"
-    },
-    "./schemas/node-testing": {
-      "types": "./dist/http/node-testing.d.ts",
-      "default": "./dist/http/node-testing.js"
-    },
-    "./schemas/failure-notifications": {
-      "types": "./dist/http/failure-notification-destinations.d.ts",
-      "default": "./dist/http/failure-notification-destinations.js"
-    },
-    "./schemas/schedules": {
-      "types": "./dist/http/schedules.d.ts",
-      "default": "./dist/http/schedules.js"
-    },
-    "./schemas/transport": {
-      "types": "./dist/http/transport-headers.d.ts",
-      "default": "./dist/http/transport-headers.js"
-    },
-    "./schemas/workflow-authoring": {
-      "types": "./dist/http/workflow-authoring.d.ts",
-      "default": "./dist/http/workflow-authoring.js"
-    },
-    "./schemas/workflow-runs": {
-      "types": "./dist/http/workflow-runs.d.ts",
-      "default": "./dist/http/workflow-runs.js"
-    },
-    "./schemas/webhooks": {
-      "types": "./dist/http/webhooks.d.ts",
-      "default": "./dist/http/webhooks.js"
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "browser": false,
+      "node": "./dist/server.js"
     }
   },
   "scripts": {

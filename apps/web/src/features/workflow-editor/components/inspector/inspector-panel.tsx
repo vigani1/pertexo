@@ -1,5 +1,7 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type {
+  NodeDefinitionCatalogItem,
+  ConnectionResponse,
+} from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/editor-store-context';

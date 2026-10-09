@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import * as organization from '../src/http/workflow-organization.js';
-import { workflowGetQuerySchema } from '../src/http/workflow-authoring.js';
+import * as organization from '../src/schemas/workflow-organization.js';
+import { workflowGetQuerySchema } from '../src/schemas/workflow-authoring.js';
 
 const id = (number: number) =>
   `${number.toString(16).padStart(8, '0')}-aaaa-4aaa-8aaa-aaaaaaaaaaaa`;

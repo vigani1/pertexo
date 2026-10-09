@@ -1,5 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { useRef, type ReactNode } from 'react';
 import { WorkflowHubBar } from '@/features/workflows/hub.public';
 import { PatternGlyph } from '@/features/workflows/shape.public';

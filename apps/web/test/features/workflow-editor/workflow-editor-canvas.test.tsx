@@ -3,8 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  NodeDefinitionCatalogItem,
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
 import {
   addStepButton,
   editorHandlers,

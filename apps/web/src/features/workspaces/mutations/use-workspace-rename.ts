@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import type {
   WorkspaceRenameRequest,
   WorkspaceRenameResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,

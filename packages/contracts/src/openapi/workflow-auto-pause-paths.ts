@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 
-import * as schemas from './http/workflow-auto-pause.js';
+import * as schemas from '../schemas/workflow-auto-pause.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
@@ -8,7 +8,7 @@ import {
   jsonResponse,
   responseReference,
   uuidPathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
 export function workflowAutoPauseContractSchemas<Projected>(
   project: (

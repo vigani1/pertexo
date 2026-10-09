@@ -1,4 +1,4 @@
-import type { WorkflowRunSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunSummary } from '@pertexo/contracts';
 import { formatDurationMs, formatShortTime } from '@/lib/format-time';
 import { runDurationMs } from './list/run-list';
 import { isActiveRunStatus } from './run-status';

@@ -47,55 +47,21 @@ describe('browser contract consumer bundle', () => {
     const moduleIds = chunks.flatMap((chunk) => Object.keys(chunk.modules));
     const code = chunks.map((chunk) => chunk.code).join('\n');
 
-    expect(moduleIds.some((id) => id.endsWith('/http/catalog.js'))).toBe(true);
     expect(
-      moduleIds.some((id) => id.endsWith('/http/artifact-transfer.js')),
+      moduleIds.some((id) => id.includes('/contracts/dist/schemas/')),
     ).toBe(true);
-    expect(moduleIds.some((id) => id.endsWith('/http/connections.js'))).toBe(
-      true,
-    );
     expect(moduleIds.some((id) => id.endsWith('/errors/api-problem.js'))).toBe(
       true,
     );
     expect(
-      moduleIds.some((id) => id.endsWith('/http/identity-workspace.js')),
-    ).toBe(true);
-    expect(moduleIds.some((id) => id.endsWith('/http/node-testing.js'))).toBe(
-      true,
-    );
-    expect(
-      moduleIds.some((id) =>
-        id.endsWith('/http/failure-notification-destinations.js'),
-      ),
-    ).toBe(true);
-    expect(moduleIds.some((id) => id.endsWith('/http/schedules.js'))).toBe(
-      true,
-    );
-    expect(
-      moduleIds.some((id) => id.endsWith('/http/workflow-authoring.js')),
-    ).toBe(true);
-    expect(moduleIds.some((id) => id.endsWith('/http/workflow-runs.js'))).toBe(
-      true,
-    );
-    expect(
-      moduleIds.some((id) => id.endsWith('/http/workflow-portability.js')),
-    ).toBe(true);
-    expect(
       moduleIds.some((id) => id.endsWith('/portability/contract.js')),
     ).toBe(true);
     expect(
+      moduleIds.some((id) => id.includes('/contracts/dist/openapi/')),
+    ).toBe(false);
+    expect(
       moduleIds.some((id) => /\/node-catalog\/|\/workflow-engine\//u.test(id)),
     ).toBe(false);
-    expect(moduleIds.some((id) => id.endsWith('/http/webhooks.js'))).toBe(true);
-    expect(
-      moduleIds.some((id) => id.endsWith('/http/workspace-inbox.js')),
-    ).toBe(true);
-    expect(moduleIds).not.toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/\/schema-projection\.js$/u),
-        expect.stringMatching(/\/openapi-primitives\.js$/u),
-      ]),
-    );
     expect(moduleIds.some((id) => id.startsWith('node:'))).toBe(false);
     expect(code).not.toContain('Pertexo Catalog API');
     expect(code).not.toContain('openapi:');

@@ -9,7 +9,7 @@ import {
   accountSecuritySessionRevokeResponseSchema,
   accountSecuritySessionsResponseSchema,
   type AccountSecuritySessionsResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 export function listAccountSecuritySessions(

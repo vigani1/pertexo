@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
-import { accountSecurityLinkStartRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import type { authenticationProviderSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { accountSecurityLinkStartRequestSchema } from '@pertexo/contracts';
+import type { authenticationProviderSchema } from '@pertexo/contracts';
 
 import {
   attachProviderMethod,

@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { workflowRunResponseSchema } from '@pertexo/contracts/workflow-runs';
+import { workflowRunResponseSchema } from '@pertexo/contracts';
 import { FixtureResourceOwner } from './support/fixture-resource-owner.js';
 import { ownEditorBrowserProcess } from './support/editor-browser-process.js';
 import { restartEditorBrowserWorker } from './support/editor-browser-worker-restart.js';

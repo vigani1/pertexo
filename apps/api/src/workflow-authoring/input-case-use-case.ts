@@ -7,7 +7,7 @@ import {
   workflowInputCaseListResponseSchema,
   workflowInputCaseResponseSchema,
   workflowInputCaseQuerySchema,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import type {
   WorkflowInputCaseDatabase,
   WorkflowInputCaseMetadata,

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   workflowDuplicateRequestSchema,
   workflowDuplicateResponseSchema,
-  workflowAuthoringOpenApiDocument,
-} from '../src/workflow-authoring.js';
+} from '../src/index.js';
+import { workflowAuthoringOpenApiDocument } from '../src/server.js';
 
 const versionId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 describe('workflow duplication contract', () => {

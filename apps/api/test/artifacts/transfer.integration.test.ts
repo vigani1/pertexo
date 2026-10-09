@@ -5,7 +5,7 @@ import {
   artifactMetadataResponseSchema,
   artifactUploadResponseSchema,
   type ArtifactUploadResponse,
-} from '@pertexo/contracts/artifacts';
+} from '@pertexo/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ZodType } from 'zod';
 

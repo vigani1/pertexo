@@ -1,7 +1,7 @@
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { WorkspaceCreationSheet } from './components/creation/workspace-creation-sheet';

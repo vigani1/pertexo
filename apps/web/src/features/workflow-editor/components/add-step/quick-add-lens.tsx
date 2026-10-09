@@ -1,4 +1,4 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   useDeferredValue,
   useId,

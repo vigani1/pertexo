@@ -1,7 +1,7 @@
 import type {
   WorkspaceInboxSummaryResponse,
   WorkspaceInboxThread,
-} from '@pertexo/contracts/schemas/workspace-inbox';
+} from '@pertexo/contracts';
 import { Toast } from '@base-ui/react/toast';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { InboxArrivalCard } from './inbox-arrival-card';

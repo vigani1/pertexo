@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { strictlyAscendingIdentifiers } from '../workflow-organization-order.js';
-import { utf8ByteLength } from '../utf8-byte-length.js';
+import { strictlyAscendingIdentifiers } from './workflow-organization-order.js';
+import { utf8ByteLength } from './utf8-byte-length.js';
 
 /** ADR064 bounds are product contracts, never caller-configurable quotas. */
 export const WORKFLOW_ORGANIZATION_LIMITS = Object.freeze({

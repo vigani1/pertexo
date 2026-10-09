@@ -8,7 +8,7 @@ import {
   type WorkflowRunListResponse,
   type WorkflowRunResponse,
   type WorkflowRunStartResponse,
-} from '@pertexo/contracts/workflow-runs';
+} from '@pertexo/contracts';
 
 import {
   authorizeWorkspaceOperation,

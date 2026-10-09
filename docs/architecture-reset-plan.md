@@ -280,6 +280,11 @@ now, as one ordered program — not "whenever we touch it".
         setup checks now live in `@pertexo/templates`; the registered setup
         check still in node-catalog moves with the node-catalog pass.
   - [ ] contracts
+    - [x] Two doors: `@pertexo/contracts` (request, response and problem
+          schemas, browser-safe) and `@pertexo/contracts/server` (OpenAPI
+          documents and client contracts, projected at import). Folders
+          `schemas/` (was `http/`), `errors/`, `openapi/`; 28 subpath exports
+          and the duplicated root re-exports go.
   - [ ] queue
   - [ ] artifact-store
   - [ ] observability

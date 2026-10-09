@@ -8,11 +8,11 @@ import {
   webhookDeliveryListResponseSchema,
   webhookIngressResponseSchema,
   webhookManagementCommandResponseSchema,
-} from '../src/http/webhooks.js';
+} from '../src/schemas/webhooks.js';
 import {
   webhooksClientContract,
   webhooksOpenApiDocument,
-} from '../src/webhooks.js';
+} from '../src/server.js';
 
 type OpenApiOperation = Readonly<{
   parameters?: readonly Readonly<Record<string, unknown>>[];

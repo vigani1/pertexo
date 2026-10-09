@@ -1,4 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { ApiClient } from '@/lib/api/client';

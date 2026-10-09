@@ -1,8 +1,8 @@
 import type {
   NodeDefinitionCatalogItem,
   NodeDefinitionListResponse,
-} from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
 
 export type StarterId =
   'webhook-http-slack' | 'schedule-http' | 'webhook-validate-email';

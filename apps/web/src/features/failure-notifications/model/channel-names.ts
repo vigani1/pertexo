@@ -2,8 +2,8 @@ import {
   SLACK_CHANNEL_LOOKUP_LIMIT,
   type SlackChannelLookupResponse,
   type SlackChannelUnresolvedReason,
-} from '@pertexo/contracts/schemas/connections';
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+} from '@pertexo/contracts';
+import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 
 /** What the page knows about one Slack channel's display name. */
 export type ChannelName =

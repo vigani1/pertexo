@@ -1,7 +1,7 @@
 import type {
   WorkflowNodeRunSummary,
   WorkflowRunEvent,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { describeNodeStatus, type NodeStatus } from '../run-status';
 

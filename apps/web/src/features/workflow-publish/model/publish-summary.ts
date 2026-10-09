@@ -1,7 +1,7 @@
 import type {
   WorkflowGraphContract,
   WorkflowVersionResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { describeStep } from '@/features/catalog/presentation.public';
 import {
   diffWorkflowGraphs,

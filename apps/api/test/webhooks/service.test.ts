@@ -7,7 +7,7 @@ import {
 import {
   webhookManagementCommandResponseSchema,
   webhookTriggerListResponseSchema,
-} from '@pertexo/contracts/webhooks';
+} from '@pertexo/contracts';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 

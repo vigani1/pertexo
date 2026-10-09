@@ -92,29 +92,29 @@ test('allows deliberate public package imports', () => {
 test('web source allows only reviewed workspace package subpaths', () => {
   const allowed = {
     'apps/web/src/features/artifacts/artifacts.api.ts':
-      "import { artifactMetadataResponseSchema } from '@pertexo/contracts/schemas/artifacts';",
+      "import { artifactMetadataResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/lib/api/client.ts':
-      "import { apiProblemSchema } from '@pertexo/contracts/schemas/errors';",
+      "import { apiProblemSchema } from '@pertexo/contracts';",
     'apps/web/src/features/session/session.api.ts':
-      "import { accessibleWorkspacesResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';",
+      "import { accessibleWorkspacesResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/workflows/workflows.api.ts':
-      "import { workflowListResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';",
+      "import { workflowListResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/workflows/workflow-portability.api.ts':
-      "import { workflowImportResponseSchema } from '@pertexo/contracts/schemas/workflow-portability';",
+      "import { workflowImportResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/connections/connections.api.ts':
-      "import { connectionListResponseSchema } from '@pertexo/contracts/schemas/connections';",
+      "import { connectionListResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/catalog/catalog.api.ts':
-      "import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';",
+      "import { nodeDefinitionListResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/publish/node-preview.api.ts':
-      "import { nodeTestRequestSchema } from '@pertexo/contracts/schemas/node-testing';",
+      "import { nodeTestRequestSchema } from '@pertexo/contracts';",
     'apps/web/src/features/runs/runs.api.ts':
-      "import { workflowRunResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';",
+      "import { workflowRunResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/settings/notifications.api.ts':
-      "import { failureNotificationDestinationListResponseSchema } from '@pertexo/contracts/schemas/failure-notifications';",
+      "import { failureNotificationDestinationListResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/settings/schedules.api.ts':
-      "import { scheduleTriggerListResponseSchema } from '@pertexo/contracts/schemas/schedules';",
+      "import { scheduleTriggerListResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/settings/webhooks.api.ts':
-      "import { webhookTriggerListResponseSchema } from '@pertexo/contracts/schemas/webhooks';",
+      "import { webhookTriggerListResponseSchema } from '@pertexo/contracts';",
     'apps/web/src/features/workflow-editor/model/input-mappings.ts':
       "import { parseJsonPath } from '@pertexo/workflow-model';",
     'apps/web/src/features/workflows/model/curated-templates.ts':
@@ -123,9 +123,8 @@ test('web source allows only reviewed workspace package subpaths', () => {
   assert.deepEqual(validateModuleImports(allowed), []);
 
   for (const specifier of [
-    '@pertexo/contracts',
+    '@pertexo/contracts/server',
     '@pertexo/contracts/errors',
-    '@pertexo/contracts/schemas/transport-internals',
     '@pertexo/workflow-model/server',
     '@pertexo/database/runs',
   ])

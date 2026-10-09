@@ -5,11 +5,11 @@ import {
   apiProblemSchema,
 } from '../src/errors/api-problem.js';
 import { WORKFLOW_ORGANIZATION_PROBLEM_CODES } from '../src/errors/workflow-organization-problems.js';
-import { workflowOrganizationContractPaths } from '../src/workflow-organization-contract.js';
+import { workflowOrganizationContractPaths } from '../src/openapi/workflow-organization-paths.js';
 import {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
-} from '../src/workflow-authoring.js';
+} from '../src/server.js';
 
 const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflow = {

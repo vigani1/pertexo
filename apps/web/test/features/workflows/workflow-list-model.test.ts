@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   WorkflowGraphContract,
   WorkflowSummary,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   runTicks,
   summarizeRunTicks,

@@ -1,4 +1,4 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { PlusIcon } from 'lucide-react';
 import { useRef, useState } from 'react';

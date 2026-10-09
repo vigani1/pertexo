@@ -1,4 +1,4 @@
-import { csrfTokenSchema } from '@pertexo/contracts/schemas/transport';
+import { csrfTokenSchema } from '@pertexo/contracts';
 
 const CSRF_COOKIE_NAME = 'pertexo_csrf';
 

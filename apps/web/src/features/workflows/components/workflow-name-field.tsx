@@ -1,7 +1,6 @@
 import { PencilIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { InlineRename } from '@/components/patterns/inline-rename';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';

@@ -1,4 +1,4 @@
-import type { AccountSecurityResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccountSecurityResponse } from '@pertexo/contracts';
 import type { SyntheticEvent } from 'react';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

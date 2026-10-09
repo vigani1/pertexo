@@ -15,7 +15,7 @@ import {
   workspace,
   validHandler,
 } from '../../support/workflow-editor-fixtures';
-import { workflowDraftSaveRequestSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowDraftSaveRequestSchema } from '@pertexo/contracts';
 
 it('blocks saved-draft duplication while local edits are dirty/saving and after a save conflict', async () => {
   let release: (() => void) | undefined;

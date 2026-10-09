@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { workflowAuthoringOpenApiDocument } from '../src/server.js';
 import {
-  workflowAuthoringOpenApiDocument,
   workflowLifecycleConflictProblemSchema,
   workflowLifecycleRequestSchema,
   workflowLifecycleRevisionSchema,
   workflowSummarySchema,
   workflowVersionRestoreRequestSchema,
-} from '../src/workflow-authoring.js';
+} from '../src/index.js';
 
 describe('workflow lifecycle public contract', () => {
   it('restores a version with an empty body and draft precondition, without idempotency', () => {

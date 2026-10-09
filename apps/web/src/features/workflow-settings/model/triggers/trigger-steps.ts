@@ -1,4 +1,4 @@
-import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { stepLabel } from '@/features/workflows/shape.public';
 
 /**

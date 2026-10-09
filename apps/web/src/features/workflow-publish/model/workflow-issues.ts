@@ -1,7 +1,7 @@
 import type {
   WorkflowGraphContract,
   WorkflowValidateResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   resolveWorkflowCompatibilityTarget,
   resolveWorkflowValidationTarget,

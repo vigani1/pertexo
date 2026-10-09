@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import {
   LayoutGridIcon,

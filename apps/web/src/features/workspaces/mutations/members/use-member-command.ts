@@ -1,4 +1,4 @@
-import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceMember } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isUnauthenticated } from '@/features/auth/session-identity.public';

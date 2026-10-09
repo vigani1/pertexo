@@ -12,7 +12,7 @@ import {
   type WorkflowAutoPauseSettingsRequest,
   type WorkspaceAutoPauseSettingsRequest,
   type WorkflowResumeRequest,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 function workspacePath(workspaceId: string): `/v1${string}` {

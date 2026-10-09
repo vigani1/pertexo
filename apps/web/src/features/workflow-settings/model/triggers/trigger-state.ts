@@ -1,5 +1,7 @@
-import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts/schemas/schedules';
-import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
+import type {
+  ScheduleTriggerHealthResponse,
+  WebhookTriggerHealthResponse,
+} from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 
 type TriggerState = Readonly<{ tone: StatusTone; label: string }>;

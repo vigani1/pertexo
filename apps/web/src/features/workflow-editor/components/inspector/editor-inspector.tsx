@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  NodeDefinitionCatalogItem,
+  ConnectionResponse,
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { useMemo, useState, type Ref } from 'react';
 import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';

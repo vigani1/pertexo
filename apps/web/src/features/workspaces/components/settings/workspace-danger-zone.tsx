@@ -1,7 +1,7 @@
 import type {
   AccessibleWorkspace,
   WorkspaceLifecycleOperationResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import type { ApiClient } from '@/lib/api/client';

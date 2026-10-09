@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 export type EmptyDraftHint = Readonly<{
   /** Short enough for the issues chip and the Publish tooltip. */

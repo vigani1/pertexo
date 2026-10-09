@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent } from 'react';
-import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';

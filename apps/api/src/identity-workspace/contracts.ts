@@ -1,4 +1,4 @@
 export {
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
-} from '@pertexo/contracts/identity-workspace';
+} from '@pertexo/contracts/server';

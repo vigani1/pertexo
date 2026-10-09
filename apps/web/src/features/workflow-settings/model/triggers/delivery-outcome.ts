@@ -1,4 +1,4 @@
-import type { WebhookDeliveryResponse } from '@pertexo/contracts/schemas/webhooks';
+import type { WebhookDeliveryResponse } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 
 type DeliveryOutcome = Readonly<{

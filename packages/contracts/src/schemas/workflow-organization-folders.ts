@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { utf8ByteLength } from '../utf8-byte-length.js';
-import { strictlyAscendingIdentifiers } from '../workflow-organization-order.js';
+import { utf8ByteLength } from './utf8-byte-length.js';
+import { strictlyAscendingIdentifiers } from './workflow-organization-order.js';
 import {
   workflowOrganizationRevisionSchema,
   workflowTagReplaceRequestSchema,

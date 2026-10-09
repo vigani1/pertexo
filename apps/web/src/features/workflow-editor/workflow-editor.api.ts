@@ -3,7 +3,7 @@ import {
   workflowDraftSaveRequestSchema,
   workflowRevisionConflictProblemSchema,
   type WorkflowGraphContract,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import {
   decodeWorkflowDraftSnapshot,

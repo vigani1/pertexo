@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import * as schemas from './http/workflow-input-cases.js';
+import * as schemas from '../schemas/workflow-input-cases.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
@@ -8,7 +8,7 @@ import {
   jsonSchema,
   responseReference,
   uuidPathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
 export function workflowInputCaseContractSchemas<Projected>(
   project: (

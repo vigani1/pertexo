@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describeDelivery } from '@/features/workflow-settings/model/triggers/delivery-outcome';
 import { describeDestination } from '@/features/workflow-settings/model/destination-label';
 import { extractEndpointKey } from '@/features/workflow-settings/model/triggers/endpoint-key';

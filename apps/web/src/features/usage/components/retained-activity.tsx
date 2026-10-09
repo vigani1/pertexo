@@ -1,7 +1,7 @@
 import type {
   WorkflowRunStatisticsResponse,
   WorkflowRunSummary,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
 import {

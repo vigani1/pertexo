@@ -1,4 +1,4 @@
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 
 export type ProviderKey = ConnectionResponse['providerKey'];
 

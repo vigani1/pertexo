@@ -5,12 +5,12 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type {
+  AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,
   WorkflowFolder,
   WorkflowTag,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {

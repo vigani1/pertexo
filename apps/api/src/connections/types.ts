@@ -21,7 +21,7 @@ export {
   type SlackChannelLookupItem,
   type SlackChannelLookupResponse,
   type SlackChannelUnresolvedReason,
-} from '@pertexo/contracts/connections';
+} from '@pertexo/contracts';
 
 export const connectionWorkspaceParamSchema = z
   .object({ workspaceId: z.uuid() })

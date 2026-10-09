@@ -1,16 +1,14 @@
 import { expect, type Request } from '@playwright/test';
-import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';
 import {
+  nodeDefinitionListResponseSchema,
   scheduleFireTimesResponseSchema,
   scheduleManagementCommandResponseSchema,
   scheduleOccurrenceListResponseSchema,
   scheduleTriggerHealthSchema,
   scheduleTriggerListResponseSchema,
-} from '@pertexo/contracts/schemas/schedules';
-import {
   workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
   registerEditorUser,

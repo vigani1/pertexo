@@ -1,4 +1,4 @@
-import { connectionStatusSchema } from '@pertexo/contracts/connections';
+import { connectionStatusSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
 const connectionCursorPayloadSchema = z

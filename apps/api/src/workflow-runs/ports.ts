@@ -1,7 +1,7 @@
 import type {
   UsageCapacityResponse,
   WorkflowRunAdmissionBlockers,
-} from '@pertexo/contracts/workflow-runs';
+} from '@pertexo/contracts';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,

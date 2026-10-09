@@ -1,7 +1,7 @@
 import type {
   ConnectionListResponse,
   ConnectionResponse,
-} from '@pertexo/contracts/schemas/connections';
+} from '@pertexo/contracts';
 import type {
   InfiniteData,
   UseInfiniteQueryResult,

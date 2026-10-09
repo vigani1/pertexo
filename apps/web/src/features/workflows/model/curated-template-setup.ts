@@ -1,5 +1,7 @@
-import type { NodeDefinitionListResponse } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowPortableManifest } from '@pertexo/contracts/schemas/workflow-portability';
+import type {
+  NodeDefinitionListResponse,
+  WorkflowPortableManifest,
+} from '@pertexo/contracts';
 import {
   type CuratedWorkflowTemplate,
   validateCuratedTemplateSetupValue,

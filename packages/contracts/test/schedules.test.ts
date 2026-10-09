@@ -8,11 +8,11 @@ import {
   scheduleOccurrenceListResponseSchema,
   schedulePreviewRequestSchema,
   scheduleTriggerListResponseSchema,
-} from '../src/http/schedules.js';
+} from '../src/schemas/schedules.js';
 import {
   schedulesClientContract,
   schedulesOpenApiDocument,
-} from '../src/schedules.js';
+} from '../src/server.js';
 
 const trigger = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

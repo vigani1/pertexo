@@ -5,7 +5,7 @@ import {
   workspaceAutoPauseSettingsConflictProblemSchema,
   type WorkflowAutoPauseCommandResponse,
   type WorkflowAutoPauseSettings,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   closeWorkflowLifecycleApiFixture,
   createWorkflowLifecycleApiFixture,

@@ -1,4 +1,4 @@
-import type { WorkflowAutoPauseSettings } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
 
 export const unpausedWorkflowSettings: WorkflowAutoPauseSettings = {
   enabled: true,

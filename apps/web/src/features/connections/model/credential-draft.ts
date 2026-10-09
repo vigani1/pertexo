@@ -3,8 +3,8 @@ import {
   resendApiKeyCredentialSchema,
   slackBotTokenCredentialSchema,
   type ConnectionCreateRequest,
-} from '@pertexo/contracts/schemas/connections';
-import type { ApiProblemIssue } from '@pertexo/contracts/schemas/errors';
+} from '@pertexo/contracts';
+import type { ApiProblemIssue } from '@pertexo/contracts';
 import type { FieldErrors } from '@/components/ui/use-field-validation';
 import type { ConnectionCredential } from '../connections.api';
 import type { ProviderKey } from './connection-providers';

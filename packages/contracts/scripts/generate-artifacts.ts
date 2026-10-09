@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
-import { CONTRACT_ARTIFACTS } from '../src/artifacts.js';
+import { CONTRACT_ARTIFACTS } from '../src/server.js';
 
 const mode = process.argv[2];
 if (mode !== '--check' && mode !== '--write') {

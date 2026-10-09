@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { expect } from 'vitest';
 import { z } from 'zod';
-import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowGraphSchema } from '@pertexo/contracts';
 
 /** Identity-only fixture receipt; source graphs, keys and tags stay out of logs. */
 export const workflowDuplicationEvidenceSchema = z.strictObject({

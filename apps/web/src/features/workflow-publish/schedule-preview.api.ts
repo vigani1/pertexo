@@ -3,7 +3,7 @@ import {
   schedulePreviewRequestSchema,
   type ScheduleFireTimesResponse,
   type ScheduleStepConfig,
-} from '@pertexo/contracts/schemas/schedules';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 /** How many upcoming run times the editor shows for a draft rule. */

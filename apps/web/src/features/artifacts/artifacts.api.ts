@@ -3,7 +3,7 @@ import {
   artifactMetadataResponseSchema,
   type ArtifactDownloadResponse,
   type ArtifactMetadataResponse,
-} from '@pertexo/contracts/schemas/artifacts';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 function artifactPath(workspaceId: string, artifactId: string): `/v1${string}` {

@@ -1,4 +1,4 @@
-import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { EyeIcon, RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 import { ChevronRightIcon } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';

@@ -1,4 +1,4 @@
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/contracts/schemas/workflow-authoring';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/contracts';
 import {
   Field,
   FieldDescription,

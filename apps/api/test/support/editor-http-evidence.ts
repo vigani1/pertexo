@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { expect } from 'vitest';
 import { z } from 'zod';
-import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowGraphSchema } from '@pertexo/contracts';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   composeExecutableCatalog,

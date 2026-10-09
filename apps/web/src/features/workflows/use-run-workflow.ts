@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { startWorkflowRun } from '@/features/workflow-runs/commands.public';
 import { workflowRunKeys } from '@/features/workflow-runs/queries.public';

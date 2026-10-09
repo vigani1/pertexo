@@ -1,4 +1,4 @@
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';

@@ -6,7 +6,7 @@ import {
   workflowTagCleanupDetachRequestSchema,
   workflowTagCleanupDetachResponseSchema,
   type WorkflowOrganizationBulkItemOutcome,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   WorkflowFolderConflictError,

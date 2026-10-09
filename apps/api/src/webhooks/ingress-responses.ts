@@ -1,5 +1,5 @@
-import { API_PROBLEM_MANIFEST } from '@pertexo/contracts/errors';
-import type { ApiProblemCode } from '@pertexo/contracts/errors';
+import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
+import type { ApiProblemCode } from '@pertexo/contracts';
 import {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,

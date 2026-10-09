@@ -1,4 +1,4 @@
-import type { UserProfileResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { UserProfileResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';

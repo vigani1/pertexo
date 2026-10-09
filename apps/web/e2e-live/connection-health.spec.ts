@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import {
   connectionResponseSchema,
   connectionUsageResponseSchema,
-} from '@pertexo/contracts/schemas/connections';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 
 test('shows delivered run rejection, explicit recovery, stale-evidence fences and access loss', async ({

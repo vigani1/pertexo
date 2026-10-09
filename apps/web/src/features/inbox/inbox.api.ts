@@ -11,7 +11,7 @@ import {
   type WorkspaceInboxReadAllResponse,
   type WorkspaceInboxReadResponse,
   type WorkspaceInboxSummaryResponse,
-} from '@pertexo/contracts/schemas/workspace-inbox';
+} from '@pertexo/contracts';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
 import { searchParams } from '@/lib/api/pagination';
 

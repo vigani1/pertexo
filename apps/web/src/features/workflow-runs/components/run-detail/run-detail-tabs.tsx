@@ -1,5 +1,7 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
+import type {
+  WorkflowGraphContract,
+  WorkflowRunEvent,
+} from '@pertexo/contracts';
 import { lazy, Suspense, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { RunTimelineModel } from '../../model/timeline/run-timeline-model';

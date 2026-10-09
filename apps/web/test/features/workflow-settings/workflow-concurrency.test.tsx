@@ -15,8 +15,8 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowConcurrencySettings } from '@pertexo/contracts/schemas/workflow-authoring';
+import { accessibleWorkspaceSchema } from '@pertexo/contracts';
+import type { WorkflowConcurrencySettings } from '@pertexo/contracts';
 import { createApiClient } from '@/lib/api/client';
 import { concurrencyQueryOptions } from '@/features/workflow-settings/concurrency.queries';
 import { useConcurrencyCommand } from '@/features/workflow-settings/mutations/use-concurrency-command';

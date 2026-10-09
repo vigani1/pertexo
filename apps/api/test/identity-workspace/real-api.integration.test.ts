@@ -24,7 +24,7 @@ import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import {
   workflowRunListResponseSchema,
   workflowRunStatisticsResponseSchema,
-} from '@pertexo/contracts/workflow-runs';
+} from '@pertexo/contracts';
 import type {
   StructuredLogger,
   TelemetryLifecycle,

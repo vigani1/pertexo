@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { portableGraphDigest } from '@pertexo/contracts/schemas/workflow-portability';
-import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { portableGraphDigest, workflowGraphSchema } from '@pertexo/contracts';
 import { fixtureStatistics } from '../test/support/run-fixtures';
 import {
   addCsrfCookie,

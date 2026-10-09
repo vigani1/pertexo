@@ -1,7 +1,7 @@
 import type {
   AccountSecurityResponse,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { PencilIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';

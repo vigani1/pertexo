@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { expect } from 'vitest';
 import { z } from 'zod';
-import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowGraphSchema } from '@pertexo/contracts';
 
 /** Identity-only evidence; never keys, tags, payloads, names or session material. */
 export const workflowInputCasesEvidenceSchema = z.strictObject({

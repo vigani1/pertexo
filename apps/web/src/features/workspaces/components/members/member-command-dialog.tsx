@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceMember } from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import {
   feedbackFor,

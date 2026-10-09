@@ -1,6 +1,6 @@
 import { useState, type Ref } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import { workflowOrganizationNameQuerySchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { workflowOrganizationNameQuerySchema } from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { addDefinitionNode } from '@/features/workflow-editor/model/graph/graph-commands';
 import { describeMappingSource } from '@/features/workflow-editor/model/inspector/mapping-summary';

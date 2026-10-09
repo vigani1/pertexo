@@ -1,4 +1,4 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { attentionRunsQueryOptions } from '@/features/workflow-runs/queries.public';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';

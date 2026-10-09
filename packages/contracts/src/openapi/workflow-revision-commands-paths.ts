@@ -7,7 +7,7 @@ import {
   workflowNameConflictProblemSchema,
   workflowRenameRequestSchema,
   workflowRenameResponseSchema,
-} from './http/workflow-authoring.js';
+} from '../schemas/workflow-authoring.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
@@ -15,7 +15,7 @@ import {
   jsonResponse,
   responseReference,
   uuidPathParameter as pathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
 /**
  * Workflow commands that carry an expected aggregate revision in a strict

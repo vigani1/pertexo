@@ -8,15 +8,13 @@ import {
 import {
   workspaceInvitationCommandResponseSchema,
   accessibleWorkspacesResponseSchema,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import {
   workflowOrganizationProjectionResponseSchema,
   workflowOrganizationBulkRequestSchema,
   workflowOrganizationBulkResponseSchema,
   workflowFolderCreateResponseSchema,
   workflowTagCreateResponseSchema,
   workflowSummaryResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
   registerEditorUser,

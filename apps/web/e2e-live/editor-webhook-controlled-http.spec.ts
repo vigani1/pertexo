@@ -1,11 +1,11 @@
 import { expect, type Request } from '@playwright/test';
-import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';
-import { connectionResponseSchema } from '@pertexo/contracts/schemas/connections';
 import {
+  nodeDefinitionListResponseSchema,
+  connectionResponseSchema,
   webhookDeliveryListResponseSchema,
   webhookTriggerListResponseSchema,
-} from '@pertexo/contracts/schemas/webhooks';
-import { workflowNodeRunOutputResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
+  workflowNodeRunOutputResponseSchema,
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
   createEditorWorkspace,

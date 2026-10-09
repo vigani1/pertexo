@@ -1,6 +1,4 @@
-export * from './http/schedules.js';
-
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   scheduleFireTimeCountSchema,
   scheduleFireTimesResponseSchema,
@@ -11,7 +9,7 @@ import {
   scheduleOccurrencePageLimitSchema,
   schedulePreviewRequestSchema,
   scheduleTriggerListResponseSchema,
-} from './http/schedules.js';
+} from '../schemas/schedules.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -23,7 +21,7 @@ import {
   queryParameter,
   responseReference,
   simpleUuidPathParameter as pathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
 const workspaceParameter = pathParameter('workspaceId');
 const workflowParameter = pathParameter('workflowId');

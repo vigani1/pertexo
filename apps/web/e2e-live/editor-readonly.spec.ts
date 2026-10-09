@@ -1,16 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { expect, type Locator } from '@playwright/test';
-import { apiProblemSchema } from '@pertexo/contracts/errors';
 import {
+  apiProblemSchema,
   accessibleWorkspacesResponseSchema,
   userProfileResponseSchema,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import {
   workflowDraftResponseSchema,
   workflowSummaryResponseSchema,
   workflowVersionsResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import { workflowRunListResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
+  workflowRunListResponseSchema,
+} from '@pertexo/contracts';
 import { uncoveredArea } from '../src/features/workflow-editor/model/canvas-framing';
 import { test } from './support/browser-fixture';
 import {

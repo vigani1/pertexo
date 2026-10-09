@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts/schemas/schedules';
+import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { StepTile, describeStep } from '@/features/catalog/presentation.public';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';

@@ -1,4 +1,4 @@
-import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
+import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AuthLensTitle } from '@/features/auth/auth-stage.public';

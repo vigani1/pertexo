@@ -28,18 +28,18 @@ import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RenameWorkflowUseCase } from './rename-use-case.js';
 import { DuplicateWorkflowUseCase } from './duplicate-use-case.js';
-import { workflowDuplicateRequestSchema } from '@pertexo/contracts/workflow-authoring';
 import {
+  workflowDuplicateRequestSchema,
   workflowOrganizationListQuerySchema,
   workflowGetQuerySchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+  workflowVersionRestoreParamsSchema,
+} from '@pertexo/contracts';
 import { WorkflowOrganizationReadsUseCase } from './organization-read-use-case.js';
 import {
   requireWorkflowOrganization,
   withWorkflowOrganizationRequest,
 } from './organization-http.js';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
-import { workflowVersionRestoreParamsSchema } from '@pertexo/contracts/workflow-authoring';
 import { throwWorkflowApplicationError } from './errors.js';
 import {
   WorkflowCreateGuard,

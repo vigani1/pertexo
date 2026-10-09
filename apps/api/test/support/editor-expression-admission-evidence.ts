@@ -2,10 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { expect } from 'vitest';
 import { z } from 'zod';
-import {
-  strongEtagSchema,
-  workflowGraphSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+import { strongEtagSchema, workflowGraphSchema } from '@pertexo/contracts';
 
 /** Bounded test-control evidence; never authentication credentials or source logs. */
 export const expressionAdmissionEvidenceSchema = z.strictObject({

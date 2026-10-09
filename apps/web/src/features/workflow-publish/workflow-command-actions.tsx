@@ -1,8 +1,8 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type {
+  AccessibleWorkspace,
   WorkflowGraphContract,
   WorkflowSummary,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import { useState } from 'react';

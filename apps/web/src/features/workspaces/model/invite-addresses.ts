@@ -1,4 +1,4 @@
-import { workspaceInvitationCreateRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { workspaceInvitationCreateRequestSchema } from '@pertexo/contracts';
 
 const MAX_INVITES_AT_ONCE = 20;
 

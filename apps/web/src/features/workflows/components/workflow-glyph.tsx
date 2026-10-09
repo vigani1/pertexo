@@ -1,4 +1,4 @@
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowShapeQueryOptions } from '../workflows.queries';

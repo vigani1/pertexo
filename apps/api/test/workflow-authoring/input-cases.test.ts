@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { GUARDS_METADATA, HEADERS_METADATA } from '@nestjs/common/constants.js';
-import { createWorkflowInputCaseTag } from '@pertexo/contracts/workflow-authoring';
+import { createWorkflowInputCaseTag } from '@pertexo/contracts';
 import {
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,

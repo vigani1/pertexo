@@ -1,8 +1,8 @@
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+  ConnectionResponse,
+} from '@pertexo/contracts';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import { useEffect, type ComponentProps } from 'react';

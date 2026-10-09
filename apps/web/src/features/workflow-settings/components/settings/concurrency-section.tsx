@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowConcurrencySettings } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  AccessibleWorkspace,
+  WorkflowConcurrencySettings,
+} from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

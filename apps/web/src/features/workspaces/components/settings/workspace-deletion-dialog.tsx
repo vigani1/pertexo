@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { workspaceDeletionRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { workspaceDeletionRequestSchema } from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, LabelledField } from '@/components/ui/field';

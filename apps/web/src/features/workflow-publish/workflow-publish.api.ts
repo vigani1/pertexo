@@ -6,7 +6,7 @@ import {
   type WorkflowPublishResponse,
   type WorkflowValidateResponse,
   type WorkflowVersionResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 function workflowPath(workspaceId: string, workflowId: string) {

@@ -1,8 +1,5 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import {
-  workflowNameSchema,
-  type WorkflowSummary,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { workflowNameSchema, type WorkflowSummary } from '@pertexo/contracts';
 
 /** The field message for a name the API would reject. */
 export function workflowNameError(name: string): string | undefined {

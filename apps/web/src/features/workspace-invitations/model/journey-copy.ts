@@ -1,4 +1,4 @@
-import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
+import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 
 type Role = Extract<
   InvitationAcceptanceJourney,

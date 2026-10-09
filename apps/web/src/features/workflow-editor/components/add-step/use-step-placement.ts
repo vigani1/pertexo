@@ -1,4 +1,4 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { useReactFlow } from '@xyflow/react';
 import type { RefObject } from 'react';
 import { shownLevel, STEP_CARD } from '../../model/graph/for-each-body-layout';

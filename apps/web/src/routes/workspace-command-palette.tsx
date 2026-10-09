@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import { workflowRunIdentifierSchema } from '@pertexo/contracts/schemas/workflow-runs';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { workflowRunIdentifierSchema } from '@pertexo/contracts';
 import {
   BellIcon,
   GaugeIcon,

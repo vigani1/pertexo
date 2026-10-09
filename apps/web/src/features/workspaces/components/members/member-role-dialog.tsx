@@ -1,4 +1,4 @@
-import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceMember } from '@pertexo/contracts';
 import {
   ROLE_SUMMARIES,
   firstNameOf,

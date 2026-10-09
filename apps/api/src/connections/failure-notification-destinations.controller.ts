@@ -15,7 +15,7 @@ import {
   failureNotificationDestinationCreateRequestSchema,
   failureNotificationDestinationStatusRequestSchema,
   workflowFailureNotificationPolicyRequestSchema,
-} from '@pertexo/contracts/connections';
+} from '@pertexo/contracts';
 import { z } from 'zod';
 
 import {

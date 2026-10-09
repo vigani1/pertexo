@@ -3,12 +3,10 @@ import { expect, type Page, type TestInfo } from '@playwright/test';
 import {
   workflowDraftResponseSchema,
   workflowPublishResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   parsePortableJson,
   workflowPortableManifestSchema,
   type WorkflowPortableManifest,
-} from '@pertexo/contracts/schemas/workflow-portability';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import { startSingleStep, waitForRun } from './support/single-step-authoring';
 

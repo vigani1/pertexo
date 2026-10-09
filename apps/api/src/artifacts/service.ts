@@ -14,7 +14,7 @@ import {
   type ArtifactDownloadResponse,
   type ArtifactMetadataResponse,
   type ArtifactUploadResponse,
-} from '@pertexo/contracts/artifacts';
+} from '@pertexo/contracts';
 
 import {
   AuthorizationError,

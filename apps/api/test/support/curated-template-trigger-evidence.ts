@@ -5,18 +5,14 @@ import {
   webhookManagementCommandResponseSchema,
   webhookIngressResponseSchema,
   webhookDeliveryListResponseSchema,
-} from '@pertexo/contracts/schemas/webhooks';
-import {
   scheduleTriggerListResponseSchema,
   scheduleOccurrenceListResponseSchema,
   scheduleManagementCommandResponseSchema,
-} from '@pertexo/contracts/schemas/schedules';
-import {
   workflowDraftResponseSchema,
   workflowPublishResponseSchema,
   workflowTemplateOriginProjectionResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import { workflowRunResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
+  workflowRunResponseSchema,
+} from '@pertexo/contracts';
 import type { useBetterAuthRealApi } from './better-auth-real-api.integration.support.js';
 import { sendBoundedWebhook } from '../webhooks/bounded-webhook-client.js';
 import { curatedWebhookInputCases } from './curated-template-worker-evidence.js';

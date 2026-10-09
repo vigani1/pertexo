@@ -1,4 +1,4 @@
-import type { UserProfileResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { UserProfileResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { LogOutIcon, ShieldCheckIcon } from 'lucide-react';
 import {

@@ -1,7 +1,7 @@
 import {
   workflowGraphSchema,
   type WorkflowGraphContract,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/graph-adapter';
 import {

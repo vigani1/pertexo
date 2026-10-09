@@ -4,12 +4,10 @@ import {
   workflowPublishResponseSchema,
   workflowValidateResponseSchema,
   workflowVersionsResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunStartResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
   registerEditorUser,

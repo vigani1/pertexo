@@ -1,4 +1,4 @@
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { RenameForm } from '@/components/patterns/inline-rename';
 import {

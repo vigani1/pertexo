@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/database/testing';
 import { ConnectionNotFoundError } from '@pertexo/database/connections';
 import { FailureNotificationDestinationError } from '@pertexo/database/notifications';
-import { connectionResponseSchema } from '@pertexo/contracts/connections';
+import { connectionResponseSchema } from '@pertexo/contracts';
 import {
   ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,

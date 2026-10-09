@@ -7,7 +7,7 @@ import {
   type FailureNotificationDestinationResponse,
   type WorkflowFailureNotificationPolicyResponse,
   workflowFailureNotificationPolicyRequestSchema,
-} from '@pertexo/contracts/connections';
+} from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { FailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
 import { z } from 'zod';

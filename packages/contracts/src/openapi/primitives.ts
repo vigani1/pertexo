@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import { API_PROBLEM_MANIFEST } from './errors/api-problem.js';
-import type { ApiProblemCode } from './errors/api-problem.js';
+import { API_PROBLEM_MANIFEST } from '../errors/api-problem.js';
+import type { ApiProblemCode } from '../errors/api-problem.js';
 import {
   csrfTokenSchema,
   idempotencyKeySchema,
   webhookJsonContentTypeSchema,
-} from './http/transport-headers.js';
+} from '../schemas/transport-headers.js';
 
 export function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
   return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });

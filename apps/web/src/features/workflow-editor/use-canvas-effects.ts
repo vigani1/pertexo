@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { useEffect, useState } from 'react';
 import { edgeWeaveOrder, upstreamEdgeIds } from './model/graph/graph-order';
 import { levelOf } from './model/graph/graph-scopes';
