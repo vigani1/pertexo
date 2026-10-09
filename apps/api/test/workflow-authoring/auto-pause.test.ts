@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { WorkflowAutoPauseDatabase } from '@pertexo/database/api';
+import type { WorkflowAutoPauseDatabase } from '@pertexo/database/authoring';
 import { WorkflowAutoPauseUseCase } from '../../src/workflow-authoring/auto-pause-use-case.js';
 import {
   WorkflowAutoPauseController,

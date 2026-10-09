@@ -1,9 +1,11 @@
 import type {
   PublishedWorkflowReader,
   InitialCheckpointFactory,
+} from '@pertexo/database/runs';
+import type {
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/triggers';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { QueueConsumer } from '@pertexo/queue';
 

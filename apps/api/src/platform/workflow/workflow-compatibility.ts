@@ -1,9 +1,11 @@
 import {
   createWorkflowAuthoringDatabase,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type WorkflowAuthoringDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

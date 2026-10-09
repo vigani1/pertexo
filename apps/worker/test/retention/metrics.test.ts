@@ -1,5 +1,5 @@
 import type { Meter } from '@opentelemetry/api';
-import type { RetentionPassResult } from '@pertexo/database/maintenance';
+import type { RetentionPassResult } from '@pertexo/database/lifecycle';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

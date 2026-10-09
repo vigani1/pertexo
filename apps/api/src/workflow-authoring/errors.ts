@@ -1,5 +1,5 @@
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
-  IdempotencyConflictError,
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
   WorkflowConcurrencyRevisionConflictError,
@@ -13,7 +13,7 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
 import { apiProblemIssueSchema } from '@pertexo/contracts/errors';

@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  createArtifactUploadDatabase,
-  createDatabaseRuntime,
-} from '@pertexo/database/api';
+import { createArtifactUploadDatabase } from '@pertexo/database/artifacts';
+import { createDatabaseRuntime } from '@pertexo/database/platform';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import {

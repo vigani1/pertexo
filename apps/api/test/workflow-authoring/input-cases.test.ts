@@ -6,7 +6,7 @@ import {
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
   type WorkflowInputCaseDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import { WorkflowInputCasesUseCase } from '../../src/workflow-authoring/input-case-use-case.js';
 import {
   WorkflowInputCasesController,

@@ -1,7 +1,5 @@
-import {
-  readRunEventsAfter,
-  type WorkspaceDatabase,
-} from '@pertexo/database/api';
+import { readRunEventsAfter } from '@pertexo/database/runs';
+import type { WorkspaceDatabase } from '@pertexo/database/platform';
 
 import type {
   PersistedRunEvent,

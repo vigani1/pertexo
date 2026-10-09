@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { WorkflowAuthoringDatabase } from '@pertexo/database/api';
+import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
 import { describe, expect, it, vi } from 'vitest';
 import { acquireApiRuntimes, cleanupApiRuntimes } from '../src/api-runtimes.js';
 import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runtime.module.js';

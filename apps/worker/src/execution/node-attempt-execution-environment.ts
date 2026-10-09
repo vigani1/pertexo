@@ -3,7 +3,7 @@ import {
   NodeAttemptDispatchBindingMismatchError,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/attempts';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 import {
   NodeDispatchEvidenceError,

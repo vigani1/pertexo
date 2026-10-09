@@ -1,9 +1,9 @@
 import { Pool } from 'pg';
-import {
-  createAuthenticationMailEnqueueStore,
-  type DatabaseConfig,
-  type DatabaseRuntime,
-} from '@pertexo/database/api';
+import { createAuthenticationMailEnqueueStore } from '@pertexo/database/identity';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 
 import {

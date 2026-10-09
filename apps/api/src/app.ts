@@ -1,4 +1,4 @@
-import type { WorkspaceDatabase } from '@pertexo/database/api';
+import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';

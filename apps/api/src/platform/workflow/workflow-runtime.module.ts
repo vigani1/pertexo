@@ -4,14 +4,16 @@ import { metrics, trace } from '@opentelemetry/api';
 import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import {
   createWorkspaceDatabase,
-  createWorkflowAuthoringDatabase,
-  createWorkflowInputCaseDatabase,
   type DatabaseConfig,
   type DatabaseRuntime,
   type WorkspaceDatabase,
+} from '@pertexo/database/platform';
+import {
+  createWorkflowAuthoringDatabase,
+  createWorkflowInputCaseDatabase,
   type WorkflowAuthoringDatabase,
   type WorkflowInputCaseDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/authoring-validation';
 

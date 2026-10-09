@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type {
   AuthenticationMailDeliveryClaim,
   AuthenticationMailDeliveryStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/identity';
 import type {
   ApplicationSecretEnvelope,
   ResendApiResult,

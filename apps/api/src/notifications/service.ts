@@ -9,7 +9,7 @@ import {
   type WorkspaceInboxReadResponse,
   type WorkspaceInboxSummaryResponse,
 } from '@pertexo/contracts/workspace-inbox';
-import type { WorkspaceInboxDatabase } from '@pertexo/database/api';
+import type { WorkspaceInboxDatabase } from '@pertexo/database/inbox';
 
 import {
   decodeWorkspaceInboxCursor,

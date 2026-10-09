@@ -6,10 +6,12 @@ import {
 } from '@pertexo/artifact-store';
 import {
   createNodeAttemptRunStore,
-  createWorkerConnectionResolutionDatabase,
   type NodeAttemptRunStore,
+} from '@pertexo/database/attempts';
+import {
+  createWorkerConnectionResolutionDatabase,
   type WorkerConnectionResolutionDatabase,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/connections';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   SecureHttpClient,

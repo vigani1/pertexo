@@ -3,12 +3,14 @@ import {
   createDueNodeWakeupScanner,
   createDeadlineWakeupScanner,
   createRunAdvanceStore,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type DueNodeWakeupScanner,
   type DeadlineWakeupScanner,
   type RunAdvanceStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/runs';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import { advanceRun } from '@pertexo/execution';
 import {
   platformExecutableRegistryHistory,

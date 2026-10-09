@@ -1,12 +1,12 @@
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { GUARDS_METADATA, HEADERS_METADATA } from '@nestjs/common/constants.js';
-import type { WorkflowConcurrencyDatabase } from '@pertexo/database/api';
+import type { WorkflowConcurrencyDatabase } from '@pertexo/database/authoring';
 import {
   WorkflowConcurrencyRevisionConflictError,
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/concurrency-use-case.js';
 import { WorkflowConcurrencyController } from '../../src/workflow-authoring/concurrency-controller.js';
 import {

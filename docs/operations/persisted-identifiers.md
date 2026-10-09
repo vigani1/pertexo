@@ -2,12 +2,10 @@
 
 Application-owned entity, event, version, attempt, intent, idempotency-row, and
 artifact identifiers use UUIDv7. The database package owns one
-`generatePersistedId()` implementation and exposes it through role-scoped
-public entry points: `@pertexo/database/api` for API commands and
-`@pertexo/database/execution` for worker execution artifacts. Database stores
-use the same implementation internally. Its regression tests verify UUID
-version, uniqueness, monotonic lexical order, and artifact persistence through
-the public worker capability.
+`generatePersistedId()` implementation and exposes it through
+`@pertexo/database/platform`. Database stores use the same implementation
+internally. Its regression tests verify UUID version, uniqueness, monotonic
+lexical order, and artifact persistence.
 
 UUIDv4 remains intentional for values whose security or concurrency semantics
 are random rather than sortable:

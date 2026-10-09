@@ -8,7 +8,7 @@ import {
   createDatabaseRuntime,
   type DatabaseRuntime,
   type WorkspaceDatabase,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/platform';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 
 import type { WorkerConfig } from './config/worker-config.js';

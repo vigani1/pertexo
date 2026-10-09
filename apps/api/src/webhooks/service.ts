@@ -10,11 +10,11 @@ import { webhookCredentialSchema } from '@pertexo/contracts/webhooks';
 import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
-  generatePersistedId,
   type WebhookDeliveryRecord,
   type WebhookTriggerDatabase,
   type WorkflowTriggerHealth,
-} from '@pertexo/database/api';
+} from '@pertexo/database/triggers';
+import { generatePersistedId } from '@pertexo/database/platform';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 
 import {

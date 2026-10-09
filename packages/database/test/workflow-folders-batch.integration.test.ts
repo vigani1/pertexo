@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { WorkflowOrganizationBatchRequest } from '../src/api.js';
+import type { WorkflowOrganizationBatchRequest } from '../src/authoring/index.js';
 import {
   commandKey,
   createOrganizationOwnedFixture,

@@ -5,8 +5,8 @@ import {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  FailureNotificationDestinationError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/connections';
+import { FailureNotificationDestinationError } from '@pertexo/database/notifications';
 import {
   ConnectionSecretEncryptionError,
   SecureHttpError,

@@ -1,5 +1,5 @@
 import { metrics, type Attributes, type Meter } from '@opentelemetry/api';
-import type { PreviewStatus } from '@pertexo/database/execution';
+import type { PreviewStatus } from '@pertexo/database/previews';
 
 export type PreviewTerminalStatus = Exclude<
   PreviewStatus,

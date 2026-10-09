@@ -4,8 +4,8 @@ import type {
   ConnectionReadDatabase,
   ConnectionTestDatabase,
   ConnectionUsageDatabase,
-  FailureNotificationDestinationDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/connections';
+import type { FailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
 import type {
   ConnectionSecretContext,
   SealedConnectionSecret,

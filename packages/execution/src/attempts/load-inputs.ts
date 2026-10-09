@@ -6,7 +6,7 @@ import {
   type NodeAttemptLoopDeclaration,
   type NodeAttemptRunStore,
   type NodeAttemptStoredInputs,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/attempts';
 import {
   invocationKey,
   parseCheckpoint,

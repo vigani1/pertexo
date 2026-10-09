@@ -1,12 +1,14 @@
+import { applyConnectionHealthObservation } from '@pertexo/database/connections';
 import {
-  applyConnectionHealthObservation,
   canonicalOutboxPayloadChecksum,
-  createWorkspaceDatabase,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
+} from '@pertexo/database/outbox';
+import {
+  createWorkspaceDatabase,
   type DatabaseConfig,
   type DatabaseRuntime,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/platform';
 import {
   unrecoverableQueueError,
   type QueueDelivery,

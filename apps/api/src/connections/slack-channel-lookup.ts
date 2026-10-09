@@ -1,7 +1,7 @@
 import {
   ConnectionUnavailableError,
   type ResolvedConnectionSecretRecord,
-} from '@pertexo/database/api';
+} from '@pertexo/database/connections';
 import {
   ConnectionSecretEncryptionError,
   SecureHttpError,

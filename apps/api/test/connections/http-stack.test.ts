@@ -2,10 +2,8 @@ import type {
   ConnectionRecord,
   FailureNotificationDestinationDatabase,
 } from '@pertexo/database/testing';
-import {
-  ConnectionNotFoundError,
-  FailureNotificationDestinationError,
-} from '@pertexo/database/api';
+import { ConnectionNotFoundError } from '@pertexo/database/connections';
+import { FailureNotificationDestinationError } from '@pertexo/database/notifications';
 import { connectionResponseSchema } from '@pertexo/contracts/connections';
 import {
   ConnectionSecretEncryptionError,

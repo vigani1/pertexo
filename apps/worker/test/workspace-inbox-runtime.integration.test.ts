@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { createWorkspaceInboxFoldStore } from '@pertexo/database/execution';
+import { createWorkspaceInboxFoldStore } from '@pertexo/database/inbox';
 import {
   createIdentityWorkspaceDatabase,
   migrateDatabase,

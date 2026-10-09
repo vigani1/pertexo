@@ -5,7 +5,7 @@ import {
   WorkflowTagConflictError,
   type WorkflowTagDatabase,
   type WorkflowFavoriteDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import {
   AuthorizationError,
   createActorContext,

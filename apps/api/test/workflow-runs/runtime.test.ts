@@ -1,9 +1,11 @@
 import type {
   DatabaseConfig,
+  WorkspaceDatabase,
+} from '@pertexo/database/platform';
+import type {
   WorkflowAuthoringDatabase,
   WorkflowInputCaseDatabase,
-  WorkspaceDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import type { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 import { describe, expect, it, vi } from 'vitest';
 

@@ -4,21 +4,65 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./api": {
-      "types": "./dist/api.d.ts",
-      "default": "./dist/api.js"
+    "./artifacts": {
+      "types": "./dist/artifacts/index.d.ts",
+      "default": "./dist/artifacts/index.js"
     },
-    "./execution": {
-      "types": "./dist/execution.d.ts",
-      "default": "./dist/execution.js"
+    "./attempts": {
+      "types": "./dist/attempts/index.d.ts",
+      "default": "./dist/attempts/index.js"
     },
-    "./maintenance": {
-      "types": "./dist/maintenance.d.ts",
-      "default": "./dist/maintenance.js"
+    "./authoring": {
+      "types": "./dist/authoring/index.d.ts",
+      "default": "./dist/authoring/index.js"
+    },
+    "./connections": {
+      "types": "./dist/connections/index.d.ts",
+      "default": "./dist/connections/index.js"
+    },
+    "./identity": {
+      "types": "./dist/identity/index.d.ts",
+      "default": "./dist/identity/index.js"
+    },
+    "./inbox": {
+      "types": "./dist/inbox/index.d.ts",
+      "default": "./dist/inbox/index.js"
+    },
+    "./lifecycle": {
+      "types": "./dist/lifecycle/index.d.ts",
+      "default": "./dist/lifecycle/index.js"
+    },
+    "./notifications": {
+      "types": "./dist/notifications/index.d.ts",
+      "default": "./dist/notifications/index.js"
     },
     "./operator": {
-      "types": "./dist/operator.d.ts",
-      "default": "./dist/operator.js"
+      "types": "./dist/operator/index.d.ts",
+      "default": "./dist/operator/index.js"
+    },
+    "./outbox": {
+      "types": "./dist/outbox/index.d.ts",
+      "default": "./dist/outbox/index.js"
+    },
+    "./platform": {
+      "types": "./dist/platform/index.d.ts",
+      "default": "./dist/platform/index.js"
+    },
+    "./previews": {
+      "types": "./dist/previews/index.d.ts",
+      "default": "./dist/previews/index.js"
+    },
+    "./runs": {
+      "types": "./dist/runs/index.d.ts",
+      "default": "./dist/runs/index.js"
+    },
+    "./tenant-access": {
+      "types": "./dist/tenant-access/index.d.ts",
+      "default": "./dist/tenant-access/index.js"
+    },
+    "./triggers": {
+      "types": "./dist/triggers/index.d.ts",
+      "default": "./dist/triggers/index.js"
     },
     "./testing": {
       "types": "./dist/testing.d.ts",

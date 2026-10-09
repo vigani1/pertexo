@@ -1,7 +1,5 @@
-import type {
-  FailureNotificationStore,
-  WorkspaceInvitationDeliveryStore,
-} from '@pertexo/database/execution';
+import type { FailureNotificationStore } from '@pertexo/database/notifications';
+import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
 import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
 import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
 import type { MaintenanceRuntime } from '../maintenance/runtime.js';

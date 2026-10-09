@@ -1,7 +1,5 @@
-import {
-  createWorkflowTriggerPauseFoldStore,
-  type DatabaseRuntime,
-} from '@pertexo/database/execution';
+import { createWorkflowTriggerPauseFoldStore } from '@pertexo/database/triggers';
+import type { DatabaseRuntime } from '@pertexo/database/platform';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WorkerConfig } from '../config/worker-config.js';

@@ -1,4 +1,4 @@
-import type { DatabaseRuntime } from '@pertexo/database/execution';
+import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

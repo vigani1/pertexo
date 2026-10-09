@@ -1,14 +1,18 @@
 import {
   createPublishedWorkflowReader,
-  createScheduleTriggerScanner,
-  createWorkflowTriggerReconciliationDatabase,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type PublishedWorkflowReader,
   type InitialCheckpointFactory,
+} from '@pertexo/database/runs';
+import {
+  createScheduleTriggerScanner,
+  createWorkflowTriggerReconciliationDatabase,
   type ScheduleTriggerScanner,
   type WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/triggers';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

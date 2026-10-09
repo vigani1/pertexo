@@ -5,8 +5,8 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
   WorkspaceDatabase,
-} from '@pertexo/database/execution';
-import { createWorkspaceDatabase } from '@pertexo/database/execution';
+} from '@pertexo/database/platform';
+import { createWorkspaceDatabase } from '@pertexo/database/platform';
 import {} from '@pertexo/workflow-engine';
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');

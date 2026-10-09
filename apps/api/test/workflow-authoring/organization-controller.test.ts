@@ -19,7 +19,7 @@ import {
   WorkflowTagConflictError,
   type WorkflowTagDatabase,
   type WorkflowFavoriteDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import { WorkflowOrganizationController } from '../../src/workflow-authoring/organization-controller.js';
 import { WorkflowOrganizationCommandsUseCase } from '../../src/workflow-authoring/organization-command-use-case.js';
 import { WorkflowOrganizationReadsUseCase } from '../../src/workflow-authoring/organization-read-use-case.js';

@@ -1,7 +1,7 @@
 import type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/outbox';
 
 import {
   bounded,

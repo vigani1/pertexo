@@ -2,15 +2,13 @@ import 'reflect-metadata';
 
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
+import type { OutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import type {
-  OutboxDispatcherDatabase,
   DatabaseRuntime,
   WorkspaceDatabase,
-} from '@pertexo/database/execution';
-import {
-  createAuthenticationMailDeliveryStore,
-  createWorkspaceInboxFoldStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/platform';
+import { createAuthenticationMailDeliveryStore } from '@pertexo/database/identity';
+import { createWorkspaceInboxFoldStore } from '@pertexo/database/inbox';
 import {
   createApplicationSecretEnvelope,
   createNodeSecureHttpClient,

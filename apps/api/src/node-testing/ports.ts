@@ -1,4 +1,4 @@
-import type { WorkflowAuthoringDatabase } from '@pertexo/database/api';
+import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
 import type { RegistryRelease } from '@pertexo/node-sdk';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 

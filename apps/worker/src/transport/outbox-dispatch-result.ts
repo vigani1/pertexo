@@ -1,4 +1,4 @@
-import type { LeasedOutboxEvent } from '@pertexo/database/execution';
+import type { LeasedOutboxEvent } from '@pertexo/database/outbox';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 
 export type OutboxDispatchResult = Readonly<{

@@ -3,7 +3,7 @@ import {
   ROLES,
   type AuthorizationCapability,
   type Role,
-} from '@pertexo/database/api';
+} from '@pertexo/database/tenant-access';
 
 export { AUTHORIZATION_CAPABILITIES, ROLES };
 export type { AuthorizationCapability };

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '../src/execution.js';
+} from '../src/outbox/index.js';
 
 import {
   createNodeAttemptRunStore,

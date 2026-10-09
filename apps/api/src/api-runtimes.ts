@@ -2,7 +2,7 @@ import {
   createDatabaseRuntime,
   type DatabaseRuntime,
   type WorkspaceDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/platform';
 import type {
   StructuredLogger,
   TelemetryLifecycle,

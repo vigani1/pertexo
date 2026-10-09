@@ -58,7 +58,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'API production code must use the @pertexo/database/api capability surface.',
+                'Import a database area entry point, such as @pertexo/database/runs.',
             },
           ],
           patterns: [
@@ -87,7 +87,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'API production code must use the @pertexo/database/api capability surface.',
+                'Import a database area entry point, such as @pertexo/database/runs.',
             },
           ],
           patterns: [
@@ -345,7 +345,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Execution uses the @pertexo/database/execution surface.',
+                'Import a database area entry point, such as @pertexo/database/runs.',
             },
           ],
           patterns: [
@@ -459,7 +459,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'API production code must use the @pertexo/database/api capability surface.',
+                'Import a database area entry point, such as @pertexo/database/runs.',
             },
           ],
           patterns: [
@@ -471,15 +471,6 @@ export default tseslint.config(
               ],
               message:
                 'The API cannot import worker consumers or runtime code.',
-            },
-            {
-              group: [
-                '@pertexo/database/execution',
-                '@pertexo/database/maintenance',
-                '@pertexo/database/operator',
-              ],
-              message:
-                'API production code must use the @pertexo/database/api capability surface.',
             },
           ],
         },
@@ -496,7 +487,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Worker production code must use the execution or maintenance database surfaces.',
+                'Import a database area entry point, such as @pertexo/database/runs.',
             },
           ],
           patterns: [
@@ -504,11 +495,6 @@ export default tseslint.config(
               group: ['**/apps/api/**', '@pertexo/api', '@pertexo/api/*'],
               message:
                 'The worker cannot import API controllers or runtime code.',
-            },
-            {
-              group: ['@pertexo/database/api', '@pertexo/database/operator'],
-              message:
-                'Worker production code must use the execution or maintenance database surfaces.',
             },
           ],
         },
@@ -563,18 +549,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Ops production code must use the @pertexo/database/operator capability surface.',
-            },
-          ],
-          patterns: [
-            {
-              group: [
-                '@pertexo/database/api',
-                '@pertexo/database/execution',
-                '@pertexo/database/maintenance',
-              ],
-              message:
-                'Ops production code must use the @pertexo/database/operator capability surface.',
+                'Import a database area entry point, such as @pertexo/database/runs.',
             },
           ],
         },

@@ -7,10 +7,10 @@ import {
 
 import {
   WebhookIngressRateLimitExceededError,
-  type InitialCheckpointFactory,
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
-} from '@pertexo/database/api';
+} from '@pertexo/database/triggers';
+import type { InitialCheckpointFactory } from '@pertexo/database/runs';
 import {
   verifyWebhookSignature,
   type WebhookTriggerEnvelopeEncryption,

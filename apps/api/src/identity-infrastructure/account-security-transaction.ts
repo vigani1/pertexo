@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { recordIdentitySecurityFact } from '@pertexo/database/api';
+import { recordIdentitySecurityFact } from '@pertexo/database/identity';
 import type { Pool } from 'pg';
 
 type PasswordChangeResult = 'changed' | 'invalid' | 'inactive';

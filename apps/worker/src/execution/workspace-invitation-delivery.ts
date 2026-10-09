@@ -1,5 +1,5 @@
-import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/execution';
-import { createWorkspaceInvitationDeliveryStore } from '@pertexo/database/execution';
+import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
+import { createWorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
 import {
   createApplicationSecretEnvelope,
   createNodeSecureHttpClient,

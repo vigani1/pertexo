@@ -1,7 +1,5 @@
-import type {
-  DatabaseRuntime,
-  OutboxDispatcherDatabase,
-} from '@pertexo/database/execution';
+import type { DatabaseRuntime } from '@pertexo/database/platform';
+import type { OutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 import type { QueueProducer } from '@pertexo/queue';

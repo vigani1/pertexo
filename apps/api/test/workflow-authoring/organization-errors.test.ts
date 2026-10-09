@@ -1,13 +1,13 @@
 import {
   WorkflowFolderConflictError,
-  IdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
   WorkflowTagConflictError,
   type WorkflowFolderConflictKind,
   type WorkflowTagConflictKind,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { describe, expect, it } from 'vitest';
 
 import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/application-error.js';

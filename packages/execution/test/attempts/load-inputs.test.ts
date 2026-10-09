@@ -4,7 +4,7 @@ import {
   NodeAttemptStateCorruptError,
   type NodeAttemptLease,
   type NodeAttemptStoredInputs,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/attempts';
 import { createCheckpointV2, invocationKey } from '@pertexo/workflow-engine';
 import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 import { describe, expect, it, vi } from 'vitest';

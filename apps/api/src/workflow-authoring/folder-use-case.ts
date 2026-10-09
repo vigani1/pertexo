@@ -12,7 +12,7 @@ import {
   workflowFolderPlacementRequestSchema,
   workflowFolderPlacementResponseSchema,
 } from '@pertexo/contracts/schemas/workflow-authoring';
-import type { WorkflowFolderDatabase } from '@pertexo/database/api';
+import type { WorkflowFolderDatabase } from '@pertexo/database/authoring';
 import type { WorkspaceAuthorizationSource } from '../workspaces/index.js';
 import {
   authorizeWorkflowOrganization,

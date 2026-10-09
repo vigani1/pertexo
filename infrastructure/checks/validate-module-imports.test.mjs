@@ -127,7 +127,7 @@ test('web source allows only reviewed workspace package subpaths', () => {
     '@pertexo/contracts/errors',
     '@pertexo/contracts/schemas/transport-internals',
     '@pertexo/workflow-model',
-    '@pertexo/database/api',
+    '@pertexo/database/runs',
   ])
     assert.match(
       validateModuleImports({

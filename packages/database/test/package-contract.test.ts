@@ -11,15 +11,26 @@ import type {
   WorkerConnectionResolutionDatabase,
 } from '../src/connections/connections.js';
 
-const supportedSurfaces = [
-  'api',
-  'execution',
-  'maintenance',
+const areas = [
+  'artifacts',
+  'attempts',
+  'authoring',
+  'connections',
+  'identity',
+  'inbox',
+  'lifecycle',
+  'notifications',
   'operator',
+  'outbox',
+  'platform',
+  'previews',
+  'runs',
+  'tenant-access',
+  'triggers',
 ] as const;
 
 describe('@pertexo/database package contract', () => {
-  it('publishes explicit runtime-role capability surfaces', async () => {
+  it('publishes one entry point per area', async () => {
     const packageJson = JSON.parse(
       await readFile(new URL('../package.json', import.meta.url), 'utf8'),
     ) as {
@@ -28,41 +39,25 @@ describe('@pertexo/database package contract', () => {
       >;
     };
 
-    expect(Object.keys(packageJson.exports).sort()).toEqual([
-      ...supportedSurfaces.map((surface) => `./${surface}`),
-      './testing',
-    ]);
-    for (const surface of supportedSurfaces)
-      expect(packageJson.exports[`./${surface}`]).toEqual({
-        types: `./dist/${surface}.d.ts`,
-        default: `./dist/${surface}.js`,
+    expect(Object.keys(packageJson.exports).sort()).toEqual(
+      [...areas.map((area) => `./${area}`), './testing'].sort(),
+    );
+    for (const area of areas)
+      expect(packageJson.exports[`./${area}`]).toEqual({
+        types: `./dist/${area}/index.d.ts`,
+        default: `./dist/${area}/index.js`,
       });
   });
 
-  it('keeps role surfaces independent from the broad testing surface', async () => {
-    for (const surface of supportedSurfaces) {
+  it('keeps area entry points independent from the testing surface', async () => {
+    for (const area of areas) {
       const source = await readFile(
-        new URL(`../src/${surface}.ts`, import.meta.url),
+        new URL(`../src/${area}/index.ts`, import.meta.url),
         'utf8',
       );
-      expect(source).not.toContain("from './testing.js'");
+      expect(source).not.toContain('testing.js');
+      expect(source).not.toContain('createCoordinatorRunStore');
     }
-
-    const api = await readFile(
-      new URL('../src/api.ts', import.meta.url),
-      'utf8',
-    );
-    const execution = await readFile(
-      new URL('../src/execution.ts', import.meta.url),
-      'utf8',
-    );
-    const maintenance = await readFile(
-      new URL('../src/maintenance.ts', import.meta.url),
-      'utf8',
-    );
-    expect(api).not.toContain('createCoordinatorRunStore');
-    expect(execution).not.toContain('createIdentityWorkspaceDatabase');
-    expect(maintenance).not.toContain('createControlLedgerCoordinator');
   });
 
   it('confines broad fixture capabilities to the explicit testing subpath', async () => {
@@ -82,14 +77,12 @@ describe('@pertexo/database package contract', () => {
       expect(testing).not.toContain(retiredExport);
   });
 
-  it('does not export role-inappropriate connection methods from source surfaces', async () => {
-    const api = await import('../src/api.js');
-    const execution = await import('../src/execution.js');
+  it('exports the API and worker connection stores, not the combined one', async () => {
+    const connections = await import('../src/connections/index.js');
 
-    expect(api).not.toHaveProperty('createConnectionDatabase');
-    expect(api).toHaveProperty('createApiConnectionDatabase');
-    expect(execution).not.toHaveProperty('createConnectionDatabase');
-    expect(execution).toHaveProperty(
+    expect(connections).not.toHaveProperty('createConnectionDatabase');
+    expect(connections).toHaveProperty('createApiConnectionDatabase');
+    expect(connections).toHaveProperty(
       'createWorkerConnectionResolutionDatabase',
     );
   });

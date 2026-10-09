@@ -4,7 +4,7 @@ import {
   connectionIdParamSchema,
   connectionUsageResponseSchema,
 } from '@pertexo/contracts/connections';
-import type { ConnectionUsageDatabase } from '@pertexo/database/api';
+import type { ConnectionUsageDatabase } from '@pertexo/database/connections';
 import { z } from 'zod';
 
 import { SessionAuthenticationGuard } from '../identity-workspace/index.js';

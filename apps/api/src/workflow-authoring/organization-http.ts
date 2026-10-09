@@ -1,4 +1,4 @@
-import { WorkflowOrganizationUnavailableError } from '@pertexo/database/api';
+import { WorkflowOrganizationUnavailableError } from '@pertexo/database/authoring';
 import { projectAuthenticatedWorkspaceContext } from '../identity-workspace/authenticated-command-context.js';
 import { withRequestOperationSignal } from '../platform/http/request-operation-signal.js';
 import type { WorkflowOrganizationInput } from './organization-authority.js';

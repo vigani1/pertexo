@@ -6,7 +6,7 @@ import {
   PREVIEW_STATUS,
   withTenantScopedClient,
 } from '@pertexo/database/testing';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/execution';
+import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews';
 import { Pool } from 'pg';
 
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.ts';

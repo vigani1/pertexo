@@ -1,7 +1,7 @@
 import {
   parseOperatorDatabaseConfig,
   type DatabaseConfig,
-} from '@pertexo/database/operator';
+} from '@pertexo/database/platform';
 import {
   parseObservabilityConfig,
   type ObservabilityConfig,

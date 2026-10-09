@@ -4,7 +4,7 @@ import {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import {
   applicationError,
   type ApplicationError,

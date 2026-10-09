@@ -5,10 +5,12 @@ import {
   createWorkflowOrganizationReadDatabase,
   createWorkflowFolderDatabase,
   createWorkflowOrganizationBatchDatabase,
-  type DatabaseConfig,
-  type DatabaseRuntime,
   type WorkflowInputCaseDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/platform';
 import {
   createWorkflowOrganizationCursorCodec,
   createWorkflowOrganizationPageCursorCodec,

@@ -8,7 +8,7 @@ import { writeFile } from 'node:fs/promises';
 import {
   createWorkspaceInvitationDeliveryStore,
   type WorkspaceInvitationDeliveryStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   createApplicationSecretEnvelope,

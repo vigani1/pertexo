@@ -7,10 +7,10 @@ import type { ConnectionRunHealthMode } from '../config/connection-run-health-co
 import type {
   DatabaseConfig,
   DatabaseRuntime,
-  FailureNotificationStore,
-  OperatorRunReplayStore,
-  PreviewReconciliationStore,
-} from '@pertexo/database/execution';
+} from '@pertexo/database/platform';
+import type { FailureNotificationStore } from '@pertexo/database/notifications';
+import type { OperatorRunReplayStore } from '@pertexo/database/operator';
+import type { PreviewReconciliationStore } from '@pertexo/database/previews';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,

@@ -13,7 +13,7 @@ import {
 import type {
   WorkflowTagDatabase,
   WorkflowFavoriteDatabase,
-} from '@pertexo/database/api';
+} from '@pertexo/database/authoring';
 import type { WorkspaceAuthorizationSource } from '../workspaces/index.js';
 import {
   authorizeWorkflowOrganization,
