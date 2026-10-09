@@ -1,12 +1,9 @@
 import { metrics, type Histogram, type Meter } from '@opentelemetry/api';
 import { Pool, type PoolClient, type PoolConfig } from 'pg';
-import {
-  type DatabasePoolRole,
-  withDatabaseDeadlineBudget,
-} from './postgres-pool-policy.js';
-import { instrumentPoolCheckout } from './postgres-pool-checkout-telemetry.js';
+import { type DatabasePoolRole, withDatabaseDeadlineBudget } from './policy.js';
+import { instrumentPoolCheckout } from './checkout-telemetry.js';
 
-export type { DatabasePoolRole } from './postgres-pool-policy.js';
+export type { DatabasePoolRole } from './policy.js';
 const cleanupError = (cause: unknown): Error =>
   new Error('Cleanup failed', { cause });
 export const DATABASE_METRIC_NAME = Object.freeze({

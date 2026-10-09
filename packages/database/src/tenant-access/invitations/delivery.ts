@@ -6,7 +6,7 @@ import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../../platform/database-runtime.js';
+} from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../transactions.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 

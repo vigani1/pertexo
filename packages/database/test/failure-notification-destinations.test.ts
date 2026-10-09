@@ -6,7 +6,7 @@ const tenantState = vi.hoisted<{ client: PoolClient | undefined }>(() => ({
   client: undefined,
 }));
 
-vi.mock('../src/platform/database-runtime.js', () => ({
+vi.mock('../src/platform/pool/runtime.js', () => ({
   acquireDatabasePool: () => ({ close, pool: {} }),
 }));
 

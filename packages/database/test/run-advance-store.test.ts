@@ -2,7 +2,7 @@ import { Pool, type PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createRunAdvanceStore } from '../src/runs/advance/store.js';
-import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
+import { createDatabaseRuntime } from '../src/platform/pool/runtime.js';
 
 const noNetworkConfig = {
   connectionString: 'postgresql://invalid.invalid/pertexo',

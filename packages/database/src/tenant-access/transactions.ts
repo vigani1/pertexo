@@ -3,8 +3,8 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
-import { acquireAbortablePoolClient } from '../platform/abortable-pool-checkout.js';
+import { destroyCanceledPoolClient } from '../platform/pool/client-disposal.js';
+import { acquireAbortablePoolClient } from '../platform/pool/abortable-checkout.js';
 import { databaseSchema } from '../schema.js';
 
 const workspaceIdSchema = z.uuid();

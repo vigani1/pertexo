@@ -6,7 +6,7 @@ import type { DatabaseConfig } from '../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
+} from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   checkDatabaseReadiness,

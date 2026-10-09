@@ -313,7 +313,7 @@ remains necessary for a lost acknowledgment.
 Current `withAuthorTransaction` delegates to `withTenantScopedClient`, which
 begins a transaction, awaits its operation and commits/rolls back. Current API
 pool defaults are 5s lock timeout, 30s statement timeout and 35s idle-transaction /
-query timeout (`packages/database/src/platform/postgres-pool-policy.ts`). SQL statement timeout does
+query timeout (`packages/database/src/platform/pool/policy.ts`). SQL statement timeout does
 not bound a JavaScript parser queue between statements. The proposed 500ms queue
 deadline is explicit; no reliance on those database timeouts to supervise workers.
 

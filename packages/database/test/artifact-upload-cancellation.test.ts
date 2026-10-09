@@ -6,7 +6,7 @@ const seams = vi.hoisted(() => ({
   withTenantScopedClient: vi.fn(),
 }));
 
-vi.mock('../src/platform/database-runtime.js', () => ({
+vi.mock('../src/platform/pool/runtime.js', () => ({
   acquireDatabasePool: vi.fn(() => ({
     close: vi.fn().mockResolvedValue(undefined),
     pool: {},

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
-import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { ROLES } from '../../tenant-access/policy.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';

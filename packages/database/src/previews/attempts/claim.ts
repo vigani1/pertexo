@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { executableNodeSchema } from './executable-node.js';
+import { executableNodeSchema } from '../executable-node.js';
 import { appendPreviewTerminalFacts } from './completion.js';
 import {
   TERMINAL_PREVIEW_STATUSES,
@@ -12,7 +12,7 @@ import {
   previewConsumerName,
   type PreviewAttemptLease,
   type PreviewDelivery,
-} from './contract.js';
+} from '../contract.js';
 import {
   auditPreviewDeliveryMismatch,
   claimPreviewReceipt,
@@ -20,8 +20,8 @@ import {
   insertPreviewOutboxDelivery,
   validatePreviewDelivery,
 } from './delivery.js';
-import { parseStoredExecutionValueV1 } from '../platform/stored-execution-value.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
+import { parseStoredExecutionValueV1 } from '../../platform/stored-execution-value.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 async function loadPreviewLease(
   client: Parameters<Parameters<typeof withTenantScopedClient>[2]>[0],

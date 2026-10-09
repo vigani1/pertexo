@@ -1,6 +1,6 @@
 import type { InitialCheckpointFactory } from '../../runs/initial-checkpoint.js';
-import { acquireDatabasePool } from '../../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';

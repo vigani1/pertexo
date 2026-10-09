@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
-import type { DatabaseRuntime } from '../../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { runOrganizationCommand } from './command.js';
 import { WorkflowOrganizationValidationError } from './errors.js';

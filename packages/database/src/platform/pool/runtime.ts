@@ -1,10 +1,7 @@
 import type { Pool } from 'pg';
 
-import type { DatabaseConfig } from '../config.js';
-import {
-  createDatabasePool,
-  type DatabasePoolOptions,
-} from './postgres-telemetry.js';
+import type { DatabaseConfig } from '../../config.js';
+import { createDatabasePool, type DatabasePoolOptions } from './telemetry.js';
 
 export interface DatabaseRuntime {
   close(): Promise<void>;

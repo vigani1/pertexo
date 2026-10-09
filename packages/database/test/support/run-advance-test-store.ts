@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 
 import type { DatabaseConfig } from '../../src/config.js';
-import type { DatabaseRuntime } from '../../src/platform/database-runtime.js';
+import type { DatabaseRuntime } from '../../src/platform/pool/runtime.js';
 import type { CoordinatorAdvanceDelivery } from '../../src/runs/advance/contract.js';
 import type { RunTransitionPlan } from '../../src/runs/advance/plan.js';
 import { loadRunForAdvance } from '../../src/runs/advance/state.js';

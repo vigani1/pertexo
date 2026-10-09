@@ -2,15 +2,15 @@ import type { Pool } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import type { z } from 'zod';
 
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
   previewDeliveryPayloadSchema,
   previewReconciliationPayloadSchema,
   type PreviewDelivery,
-} from './contract.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
+} from '../contract.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 export type PreviewOutboxClient = Parameters<
   Parameters<typeof withTenantScopedClient>[2]

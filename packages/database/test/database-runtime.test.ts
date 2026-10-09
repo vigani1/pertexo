@@ -5,14 +5,14 @@ const pool = vi.hoisted(() => ({
   end: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../src/platform/postgres-telemetry.js', () => ({
+vi.mock('../src/platform/pool/telemetry.js', () => ({
   createDatabasePool: pool.create,
 }));
 
 import {
   acquireDatabasePool,
   createDatabaseRuntime,
-} from '../src/platform/database-runtime.js';
+} from '../src/platform/pool/runtime.js';
 
 const config = {
   connectionString: 'postgresql://runtime:password@db/pertexo',

@@ -17,7 +17,7 @@ import {
   workerBaseUrl,
   workspaceA,
 } from './coordinator-run-store.fixtures.js';
-import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
+import { createDatabaseRuntime } from '../src/platform/pool/runtime.js';
 
 describe('Coordinator CAS and transition invariants', () => {
   it('replays safely when the commit acknowledgement is lost', async () => {

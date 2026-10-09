@@ -8,7 +8,7 @@ import {
   parseDatabaseConfig,
   type NodeAttemptLease,
 } from '../src/testing.js';
-import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
+import { createDatabaseRuntime } from '../src/platform/pool/runtime.js';
 
 const config = parseDatabaseConfig({
   connectionString: 'postgresql://pertexo_app:unused@invalid.invalid/pertexo',

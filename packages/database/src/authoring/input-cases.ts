@@ -5,7 +5,7 @@ import type { DatabaseConfig } from '../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
+} from '../platform/pool/runtime.js';
 import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';

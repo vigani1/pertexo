@@ -30,7 +30,7 @@ import {
   workspaceA,
   workspaceB,
 } from './coordinator-run-store.fixtures.js';
-import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
+import { createDatabaseRuntime } from '../src/platform/pool/runtime.js';
 
 const predecessorPrimaryFailureSchema = z
   .object({

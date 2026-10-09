@@ -1,7 +1,7 @@
 import type { Histogram } from '@opentelemetry/api';
 import type { Pool, PoolClient } from 'pg';
 
-import type { DatabasePoolRole } from './postgres-pool-policy.js';
+import type { DatabasePoolRole } from './policy.js';
 
 export function instrumentPoolCheckout(
   pool: Pool,

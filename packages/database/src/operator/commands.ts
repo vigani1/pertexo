@@ -5,8 +5,8 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
 import { serializeBoundedPlainJson } from '../outbox/events.js';
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { checkDatabaseReadiness } from '../platform/readiness.js';
 import { auditEvents } from '../schema/foundation.js';

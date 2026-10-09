@@ -1,5 +1,5 @@
-import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { acquireDatabasePool } from '../platform/pool/runtime.js';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { claimNodeAttemptDelivery } from './claim.js';

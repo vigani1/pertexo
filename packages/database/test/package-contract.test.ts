@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createApiConnectionDatabase } from '../src/connections/database.js';
 import { createWorkerConnectionResolutionDatabase } from '../src/connections/database.js';
-import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
+import { createDatabaseRuntime } from '../src/platform/pool/runtime.js';
 import type {
   ApiConnectionDatabase,
   WorkerConnectionResolutionDatabase,

@@ -2,8 +2,8 @@ import type { Pool, PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
-import { PREVIEW_STATUS, type PreviewStatus } from './acceptance.js';
-import { sha256HexSchema } from '../platform/persisted-primitives.js';
+import { PREVIEW_STATUS, type PreviewStatus } from '../runs/acceptance.js';
+import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
@@ -13,7 +13,7 @@ import {
   type PreviewAttemptLease,
   type PreviewDelivery,
   type PreviewTerminalOutcome,
-} from './contract.js';
+} from '../contract.js';
 import {
   auditPreviewDeliveryMismatch,
   completePreviewReceipt,
@@ -23,8 +23,8 @@ import {
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionValueV1,
-} from '../platform/stored-execution-value.js';
-import { withTenantScopedClient } from '../tenant-access/transactions.js';
+} from '../../platform/stored-execution-value.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 export type PreviewCompletionResult = Readonly<{
   kind: 'committed' | 'duplicate';

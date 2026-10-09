@@ -235,7 +235,7 @@ export {
   DATABASE_METRIC_NAME,
   type DatabasePoolOptions,
   type DatabasePoolRole,
-} from './platform/postgres-telemetry.js';
+} from './platform/pool/telemetry.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
 export {
