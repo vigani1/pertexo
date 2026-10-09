@@ -10,10 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import type {
-  WorkflowSort,
-  WorkflowView,
-} from '../../model/workflow-list-view';
+import type { WorkflowSort, WorkflowView } from '../../model/list-view';
 
 const VIEWS: readonly Readonly<{ value: WorkflowView; label: string }>[] = [
   { value: 'active', label: 'Active' },

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';

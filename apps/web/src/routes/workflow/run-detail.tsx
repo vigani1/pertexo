@@ -7,7 +7,7 @@ import {
 import { buttonVariants } from '@/components/ui/button-variants';
 import { RunDetailPage } from '@/features/workflow-runs/public';
 import { ResourceNotFound } from '../root/system-pages';
-import { useWorkspaceScope } from '../workspace/use-workspace-scope';
+import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 
 export function RunDetailRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

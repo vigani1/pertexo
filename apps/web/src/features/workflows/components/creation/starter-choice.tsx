@@ -4,7 +4,7 @@ import {
   starterPreviewGraph,
   type AvailableStarter,
   type StarterId,
-} from '../../model/workflow-starters';
+} from '../../model/templates/starters';
 import { PatternGlyph } from '../pattern-glyph';
 
 export type StartChoice = StarterId | 'blank';

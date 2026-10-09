@@ -14,8 +14,8 @@ import {
 import {
   HowItWorks,
   type HowItWorksStep,
-} from '@/components/patterns/how-it-works';
-import { UnavailablePage } from '@/components/patterns/unavailable-page';
+} from '@/components/patterns/guidance/how-it-works';
+import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Sheet, SheetContent } from '@/components/ui/sheet';

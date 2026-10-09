@@ -1,6 +1,6 @@
 import { expect, type BrowserContext, type Page } from '@playwright/test';
-import { unpausedWorkflowSettings } from '../test/support/auto-pause-fixtures';
-import { defaultConcurrencySettings } from '../test/support/concurrency-fixtures';
+import { unpausedWorkflowSettings } from '../test/support/fixtures/auto-pause';
+import { defaultConcurrencySettings } from '../test/support/fixtures/concurrency';
 
 // Controlled HTTP fixtures shared by the workflow editor journeys.
 

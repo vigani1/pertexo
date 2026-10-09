@@ -1,7 +1,7 @@
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { unpausedWorkflowSettings } from './auto-pause-fixtures';
-import { defaultConcurrencySettings } from './concurrency-fixtures';
+import { unpausedWorkflowSettings } from './fixtures/auto-pause';
+import { defaultConcurrencySettings } from './fixtures/concurrency';
 
 export const mockServer = setupServer(
   http.get(

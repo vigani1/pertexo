@@ -1,1 +1,1 @@
-export { countWorkflowStates } from './model/workflow-list-view';
+export { countWorkflowStates } from './model/list-view';

@@ -6,7 +6,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { workflowKeys } from './workflows.queries';
 import { readWorkflowTemplateOrigin } from './workflow-origin.api';
 
-export { workflowTemplateOriginPresentationEnabled } from '../model/template-feature-gates';
+export { workflowTemplateOriginPresentationEnabled } from '../model/templates/feature-gates';
 
 export const workflowTemplateOriginKey = (
   userId: string,

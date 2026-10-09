@@ -11,7 +11,7 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Empty, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowRowActions } from '../list/workflow-row-actions';
 import { WorkflowRows, WorkflowListFooter } from '../list/workflow-rows';

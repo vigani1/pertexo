@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import {
   Empty,

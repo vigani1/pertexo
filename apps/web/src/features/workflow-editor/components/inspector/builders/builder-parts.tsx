@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { FieldParseResult } from '../../../model/inspector/inspector-draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { useInspectorDraftField } from '../use-inspector-draft-field';
+import { useInspectorDraftField } from '../use-draft-field';
 
 /** One entry of a setup list: a numbered card with its own controls. */
 export function BuilderCard({

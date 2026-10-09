@@ -1,6 +1,6 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useState } from 'react';
-import { CoreOrb } from '@/components/patterns/core-orb';
+import { CoreOrb } from '@/components/patterns/core/orb';
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceCreation } from '../../data/mutations/use-workspace-creation';
 import { WorkspaceCreationForm } from '../creation/workspace-creation-form';

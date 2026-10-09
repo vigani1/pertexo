@@ -21,7 +21,7 @@ import {
   userId,
   workspace,
   workspaceId,
-} from '../../support/team-fixtures';
+} from '../../support/fixtures/team';
 
 // Each page loads its lazy route on first render; under a busy machine that
 // can outlast the default one-second wait without anything being wrong.

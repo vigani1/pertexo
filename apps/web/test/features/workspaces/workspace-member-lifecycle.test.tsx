@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
-import * as team from '../../support/team-fixtures';
+import * as team from '../../support/fixtures/team';
 
 const workspaceName = team.ownerWorkspace.name;
 

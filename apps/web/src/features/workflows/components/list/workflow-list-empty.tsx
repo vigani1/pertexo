@@ -1,5 +1,5 @@
 import { PlusIcon } from 'lucide-react';
-import { CoreOrb } from '@/components/patterns/core-orb';
+import { CoreOrb } from '@/components/patterns/core/orb';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -11,7 +11,7 @@ import {
 import {
   starterPreviewGraph,
   type AvailableStarter,
-} from '../../model/workflow-starters';
+} from '../../model/templates/starters';
 import { PatternGlyph } from '../pattern-glyph';
 import type { StartChoice } from '../creation/starter-choice';
 

@@ -8,7 +8,7 @@ import {
 } from '@/features/workflow-runs/data/workflow-runs.queries';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';
-import { apiBase, fixtureIds, fixtureRun } from '../../support/run-fixtures';
+import { apiBase, fixtureIds, fixtureRun } from '../../support/fixtures/run';
 
 const apiClient = createApiClient({
   fetch: testFetch,

@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
-import { ReadFailure } from '@/components/patterns/read-failure';
+import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';

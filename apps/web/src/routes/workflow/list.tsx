@@ -1,7 +1,7 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { saveWorkflowDraft } from '@/features/workflow-editor/draft.public';
 import { WorkflowListPage } from '@/features/workflows/list.public';
-import { useWorkspaceScope } from '../workspace/use-workspace-scope';
+import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 
 export function WorkflowListRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

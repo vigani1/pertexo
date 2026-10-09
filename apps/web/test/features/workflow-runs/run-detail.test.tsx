@@ -13,7 +13,7 @@ import {
   identityHandlers,
   sseEvents,
   coldStart,
-} from '../../support/run-fixtures';
+} from '../../support/fixtures/run';
 import { workflowRunKeys } from '@/features/workflow-runs/data/workflow-runs.queries';
 
 const {

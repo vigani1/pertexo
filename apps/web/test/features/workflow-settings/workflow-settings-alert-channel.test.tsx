@@ -8,7 +8,7 @@ import { renderApp } from '../../support/render-app';
 import {
   slackChannelLookup,
   slackConnection,
-} from '../../support/slack-channels';
+} from '../../support/fixtures/slack-channels';
 import {
   api,
   connectionId,

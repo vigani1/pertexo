@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowNameError } from '../model/workflow-rename';
+import { workflowNameError } from '../model/rename';
 import { workflowSummaryQueryOptions } from '../data/workflows.queries';
 import { useWorkflowRename } from '../data/workflows.mutations';
 

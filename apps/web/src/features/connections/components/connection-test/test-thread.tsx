@@ -1,4 +1,4 @@
-import { CoreOrb, type CoreOrbState } from '@/components/patterns/core-orb';
+import { CoreOrb, type CoreOrbState } from '@/components/patterns/core/orb';
 import { cn } from '@/lib/utils';
 import type { TestPhase } from '../../model/connection-health';
 import type { ProviderKey } from '../../model/connection-providers';

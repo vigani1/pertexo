@@ -1,7 +1,7 @@
 import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { CoreOrb } from '@/components/patterns/core-orb';
+import { CoreOrb } from '@/components/patterns/core/orb';
 import { Status } from '@/components/ui/status';
 import { formatDateTime, formatDurationMs } from '@/lib/format/time';
 import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';

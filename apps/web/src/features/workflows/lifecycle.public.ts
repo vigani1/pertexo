@@ -3,4 +3,4 @@ export {
   LIFECYCLE_CONSEQUENCES,
   lifecycleIntentFor,
   type LifecycleIntent,
-} from './model/workflow-lifecycle';
+} from './model/lifecycle';

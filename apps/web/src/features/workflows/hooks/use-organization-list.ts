@@ -5,7 +5,7 @@ import { workflowOrganizationInfiniteQueryOptions } from '../data/organization.q
 import {
   WORKFLOW_ORDER_BY_SORT,
   type WorkflowListSearch,
-} from '../model/workflow-list-view';
+} from '../model/list-view';
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,

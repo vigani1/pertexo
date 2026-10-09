@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/api-error';
 import { readFailureReason } from '@/lib/api/api-error-copy';

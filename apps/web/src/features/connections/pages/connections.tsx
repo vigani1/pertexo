@@ -12,8 +12,8 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { HowItWorks } from '@/components/patterns/how-it-works';
-import { UnavailablePage } from '@/components/patterns/unavailable-page';
+import { HowItWorks } from '@/components/patterns/guidance/how-it-works';
+import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
 import {
   Empty,

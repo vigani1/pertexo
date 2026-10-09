@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { UnavailablePage } from '../../src/components/patterns/unavailable-page';
+import { UnavailablePage } from '../../src/components/patterns/states/unavailable-page';
 
 describe('UnavailablePage', () => {
   it('keeps the page heading and says why the page can’t be used', () => {

@@ -28,25 +28,22 @@ import { WorkflowExportDialog } from '../components/portability/workflow-export-
 import { WorkflowImportDialog } from '../components/portability/workflow-import-dialog';
 import { Button } from '@/components/ui/button';
 import { WorkflowRowsSkeleton } from '../components/list/workflow-rows';
-import {
-  lifecycleIntentFor,
-  type LifecycleIntent,
-} from '../model/workflow-lifecycle';
+import { lifecycleIntentFor, type LifecycleIntent } from '../model/lifecycle';
 import {
   WORKFLOW_ORDER_BY_SORT,
   updateWorkflowListSearch,
   parseWorkflowListSearch,
   type WorkflowListSearch,
   type WorkflowListSearchUpdate,
-} from '../model/workflow-list-view';
-import { availableStarters } from '../model/workflow-starters';
-import { curatedTemplateChooserEnabled } from '@/features/workflows/model/template-feature-gates';
+} from '../model/list-view';
+import { availableStarters } from '../model/templates/starters';
+import { curatedTemplateChooserEnabled } from '@/features/workflows/model/templates/feature-gates';
 import { useListShortcuts } from '../hooks/use-list-shortcuts';
 import { useRunWorkflow } from '../hooks/use-run-workflow';
 import type { StarterDraftWriter } from '../data/workflows.mutations';
 import { workflowsInfiniteQueryOptions } from '../data/workflows.queries';
 import { useOrganizationList } from '../hooks/use-organization-list';
-import { workflowOrganizationControlsEnabled } from '@/features/workflows/model/organization-feature-gates';
+import { workflowOrganizationControlsEnabled } from '@/features/workflows/model/organization/feature-gates';
 import { WorkflowOrganizationFilters } from '../components/organization/workflow-organization-filters';
 import { WorkflowOrganizedResults } from '../components/organization/workflow-organized-results';
 

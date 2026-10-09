@@ -11,7 +11,7 @@ import {
   user,
   workspace,
   workspaceId,
-} from '../../support/team-fixtures';
+} from '../../support/fixtures/team';
 
 const builderWorkspace = {
   ...workspace,

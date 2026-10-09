@@ -7,7 +7,7 @@ import type {
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
 import { LoadMore } from '@/components/patterns/load-more';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ConnectionList } from './connection-list';

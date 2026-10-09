@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
-import { StatusGuide } from '@/components/patterns/status-guide';
-import { WORKFLOW_LIST_GUIDE } from '../../model/workflow-guide';
-import { countWorkflowStates } from '../../model/workflow-list-view';
+import { StatusGuide } from '@/components/patterns/guidance/status-guide';
+import { WORKFLOW_LIST_GUIDE } from '../../model/guide';
+import { countWorkflowStates } from '../../model/list-view';
 
 /** The list's one primary action, with its N shortcut. */
 export function NewWorkflowButton({

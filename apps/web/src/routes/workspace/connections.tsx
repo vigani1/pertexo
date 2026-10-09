@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { ConnectionsPage } from '@/features/connections/connections-page.public';
-import { useWorkspaceScope } from './use-workspace-scope';
+import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function ConnectionsRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

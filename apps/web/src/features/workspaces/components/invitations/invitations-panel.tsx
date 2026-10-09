@@ -8,7 +8,7 @@ import type {
 } from '@tanstack/react-query';
 import { useState } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
-import { StaleLine } from '@/components/patterns/stale-line';
+import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import {

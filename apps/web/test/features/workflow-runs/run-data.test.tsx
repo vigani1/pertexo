@@ -13,7 +13,7 @@ import {
   identityHandlers,
   sseEvents,
   statisticsHandler,
-} from '../../support/run-fixtures';
+} from '../../support/fixtures/run';
 
 const {
   workspace: workspaceId,

@@ -7,7 +7,7 @@ import {
   userId,
   workspaceId,
   workspaceWith,
-} from '../workflows/workflow-list.fixtures';
+} from '../workflows/list/fixtures';
 
 // Contract-valid fixtures shared by the Triggers, Versions and Settings tabs.
 

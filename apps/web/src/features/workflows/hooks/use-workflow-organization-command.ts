@@ -15,7 +15,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
-} from '../model/workflow-organization';
+} from '../model/organization/requests';
 import { sendWorkflowOrganizationCommand } from '../data/organization.api';
 import { workflowOrganizationKeys } from '../data/organization.queries';
 import { workflowKeys } from '../data/workflows.queries';

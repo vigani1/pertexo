@@ -6,7 +6,7 @@ import type {
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { InfoHint } from '@/components/patterns/info-hint';
+import { InfoHint } from '@/components/patterns/guidance/info-hint';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
@@ -19,7 +19,7 @@ import {
   stepHealthQueryOptions,
   stepRunsQueryOptions,
 } from '../../data/workflow-runs.queries';
-import { StepRunOutput } from '../run-detail/run-data';
+import { StepRunOutput } from '../run-detail/data';
 
 const RECENT_RUNS = 10;
 

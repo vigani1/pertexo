@@ -1,6 +1,6 @@
 import { HomePage } from '@/features/overview/public';
-import { useOpenCommandPalette } from './command-palette-context';
-import { useWorkspaceScope } from './use-workspace-scope';
+import { useOpenCommandPalette } from './shell/command-palette-context';
+import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function HomeRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

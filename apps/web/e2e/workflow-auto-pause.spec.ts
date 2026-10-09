@@ -7,7 +7,7 @@ import {
   workflowId,
   editorUrl,
 } from './workflow-editor-support';
-import { unpausedWorkflowSettings } from '../test/support/auto-pause-fixtures';
+import { unpausedWorkflowSettings } from '../test/support/fixtures/auto-pause';
 import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
 
 const csrfToken = 'csrf-auto-pause-browser-tests-123456789012345678901';

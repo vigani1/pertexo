@@ -9,18 +9,18 @@ import {
 import { CopyButton } from '@/components/ui/copy-button';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { CoreOrb } from '@/components/patterns/core-orb';
+import { CoreOrb } from '@/components/patterns/core/orb';
 import {
   SystemState,
   SystemStateActions,
   SystemStateArt,
   SystemStateDescription,
   SystemStateTitle,
-} from '@/components/patterns/system-state';
+} from '@/components/patterns/states/system-state';
 import {
   BarredThread,
   LooseThread,
-} from '@/components/patterns/thread-illustrations';
+} from '@/components/patterns/states/thread-illustrations';
 import { Wordmark } from '@/features/auth/auth-stage.public';
 import { knownWorkspaceName } from '@/features/workspaces/last-workspace.public';
 import { isNotFound, supportReference } from '@/lib/api/api-error-copy';

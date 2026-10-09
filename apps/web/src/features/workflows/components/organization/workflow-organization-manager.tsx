@@ -32,7 +32,7 @@ import {
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
-} from '../../model/workflow-organization';
+} from '../../model/organization/requests';
 import { useWorkflowOrganizationCommand } from '../../hooks/use-workflow-organization-command';
 import { WorkflowFolderPicker } from './workflow-folder-picker';
 import { OrganizationCommandFeedback } from './organization-command-feedback';

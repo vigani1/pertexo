@@ -8,7 +8,7 @@ import { allowlistedReturnPath } from '@/features/auth/return-path.public';
 import { mockServer } from '../../support/mock-server';
 import { renderApp, testFetch } from '../../support/render-app';
 import { renderInRouter } from '../../support/render-in-router';
-import { problem, user } from '../../support/team-fixtures';
+import { problem, user } from '../../support/fixtures/team';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 

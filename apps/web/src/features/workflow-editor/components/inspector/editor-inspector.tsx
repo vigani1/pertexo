@@ -26,8 +26,8 @@ import { connectWorkflowNodes } from '../../model/graph/graph-commands';
 import { findStep, levelOf } from '../../model/graph/graph-scopes';
 import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../hooks/use-editor-actions';
-import { InspectorPanel } from './inspector-panel';
-import type { ChannelLookupScope } from './slack-channel-field';
+import { InspectorPanel } from './panel';
+import type { ChannelLookupScope } from './fields/slack-channel-field';
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
 import type { FinishedTest } from '../../hooks/use-last-test';
 

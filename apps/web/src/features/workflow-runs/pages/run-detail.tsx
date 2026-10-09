@@ -14,12 +14,12 @@ import {
 } from '@/components/ui/sheet';
 import type { ApiClient } from '@/lib/api/client';
 import { OutcomeUnknownCard } from '../components/run-detail/outcome-unknown-card';
-import { RunDetailTabs } from '../components/run-detail/run-detail-tabs';
-import { RunHeader } from '../components/run-detail/run-header';
+import { RunDetailTabs } from '../components/run-detail/tabs';
+import { RunHeader } from '../components/run-detail/header';
 import {
   StepError,
   RunStepDetails,
-} from '../components/run-detail/run-step-details';
+} from '../components/run-detail/step-details';
 import { describeRunSentence } from '../model/run-sentence';
 import { isActiveRunStatus } from '../model/run-status';
 import { upstreamSteps } from '../model/step-inspection/step-inputs';

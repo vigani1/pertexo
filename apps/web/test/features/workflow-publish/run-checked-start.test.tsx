@@ -24,7 +24,7 @@ import {
   workflowId,
   versionId,
   problem,
-} from '../workflows/workflow-list.fixtures';
+} from '../workflows/list/fixtures';
 
 const casesPath = `${api}/workflows/${workflowId}/input-cases`;
 const runPath = `${api}/workflows/${workflowId}/runs`;

@@ -6,7 +6,7 @@ import type {
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
-} from '../../model/workflow-organization';
+} from '../../model/organization/requests';
 
 export type OrganizationOperation = 'move' | 'replace_tags';
 export function validOrganizationSelection(

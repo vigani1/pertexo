@@ -21,7 +21,7 @@ import {
   workspaceId,
   workflowId,
   versionId,
-} from '../workflows/workflow-list.fixtures';
+} from '../workflows/list/fixtures';
 
 it('blocks new case and run commands until a reviewed publication is actually displayed', async () => {
   const reviewedId = '56565656-5656-4565-8565-565656565656';

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { ReadFailure } from '@/components/patterns/read-failure';
+import { ReadFailure } from '@/components/patterns/states/read-failure';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScheduleRunTimes } from '@/features/catalog/presentation.public';
 import type { ApiClient } from '@/lib/api/client';

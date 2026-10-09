@@ -7,7 +7,7 @@ import {
 import { buttonVariants } from '@/components/ui/button-variants';
 import { workflowsCrumb } from '../root/breadcrumbs';
 import { ResourceNotFound } from '../root/system-pages';
-import { WorkspaceShellFrame } from '../workspace/shell';
+import { WorkspaceShellFrame } from '../workspace/shell/layout';
 
 /**
  * Immersive frame for one workflow: no spine, its own floating bar. A

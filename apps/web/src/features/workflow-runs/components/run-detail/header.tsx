@@ -1,0 +1,370 @@
+import type {
+  AccessibleWorkspace,
+  WorkflowRunReadSummary,
+} from '@pertexo/contracts';
+import { Link } from '@tanstack/react-router';
+import { OctagonXIcon, RefreshCwIcon, RotateCcwIcon } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { CoreOrb } from '@/components/patterns/core/orb';
+import {
+  PageHeaderActions,
+  PageHeaderMeta,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
+import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { Status } from '@/components/ui/status';
+import type { ApiClient } from '@/lib/api/client';
+import { formatClock, formatDurationMs } from '@/lib/format/time';
+import {
+  describeLiveUpdates,
+  type LiveConnectionStatus,
+} from '../../model/live-updates';
+import { StatusGuide } from '@/components/patterns/guidance/status-guide';
+import { RUN_PAGE_GUIDE } from '../../model/run-guide';
+import {
+  runDurationMs,
+  shortRunId,
+  workflowLabel,
+} from '../../model/list/run-list';
+import {
+  describeTrigger,
+  isActiveRunStatus,
+  runCoreState,
+} from '../../model/run-status';
+import { CopyButton } from '@/components/ui/copy-button';
+import { CancelRunDialog } from '../run-actions/cancel-run-dialog';
+import { ReplayRunDialog } from '../run-actions/replay-run-dialog';
+import { RunAdmissionBlockers } from '../run-admission-blockers';
+
+function MetaFact({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <span className="[&_b]:font-medium [&_b]:text-foreground">{children}</span>
+  );
+}
+
+function deadlineFact(run: WorkflowRunReadSummary, nowMs: number): ReactNode {
+  if (run.deadlineAt === null) return 'no deadline';
+  const remaining = Date.parse(run.deadlineAt) - nowMs;
+  if (!isActiveRunStatus(run.status))
+    return (
+      <>
+        deadline <b>{formatClock(run.deadlineAt)}</b>
+      </>
+    );
+  return remaining > 0 ? (
+    <>
+      deadline in <b>{formatDurationMs(remaining)}</b>
+    </>
+  ) : (
+    'deadline passed'
+  );
+}
+
+function RunLiveIndicator({
+  status,
+  active,
+  onReconnect,
+}: Readonly<{
+  status: LiveConnectionStatus;
+  active: boolean;
+  onReconnect: () => void;
+}>) {
+  const look = describeLiveUpdates(status, active);
+  if (look === undefined) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5" role="status">
+      <Status tone={look.tone}>{look.label}</Status>
+      {look.paused ? (
+        <Button type="button" size="xs" variant="ghost" onClick={onReconnect}>
+          <RefreshCwIcon aria-hidden="true" />
+          Retry
+        </Button>
+      ) : null}
+    </span>
+  );
+}
+
+/** The run's facts in mono: start, duration, trigger, version, deadline, stop. */
+function RunFacts({
+  run,
+  nowMs,
+  workspaceId,
+  versionLabel,
+}: Readonly<{
+  run: WorkflowRunReadSummary;
+  nowMs: number;
+  workspaceId: string;
+  versionLabel: string | undefined;
+}>) {
+  const active = isActiveRunStatus(run.status);
+  const durationMs = runDurationMs(run, nowMs);
+  return (
+    <PageHeaderMeta>
+      <MetaFact>
+        started <b>{formatClock(run.startedAt ?? run.createdAt)}</b>
+      </MetaFact>
+      {durationMs === undefined ? null : (
+        <MetaFact>
+          <b>{formatDurationMs(durationMs)}</b>{' '}
+          {active ? 'elapsed' : 'in total'}
+        </MetaFact>
+      )}
+      <MetaFact>
+        {describeTrigger(run.triggerType).toLocaleLowerCase()}
+      </MetaFact>
+      {versionLabel === undefined ? null : (
+        <MetaFact>
+          version{' '}
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId/versions"
+            params={{
+              workspaceId,
+              workflowId: run.workflowId,
+            }}
+            className="font-medium text-foreground underline decoration-white/20 underline-offset-4 hover:decoration-foreground"
+          >
+            {versionLabel}
+          </Link>
+        </MetaFact>
+      )}
+      <MetaFact>{deadlineFact(run, nowMs)}</MetaFact>
+      {run.cancelRequestedAt === null ? null : (
+        <MetaFact>
+          stop requested <b>{formatClock(run.cancelRequestedAt)}</b>
+        </MetaFact>
+      )}
+      {run.replaySourceRunId == null ? null : (
+        <MetaFact>
+          replay of{' '}
+          <Link
+            to="/w/$workspaceId/runs/$runId"
+            params={{ workspaceId, runId: run.replaySourceRunId }}
+            className="font-medium text-foreground underline decoration-white/20 underline-offset-4 hover:decoration-foreground"
+          >
+            {shortRunId(run.replaySourceRunId)}
+          </Link>
+        </MetaFact>
+      )}
+      <StatusGuide sections={RUN_PAGE_GUIDE} className="-my-1 -ml-2" />
+    </PageHeaderMeta>
+  );
+}
+
+/**
+ * Replay and Cancel run. On phones they sit in a bar at thumb height above
+ * the bottom navigation, with Open workflow beside them when there's room.
+ */
+function RunActions({
+  compact,
+  workspaceId,
+  workflowId,
+  canReplay,
+  canCancel,
+  canOpenWorkflow,
+  onReplay,
+  onCancel,
+}: Readonly<{
+  compact: boolean;
+  workspaceId: string;
+  workflowId: string;
+  canReplay: boolean;
+  canCancel: boolean;
+  canOpenWorkflow: boolean;
+  onReplay: () => void;
+  onCancel: () => void;
+}>) {
+  // The actions share a phone's width: each takes its own width and the
+  // rest is shared.
+  const grow = compact ? 'flex-auto px-3' : undefined;
+  // Replay, Cancel run and Open workflow don't all fit a phone's width. The
+  // workflow's name at the top of the page links there too, so Open
+  // workflow is the one that makes way.
+  const roomToOpenWorkflow = !(canReplay && canCancel);
+  const buttons = (
+    <>
+      {canReplay ? (
+        <Button
+          type="button"
+          variant={compact ? 'default' : 'outline'}
+          className={grow}
+          onClick={onReplay}
+        >
+          <RotateCcwIcon aria-hidden="true" />
+          Replay
+        </Button>
+      ) : null}
+      {canCancel ? (
+        <Button
+          type="button"
+          variant="destructive"
+          className={grow}
+          onClick={onCancel}
+        >
+          <OctagonXIcon aria-hidden="true" />
+          {/* The same words at every size. */}
+          Cancel run
+        </Button>
+      ) : null}
+    </>
+  );
+  if (!compact)
+    return (
+      <PageHeaderActions className="md:self-start">{buttons}</PageHeaderActions>
+    );
+  return (
+    <div
+      role="group"
+      aria-label="Run actions"
+      className="lens fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-30 flex gap-2 rounded-2xl p-2"
+    >
+      {buttons}
+      {canOpenWorkflow && roomToOpenWorkflow ? (
+        <Link
+          to="/w/$workspaceId/workflows/$workflowId"
+          params={{ workspaceId, workflowId }}
+          className={buttonVariants({ variant: 'outline', className: grow })}
+        >
+          Open workflow
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The run's Core, a sentence that says where the run is, the facts in mono
+ * and the two things you can do: replay it, or stop it while it runs.
+ */
+export function RunHeader({
+  apiClient,
+  userId,
+  workspace,
+  run,
+  sentence,
+  nowMs,
+  versionNumber,
+  liveStatus,
+  compact,
+  replayOpen,
+  onReplayOpenChange,
+  onReconnect,
+  onRunAccepted,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  run: WorkflowRunReadSummary;
+  sentence: string;
+  nowMs: number;
+  versionNumber: number | undefined;
+  liveStatus: LiveConnectionStatus;
+  /** Phone layout: Core beside the sentence, actions in a bottom bar. */
+  compact: boolean;
+  /** Replay opens from here and from the run's input, so the page owns it. */
+  replayOpen: boolean;
+  onReplayOpenChange: (open: boolean) => void;
+  onReconnect: () => void;
+  onRunAccepted: (runId: string) => void;
+}>) {
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const active = isActiveRunStatus(run.status);
+  const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
+    workspace.capabilities.includes(capability);
+  const canCancel =
+    can('run:cancel') && active && run.cancelRequestedAt === null;
+  const name = workflowLabel(run);
+  const versionLabel =
+    versionNumber === undefined ? undefined : `v${String(versionNumber)}`;
+
+  return (
+    <header className="flex flex-row items-start gap-4 md:items-center md:gap-5">
+      <div className="size-16 shrink-0 md:size-28">
+        <CoreOrb
+          state={runCoreState(run.status)}
+          energy={run.status === 'running' ? 1.1 : 0.6}
+          className="size-full"
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          {can('workflow:read') ? (
+            <Link
+              to="/w/$workspaceId/workflows/$workflowId"
+              params={{ workspaceId: workspace.id, workflowId: run.workflowId }}
+              className="max-w-full min-w-0 truncate font-medium hover:text-foreground"
+            >
+              {name}
+            </Link>
+          ) : (
+            <span className="max-w-full min-w-0 truncate font-medium">
+              {name}
+            </span>
+          )}
+          <CopyButton
+            value={run.id}
+            display={shortRunId(run.id)}
+            label="Copy run ID"
+          />
+          <RunLiveIndicator
+            status={liveStatus}
+            active={active}
+            onReconnect={onReconnect}
+          />
+        </div>
+        <PageHeaderTitle className="mt-2 text-3xl break-words [--display-width:78%] sm:text-[2.5rem]">
+          {sentence}
+        </PageHeaderTitle>
+        <RunFacts
+          run={run}
+          nowMs={nowMs}
+          workspaceId={workspace.id}
+          versionLabel={versionLabel}
+        />
+        <RunAdmissionBlockers
+          run={run}
+          className="mt-3 text-sm text-muted-foreground"
+        />
+      </div>
+      <RunActions
+        compact={compact}
+        workspaceId={workspace.id}
+        workflowId={run.workflowId}
+        canReplay={can('run:replay')}
+        canCancel={canCancel}
+        canOpenWorkflow={can('workflow:read')}
+        onReplay={() => {
+          onReplayOpenChange(true);
+        }}
+        onCancel={() => {
+          setCancelOpen(true);
+        }}
+      />
+      {can('run:replay') ? (
+        <ReplayRunDialog
+          key={`${userId}:${workspace.id}:${run.id}`}
+          apiClient={apiClient}
+          userId={userId}
+          workspaceId={workspace.id}
+          sourceRunId={run.id}
+          workflowVersionId={run.workflowVersionId}
+          {...(versionLabel === undefined ? {} : { versionLabel })}
+          open={replayOpen}
+          onOpenChange={onReplayOpenChange}
+          onRunAccepted={onRunAccepted}
+        />
+      ) : null}
+      {can('run:cancel') ? (
+        <CancelRunDialog
+          apiClient={apiClient}
+          userId={userId}
+          workspaceId={workspace.id}
+          runId={run.id}
+          workflowName={name}
+          open={cancelOpen}
+          onOpenChange={setCancelOpen}
+        />
+      ) : null}
+    </header>
+  );
+}

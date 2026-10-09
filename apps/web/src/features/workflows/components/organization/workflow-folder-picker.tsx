@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import type { WorkflowFolder } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
-import { workflowFolderOptions } from '../../model/workflow-folder-navigation';
+import { workflowFolderOptions } from '../../model/organization/folder-navigation';
 import {
   Select,
   SelectContent,

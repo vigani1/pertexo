@@ -89,10 +89,13 @@ export const workspaceShellRoute = createRoute({
   // A page that doesn't exist inside a workspace keeps the spine and
   // breadcrumb, so people can move on without reloading.
   notFoundComponent: lazyRouteComponent(
-    () => import('./shell-not-found'),
+    () => import('./shell/not-found'),
     'ShellNotFound',
   ),
-  component: lazyRouteComponent(() => import('./shell'), 'WorkspaceShellRoute'),
+  component: lazyRouteComponent(
+    () => import('./shell/layout'),
+    'WorkspaceShellRoute',
+  ),
 });
 
 /** Any other address inside a workspace: the shell's not-found page. */

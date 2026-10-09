@@ -1,2 +1,2 @@
 export { WorkflowDuplicateDialog } from './components/workflow-duplicate-dialog';
-export { canDuplicateWorkflow } from './model/workflow-duplicate';
+export { canDuplicateWorkflow } from './model/duplicate/can-duplicate';

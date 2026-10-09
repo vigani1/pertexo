@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/empty';
 import { StatusGlyph } from '@/components/ui/status';
 import { readFailureReason } from '@/lib/api/api-error-copy';
-import type { WorkflowView } from '../../model/workflow-list-view';
+import type { WorkflowView } from '../../model/list-view';
 
 export function WorkflowListError({
   error,

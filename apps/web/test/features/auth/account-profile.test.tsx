@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
-import { problem, timestamp, user } from '../../support/team-fixtures';
+import { problem, timestamp, user } from '../../support/fixtures/team';
 
 type Rename = Readonly<{ key: string | null; body: unknown }>;
 
