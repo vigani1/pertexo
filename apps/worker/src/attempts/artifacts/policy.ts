@@ -1,13 +1,5 @@
 const MAXIMUM_NODE_ARTIFACT_BYTES = 10_485_760;
 
-type ArtifactIdentity = Readonly<{
-  artifactId: string;
-  workspaceId: string;
-  byteLength: number;
-  mediaType: string;
-  sha256: string;
-}>;
-
 export function assertArtifactByteLimit(maxBytes: number): void {
   if (
     !Number.isSafeInteger(maxBytes) ||
@@ -22,36 +14,13 @@ export function artifactExpiry(
   retentionMillis: number,
   retentionDeadline: Date | undefined,
 ): Date {
-  const createdAtMillis = createdAt.getTime();
-  if (
-    !Number.isFinite(createdAtMillis) ||
-    (retentionDeadline !== undefined &&
-      !Number.isFinite(retentionDeadline.getTime()))
-  )
-    throw new TypeError('Artifact retention clock or deadline is invalid');
-  const defaultExpiry = new Date(createdAtMillis + retentionMillis);
-  if (!Number.isFinite(defaultExpiry.getTime()))
-    throw new TypeError('Artifact retention expiry is outside the Date range');
+  const defaultExpiry = new Date(createdAt.getTime() + retentionMillis);
   const expiresAt =
     retentionDeadline !== undefined &&
     retentionDeadline.getTime() < defaultExpiry.getTime()
-      ? new Date(retentionDeadline.getTime())
+      ? retentionDeadline
       : defaultExpiry;
-  if (expiresAt.getTime() <= createdAtMillis)
+  if (expiresAt.getTime() <= createdAt.getTime())
     throw new RangeError('Artifact retention deadline has expired');
   return expiresAt;
-}
-
-export function assertUploadedArtifactMatches(
-  uploaded: ArtifactIdentity,
-  expected: ArtifactIdentity,
-): void {
-  if (
-    uploaded.artifactId !== expected.artifactId ||
-    uploaded.workspaceId !== expected.workspaceId ||
-    uploaded.byteLength !== expected.byteLength ||
-    uploaded.mediaType !== expected.mediaType ||
-    uploaded.sha256 !== expected.sha256
-  )
-    throw new Error('Artifact store returned incompatible metadata');
 }
