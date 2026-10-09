@@ -133,6 +133,24 @@ export function discoveryHandlers(
   ];
 }
 
+/** A workflow list page: these summaries, none filed, tagged or favorited. */
+export function organizedPage(
+  body: Readonly<{ items: readonly unknown[]; nextCursor: string | null }>,
+) {
+  return {
+    items: body.items.map((workflow) => ({
+      workflow,
+      organization: {
+        organizationRevision: 1,
+        folderId: null,
+        tags: [],
+        isFavorite: false,
+      },
+    })),
+    nextCursor: body.nextCursor,
+  };
+}
+
 /** Every row reads its draft for its shape; unknown IDs get an empty graph. */
 export function draftHandler(graphs: Readonly<Record<string, unknown>> = {}) {
   return http.get(`${api}/workflows/:id/draft`, ({ params }) => {

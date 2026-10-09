@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../../support/mock-server';
 import { renderApp } from '../../../support/render-app';
 import { parseWorkflowListSearch } from '@/features/workflows/model/list-view';
@@ -17,9 +17,6 @@ import {
 } from '../list/fixtures';
 import { workflowOrganizationKeys } from '@/features/workflows/data/organization.queries';
 
-vi.mock('@/features/workflows/model/organization/feature-gates', () => ({
-  workflowOrganizationControlsEnabled: () => true,
-}));
 const folderId = '11111111-1111-4111-8111-111111111111';
 const tagId = '22222222-2222-4222-8222-222222222222';
 const organization = {

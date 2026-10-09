@@ -1,6 +1,10 @@
 import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { unpausedWorkflowSettings } from '../test/support/fixtures/auto-pause';
 import { defaultConcurrencySettings } from '../test/support/fixtures/concurrency';
+import {
+  routeEmptyWorkflowOrganization,
+  workflowListBody,
+} from './workflow-list-support';
 
 // Controlled HTTP fixtures shared by the workflow editor journeys.
 
@@ -127,8 +131,9 @@ export async function installEditorRoutes(
   await page.route(`**/v1/workspaces/${workspaceId}/connections?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );
+  await routeEmptyWorkflowOrganization(page, workspaceId);
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
-    route.fulfill({ json: { items: [], nextCursor: null } }),
+    route.fulfill({ json: workflowListBody(route.request().url(), []) }),
   );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/input-cases?**`,

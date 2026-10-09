@@ -1,4 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
+import {
+  routeEmptyWorkflowOrganization,
+  workflowListBody,
+} from './workflow-list-support';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -101,10 +105,13 @@ async function mockIdentity(
     authenticated = false;
     await route.fulfill({ status: 204 });
   });
+  await routeEmptyWorkflowOrganization(page, workspaceId);
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows?**`,
     async (route) => {
-      await route.fulfill({ json: { items: workflows, nextCursor: null } });
+      await route.fulfill({
+        json: workflowListBody(route.request().url(), workflows),
+      });
     },
   );
   await page.route(
@@ -646,10 +653,13 @@ test('creates the first workspace inline from the keyboard', async ({
       },
     });
   });
+  await routeEmptyWorkflowOrganization(page, createdId);
   await page.route(
     `**/v1/workspaces/${createdId}/workflows?**`,
     async (route) => {
-      await route.fulfill({ json: { items: [], nextCursor: null } });
+      await route.fulfill({
+        json: workflowListBody(route.request().url(), []),
+      });
     },
   );
   await page.route(

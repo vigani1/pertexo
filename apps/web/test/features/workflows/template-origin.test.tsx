@@ -5,10 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { createQueryClient } from '@/app/query-client';
 import { WorkflowTemplateOrigin } from '@/features/workflows/components/templates/workflow-template-origin';
-import {
-  workflowTemplateOriginKey,
-  workflowTemplateOriginPresentationEnabled,
-} from '@/features/workflows/data/workflow-origin.queries';
+import { workflowTemplateOriginKey } from '@/features/workflows/data/workflow-origin.queries';
 import { workflowKeys } from '@/features/workflows/data/workflows.queries';
 import { createApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/api-error';
@@ -72,7 +69,7 @@ describe('Scoped historical template origin projection', () => {
         ),
       );
       const { queryClient } = mount();
-      await screen.findByText(/Originally based on/u);
+      await screen.findByText(/Based on template/u);
       const queryKey =
         scope === 'inbox'
           ? ['identity', userId, 'workspace', workspaceId, 'inbox']
@@ -93,7 +90,7 @@ describe('Scoped historical template origin projection', () => {
           })
           .catch(() => undefined);
       });
-      expect(screen.getByText(/Originally based on/u)).toBeInTheDocument();
+      expect(screen.getByText(/Based on template/u)).toBeInTheDocument();
       expect(screen.queryByText(/access changed/u)).not.toBeInTheDocument();
       expect(
         queryClient.getQueryData(
@@ -124,7 +121,7 @@ describe('Scoped historical template origin projection', () => {
         ),
       );
       const { queryClient } = mount();
-      await screen.findByText(/Originally based on/u);
+      await screen.findByText(/Based on template/u);
       act(() => {
         if (scope === 'session') {
           window.dispatchEvent(
@@ -162,10 +159,18 @@ describe('Scoped historical template origin projection', () => {
           }),
         });
       });
-      await screen.findByText('Template origin unavailable: access changed.');
-      expect(
-        screen.queryByText(/Originally based on/u),
-      ).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          queryClient.isFetching({
+            queryKey: workflowTemplateOriginKey(
+              userId,
+              workspaceId,
+              workflowId,
+            ),
+          }),
+        ).toBe(0);
+      });
+      expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
       expect(
         queryClient.getQueryData(
           workflowTemplateOriginKey(userId, workspaceId, workflowId),
@@ -205,14 +210,16 @@ describe('Scoped historical template origin projection', () => {
               },
         ),
       );
-      await screen.findByText(/Template origin unavailable/u);
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/Based on template/u),
+        ).not.toBeInTheDocument();
+      });
       await act(async () => {
         release();
         await held;
       });
-      expect(
-        screen.queryByText(/Originally based on/u),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
       expect(
         queryClient.getQueryData(
           workflowTemplateOriginKey(userId, workspaceId, workflowId),
@@ -220,8 +227,7 @@ describe('Scoped historical template origin projection', () => {
       ).toBeUndefined();
     },
   );
-  it('keeps presentation gated off and projection keys within existing invalidation scope', () => {
-    expect(workflowTemplateOriginPresentationEnabled()).toBe(false);
+  it('keeps projection keys within existing invalidation scope', () => {
     expect(
       workflowTemplateOriginKey(userId, workspaceId, workflowId).slice(0, 5),
     ).toEqual(workflowKeys.scope(userId, workspaceId));
@@ -246,7 +252,7 @@ describe('Scoped historical template origin projection', () => {
     );
     const { queryClient } = mount();
     await screen.findByText(
-      /Originally based on retired-reviewed-example, version 7 \(inherited\)/u,
+      /Based on template retired-reviewed-example v7 \(inherited\)/u,
     );
     name = 'Renamed and edited graph';
     await act(async () => {
@@ -254,9 +260,7 @@ describe('Scoped historical template origin projection', () => {
         queryKey: workflowKeys.scope(userId, workspaceId),
       });
     });
-    await screen.findByText(
-      /Originally based on retired-reviewed-example, version 7/u,
-    );
+    await screen.findByText(/Based on template retired-reviewed-example v7/u);
     expect(
       queryClient.getQueryData(
         workflowTemplateOriginKey(userId, workspaceId, workflowId),
@@ -265,7 +269,7 @@ describe('Scoped historical template origin projection', () => {
     expect(requests).toEqual(['GET', 'GET']);
   });
 
-  it('renders authoritative null distinctly', async () => {
+  it('shows nothing when no template origin is recorded', async () => {
     mockServer.use(
       http.get(`${api}/workflows/${workflowId}`, () =>
         HttpResponse.json({
@@ -274,9 +278,15 @@ describe('Scoped historical template origin projection', () => {
         }),
       ),
     );
-    mount();
-    await screen.findByText('No recorded template origin.');
-    expect(screen.queryByText(/unavailable/u)).not.toBeInTheDocument();
+    const { queryClient } = mount();
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData(
+          workflowTemplateOriginKey(userId, workspaceId, workflowId),
+        ),
+      ).toMatchObject({ templateOrigin: null });
+    });
+    expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -300,12 +310,15 @@ describe('Scoped historical template origin projection', () => {
         );
       }),
     );
-    mount();
-    await screen.findByText(/Template origin unavailable\./u);
-    expect(
-      screen.queryByText('No recorded template origin.'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText(/Originally based on/u)).not.toBeInTheDocument();
+    const { queryClient } = mount();
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryState(
+          workflowTemplateOriginKey(userId, workspaceId, workflowId),
+        )?.status,
+      ).toBe('error');
+    });
+    expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
   });
 
   it.each(['workflow', 'session'] as const)(
@@ -359,14 +372,22 @@ describe('Scoped historical template origin projection', () => {
           })
           .catch(() => undefined);
       });
-      await screen.findByText('Template origin unavailable: access changed.');
+      await waitFor(() => {
+        expect(
+          queryClient.isFetching({
+            queryKey: workflowTemplateOriginKey(
+              userId,
+              workspaceId,
+              workflowId,
+            ),
+          }),
+        ).toBe(0);
+      });
       await act(async () => {
         release();
         await held;
       });
-      expect(
-        screen.queryByText(/Originally based on/u),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Based on template/u)).not.toBeInTheDocument();
       expect(
         queryClient.getQueryData(
           workflowTemplateOriginKey(userId, workspaceId, workflowId),

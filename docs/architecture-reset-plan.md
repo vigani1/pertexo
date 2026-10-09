@@ -449,6 +449,17 @@ now, as one ordered program — not "whenever we touch it".
           route, its contract and the web's polling and `operationId`
           search state go.
   - [ ] web
+    - [x] Every web feature is on, as step 3 intended: workflow
+          organization (folders, tags, favorites), the curated template
+          chooser and template origin no longer sit behind build-time gates
+          that only a "qualification" build replaced. The list has one path,
+          the organized list, which keeps the first-workflow onboarding for an
+          empty, unfiltered workspace and is prefetched by its route so an
+          ended session still returns to sign-in. The legacy list, its
+          toolbar, client-side filter and no-match state, both qualification
+          builds and their gate stand-ins, and the organization browser
+          test's default-off role go. A workflow's template origin shows in
+          its header only when one is recorded, as one short line.
     - [x] Feature folders by role: only public entry files stay at a
           feature's root; screens go to `pages/`, hooks to `hooks/`, server
           access to `data/` (`*.api.ts`, `*.queries.ts`, `*.mutations.ts`,

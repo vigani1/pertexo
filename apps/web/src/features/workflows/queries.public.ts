@@ -5,4 +5,7 @@ export {
   workflowSummaryQueryOptions,
   workflowsInfiniteQueryOptions,
 } from './data/workflows.queries';
-export { workflowOrganizationKeys } from './data/organization.queries';
+export {
+  workflowListQueryOptions,
+  workflowOrganizationKeys,
+} from './data/organization.queries';

@@ -14,11 +14,16 @@ import {
   versionId,
   workflowId,
   workspaceId,
+  organizedPage,
 } from './fixtures';
 
 function listHandler(pages: (after: string | null) => Record<string, unknown>) {
   return http.get(`${api}/workflows`, ({ request }) =>
-    HttpResponse.json(pages(new URL(request.url).searchParams.get('after'))),
+    HttpResponse.json(
+      organizedPage(
+        pages(new URL(request.url).searchParams.get('after')) as never,
+      ),
+    ),
   );
 }
 

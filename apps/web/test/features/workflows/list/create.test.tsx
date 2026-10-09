@@ -26,11 +26,12 @@ import {
   userId,
   workflowId,
   workspaceId,
+  organizedPage,
 } from './fixtures';
 
 function emptyList() {
   return http.get(`${api}/workflows`, () =>
-    HttpResponse.json({ items: [], nextCursor: null }),
+    HttpResponse.json(organizedPage({ items: [], nextCursor: null })),
   );
 }
 
@@ -138,10 +139,12 @@ describe('new workflow lens', () => {
       ...discoveryHandlers(),
       draftHandler(),
       http.get(`${api}/workflows`, () =>
-        HttpResponse.json({
-          items: [summary(workflowId, 'Daily intake')],
-          nextCursor: null,
-        }),
+        HttpResponse.json(
+          organizedPage({
+            items: [summary(workflowId, 'Daily intake')],
+            nextCursor: null,
+          }),
+        ),
       ),
     );
     const { router } = renderApp(`/w/${workspaceId}/workflows?create=true`);

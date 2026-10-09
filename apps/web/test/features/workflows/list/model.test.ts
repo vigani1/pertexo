@@ -9,8 +9,6 @@ import {
 } from '@/features/workflows/model/run-strip';
 import {
   countWorkflowStates,
-  countWorkflowViews,
-  filterWorkflows,
   parseWorkflowListSearch,
   updateWorkflowListSearch,
 } from '@/features/workflows/model/list-view';
@@ -183,27 +181,6 @@ describe('workflow list view', () => {
     summary('3', 'Incident response'),
     summary('4', 'Incident drill'),
   ] as WorkflowSummary[];
-
-  it('filters loaded workflows by view and a case-insensitive name', () => {
-    expect(filterWorkflows(items, { view: 'active', query: '' })).toHaveLength(
-      3,
-    );
-    expect(
-      filterWorkflows(items, { view: 'archived', query: '' }).map(
-        (w) => w.name,
-      ),
-    ).toEqual(['Old report']);
-    expect(
-      filterWorkflows(items, { view: 'all', query: '  incident ' }).map(
-        (w) => w.name,
-      ),
-    ).toEqual(['Incident response', 'Incident drill']);
-    expect(countWorkflowViews(items)).toEqual({
-      active: 3,
-      archived: 1,
-      all: 4,
-    });
-  });
 
   it('counts non-archived workflows by state in a fixed order', () => {
     expect(countWorkflowStates(items)).toEqual([

@@ -13,7 +13,6 @@ import {
   workflowOrganizationBulkResponseSchema,
   workflowFolderCreateResponseSchema,
   workflowTagCreateResponseSchema,
-  workflowSummaryResponseSchema,
 } from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
@@ -39,10 +38,7 @@ test.afterEach(async ({ request, page }, info) => {
             info.title ===
             'ordinary owner persists shared organization, exact recovery and private discovery filters'
               ? 'owner'
-              : info.title ===
-                  'default-off release build preserves ordinary workflows without organization reads or controls'
-                ? 'default-off'
-                : 'unknown',
+              : 'unknown',
           status: info.status === 'passed' ? 'passed' : 'failed',
         },
       },
@@ -959,147 +955,5 @@ test('ordinary owner persists shared organization, exact recovery and private di
             : (() => {
                 throw new Error('Explicit owned role case required');
               })(),
-  });
-});
-
-test('default-off release build preserves ordinary workflows without organization reads or controls', async ({
-  page,
-  request,
-}) => {
-  test.setTimeout(90_000);
-  page.setDefaultTimeout(15_000);
-  const mailOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
-  if (
-    mailOrigin === undefined ||
-    process.env.PERTEXO_ORGANIZATION_BROWSER_DEFAULT_OFF !== 'true'
-  )
-    throw new Error('Explicit owned default-off production build required');
-  const phase = async (value: string) => {
-    const result = await request.post(`${mailOrigin}/organization-phase`, {
-      data: { phase: value },
-    });
-    expect(result.status()).toBe(204);
-  };
-  await phase('default-off');
-  await registerEditorUser(
-    page,
-    request,
-    mailOrigin,
-    'Organization default-off owner',
-  );
-  const workspaceId = await createEditorWorkspace(
-    page,
-    'Default-off qualification',
-  );
-  let metadataReads = 0;
-  page.on('request', (sent) => {
-    const url = new URL(sent.url());
-    if (
-      sent.method() === 'GET' &&
-      (url.pathname.includes('/workflow-folders') ||
-        url.pathname.includes('/workflow-tags') ||
-        url.searchParams.get('include') === 'organization')
-    )
-      metadataReads++;
-  });
-  const name = 'Default-off workflow';
-  const workflowId = await createWorkflow(page, workspaceId, name, phase);
-  // Populate through the ordinary authenticated public API, not storage or
-  // cookie seeding. These explicit invariant requests are not page UI reads.
-  const cookie = (await page.context().cookies()).find(
-    (item) => item.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined)
-    throw new Error('Ordinary session CSRF unavailable');
-  const write = (path: string, data: unknown) =>
-    page.request.post(`/v1/workspaces/${workspaceId}/${path}`, {
-      headers: {
-        'x-csrf-token': decodeURIComponent(cookie.value),
-        'Idempotency-Key': crypto.randomUUID(),
-      },
-      data,
-    });
-  const folderResponse = await write('workflow-folders', {
-    name: 'Retained while disabled',
-    parentId: null,
-  });
-  expect(folderResponse.status()).toBe(201);
-  const folderId = workflowFolderCreateResponseSchema.parse(
-    await folderResponse.json(),
-  ).folder.id;
-  const tagResponse = await write('workflow-tags', { key: 'off-proof' });
-  expect(tagResponse.status()).toBe(201);
-  const tagId = workflowTagCreateResponseSchema.parse(await tagResponse.json())
-    .tag.id;
-  let state = await projection(page, workspaceId, workflowId);
-  const placement = await write(`workflows/${workflowId}/folder`, {
-    folderId,
-    expectedOrganizationRevision: state.organization.organizationRevision,
-  });
-  expect(placement.status()).toBe(200);
-  state = await projection(page, workspaceId, workflowId);
-  const tags = await write(`workflows/${workflowId}/tags`, {
-    tagIds: [tagId],
-    expectedOrganizationRevision: state.organization.organizationRevision,
-  });
-  expect(tags.status()).toBe(200);
-  const favorite = await page.request.put(
-    `/v1/workspaces/${workspaceId}/workflows/${workflowId}/favorite`,
-    {
-      headers: { 'x-csrf-token': decodeURIComponent(cookie.value) },
-      data: { favorite: true },
-    },
-  );
-  expect(favorite.status()).toBe(200);
-  await page.goto(`/w/${workspaceId}/workflows`);
-  await expect(row(page, name)).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Manage folders and tags…', exact: true }),
-  ).toHaveCount(0);
-  await expect(page.getByLabel('Name contains', { exact: true })).toHaveCount(
-    0,
-  );
-  await expect(
-    row(page, name).getByRole('button', { name: 'Organize…', exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    row(page, name).getByRole('button', {
-      name: `Add favorite for ${name}`,
-      exact: true,
-    }),
-  ).toHaveCount(0);
-  await expect(
-    row(page, name).getByRole('checkbox', {
-      name: `Select ${name}`,
-      exact: true,
-    }),
-  ).toHaveCount(0);
-  const summary = await page.request.get(
-    `/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
-  );
-  expect(summary.status()).toBe(200);
-  expect(
-    workflowSummaryResponseSchema.parse(await summary.json()).workflow.name,
-  ).toBe(name);
-  expect(metadataReads).toBe(0);
-  const retained = await projection(page, workspaceId, workflowId);
-  expect(retained.organization.folderId).toBe(folderId);
-  expect(retained.organization.tags.map((tag) => tag.id)).toEqual([tagId]);
-  expect(retained.organization.isFavorite).toBe(true);
-  const receipt = await request.post(`${mailOrigin}/organization-default-off`, {
-    data: {
-      workspaceId,
-      workflowId,
-      folderId,
-      tagId,
-      metadataRetained: true,
-      metadataReads,
-      organizationControls: false,
-    },
-  });
-  expect(receipt.status()).toBe(204);
-  await page.screenshot({
-    path: '/tmp/pertexo-workflow-organization-default-off.png',
-    fullPage: true,
   });
 });

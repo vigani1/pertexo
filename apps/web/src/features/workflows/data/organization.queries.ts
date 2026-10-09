@@ -10,6 +10,10 @@ import {
   normalizeWorkflowOrganizationProjectionQuery,
 } from '../model/organization/requests';
 import {
+  WORKFLOW_ORDER_BY_SORT,
+  type WorkflowListSearch,
+} from '../model/list-view';
+import {
   getWorkflowOrganizationPage,
   getWorkflowOrganizationProjection,
   getWorkflowTagsPage,
@@ -82,6 +86,24 @@ export function workflowFoldersQueryOptions(
     queryFn: ({ signal }) =>
       getWorkflowFolders(api, workspaceId, query, signal),
     retry: false,
+  });
+}
+
+/** The workflow list page's read for its search. */
+export function workflowListQueryOptions(
+  api: ApiClient,
+  userId: string,
+  workspaceId: string,
+  search: WorkflowListSearch,
+) {
+  return workflowOrganizationInfiniteQueryOptions(api, userId, workspaceId, {
+    include: 'organization',
+    order: WORKFLOW_ORDER_BY_SORT[search.sort ?? 'updated'],
+    view: search.view ?? 'active',
+    query: search.query,
+    tagId: search.tagId,
+    folderId: search.folderId,
+    favoritesOnly: search.favoritesOnly,
   });
 }
 

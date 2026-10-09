@@ -8,6 +8,7 @@ import {
   discoveryHandlers,
   draftHandler,
   summary as listSummary,
+  organizedPage,
 } from './list/fixtures';
 import {
   api,
@@ -219,10 +220,12 @@ describe('workflow rename', () => {
       ...discoveryHandlers(['workflow:create', 'workflow:update']),
       draftHandler(),
       http.get(`${api}/workflows`, () =>
-        HttpResponse.json({
-          items: [listSummary(workflowId, name)],
-          nextCursor: null,
-        }),
+        HttpResponse.json(
+          organizedPage({
+            items: [listSummary(workflowId, name)],
+            nextCursor: null,
+          }),
+        ),
       ),
       http.get(`${api}/workflows/${workflowId}`, () =>
         HttpResponse.json({ workflow: listSummary(workflowId, name) }),

@@ -85,38 +85,15 @@ export function updateWorkflowListSearch(
   };
 }
 
-function matchesWorkflowView(
-  workflow: Pick<WorkflowSummary, 'lifecycleStatus'>,
-  view: WorkflowView,
-): boolean {
-  if (view === 'all') return true;
-  return (workflow.lifecycleStatus === 'archived') === (view === 'archived');
-}
-
-/** Client-side filter over the loaded pages: view, then a name substring. */
-export function filterWorkflows(
-  workflows: readonly WorkflowSummary[],
-  filter: Readonly<{ view: WorkflowView; query: string }>,
-): readonly WorkflowSummary[] {
-  const needle = filter.query.trim().toLocaleLowerCase();
-  return workflows.filter(
-    (workflow) =>
-      matchesWorkflowView(workflow, filter.view) &&
-      (needle === '' || workflow.name.toLocaleLowerCase().includes(needle)),
+/** No view, name, tag, folder or favorites filter: every active workflow. */
+export function isUnfilteredWorkflowList(search: WorkflowListSearch): boolean {
+  return (
+    search.view === undefined &&
+    search.query === undefined &&
+    search.tagId === undefined &&
+    search.folderId === undefined &&
+    search.favoritesOnly === undefined
   );
-}
-
-export function countWorkflowViews(
-  workflows: readonly Pick<WorkflowSummary, 'lifecycleStatus'>[],
-): Readonly<Record<WorkflowView, number>> {
-  const archived = workflows.filter(
-    (workflow) => workflow.lifecycleStatus === 'archived',
-  ).length;
-  return {
-    active: workflows.length - archived,
-    archived,
-    all: workflows.length,
-  };
 }
 
 const STATE_WORDS: ReadonlyMap<string, Readonly<[string, string]>> = new Map([

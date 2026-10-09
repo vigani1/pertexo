@@ -59,20 +59,7 @@ const matrixSchema = z
     roleEditingBoundary: z.literal(true),
   })
   .strict();
-const defaultOffSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    workflowId: z.uuid(),
-    folderId: z.uuid(),
-    tagId: z.uuid(),
-    metadataRetained: z.literal(true),
-    metadataReads: z.literal(0),
-    organizationControls: z.literal(false),
-  })
-  .strict();
-describe
-  .skipIf(!enabled)
-  .each(['viewer', 'builder', 'admin', 'default-off'] as const)(
+describe.skipIf(!enabled).each(['viewer', 'builder', 'admin'] as const)(
   'owned F07 ordinary browser and real organization API — %s',
   (role) => {
     const owner = new FixtureResourceOwner();
@@ -87,7 +74,7 @@ describe
     let identityFailure = 'unknown';
     let publicEvidence: unknown;
     const testResults: {
-      case: 'owner' | 'default-off';
+      case: 'owner';
       status: 'passed' | 'failed';
     }[] = [];
     const { api } = useOrganizationOwnedApi(`organization_browser_${role}`, {
@@ -342,7 +329,6 @@ describe
             '/invitation-delivery',
             '/organization-matrix',
             '/organization-test-result',
-            '/organization-default-off',
           ].includes(url.pathname)
         ) {
           response.writeHead(404).end();
@@ -413,36 +399,10 @@ describe
                   );
                 expect(tags.rows[0]?.count).toBe(0);
                 publicEvidence = evidence;
-              } else if (url.pathname === '/organization-default-off') {
-                const evidence = defaultOffSchema.parse(value);
-                expect(role).toBe('default-off');
-                const workflows = await api
-                  .database()
-                  .query<{ count: number }>(
-                    'select count(*)::int count from app.workflows where workspace_id=$1 and id=$2',
-                    [evidence.workspaceId, evidence.workflowId],
-                  );
-                expect(workflows.rows[0]?.count).toBe(1);
-                const retained = await api.database().query<{ count: number }>(
-                  `select count(*)::int count from app.workflows w
-                   where w.workspace_id=$1 and w.id=$2
-                   and exists (select 1 from app.workflow_organization_state s where s.workspace_id=w.workspace_id and s.workflow_id=w.id and s.folder_id=$3)
-                   and exists (select 1 from app.workflow_tag_assignments t where t.workspace_id=w.workspace_id and t.workflow_id=w.id and t.tag_id=$4)
-                   and exists (select 1 from app.workflow_favorites f where f.workspace_id=w.workspace_id and f.workflow_id=w.id)`,
-                  [
-                    evidence.workspaceId,
-                    evidence.workflowId,
-                    evidence.folderId,
-                    evidence.tagId,
-                  ],
-                );
-                expect(retained.rows[0]?.count).toBe(1);
-                publicEvidence = evidence;
-                observed = true;
               } else if (url.pathname === '/organization-test-result') {
                 const result = z
                   .object({
-                    case: z.enum(['owner', 'default-off']),
+                    case: z.literal('owner'),
                     status: z.enum(['passed', 'failed']),
                   })
                   .strict()
@@ -476,7 +436,6 @@ describe
                       'roles',
                       'archive',
                       'partial',
-                      'default-off',
                     ]),
                   })
                   .strict()
@@ -533,8 +492,6 @@ describe
         PERTEXO_API_PROXY_TARGET: await api.listen(),
         PERTEXO_LIVE_MAIL_ORIGIN: `http://127.0.0.1:${String(address.port)}`,
         PERTEXO_ORGANIZATION_ROLE: role,
-        PERTEXO_ORGANIZATION_BROWSER_DEFAULT_OFF:
-          role === 'default-off' ? 'true' : 'false',
       };
       const start = (args: string[], kind: 'vite' | 'browser') =>
         ownChild(
@@ -550,27 +507,14 @@ describe
         dirname(webRequire.resolve('vite/package.json')),
         'bin/vite.js',
       );
-      const qualification =
-        role === 'default-off'
-          ? ['--config', 'vite.config.ts', '--mode', 'production']
-          : [
-              '--config',
-              'vite.organization-qualification.config.ts',
-              '--mode',
-              'workflow-organization-qualification',
-            ];
       // Never accept another preview's healthy HTTP response as readiness for
       // this owned child. A occupied shared lane is not permission to reuse it.
       await assertOrganizationPreviewPortVacant(4174);
-      await successfulExit(
-        start([vite, 'build', ...qualification], 'vite'),
-        'build',
-      );
+      await successfulExit(start([vite, 'build'], 'vite'), 'build');
       const preview = start(
         [
           vite,
           'preview',
-          ...qualification,
           '--host',
           '127.0.0.1',
           '--port',
@@ -589,21 +533,14 @@ describe
             'playwright.live.config.ts',
             'workflow-organization.spec.ts',
             '--grep',
-            role === 'default-off'
-              ? 'default-off release'
-              : 'ordinary owner persists',
+            'ordinary owner persists',
           ],
           'browser',
         ),
         'browser',
       );
       expect(opened).toBe(true);
-      expect(testResults).toEqual([
-        {
-          case: role === 'default-off' ? 'default-off' : 'owner',
-          status: 'passed',
-        },
-      ]);
+      expect(testResults).toEqual([{ case: 'owner', status: 'passed' }]);
       expect(openBrowsers.size).toBe(0);
       expect(observed).toBe(true);
     }, 180_000);

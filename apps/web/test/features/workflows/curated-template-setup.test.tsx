@@ -10,7 +10,6 @@ import {
 } from '@pertexo/templates';
 import {
   configureTemplate,
-  curatedTemplateChooserEnabled,
   templateOrigin,
   templateUnavailableReasons,
 } from '@/features/workflows/model/templates/curated-setup';
@@ -147,8 +146,7 @@ describe('Curated template setup in the existing import session', () => {
     await event.click(screen.getByRole('button', { name: 'Preview import' }));
     await screen.findByText(/Compatible with this workspace/u);
   });
-  it('keeps the production chooser off and rejects unavailable exact catalog pins', () => {
-    expect(curatedTemplateChooserEnabled()).toBe(false);
+  it('rejects unavailable exact catalog pins', () => {
     expect(templateUnavailableReasons(first, catalogOf([]))).toContain(
       'core.webhook@1 is missing from the current catalog.',
     );

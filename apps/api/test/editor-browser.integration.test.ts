@@ -836,18 +836,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         });
       });
     await exitedSuccessfully(
-      startWebChild('live Vite build', [
-        viteCli,
-        'build',
-        ...(scenario === 'curated-templates'
-          ? [
-              '--config',
-              'vite.curated-qualification.config.ts',
-              '--mode',
-              'curated-template-qualification',
-            ]
-          : []),
-      ]),
+      startWebChild('live Vite build', [viteCli, 'build']),
     );
     const preview = startWebChild('live Vite preview', [
       viteCli,
