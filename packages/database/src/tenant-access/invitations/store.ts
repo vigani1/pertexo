@@ -6,8 +6,8 @@ import {
   claimCommand,
   completeCommand,
   type CommandIdentity,
-} from '../platform/idempotency.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
+} from '../../platform/idempotency.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 import type {
   ChangeWorkspaceInvitationInput,
   CreateWorkspaceInvitationInput,
@@ -15,16 +15,16 @@ import type {
   MembershipRole,
   WorkspaceInvitationCommandResult,
   WorkspaceInvitationRecord,
-} from './identity-workspace-contracts.js';
-import { WorkspaceInvitationCommandConflictError } from './identity-workspace-errors.js';
-import { cancelOpenInvitationDeliveries } from './identity-workspace-invitation-deliveries.js';
-import { expireWorkspaceInvitations } from './identity-workspace-invitation-expiration.js';
+} from '../contracts.js';
+import { WorkspaceInvitationCommandConflictError } from '../errors.js';
+import { cancelOpenInvitationDeliveries } from './delivery-cancellation.js';
+import { expireWorkspaceInvitations } from './expiration.js';
 import {
   parseIdentityUuid,
   readIdentityDatabaseErrorCode,
-} from './identity-workspace-support.js';
-import { canInviteWorkspaceRole } from './workspace-policy.js';
-import { withTenantScopedClient } from './workspace.js';
+} from '../support.js';
+import { canInviteWorkspaceRole } from '../policy.js';
+import { withTenantScopedClient } from '../transactions.js';
 
 type InvitationStore = Pick<
   IdentityWorkspaceDatabase,

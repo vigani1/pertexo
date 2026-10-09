@@ -36,7 +36,7 @@ vi.mock('../src/platform/database-runtime.js', () => ({
   },
 }));
 
-vi.mock('../src/tenant-access/workspace.js', () => ({
+vi.mock('../src/tenant-access/transactions.js', () => ({
   withPlatformTransaction: async (
     pool: { query: (...arguments_: unknown[]) => Promise<unknown> },
     operation: (client: {

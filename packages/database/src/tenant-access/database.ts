@@ -26,7 +26,7 @@ export {
   type WorkspaceMemberRemovalCommandConflictReason,
   type WorkspaceMembershipCommandConflictReason,
   type WorkspaceRenameCommandConflictReason,
-} from './identity-workspace-errors.js';
+} from './errors.js';
 import {
   IDEMPOTENCY_STATUS,
   IdempotencyRecordCorruptError,
@@ -36,24 +36,24 @@ import {
   changeWorkspaceLifecycle,
   readWorkspaceLifecycleOperation,
 } from '../lifecycle/workspace-deletion.js';
-import { mapWorkspace } from './identity-workspace-rows.js';
-import { createIdentityWorkspaceSessionStore } from './identity-workspace-session-store.js';
-import { createIdentityWorkspaceIdentityStore } from './identity-workspace-identity-store.js';
+import { mapWorkspace } from './rows.js';
+import { createIdentityWorkspaceSessionStore } from './users/sessions.js';
+import { createIdentityWorkspaceIdentityStore } from './users/identities.js';
 import {
   parseIdentityMetadata,
   parseIdentityUuid,
   throwIdentityDatabaseConflict,
   throwWorkspaceLifecycleError,
-} from './identity-workspace-support.js';
-import { withTenantScopedClient } from './workspace.js';
-import { createIdentityWorkspaceMemberStore } from './identity-workspace-member-store.js';
-import { createIdentityWorkspaceRoleCommandStore } from './identity-workspace-role-command.js';
-import { createIdentityWorkspaceMemberRemovalStore } from './identity-workspace-member-removal.js';
-import { createIdentityWorkspaceMembershipLifecycleStore } from './identity-workspace-membership-lifecycle.js';
-import { createIdentityWorkspaceProfileStore } from './identity-workspace-profile-store.js';
-import { createIdentityWorkspaceRenameStore } from './identity-workspace-rename-store.js';
-import { createIdentityWorkspaceInvitationStore } from './identity-workspace-invitation-store.js';
-import { createIdentityWorkspaceInvitationAcceptanceStore } from './identity-workspace-invitation-acceptance-store.js';
+} from './support.js';
+import { withTenantScopedClient } from './transactions.js';
+import { createIdentityWorkspaceMemberStore } from './members/store.js';
+import { createIdentityWorkspaceRoleCommandStore } from './members/roles.js';
+import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.js';
+import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.js';
+import { createIdentityWorkspaceProfileStore } from './users/profile.js';
+import { createIdentityWorkspaceRenameStore } from './workspace-rename.js';
+import { createIdentityWorkspaceInvitationStore } from './invitations/store.js';
+import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance.js';
 
 const idempotencyKeySchema = z
   .string()
@@ -70,7 +70,7 @@ import {
   type WorkspaceLifecycleOperation,
   type WorkspaceRecord,
   type WorkspaceWithOwnerInput,
-} from './identity-workspace-contracts.js';
+} from './contracts.js';
 export {
   MEMBERSHIP_ROLE,
   USER_STATUS,
@@ -120,7 +120,7 @@ export {
   type WorkspaceWithOwnerInput,
   type RenameWorkspaceInput,
   type WorkspaceRenameResult,
-} from './identity-workspace-contracts.js';
+} from './contracts.js';
 
 type WorkspaceCreationResult = PublicWorkspaceCreationResult;
 

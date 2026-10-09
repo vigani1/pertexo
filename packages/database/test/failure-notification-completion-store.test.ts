@@ -9,7 +9,7 @@ const auditFailureNotification = vi.hoisted(() => vi.fn());
 const insertFailureNotificationDeliveryOutbox = vi.hoisted(() => vi.fn());
 const withTenantScopedClient = vi.hoisted(() => vi.fn());
 
-vi.mock('../src/tenant-access/workspace.js', () => ({
+vi.mock('../src/tenant-access/transactions.js', () => ({
   withTenantScopedClient,
 }));
 

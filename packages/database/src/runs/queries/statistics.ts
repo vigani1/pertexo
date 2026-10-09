@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
-} from '../../tenant-access/workspace.js';
+} from '../../tenant-access/transactions.js';
 import { runStatusSchema } from '../commands/records.js';
 
 // Exact run counts for one workspace snapshot (ADR 044). Every statement

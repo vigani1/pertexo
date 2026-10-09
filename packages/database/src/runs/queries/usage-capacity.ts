@@ -2,8 +2,8 @@ import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { withWorkspaceReadTransaction } from '../../tenant-access/workspace.js';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/identity-workspace-errors.js';
+import { withWorkspaceReadTransaction } from '../../tenant-access/transactions.js';
+import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 
 const inputSchema = z
   .object({

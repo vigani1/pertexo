@@ -7,8 +7,8 @@ import {
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
-} from '../tenant-access/workspace.js';
-import { WEBHOOK_TRIGGER_READ_ROLES } from '../tenant-access/workspace-policy.js';
+} from '../tenant-access/transactions.js';
+import { WEBHOOK_TRIGGER_READ_ROLES } from '../tenant-access/policy.js';
 import { WebhookTriggerNotFoundError } from './webhook-trigger-errors.js';
 
 /**

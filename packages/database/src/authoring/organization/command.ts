@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import type { Role } from '../../tenant-access/workspace-policy.js';
+import type { Role } from '../../tenant-access/policy.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 
 export type OrganizationScope = Readonly<{

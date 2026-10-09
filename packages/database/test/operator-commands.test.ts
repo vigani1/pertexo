@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const transaction = vi.hoisted(() => vi.fn());
 
-vi.mock('../src/tenant-access/workspace.js', () => ({
+vi.mock('../src/tenant-access/transactions.js', () => ({
   withWorkspaceTransaction: transaction,
 }));
 

@@ -1,7 +1,7 @@
 import type { Pool, PoolClient, QueryResult } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createIdentityWorkspaceSessionStore } from '../src/tenant-access/identity-workspace-session-store.js';
+import { createIdentityWorkspaceSessionStore } from '../src/tenant-access/users/sessions.js';
 
 const digest = 'a'.repeat(64);
 

@@ -5,7 +5,7 @@ import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { consumeInboxMessage } from '../outbox/receipts.js';

@@ -4,7 +4,7 @@ import { Pool, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-workspace.js';
+import { createIdentityWorkspaceDatabase } from '../src/tenant-access/database.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { canonicalOutboxPayloadChecksum } from '../src/outbox/events.js';
 import type { WorkflowAuthoringDatabase } from '../src/authoring/workflows/database.js';
@@ -36,7 +36,7 @@ import {
 } from '../src/triggers/schedule-triggers.js';
 import type { WebhookDeliveryPosition } from '../src/triggers/webhook-trigger-deliveries.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
-import { withWorkspaceTransaction } from '../src/tenant-access/workspace.js';
+import { withWorkspaceTransaction } from '../src/tenant-access/transactions.js';
 import { claimedScheduleWorkflowPaused } from '../src/triggers/schedule-pause.js';
 import { isScheduleClaimEligible } from '../src/triggers/schedule-trigger-scanner.js';
 

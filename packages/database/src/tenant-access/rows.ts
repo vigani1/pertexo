@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
-import { parsePersistedIdentityMetadata } from './identity-workspace-support.js';
+import { parsePersistedIdentityMetadata } from './support.js';
 
 import type {
   AuthIdentityRecord,
   SessionRecord,
   UserRecord,
   WorkspaceRecord,
-} from './identity-workspace-contracts.js';
+} from './contracts.js';
 
 const uuidSchema = z.uuid();
 const userRowSchema = z

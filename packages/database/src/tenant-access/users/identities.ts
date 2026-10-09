@@ -1,21 +1,18 @@
 import { createHash } from 'node:crypto';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import {
-  IdentityConflictError,
-  IdentityNotFoundError,
-} from './identity-workspace-errors.js';
-import { mapAuthIdentity, mapUser } from './identity-workspace-rows.js';
+import { IdentityConflictError, IdentityNotFoundError } from '../errors.js';
+import { mapAuthIdentity, mapUser } from '../rows.js';
 import {
   parseIdentityMetadata,
   parseIdentityUuid,
   readIdentityDatabaseErrorCode,
   throwIdentityDatabaseConflict,
-} from './identity-workspace-support.js';
+} from '../support.js';
 import type {
   AuthIdentityRecord,
   CreateAuthIdentityInput,
@@ -24,8 +21,8 @@ import type {
   ResolveOrCreateIdentityInput,
   ResolvedIdentity,
   UserRecord,
-} from './identity-workspace-contracts.js';
-import { withPlatformTransaction } from './workspace.js';
+} from '../contracts.js';
+import { withPlatformTransaction } from '../transactions.js';
 
 const issuerSchema = z.url().max(2048);
 const userIdentityFieldsSchema = z.object({

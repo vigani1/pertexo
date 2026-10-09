@@ -37,8 +37,8 @@ import {
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
-} from '../../tenant-access/workspace.js';
-import { rolesForCapability } from '../../tenant-access/workspace-policy.js';
+} from '../../tenant-access/transactions.js';
+import { rolesForCapability } from '../../tenant-access/policy.js';
 import type { WorkflowAuthoringDatabaseOptions } from './types.js';
 export type {
   WorkflowAuthoringDatabaseOptions,

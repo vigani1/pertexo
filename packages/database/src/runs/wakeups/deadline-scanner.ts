@@ -2,7 +2,7 @@ import { acquireDatabasePool } from '../../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../../config.js';
-import { withPlatformTransaction } from '../../tenant-access/workspace.js';
+import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { parseClaimedWakeups } from './scan-result.js';
 
 export interface DeadlineWakeupScanner {

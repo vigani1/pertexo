@@ -4,8 +4,8 @@ export {
   hasCapability,
   ROLES,
   rolesForCapability,
-} from './workspace-policy.js';
-export type { AuthorizationCapability, Role } from './workspace-policy.js';
+} from './policy.js';
+export type { AuthorizationCapability, Role } from './policy.js';
 export {
   createIdentityWorkspaceDatabase,
   IdentityConflictError,
@@ -18,7 +18,7 @@ export {
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
-} from './identity-workspace.js';
+} from './database.js';
 export type {
   AccessibleWorkspaceRecord,
   AccessibleWorkspacesPage,
@@ -54,15 +54,15 @@ export type {
   WorkspaceMemberStatusResult,
   WorkspaceOwnershipTransferResult,
   WorkspaceRenameResult,
-} from './identity-workspace.js';
-export { createOidcLoginTransactionStore } from './oidc-login-transactions.js';
+} from './database.js';
+export { createOidcLoginTransactionStore } from './users/oidc-login.js';
 export type {
   OidcLoginTransactionStore,
   OidcSecretEncryptionAdapter,
   SealedOidcSecret,
-} from './oidc-login-transactions.js';
-export { createWorkspaceInvitationDeliveryStore } from './workspace-invitation-delivery.js';
+} from './users/oidc-login.js';
+export { createWorkspaceInvitationDeliveryStore } from './invitations/delivery.js';
 export type {
   WorkspaceInvitationDeliveryClaim,
   WorkspaceInvitationDeliveryStore,
-} from './workspace-invitation-delivery.js';
+} from './invitations/delivery.js';

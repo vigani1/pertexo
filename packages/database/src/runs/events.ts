@@ -6,7 +6,7 @@ import {
   RunEventGapError,
 } from './state-errors.js';
 import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 
 export const RUN_EVENT_TYPE = {
   queued: 'run.queued',

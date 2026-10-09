@@ -4,11 +4,11 @@ import type { DatabaseRuntime } from './platform/database-runtime.js';
 import type { DatabaseConfig } from './config.js';
 import { checkDatabaseReadiness } from './platform/readiness.js';
 import type { DatabaseReadiness } from './platform/readiness.js';
-import { withWorkspaceTransaction } from './tenant-access/workspace.js';
+import { withWorkspaceTransaction } from './tenant-access/transactions.js';
 import type {
   WorkspaceTransaction,
   WorkspaceTransactionOptions,
-} from './tenant-access/workspace.js';
+} from './tenant-access/transactions.js';
 
 export interface WorkspaceDatabase {
   withWorkspace<T>(

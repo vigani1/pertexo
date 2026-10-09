@@ -14,7 +14,7 @@ import {
   rolesForCapability,
   type AuthorizationCapability,
   type Role,
-} from '../src/tenant-access/workspace-policy.js';
+} from '../src/tenant-access/policy.js';
 
 const expectedCapabilitiesByRole = {
   owner: AUTHORIZATION_CAPABILITIES,

@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import { rolesForCapability } from '../tenant-access/workspace-policy.js';
+import { rolesForCapability } from '../tenant-access/policy.js';
 import {
   ConnectionNotFoundError,
   uuidSchema,

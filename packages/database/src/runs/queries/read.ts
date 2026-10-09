@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
-} from '../../tenant-access/workspace.js';
+} from '../../tenant-access/transactions.js';
 import { WorkflowRunReadCapacityError } from '../errors.js';
 import {
   readWorkflowRunReadRecord,

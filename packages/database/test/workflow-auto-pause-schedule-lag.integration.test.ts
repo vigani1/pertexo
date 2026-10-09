@@ -9,7 +9,7 @@ import { databaseSchema } from '../src/schema.js';
 import {
   parseWorkspaceId,
   withWorkspaceTransaction,
-} from '../src/tenant-access/workspace.js';
+} from '../src/tenant-access/transactions.js';
 import { claimedScheduleWorkflowPaused } from '../src/triggers/schedule-pause.js';
 import { createScheduleTriggerTestEnvironment } from './support/schedule-triggers.integration.support.js';
 

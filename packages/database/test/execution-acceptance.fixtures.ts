@@ -17,7 +17,7 @@ import {
   workflowRuns,
 } from '../src/schema.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
-import type { WorkspaceTransaction } from '../src/tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../src/tenant-access/transactions.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

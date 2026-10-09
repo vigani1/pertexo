@@ -21,7 +21,7 @@ import {
 } from './schedule-trigger-reads.js';
 import { refreshWorkflowActivation } from './workflow-triggers.js';
 import { canManageWorkflowTrigger } from './trigger-management-access.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
 
 const uuidSchema = z.uuid();
 const scheduleTriggerSchema = z

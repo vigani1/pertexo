@@ -14,7 +14,7 @@ import {
   CONNECTION_AUTH_TYPE,
   createConnectionDatabase,
 } from '../../src/connections/connections.js';
-import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
+import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/database.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { IdempotencyConflictError } from '../../src/platform/idempotency.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';

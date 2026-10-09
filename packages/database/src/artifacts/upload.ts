@@ -12,10 +12,10 @@ import {
   checkDatabaseReadiness,
   type DatabaseReadiness,
 } from '../platform/readiness.js';
-import { rolesForCapability } from '../tenant-access/workspace-policy.js';
+import { rolesForCapability } from '../tenant-access/policy.js';
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import type { ArtifactRecord } from './store.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
 import { artifactMetadataMatches } from './metadata-contract.js';
 
 import {

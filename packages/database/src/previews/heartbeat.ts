@@ -6,7 +6,7 @@ import {
   optionsFor,
   type PreviewAttemptLease,
 } from './contract.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
 
 export type PreviewHeartbeatResult = Readonly<{
   attemptLeaseExpiresAt: Date;

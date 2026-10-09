@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
-import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { IdempotencyRequestConflictError } from './acceptance.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
 

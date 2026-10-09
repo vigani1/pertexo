@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { rolesForCapability } from '../tenant-access/workspace-policy.js';
+import { rolesForCapability } from '../tenant-access/policy.js';
 import {
   ConnectionNotFoundError,
   uuidSchema,

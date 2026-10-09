@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { rolesForCapability } from '../tenant-access/workspace-policy.js';
+import { rolesForCapability } from '../tenant-access/policy.js';
 import { lockActiveTriggerWorkflow } from './workflow-trigger-activation.js';
 
 /** Configuration changes share actor authority and workflow-first lock order. */

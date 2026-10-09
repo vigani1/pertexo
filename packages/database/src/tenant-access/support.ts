@@ -5,7 +5,7 @@ import {
   IdentityConflictError,
   WorkspaceLifecycleConflictError,
   type IdentityConflictReason,
-} from './identity-workspace-errors.js';
+} from './errors.js';
 
 const uuidSchema = z.uuid();
 const IDENTITY_METADATA_MAX_BYTES = 8_192;

@@ -40,7 +40,7 @@ Inspect these existing seams before migration:
 - apps/api/src/identity/oidc.ts: login transaction and identity mapping.
 - apps/api/src/identity-infrastructure/oidc-adapter.ts: custom jose-based adapter.
 - apps/api/src/identity/session.ts and platform identity wiring.
-- packages/database/src/tenant-access/identity-workspace-identity-store.ts:
+- packages/database/src/tenant-access/users/identities.ts:
   issuer/subject mapping and transactional provisioning.
 - Migration 0008: unique lowercased user email; unknown same-email identities
   currently conflict, rather than linking.

@@ -4,8 +4,8 @@ import { z } from 'zod';
 import {
   withTenantScopedClient,
   withTenantScopedReadClient,
-} from '../tenant-access/workspace.js';
-import { SCHEDULE_TRIGGER_READ_ROLES } from '../tenant-access/workspace-policy.js';
+} from '../tenant-access/transactions.js';
+import { SCHEDULE_TRIGGER_READ_ROLES } from '../tenant-access/policy.js';
 import {
   MAX_SCHEDULE_PROJECTION,
   parsePersistedScheduleRecurrence,

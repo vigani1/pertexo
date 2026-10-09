@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import {
   acceptWorkflowRun,
   type AcceptWorkflowRunInput,

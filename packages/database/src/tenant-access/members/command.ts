@@ -5,12 +5,12 @@ import {
   claimCommand,
   completeCommand,
   type CommandIdentity,
-} from '../platform/idempotency.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { commandKeySchema } from './identity-command-primitives.js';
-import type { MembershipRole } from './identity-workspace-contracts.js';
-import { parseIdentityUuid } from './identity-workspace-support.js';
-import { withTenantScopedClient } from './workspace.js';
+} from '../../platform/idempotency.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { commandKeySchema } from '../command-keys.js';
+import type { MembershipRole } from '../contracts.js';
+import { parseIdentityUuid } from '../support.js';
+import { withTenantScopedClient } from '../transactions.js';
 
 /*
  * The shared half of the existing-member commands (ADR 037 role change,

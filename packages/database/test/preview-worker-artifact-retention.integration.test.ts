@@ -17,7 +17,7 @@ import { databaseSchema } from '../src/schema.js';
 import {
   parseWorkspaceId,
   withTenantScopedClient,
-} from '../src/tenant-access/workspace.js';
+} from '../src/tenant-access/transactions.js';
 import {
   acceptFixture,
   claimFixture,

@@ -12,7 +12,7 @@ import {
   operatorRunReplayRequests,
   operatorUnknownOutcomeEvidence,
 } from '../schema/operator.js';
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 
 /**
  * What a command did: its outcome, its stored result, whether it waits on a

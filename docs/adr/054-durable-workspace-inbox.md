@@ -383,7 +383,7 @@ evidence:
   [maintenance runtime](../../apps/worker/src/maintenance/runtime.ts) separately
   defaults provider delivery to 30 seconds and shutdown cleanup to five seconds.
   Neither proves the proposed capture budget or aggregate worker admission.
-- [Tenant transactions](../../packages/database/src/tenant-access/workspace.ts),
+- [Tenant transactions](../../packages/database/src/tenant-access/transactions.ts),
   `WorkspaceTransactionOptions`/`verifyTenantContext`, enforce scoped context and
   optional statement limits. [Operator transactions](../../packages/database/src/operator/operator-transaction.ts),
   `runOperatorTransaction`, own abortable checkout, cancellation disposal and

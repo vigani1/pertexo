@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-import { withPlatformTransaction } from '../tenant-access/workspace.js';
+import { withPlatformTransaction } from '../tenant-access/transactions.js';
 
 /** A schedule claim the scanner holds: the trigger and its lease. */
 type RetirableClaim = Readonly<{ trigger_id: string; lease_token: string }>;

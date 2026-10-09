@@ -11,7 +11,7 @@ import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-
 import {
   withPlatformTransaction,
   withTenantScopedClient,
-} from '../tenant-access/workspace.js';
+} from '../tenant-access/transactions.js';
 import { FailureNotificationStateError } from './errors.js';
 import { createFailureNotificationDestinationStore } from './destinations/store.js';
 import { createFailureNotificationCompletionStore } from './completion-store.js';

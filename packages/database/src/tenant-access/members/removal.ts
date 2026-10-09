@@ -4,17 +4,17 @@ import { z } from 'zod';
 import type {
   IdentityWorkspaceDatabase,
   RemoveWorkspaceMemberInput,
-} from './identity-workspace-contracts.js';
-import { WorkspaceMemberRemovalCommandConflictError } from './identity-workspace-errors.js';
-import { commandRevisionSchema } from './identity-command-primitives.js';
+} from '../contracts.js';
+import { WorkspaceMemberRemovalCommandConflictError } from '../errors.js';
+import { commandRevisionSchema } from '../command-keys.js';
 import {
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,
   updateMembership,
-} from './identity-workspace-member-command.js';
-import { revokeUserSessions } from './identity-workspace-session-store.js';
-import { canRemoveWorkspaceMember } from './workspace-policy.js';
+} from './command.js';
+import { revokeUserSessions } from '../users/sessions.js';
+import { canRemoveWorkspaceMember } from '../policy.js';
 
 type RemovalStore = Pick<IdentityWorkspaceDatabase, 'removeWorkspaceMember'>;
 

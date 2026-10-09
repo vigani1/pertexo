@@ -5,7 +5,7 @@ import {
   claimCommand,
   completeCommand,
   type CommandIdentity,
-} from '../platform/idempotency.js';
+} from '../../platform/idempotency.js';
 import type {
   CompleteInvitationAcceptanceInput,
   IdentityWorkspaceDatabase,
@@ -13,17 +13,17 @@ import type {
   InvitationAcceptanceResult,
   MembershipRole,
   ResolveInvitationAcceptanceInput,
-} from './identity-workspace-contracts.js';
-import { InvitationAcceptanceConflictError } from './identity-workspace-errors.js';
+} from '../contracts.js';
+import { InvitationAcceptanceConflictError } from '../errors.js';
 import {
   acceptanceReceiptSchema,
   recordAcceptedInvitation,
   replayedAcceptance,
-} from './identity-workspace-invitation-acceptance-receipts.js';
-import { expireWorkspaceInvitations } from './identity-workspace-invitation-expiration.js';
-import { replaceUserSessions } from './identity-workspace-session-store.js';
-import { parseIdentityUuid } from './identity-workspace-support.js';
-import { withTenantScopedClient } from './workspace.js';
+} from './acceptance-receipts.js';
+import { expireWorkspaceInvitations } from './expiration.js';
+import { replaceUserSessions } from '../users/sessions.js';
+import { parseIdentityUuid } from '../support.js';
+import { withTenantScopedClient } from '../transactions.js';
 
 type AcceptanceStore = Pick<
   IdentityWorkspaceDatabase,

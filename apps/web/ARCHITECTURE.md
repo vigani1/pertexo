@@ -2542,7 +2542,7 @@ exact-retry mutation and targeted query invalidation.
   mock Chromium journeys are not live OIDC or cross-browser evidence.
 
 **Existing evidence and ownership.** The canonical policy is
-`packages/database/src/tenant-access/workspace-policy.ts`: owner and admin have
+`packages/database/src/tenant-access/policy.ts`: owner and admin have
 `member:manage`, but only owner has `workspace:manage`. The current shared
 `WorkspaceMember` response has user identity, role, monotonic role revision,
 membership status and timestamps. Memberships use the composite workspace/user

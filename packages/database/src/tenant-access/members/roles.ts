@@ -5,17 +5,17 @@ import type {
   ChangeWorkspaceMemberRoleInput,
   IdentityWorkspaceDatabase,
   WorkspaceMemberRoleChangeResult,
-} from './identity-workspace-contracts.js';
-import { WorkspaceMemberRoleCommandConflictError } from './identity-workspace-errors.js';
-import { commandRevisionSchema } from './identity-command-primitives.js';
+} from '../contracts.js';
+import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
+import { commandRevisionSchema } from '../command-keys.js';
 import {
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,
   updateMembership,
-} from './identity-workspace-member-command.js';
-import { revokeUserSessions } from './identity-workspace-session-store.js';
-import { canChangeWorkspaceMemberRole } from './workspace-policy.js';
+} from './command.js';
+import { revokeUserSessions } from '../users/sessions.js';
+import { canChangeWorkspaceMemberRole } from '../policy.js';
 
 type RoleCommandStore = Pick<
   IdentityWorkspaceDatabase,

@@ -10,7 +10,7 @@ vi.mock('../src/platform/database-runtime.js', () => ({
   acquireDatabasePool: () => ({ close, pool: {} }),
 }));
 
-vi.mock('../src/tenant-access/workspace.js', () => ({
+vi.mock('../src/tenant-access/transactions.js', () => ({
   withTenantScopedClient: async (
     _pool: unknown,
     _scope: unknown,

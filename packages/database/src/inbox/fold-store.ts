@@ -5,7 +5,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../platform/database-runtime.js';
-import { withPlatformTransaction } from '../tenant-access/workspace.js';
+import { withPlatformTransaction } from '../tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../platform/readiness.js';
 
 /** A workspace whose inbox changed, with its newest thread revision. */

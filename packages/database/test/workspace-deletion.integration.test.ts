@@ -9,8 +9,8 @@ import {
 } from '../src/lifecycle/workspace-deletion.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { IdempotencyRequestConflictError } from '../src/runs/commands/acceptance.js';
-import { WorkspaceLifecycleConflictError } from '../src/tenant-access/identity-workspace-errors.js';
-import { withTenantScopedClient } from '../src/tenant-access/workspace.js';
+import { WorkspaceLifecycleConflictError } from '../src/tenant-access/errors.js';
+import { withTenantScopedClient } from '../src/tenant-access/transactions.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =
