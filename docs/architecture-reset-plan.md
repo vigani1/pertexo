@@ -309,9 +309,18 @@ now, as one ordered program — not "whenever we touch it".
           `database:schema:check` requires every migration table to be typed,
           and the schema-shape test checks owner, primary key, forced row
           security on workspace tables and private grants for every table.
-    - [ ] SQL functions: operator commands and fold/recover move to
-          TypeScript; claims, admission counters and the webhook lookup stay
-          in SQL with their reasons recorded.
+    - [x] Operator commands (outbox redispatch, attempt reconciliation,
+          due-work resume, run cancel, unknown-outcome evidence, trigger
+          reconciliation, run replay) run in TypeScript under the maintenance
+          role, reusing the run cancel, run event and outbox helpers; the
+          replay worker settles its own request and command. A command row
+          carries its workspace, so it is isolated and purged like other
+          workspace rows. Eleven functions and the result trigger go
+          (migration 0018), with the operator's own transaction runtime.
+    - [x] The SQL that stays is listed with its reason under *Database
+          design*. Left for the execution and API passes: the manual-start
+          writer fence (an authority check the API already makes), the
+          preview artifact retention trigger and the lifecycle time trigger.
     - [ ] Repository review.
   - [ ] execution
   - [ ] worker
@@ -433,6 +442,29 @@ payload, provider response). Inner layers trust typed values.
 - **What stays in SQL:** constraints (unique, foreign key, check), queue claiming
   (`FOR UPDATE SKIP LOCKED`), counters that must be atomic (run capacity),
   the checkpoint version check on save. Everything else moves to TypeScript.
+  The functions that remain, and why:
+  - *Cross-workspace claims, folds and recovery* (`claim_due_*`, the schedule
+    claim defer/fail/release, `fold_*`, `recover_due_*`): they pick work
+    across every workspace with `FOR UPDATE SKIP LOCKED` before any one
+    workspace is known.
+  - *Run admission and capacity* (`reserve`/`arm`/`rebind`/`release` of active
+    admissions, the eligibility and capacity checks, the workspace admission
+    locks and counter triggers): the counters must change atomically with the
+    rows they count, whichever writer touches them.
+  - *Artifact capacity and references* (the capacity triggers,
+    `lock_execution_artifact_references`): every writer that references or
+    removes an artifact keeps the per-workspace byte count and the reference
+    locks exact.
+  - *Public webhook lookup and ingress limit*: the endpoint is resolved from
+    its public key before its workspace is known, and the limit is an atomic
+    counter.
+  - *Guards over writers outside one code path*: the active-integration
+    triggers (eight writers in five areas, racing workspace deletion), the
+    session-revocation triggers (Better Auth writes users and sessions too),
+    the invitation replacement-claim lineage walk (shared by retention and
+    purge) and the inbox recipient check the row policies call.
+  - *Row locks on rows the app may not update* (`lock_workflow_run_replay_*`):
+    a `FOR SHARE` lock needs update rights the runtime role does not have.
 - **Removed:** database-stored feature switches (`*_rollout` tables), function
   definition fingerprint pinning, the raw-table registry, duplicate permission
   checks in SQL (the API authorizes once).
