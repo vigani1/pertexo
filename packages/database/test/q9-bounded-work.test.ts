@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 
+import { invocationKey } from '@pertexo/workflow-engine';
 import type { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { NODE_ATTEMPT_INPUT_LIMITS } from '../src/attempts/contract.js';
 import { loadNodeAttemptInputs } from '../src/attempts/inputs.js';
-import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
 
 const inline = (value: unknown) => ({
   schemaVersion: 1,
@@ -205,7 +205,7 @@ describe('Q9 bounded-work probes', () => {
           const nodeId = `upstream-${String(index)}`;
           return {
             nodeId,
-            invocationKey: encodeWorkflowInvocationKeyV2({
+            invocationKey: invocationKey({
               workflowVersionId,
               nodeId,
             }),

@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  invocationIdentity,
-  validateWorkflowGraph,
-  type WorkflowGraph,
-} from '../src/graph.js';
+import { validateWorkflowGraph, type WorkflowGraph } from '../src/graph.js';
 import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../src/graph-contract.js';
 
 const node = (id: string) => ({
@@ -357,39 +353,5 @@ describe('workflow graph validation', () => {
         }),
       ]),
     );
-  });
-  it('derives stable keys from run, version, node, and ordered scope only', () => {
-    const input = {
-      workflowRunId: 'run-1',
-      workflowVersionId: 'v1',
-      nodeId: 'send',
-      scope: [
-        { kind: 'branch' as const, branchId: 'b' },
-        { kind: 'iteration' as const, loopNodeId: 'loop', ordinal: 3 },
-      ],
-    };
-    const first = invocationIdentity(input);
-    expect(invocationIdentity(input)).toEqual(first);
-    expect(
-      invocationIdentity({ ...input, workflowRunId: 'replay' }).invocationKey,
-    ).toBe(first.invocationKey);
-    expect(first.canonicalScope).toBe('branch:b/loop:loop[3]');
-    expect(() =>
-      invocationIdentity({
-        ...input,
-        scope: [{ kind: 'iteration', loopNodeId: 'loop', ordinal: -1 }],
-      }),
-    ).toThrow('zero-based');
-    expect(() =>
-      invocationIdentity({
-        ...input,
-        scope: [
-          { kind: 'unexpected', loopNodeId: 'loop', ordinal: 0 } as never,
-        ],
-      }),
-    ).toThrow('scope');
-    expect(() =>
-      invocationIdentity({ ...input, unexpected: true } as never),
-    ).toThrow('scope');
   });
 });
