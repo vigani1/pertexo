@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
       ...baseConfig.resolve,
       alias: [
         {
-          find: '@/features/workflows/model/organization-feature-gates',
+          find: '@/features/workflows/model/organization/feature-gates',
           replacement: fileURLToPath(
             new URL(
               './e2e-live/support/workflow-organization-qualification-gates.ts',
