@@ -383,9 +383,6 @@ now, as one ordered program — not "whenever we touch it".
           support is grouped by what it supports. `transport/` splits into
           `outbox/` and `providers/`, `runtime/` into `health/` and
           `shutdown/`.
-    - [ ] One message format: queue jobs, outbox rows and run events drop
-          their `schemaVersion: 1`, and the outbox payload checksum goes
-          with the re-checks built on it.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration
@@ -440,7 +437,10 @@ now, as one ordered program — not "whenever we touch it".
         (`wf:v2:sha256:`, `wf-compat:v1:`, `trigger:v1:`, `email:v1:`) lose
         their versions with the check constraints that pin them, and the
         failure-notification `policy_version` (always 1) goes. The trigger
-        outcome fold loses its always-true `p_enforce` argument.
+        outcome fold loses its always-true `p_enforce` argument. The
+        `schemaVersion` fields in graphs, executables, checkpoints, run
+        events, queue jobs, outbox rows and portable manifests, and the
+        `serializeStoredExecutionValueV1` value format, go with them.
 
 **Package pass checklist** (every package, every file):
 1. Purpose: the package does one clear job; anything else moves to its owner.
