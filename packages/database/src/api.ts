@@ -249,8 +249,8 @@ export {
   WebhookWorkflowPausedError,
   createWebhookTriggerDatabase,
 } from './triggers/webhook-triggers.js';
+export type { InitialCheckpointFactory } from './runs/initial-checkpoint.js';
 export type {
-  WebhookCheckpointFactory,
   WebhookTriggerDatabase,
   WebhookVerificationReference,
 } from './triggers/webhook-triggers.js';

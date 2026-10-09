@@ -1,3 +1,4 @@
+import type { InitialCheckpointFactory } from '../runs/initial-checkpoint.js';
 import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
@@ -64,10 +65,6 @@ const sealedSchema = z
   })
   .strict();
 export type SealedWebhookTriggerSecret = Readonly<z.input<typeof sealedSchema>>;
-export type WebhookCheckpointFactory = (
-  projection: PublishedWorkflowV2Projection,
-  currentCompatibilityRelease: CompatibilityReleaseExpectation,
-) => Readonly<{ engineVersion: string; checkpoint: unknown }>;
 type Command = Readonly<{
   workspaceId: string;
   workflowId: string;
@@ -96,7 +93,7 @@ export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
   idempotencyKeyHash?: string;
   bodyBytes: number;
   payload: unknown;
-  checkpointFactory: WebhookCheckpointFactory;
+  checkpointFactory: InitialCheckpointFactory;
   traceparent?: string;
 }>;
 

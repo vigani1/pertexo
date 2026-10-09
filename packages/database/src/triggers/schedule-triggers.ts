@@ -9,7 +9,6 @@ export {
 export {
   createScheduleTriggerScanner,
   ScheduleClaimLostError,
-  type ScheduleCheckpointFactory,
   type ScanDueSchedulesResult,
   type ScheduleTriggerScanner,
 } from './schedule-trigger-scanner.js';

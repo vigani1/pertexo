@@ -1,3 +1,4 @@
+import type { InitialCheckpointFactory } from '../runs/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
@@ -20,10 +21,7 @@ import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
 } from '../runs/commands/acceptance.js';
-import {
-  classifyPublishedWorkflowVersionRow,
-  type PublishedWorkflowV2Projection,
-} from '../execution/published-workflow-reader.js';
+import { classifyPublishedWorkflowVersionRow } from '../execution/published-workflow-reader.js';
 import {
   scheduleOccurrenceDisposition,
   type ScheduleOccurrenceDisposition,
@@ -65,11 +63,6 @@ const claimSchema = z.object({
   observed_at: z.date(),
 });
 
-export type ScheduleCheckpointFactory = (
-  projection: PublishedWorkflowV2Projection,
-  currentCompatibilityRelease: CompatibilityReleaseExpectation,
-) => Readonly<{ engineVersion: string; checkpoint: unknown }>;
-
 export type ScanDueSchedulesResult = Readonly<{
   claimed: number;
   accepted: number;
@@ -90,7 +83,7 @@ export interface ScheduleTriggerScanner {
        * greatest due occurrence may be observed and still be admitted.
        */
       onTimeWindowSeconds: number;
-      checkpointFactory: ScheduleCheckpointFactory;
+      checkpointFactory: InitialCheckpointFactory;
       signal?: AbortSignal;
     }>,
   ): Promise<ScanDueSchedulesResult>;
@@ -194,7 +187,7 @@ async function admitScheduledRun(
   claim: ScheduleClaim,
   scheduledAt: Date,
   compatibilityReleases: CompatibilityReleaseExpectationSet,
-  checkpointFactory: ScheduleCheckpointFactory,
+  checkpointFactory: InitialCheckpointFactory,
 ): Promise<string> {
   const eligible = await transaction.db.execute<{ eligible: boolean }>(sql`
     select app.schedule_claim_is_eligible(
@@ -247,7 +240,7 @@ async function persistClaimedOccurrence(
   claim: ScheduleClaim,
   occurrence: ClaimedOccurrence,
   compatibilityReleases: CompatibilityReleaseExpectationSet,
-  checkpointFactory: ScheduleCheckpointFactory,
+  checkpointFactory: InitialCheckpointFactory,
 ): Promise<RecordedScheduleOccurrence> {
   const disposition: RecordedScheduleOccurrence =
     (await claimedScheduleWorkflowPaused(

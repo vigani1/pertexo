@@ -140,9 +140,9 @@ export type {
   PublishedWorkflowV2Projection,
 } from './execution/published-workflow-reader.js';
 export { createScheduleTriggerScanner } from './triggers/schedule-trigger-scanner.js';
+export type { InitialCheckpointFactory } from './runs/initial-checkpoint.js';
 export type {
   ScanDueSchedulesResult,
-  ScheduleCheckpointFactory,
   ScheduleTriggerScanner,
 } from './triggers/schedule-trigger-scanner.js';
 export {

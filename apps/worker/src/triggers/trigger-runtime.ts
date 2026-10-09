@@ -5,7 +5,7 @@ import {
   type DatabaseConfig,
   type DatabaseRuntime,
   type PublishedWorkflowReader,
-  type ScheduleCheckpointFactory,
+  type InitialCheckpointFactory,
   type ScheduleTriggerScanner,
   type WorkflowTriggerReconciliationDatabase,
 } from '@pertexo/database/execution';
@@ -34,7 +34,7 @@ import {
   createTriggerRuntimeTelemetry,
   type TriggerRuntimeTelemetry,
 } from './trigger-telemetry.js';
-import { createInitialCheckpoint } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/execution';
 import {
   closeTriggerDependencies,
   createTriggerRuntimeLifecycle,
@@ -79,7 +79,7 @@ const productionFactories: TriggerCompositionFactories = {
 };
 
 export type TriggerRuntimeDependencies = Readonly<{
-  checkpointFactory?: ScheduleCheckpointFactory;
+  checkpointFactory?: InitialCheckpointFactory;
   consumerFactory?: typeof createQueueConsumer;
   reader?: PublishedWorkflowReader;
   reconciliation?: WorkflowTriggerReconciliationDatabase;
@@ -128,13 +128,9 @@ export async function createTriggerRuntime(
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
     platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
   );
-  const checkpointFactory: ScheduleCheckpointFactory =
+  const checkpointFactory: InitialCheckpointFactory =
     dependencies.checkpointFactory ??
-    ((projection, currentCompatibilityRelease) =>
-      createInitialCheckpoint(
-        { ...projection, currentCompatibilityRelease },
-        { releaseSupport: releaseHistory },
-      ));
+    initialCheckpointFactory({ releaseSupport: releaseHistory });
   // Telemetry owns no closeable resources. Construct it before acquiring the
   // database and queue owners so constructor failure cannot strand them.
   const telemetry = dependencies.telemetry ?? factories.telemetry();

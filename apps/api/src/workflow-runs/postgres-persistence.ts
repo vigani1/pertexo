@@ -17,7 +17,7 @@ import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
 } from '@pertexo/node-catalog';
-import { createInitialCheckpoint } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/execution';
 import {
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
@@ -176,10 +176,6 @@ export function createPostgresWorkflowRunPersistence(
   });
 }
 
-type WorkflowRunCheckpointFactory = Parameters<
-  WorkflowRunDatabase['start']
->[0]['checkpointFactory'];
-
 type WorkflowRunAcceptanceResult = Awaited<
   ReturnType<WorkflowRunDatabase['start']>
 >;
@@ -197,11 +193,11 @@ async function executeAcceptance(
       'workflowId' in input
         ? await database.start({
             ...input,
-            checkpointFactory: createCheckpointFactory(releaseSupport),
+            checkpointFactory: initialCheckpointFactory({ releaseSupport }),
           })
         : await database.replay({
             ...input,
-            checkpointFactory: createCheckpointFactory(releaseSupport),
+            checkpointFactory: initialCheckpointFactory({ releaseSupport }),
           });
     if (!result.replayed)
       await publishHint(notifications, {
@@ -213,18 +209,6 @@ async function executeAcceptance(
   } catch (error: unknown) {
     return mapPersistenceError(error);
   }
-}
-
-function createCheckpointFactory(
-  releaseSupport: ReturnType<
-    typeof createExecutableCompatibilityReleaseHistory
-  >,
-): WorkflowRunCheckpointFactory {
-  return (projection, currentCompatibilityRelease) =>
-    createInitialCheckpoint(
-      { ...projection, currentCompatibilityRelease },
-      { releaseSupport },
-    );
 }
 
 async function publishHint(

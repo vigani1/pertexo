@@ -1,4 +1,7 @@
-import type { PublishedWorkflowV2Projection } from '@pertexo/database/execution';
+import type {
+  InitialCheckpointFactory,
+  PublishedWorkflowV2Projection,
+} from '@pertexo/database/execution';
 import {
   createCheckpoint,
   createCheckpointV2,
@@ -55,4 +58,15 @@ export function createInitialCheckpoint(
       nextEventSequence: 2,
     }),
   });
+}
+
+/** The factory every run start takes, bound to this release's support. */
+export function initialCheckpointFactory(
+  verification: PersistedWorkflowProjectionVerificationOptions,
+): InitialCheckpointFactory {
+  return (projection, currentCompatibilityRelease) =>
+    createInitialCheckpoint(
+      { ...projection, currentCompatibilityRelease },
+      verification,
+    );
 }

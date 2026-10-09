@@ -98,7 +98,14 @@ now, as one ordered program — not "whenever we touch it".
   - [x] One initial checkpoint for every way a run starts (manual, replay,
         webhook, schedule, operator replay): `createInitialCheckpoint` in
         execution replaces the API's and the worker's copies.
-  - [ ] Run actions (start, cancel, replay, manual start) and run reads.
+  - [x] Run storage lives in `database/src/runs`: `commands/` (acceptance,
+        manual start, replay, cancel), `queries/` (list, read, run data,
+        statistics, step history, usage capacity) and the run repository.
+        Every way a run starts takes one `InitialCheckpointFactory`, which
+        execution provides (`initialCheckpointFactory`). Start, replay and
+        cancel keep their transaction in the database and get the engine's
+        part from execution, the same seam as advancing: moving the
+        transactions themselves would make execution a pass-through.
   - [ ] Attempts (claim, heartbeat, decisions), previews, notifications,
         outbox; the database's checkpoint schema copy goes with the last user.
   - [ ] For Each overflow check.
