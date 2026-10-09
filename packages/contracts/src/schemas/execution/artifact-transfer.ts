@@ -72,9 +72,6 @@ export const artifactDownloadResponseSchema = z
   })
   .strict();
 
-export type ArtifactUploadRequest = z.output<
-  typeof artifactUploadRequestSchema
->;
 export type ArtifactMetadataResponse = z.output<
   typeof artifactMetadataResponseSchema
 >;

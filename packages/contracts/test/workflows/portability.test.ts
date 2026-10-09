@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import {
   workflowImportPreviewRequestSchema,
   workflowImportRequestSchema,
-  workflowPortableManifestSchema,
 } from '../../src/schemas/workflows/portability.js';
 import {
   workflowSummaryResponseSchema,

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { WorkflowImportPreviewResponse } from '@pertexo/contracts';
 import {
   portableGraphDigest,
   type WorkflowPortableManifest,
-  type WorkflowImportPreviewResponse,
-} from '@pertexo/contracts';
+} from '@pertexo/workflow-model';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   closeWorkflowLifecycleApiFixture,

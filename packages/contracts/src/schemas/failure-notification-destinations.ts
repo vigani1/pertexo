@@ -5,11 +5,8 @@ import {
   FailureNotificationDestinationConfigSchema,
 } from '@pertexo/workflow-model';
 
-export const failureNotificationDestinationKindSchema = z.enum([
-  'slack',
-  'email',
-]);
-export const failureNotificationDestinationStatusSchema = z.enum([
+const failureNotificationDestinationKindSchema = z.enum(['slack', 'email']);
+const failureNotificationDestinationStatusSchema = z.enum([
   'enabled',
   'disabled',
 ]);

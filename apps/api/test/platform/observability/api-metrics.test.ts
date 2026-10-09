@@ -110,7 +110,7 @@ describe('API metrics', () => {
     ],
     ['input exclusion', 400, 'request.invalid', 'excluded_client'],
     ['tenant quota', 429, 'workspace.quota_exceeded', 'excluded_tenant_quota'],
-    ['generic backpressure', 429, 'provider.rate_limited', 'eligible_failure'],
+    ['generic backpressure', 429, 'request.rate_limited', 'eligible_failure'],
     [
       'correctness failure',
       409,

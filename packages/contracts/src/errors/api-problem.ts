@@ -66,7 +66,6 @@ export const API_PROBLEM_CODES = [
   'connection.conflict',
   'connection.reauthorization_required',
   'connection.revoked',
-  'provider.rate_limited',
   'provider.unavailable',
   'webhook.authentication_failed',
   'webhook.payload_too_large',
@@ -383,12 +382,6 @@ const apiProblemDetails = {
     severity: 'info',
     exposeDetail: true,
   },
-  'provider.rate_limited': {
-    status: 429,
-    title: 'Provider rate limit reached',
-    severity: 'warn',
-    exposeDetail: true,
-  },
   'provider.unavailable': {
     status: 503,
     title: 'Provider unavailable',
@@ -460,8 +453,6 @@ const apiProblemDetails = {
   }>
 >;
 
-export type ApplicationErrorCode = ApiProblemCode;
-
 export const API_PROBLEM_MANIFEST = Object.freeze(
   Object.fromEntries(
     Object.entries(apiProblemDetails).map(([code, entry]) => [
@@ -476,6 +467,3 @@ export const API_PROBLEM_MANIFEST = Object.freeze(
   [Code in ApiProblemCode]: (typeof apiProblemDetails)[Code] &
     Readonly<{ type: `urn:pertexo:problem:${Code}` }>;
 }>;
-
-export type ApiProblemManifestEntry =
-  (typeof API_PROBLEM_MANIFEST)[ApiProblemCode];

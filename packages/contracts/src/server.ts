@@ -1,9 +1,6 @@
 // OpenAPI documents and client contracts, projected from the schemas when
 // imported. The API serves them and `contracts:generate` writes them out.
-export {
-  artifactTransferClientContract,
-  artifactTransferOpenApiDocument,
-} from './openapi/execution/artifact-transfer.js';
+export { artifactTransferOpenApiDocument } from './openapi/execution/artifact-transfer.js';
 export { CONTRACT_ARTIFACTS } from './openapi/generated-artifacts.js';
 export {
   catalogClientContract,

@@ -4,13 +4,13 @@ import {
   workflowImportPreviewResponseSchema,
   workflowImportRequestSchema,
   workflowImportResponseSchema,
-  workflowPortableManifestSchema,
   type WorkflowExportRequest,
   type WorkflowImportPreviewRequest,
   type WorkflowImportRequest,
   strongEtagSchema,
   workflowDraftResponseSchema,
 } from '@pertexo/contracts';
+import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
 import type { ApiClient } from '@/lib/api/client';
 

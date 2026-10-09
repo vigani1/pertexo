@@ -14,7 +14,7 @@ export const catalogLimitsV1 = Object.freeze({
   schemaProperties: 10_000,
 });
 
-export const catalogDefinitionIdentitySchema = z
+const catalogDefinitionIdentitySchema = z
   .object({ key: identityKey, version: z.number().int().positive() })
   .strict()
   .readonly();
@@ -84,7 +84,7 @@ export const nodeDefinitionListResponseSchema = z
   .strict()
   .readonly();
 
-export const integrationCatalogItemSchema = z
+const integrationCatalogItemSchema = z
   .object({
     providerKey: identityKey,
     operationKey: identityKey,
@@ -110,9 +110,6 @@ export type NodeDefinitionCatalogItem = z.output<
 >;
 export type NodeDefinitionListResponse = z.output<
   typeof nodeDefinitionListResponseSchema
->;
-export type IntegrationCatalogItem = z.output<
-  typeof integrationCatalogItemSchema
 >;
 export type IntegrationListResponse = z.output<
   typeof integrationListResponseSchema

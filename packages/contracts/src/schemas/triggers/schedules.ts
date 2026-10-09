@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const scheduleTriggerStatusSchema = z.enum([
+const scheduleTriggerStatusSchema = z.enum([
   'desired',
   'configuration_required',
   'pending',
@@ -9,13 +9,13 @@ export const scheduleTriggerStatusSchema = z.enum([
   'disabled',
   'error',
 ]);
-export const scheduleTriggerHealthStatusSchema = z.enum([
+const scheduleTriggerHealthStatusSchema = z.enum([
   'healthy',
   'degraded',
   'unhealthy',
   'disabled',
 ]);
-export const scheduleRecurrenceSummarySchema = z.discriminatedUnion('kind', [
+const scheduleRecurrenceSummarySchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('cron'),
@@ -59,7 +59,7 @@ export const scheduleManagementCommandResponseSchema = z
  * ADR 048: what one recorded occurrence did, in the scanner's own terms. ADR 056
  * adds `paused`: recorded without a run while the workflow's triggers are paused.
  */
-export const scheduleOccurrenceOutcomeSchema = z.enum([
+const scheduleOccurrenceOutcomeSchema = z.enum([
   'accepted',
   'skipped',
   'paused',

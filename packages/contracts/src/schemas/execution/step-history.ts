@@ -3,7 +3,7 @@ import { z } from 'zod';
 // A step's record across its workflow's last 100 runs (ADR 051).
 
 /** How many of a workflow's newest runs step history looks at. */
-export const STEP_HISTORY_RUN_WINDOW = 100;
+const STEP_HISTORY_RUN_WINDOW = 100;
 
 const stepIdentifierSchema = z.string().min(1).max(256);
 const countSchema = z.number().int().nonnegative();

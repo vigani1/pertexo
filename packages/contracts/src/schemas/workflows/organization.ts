@@ -45,7 +45,7 @@ export const workflowTagParamsSchema = workflowTagWorkspaceParamsSchema.extend({
   tagId: commandIdentifierSchema,
 });
 /** Opaque UUID-page continuation; scope and purpose are server checks. */
-export const workflowOrganizationPageCursorSchema = z
+const workflowOrganizationPageCursorSchema = z
   .string()
   .min(1)
   .max(512)
@@ -124,7 +124,7 @@ export const workflowTagListResponseSchema = z
     nextCursor: workflowOrganizationPageCursorSchema.nullable(),
   })
   .strict();
-export const workflowTagAssignmentSchema = z
+const workflowTagAssignmentSchema = z
   .object({
     workflowId: canonicalIdentifierSchema,
     organizationRevision: workflowOrganizationRevisionSchema,
@@ -172,7 +172,7 @@ export const workflowTagCleanupDetachRequestSchema = z
   })
   .strict();
 
-export const workflowTagCleanupConflictCodeSchema = z.enum([
+const workflowTagCleanupConflictCodeSchema = z.enum([
   'workflow.organization_revision_conflict',
   'request.idempotency_conflict',
   'workflow.lifecycle_conflict',
@@ -272,20 +272,8 @@ export const workflowOrganizationViewSchema = z.enum([
 ]);
 
 export type WorkflowTag = z.output<typeof workflowTagSchema>;
-export type WorkflowOrganization = z.output<typeof workflowOrganizationSchema>;
-export type WorkflowFavoriteRequest = z.output<
-  typeof workflowFavoriteRequestSchema
->;
 export type WorkflowTagReplaceRequest = z.output<
   typeof workflowTagReplaceRequestSchema
->;
-export type WorkflowTagWorkspaceParams = z.output<
-  typeof workflowTagWorkspaceParamsSchema
->;
-export type WorkflowTagParams = z.output<typeof workflowTagParamsSchema>;
-export type WorkflowTagListQuery = z.output<typeof workflowTagListQuerySchema>;
-export type WorkflowTagAssignmentsQuery = z.output<
-  typeof workflowTagAssignmentsQuerySchema
 >;
 export type WorkflowTagCreateRequest = z.output<
   typeof workflowTagCreateRequestSchema
@@ -296,30 +284,6 @@ export type WorkflowTagRenameRequest = z.output<
 export type WorkflowTagDeleteRequest = z.output<
   typeof workflowTagDeleteRequestSchema
 >;
-export type WorkflowTagListResponse = z.output<
-  typeof workflowTagListResponseSchema
->;
-export type WorkflowTagAssignmentsResponse = z.output<
-  typeof workflowTagAssignmentsResponseSchema
->;
-export type WorkflowTagCreateResponse = z.output<
-  typeof workflowTagCreateResponseSchema
->;
-export type WorkflowTagRenameResponse = z.output<
-  typeof workflowTagRenameResponseSchema
->;
-export type WorkflowTagDeleteResponse = z.output<
-  typeof workflowTagDeleteResponseSchema
->;
-export type WorkflowTagReplaceResponse = z.output<
-  typeof workflowTagReplaceResponseSchema
->;
 export type WorkflowTagCleanupDetachRequest = z.output<
   typeof workflowTagCleanupDetachRequestSchema
->;
-export type WorkflowTagCleanupDetachResponse = z.output<
-  typeof workflowTagCleanupDetachResponseSchema
->;
-export type WorkflowTagCleanupItemOutcome = z.output<
-  typeof workflowTagCleanupItemOutcomeSchema
 >;

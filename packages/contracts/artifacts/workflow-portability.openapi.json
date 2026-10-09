@@ -437,7 +437,6 @@
               "connection.conflict",
               "connection.reauthorization_required",
               "connection.revoked",
-              "provider.rate_limited",
               "provider.unavailable",
               "webhook.authentication_failed",
               "webhook.payload_too_large",

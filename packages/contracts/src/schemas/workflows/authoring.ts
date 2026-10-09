@@ -51,16 +51,9 @@ export const workflowVersionRestoreParamsSchema = z
   })
   .strict();
 export const workflowVersionRestoreRequestSchema = z.object({}).strict();
-export const workflowNodeIdParamSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    workflowId: workflowIdentifierSchema,
-    nodeId: z.string().min(1).max(256),
-  })
-  .strict();
-export const workflowCursorSchema = z.string().min(1).max(512);
-export const workflowPageLimitSchema = z.coerce.number().int().min(1).max(100);
-export const workflowListOrderSchema = z.enum(['created_asc', 'updated_desc']);
+const workflowCursorSchema = z.string().min(1).max(512);
+const workflowPageLimitSchema = z.coerce.number().int().min(1).max(100);
+const workflowListOrderSchema = z.enum(['created_asc', 'updated_desc']);
 export const workflowNameSchema = z.string().trim().min(1).max(128);
 
 const positiveVersionSchema = z.number().int().positive();
@@ -73,7 +66,7 @@ export const workflowCreateRequestSchema = z
   .object({ name: workflowNameSchema })
   .strict();
 
-export const workflowDuplicateSourceSchema = z.discriminatedUnion('kind', [
+const workflowDuplicateSourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('draft') }).strict(),
   z
     .object({ kind: z.literal('version'), versionId: workflowIdentifierSchema })
@@ -93,7 +86,7 @@ export type WorkflowDuplicateResponse = z.output<
 >;
 
 export { workflowActivationStatusSchema, workflowLifecycleStatusSchema };
-export const workflowCompatibilityIssueSchema = z
+const workflowCompatibilityIssueSchema = z
   .object({
     code: z.literal('unknown_definition'),
     definitionKey: z.string().min(1).max(256),
@@ -279,12 +272,6 @@ export const workflowOrganizationListResponseSchema = z
     nextCursor: workflowCursorSchema.nullable(),
   })
   .strict();
-export type WorkflowOrganizationListQuery = z.output<
-  typeof workflowOrganizationListQuerySchema
->;
-export type WorkflowOrganizationListResponse = z.output<
-  typeof workflowOrganizationListResponseSchema
->;
 export type WorkflowOrganizationProjectionResponse = z.output<
   typeof workflowOrganizationProjectionResponseSchema
 >;
@@ -314,9 +301,6 @@ export const workflowNameConflictProblemSchema = createApiProblemSchema({
 });
 export type WorkflowLifecycleResponse = z.output<
   typeof workflowLifecycleResponseSchema
->;
-export type WorkflowRenameRequest = z.output<
-  typeof workflowRenameRequestSchema
 >;
 export type WorkflowRenameResponse = z.output<
   typeof workflowRenameResponseSchema

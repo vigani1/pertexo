@@ -261,7 +261,7 @@ export const usageCapacityResponseSchema = z
 export type UsageCapacityResponse = z.infer<typeof usageCapacityResponseSchema>;
 
 /** One exact count per run status. */
-export const workflowRunStatusCountsSchema = z
+const workflowRunStatusCountsSchema = z
   .object({
     queued: workflowRunCountSchema,
     running: workflowRunCountSchema,
@@ -275,11 +275,11 @@ export const workflowRunStatusCountsSchema = z
   .strict();
 
 /** Runs that are not finished yet, whenever they were created. */
-export const workflowRunCurrentCountsSchema = workflowRunStatusCountsSchema
+const workflowRunCurrentCountsSchema = workflowRunStatusCountsSchema
   .pick({ queued: true, running: true, waiting: true })
   .strict();
 
-export const workflowRunWorkflowStatisticsSchema = z
+const workflowRunWorkflowStatisticsSchema = z
   .object({
     workflowId: z.uuid(),
     workflowName: workflowNameSchema.nullable().optional(),
@@ -369,7 +369,7 @@ export const workflowRunCancelResponseSchema = z
   .object({ run: workflowRunSummarySchema, alreadyRequested: z.boolean() })
   .strict();
 
-export const workflowRunEventTypeSchema = z.enum([
+const workflowRunEventTypeSchema = z.enum([
   'run.queued',
   'run.started',
   'run.waiting',
@@ -391,7 +391,7 @@ export const workflowRunEventTypeSchema = z.enum([
   'node.timed_out',
   'node.outcome_unknown',
 ]);
-export const workflowRunOutputReferenceSchema = z.discriminatedUnion('kind', [
+const workflowRunOutputReferenceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('inline'), attemptId: z.uuid() }).strict(),
   z.object({ kind: z.literal('artifact'), artifactId: z.uuid() }).strict(),
 ]);
@@ -453,9 +453,6 @@ export type WorkflowRunStatisticsWindow = z.output<
 export type WorkflowRunStatisticsQuery = z.output<
   typeof workflowRunStatisticsQuerySchema
 >;
-export type WorkflowRunStatusCounts = z.output<
-  typeof workflowRunStatusCountsSchema
->;
 export type WorkflowRunStatisticsResponse = z.output<
   typeof workflowRunStatisticsResponseSchema
 >;
@@ -465,9 +462,6 @@ export type WorkflowNodeRunSummary = z.output<
 export type WorkflowRunEvent = z.output<typeof workflowRunEventSchema>;
 export type WorkflowRunStartResponse = z.output<
   typeof workflowRunStartResponseSchema
->;
-export type WorkflowRunReplayRequest = z.output<
-  typeof workflowRunReplayRequestSchema
 >;
 export type WorkflowRunResponse = z.output<typeof workflowRunResponseSchema>;
 export type WorkflowRunCancelResponse = z.output<

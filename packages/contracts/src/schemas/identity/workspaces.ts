@@ -16,7 +16,7 @@ export const workspaceCreateRequestSchema = z
       .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u),
   })
   .strict();
-export const workspaceRevisionSchema = z.number().int().positive();
+const workspaceRevisionSchema = z.number().int().positive();
 export const workspaceRenameRequestSchema = z
   .object({
     name: z.string().trim().min(1).max(128),
@@ -61,7 +61,7 @@ export const workspaceResponseSchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
-export const userProfileRevisionSchema = z.number().int().positive();
+const userProfileRevisionSchema = z.number().int().positive();
 export const userProfileResponseSchema = z
   .object({
     id: z.uuid(),
@@ -94,16 +94,14 @@ export const userProfileUpdateResponseSchema = z
     replayed: z.boolean(),
   })
   .strict();
-export const workspaceRoleSchema = z.enum([
+const workspaceRoleSchema = z.enum([
   'owner',
   'admin',
   'builder',
   'operator',
   'viewer',
 ]);
-export const delegatedWorkspaceRoleSchema = workspaceRoleSchema.exclude([
-  'owner',
-]);
+const delegatedWorkspaceRoleSchema = workspaceRoleSchema.exclude(['owner']);
 export const workspaceMemberSchema = z
   .object({
     userId: z.uuid(),
@@ -142,13 +140,13 @@ export const workspaceMemberRemovalResponseSchema = z
     replayed: z.boolean(),
   })
   .strict();
-export const workspaceInvitationStatusSchema = z.enum([
+const workspaceInvitationStatusSchema = z.enum([
   'pending',
   'accepted',
   'revoked',
   'expired',
 ]);
-export const workspaceInvitationDeliveryStatusSchema = z.enum([
+const workspaceInvitationDeliveryStatusSchema = z.enum([
   'queued',
   'submitted',
   'failed',
@@ -287,7 +285,7 @@ export const accessibleWorkspacesQuerySchema = z
     after: workspaceIdentifierSchema.optional(),
   })
   .strict();
-export const workspaceCapabilitySchema = z.enum([
+const workspaceCapabilitySchema = z.enum([
   'workspace:read',
   'workspace:manage',
   'artifact:read',
@@ -350,46 +348,22 @@ export type WorkspaceRenameResponse = z.output<
   typeof workspaceRenameResponseSchema
 >;
 export type UserProfileResponse = z.output<typeof userProfileResponseSchema>;
-export type UserProfileUpdateRequest = z.input<
-  typeof userProfileUpdateRequestSchema
->;
 export type UserProfileUpdateResponse = z.output<
   typeof userProfileUpdateResponseSchema
 >;
 export type WorkspaceMember = z.output<typeof workspaceMemberSchema>;
-export type WorkspaceMemberRoleChangeRequest = z.input<
-  typeof workspaceMemberRoleChangeRequestSchema
->;
 export type WorkspaceMemberRoleChangeResponse = z.output<
   typeof workspaceMemberRoleChangeResponseSchema
->;
-export type WorkspaceMemberRemovalRequest = z.input<
-  typeof workspaceMemberRemovalRequestSchema
 >;
 export type WorkspaceMemberRemovalResponse = z.output<
   typeof workspaceMemberRemovalResponseSchema
 >;
 export type WorkspaceInvitation = z.output<typeof workspaceInvitationSchema>;
-export type WorkspaceInvitationCreateRequest = z.input<
-  typeof workspaceInvitationCreateRequestSchema
->;
 export type WorkspaceInvitationCommandResponse = z.output<
   typeof workspaceInvitationCommandResponseSchema
 >;
-export type WorkspaceInvitationCommandRequest = z.input<
-  typeof workspaceInvitationCommandRequestSchema
->;
 export type WorkspaceInvitationsResponse = z.output<
   typeof workspaceInvitationsResponseSchema
->;
-export type WorkspaceInvitationsQuery = z.input<
-  typeof workspaceInvitationsQuerySchema
->;
-export type InvitationAcceptanceResolveRequest = z.input<
-  typeof invitationAcceptanceResolveRequestSchema
->;
-export type InvitationAcceptanceCompleteRequest = z.input<
-  typeof invitationAcceptanceCompleteRequestSchema
 >;
 export type InvitationAcceptanceJourney = z.output<
   typeof invitationAcceptanceJourneySchema

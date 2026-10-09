@@ -8,14 +8,16 @@ import {
   failureNotificationDestinationListResponseSchema,
   scheduleTriggerListResponseSchema,
   workflowListResponseSchema,
-  workflowPortableManifestSchema,
   workflowImportPreviewResponseSchema,
-  parsePortableJson,
-  portableGraphDigest,
   workflowRunResponseSchema,
   webhookTriggerListResponseSchema,
   workspaceInboxListResponseSchema,
 } from '@pertexo/contracts';
+import {
+  workflowPortableManifestSchema,
+  parsePortableJson,
+  portableGraphDigest,
+} from '@pertexo/workflow-model';
 
 export const browserContractConsumer = Object.freeze({
   artifact: artifactMetadataResponseSchema,

@@ -3,14 +3,14 @@ import { z } from 'zod';
 import { workflowRunFailedStepSchema } from '../execution/runs.js';
 
 /** ADR 055: one notice per failing workflow, never run inputs or errors. */
-export const workspaceInboxFailureKindSchema = z.enum([
+const workspaceInboxFailureKindSchema = z.enum([
   'failed',
   'timed_out',
   'outcome_unknown',
 ]);
-export const workspaceInboxTimestampSchema = z.iso.datetime({ precision: 6 });
+const workspaceInboxTimestampSchema = z.iso.datetime({ precision: 6 });
 /** PostgreSQL bigint revisions stay decimal strings across the wire. */
-export const workspaceInboxRevisionSchema = z
+const workspaceInboxRevisionSchema = z
   .string()
   .regex(/^(?:0|[1-9][0-9]{0,18})$/u);
 export const workspaceInboxCursorSchema = z.string().min(1).max(1_024);
@@ -91,30 +91,18 @@ export const workspaceInboxStreamEventSchema = z
 
 export type WorkspaceInboxFilter = z.infer<typeof workspaceInboxFilterSchema>;
 export type WorkspaceInboxThread = z.infer<typeof workspaceInboxThreadSchema>;
-export type WorkspaceInboxListQuery = z.infer<
-  typeof workspaceInboxListQuerySchema
->;
 export type WorkspaceInboxListResponse = z.infer<
   typeof workspaceInboxListResponseSchema
 >;
 export type WorkspaceInboxSummaryResponse = z.infer<
   typeof workspaceInboxSummaryResponseSchema
 >;
-export type WorkspaceInboxReadRequest = z.infer<
-  typeof workspaceInboxReadRequestSchema
->;
 export type WorkspaceInboxReadResponse = z.infer<
   typeof workspaceInboxReadResponseSchema
->;
-export type WorkspaceInboxReadAllRequest = z.infer<
-  typeof workspaceInboxReadAllRequestSchema
 >;
 export type WorkspaceInboxReadAllResponse = z.infer<
   typeof workspaceInboxReadAllResponseSchema
 >;
 export type WorkspaceInboxStreamEventName = z.infer<
   typeof workspaceInboxStreamEventNameSchema
->;
-export type WorkspaceInboxStreamEvent = z.infer<
-  typeof workspaceInboxStreamEventSchema
 >;

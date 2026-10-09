@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
-  PortableConnectionBinding,
-  PortableConnectionSlot,
   WorkflowImportPreviewResponse,
 } from '@pertexo/contracts';
+import type {
+  PortableConnectionBinding,
+  PortableConnectionSlot,
+} from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
