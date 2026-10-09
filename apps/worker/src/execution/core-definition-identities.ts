@@ -1,9 +1,3 @@
-import {
-  createCheckpoint,
-  createCheckpointV2,
-  type CompiledWorkflowExecutableV2,
-} from '@pertexo/workflow-engine';
-
 type DefinitionIdentity = Readonly<{ key: string; version: number }>;
 
 export function isWorkerCoreMergeDefinition(
@@ -26,35 +20,4 @@ export function isWorkerCoreParallelDefinition(
       definition.version === 2 ||
       definition.version === 3)
   );
-}
-
-function requiresStructuredCheckpoint(definition: DefinitionIdentity): boolean {
-  return (
-    (definition.version === 1 &&
-      (definition.key === 'core.condition' ||
-        definition.key === 'core.switch' ||
-        definition.key === 'core.foreach')) ||
-    isWorkerCoreParallelDefinition(definition)
-  );
-}
-
-export function createWorkerInitialCheckpoint(
-  executable: CompiledWorkflowExecutableV2,
-  workflowVersionId: string,
-) {
-  const engineVersion = 'phase3-engine-v1';
-  const checkpointFactory = executable.envelope.graph.nodes.some(
-    ({ definition }) => requiresStructuredCheckpoint(definition),
-  )
-    ? createCheckpointV2
-    : createCheckpoint;
-  return Object.freeze({
-    engineVersion,
-    checkpoint: checkpointFactory({
-      engineVersion,
-      workflowVersionId,
-      iterationBudget: 1_000,
-      nextEventSequence: 2,
-    }),
-  });
 }

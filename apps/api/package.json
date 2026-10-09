@@ -20,6 +20,7 @@
     "@pertexo/artifact-store": "workspace:*",
     "@pertexo/contracts": "workspace:*",
     "@pertexo/database": "workspace:*",
+    "@pertexo/execution": "workspace:*",
     "@pertexo/integrations": "workspace:*",
     "@pertexo/node-catalog": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",

@@ -223,14 +223,7 @@ async function createProductionNodeAttemptRuntime(
       composeExecutableCompatibilityRelease,
     ),
   );
-  const firstDescription = releaseSupport.descriptions[0];
   const latestNodeRelease = platformServingRegistryRelease();
-  if (firstDescription === undefined)
-    throw new Error('Core compatibility release support is empty');
-  const firstRelease = releaseSupport.resolve(
-    firstDescription.epoch,
-    firstDescription.fingerprint,
-  );
   const expressionEvaluator =
     dependencies.engine === undefined ? new JsonataEvaluator() : undefined;
   own(
@@ -238,7 +231,6 @@ async function createProductionNodeAttemptRuntime(
     expressionEvaluator?.shutdown.bind(expressionEvaluator),
   );
   const engineOptions: NodeAttemptExecutionEngineOptions = {
-    admissionRelease: firstRelease,
     releaseSupport,
     ...(expressionEvaluator === undefined ? {} : { expressionEvaluator }),
   };
