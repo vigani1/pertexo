@@ -1,5 +1,4 @@
 import {
-  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
   type NodeExecutorRegistration,
@@ -18,9 +17,7 @@ import {
 import type { ResendApiResult, ResendClient } from './client.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 import {
-  EMAIL_SEND_NOTIFICATION_DEFINITION,
   EMAIL_SEND_NOTIFICATION_EXECUTOR,
-  EMAIL_SEND_NOTIFICATION_POLICY,
   RESEND_API_KEY_CONNECTION_SLOT,
 } from './definition.js';
 import {
@@ -293,10 +290,7 @@ export function createEmailSendNotificationExecutorRegistration(
   dependencies: EmailSendNotificationExecutorDependencies,
 ): NodeExecutorRegistration {
   return Object.freeze({
-    abiVersion: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
-    definitions: Object.freeze([EMAIL_SEND_NOTIFICATION_DEFINITION]),
     executor: EMAIL_SEND_NOTIFICATION_EXECUTOR,
-    policyReferences: Object.freeze([EMAIL_SEND_NOTIFICATION_POLICY]),
     execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
       (dependencies.telemetry ?? NOOP_TELEMETRY).measure(() =>
         execute(dependencies, invocation),

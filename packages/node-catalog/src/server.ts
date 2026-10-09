@@ -22,7 +22,6 @@ import {
 import { PLATFORM_NODE_CATALOG } from './registry.js';
 import {
   createNodeRegistry,
-  bindNodeCatalog,
   type NodeExecutorRegistration,
   type NodeRegistry,
 } from '@pertexo/node-sdk/server';
@@ -73,11 +72,9 @@ export function createPlatformNodeRegistry(
         : { telemetry: dependencies.emailSendNotificationTelemetry }),
     }),
   ];
-  return createNodeRegistry(
-    bindNodeCatalog({
-      catalog: PLATFORM_NODE_CATALOG,
-      definitions: PLATFORM_NODE_DEFINITION_REGISTRATIONS,
-      executors,
-    }),
-  );
+  return createNodeRegistry({
+    catalog: PLATFORM_NODE_CATALOG,
+    definitions: PLATFORM_NODE_DEFINITION_REGISTRATIONS,
+    executors,
+  });
 }

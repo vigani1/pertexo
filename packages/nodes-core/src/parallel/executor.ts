@@ -3,18 +3,11 @@ import type {
   NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
 
-import { CORE_BOUNDED_JSON_POLICY } from '../policies.js';
-import {
-  CORE_PARALLEL_DEFINITION,
-  CORE_PARALLEL_EXECUTOR,
-} from './definition.js';
+import { CORE_PARALLEL_EXECUTOR } from './definition.js';
 import type { CoreParallelConfig } from './validation.js';
 
 export const coreParallelExecutor: NodeExecutorRegistration = Object.freeze({
-  abiVersion: 1,
-  definitions: Object.freeze([CORE_PARALLEL_DEFINITION]),
   executor: CORE_PARALLEL_EXECUTOR,
-  policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) => {
     const config = invocation.config as CoreParallelConfig;
     return Promise.resolve({

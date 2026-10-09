@@ -4,7 +4,6 @@ import type {
   DefinitionIdentity,
   ExecutorIdentity,
   NodeManifest,
-  PolicyReference,
   NodeCatalog,
 } from './catalog.js';
 export type JsonValue =
@@ -115,11 +114,9 @@ export interface NodeExecutionRuntime {
   ): Promise<void>;
 }
 
+/** The implementation of a catalog executor; the catalog owns its metadata. */
 export interface NodeExecutorRegistration {
-  readonly abiVersion: number;
-  readonly definitions: readonly DefinitionIdentity[];
   readonly executor: ExecutorIdentity;
-  readonly policyReferences: readonly PolicyReference[];
   readonly execute: (
     invocation: NodeExecutionInvocation<unknown, unknown>,
   ) => Promise<unknown>;

@@ -1,5 +1,4 @@
 import {
-  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
   type NodeExecutorRegistration,
@@ -19,9 +18,7 @@ import type { SlackApiResult, SlackClient } from './client.js';
 import { classifySlackConnectionHealth } from './connection-health.js';
 import {
   SLACK_BOT_TOKEN_CONNECTION_SLOT,
-  SLACK_SEND_MESSAGE_DEFINITION,
   SLACK_SEND_MESSAGE_EXECUTOR,
-  SLACK_SEND_MESSAGE_POLICY,
 } from './definition.js';
 import {
   resolvedSlackBotTokenCredentialSchema,
@@ -283,10 +280,7 @@ export function createSlackSendMessageExecutorRegistration(
   dependencies: SlackSendMessageExecutorDependencies,
 ): NodeExecutorRegistration {
   return Object.freeze({
-    abiVersion: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
-    definitions: Object.freeze([SLACK_SEND_MESSAGE_DEFINITION]),
     executor: SLACK_SEND_MESSAGE_EXECUTOR,
-    policyReferences: Object.freeze([SLACK_SEND_MESSAGE_POLICY]),
     execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
       (dependencies.telemetry ?? NOOP_TELEMETRY).measure(() =>
         execute(dependencies, invocation),

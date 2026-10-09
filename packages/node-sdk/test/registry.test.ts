@@ -30,7 +30,6 @@ import {
   NODE_EXECUTION_LIMITS_V1,
   canonicalizeBoundedJson,
   createNodeRegistry,
-  bindNodeCatalog,
   type NodeExecutorRegistration,
   type NodeConnectionHealthObservation,
 } from '../src/server.js';
@@ -76,10 +75,7 @@ const manifest: NodeManifest = Object.freeze({
 const executorRegistration = (
   identity: ExecutorIdentity = executor,
 ): NodeExecutorRegistration => ({
-  abiVersion: 1,
-  definitions: Object.freeze([definition]),
   executor: identity,
-  policyReferences: Object.freeze([policy]),
   execute: () => Promise.resolve({}),
 });
 
@@ -153,7 +149,6 @@ function dispatchAwareFixture(beforeDispatch = vi.fn(() => Promise.resolve())) {
       executors: [
         {
           ...executorRegistration(),
-          abiVersion: 2,
           execute,
         },
       ],
@@ -163,38 +158,6 @@ function dispatchAwareFixture(beforeDispatch = vi.fn(() => Promise.resolve())) {
 }
 
 describe('node-sdk catalog contracts', () => {
-  it('binds catalog metadata without replacing runtime schemas or execution', async () => {
-    const selected = catalog();
-    const registration = {
-      manifest: { ...manifest, lifecycle: 'deprecated' as const },
-      configSchema,
-      inputSchema: objectSchema,
-      outputSchema: objectSchema,
-    };
-    const execute = vi.fn(() => Promise.resolve({ echoed: true }));
-    const bound = bindNodeCatalog({
-      catalog: selected,
-      definitions: [registration],
-      executors: [{ ...executorRegistration(), execute }],
-    });
-    expect(bound.catalog).toBe(selected);
-    expect(bound.definitions[0]?.manifest).toBe(selected.definitions[0]);
-    expect(bound.definitions[0]?.configSchema).toBe(configSchema);
-    expect(bound.executors[0]?.execute).toBe(execute);
-    expect(Object.isFrozen(bound)).toBe(true);
-    const registry = createNodeRegistry(bound);
-    await expect(
-      registry.execute({
-        definition,
-        executor,
-        config: {},
-        input: {},
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toMatchObject({ output: { echoed: true } });
-    expect(registration.manifest.lifecycle).toBe('deprecated');
-  });
-
   it('rejects a catalog definition or executor that is not implemented', () => {
     const selected = catalog();
     const registration = {
@@ -204,19 +167,21 @@ describe('node-sdk catalog contracts', () => {
       outputSchema: objectSchema,
     };
     expect(() =>
-      bindNodeCatalog({
+      createNodeRegistry({
         catalog: selected,
         definitions: [],
         executors: [executorRegistration()],
       }),
-    ).toThrow(/definition test.echo@1 is not implemented/u);
+    ).toThrow(
+      /catalog definition test.echo@1 has no server schema registration/u,
+    );
     expect(() =>
-      bindNodeCatalog({
+      createNodeRegistry({
         catalog: selected,
         definitions: [registration],
         executors: [],
       }),
-    ).toThrow(/executor test.echo@1 is not implemented/u);
+    ).toThrow(/catalog executor test.echo@1 has no implementation/u);
   });
 
   it('rejects malformed and unbounded executor failure kinds', () => {
@@ -1068,12 +1033,7 @@ describe('node-sdk exact server registry', () => {
             outputSchema: objectSchema,
           },
         ],
-        executors: [
-          {
-            ...executorRegistration(),
-            abiVersion: unsupportedAbi,
-          },
-        ],
+        executors: [executorRegistration()],
         catalog: createNodeCatalog({
           definitions: [{ ...manifest, executorAbi: unsupportedAbi }],
           executors: [
@@ -1295,13 +1255,7 @@ describe('node-sdk exact server registry', () => {
         inputSchema: objectSchema,
         outputSchema: objectSchema,
       })),
-      executors: [
-        executorRegistration(),
-        {
-          ...executorRegistration(otherExecutor),
-          definitions: Object.freeze([otherDefinition]),
-        },
-      ],
+      executors: [executorRegistration(), executorRegistration(otherExecutor)],
       catalog: exactCatalog,
     });
     const missingDefinition = { key: definition.key, version: 2 } as const;
