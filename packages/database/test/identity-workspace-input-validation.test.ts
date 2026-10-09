@@ -169,6 +169,15 @@ describe('identity input admission', () => {
       open: vi.fn(),
     };
     const store = createOidcLoginTransactionStore(config, encryption);
+    const query = vi.fn((statement: string) =>
+      Promise.resolve({
+        rows: statement.includes('count(*)') ? [{ open: 0, kept: 0 }] : [],
+      }),
+    );
+    pg.instances[0]?.connectMock.mockResolvedValue({
+      query,
+      release: vi.fn(),
+    });
 
     await expect(
       store.create({
@@ -180,7 +189,11 @@ describe('identity input admission', () => {
       }),
     ).resolves.toBeUndefined();
     expect(encryption.seal).toHaveBeenCalledTimes(2);
-    expect(pg.instances[0]?.query).toHaveBeenCalledOnce();
+    expect(
+      query.mock.calls.filter(([statement]) =>
+        statement.includes('insert into app.oidc_login_transactions'),
+      ),
+    ).toHaveLength(1);
     await store.close();
   });
 

@@ -1,7 +1,11 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { authenticationReturnPathSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import type { Pool } from 'pg';
+import {
+  insertAuthenticationMail,
+  recordIdentitySecurityFact,
+} from '@pertexo/database/api';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import {
@@ -21,8 +25,8 @@ const signUpResponseSchema = z.object({
 
 /**
  * Pertexo owns email proofs end to end: browser links carry only random proof
- * material, consumption and the protected mutations stay in SQL, and Better
- * Auth's stateless native verification route is never reached.
+ * material, a proof is consumed with its user locked in one transaction, and
+ * Better Auth's stateless native verification route is never reached.
  */
 export class OwnedEmailProofs {
   public constructor(
@@ -140,29 +144,51 @@ export class OwnedEmailProofs {
       expiresAt,
       ...(newEmail === undefined ? {} : { newEmail }),
     } as const;
+    if (
+      purpose === 'change_old' &&
+      (newEmail === undefined ||
+        newEmail.toLowerCase() === user.email.toLowerCase())
+    )
+      throw new TypeError('An email change needs a different address');
     const prepared = this.mail.prepareProof?.(mailInput);
-    const result = await this.pool.query<{ issued: boolean }>(
-      `select app.issue_auth_email_proof(
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
-       ) issued`,
-      [
-        randomUUID(),
-        digest(token),
-        user.id,
-        purpose,
-        user.email,
-        newEmail ?? null,
-        expiresAt,
-        prepared?.id ?? null,
-        prepared?.purpose ?? null,
-        prepared?.expiresAt ?? null,
-        prepared?.sealedPayload.ciphertext ?? null,
-        prepared?.sealedPayload.nonce ?? null,
-        prepared?.sealedPayload.tag ?? null,
-        prepared?.sealedPayload.keyVersion ?? null,
-      ],
-    );
-    if (result.rows[0]?.issued !== true || prepared !== undefined) return;
+    // A proof is issued only for the user's current address, while it still
+    // needs this proof: unverified for a first verification, verified for a
+    // change.
+    const issued = await this.transaction(async (client) => {
+      const current = await client.query<{
+        status: string;
+        email: string;
+        email_verified: boolean;
+      }>(
+        'select status, email, email_verified from app.users where id=$1 for update',
+        [user.id],
+      );
+      const row = current.rows[0];
+      if (
+        row?.status !== 'active' ||
+        row.email.toLowerCase() !== user.email.toLowerCase() ||
+        row.email_verified !== (purpose === 'change_old')
+      )
+        return false;
+      await client.query(
+        `insert into app.auth_email_proofs
+           (id, token_digest, user_id, purpose, email, new_email, expires_at)
+         values ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          randomUUID(),
+          digest(token),
+          user.id,
+          purpose,
+          user.email,
+          newEmail ?? null,
+          expiresAt,
+        ],
+      );
+      if (prepared !== undefined)
+        await insertAuthenticationMail(client, prepared);
+      return true;
+    });
+    if (!issued || prepared !== undefined) return;
     if (purpose === 'change_old')
       await this.mail.sendEmailChangeConfirmation({
         recipient: user.email,
@@ -185,7 +211,15 @@ export class OwnedEmailProofs {
       purpose: ProofPurpose;
       new_email: string | null;
       display_name: string;
-    }>('select * from app.inspect_auth_email_proof($1)', [tokenDigest]);
+    }>(
+      `select proof.purpose, proof.new_email, users.display_name
+       from app.auth_email_proofs proof
+       join app.users users on users.id = proof.user_id
+       where proof.token_digest = $1 and proof.consumed_at is null
+         and proof.expires_at > clock_timestamp() and users.status = 'active'
+         and lower(users.email) = lower(proof.email)`,
+      [tokenDigest],
+    );
     const proof = inspected.rows[0];
     if (proof === undefined) return 'invalid';
     let nextToken: string | undefined;
@@ -206,24 +240,13 @@ export class OwnedEmailProofs {
         expiresAt: nextExpiresAt,
       });
     }
-    const result = await this.pool.query<{ outcome: ProofPurpose | 'invalid' }>(
-      `select app.consume_auth_email_proof(
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
-       ) outcome`,
-      [
-        tokenDigest,
-        nextToken === undefined ? null : randomUUID(),
-        nextToken === undefined ? null : digest(nextToken),
-        nextExpiresAt ?? null,
-        nextMail?.id ?? null,
-        nextMail?.expiresAt ?? null,
-        nextMail?.sealedPayload.ciphertext ?? null,
-        nextMail?.sealedPayload.nonce ?? null,
-        nextMail?.sealedPayload.tag ?? null,
-        nextMail?.sealedPayload.keyVersion ?? null,
-      ],
+    const next =
+      nextToken === undefined || nextExpiresAt === undefined
+        ? undefined
+        : { digest: digest(nextToken), expiresAt: nextExpiresAt };
+    const outcome = await this.transaction((client) =>
+      consumeProof(client, tokenDigest, next, nextMail),
     );
-    const outcome = result.rows[0]?.outcome ?? 'invalid';
     if (
       outcome === 'change_old' &&
       nextMail === undefined &&
@@ -237,6 +260,23 @@ export class OwnedEmailProofs {
       });
     }
     return outcome;
+  }
+
+  private async transaction<T>(
+    work: (client: PoolClient) => Promise<T>,
+  ): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      const result = await work(client);
+      await client.query('commit');
+      return result;
+    } catch (error) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   private url(token: string, returnTo?: string): string {
@@ -260,6 +300,99 @@ export class OwnedEmailProofs {
       return undefined;
     return allowlistedReturnPath(parsed.searchParams.get('returnTo'));
   }
+}
+
+/**
+ * Consumes a live proof for the user's current address, with the user locked:
+ * a first verification verifies the address and signs the user out, the old
+ * address's confirmation issues the new address's proof, and the new
+ * address's proof changes the address.
+ */
+async function consumeProof(
+  client: PoolClient,
+  tokenDigest: Buffer,
+  next: Readonly<{ digest: Buffer; expiresAt: Date }> | undefined,
+  nextMail: PreparedAuthenticationProofMail | undefined,
+): Promise<ProofPurpose | 'invalid'> {
+  const owner = await client.query<{ user_id: string }>(
+    'select user_id from app.auth_email_proofs where token_digest=$1',
+    [tokenDigest],
+  );
+  const userId = owner.rows[0]?.user_id;
+  if (userId === undefined) return 'invalid';
+  const users = await client.query<{
+    status: string;
+    email: string;
+    email_verified: boolean;
+  }>(
+    'select status, email, email_verified from app.users where id=$1 for update',
+    [userId],
+  );
+  const user = users.rows[0];
+  if (user?.status !== 'active') return 'invalid';
+  const proofs = await client.query<{
+    id: string;
+    purpose: string;
+    email: string;
+    new_email: string | null;
+    user_id: string;
+    usable: boolean;
+  }>(
+    `select id, purpose, email, new_email, user_id,
+            consumed_at is null and expires_at > clock_timestamp() usable
+     from app.auth_email_proofs where token_digest=$1 for update`,
+    [tokenDigest],
+  );
+  const proof = proofs.rows[0];
+  if (
+    proof?.usable !== true ||
+    proof.user_id !== userId ||
+    proof.email.toLowerCase() !== user.email.toLowerCase()
+  )
+    return 'invalid';
+  if (proof.purpose === 'initial_verification') {
+    if (user.email_verified) return 'invalid';
+    await client.query(
+      'update app.users set email_verified=true, updated_at=clock_timestamp() where id=$1',
+      [userId],
+    );
+    await client.query('delete from app.auth_sessions where user_id=$1', [
+      userId,
+    ]);
+    await recordIdentitySecurityFact(client, userId, 'email.initial_verified');
+  } else if (proof.purpose === 'change_old') {
+    if (!user.email_verified || next === undefined || proof.new_email === null)
+      return 'invalid';
+    await client.query(
+      `insert into app.auth_email_proofs
+         (id, token_digest, user_id, purpose, email, new_email, expires_at)
+       values ($1, $2, $3, 'change_new', $4, $5, $6)`,
+      [
+        randomUUID(),
+        next.digest,
+        userId,
+        proof.email,
+        proof.new_email,
+        next.expiresAt,
+      ],
+    );
+    if (nextMail !== undefined)
+      await insertAuthenticationMail(client, nextMail);
+    await recordIdentitySecurityFact(client, userId, 'email.old_confirmed');
+  } else if (proof.purpose === 'change_new') {
+    if (proof.new_email === null || !user.email_verified) return 'invalid';
+    await client.query(
+      `update app.users set email=$2, email_verified=true,
+         updated_at=clock_timestamp() where id=$1`,
+      [userId, proof.new_email],
+    );
+    await recordIdentitySecurityFact(client, userId, 'email.change_verified');
+  } else return 'invalid';
+  await client.query(
+    'update app.auth_email_proofs set consumed_at=clock_timestamp() where id=$1',
+    [proof.id],
+  );
+  return proof.purpose;
 }
 
 function allowlistedReturnPath(value: string | null): string | undefined {

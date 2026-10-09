@@ -272,6 +272,19 @@ export const RETENTION_RULES = Object.freeze([
       where proof.id = page.id`,
   },
   {
+    // A sign-in transaction goes 15 minutes after it was used or expired.
+    name: 'oidc_login_transactions',
+    statement: `
+      with page as (
+        select state_digest from app.oidc_login_transactions
+        where expires_at <= clock_timestamp() - interval '15 minutes'
+           or consumed_at <= clock_timestamp() - interval '15 minutes'
+        order by coalesce(consumed_at, expires_at), state_digest limit $1
+      )
+      delete from app.oidc_login_transactions login using page
+      where login.state_digest = page.state_digest`,
+  },
+  {
     name: 'identity_security_audit_facts',
     statement: `
       with page as (

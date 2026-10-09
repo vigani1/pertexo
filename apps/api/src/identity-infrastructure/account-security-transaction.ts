@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { recordIdentitySecurityFact } from '@pertexo/database/api';
 import type { Pool } from 'pg';
 
 type PasswordChangeResult = 'changed' | 'invalid' | 'inactive';
@@ -52,10 +53,7 @@ export async function changePasswordAndRevokeSessions(
     await client.query('delete from app.auth_sessions where user_id=$1', [
       input.userId,
     ]);
-    await client.query(
-      `select app.record_identity_method_audit_fact($1,'password.changed')`,
-      [input.userId],
-    );
+    await recordIdentitySecurityFact(client, input.userId, 'password.changed');
     await client.query('commit');
     return 'changed';
   } catch (error) {
@@ -106,9 +104,10 @@ export async function setupPasswordAndRevokeSessions(
     await client.query('delete from app.auth_sessions where user_id=$1', [
       input.userId,
     ]);
-    await client.query(
-      `select app.record_identity_method_audit_fact($1,'password.configured')`,
-      [input.userId],
+    await recordIdentitySecurityFact(
+      client,
+      input.userId,
+      'password.configured',
     );
     await client.query('commit');
     return 'configured';
@@ -175,10 +174,7 @@ export async function resetPasswordAndRevokeSessions(
     await client.query('delete from app.auth_verifications where id=$1', [
       proof.id,
     ]);
-    await client.query(
-      `select app.record_identity_method_audit_fact($1,'password.reset')`,
-      [proof.value],
-    );
+    await recordIdentitySecurityFact(client, proof.value, 'password.reset');
     await client.query('commit');
     return 'reset';
   } catch (error) {
@@ -224,10 +220,7 @@ export async function unlinkMethodAndRevokeSessions(
     await client.query('delete from app.auth_sessions where user_id=$1', [
       input.userId,
     ]);
-    await client.query(
-      `select app.record_identity_method_audit_fact($1,'method.unlinked')`,
-      [input.userId],
-    );
+    await recordIdentitySecurityFact(client, input.userId, 'method.unlinked');
     await client.query('commit');
     return 'unlinked';
   } catch (error) {

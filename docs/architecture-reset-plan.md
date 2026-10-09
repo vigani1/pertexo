@@ -196,6 +196,11 @@ now, as one ordered program — not "whenever we touch it".
           suspension and ownership commands key through the shared
           idempotency helper; their seven receipt tables go. Profile
           commands belong to a user, not a workspace, and keep theirs.
+    - [x] Identity: email proofs, the authentication mail queue, security
+          audit facts and the OIDC sign-in capacity check run as plain
+          statements in TypeScript; stale sign-in transactions are a
+          retention rule. The session-revocation triggers stay because
+          Better Auth writes users and sessions too.
   - [ ] Connections.
   - [ ] Triggers: schedules and webhooks.
   - [ ] Notifications and inbox.

@@ -95,10 +95,6 @@ function isConflict(error: unknown): boolean {
   return readIdentityDatabaseErrorCode(error) === '23505';
 }
 
-function isCapacityExhausted(error: unknown): boolean {
-  return readIdentityDatabaseErrorCode(error) === '54000';
-}
-
 export function createOidcLoginTransactionStore(
   config: DatabaseConfig,
   encryption: OidcSecretEncryptionAdapter,
@@ -133,8 +129,28 @@ export function createOidcLoginTransactionStore(
       );
       const sealedCodeVerifier = parseSealed(codeVerifier);
       const sealedNonce = parseSealed(nonce);
+      const client = await pool.connect();
       try {
-        await pool.query(
+        await client.query('begin');
+        // One sign-in start at a time checks capacity: at most 10,000 open
+        // transactions and 20,000 kept ones (retention removes old ones).
+        await client.query('select pg_advisory_xact_lock(7166118815)');
+        const counts = await client.query<{ open: number; kept: number }>(
+          `select count(*) filter (where consumed_at is null
+                                    and expires_at > clock_timestamp())::int open,
+                  count(*)::int kept
+           from app.oidc_login_transactions`,
+        );
+        const capacity = counts.rows[0];
+        if (
+          capacity === undefined ||
+          capacity.open >= 10_000 ||
+          capacity.kept >= 20_000
+        )
+          throw new OidcTransactionCapacityError(
+            'OIDC login transaction capacity is exhausted',
+          );
+        await client.query(
           `insert into app.oidc_login_transactions
              (state_digest, code_verifier_ciphertext, code_verifier_nonce,
               code_verifier_tag, code_verifier_key_version,
@@ -161,19 +177,17 @@ export function createOidcLoginTransactionStore(
                 ),
           ],
         );
+        await client.query('commit');
       } catch (error: unknown) {
+        await client.query('rollback').catch(() => undefined);
         if (isConflict(error)) {
           throw new IdentityConflictError('OIDC login state already exists', {
             cause: error,
           });
         }
-        if (isCapacityExhausted(error)) {
-          throw new OidcTransactionCapacityError(
-            'OIDC login transaction capacity is exhausted',
-            { cause: error },
-          );
-        }
         throw error;
+      } finally {
+        client.release();
       }
     },
 
