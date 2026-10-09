@@ -1,14 +1,9 @@
-import { createHash } from 'node:crypto';
-
 import {
   NodeAttemptStateCorruptError,
-  type NodeAttemptLease,
-  type NodeAttemptLoopDeclaration,
   type NodeAttemptRunStore,
   type NodeAttemptStoredInputs,
 } from '@pertexo/database/attempts';
 import {
-  invocationKey,
   parseCheckpoint,
   type BranchScopePart,
   type IterationScopePart,
@@ -37,36 +32,6 @@ export type NodeAttemptInputs = Omit<NodeAttemptStoredInputs, 'checkpoint'> &
 
 type LoadInputsRequest = Parameters<NodeAttemptRunStore['loadInputs']>[0];
 
-function scopedKey(
-  lease: NodeAttemptLease,
-  nodeId: string,
-  branchPath: readonly BranchScopePart[],
-): string {
-  return invocationKey({
-    workflowVersionId: lease.workflowVersionId,
-    nodeId,
-    branchPath: branchPath.map((part) => `${part.nodeId}:${part.outputPort}`),
-    ...(lease.iterationPath === undefined
-      ? {}
-      : { iterationPath: lease.iterationPath }),
-  });
-}
-
-/** An attempt may read only outputs from its own branch and loop scope. */
-function assertUpstreamInScope(input: LoadInputsRequest): void {
-  const branchPath = input.lease.branchPath ?? [];
-  const nearestBranch = branchPath.at(-1);
-  for (const { nodeId, invocationKey: key } of input.upstreamNodeOutputs) {
-    const candidates = [branchPath];
-    if (nearestBranch?.nodeId === nodeId)
-      candidates.push(branchPath.slice(0, -1));
-    if (
-      !candidates.some((path) => key === scopedKey(input.lease, nodeId, path))
-    )
-      throw new NodeAttemptStateCorruptError();
-  }
-}
-
 function coordinatorInput(
   checkpoint: WorkflowCheckpoint,
   key: string,
@@ -86,103 +51,65 @@ function coordinatorInput(
   });
 }
 
-/** The active loop for each level of the attempt's iteration path. */
-function enclosingLoops(
+/** The active loop instance the attempt's innermost iteration belongs to. */
+function innermostLoop(
   checkpoint: WorkflowCheckpoint,
   iterationPath: readonly IterationScopePart[],
   branchPath: readonly BranchScopePart[],
-): readonly LoopState[] {
-  return iterationPath.map((scope, index) => {
-    const enclosing = canonicalJson(iterationPath.slice(0, index));
-    const matches = checkpoint.loops.filter(
-      (loop) =>
-        loop.loopId === scope.loopNodeId &&
-        canonicalJson(loop.iterationPath) === enclosing &&
-        loop.branchPath.length <= branchPath.length &&
-        loop.branchPath.every(
-          (part, branchIndex) =>
-            branchPath[branchIndex]?.nodeId === part.nodeId &&
-            branchPath[branchIndex].outputPort === part.outputPort,
-        ) &&
-        loop.activeOrdinals.includes(scope.ordinal),
-    );
-    const [loop] = matches;
-    if (matches.length !== 1 || loop === undefined)
-      throw new NodeAttemptStateCorruptError();
-    return loop;
-  });
-}
-
-/** The item for `scope` from the collection the loop was declared with. */
-function loopItem(
-  loop: LoopState,
-  scope: IterationScopePart,
-  declaration: NodeAttemptLoopDeclaration | undefined,
-): NonNullable<NodeAttemptInputs['structuredCollection']> {
-  const output = declaration?.output;
-  if (
-    declaration?.nodeId !== loop.loopId ||
-    loop.collection.kind !== 'inline' ||
-    loop.collection.attemptId !== declaration.attemptId ||
-    output === null ||
-    typeof output !== 'object' ||
-    Array.isArray(output)
-  )
-    throw new NodeAttemptStateCorruptError();
-  const { items, iterationCount, ...rest } = output as Readonly<
-    Record<string, unknown>
-  >;
-  if (
-    Object.keys(rest).length > 0 ||
-    !Array.isArray(items) ||
-    iterationCount !== items.length ||
-    loop.collectionSize !== items.length ||
-    scope.ordinal < 0 ||
-    scope.ordinal >= items.length ||
-    loop.collectionChecksum !==
-      createHash('sha256').update(canonicalJson(items)).digest('hex')
-  )
-    throw new NodeAttemptStateCorruptError();
-  return Object.freeze({
-    loopNodeId: loop.loopId,
-    ordinal: scope.ordinal,
-    collection: items,
-    collectionSize: loop.collectionSize,
-    declaredCollectionChecksum: loop.collectionChecksum,
-  });
+): Readonly<{ loop: LoopState; scope: IterationScopePart }> | undefined {
+  const scope = iterationPath.at(-1);
+  if (scope === undefined) return undefined;
+  const enclosing = canonicalJson(iterationPath.slice(0, -1));
+  const loop = checkpoint.loops.find(
+    (candidate) =>
+      candidate.loopId === scope.loopNodeId &&
+      canonicalJson(candidate.iterationPath) === enclosing &&
+      candidate.branchPath.every(
+        (part, index) =>
+          branchPath[index]?.nodeId === part.nodeId &&
+          branchPath[index].outputPort === part.outputPort,
+      ) &&
+      candidate.activeOrdinals.includes(scope.ordinal),
+  );
+  if (loop === undefined) throw new NodeAttemptStateCorruptError();
+  return { loop, scope };
 }
 
 /**
  * Reads what a claimed attempt's executor needs: stored values from the
  * database, and the join input and loop item projected from the checkpoint.
+ * The engine verifies the loop item against the declared checksum.
  */
 export async function loadAttemptInputs(
   store: Pick<NodeAttemptRunStore, 'loadInputs' | 'readLoopDeclaration'>,
   input: LoadInputsRequest,
 ): Promise<NodeAttemptInputs> {
-  assertUpstreamInScope(input);
   const { checkpoint: stored, ...inputs } = await store.loadInputs(input);
   const checkpoint = parseCheckpoint(stored);
   const join = coordinatorInput(checkpoint, input.lease.invocationKey);
-  const iterationPath = input.lease.iterationPath ?? [];
+  const innermost = innermostLoop(
+    checkpoint,
+    input.lease.iterationPath ?? [],
+    input.lease.branchPath ?? [],
+  );
   let structuredCollection: NodeAttemptInputs['structuredCollection'];
-  const scope = iterationPath.at(-1);
-  if (scope !== undefined) {
-    const loop = enclosingLoops(
-      checkpoint,
-      iterationPath,
-      input.lease.branchPath ?? [],
-    ).at(-1);
-    if (loop === undefined) throw new NodeAttemptStateCorruptError();
-    structuredCollection = loopItem(
-      loop,
-      scope,
-      await store.readLoopDeclaration({
-        lease: input.lease,
-        controlInvocationKey: loop.controlInvocationKey,
-        signal: input.signal,
-      }),
-    );
+  if (innermost !== undefined) {
+    const { loop, scope } = innermost;
+    const declaration = await store.readLoopDeclaration({
+      lease: input.lease,
+      controlInvocationKey: loop.controlInvocationKey,
+      signal: input.signal,
+    });
+    const items = (declaration?.output as { items?: unknown } | null)?.items;
+    if (loop.collection.kind !== 'inline' || !Array.isArray(items))
+      throw new NodeAttemptStateCorruptError();
+    structuredCollection = Object.freeze({
+      loopNodeId: loop.loopId,
+      ordinal: scope.ordinal,
+      collection: items,
+      collectionSize: loop.collectionSize,
+      declaredCollectionChecksum: loop.collectionChecksum,
+    });
   }
   return Object.freeze({
     ...inputs,

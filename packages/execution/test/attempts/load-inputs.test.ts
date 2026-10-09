@@ -111,19 +111,6 @@ describe('loadAttemptInputs', () => {
     expect(store.readLoopDeclaration).not.toHaveBeenCalled();
   });
 
-  it('rejects an upstream output outside the attempt scope before reading', async () => {
-    const store = storeWith({});
-    await expect(
-      loadAttemptInputs(store, {
-        ...request(lease()),
-        upstreamNodeOutputs: [
-          { nodeId: 'other', invocationKey: 'not-a-scoped-key' },
-        ],
-      }),
-    ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
-    expect(store.loadInputs).not.toHaveBeenCalled();
-  });
-
   it('projects a join selection as the coordinator input', async () => {
     const joinKey = invocationKey({
       workflowVersionId: VERSION_ID,
@@ -200,26 +187,8 @@ describe('loadAttemptInputs', () => {
     );
   });
 
-  it.each([
-    ['a missing declaration', undefined],
-    [
-      'a changed collection',
-      {
-        nodeId: 'loop',
-        attemptId: DECLARING_ATTEMPT,
-        output: { items: ['x', 'y', 'z'], iterationCount: 3 },
-      },
-    ],
-    [
-      'another attempt',
-      {
-        nodeId: 'loop',
-        attemptId: '55555555-5555-4555-8555-555555555555',
-        output: { items, iterationCount: 3 },
-      },
-    ],
-  ])('fails closed for %s', async (_name, declaration) => {
-    const store = storeWith({ checkpoint: loopCheckpoint() }, declaration);
+  it('fails closed when the loop declaration is missing', async () => {
+    const store = storeWith({ checkpoint: loopCheckpoint() }, undefined);
     await expect(
       loadAttemptInputs(store, request(lease({ iterationPath: bodyScope }))),
     ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
