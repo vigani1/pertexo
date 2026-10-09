@@ -472,18 +472,9 @@ describe('preview reconciliation handler', () => {
     expect(mapped.message).toMatch(message);
   });
 
-  it('preserves ordinary and hostile reconciliation failures', () => {
+  it('preserves a transient reconciliation failure', () => {
     const transient = new Error('postgres unavailable');
-    const hostile = new Proxy(
-      {},
-      {
-        getPrototypeOf() {
-          throw new Error('hostile prototype');
-        },
-      },
-    );
     expect(mapPreviewReconciliationError(transient)).toBe(transient);
-    expect(mapPreviewReconciliationError(hostile)).toBe(hostile);
   });
 
   it('closes the durable store when consumer construction fails', async () => {

@@ -29,16 +29,6 @@ function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted) throw abortError();
 }
 
-function isConnectionUnavailableError(
-  error: unknown,
-): error is ConnectionUnavailableError {
-  try {
-    return error instanceof ConnectionUnavailableError;
-  } catch {
-    return false;
-  }
-}
-
 export function createProviderConnectionRuntimeFactory(
   database: ConnectionResolutionDatabase,
   encryption: Pick<ConnectionEnvelopeEncryption, 'open'>,
@@ -72,16 +62,12 @@ export function createProviderConnectionRuntimeFactory(
             signal: input.signal,
           });
         } catch (error: unknown) {
-          if (isConnectionUnavailableError(error))
+          if (error instanceof ConnectionUnavailableError)
             throw new ProviderCredentialInvalidError();
           throw error;
         }
         assertNotAborted(input.signal);
-        if (
-          resolved.connection.authType !== input.expectedAuthType ||
-          resolved.connection.id !== input.connectionId ||
-          resolved.connection.workspaceId !== context.workspaceId
-        )
+        if (resolved.connection.authType !== input.expectedAuthType)
           throw new ProviderCredentialInvalidError();
         const secret = await encryption.open(
           resolved.sealed,
@@ -126,7 +112,7 @@ export function createProviderConnectionRuntimeFactory(
             signal: input.signal,
           });
         } catch (error: unknown) {
-          if (isConnectionUnavailableError(error))
+          if (error instanceof ConnectionUnavailableError)
             throw new ProviderCredentialInvalidError();
           throw error;
         }

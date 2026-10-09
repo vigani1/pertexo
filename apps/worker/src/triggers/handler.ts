@@ -66,9 +66,9 @@ export function createTriggerReconciliationHandler(
         });
         return Object.freeze({ kind: 'reconciled' as const });
       } catch (error: unknown) {
-        if (isErrorInstance(error, WorkflowTriggerStalePublicationError))
+        if (error instanceof WorkflowTriggerStalePublicationError)
           return Object.freeze({ kind: 'stale' as const });
-        if (isErrorInstance(error, WorkflowTriggerReconciliationMismatchError))
+        if (error instanceof WorkflowTriggerReconciliationMismatchError)
           throw unrecoverableQueueError(
             'Trigger reconciliation delivery failed durable state verification',
           );
@@ -86,15 +86,4 @@ export function createTriggerReconciliationHandler(
       }
     },
   });
-}
-
-function isErrorInstance<T extends Error>(
-  value: unknown,
-  constructor: abstract new (...arguments_: never[]) => T,
-): value is T {
-  try {
-    return value instanceof constructor;
-  } catch {
-    return false;
-  }
 }

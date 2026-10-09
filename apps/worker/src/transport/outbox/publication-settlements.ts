@@ -35,7 +35,7 @@ export class OutboxPublicationSettlements {
     try {
       return await bounded(settlement, this.operationTimeoutMillis);
     } catch (error: unknown) {
-      if (!isTransportTimeout(error)) throw error;
+      if (!(error instanceof TransportOperationTimeoutError)) throw error;
       // The client cannot prove cancellation. Keep ownership until the late
       // write settles and never release a lease that it may still consume.
       this.own(settlement);
@@ -55,13 +55,5 @@ export class OutboxPublicationSettlements {
 
   public pendingSettlements(): readonly Promise<void>[] {
     return [...this.pending];
-  }
-}
-
-function isTransportTimeout(error: unknown): boolean {
-  try {
-    return error instanceof TransportOperationTimeoutError;
-  } catch {
-    return false;
   }
 }

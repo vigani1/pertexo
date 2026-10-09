@@ -812,8 +812,5 @@ describe('platform preview node invoker', () => {
       const impostor = Object.assign(new Error('hostile'), { name });
       expect(mapPreviewHandlerError(impostor)).toBe(impostor);
     }
-    const revoked = Proxy.revocable({}, {});
-    revoked.revoke();
-    expect(mapPreviewHandlerError(revoked.proxy)).toBe(revoked.proxy);
   });
 });

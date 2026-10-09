@@ -391,7 +391,11 @@ now, as one ordered program — not "whenever we touch it".
           read by workspace and id has that workspace and id). Runtimes,
           handlers and the outbox dispatcher trust the parsed config instead
           of re-checking its bounds; failure-notification delivery limits
-          are constants.
+          are constants. Values from the worker's own modules are trusted:
+          errors are checked with plain `instanceof` (no guards against
+          trap-throwing proxies), a resolved connection is not re-matched to
+          the workspace and id it was resolved by, and failure-notification
+          delivery does not re-check the intent's side-effect class.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration

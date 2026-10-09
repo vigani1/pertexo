@@ -206,22 +206,4 @@ describe('trigger reconciliation handler', () => {
     ).rejects.toBe(reconciliationFailure);
     expect(selected.reconciliation.recordFailure).toHaveBeenCalledOnce();
   });
-
-  it('preserves a hostile reconciliation rejection after recording safe health', async () => {
-    const selected = dependencies();
-    const hostile = new Proxy(
-      {},
-      {
-        getPrototypeOf() {
-          throw new Error('hostile prototype');
-        },
-      },
-    );
-    vi.mocked(selected.reconciliation.reconcile).mockRejectedValue(hostile);
-
-    await expect(
-      createTriggerReconciliationHandler(selected).handle(delivery(), context),
-    ).rejects.toBe(hostile);
-    expect(selected.reconciliation.recordFailure).toHaveBeenCalledOnce();
-  });
 });
