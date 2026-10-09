@@ -10,7 +10,7 @@ import {
   asOwner,
   asRuntime,
   checkpoint,
-  createCoordinatorRunStore,
+  createTestRunStore,
   createFailureNotificationStore,
   databaseUrl,
   insertRun,
@@ -665,10 +665,10 @@ describe('Coordinator scheduling and notification invariants', () => {
     } as typeof Pool.prototype.connect;
 
     let runtime: ReturnType<typeof createDatabaseRuntime> | undefined;
-    let scheduleStore: ReturnType<typeof createCoordinatorRunStore> | undefined;
+    let scheduleStore: ReturnType<typeof createTestRunStore> | undefined;
     try {
       runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
-      scheduleStore = createCoordinatorRunStore(config, runtime);
+      scheduleStore = createTestRunStore(config, runtime);
     } finally {
       Pool.prototype.connect = originalConnect as typeof Pool.prototype.connect;
     }
@@ -1057,7 +1057,7 @@ describe('Coordinator scheduling and notification invariants', () => {
         connectionSecretVersionId: notificationSecretVersionId,
       },
     });
-    const r1Store = createCoordinatorRunStore(
+    const r1Store = createTestRunStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(workerBaseUrl),
         max: 2,
@@ -1125,7 +1125,7 @@ describe('Coordinator scheduling and notification invariants', () => {
       status: 'running',
       schedulerState: checkpoint({ runStatus: 'running' }),
     });
-    const inboxStore = createCoordinatorRunStore(
+    const inboxStore = createTestRunStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(workerBaseUrl),
         max: 2,

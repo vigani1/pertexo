@@ -1,20 +1,13 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  CoordinatorPlanInvalidError,
-  CoordinatorRunStateCorruptError,
-  Pool,
   asOwner,
   asRuntime,
   checkpoint,
-  coordinatorStoreApplicationName,
-  databaseUrl,
   insertRun,
   randomUUID,
-  seedSucceededFact,
   ownedDeliveryStore,
   versionA,
-  waitForApplicationLocks,
   workerBaseUrl,
   workspaceA,
   workspaceB,
@@ -22,291 +15,6 @@ import {
 import { generatePersistedId } from '../src/platform/persisted-id.js';
 
 describe('Coordinator output commit invariants', () => {
-  it('commits a terminal fact only when checkpoint output ownership is exact', async () => {
-    const invocationKey = 'terminal/inline';
-    const current = checkpoint({
-      runStatus: 'running',
-      invocations: [
-        {
-          invocationKey,
-          nodeId: 'inline',
-          status: 'running',
-          attemptNumber: 1,
-        },
-      ],
-    });
-    const runId = await insertRun({
-      schedulerState: current,
-      status: 'running',
-    });
-    const { attemptId } = await seedSucceededFact(runId, invocationKey, {
-      schemaVersion: 1,
-      kind: 'inline',
-      value: { ok: true },
-    });
-    const terminalPlan = {
-      expectedRevision: 0,
-      expectedNextEventSequence: 2,
-      consumedThroughEventSequence: 2,
-      checkpoint: checkpoint({
-        revision: 1,
-        runStatus: 'succeeded',
-        nextEventSequence: 4,
-        invocations: [
-          {
-            invocationKey,
-            nodeId: 'inline',
-            status: 'succeeded',
-            attemptNumber: 1,
-            output: { kind: 'inline', attemptId },
-          },
-        ],
-      }),
-      events: [
-        {
-          schemaVersion: 1,
-          sequence: 3,
-          name: 'run.succeeded',
-          occurredAt: '2026-08-21T00:00:00.000Z',
-        },
-      ],
-      nodeRunAdmissions: [],
-      attempts: [],
-    } as const;
-    await expect(
-      ownedDeliveryStore.commitAdvancePlan({
-        workspaceId: workspaceA,
-        runId,
-        workflowVersionId: versionA,
-        signal: new AbortController().signal,
-        plan: terminalPlan,
-      }),
-    ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
-
-    const wrongInlineRun = await insertRun({
-      schedulerState: current,
-      status: 'running',
-    });
-    await seedSucceededFact(wrongInlineRun, invocationKey, {
-      schemaVersion: 1,
-      kind: 'inline',
-      value: { ok: true },
-    });
-    await expect(
-      ownedDeliveryStore.commitAdvancePlan({
-        workspaceId: workspaceA,
-        runId: wrongInlineRun,
-        workflowVersionId: versionA,
-        signal: new AbortController().signal,
-        plan: {
-          ...terminalPlan,
-          checkpoint: checkpoint({
-            revision: 1,
-            runStatus: 'succeeded',
-            nextEventSequence: 4,
-            invocations: [
-              {
-                invocationKey,
-                nodeId: 'inline',
-                status: 'succeeded',
-                attemptNumber: 1,
-                output: { kind: 'inline', attemptId: randomUUID() },
-              },
-            ],
-          }),
-        },
-      }),
-    ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
-
-    const immutableRun = await insertRun({});
-    const immutableBase = checkpoint({
-      revision: 1,
-      runStatus: 'running',
-      nextEventSequence: 3,
-    });
-    for (const mutatedCheckpoint of [
-      { ...immutableBase, engineVersion: 'engine-v2' },
-      { ...immutableBase, remainingIterationBudget: 1 },
-    ]) {
-      await expect(
-        ownedDeliveryStore.commitAdvancePlan({
-          workspaceId: workspaceA,
-          runId: immutableRun,
-          workflowVersionId: versionA,
-          signal: new AbortController().signal,
-          plan: {
-            expectedRevision: 0,
-            expectedNextEventSequence: 2,
-            consumedThroughEventSequence: 1,
-            checkpoint: mutatedCheckpoint,
-            events: [
-              {
-                schemaVersion: 1,
-                sequence: 2,
-                name: 'run.started',
-                occurredAt: '2026-08-21T00:00:00.000Z',
-              },
-            ],
-            nodeRunAdmissions: [],
-            attempts: [],
-          },
-        }),
-      ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
-    }
-
-    const artifactId = generatePersistedId();
-    await asRuntime(workerBaseUrl, workspaceB, (client) =>
-      client.query(
-        `insert into app.artifacts (
-             id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
-             status,expires_at,finalized_at
-           ) values ($1,$2,'node-output',$3,'application/json',1,$4,
-             'available',now()+interval '1 day',now())`,
-        [
-          artifactId,
-          workspaceB,
-          `workspaces/${workspaceB}/artifacts/${artifactId}`,
-          'b'.repeat(64),
-        ],
-      ),
-    );
-    const artifactInvocation = 'terminal/artifact';
-    const artifactCurrent = checkpoint({
-      runStatus: 'running',
-      invocations: [
-        {
-          invocationKey: artifactInvocation,
-          nodeId: 'artifact',
-          status: 'running',
-          attemptNumber: 1,
-        },
-      ],
-    });
-    const artifactRun = await insertRun({
-      schedulerState: artifactCurrent,
-      status: 'running',
-    });
-    await expect(
-      seedSucceededFact(artifactRun, artifactInvocation, {
-        schemaVersion: 1,
-        kind: 'artifact',
-        artifactId,
-      }),
-    ).rejects.toMatchObject({ code: '23503' });
-  });
-
-  it('waits for artifact invalidation and rejects the now-unavailable checkpoint output', async () => {
-    const artifactId = generatePersistedId();
-    expect(artifactId[14]).toBe('7');
-    await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query(
-        `insert into app.artifacts (
-             id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
-             status,expires_at,finalized_at
-           ) values ($1,$2,'node-output',$3,'application/json',1,$4,
-             'available',now()+interval '1 day',now())`,
-        [
-          artifactId,
-          workspaceA,
-          `workspaces/${workspaceA}/artifacts/${artifactId}`,
-          'c'.repeat(64),
-        ],
-      ),
-    );
-    const invocationKey = 'terminal/artifact-race';
-    const runId = await insertRun({
-      schedulerState: checkpoint({
-        runStatus: 'running',
-        invocations: [
-          {
-            invocationKey,
-            nodeId: 'artifact-race',
-            status: 'running',
-            attemptNumber: 1,
-          },
-        ],
-      }),
-      status: 'running',
-    });
-    await seedSucceededFact(runId, invocationKey, {
-      schemaVersion: 1,
-      kind: 'artifact',
-      artifactId,
-    });
-    await expect(
-      ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toMatchObject({
-      kind: 'ready',
-      state: {
-        observations: [
-          { kind: 'outcome', output: { kind: 'artifact', artifactId } },
-        ],
-      },
-    });
-    const invalidator = new Pool({
-      connectionString: databaseUrl(workerBaseUrl),
-      max: 1,
-    });
-    try {
-      await invalidator.query('begin');
-      await invalidator.query(
-        "select set_config('app.workspace_id', $1, true)",
-        [workspaceA],
-      );
-      await invalidator.query(
-        `update app.artifacts set status='deleting' where id=$1`,
-        [artifactId],
-      );
-      const commit = ownedDeliveryStore.commitAdvancePlan({
-        workspaceId: workspaceA,
-        runId,
-        workflowVersionId: versionA,
-        signal: new AbortController().signal,
-        plan: {
-          expectedRevision: 0,
-          expectedNextEventSequence: 2,
-          consumedThroughEventSequence: 2,
-          checkpoint: checkpoint({
-            revision: 1,
-            runStatus: 'succeeded',
-            nextEventSequence: 4,
-            invocations: [
-              {
-                invocationKey,
-                nodeId: 'artifact-race',
-                status: 'succeeded',
-                attemptNumber: 1,
-                output: { kind: 'artifact', artifactId },
-              },
-            ],
-          }),
-          events: [
-            {
-              schemaVersion: 1,
-              sequence: 3,
-              name: 'run.succeeded',
-              occurredAt: '2026-08-21T00:00:00.000Z',
-            },
-          ],
-          nodeRunAdmissions: [],
-          attempts: [],
-        },
-      });
-      await waitForApplicationLocks(coordinatorStoreApplicationName, 1);
-      await invalidator.query('commit');
-      await expect(commit).rejects.toBeInstanceOf(
-        CoordinatorRunStateCorruptError,
-      );
-    } finally {
-      await invalidator.query('rollback').catch(() => undefined);
-      await invalidator.end();
-    }
-  });
-
   it('enforces v4 and v7 artifact references on every execution row surface', async () => {
     const availableV7 = generatePersistedId();
     const availableV4 = randomUUID();
@@ -557,272 +265,16 @@ describe('Coordinator output commit invariants', () => {
     });
   });
 
-  it('commits persisted retry facts and admits only database-due retries', async () => {
-    for (const due of ['past', 'future'] as const) {
-      const invocationKey = `retry/${due}`;
-      const dueAt =
-        due === 'past'
-          ? '2020-01-01T00:00:00.000Z'
-          : '2099-01-01T00:00:00.000Z';
-      const runId = await insertRun({
-        schedulerState: checkpoint({
-          runStatus: 'running',
-          invocations: [
-            {
-              invocationKey,
-              nodeId: due,
-              status: 'running',
-              attemptNumber: 1,
-            },
-          ],
-        }),
-        status: 'running',
-      });
-      const nodeRunId = randomUUID();
-      const attemptId = randomUUID();
-      const firstAttemptInput = {
-        schemaVersion: 1,
-        kind: 'inline',
-        value: { attempt: 1 },
-      };
-      await asRuntime(workerBaseUrl, workspaceA, async (client) => {
-        await client.query(
-          `insert into app.node_runs (
-               id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-               status,side_effect_class,current_attempt_id,current_attempt_number,retry_due_at,wait_kind,
-               input_ref
-             ) values ($1,$2,$3,$4,$5,'{}','waiting','safe',$6,1,$7,'retry_backoff',$8::jsonb)`,
-          [
-            nodeRunId,
-            workspaceA,
-            runId,
-            due,
-            invocationKey,
-            attemptId,
-            dueAt,
-            JSON.stringify(firstAttemptInput),
-          ],
-        );
-        await client.query(
-          `insert into app.node_attempts (
-               id,workspace_id,node_run_id,attempt_number,status,side_effect_class
-             ) values ($1,$2,$3,1,'failed','safe')`,
-          [attemptId, workspaceA, nodeRunId],
-        );
-        await client.query(
-          `insert into app.run_events
-               (workspace_id,workflow_run_id,sequence,type,payload)
-             values ($1,$2,2,'node.retry_scheduled',$3::jsonb)`,
-          [
-            workspaceA,
-            runId,
-            JSON.stringify({
-              schemaVersion: 1,
-              nodeRunId,
-              attemptId,
-              dueAt,
-            }),
-          ],
-        );
-      });
-      const fresh = await ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
-      });
-      expect(fresh).toMatchObject({ kind: 'ready' });
-      if (fresh.kind !== 'ready') throw new Error('expected ready state');
-      expect(fresh.state.observations).toEqual([
-        expect.objectContaining({
-          kind: 'wait',
-          eventName: 'node.retry_scheduled',
-          sequence: 2,
-          invocationKey,
-          attemptNumber: 1,
-          resumeAt: dueAt,
-        }),
-      ]);
-      const waitingCheckpoint = checkpoint({
-        revision: 1,
-        runStatus: 'waiting',
-        nextEventSequence: 4,
-        invocations: [
-          {
-            invocationKey,
-            nodeId: due,
-            status: 'waiting',
-            attemptNumber: 1,
-            resumeAt: dueAt,
-            waitKind: 'retry_backoff',
-          },
-        ],
-      });
-      await expect(
-        ownedDeliveryStore.commitAdvancePlan({
-          workspaceId: workspaceA,
-          runId,
-          workflowVersionId: versionA,
-          signal: new AbortController().signal,
-          plan: {
-            expectedRevision: 0,
-            expectedNextEventSequence: 2,
-            consumedThroughEventSequence: 2,
-            checkpoint: waitingCheckpoint,
-            events: [
-              {
-                schemaVersion: 1,
-                sequence: 3,
-                name: 'run.waiting',
-                occurredAt: '2026-08-21T00:00:00.000Z',
-              },
-            ],
-            nodeRunAdmissions: [],
-            attempts: [],
-          },
-        }),
-      ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
-
-      const afterWaiting = await ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
-      });
-      expect(afterWaiting).toMatchObject({ kind: 'ready' });
-      if (afterWaiting.kind !== 'ready')
-        throw new Error('expected ready state');
-      expect(afterWaiting.state.observations).toEqual(
-        due === 'past'
-          ? [{ kind: 'due_at', invocationKey, occurredAt: dueAt }]
-          : [],
-      );
-
-      const retryPlan = {
-        expectedRevision: 1,
-        expectedNextEventSequence: 4,
-        consumedThroughEventSequence: 3,
-        checkpoint: checkpoint({
-          revision: 2,
-          runStatus: 'running',
-          nextEventSequence: 5,
-          admittedInvocationKeys: [invocationKey],
-          invocations: [
-            {
-              invocationKey,
-              nodeId: due,
-              status: 'running',
-              attemptNumber: 2,
-            },
-          ],
-        }),
-        events: [
-          {
-            schemaVersion: 1,
-            sequence: 4,
-            name: 'node.ready',
-            occurredAt: '2026-08-21T00:00:00.000Z',
-            invocationKey,
-            nodeId: due,
-            attemptNumber: 1,
-          },
-        ],
-        nodeRunAdmissions: [],
-        attempts: [
-          {
-            admissionKind: 'retry',
-            invocationKey,
-            nodeId: due,
-            attemptNumber: 2,
-            sideEffectClass: 'safe',
-          },
-        ],
-      } as const;
-      const retry = ownedDeliveryStore.commitAdvancePlan({
-        workspaceId: workspaceA,
-        runId,
-        workflowVersionId: versionA,
-        signal: new AbortController().signal,
-        plan: retryPlan,
-      });
-      if (due === 'past')
-        await expect(retry).resolves.toMatchObject({
-          kind: 'committed',
-          revision: 2,
-        });
-      else
-        await expect(retry).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
-      // An admitted retry starts without its predecessor's recorded input; a
-      // retry that isn't admitted leaves the current attempt's in place.
-      const recorded = await asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query<{ input_ref: unknown }>(
-          `select input_ref from app.node_runs where workspace_id=$1 and id=$2`,
-          [workspaceA, nodeRunId],
-        ),
-      );
-      expect(recorded.rows[0]?.input_ref).toEqual(
-        due === 'past' ? null : firstAttemptInput,
-      );
-    }
-  });
-
-  it('rejects plans that consume terminal or retry facts without applying their semantics', async () => {
-    const terminalInvocation = 'ignored/terminal';
-    const terminalRun = await insertRun({
+  it('commits persisted retry facts and admits a due retry', async () => {
+    const invocationKey = 'retry/past';
+    const dueAt = '2020-01-01T00:00:00.000Z';
+    const runId = await insertRun({
       schedulerState: checkpoint({
         runStatus: 'running',
         invocations: [
           {
-            invocationKey: terminalInvocation,
-            nodeId: 'terminal',
-            status: 'running',
-            attemptNumber: 1,
-          },
-        ],
-      }),
-      status: 'running',
-    });
-    await seedSucceededFact(terminalRun, terminalInvocation, {
-      schemaVersion: 1,
-      kind: 'inline',
-      value: { ok: true },
-    });
-    await expect(
-      ownedDeliveryStore.commitAdvancePlan({
-        workspaceId: workspaceA,
-        runId: terminalRun,
-        workflowVersionId: versionA,
-        signal: new AbortController().signal,
-        plan: {
-          expectedRevision: 0,
-          expectedNextEventSequence: 2,
-          consumedThroughEventSequence: 2,
-          checkpoint: checkpoint({
-            revision: 1,
-            runStatus: 'running',
-            nextEventSequence: 3,
-            invocations: [
-              {
-                invocationKey: terminalInvocation,
-                nodeId: 'terminal',
-                status: 'running',
-                attemptNumber: 1,
-              },
-            ],
-          }),
-          events: [],
-          nodeRunAdmissions: [],
-          attempts: [],
-        },
-      }),
-    ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
-
-    const retryInvocation = 'ignored/retry';
-    const retryRun = await insertRun({
-      schedulerState: checkpoint({
-        runStatus: 'running',
-        invocations: [
-          {
-            invocationKey: retryInvocation,
-            nodeId: 'retry',
+            invocationKey,
+            nodeId: 'past',
             status: 'running',
             attemptNumber: 1,
           },
@@ -832,16 +284,28 @@ describe('Coordinator output commit invariants', () => {
     });
     const nodeRunId = randomUUID();
     const attemptId = randomUUID();
-    const dueAt = '2099-01-01T00:00:00.000Z';
+    const firstAttemptInput = {
+      schemaVersion: 1,
+      kind: 'inline',
+      value: { attempt: 1 },
+    };
     await asRuntime(workerBaseUrl, workspaceA, async (client) => {
       await client.query(
         `insert into app.node_runs (
              id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-             status,side_effect_class,current_attempt_id,current_attempt_number,
-             retry_due_at,wait_kind
-           ) values ($1,$2,$3,'retry',$4,'{}','waiting','safe',$5,1,$6,
-             'retry_backoff')`,
-        [nodeRunId, workspaceA, retryRun, retryInvocation, attemptId, dueAt],
+             status,side_effect_class,current_attempt_id,current_attempt_number,retry_due_at,wait_kind,
+             input_ref
+           ) values ($1,$2,$3,$4,$5,'{}','waiting','safe',$6,1,$7,'retry_backoff',$8::jsonb)`,
+        [
+          nodeRunId,
+          workspaceA,
+          runId,
+          'past',
+          invocationKey,
+          attemptId,
+          dueAt,
+          JSON.stringify(firstAttemptInput),
+        ],
       );
       await client.query(
         `insert into app.node_attempts (
@@ -855,7 +319,7 @@ describe('Coordinator output commit invariants', () => {
            values ($1,$2,2,'node.retry_scheduled',$3::jsonb)`,
         [
           workspaceA,
-          retryRun,
+          runId,
           JSON.stringify({
             schemaVersion: 1,
             nodeRunId,
@@ -865,35 +329,133 @@ describe('Coordinator output commit invariants', () => {
         ],
       );
     });
+    const fresh = await ownedDeliveryStore.loadAdvanceState({
+      workspaceId: workspaceA,
+      runId,
+      signal: new AbortController().signal,
+    });
+    expect(fresh).toMatchObject({ kind: 'ready' });
+    if (fresh.kind !== 'ready') throw new Error('expected ready state');
+    expect(fresh.state.observations).toEqual([
+      expect.objectContaining({
+        kind: 'wait',
+        eventName: 'node.retry_scheduled',
+        sequence: 2,
+        invocationKey,
+        attemptNumber: 1,
+        resumeAt: dueAt,
+      }),
+    ]);
+    const waitingCheckpoint = checkpoint({
+      revision: 1,
+      runStatus: 'waiting',
+      nextEventSequence: 4,
+      invocations: [
+        {
+          invocationKey,
+          nodeId: 'past',
+          status: 'waiting',
+          attemptNumber: 1,
+          resumeAt: dueAt,
+          waitKind: 'retry_backoff',
+        },
+      ],
+    });
     await expect(
       ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
-        runId: retryRun,
+        runId,
         workflowVersionId: versionA,
         signal: new AbortController().signal,
         plan: {
           expectedRevision: 0,
           expectedNextEventSequence: 2,
           consumedThroughEventSequence: 2,
-          checkpoint: checkpoint({
-            revision: 1,
-            runStatus: 'running',
-            nextEventSequence: 3,
-            invocations: [
-              {
-                invocationKey: retryInvocation,
-                nodeId: 'retry',
-                status: 'running',
-                attemptNumber: 1,
-              },
-            ],
-          }),
-          events: [],
+          checkpoint: waitingCheckpoint,
+          events: [
+            {
+              schemaVersion: 1,
+              sequence: 3,
+              name: 'run.waiting',
+              occurredAt: '2026-08-21T00:00:00.000Z',
+            },
+          ],
           nodeRunAdmissions: [],
           attempts: [],
         },
       }),
-    ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
+    ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
+
+    const afterWaiting = await ownedDeliveryStore.loadAdvanceState({
+      workspaceId: workspaceA,
+      runId,
+      signal: new AbortController().signal,
+    });
+    expect(afterWaiting).toMatchObject({ kind: 'ready' });
+    if (afterWaiting.kind !== 'ready') throw new Error('expected ready state');
+    expect(afterWaiting.state.observations).toEqual([
+      { kind: 'due_at', invocationKey, occurredAt: dueAt },
+    ]);
+
+    const retryPlan = {
+      expectedRevision: 1,
+      expectedNextEventSequence: 4,
+      consumedThroughEventSequence: 3,
+      checkpoint: checkpoint({
+        revision: 2,
+        runStatus: 'running',
+        nextEventSequence: 5,
+        admittedInvocationKeys: [invocationKey],
+        invocations: [
+          {
+            invocationKey,
+            nodeId: 'past',
+            status: 'running',
+            attemptNumber: 2,
+          },
+        ],
+      }),
+      events: [
+        {
+          schemaVersion: 1,
+          sequence: 4,
+          name: 'node.ready',
+          occurredAt: '2026-08-21T00:00:00.000Z',
+          invocationKey,
+          nodeId: 'past',
+          attemptNumber: 1,
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [
+        {
+          admissionKind: 'retry',
+          invocationKey,
+          nodeId: 'past',
+          attemptNumber: 2,
+          sideEffectClass: 'safe',
+        },
+      ],
+    } as const;
+    const retry = ownedDeliveryStore.commitAdvancePlan({
+      workspaceId: workspaceA,
+      runId,
+      workflowVersionId: versionA,
+      signal: new AbortController().signal,
+      plan: retryPlan,
+    });
+    await expect(retry).resolves.toMatchObject({
+      kind: 'committed',
+      revision: 2,
+    });
+    // An admitted retry starts without its predecessor's recorded input.
+    const recorded = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{ input_ref: unknown }>(
+        `select input_ref from app.node_runs where workspace_id=$1 and id=$2`,
+        [workspaceA, nodeRunId],
+      ),
+    );
+    expect(recorded.rows[0]?.input_ref).toBeNull();
   });
 
   it('commits a persisted wait fact using its physical attempt fence', async () => {
@@ -994,6 +556,7 @@ describe('Coordinator output commit invariants', () => {
       status: 'waiting' as const,
       attemptNumber: 1,
       resumeAt: dueAt,
+      waitKind: 'node_wait' as const,
     }));
     const runId = await insertRun({
       schedulerState: checkpoint({

@@ -1,5 +1,4 @@
 import {
-  CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   CoordinatorDeliveryMismatchError,
 } from '@pertexo/database/testing';
@@ -22,12 +21,6 @@ const engineCodes = new Set([
   'loop_state_invalid',
 ]);
 export function curatedCoordinatorFailure(error: unknown) {
-  if (error instanceof CoordinatorPlanInvalidError)
-    return {
-      phase: 'coordinator-handler',
-      errorClass: 'CoordinatorPlanInvalidError',
-      code: null,
-    };
   if (error instanceof CoordinatorRunStateCorruptError)
     return {
       phase: 'coordinator-handler',

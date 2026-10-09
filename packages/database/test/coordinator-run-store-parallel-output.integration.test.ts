@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkpoint,
-  createCoordinatorRunStore,
+  createTestRunStore,
   databaseUrl,
   insertRun,
   parseDatabaseConfig,
@@ -56,7 +56,7 @@ describe('persisted Parallel output material', () => {
           signal: new AbortController().signal,
         }),
       ).resolves.toMatchObject(expected);
-      const fresh = createCoordinatorRunStore(
+      const fresh = createTestRunStore(
         parseDatabaseConfig({
           connectionString: databaseUrl(workerBaseUrl),
           max: 1,

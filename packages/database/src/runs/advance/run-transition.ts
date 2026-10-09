@@ -1,12 +1,12 @@
 import type { PoolClient } from 'pg';
 
 import { CoordinatorRunStateCorruptError } from './contract.js';
-import type { CoordinatorCommitRow } from './commit-state.js';
+import type { CoordinatorCommitRow } from './state.js';
 import { canonicalTimestamp } from './facts.js';
 import {
   scheduleRunInputSchema,
   terminalRunStatuses,
-  type ParsedTransitionPlan,
+  type RunTransitionPlan,
 } from './plan.js';
 import { persistFailureNotificationIntent } from './failure-notification.js';
 import { persistWorkspaceInboxEvent } from '../../execution/workspace-inbox/inbox-producer.js';
@@ -21,7 +21,7 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 async function persistDerivedContinuation(
   client: PoolClient,
   input: Readonly<{
-    plan: ParsedTransitionPlan;
+    plan: RunTransitionPlan;
     runId: string;
     workspaceId: string;
     traceparent?: string;
@@ -62,7 +62,7 @@ async function persistDerivedContinuation(
 
 function scheduledOccurrence(
   row: CoordinatorCommitRow,
-  plan: ParsedTransitionPlan,
+  plan: RunTransitionPlan,
 ): string | undefined {
   const startedAt = plan.events.find(
     ({ name }) => name === 'run.started',
@@ -81,9 +81,7 @@ export async function persistCoordinatorRunTransition(
   client: PoolClient,
   input: Readonly<{
     authoritativeCancellation: boolean;
-    checkpointJson: string;
-    plan: ParsedTransitionPlan;
-    planFingerprint: string;
+    plan: RunTransitionPlan;
     row: CoordinatorCommitRow;
     runTimeoutFailureContextEnabled: boolean;
     workspaceInboxProducerEnabled: boolean;
@@ -96,9 +94,7 @@ export async function persistCoordinatorRunTransition(
 ): Promise<Readonly<{ scheduleDueAt?: string }>> {
   const {
     authoritativeCancellation,
-    checkpointJson,
     plan,
-    planFingerprint,
     row,
     runTimeoutFailureContextEnabled,
     workspaceInboxProducerEnabled,
@@ -147,7 +143,6 @@ export async function persistCoordinatorRunTransition(
   const checkpointUpdate = await client.query(
     `update app.run_checkpoints
        set revision=$1, engine_version=$2, scheduler_state=$3::jsonb,
-           last_transition_fingerprint=$7,
            resume_at=null, resume_lease_owner=null,
            resume_lease_token=null, resume_lease_expires_at=null,
            updated_at=clock_timestamp()
@@ -155,11 +150,10 @@ export async function persistCoordinatorRunTransition(
     [
       plan.checkpoint.revision,
       plan.checkpoint.engineVersion,
-      checkpointJson,
+      serializeStoredExecutionJsonValue(plan.checkpoint),
       workspaceId,
       runId,
       plan.expectedRevision,
-      planFingerprint,
     ],
   );
   if (checkpointUpdate.rowCount !== 1)

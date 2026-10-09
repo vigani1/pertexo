@@ -9,10 +9,8 @@ import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model/fail
 
 import {
   canonicalOutboxPayloadChecksum,
-  CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   checkDatabaseReadiness,
-  createCoordinatorRunStore,
   createFailureNotificationStore,
   createDeadlineWakeupScanner,
   createDueNodeWakeupScanner,
@@ -24,6 +22,11 @@ import {
   parseDatabaseConfig,
 } from '../src/testing.js';
 import { migrateDatabase } from '../src/migrations.js';
+import {
+  createTestRunStore,
+  type TestCommitInput as CommitInput,
+  type TestRunStore,
+} from './support/run-advance-test-store.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminBaseUrl =
@@ -89,7 +92,7 @@ const migrationConfig = {
   ownerRole: 'pertexo_owner',
 } as const;
 
-let rawStore: ReturnType<typeof createCoordinatorRunStore>;
+let rawStore: TestRunStore;
 let nodeAttemptStore: ReturnType<typeof createNodeAttemptRunStore>;
 const storesToClose: { close(): Promise<void> }[] = [];
 
@@ -102,7 +105,7 @@ function createStores(): void {
     max: 6,
     ownerRole: 'pertexo_owner',
   });
-  rawStore = createCoordinatorRunStore(config, undefined, {
+  rawStore = createTestRunStore(config, undefined, {
     runTimeoutFailureContextEnabled: true,
   });
   storesToClose.push(rawStore);
@@ -291,11 +294,6 @@ async function asRuntime<T>(
   }
 }
 
-type CommitInput = Parameters<typeof rawStore.commitAdvancePlan>[0];
-type TestAcknowledgeInput = Parameters<
-  typeof rawStore.acknowledgeAdvanceDelivery
->[0];
-type TestLoadInput = Parameters<typeof rawStore.loadAdvanceState>[0];
 type TestCommitInput = Omit<CommitInput, 'delivery'> &
   Readonly<{ delivery?: CommitInput['delivery'] }>;
 const testDeliveries = new Map<string, Promise<CommitInput['delivery']>>();
@@ -333,14 +331,14 @@ function testDelivery(
   return created;
 }
 
-// This convenience facade deliberately creates and owns a matching outbox
-// delivery before commits that omit one. Identity/replay tests use rawStore and
-// explicit deliveries instead.
+// Commits that omit a delivery get a matching outbox delivery created here.
 const ownedDeliveryStore = Object.freeze({
-  acknowledgeAdvanceDelivery: (input: TestAcknowledgeInput) =>
-    rawStore.acknowledgeAdvanceDelivery(input),
   close: () => rawStore.close(),
-  loadAdvanceState: (input: TestLoadInput) => rawStore.loadAdvanceState(input),
+  loadAdvanceState: (input: Parameters<TestRunStore['loadAdvanceState']>[0]) =>
+    rawStore.loadAdvanceState(input),
+  acknowledgeAdvanceDelivery: (
+    input: Parameters<TestRunStore['acknowledgeAdvanceDelivery']>[0],
+  ) => rawStore.acknowledgeAdvanceDelivery(input),
   commitAdvancePlan: async (input: TestCommitInput) =>
     rawStore.commitAdvancePlan({
       ...input,
@@ -660,7 +658,6 @@ beforeAll(async () => {
 afterAll(dropDatabase);
 
 export {
-  CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   FailureNotificationContextV1Schema,
   NodeAttemptConnectionFenceError,
@@ -678,8 +675,8 @@ export {
   checkDatabaseReadiness,
   checkpoint,
   copyFile,
-  createCoordinatorRunStore,
   createDatabase,
+  createTestRunStore,
   createDeadlineWakeupScanner,
   createDueNodeWakeupScanner,
   createFailureNotificationStore,

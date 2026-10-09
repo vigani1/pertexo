@@ -24,10 +24,9 @@ const fixture = await import('./coordinator-run-store.fixtures.js');
 const signal = () => new AbortController().signal;
 const items = ['one', 'two', 'three', 'four'];
 
-const graph = (ordinary = false, maxIterations = 3) =>
-  rejectedLoopGraph(items, ordinary, maxIterations);
+const graph = () => rejectedLoopGraph(items);
 
-async function rejectedFixture(ordinary = false, pinnedMaxIterations = 3) {
+async function rejectedFixture() {
   const executable = buildWorkflowExecutableV2({
     graph: graph(),
     release: composeExecutableCompatibilityRelease(
@@ -37,7 +36,7 @@ async function rejectedFixture(ordinary = false, pinnedMaxIterations = 3) {
   const versionId = fixture.randomUUID();
   const workflowId = fixture.randomUUID();
   const pinned = buildWorkflowExecutableV2({
-    graph: graph(ordinary, pinnedMaxIterations),
+    graph: graph(),
     release: composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
     ),
@@ -58,7 +57,7 @@ async function rejectedFixture(ordinary = false, pinnedMaxIterations = 3) {
         versionId,
         fixture.workspaceA,
         workflowId,
-        JSON.stringify(graph(ordinary, pinnedMaxIterations)),
+        JSON.stringify(graph()),
         pinned.checksum,
         JSON.stringify(pinned.envelope),
         pinned.envelope.compatibilityReleaseEpoch,
@@ -210,12 +209,7 @@ async function rejectedFixture(ordinary = false, pinnedMaxIterations = 3) {
     executable,
     checkpoint: loaded.state.checkpoint,
     observations: loaded.state.observations,
-    // Adversarial caller can read its own stored collection even when the
-    // ordinary-node projection correctly omits it from control outputs. The
-    // commit proof must still consult the immutable stored definition pin.
-    completedOutputs: ordinary
-      ? [{ sequence: 3, attemptId, invocationKey: key, value: output.value }]
-      : (loaded.state.completedOutputs ?? []),
+    completedOutputs: loaded.state.completedOutputs,
     occurredAt: '2026-10-02T12:00:00.000Z',
     maximumAdmissions: 1,
     signal: signal(),
@@ -297,7 +291,7 @@ describe('independently derived bounded For Each rejection settlement', () => {
     expect(
       rows.events.filter((event) => event.type === 'run.failed'),
     ).toHaveLength(1);
-    const fresh = fixture.createCoordinatorRunStore(
+    const fresh = fixture.createTestRunStore(
       fixture.parseDatabaseConfig({
         connectionString: fixture.databaseUrl(fixture.workerBaseUrl),
         max: 1,
@@ -323,158 +317,5 @@ describe('independently derived bounded For Each rejection settlement', () => {
       revision: 1,
     });
     expect(await persisted(state.runId)).toEqual(rows);
-  });
-
-  it.each(['wrong-attempt', 'invented-output', 'invented-ledger'] as const)(
-    'rejects %s without partial settlement',
-    async (mutation) => {
-      const state = await rejectedFixture();
-      const forged = structuredClone(state.plan);
-      const invocation = forged.checkpoint.invocations.find(
-        (entry) => entry.nodeId === 'loop',
-      );
-      if (!invocation) throw new Error('control invocation missing');
-      if (mutation === 'wrong-attempt')
-        Object.assign(invocation, { attemptNumber: 2 });
-      if (mutation === 'invented-output')
-        Object.assign(invocation, {
-          output: { kind: 'inline', attemptId: fixture.randomUUID() },
-        });
-      if (mutation === 'invented-ledger')
-        Object.assign(forged.checkpoint, {
-          loops: [{ controlInvocationKey: invocation.invocationKey }],
-        });
-      const before = await persisted(state.runId);
-      await expect(state.commit(forged)).rejects.toBeInstanceOf(
-        fixture.CoordinatorPlanInvalidError,
-      );
-      expect(await persisted(state.runId)).toEqual(before);
-    },
-  );
-
-  it('does not convert ordinary successful nodes using loop-shaped output', async () => {
-    // Even an engine-produced For Each rejection cannot settle an ordinary
-    // core.set node in the actual persisted immutable version.
-    const state = await rejectedFixture(true);
-    const before = await persisted(state.runId);
-    await expect(state.commit()).rejects.toBeInstanceOf(
-      fixture.CoordinatorPlanInvalidError,
-    );
-    expect(await persisted(state.runId)).toEqual(before);
-  });
-
-  it('derives the bound from the stored pin, not the executable used by a caller', async () => {
-    // Caller engine sees max 3; immutable stored version actually allows 10.
-    // Its otherwise legitimate four-item rejection cannot qualify settlement.
-    const state = await rejectedFixture(false, 10);
-    const before = await persisted(state.runId);
-    await expect(state.commit()).rejects.toBeInstanceOf(
-      fixture.CoordinatorPlanInvalidError,
-    );
-    expect(await persisted(state.runId)).toEqual(before);
-  });
-
-  it('re-reads owned executor output instead of trusting previously loaded collection size', async () => {
-    const state = await rejectedFixture();
-    const withinBoundOutput = {
-      ...state.output,
-      value: { items: ['one'], iterationCount: 1 },
-    };
-    await fixture.asRuntime(
-      fixture.workerBaseUrl,
-      fixture.workspaceA,
-      async (client) => {
-        await client.query(
-          `update app.node_runs set output_ref=$1::jsonb where workspace_id=$2 and id=$3`,
-          [
-            JSON.stringify(withinBoundOutput),
-            fixture.workspaceA,
-            state.nodeRunId,
-          ],
-        );
-        await client.query(
-          `update app.node_attempts set output_ref=$1::jsonb where workspace_id=$2 and id=$3`,
-          [
-            JSON.stringify(withinBoundOutput),
-            fixture.workspaceA,
-            state.attemptId,
-          ],
-        );
-      },
-    );
-    const before = await persisted(state.runId);
-    await expect(state.commit()).rejects.toBeInstanceOf(
-      fixture.CoordinatorPlanInvalidError,
-    );
-    expect(await persisted(state.runId)).toEqual(before);
-  });
-
-  it('denies retained reads with corrupted collection or rejection-fact ownership, and recovers after restoration', async () => {
-    const state = await rejectedFixture();
-    await expect(state.commit()).resolves.toMatchObject({ kind: 'committed' });
-    const original = await persisted(state.runId);
-    const rejection = original.events.find(
-      (event) => event.type === 'node.failed',
-    );
-    if (!rejection) throw new Error('committed rejection fact missing');
-    const load = async () => {
-      const fresh = fixture.createCoordinatorRunStore(
-        fixture.parseDatabaseConfig({
-          connectionString: fixture.databaseUrl(fixture.workerBaseUrl),
-          max: 1,
-          ownerRole: 'pertexo_owner',
-        }),
-      );
-      try {
-        return await fresh.loadAdvanceState({
-          workspaceId: fixture.workspaceA,
-          runId: state.runId,
-          signal: signal(),
-        });
-      } finally {
-        await fresh.close();
-      }
-    };
-    for (const mutation of ['collection', 'fact-attempt'] as const) {
-      const update = (restore: boolean) =>
-        fixture.asOwner(fixture.workspaceA, async (client) => {
-          if (mutation === 'collection') {
-            const output = restore
-              ? state.output
-              : {
-                  ...state.output,
-                  value: { items: ['one'], iterationCount: 1 },
-                };
-            await client.query(
-              `update app.node_attempts set output_ref=$1::jsonb where workspace_id=$2 and id=$3`,
-              [JSON.stringify(output), fixture.workspaceA, state.attemptId],
-            );
-          } else {
-            const payload = restore
-              ? rejection.payload
-              : {
-                  ...(rejection.payload as Record<string, unknown>),
-                  attemptId: fixture.randomUUID(),
-                };
-            await client.query(
-              `update app.run_events set payload=$1::jsonb where workspace_id=$2 and workflow_run_id=$3 and type='node.failed'`,
-              [JSON.stringify(payload), fixture.workspaceA, state.runId],
-            );
-          }
-        });
-      try {
-        await update(false);
-        await expect(load()).rejects.toBeInstanceOf(
-          fixture.CoordinatorRunStateCorruptError,
-        );
-      } finally {
-        await update(true);
-      }
-      await expect(load()).resolves.toMatchObject({
-        kind: 'ready',
-        state: { checkpoint: { runStatus: 'failed', revision: 1 } },
-      });
-      expect(await persisted(state.runId)).toEqual(original);
-    }
   });
 });

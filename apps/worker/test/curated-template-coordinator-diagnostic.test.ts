@@ -1,8 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import {
-  CoordinatorPlanInvalidError,
-  CoordinatorRunStateCorruptError,
-} from '@pertexo/database/testing';
+import { CoordinatorRunStateCorruptError } from '@pertexo/database/testing';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { JOB_NAME, QUEUE_NAME, type createQueueConsumer } from '@pertexo/queue';
 import {
@@ -11,11 +8,14 @@ import {
 } from './support/curated-template-coordinator-diagnostic.js';
 
 it.each([
-  new CoordinatorPlanInvalidError(),
   new CoordinatorRunStateCorruptError(),
   new WorkflowEngineError('observation_invalid', 'private auth/config/output'),
   new Error('private auth/config/output'),
-  { name: 'CoordinatorPlanInvalidError', message: 'private', code: 'private' },
+  {
+    name: 'CoordinatorRunStateCorruptError',
+    message: 'private',
+    code: 'private',
+  },
 ])(
   'projects fixed actual error classes without messages or spoofed names',
   (error) => {

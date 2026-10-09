@@ -24,6 +24,9 @@
       "path": "./packages/database/tsconfig.json"
     },
     {
+      "path": "./packages/execution/tsconfig.json"
+    },
+    {
       "path": "./packages/integrations/tsconfig.json"
     },
     {

@@ -36,12 +36,17 @@ export type {
 } from './connections/connections.js';
 export {
   CoordinatorDeliveryMismatchError,
-  createCoordinatorRunStore,
-} from './runs/advance/store.js';
+  CoordinatorRunStateCorruptError,
+} from './runs/advance/contract.js';
 export type {
-  CoordinatorRunStore,
-  CoordinatorRunStoreOptions,
-} from './runs/advance/store.js';
+  RunAdvanceDecision,
+  RunAdvanceInput,
+  RunAdvanceResult,
+  RunAdvanceState,
+  RunAdvanceStore,
+} from './runs/advance/contract.js';
+export { createRunAdvanceStore } from './runs/advance/store.js';
+export type { RunAdvanceStoreOptions } from './runs/advance/store.js';
 export type { DatabaseConfig } from './config.js';
 export { createAuthenticationMailDeliveryStore } from './identity/authentication-mail.js';
 export type {

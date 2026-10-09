@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
-import { createCoordinatorRunStore } from '../src/runs/advance/store.js';
+import { createTestRunStore } from './support/run-advance-test-store.js';
 import type { LeasedOutboxEvent } from '../src/execution/transport/dispatcher-contracts.js';
 import {
   canonicalOutboxPayloadChecksum,
@@ -20,6 +20,7 @@ import {
   workflowVersionId,
   workspaceA,
   workspaceB,
+  workspaceCreatorId,
 } from './execution-acceptance.fixtures.js';
 import {
   acceptRun,
@@ -145,6 +146,7 @@ describe('workflow concurrency review regressions', () => {
 
   it('preserves grandfathered reservation through real FIFO deferral, restart, and duplicate delivery', async () => {
     await setLimit(2);
+    await publishExecutableVersion();
     const first = await acceptRun();
     const second = await acceptRun();
     await acceptRun();
@@ -165,7 +167,7 @@ describe('workflow concurrency review regressions', () => {
       connectionString: workerUrl(),
       max: 1,
     });
-    let store = createCoordinatorRunStore(config);
+    let store = createTestRunStore(config);
     const secondInput = startInput(
       secondEvent,
       second.request.initialCheckpoint,
@@ -190,15 +192,16 @@ describe('workflow concurrency review regressions', () => {
         outbox_event_id: deferred.id,
       });
       expect(await readTickets()).toEqual(tickets);
+      // A duplicate of the deferred delivery changes nothing.
       await expect(store.commitAdvancePlan(secondInput)).resolves.toEqual({
-        kind: 'deferred',
+        kind: 'already_committed',
         revision: 0,
       });
       expect(await reservations()).toEqual(afterDeferral);
       await store.close();
-      store = createCoordinatorRunStore(config);
+      store = createTestRunStore(config);
       await expect(store.commitAdvancePlan(secondInput)).resolves.toEqual({
-        kind: 'deferred',
+        kind: 'already_committed',
         revision: 0,
       });
       expect(await reservations()).toEqual(afterDeferral);
@@ -318,6 +321,34 @@ describe('workflow concurrency review regressions', () => {
     expect(before[0]?.recovery_count).toBe(1);
   });
 });
+
+/** Advancing a run reads its published version, so one must exist. */
+async function publishExecutableVersion(): Promise<void> {
+  await withOwner(async (client) => {
+    await client.query(
+      'alter table app.workflow_versions no force row level security',
+    );
+    await client.query(
+      `insert into app.workflow_versions (
+         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         checksum,executable_schema_version,executable_json,
+         compatibility_release_epoch,published_by
+       ) values ($1,$2,$3,1,1,'{}'::jsonb,$4,2,$5::jsonb,1,$6)
+       on conflict (id) do nothing`,
+      [
+        workflowVersionId,
+        workspaceA,
+        workflowId,
+        `wf:v2:sha256:${'c'.repeat(64)}`,
+        JSON.stringify({ schemaVersion: 2, graph: { nodes: [], edges: [] } }),
+        workspaceCreatorId,
+      ],
+    );
+    await client.query(
+      'alter table app.workflow_versions force row level security',
+    );
+  });
+}
 
 function startInput(
   event: LeasedOutboxEvent,

@@ -1,53 +1,49 @@
 import type { PoolClient } from 'pg';
 
-import {
-  CoordinatorPlanInvalidError,
-  CoordinatorRunStateCorruptError,
-} from './contract.js';
-import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
-import type { RejectedForEachDeclaration } from './rejected-loop-proof.js';
+import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 
-export async function persistRejectedForEachDeclarations(
+import { CoordinatorRunStateCorruptError } from './contract.js';
+import type { RunTransitionPlan } from './plan.js';
+
+/**
+ * A For Each whose collection exceeded its limit fails the node that produced
+ * the collection. That node already succeeded, so its row moves to failed here
+ * instead of through the ordinary terminal update.
+ */
+export async function settleRejectedForEachDeclarations(
   client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    runId: string;
-    declarations: ReadonlyMap<string, RejectedForEachDeclaration>;
-  }>,
-): Promise<void> {
-  for (const [invocationKey, declaration] of input.declarations) {
+  workspaceId: string,
+  runId: string,
+  plan: RunTransitionPlan,
+): Promise<ReadonlySet<string>> {
+  const settled = new Set<string>();
+  for (const event of plan.events) {
+    if (
+      event.name !== 'node.failed' ||
+      event.reasonCode !== 'loop_limit_exceeded' ||
+      event.invocationKey === undefined
+    )
+      continue;
     const updated = await client.query(
-      `update app.node_runs node
+      `update app.node_runs
        set status='failed',output_ref=null,safe_error_code='loop_limit_exceeded',
            completed_at=clock_timestamp(),resume_at=null,retry_due_at=null,
            due_wakeup_at=null,wait_kind=null,updated_at=clock_timestamp()
-       from app.node_attempts attempt
-       where node.workspace_id=$1 and node.workflow_run_id=$2
-         and node.invocation_key=$3 and node.node_id=$4
-         and node.status='succeeded' and node.control_kind is null
-         and node.current_attempt_id=$5 and node.current_attempt_number=$6
-         and attempt.workspace_id=node.workspace_id and attempt.id=$5
-         and attempt.node_run_id=node.id and attempt.attempt_number=$6
-         and attempt.status='succeeded' and attempt.output_ref=node.output_ref`,
-      [
-        input.workspaceId,
-        input.runId,
-        invocationKey,
-        declaration.nodeId,
-        declaration.attemptId,
-        declaration.attemptNumber,
-      ],
+       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3
+         and status='succeeded' and control_kind is null`,
+      [workspaceId, runId, event.invocationKey],
     );
-    if (updated.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+    if (updated.rowCount === 1) settled.add(event.invocationKey);
   }
+  return settled;
 }
 
 export async function persistLoopBarrierTransitions(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  current: PersistedWorkflowCheckpoint,
-  next: PersistedWorkflowCheckpoint,
+  current: WorkflowCheckpoint,
+  next: WorkflowCheckpoint,
 ): Promise<void> {
   const currentLoops = new Set(
     current.loops.map(({ controlInvocationKey }) => controlInvocationKey),
@@ -77,8 +73,8 @@ export async function persistDueReadyTransitions(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  current: PersistedWorkflowCheckpoint,
-  next: PersistedWorkflowCheckpoint,
+  current: WorkflowCheckpoint,
+  next: WorkflowCheckpoint,
 ): Promise<void> {
   const currentInvocations = new Map(
     current.invocations.map((invocation) => [
@@ -92,31 +88,6 @@ export async function persistDueReadyTransitions(
       currentInvocations.get(invocation.invocationKey)?.status === 'waiting',
   );
   if (transitions.length === 0) return;
-  const rows = await client.query<{
-    current_attempt_number: number | null;
-    invocation_key: string;
-    is_due: boolean;
-  }>(
-    `select invocation_key, current_attempt_number,
-            coalesce(retry_due_at,resume_at) is not null
-              and coalesce(retry_due_at,resume_at) <= clock_timestamp() as is_due
-     from app.node_runs
-     where workspace_id=$1 and workflow_run_id=$2
-       and invocation_key=any($3::varchar[]) and status='waiting'
-     for update`,
-    [workspaceId, runId, transitions.map(({ invocationKey }) => invocationKey)],
-  );
-  const physical = new Map(rows.rows.map((row) => [row.invocation_key, row]));
-  if (
-    transitions.some((transition) => {
-      const row = physical.get(transition.invocationKey);
-      return (
-        row?.is_due !== true ||
-        row.current_attempt_number !== transition.attemptNumber
-      );
-    })
-  )
-    throw new CoordinatorPlanInvalidError();
   const updated = await client.query(
     `update app.node_runs
      set status='ready', resume_at=null, retry_due_at=null, due_wakeup_at=null,

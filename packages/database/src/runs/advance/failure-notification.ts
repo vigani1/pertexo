@@ -10,7 +10,7 @@ import {
 } from '@pertexo/workflow-model/failure-notification';
 
 import { CoordinatorRunStateCorruptError } from './contract.js';
-import type { ParsedTransitionPlan } from './plan.js';
+import type { RunTransitionPlan } from './plan.js';
 import { canonicalOutboxPayloadChecksum } from '../../execution/transport/outbox.js';
 import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
 
@@ -32,7 +32,7 @@ export async function persistFailureNotificationIntent(
     sideEffectClass: string | null;
     cancellationRequested: boolean;
     runTimeoutFailureContextEnabled: boolean;
-    plan: ParsedTransitionPlan;
+    plan: RunTransitionPlan;
     traceparent?: string;
   }>,
 ): Promise<void> {

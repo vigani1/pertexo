@@ -2,15 +2,14 @@ import {
   CoordinatorDeliveryMismatchError,
   createDueNodeWakeupScanner,
   createDeadlineWakeupScanner,
-  createCoordinatorRunStore,
-  createPublishedWorkflowReader,
-  type CoordinatorRunStore,
+  createRunAdvanceStore,
   type DatabaseConfig,
   type DatabaseRuntime,
   type DueNodeWakeupScanner,
   type DeadlineWakeupScanner,
-  type PublishedWorkflowReader,
+  type RunAdvanceStore,
 } from '@pertexo/database/execution';
+import { advanceRun } from '@pertexo/execution';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
@@ -37,15 +36,14 @@ import {
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 
-import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
 import {
   createCoordinatorTelemetry,
   type CoordinatorTelemetry,
 } from './coordinator-telemetry.js';
 import {
   createCoordinatorHandler,
-  type CoordinatorAdvanceEngine,
   type CoordinatorHandler,
+  type CoordinatorHandlerDependencies,
   CoordinatorHandlerStateError,
 } from './coordinator-handler.js';
 import {
@@ -75,14 +73,14 @@ export type CoordinatorRuntimeOptions = Readonly<{
 }>;
 
 export type CoordinatorRuntimeDependencies = Readonly<{
+  /** Replaces `advanceRun` composed from the store and the engine. */
+  advance?: CoordinatorHandlerDependencies['advance'];
   clock?: Readonly<{ now(): string }>;
   consumerFactory?: typeof createQueueConsumer;
-  engine?: CoordinatorAdvanceEngine;
   dueWakeupScanner?: DueNodeWakeupScanner;
   deadlineWakeupScanner?: DeadlineWakeupScanner;
   notifications?: RunEventNotificationPublisher;
-  reader?: PublishedWorkflowReader;
-  runStore?: CoordinatorRunStore;
+  runStore?: RunAdvanceStore;
   telemetry?: CoordinatorTelemetry;
   logger?: StructuredLogger;
 }>;
@@ -92,8 +90,7 @@ export type CoordinatorCompositionFactories = Readonly<{
   deadlineScanner: typeof createDeadlineWakeupScanner;
   dueScanner: typeof createDueNodeWakeupScanner;
   notifications(redisUrl: string): RunEventNotificationPublisher;
-  reader: typeof createPublishedWorkflowReader;
-  runStore: typeof createCoordinatorRunStore;
+  runStore: typeof createRunAdvanceStore;
   telemetry: typeof createCoordinatorTelemetry;
   traceRunner: typeof createQueueTraceRunner;
 }>;
@@ -104,8 +101,7 @@ const productionFactories: CoordinatorCompositionFactories = {
   dueScanner: createDueNodeWakeupScanner,
   notifications: (redisUrl) =>
     new RedisRunEventNotificationPublisher({ redisUrl }),
-  reader: createPublishedWorkflowReader,
-  runStore: createCoordinatorRunStore,
+  runStore: createRunAdvanceStore,
   telemetry: createCoordinatorTelemetry,
   traceRunner: createQueueTraceRunner,
 };
@@ -189,12 +185,6 @@ export async function createCoordinatorRuntime(
     releaseSupport.descriptions[0]?.epoch ?? 0,
     releaseSupport.descriptions[0]?.fingerprint ?? '',
   );
-  const engine =
-    dependencies.engine ??
-    createCoordinatorAdvanceEngine({
-      admissionRelease: firstRelease,
-      releaseSupport,
-    });
   const currentReleaseDescriptions =
     createExecutableCompatibilityReleaseSupport(
       platformRegistryReleaseSupport().map(
@@ -203,8 +193,7 @@ export async function createCoordinatorRuntime(
     ).descriptions;
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();
-  let runStore: CoordinatorRunStore | undefined;
-  let reader: PublishedWorkflowReader | undefined;
+  let runStore: RunAdvanceStore | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
   let dueWakeupScanner: DueNodeWakeupScanner | undefined;
   let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
@@ -213,6 +202,7 @@ export async function createCoordinatorRuntime(
     runStore =
       dependencies.runStore ??
       factories.runStore(options.database, options.databaseRuntime, {
+        compatibilityReleases: currentReleaseDescriptions,
         runTimeoutFailureContextEnabled:
           options.runTimeoutFailureContextEnabled ?? false,
         workspaceInboxProducerEnabled:
@@ -220,13 +210,6 @@ export async function createCoordinatorRuntime(
         workflowTriggerOutcomesEnabled:
           options.workflowTriggerOutcomesEnabled ?? false,
       });
-    reader =
-      dependencies.reader ??
-      factories.reader(
-        options.database,
-        currentReleaseDescriptions,
-        options.databaseRuntime,
-      );
     notifications =
       dependencies.notifications ?? factories.notifications(options.redisUrl);
     dueWakeupScanner =
@@ -235,13 +218,18 @@ export async function createCoordinatorRuntime(
     deadlineWakeupScanner =
       dependencies.deadlineWakeupScanner ??
       factories.deadlineScanner(options.database, options.databaseRuntime);
-    const handler = createCoordinatorHandler({
-      clock: dependencies.clock ?? systemClock(),
-      engine,
+    const clock = dependencies.clock ?? systemClock();
+    const advanceDependencies = Object.freeze({
+      runs: runStore,
+      verification: { admissionRelease: firstRelease, releaseSupport },
       maximumAdmissions: options.maximumAdmissions,
+      now: () => clock.now(),
+    });
+    const handler = createCoordinatorHandler({
+      advance:
+        dependencies.advance ??
+        ((input) => advanceRun(advanceDependencies, input)),
       notifications,
-      reader,
-      runStore,
       telemetry,
     });
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
@@ -257,7 +245,6 @@ export async function createCoordinatorRuntime(
         deadlineWakeupScanner,
         dueWakeupScanner,
         notifications,
-        reader,
         runStore,
       },
       backgroundTaskShutdownTimeoutMillis,
@@ -275,7 +262,6 @@ export async function createCoordinatorRuntime(
       deadlineWakeupScanner,
       dueWakeupScanner,
       notifications,
-      reader,
       runStore,
     },
     {

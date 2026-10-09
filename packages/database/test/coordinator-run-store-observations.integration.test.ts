@@ -7,7 +7,7 @@ import {
   asOwner,
   asRuntime,
   checkpoint,
-  createCoordinatorRunStore,
+  createTestRunStore,
   databaseUrl,
   insertRun,
   parseDatabaseConfig,
@@ -196,11 +196,11 @@ function observedCoordinatorStore(afterQuery?: (kind: string) => void) {
       return client;
     });
   } as typeof Pool.prototype.connect;
-  let observedStore: ReturnType<typeof createCoordinatorRunStore>;
+  let observedStore: ReturnType<typeof createTestRunStore>;
   try {
     const connectionUrl = new URL(databaseUrl(workerBaseUrl));
     connectionUrl.searchParams.set('application_name', applicationName);
-    observedStore = createCoordinatorRunStore(
+    observedStore = createTestRunStore(
       parseDatabaseConfig({
         connectionString: connectionUrl.toString(),
         max: 1,
@@ -293,7 +293,7 @@ describe('Coordinator observation integrity invariants', () => {
     return artifactId;
   }
 
-  it('loads a fresh artifact completion in one read-only snapshot', async () => {
+  it('loads a fresh artifact completion', async () => {
     const invocationKey = 'version-a/fresh-artifact';
     const artifactId = await seedAvailableArtifact();
     const runId = await insertRun({
@@ -315,88 +315,20 @@ describe('Coordinator observation integrity invariants', () => {
       kind: 'artifact',
       artifactId,
     });
-    const observed = observedCoordinatorStore();
-    try {
-      await expect(
-        measureObservationLoad('normal', () =>
-          observed.store.loadAdvanceState({
-            workspaceId: workspaceA,
-            runId,
-            signal: new AbortController().signal,
-          }),
-        ),
-      ).resolves.toMatchObject({
-        kind: 'ready',
-        state: {
-          observations: [
-            { kind: 'outcome', output: { kind: 'artifact', artifactId } },
-          ],
-        },
-      });
-      expect(observedKinds(observed.observedQueries)).toContain(
-        'begin_repeatable_read_only',
-      );
-      expect(observedKinds(observed.observedQueries)).toContain(
-        'available_artifacts',
-      );
-    } finally {
-      await observed.close();
-    }
-  });
-
-  it('loads a retained artifact checkpoint in one read-only snapshot', async () => {
-    const invocationKey = 'version-a/retained-artifact';
-    const artifactId = await seedAvailableArtifact();
-    const runId = await insertRun({ status: 'running' });
-    await seedSucceededFact(runId, invocationKey, {
-      schemaVersion: 1,
-      kind: 'artifact',
-      artifactId,
-    });
-    await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query(
-        `update app.run_checkpoints
-         set scheduler_state=$3::jsonb
-         where workspace_id=$1 and workflow_run_id=$2`,
-        [
-          workspaceA,
-          runId,
-          JSON.stringify(
-            checkpoint({
-              runStatus: 'running',
-              nextEventSequence: 3,
-              invocations: [
-                {
-                  invocationKey,
-                  nodeId: 'retained-artifact',
-                  status: 'succeeded',
-                  attemptNumber: 1,
-                  output: { kind: 'artifact', artifactId },
-                },
-              ],
-            }),
-          ),
+    await expect(
+      ownedDeliveryStore.loadAdvanceState({
+        workspaceId: workspaceA,
+        runId,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({
+      kind: 'ready',
+      state: {
+        observations: [
+          { kind: 'outcome', output: { kind: 'artifact', artifactId } },
         ],
-      ),
-    );
-    const observed = observedCoordinatorStore();
-    try {
-      await expect(
-        observed.store.loadAdvanceState({
-          workspaceId: workspaceA,
-          runId,
-          signal: new AbortController().signal,
-        }),
-      ).resolves.toMatchObject({ kind: 'ready' });
-      expect(observedKinds(observed.observedQueries)).toContain(
-        'begin_repeatable_read_only',
-      );
-      expect(observedKinds(observed.observedQueries)).toContain(
-        'available_artifacts',
-      );
-    } finally {
-      await observed.close();
-    }
+      },
+    });
   });
 
   it.each(['deleting', 'deleted'] as const)(
@@ -445,110 +377,6 @@ describe('Coordinator observation integrity invariants', () => {
       ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
     },
   );
-
-  it('fails closed for a retained foreign-workspace artifact locator', async () => {
-    const invocationKey = 'version-a/foreign-retained-artifact';
-    const artifactId = generatePersistedId();
-    await asRuntime(workerBaseUrl, workspaceB, (client) =>
-      client.query(
-        `insert into app.artifacts (
-           id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
-           status,expires_at,finalized_at
-         ) values ($1,$2,'node-output',$3,'application/json',1,$4,
-           'available',now()+interval '1 day',now())`,
-        [
-          artifactId,
-          workspaceB,
-          `workspaces/${workspaceB}/artifacts/${artifactId}`,
-          'e'.repeat(64),
-        ],
-      ),
-    );
-    const nodeRunId = randomUUID();
-    const attemptId = randomUUID();
-    const runId = await insertRun({
-      schedulerState: checkpoint({ runStatus: 'running' }),
-      status: 'running',
-    });
-    const stored = JSON.stringify({
-      schemaVersion: 1,
-      kind: 'artifact',
-      artifactId,
-    });
-    await asOwner(workspaceA, async (client) => {
-      await client.query(
-        'alter table app.run_checkpoints disable trigger run_checkpoints_lock_artifact_references',
-      );
-      await client.query(
-        'alter table app.node_runs disable trigger node_runs_lock_artifact_references',
-      );
-      await client.query(
-        'alter table app.node_attempts disable trigger node_attempts_lock_artifact_references',
-      );
-    });
-    try {
-      await asOwner(workspaceA, async (client) => {
-        await client.query(
-          `insert into app.node_runs (
-           id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-           status,side_effect_class,current_attempt_id,current_attempt_number,
-           output_ref
-         ) values ($1,$2,$3,'foreign-retained-artifact',$4,'{}','succeeded',
-           'safe',$5,1,$6::jsonb)`,
-          [nodeRunId, workspaceA, runId, invocationKey, attemptId, stored],
-        );
-        await client.query(
-          `insert into app.node_attempts (
-           id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
-           output_ref
-         ) values ($1,$2,$3,1,'succeeded','safe',$4::jsonb)`,
-          [attemptId, workspaceA, nodeRunId, stored],
-        );
-        await client.query(
-          `update app.run_checkpoints set scheduler_state=$3::jsonb
-         where workspace_id=$1 and workflow_run_id=$2`,
-          [
-            workspaceA,
-            runId,
-            JSON.stringify(
-              checkpoint({
-                runStatus: 'running',
-                invocations: [
-                  {
-                    invocationKey,
-                    nodeId: 'foreign-retained-artifact',
-                    status: 'succeeded',
-                    attemptNumber: 1,
-                    output: { kind: 'artifact', artifactId },
-                  },
-                ],
-              }),
-            ),
-          ],
-        );
-      });
-    } finally {
-      await asOwner(workspaceA, async (client) => {
-        await client.query(
-          'alter table app.node_attempts enable trigger node_attempts_lock_artifact_references',
-        );
-        await client.query(
-          'alter table app.node_runs enable trigger node_runs_lock_artifact_references',
-        );
-        await client.query(
-          'alter table app.run_checkpoints enable trigger run_checkpoints_lock_artifact_references',
-        );
-      });
-    }
-
-    await expect(
-      ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
-  });
 
   it('admits only canonical engine invocation identities', async () => {
     const runId = await insertRun({});
@@ -619,6 +447,7 @@ describe('Coordinator observation integrity invariants', () => {
         checkpoint: checkpoint({}),
         completedOutputs: [],
         observations: [],
+        workflow: expect.objectContaining({ id: versionA }) as unknown,
       },
     });
     const foreignRun = await insertRun({
@@ -634,230 +463,6 @@ describe('Coordinator observation integrity invariants', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ kind: 'not_found' });
-  });
-
-  it('retrospectively characterizes the normal observation query sequence on one repeatable-read client', async () => {
-    const runId = await insertRun({});
-    const observed = observedCoordinatorStore();
-    try {
-      await expect(
-        observed.store.loadAdvanceState({
-          workspaceId: workspaceA,
-          runId,
-          signal: new AbortController().signal,
-        }),
-      ).resolves.toMatchObject({ kind: 'ready' });
-
-      expect(observed.clientsAcquired).toBe(1);
-      expect(observedKinds(observed.observedQueries)).toEqual([
-        'empty_tenant_context',
-        'begin_repeatable_read_only',
-        'install_workspace_context',
-        'verify_workspace_context',
-        'run_checkpoint',
-        'fact_capacity',
-        'pending_failures',
-        'checkpoint_physical_state',
-        'due_wakeups',
-        'commit',
-        'empty_tenant_context',
-      ]);
-    } finally {
-      await observed.close();
-    }
-  });
-
-  it('retrospectively characterizes 1,000-row observation pagination without extra clients', async () => {
-    const runId = await insertRun({});
-    await asOwner(workspaceA, (client) =>
-      client.query(
-        `update app.workflow_runs
-            set cancel_requested_at=now(), cancel_requested_by='test'
-          where workspace_id=$1 and id=$2`,
-        [workspaceA, runId],
-      ),
-    );
-    await asRuntime(workerBaseUrl, workspaceA, async (client) => {
-      await client.query(
-        `insert into app.run_events
-           (workspace_id,workflow_run_id,sequence,type,payload)
-         select $1,$2,sequence,'run.cancel_requested','{"schemaVersion":1}'::jsonb
-           from generate_series(2,1002) sequence`,
-        [workspaceA, runId],
-      );
-    });
-    const observed = observedCoordinatorStore();
-    try {
-      const loaded = await observed.store.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
-      });
-      expect(loaded).toMatchObject({ kind: 'ready' });
-      if (loaded.kind !== 'ready') throw new Error('expected ready state');
-      expect(loaded.state.observations).toHaveLength(1_001);
-      expect(observed.clientsAcquired).toBe(1);
-      expect(observedKinds(observed.observedQueries)).toEqual([
-        'empty_tenant_context',
-        'begin_repeatable_read_only',
-        'install_workspace_context',
-        'verify_workspace_context',
-        'run_checkpoint',
-        'fact_capacity',
-        'fact_page',
-        'fact_page',
-        'pending_failures',
-        'checkpoint_physical_state',
-        'due_wakeups',
-        'commit',
-        'empty_tenant_context',
-      ]);
-      const pages = observed.observedQueries.filter(
-        ({ kind }) => kind === 'fact_page',
-      );
-      expect(pages.map(({ values }) => values[2])).toEqual([2, 1_002]);
-      expect(pages.map(({ values }) => values[4])).toEqual([1_000, 1_000]);
-    } finally {
-      await observed.close();
-    }
-  });
-
-  it('does not issue observation queries after an early not-found result or checkpoint failure', async () => {
-    const missing = observedCoordinatorStore();
-    try {
-      await expect(
-        missing.store.loadAdvanceState({
-          workspaceId: workspaceA,
-          runId: randomUUID(),
-          signal: new AbortController().signal,
-        }),
-      ).resolves.toEqual({ kind: 'not_found' });
-      expect(missing.clientsAcquired).toBe(1);
-      expect(observedKinds(missing.observedQueries)).toEqual([
-        'empty_tenant_context',
-        'begin_repeatable_read_only',
-        'install_workspace_context',
-        'verify_workspace_context',
-        'run_checkpoint',
-        'commit',
-        'empty_tenant_context',
-      ]);
-    } finally {
-      await missing.close();
-    }
-
-    const corruptRun = await insertRun({
-      schedulerState: checkpoint({ workflowVersionId: versionB }),
-    });
-    const corrupt = observedCoordinatorStore();
-    try {
-      await expect(
-        corrupt.store.loadAdvanceState({
-          workspaceId: workspaceA,
-          runId: corruptRun,
-          signal: new AbortController().signal,
-        }),
-      ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
-      expect(corrupt.clientsAcquired).toBe(1);
-      expect(observedKinds(corrupt.observedQueries)).toEqual([
-        'empty_tenant_context',
-        'begin_repeatable_read_only',
-        'install_workspace_context',
-        'verify_workspace_context',
-        'run_checkpoint',
-        'rollback',
-        'empty_tenant_context',
-      ]);
-    } finally {
-      await corrupt.close();
-    }
-  });
-
-  it('stops after the active run query when observation loading is canceled', async () => {
-    const runId = await insertRun({});
-    const controller = new AbortController();
-    const observed = observedCoordinatorStore((kind) => {
-      if (kind === 'run_checkpoint')
-        controller.abort(new Error('cancel characterized observation load'));
-    });
-    try {
-      await expect(
-        observed.store.loadAdvanceState({
-          workspaceId: workspaceA,
-          runId,
-          signal: controller.signal,
-        }),
-      ).rejects.toMatchObject({ name: 'AbortError' });
-      expect(observed.clientsAcquired).toBe(1);
-      expect(observedKinds(observed.observedQueries)).toEqual([
-        'empty_tenant_context',
-        'begin_repeatable_read_only',
-        'install_workspace_context',
-        'verify_workspace_context',
-        'run_checkpoint',
-      ]);
-    } finally {
-      await observed.close();
-    }
-  });
-
-  it('fails closed when checkpoint invocations diverge from physical node state without new facts', async () => {
-    const missingInvocationKey = 'version-a/missing-physical-node';
-    const missingRun = await insertRun({
-      schedulerState: checkpoint({
-        runStatus: 'running',
-        invocations: [
-          {
-            invocationKey: missingInvocationKey,
-            nodeId: 'missing-physical-node',
-            status: 'ready',
-            attemptNumber: 0,
-          },
-        ],
-        readySet: [missingInvocationKey],
-      }),
-      status: 'running',
-    });
-    await expect(
-      ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId: missingRun,
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
-
-    const invocationKey = 'version-a/contradictory-physical-node';
-    const contradictoryRun = await insertRun({
-      schedulerState: checkpoint({
-        runStatus: 'running',
-        invocations: [
-          {
-            invocationKey,
-            nodeId: 'contradictory-physical-node',
-            status: 'ready',
-            attemptNumber: 0,
-          },
-        ],
-        readySet: [invocationKey],
-      }),
-      status: 'running',
-    });
-    await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query(
-        `insert into app.node_runs (
-             id,workspace_id,workflow_run_id,node_id,invocation_key,
-             branch_context,status,side_effect_class
-           ) values ($1,$2,$3,'contradictory-physical-node',$4,'{}','pending','safe')`,
-        [randomUUID(), workspaceA, contradictoryRun, invocationKey],
-      ),
-    );
-    await expect(
-      ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId: contradictoryRun,
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
   });
 
   it('maps ordered started and terminal facts using exact physical attempt ownership', async () => {
@@ -952,58 +557,6 @@ describe('Coordinator observation integrity invariants', () => {
       }),
     ]);
     expect(loaded.state.completedOutputs).toEqual([]);
-  });
-
-  it('rejects a lone started fact whose physical attempt is terminal', async () => {
-    const invocationKey = 'version-a/lone-started';
-    const runId = await insertRun({
-      schedulerState: checkpoint({
-        runStatus: 'running',
-        invocations: [
-          {
-            invocationKey,
-            nodeId: 'lone-started',
-            status: 'running',
-            attemptNumber: 1,
-          },
-        ],
-      }),
-      status: 'running',
-    });
-    const nodeRunId = randomUUID();
-    const attemptId = randomUUID();
-    await asRuntime(workerBaseUrl, workspaceA, async (client) => {
-      await client.query(
-        `insert into app.node_runs (
-             id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-             status,side_effect_class,current_attempt_id,current_attempt_number
-           ) values ($1,$2,$3,'lone-started',$4,'{}','succeeded','safe',$5,1)`,
-        [nodeRunId, workspaceA, runId, invocationKey, attemptId],
-      );
-      await client.query(
-        `insert into app.node_attempts (
-             id,workspace_id,node_run_id,attempt_number,status,side_effect_class
-           ) values ($1,$2,$3,1,'succeeded','safe')`,
-        [attemptId, workspaceA, nodeRunId],
-      );
-      await client.query(
-        `insert into app.run_events
-             (workspace_id,workflow_run_id,sequence,type,payload)
-           values ($1,$2,2,'node.started',$3::jsonb)`,
-        [
-          workspaceA,
-          runId,
-          JSON.stringify({ schemaVersion: 1, nodeRunId, attemptId }),
-        ],
-      );
-    });
-    await expect(
-      ownedDeliveryStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
   });
 
   it.each([1, 1_500, 10_000])(

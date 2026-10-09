@@ -322,7 +322,7 @@ describe('Coordinator pending failure evidence invariants', () => {
           attempts: [],
         },
       }),
-    ).rejects.toThrow('Coordinator advance plan is invalid');
+    ).rejects.toThrow('Persisted coordinator run state is invalid');
     await expect(
       asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query(

@@ -88,6 +88,17 @@ now, as one ordered program — not "whenever we touch it".
     drizzle-kit generates migrations once every table is typed (step 9).
 - [ ] **6. Execution package** — run actions and the coordinator move out of the
       database package; the engine's rules exist once.
+  - [x] Advancing a run: `@pertexo/execution` `advanceRun` locks the run,
+        lets the engine decide and saves the transition in one transaction
+        (`database/src/runs/advance`). The database's copies of engine rules
+        (plan, status and physical-state validation, the rejected For Each
+        proof, the transition fingerprint) are removed; a redelivered message
+        is recognised by its receipt. `run_checkpoints.last_transition_fingerprint`
+        is unused and goes in the step 9 re-squash.
+  - [ ] Run actions (start, cancel, replay, manual start) and run reads.
+  - [ ] Attempts (claim, heartbeat, decisions), previews, notifications,
+        outbox; the database's checkpoint schema copy goes with the last user.
+  - [ ] For Each overflow check.
 - [ ] **7. Database feature areas** — authoring, workspaces, connections,
       triggers, notifications, inbox, workspace lifecycle and retention: rules
       to TypeScript, thin repositories, validate once, unused SQL functions
@@ -167,6 +178,7 @@ Dependency direction (no cycles, enforced by lint):
 workflow-model ← workflow-engine ← execution ← api / worker
 node-sdk ← nodes-core / integrations ← node-catalog ← execution, worker
 database ← execution, api (reads), worker
+workflow-engine ← database (plan and checkpoint types only)
 contracts ← api, web        web imports only browser-safe entry points
 ```
 

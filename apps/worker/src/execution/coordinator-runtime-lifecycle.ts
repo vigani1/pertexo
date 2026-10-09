@@ -1,8 +1,7 @@
 import type {
-  CoordinatorRunStore,
   DeadlineWakeupScanner,
   DueNodeWakeupScanner,
-  PublishedWorkflowReader,
+  RunAdvanceStore,
 } from '@pertexo/database/execution';
 import type { StructuredLogger } from '@pertexo/observability';
 import type {
@@ -20,8 +19,7 @@ export type CoordinatorRuntimeComposition = Readonly<{
   deadlineWakeupScanner: DeadlineWakeupScanner;
   dueWakeupScanner: DueNodeWakeupScanner;
   notifications: RunEventNotificationPublisher;
-  reader: PublishedWorkflowReader;
-  runStore: CoordinatorRunStore;
+  runStore: RunAdvanceStore;
 }>;
 
 type CoordinatorScannerOptions = Readonly<{
@@ -175,8 +173,7 @@ export type CoordinatorCloseableDependencies = Readonly<{
   deadlineWakeupScanner?: DeadlineWakeupScanner | undefined;
   dueWakeupScanner?: DueNodeWakeupScanner | undefined;
   notifications?: RunEventNotificationPublisher | undefined;
-  reader?: PublishedWorkflowReader | undefined;
-  runStore?: CoordinatorRunStore | undefined;
+  runStore?: RunAdvanceStore | undefined;
 }>;
 
 export async function closeCoordinatorDependencies(
@@ -187,7 +184,6 @@ export async function closeCoordinatorDependencies(
     () => dependencies.dueWakeupScanner?.close(),
     () => dependencies.deadlineWakeupScanner?.close(),
     () => dependencies.notifications?.close(),
-    () => dependencies.reader?.close(),
     () => dependencies.runStore?.close(),
   ].map((close) => {
     const operation = Promise.resolve().then(close);
