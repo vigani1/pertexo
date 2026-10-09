@@ -18,7 +18,6 @@ import {
   parseInvitationDeliveryConfig,
   type InvitationDeliveryConfig,
 } from './invitation-delivery.js';
-import * as autoPause from './auto-pause.js';
 const workerEnvironments = [
   'development',
   'test',
@@ -120,6 +119,20 @@ const workerConfigSchema = z
       .max(1_000)
       .default(500),
     WORKSPACE_INBOX_FOLD_POLL_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(60_000)
+      .default(1_000),
+    // Pending run outcomes folded per database call, and the idle wait
+    // between folds once nothing is pending.
+    WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1_000)
+      .default(500),
+    WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS: z.coerce
       .number()
       .int()
       .min(100)
@@ -256,6 +269,8 @@ const workerConfigSchema = z
       WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
       WORKSPACE_INBOX_FOLD_BATCH_SIZE,
       WORKSPACE_INBOX_FOLD_POLL_MILLIS,
+      WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE,
+      WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS,
       WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
       WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
       TRIGGER_SCHEDULE_BATCH_SIZE,
@@ -324,6 +339,10 @@ const workerConfigSchema = z
         foldBatchSize: WORKSPACE_INBOX_FOLD_BATCH_SIZE,
         foldPollMillis: WORKSPACE_INBOX_FOLD_POLL_MILLIS,
       },
+      workflowAutoPause: {
+        foldBatchSize: WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE,
+        foldPollMillis: WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS,
+      },
       nodeAttempt: {
         heartbeatIntervalMillis: NODE_ATTEMPT_HEARTBEAT_MILLIS,
         leaseDurationSeconds: NODE_ATTEMPT_LEASE_SECONDS,
@@ -347,7 +366,6 @@ export type WorkerConfig = Readonly<
     connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
     authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
-    workflowAutoPause: autoPause.WorkflowAutoPauseConfig;
   }
 >;
 
@@ -427,7 +445,6 @@ export function parseWorkerConfig(
     const connectionEncryption = connectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
     const invitationDelivery = parseInvitationDeliveryConfig(raw, deployed);
-    const workflowAutoPause = autoPause.parseWorkflowAutoPauseConfig(raw);
     const authenticationMailDelivery = parseAuthenticationMailDeliveryConfig(
       raw,
       deployed,
@@ -447,7 +464,7 @@ export function parseWorkerConfig(
         : { authenticationMailDelivery }),
       database: Object.freeze(result.data.database),
       dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
-      workflowAutoPause,
+      workflowAutoPause: Object.freeze(result.data.workflowAutoPause),
       coordinator: Object.freeze(result.data.coordinator),
       nodeAttempt: Object.freeze(result.data.nodeAttempt),
       resourceSafety: Object.freeze(result.data.resourceSafety),
