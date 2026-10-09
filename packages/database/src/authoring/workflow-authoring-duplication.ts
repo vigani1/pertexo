@@ -9,7 +9,7 @@ import {
 } from '@pertexo/workflow-model/graph';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
-import { canonicalApplicationPayloadChecksum } from '../execution/transport/outbox.js';
+import { canonicalApplicationPayloadChecksum } from '../outbox/events.js';
 import type {
   DuplicateWorkflowInput,
   WorkflowAuthoringDatabase,

@@ -12,7 +12,7 @@ import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
 } from '../src/testing.js';
-import { createWorkflowTriggerPauseFoldStore } from '../src/execution/trigger-pause/trigger-pause-fold-store.js';
+import { createWorkflowTriggerPauseFoldStore } from '../src/triggers/pause/fold-store.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =

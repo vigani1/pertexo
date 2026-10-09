@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
-import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import { reconcileActiveWorkflowTriggers } from './workflow-trigger-materialization.js';
 import {
   WorkflowTriggerReconciliationMismatchError,

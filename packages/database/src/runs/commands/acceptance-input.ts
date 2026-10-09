@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { serializeStoredExecutionJsonValue } from '../../execution/stored-execution-value.js';
+import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
 /**
  * Serializes a new run's first checkpoint. The checkpoint comes from the

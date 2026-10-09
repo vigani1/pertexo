@@ -1,5 +1,5 @@
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
-import type { PublishedWorkflowV2Projection } from '../execution/published-workflow-reader.js';
+import type { PublishedWorkflowV2Projection } from './published-workflow.js';
 
 /**
  * Builds a new run's first checkpoint for a published version. Every way a run

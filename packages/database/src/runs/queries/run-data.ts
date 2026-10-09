@@ -9,7 +9,7 @@ import {
 import {
   parseStoredExecutionValueV1,
   type StoredExecutionJsonValue,
-} from '../../execution/stored-execution-value.js';
+} from '../../platform/stored-execution-value.js';
 
 /**
  * A run's input or a node run's output as stored (ADR 050). `expired` is a

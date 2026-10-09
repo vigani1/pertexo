@@ -8,7 +8,7 @@ import {
   serializeStoredExecutionValueV1,
   STORED_EXECUTION_VALUE_LIMITS_V1,
   StoredExecutionValueInvalidError,
-} from '../src/execution/stored-execution-value.js';
+} from '../src/platform/stored-execution-value.js';
 
 function canonicalJsonOracle(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);

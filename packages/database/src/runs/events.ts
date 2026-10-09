@@ -5,7 +5,7 @@ import {
   ExecutionStateConflictError,
   RunEventGapError,
 } from './state-errors.js';
-import { serializeStoredExecutionJsonValue } from '../execution/stored-execution-value.js';
+import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 
 export const RUN_EVENT_TYPE = {

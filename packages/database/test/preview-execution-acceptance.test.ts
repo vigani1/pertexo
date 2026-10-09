@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { previewPairConsistent } from '../src/execution/previews/preview-execution-contract.js';
-import { executableNodeSchema } from '../src/execution/previews/preview-executable-node.js';
+import { previewPairConsistent } from '../src/previews/contract.js';
+import { executableNodeSchema } from '../src/previews/executable-node.js';
 
 describe('preview executable-node admission', () => {
   it('snapshots a bounded null-prototype JSON object', () => {

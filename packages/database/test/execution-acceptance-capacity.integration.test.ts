@@ -10,7 +10,7 @@ import {
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../src/execution/transport/outbox.js';
+} from '../src/outbox/events.js';
 import {
   acceptanceInput,
   apiDatabase,

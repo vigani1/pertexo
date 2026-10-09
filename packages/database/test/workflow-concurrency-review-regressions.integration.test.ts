@@ -4,11 +4,11 @@ import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createTestRunStore } from './support/run-advance-test-store.js';
-import type { LeasedOutboxEvent } from '../src/execution/transport/dispatcher-contracts.js';
+import type { LeasedOutboxEvent } from '../src/outbox/dispatcher-contracts.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../src/execution/transport/outbox.js';
+} from '../src/outbox/events.js';
 import {
   apiUrl,
   apiDatabase,

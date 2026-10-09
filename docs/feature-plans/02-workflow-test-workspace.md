@@ -97,7 +97,7 @@ unauthorized.
 - Add optional `expectedPublishedVersionId` to
   [workflow-runs HTTP contracts](../../packages/contracts/src/http/workflow-runs.ts).
   Thread it through existing controller, use case, persistence port/adapter and
-  [database manual acceptance](../../packages/database/src/execution/runs/workflow-run-api.ts).
+  [database manual acceptance](../../packages/database/src/runs/runs.repository.ts).
   Omission preserves old manual-start semantics and hash bytes; checked requests
   conditionally bind expected version into the existing canonical hash.
 - Freeze that field with JSON/deadline/key through `RunIntent`, normalization,

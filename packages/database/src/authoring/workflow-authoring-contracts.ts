@@ -4,7 +4,7 @@ import type {
   PreviewRunRecord,
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
-} from '../execution/previews/preview-execution.js';
+} from '../previews/repository.js';
 import type {
   WorkflowDraftRecord,
   WorkflowRecord,

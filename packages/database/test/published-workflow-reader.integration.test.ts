@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
-import { createPublishedWorkflowReader } from '../src/execution/published-workflow-reader.js';
+import { createPublishedWorkflowReader } from '../src/runs/published-workflow.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './support/workflow-authoring-admission.fixture.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';

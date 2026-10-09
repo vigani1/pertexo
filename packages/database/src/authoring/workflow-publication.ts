@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
-import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import {
   WorkflowNotFoundError,
   WorkflowIdempotencyConflictError,

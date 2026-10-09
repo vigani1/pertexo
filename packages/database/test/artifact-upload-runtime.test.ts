@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createArtifactUploadDatabase } from '../src/execution/artifacts/artifact-upload.js';
+import { createArtifactUploadDatabase } from '../src/artifacts/upload.js';
 import { withWorkspaceDestructiveOperationLock } from '../src/lifecycle/retention-transaction.js';
 
 describe('artifact upload runtime', () => {

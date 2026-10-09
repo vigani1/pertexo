@@ -10,9 +10,9 @@ import {
   parseDatabaseConfig,
   workspaceMemberships,
 } from '../src/testing.js';
-import { createWorkspaceInboxFoldStore } from '../src/execution/workspace-inbox/inbox-fold-store.js';
-import { persistWorkspaceInboxEvent } from '../src/execution/workspace-inbox/inbox-producer.js';
-import { createWorkspaceInboxDatabase } from '../src/execution/workspace-inbox/inbox-read-store.js';
+import { createWorkspaceInboxFoldStore } from '../src/inbox/fold-store.js';
+import { persistWorkspaceInboxEvent } from '../src/inbox/producer.js';
+import { createWorkspaceInboxDatabase } from '../src/inbox/read-store.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';

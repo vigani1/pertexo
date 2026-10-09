@@ -8,7 +8,7 @@ import {
   type DatabaseRuntime,
 } from '../platform/database-runtime.js';
 import { withTenantScopedClient } from './workspace.js';
-import { serializeStoredExecutionJsonValue } from '../execution/stored-execution-value.js';
+import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
 
 const id = z.uuid();
 const sealedToken = z

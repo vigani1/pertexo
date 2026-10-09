@@ -9,13 +9,13 @@ import {
   type RunTransitionPlan,
 } from './plan.js';
 import { persistFailureNotificationIntent } from './failure-notification.js';
-import { persistWorkspaceInboxEvent } from '../../execution/workspace-inbox/inbox-producer.js';
-import { persistWorkflowTriggerOutcome } from '../../execution/trigger-pause/trigger-outcome-producer.js';
-import { canonicalOutboxPayloadChecksum } from '../../execution/transport/outbox.js';
+import { persistWorkspaceInboxEvent } from '../../inbox/producer.js';
+import { persistWorkflowTriggerOutcome } from '../../triggers/pause/outcome-producer.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
-} from '../../execution/stored-execution-value.js';
+} from '../../platform/stored-execution-value.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 async function persistDerivedContinuation(

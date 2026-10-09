@@ -1,15 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createOutboxDispatcherDatabase } from '../../src/execution/transport/dispatcher.js';
+import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher.js';
 import type { PoolClient } from 'pg';
 
 import { createApiConnectionDatabase } from '../../src/connections/connections.js';
 import { generatePersistedId } from '../../src/platform/persisted-id.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
-import { applyConnectionHealthObservation } from '../../src/execution/transport/connection-health-application.js';
+import { applyConnectionHealthObservation } from '../../src/connections/health-application.js';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
-} from '../../src/execution/node-attempts/node-attempt-run-store-contract.js';
+} from '../../src/attempts/contract.js';
 import {
   actorId,
   asAdmin,

@@ -1,7 +1,7 @@
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 import { sha256HexSchema } from '../../validation/persisted-primitives.js';
-import type { PublishedWorkflowV2Projection } from '../../execution/published-workflow-reader.js';
+import type { PublishedWorkflowV2Projection } from '../published-workflow.js';
 import type { RunTransitionPlan } from './plan.js';
 
 export const coordinatorIdentitySchema = z.uuid();

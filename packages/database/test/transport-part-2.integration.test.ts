@@ -8,11 +8,11 @@ import {
   consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '../src/execution/transport/inbox.js';
+} from '../src/outbox/receipts.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../src/execution/transport/outbox.js';
+} from '../src/outbox/events.js';
 import { inboxReceipts, transportSecurityAuditFacts } from '../src/schema.js';
 import { createTransportTestEnvironment } from './support/transport.integration.support.js';
 

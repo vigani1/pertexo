@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classifyPublishedWorkflowVersionRow,
   PublishedWorkflowVersionCorruptError,
-} from '../src/execution/published-workflow-reader.js';
+} from '../src/runs/published-workflow.js';
 
 describe('published workflow row classification', () => {
   const base = {

@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model/graph';
 
 import type { CompatibilityReleaseExpectation } from '../../compatibility/compatibility-release.js';
-import { classifyPublishedWorkflowVersionRow } from '../../execution/published-workflow-reader.js';
+import { classifyPublishedWorkflowVersionRow } from '../published-workflow.js';
 import {
   CoordinatorRunStateCorruptError,
   type RunAdvanceState,

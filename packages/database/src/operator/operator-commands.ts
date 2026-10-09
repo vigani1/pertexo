@@ -8,7 +8,7 @@ export type {
   OperatorCommandDatabaseOptions,
 } from './operator-command-contracts.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
-import { serializeBoundedPlainJson } from '../execution/transport/outbox.js';
+import { serializeBoundedPlainJson } from '../outbox/events.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { OperatorCommandConflictError } from './operator-command-errors.js';

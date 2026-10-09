@@ -11,7 +11,7 @@ import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
   reconcilePreviewDelivery,
-} from '../src/execution/previews/preview-execution.js';
+} from '../src/previews/repository.js';
 import {
   acceptFixture,
   claimFixture,

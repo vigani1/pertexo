@@ -23,12 +23,12 @@ import {
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../execution/transport/outbox.js';
+} from '../outbox/events.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from '../execution/published-workflow-reader.js';
+} from './published-workflow.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import { withWorkspaceTransaction } from '../tenant-access/workspace.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';

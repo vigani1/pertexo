@@ -11,11 +11,11 @@ const database = vi.hoisted(() => ({
 vi.mock('../src/platform/database-runtime.js', () => ({
   acquireDatabasePool: database.acquire,
 }));
-vi.mock('../src/execution/previews/preview-execution-dispatch.js', () => ({
+vi.mock('../src/previews/dispatch.js', () => ({
   markPreviewDispatched: database.markDispatched,
 }));
 
-import { createDatabasePreviewAttemptRunStore } from '../src/execution/previews/preview-attempt-store.js';
+import { createDatabasePreviewAttemptRunStore } from '../src/previews/attempt-store.js';
 
 const config = {
   connectionString: 'postgresql://worker:password@localhost/pertexo',
