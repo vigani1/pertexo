@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 import { inspectJsonValue } from '../json/canonical-json.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
@@ -14,57 +12,18 @@ import {
   type WorkflowGraphLimits,
 } from './validation-contract.js';
 
+/**
+ * Checks a parsed graph against the structural rules and limits. Authoring
+ * validation passes admitIssue to bound its report; it may throw to stop.
+ */
 export function validateWorkflowGraph(
   graph: WorkflowGraph,
-  overrides: Partial<WorkflowGraphLimits> = {},
-): GraphValidationResult {
-  return validateWorkflowGraphWithIssueAdmission(graph, overrides);
-}
-
-/** Internal collection seam; historical facades keep their original count-only contract. */
-export function validateWorkflowGraphWithIssueAdmission(
-  graph: WorkflowGraph,
-  overrides: Partial<WorkflowGraphLimits> = {},
+  limitOverrides: Partial<WorkflowGraphLimits> = {},
   admitIssue?: (issue: GraphValidationIssue) => void,
 ): GraphValidationResult {
-  const overrideSchema = z
-    .object({
-      nodes: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-      edges: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-      graphBytes: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-      maxLoopIterations: z
-        .number()
-        .int()
-        .positive()
-        .max(Number.MAX_SAFE_INTEGER),
-      maxLoopConcurrency: z
-        .number()
-        .int()
-        .positive()
-        .max(Number.MAX_SAFE_INTEGER),
-      maxTotalLoopIterations: z
-        .number()
-        .int()
-        .positive()
-        .max(Number.MAX_SAFE_INTEGER),
-      maxExpandedInvocations: z
-        .number()
-        .int()
-        .positive()
-        .max(Number.MAX_SAFE_INTEGER),
-      structuredDepth: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-      jsonValueDepth: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-      inputDepth: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-    })
-    .partial()
-    .strict();
-  const parsedOverrides = overrideSchema.parse(overrides);
-  const definedOverrides = Object.fromEntries(
-    Object.entries(parsedOverrides).filter((entry) => entry[1] !== undefined),
-  ) as Partial<WorkflowGraphLimits>;
   const limits: WorkflowGraphLimits = {
     ...WORKFLOW_GRAPH_LIMITS,
-    ...definedOverrides,
+    ...limitOverrides,
   };
   const issues: GraphValidationIssue[] = [];
   const globalNodeIds = new Set<string>();

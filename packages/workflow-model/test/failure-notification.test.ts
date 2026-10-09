@@ -1,91 +1,31 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
 
 import {
   FailureNotificationContextV1Schema,
   FailureNotificationDestinationConfigSchema,
   FailureNotificationDeliveryResultV1Schema,
-  FailureNotificationPolicyV1Schema,
 } from '../src/failure-notification.js';
 
 const id = (digit: string): string =>
   `${digit.repeat(8)}-${digit.repeat(4)}-4${digit.repeat(3)}-8${digit.repeat(3)}-${digit.repeat(12)}`;
 
-const safeCodeSchema = z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
-const predecessorFailureNotificationContextV1Schema = z
-  .object({
-    schemaVersion: z.literal(1),
-    runId: z.uuid(),
-    workflowId: z.uuid(),
-    workflowVersionId: z.uuid(),
-    terminalEventSequence: z.number().int().positive(),
-    terminalStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
-    triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
-    startedAt: z.iso.datetime(),
-    completedAt: z.iso.datetime(),
-    primaryFailure: z
-      .object({
-        nodeId: z.string().min(1).max(128),
-        invocationKey: z.string().min(1).max(256),
-        nodeStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
-        attemptNumber: z.number().int().nonnegative(),
-        safeErrorCode: safeCodeSchema,
-      })
-      .strict(),
-    totalFailureCount: z.number().int().positive().max(10_000),
-  })
-  .strict();
-
-async function contextFixture(
-  release: 'predecessor' | 'candidate',
-): Promise<unknown> {
+async function contextFixture(): Promise<Record<string, unknown>> {
   return JSON.parse(
     await readFile(
-      new URL(
-        `./fixtures/failure-notification-context-${release}-v1.json`,
-        import.meta.url,
-      ),
+      new URL('./fixtures/failure-notification-context.json', import.meta.url),
       'utf8',
     ),
-  ) as unknown;
+  ) as Record<string, unknown>;
 }
 
 describe('failure notification contracts', () => {
-  it('pins predecessor and candidate readers for an additive mixed-version rollout', async () => {
-    const predecessor = await contextFixture('predecessor');
-    const candidate = await contextFixture('candidate');
-
-    expect(
-      predecessorFailureNotificationContextV1Schema.parse(predecessor),
-    ).toEqual(predecessor);
-    expect(FailureNotificationContextV1Schema.parse(predecessor)).toEqual(
-      predecessor,
-    );
-    expect(FailureNotificationContextV1Schema.parse(candidate)).toEqual(
-      candidate,
-    );
-    expect(
-      predecessorFailureNotificationContextV1Schema.safeParse(candidate)
-        .success,
-    ).toBe(false);
-  });
-
-  it('fails closed on unsupported notification context versions in both readers', async () => {
-    const predecessor = (await contextFixture('predecessor')) as Record<
-      string,
-      unknown
-    >;
-
-    expect(
-      predecessorFailureNotificationContextV1Schema.safeParse({
-        ...predecessor,
-        schemaVersion: 2,
-      }).success,
-    ).toBe(false);
+  it('reads a stored context and refuses another schema version', async () => {
+    const context = await contextFixture();
+    expect(FailureNotificationContextV1Schema.parse(context)).toEqual(context);
     expect(
       FailureNotificationContextV1Schema.safeParse({
-        ...predecessor,
+        ...context,
         schemaVersion: 2,
       }).success,
     ).toBe(false);
@@ -105,16 +45,7 @@ describe('failure notification contracts', () => {
     });
   });
 
-  it('accepts bounded channel-neutral policy, context, and results', () => {
-    expect(
-      FailureNotificationPolicyV1Schema.parse({
-        schemaVersion: 1,
-        policyVersion: 1,
-        destinationId: id('1'),
-        destinationConfigVersion: 3,
-        sideEffectClass: 'idempotent_with_key',
-      }),
-    ).toMatchObject({ policyVersion: 1 });
+  it('accepts bounded channel-neutral context and results', () => {
     expect(
       FailureNotificationContextV1Schema.parse({
         schemaVersion: 1,

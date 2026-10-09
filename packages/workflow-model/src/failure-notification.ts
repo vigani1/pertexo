@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export const FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES = 4_096;
 export const FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT = 100;
-const FAILURE_NOTIFICATION_POLICY_VERSION = 1 as const;
 
 const safeCodeSchema = z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
 
@@ -35,16 +34,6 @@ export const FailureNotificationDestinationConfigSchema = z.discriminatedUnion(
 export type FailureNotificationDestinationConfig = z.output<
   typeof FailureNotificationDestinationConfigSchema
 >;
-
-export const FailureNotificationPolicyV1Schema = z
-  .object({
-    schemaVersion: z.literal(1),
-    policyVersion: z.literal(FAILURE_NOTIFICATION_POLICY_VERSION),
-    destinationId: z.uuid(),
-    destinationConfigVersion: z.number().int().positive(),
-    sideEffectClass: z.enum(['safe', 'idempotent_with_key', 'unsafe']),
-  })
-  .strict();
 
 export const FailureNotificationContextV1Schema = z
   .object({
