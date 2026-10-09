@@ -302,7 +302,7 @@ now, as one ordered program — not "whenever we touch it".
   - [x] rate-limit — one policy table, one Redis script, one runtime. The
         counter "schema version" in Redis keys (a rolling-deploy
         compatibility identity) goes.
-  - [ ] database
+  - [x] database
     - [x] Every table typed: the 27 tables that existed only in SQL and the
           JSON registry get Drizzle definitions (columns, keys, checks,
           indexes, foreign keys), checked by generating DDL from them and
