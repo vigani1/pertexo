@@ -15,11 +15,7 @@ import type { WorkflowRecord } from './records.js';
 const uuidSchema = z.uuid();
 const revisionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
-/**
- * The accepted workflow summary an exact command retry replays. Results
- * stored before ADR 041 carry no name revision; every workflow still had its
- * initial name revision then, so a missing value replays as one.
- */
+/** The accepted workflow summary an exact command retry replays. */
 const storedResultSchema = z
   .object({
     workflow: z
@@ -27,7 +23,7 @@ const storedResultSchema = z
         id: uuidSchema,
         workspaceId: uuidSchema,
         name: z.string().trim().min(1).max(128),
-        nameRevision: revisionSchema.default(1),
+        nameRevision: revisionSchema,
         lifecycleStatus: workflowLifecycleStatusSchema,
         lifecycleRevision: revisionSchema,
         activationStatus: workflowActivationStatusSchema,

@@ -5,7 +5,6 @@ import {
   apiPool,
   apiUrl,
   authoring,
-  createHash,
   createWorkflowAuthoringDatabase,
   emptyGraph,
   failAtWrite,
@@ -390,32 +389,5 @@ describe('workflow rename command persistence (ADR 041)', () => {
         workflow: { nameRevision: 2 },
       });
     }
-  });
-
-  it('replays a receipt completed before name revisions existed as revision one', async () => {
-    const workflowId = await createNamed('Legacy receipt');
-    const idempotencyKey = `legacy-archive-${workflowId}`;
-    const command = {
-      actorId,
-      command: 'archive' as const,
-      expectedLifecycleRevision: 1,
-      idempotencyKey,
-      workflowId,
-      workspaceId,
-    };
-    const archived = await authoring.transitionWorkflowLifecycle(command);
-    await queryAsOwner(
-      `update app.idempotency_records
-          set result_ref=result_ref #- '{workflow,nameRevision}'
-        where workspace_id=$1 and operation='workflow.archive' and key_hash=$2`,
-      [workspaceId, createHash('sha256').update(idempotencyKey).digest('hex')],
-      workspaceId,
-    );
-    await expect(
-      authoring.transitionWorkflowLifecycle(command),
-    ).resolves.toEqual({
-      replayed: true,
-      workflow: { ...archived.workflow, nameRevision: 1 },
-    });
   });
 });

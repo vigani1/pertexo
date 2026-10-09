@@ -76,26 +76,11 @@ export function createConnectionSecretPersistence(
             );
           if (record.status !== 'completed') return null;
           const replay = decodeDurableConnectionReplay(record.result_ref);
-          if (replay.kind === 'snapshot') {
-            if (
-              replay.connection.id !== connectionId ||
-              replay.connection.workspaceId !== workspaceId
-            )
-              throw new Error(
-                'Connection rotation idempotency result is corrupt',
-              );
-            return replay.connection;
-          }
-          const connection = await selectConnection(
-            client,
-            workspaceId,
-            replay.connectionId,
-          );
-          if (replay.connectionId !== connectionId || connection === null)
+          if (replay.id !== connectionId || replay.workspaceId !== workspaceId)
             throw new Error(
               'Connection rotation idempotency result is corrupt',
             );
-          return connection;
+          return replay;
         },
       );
     },
@@ -155,26 +140,14 @@ export function createConnectionSecretPersistence(
             );
           if (claimed.status === 'completed') {
             const replay = decodeDurableConnectionReplay(claimed.result_ref);
-            if (replay.kind === 'snapshot') {
-              if (
-                replay.connection.id !== connectionId ||
-                replay.connection.workspaceId !== workspaceId
-              )
-                throw new Error(
-                  'Connection rotation idempotency result is corrupt',
-                );
-              return replay.connection;
-            }
-            const existing = await selectConnection(
-              client,
-              workspaceId,
-              replay.connectionId,
-            );
-            if (existing === null || replay.connectionId !== connectionId)
+            if (
+              replay.id !== connectionId ||
+              replay.workspaceId !== workspaceId
+            )
               throw new Error(
                 'Connection rotation idempotency result is corrupt',
               );
-            return existing;
+            return replay;
           }
           if (insertedClaim.rowCount !== 1)
             throw new Error(

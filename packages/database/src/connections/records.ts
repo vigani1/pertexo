@@ -507,16 +507,6 @@ export function databaseConstraint(
   }
 }
 
-function durableCreateResult(value: unknown): Readonly<{
-  connectionId: string;
-  secretVersionId: string;
-}> {
-  return z
-    .object({ connectionId: z.uuid(), secretVersionId: z.uuid() })
-    .strict()
-    .parse(value);
-}
-
 const durableConnectionSnapshotSchema = z
   .object({
     id: z.uuid(),
@@ -536,41 +526,21 @@ const durableConnectionSnapshotSchema = z
   })
   .strict();
 
-function durableConnectionSnapshot(value: unknown): ConnectionRecord | null {
-  const parsed = durableConnectionSnapshotSchema.safeParse(value);
-  if (!parsed.success) return null;
-  return Object.freeze({
-    ...parsed.data,
-    lastTestedAt:
-      parsed.data.lastTestedAt === null
-        ? null
-        : new Date(parsed.data.lastTestedAt),
-    lastHealthyAt:
-      parsed.data.lastHealthyAt === null
-        ? null
-        : new Date(parsed.data.lastHealthyAt),
-    ...deserializeConnectionHealthMetadata(parsed.data),
-    createdAt: new Date(parsed.data.createdAt),
-    updatedAt: new Date(parsed.data.updatedAt),
-  });
-}
-
-export type DurableConnectionReplay =
-  | Readonly<{ kind: 'snapshot'; connection: ConnectionRecord }>
-  | Readonly<{
-      kind: 'legacy_pointer';
-      connectionId: string;
-      secretVersionId: string;
-    }>;
-
+/** The connection a completed command stored for exact retries. */
 export function decodeDurableConnectionReplay(
   value: unknown,
-): DurableConnectionReplay {
-  const snapshot = durableConnectionSnapshot(value);
-  if (snapshot !== null)
-    return Object.freeze({ kind: 'snapshot' as const, connection: snapshot });
-  const legacy = durableCreateResult(value);
-  return Object.freeze({ kind: 'legacy_pointer' as const, ...legacy });
+): ConnectionRecord {
+  const parsed = durableConnectionSnapshotSchema.parse(value);
+  return Object.freeze({
+    ...parsed,
+    lastTestedAt:
+      parsed.lastTestedAt === null ? null : new Date(parsed.lastTestedAt),
+    lastHealthyAt:
+      parsed.lastHealthyAt === null ? null : new Date(parsed.lastHealthyAt),
+    ...deserializeConnectionHealthMetadata(parsed),
+    createdAt: new Date(parsed.createdAt),
+    updatedAt: new Date(parsed.updatedAt),
+  });
 }
 
 export function serializeConnectionSnapshot(
@@ -617,10 +587,10 @@ export function parseConnectionTestResult(
   value: unknown,
 ): ConnectionTestResult {
   const parsed = durableConnectionTestResultSchema.parse(value);
-  const connection = durableConnectionSnapshot(parsed.connection);
-  if (connection === null)
-    throw new Error('Connection test idempotency result is corrupt');
-  return Object.freeze({ connection, outcome: parsed.outcome });
+  return Object.freeze({
+    connection: decodeDurableConnectionReplay(parsed.connection),
+    outcome: parsed.outcome,
+  });
 }
 
 export function serializeConnectionTestResult(
