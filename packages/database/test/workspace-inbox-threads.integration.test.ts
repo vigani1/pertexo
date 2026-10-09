@@ -14,6 +14,7 @@ import { createWorkspaceInboxFoldStore } from '../src/inbox/fold-store.js';
 import { persistWorkspaceInboxEvent } from '../src/inbox/producer.js';
 import { createWorkspaceInboxDatabase } from '../src/inbox/read-store.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
+import { enforceRetention } from './support/retention.js';
 import { purgeWorkspace } from './support/workspace-purge.js';
 
 type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
@@ -570,10 +571,8 @@ describe('workspace inbox threads (ADR 055)', () => {
     const owner = reader(workspaceId, members.owner);
     const { revision } = await inbox.readSummary(owner);
     await inbox.markThreadRead({ ...owner, workflowId: first, revision });
-    await asAdmin(
-      'update app.workspace_inbox_reads set read_revision=1 where workspace_id=$1',
-      [workspaceId],
-    );
+    expect(BigInt(revision)).toBeGreaterThan(1n);
+    await inbox.markThreadRead({ ...owner, workflowId: first, revision: '1' });
     const [read] = await asAdmin<{ read_revision: string }>(
       'select read_revision::text from app.workspace_inbox_reads where workspace_id=$1',
       [workspaceId],
@@ -599,8 +598,7 @@ describe('workspace inbox threads (ADR 055)', () => {
         where workspace_id=$1`,
       [idle.workspaceId],
     );
-    for (let round = 0; round < 10; round += 1)
-      if ((await fold.expireThreads(1_000)) === 0) break;
+    await enforceRetention(maintenanceUrl);
     await expect(threads(idle.workspaceId)).resolves.toEqual([]);
     await expect(
       asAdmin('select 1 from app.workspace_inbox_reads where workspace_id=$1', [

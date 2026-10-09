@@ -15,15 +15,13 @@ export type WorkspaceInboxChange = Readonly<{
 }>;
 
 export interface WorkspaceInboxFoldStore {
-  /** Fails unless the fold and expiry commands are the reviewed ones. */
+  /** Fails unless the database is at the expected migration. */
   checkReadiness(signal?: AbortSignal): Promise<void>;
   /** Folds up to `limit` pending failures into their workflows' threads. */
   foldPending(
     limit: number,
     signal?: AbortSignal,
   ): Promise<readonly WorkspaceInboxChange[]>;
-  /** Removes up to `limit` threads idle past their 30-day window. */
-  expireThreads(limit: number, signal?: AbortSignal): Promise<number>;
   close(): Promise<void>;
 }
 
@@ -35,11 +33,8 @@ const changeRowSchema = z
     revision: z.string().regex(/^[1-9][0-9]{0,18}$/u),
   })
   .strict();
-const expiredRowSchema = z
-  .object({ removed: z.number().int().nonnegative() })
-  .strict();
 
-/** ADR 055: the worker's fold and expiry commands, run across workspaces. */
+/** ADR 055: the worker's fold command, run across workspaces. */
 export function createWorkspaceInboxFoldStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
@@ -73,20 +68,6 @@ export function createWorkspaceInboxFoldStore(
               });
             }),
           );
-        },
-        options(signal),
-      );
-    },
-    expireThreads: (limit: number, signal?: AbortSignal) => {
-      const bounded = limitSchema.parse(limit);
-      return withPlatformTransaction(
-        pool,
-        async (client) => {
-          const result = await client.query(
-            'select app.expire_workspace_inbox_threads($1) as removed',
-            [bounded],
-          );
-          return expiredRowSchema.parse(result.rows[0]).removed;
         },
         options(signal),
       );

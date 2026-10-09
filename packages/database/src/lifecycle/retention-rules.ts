@@ -272,6 +272,19 @@ export const RETENTION_RULES = Object.freeze([
       where proof.id = page.id`,
   },
   {
+    // An inbox thread goes 30 days after its latest failure.
+    name: 'workspace_inbox_threads',
+    statement: `
+      with page as (
+        select workspace_id, workflow_id from app.workspace_inbox_threads
+        where latest_occurred_at <= statement_timestamp() - interval '720 hours'
+        order by latest_occurred_at, workspace_id, workflow_id limit $1
+      )
+      delete from app.workspace_inbox_threads thread using page
+      where (thread.workspace_id, thread.workflow_id)
+        = (page.workspace_id, page.workflow_id)`,
+  },
+  {
     // A sign-in transaction goes 15 minutes after it was used or expired.
     name: 'oidc_login_transactions',
     statement: `

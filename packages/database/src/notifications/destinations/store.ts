@@ -141,11 +141,27 @@ export function createFailureNotificationDestinationStore(
                   .string()
                   .regex(/^email:v1:sha256:[0-9a-f]{64}$/u)
                   .parse(raw.deliveryBinding);
-          const destination = await client.query<{ ready: boolean }>(
-            `select app.lock_failure_notification_dispatch_destination($1,$2,$3) ready`,
-            [workspaceId, intentId, attemptNumber],
+          // The workspace must be active and the claimed intent's destination
+          // enabled; both stay locked until the dispatch is marked.
+          const workspace = await client.query(
+            "select 1 from app.workspaces where id=$1 and status='active' for share",
+            [workspaceId],
           );
-          if (destination.rows[0]?.ready !== true)
+          const destination =
+            workspace.rowCount === 1
+              ? await client.query(
+                  `select 1 from app.run_failure_notification_intents intent
+                   join app.failure_notification_destinations destination
+                     on destination.workspace_id=intent.workspace_id
+                    and destination.id=intent.destination_id
+                   where intent.workspace_id=$1 and intent.id=$2
+                     and intent.status='claimed' and intent.delivery_attempts=$3
+                     and destination.status='enabled'
+                   for share of destination`,
+                  [workspaceId, intentId, attemptNumber],
+                )
+              : undefined;
+          if (destination?.rowCount !== 1)
             throw new FailureNotificationStateError(
               'Delivery dispatch fence failed',
             );

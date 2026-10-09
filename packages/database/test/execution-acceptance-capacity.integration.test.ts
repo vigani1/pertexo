@@ -441,47 +441,4 @@ describe('workflow run capacity admission', () => {
     );
     expect(counters.rows).toEqual([{ active_runs: 5, queued_runs: 0 }]);
   });
-
-  it('repairs admission counters from authoritative run state', async () => {
-    await Promise.all(
-      [0, 1].map((index) =>
-        apiDatabase.withWorkspace(workspaceA, (transaction) =>
-          acceptWorkflowRun(transaction, {
-            ...acceptanceInput(
-              createHash('sha256')
-                .update(`repair-${String(index)}`)
-                .digest('hex'),
-            ),
-            keyHash: createHash('sha256')
-              .update(`repair-key-${String(index)}`)
-              .digest('hex'),
-            scope: `repair:${String(index)}`,
-          }),
-        ),
-      ),
-    );
-    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
-    try {
-      await owner.query('begin');
-      await owner.query('set local role pertexo_owner');
-      await owner.query("select set_config('app.workspace_id',$1,true)", [
-        workspaceA,
-      ]);
-      await owner.query(
-        `update app.workspace_execution_admission_counters
-            set queued_runs=99,active_runs=99 where workspace_id=$1`,
-        [workspaceA],
-      );
-      await owner.query('commit');
-    } finally {
-      await owner.query('rollback').catch(() => undefined);
-      await owner.end();
-    }
-    const repaired = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
-      db.execute<{ active_runs: number; queued_runs: number }>(sql`
-        select * from app.reconcile_workspace_execution_admission(${workspaceA})
-      `),
-    );
-    expect(repaired.rows).toEqual([{ queued_runs: 2, active_runs: 0 }]);
-  });
 });

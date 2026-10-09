@@ -157,7 +157,7 @@ it('folds a pending failure into its thread and hints the workspace', async () =
       }),
     ),
     new RedisWorkspaceInboxHintPublisher({ redisUrl }),
-    { foldBatchSize: 100, foldPollMillis: 100, expiryPollMillis: 60_000 },
+    { foldBatchSize: 100, foldPollMillis: 100 },
     diagnostics,
   );
   try {

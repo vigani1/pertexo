@@ -11,7 +11,6 @@ const workspaceId = '11111111-1111-4111-8111-111111111111';
 const options = {
   foldBatchSize: 100,
   foldPollMillis: 1_000,
-  expiryPollMillis: 60_000,
 } as const;
 
 function change(revision: string): WorkspaceInboxChange {
@@ -24,7 +23,6 @@ function fakeStore(overrides: Partial<WorkspaceInboxFoldStore> = {}) {
     foldPending: vi.fn(() =>
       Promise.resolve([] as readonly WorkspaceInboxChange[]),
     ),
-    expireThreads: vi.fn(() => Promise.resolve(0)),
     close: vi.fn(() => Promise.resolve()),
     ...overrides,
   } satisfies WorkspaceInboxFoldStore;
@@ -74,43 +72,14 @@ describe('workspace inbox runtime', () => {
         [change('1')],
         [change('2')],
       ]);
-      expect(store.expireThreads).toHaveBeenCalledOnce();
 
       await vi.advanceTimersByTimeAsync(1_000);
       expect(store.foldPending).toHaveBeenCalledTimes(4);
-      // Expiry waits for its own, longer interval.
-      expect(store.expireThreads).toHaveBeenCalledOnce();
-      await vi.advanceTimersByTimeAsync(60_000);
-      expect(store.expireThreads).toHaveBeenCalledTimes(2);
     } finally {
       await runtime.close();
     }
     expect(store.close).toHaveBeenCalledOnce();
     expect(publisher.close).toHaveBeenCalledOnce();
-  });
-
-  it('expires in bounded batches until a partial batch', async () => {
-    const expireThreads = vi
-      .fn<WorkspaceInboxFoldStore['expireThreads']>()
-      .mockResolvedValueOnce(1_000)
-      .mockResolvedValueOnce(1_000)
-      .mockResolvedValue(3);
-    const store = fakeStore({ expireThreads });
-    const runtime = createWorkspaceInboxRuntime(
-      store,
-      fakePublisher(),
-      options,
-      diagnostics(),
-    );
-    try {
-      runtime.start();
-      await runtime.checkReadiness();
-      expect(expireThreads.mock.calls.map(([limit]) => limit)).toEqual([
-        1_000, 1_000, 1_000,
-      ]);
-    } finally {
-      await runtime.close();
-    }
   });
 
   it('never runs commands that fail the startup compatibility check', async () => {
