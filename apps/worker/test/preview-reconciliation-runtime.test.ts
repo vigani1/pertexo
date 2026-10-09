@@ -52,7 +52,7 @@ function maintenanceRuntime(
       backgroundTaskShutdownTimeoutMillis,
       database: parseDatabaseConfig({
         connectionString:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+          'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       }),
       failureNotificationDelivery: { deliver: vi.fn() },
       redisUrl: 'redis://localhost:6379/0',
@@ -191,7 +191,7 @@ describe('preview reconciliation handler', () => {
           {
             database: parseDatabaseConfig({
               connectionString:
-                'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+                'postgresql://pertexo_app:secret@localhost:5432/pertexo',
             }),
             failureNotificationDelivery: { deliver: vi.fn() },
             previewReconciliation: true,
@@ -250,7 +250,7 @@ describe('preview reconciliation handler', () => {
       {
         database: parseDatabaseConfig({
           connectionString:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         }),
         failureNotificationDelivery: { deliver: vi.fn() },
         failureNotificationDeliveryTimeoutMillis: 1_000,
@@ -325,7 +325,7 @@ describe('preview reconciliation handler', () => {
       {
         database: parseDatabaseConfig({
           connectionString:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         }),
         previewReconciliation: false,
         redisUrl: 'redis://localhost:6379/0',
@@ -496,7 +496,7 @@ describe('preview reconciliation handler', () => {
         {
           database: parseDatabaseConfig({
             connectionString:
-              'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+              'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           }),
           redisUrl: 'redis://localhost:6379/0',
         },
@@ -520,7 +520,7 @@ describe('preview reconciliation handler', () => {
       {
         database: parseDatabaseConfig({
           connectionString:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         }),
         redisUrl: 'redis://localhost:6379/0',
       },
@@ -622,7 +622,7 @@ describe('preview reconciliation handler', () => {
         {
           database: parseDatabaseConfig({
             connectionString:
-              'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+              'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           }),
           previewReconciliation: false,
           runReplay: true,
@@ -664,7 +664,7 @@ describe('preview reconciliation handler', () => {
         {
           database: parseDatabaseConfig({
             connectionString:
-              'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+              'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           }),
           failureNotificationDelivery: { deliver: vi.fn() },
           redisUrl: 'redis://localhost:6379/0',
@@ -756,7 +756,7 @@ describe('preview reconciliation handler', () => {
         backgroundTaskShutdownTimeoutMillis: 5,
         database: parseDatabaseConfig({
           connectionString:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         }),
         failureNotificationDelivery: { deliver: vi.fn() },
         previewReconciliation: false,

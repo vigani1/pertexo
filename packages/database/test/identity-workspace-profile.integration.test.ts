@@ -121,9 +121,9 @@ describe('self-service display name (ADR 043)', () => {
       can_update_profile_revision: boolean;
     }>(
       `select
-         has_table_privilege('pertexo_api','app.user_profile_command_receipts','DELETE') can_delete,
-         has_column_privilege('pertexo_api','app.user_profile_command_receipts','key_hash','UPDATE') can_update_key,
-         has_column_privilege('pertexo_api','app.users','profile_revision','UPDATE') can_update_profile_revision`,
+         has_table_privilege('pertexo_app','app.user_profile_command_receipts','DELETE') can_delete,
+         has_column_privilege('pertexo_app','app.user_profile_command_receipts','key_hash','UPDATE') can_update_key,
+         has_column_privilege('pertexo_app','app.users','profile_revision','UPDATE') can_update_profile_revision`,
     );
     expect(grants).toEqual({
       can_delete: false,

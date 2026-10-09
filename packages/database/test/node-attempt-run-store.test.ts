@@ -33,8 +33,7 @@ const invocationKeyCases = JSON.parse(
 }>[];
 
 const config = parseDatabaseConfig({
-  connectionString:
-    'postgresql://pertexo_worker:unused@invalid.invalid/pertexo',
+  connectionString: 'postgresql://pertexo_app:unused@invalid.invalid/pertexo',
   connectionTimeoutMillis: 1_000,
   idleTimeoutMillis: 1_000,
   max: 1,

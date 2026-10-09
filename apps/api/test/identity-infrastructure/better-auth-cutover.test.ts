@@ -49,7 +49,6 @@ const databaseConfig = {
   idleTimeoutMillis: 2_000,
   max: 4,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 };
 
 afterEach(() => {

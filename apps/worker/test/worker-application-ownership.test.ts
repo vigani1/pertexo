@@ -11,10 +11,9 @@ import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { WorkerShutdownCoordinator } from '../src/runtime/worker-shutdown-coordinator.js';
 
 const config = parseWorkerConfig({
-  DATABASE_DISPATCHER_URL:
-    'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-  DATABASE_WORKER_URL:
-    'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+  DATABASE_MAINTENANCE_URL:
+    'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+  DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
   REDIS_URL: 'redis://localhost:6379/0',
 });
 

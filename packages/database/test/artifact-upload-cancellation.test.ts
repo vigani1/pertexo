@@ -51,7 +51,6 @@ const config = {
   idleTimeoutMillis: 1_000,
   max: 2,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 function input(signal: AbortSignal, verifyUpload?: () => Promise<void>) {

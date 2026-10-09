@@ -332,15 +332,15 @@ describe('PostgreSQL telemetry pool', () => {
     ).toThrow('lock_timeout must be a positive safe integer');
   });
 
-  it('reports pool state by bounded database authority', async () => {
+  it('reports pool state by workload', async () => {
     const telemetry = fakeMeter();
     const first = createDatabasePool(
-      { max: 4, user: 'pertexo_api' },
-      { meter: telemetry.meter, monitorLockWaits: false },
+      { max: 4, user: 'pertexo_app' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
     );
     const second = createDatabasePool(
-      { max: 6, user: 'pertexo_worker' },
-      { meter: telemetry.meter, monitorLockWaits: false },
+      { max: 6, user: 'pertexo_app' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'worker' },
     );
     Object.assign(poolAt(0), {
       idleCount: 1,
@@ -644,7 +644,7 @@ describe('PostgreSQL telemetry pool', () => {
     pg.FakePool.connectOutcomes.push({ kind: 'resolve', client });
     const pool = createDatabasePool(
       {},
-      { meter: telemetry.meter, monitorLockWaits: false, role: 'operator' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'maintenance' },
     );
 
     await expect(pool.connect()).resolves.toBe(client);
@@ -654,7 +654,7 @@ describe('PostgreSQL telemetry pool', () => {
       telemetry.measurements.get(DATABASE_METRIC_NAME.poolCheckoutDuration),
     ).toEqual([
       expect.objectContaining({
-        attributes: { outcome: 'success', pool_role: 'operator' },
+        attributes: { outcome: 'success', pool_role: 'maintenance' },
       }),
     ]);
 

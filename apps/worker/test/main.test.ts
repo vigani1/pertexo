@@ -6,9 +6,9 @@ import { parseWorkerConfig } from '../src/config/worker-config.js';
 import { bootstrapWorker, type WorkerBootstrapModules } from '../src/main.js';
 
 const config = parseWorkerConfig({
-  DATABASE_DISPATCHER_URL:
+  DATABASE_MAINTENANCE_URL:
     'postgresql://dispatcher:secret@localhost:5432/pertexo',
-  DATABASE_WORKER_URL: 'postgresql://worker:secret@localhost:5432/pertexo',
+  DATABASE_URL: 'postgresql://worker:secret@localhost:5432/pertexo',
   NODE_ENV: 'test',
   REDIS_URL: 'redis://:secret@localhost:6379/0',
 });

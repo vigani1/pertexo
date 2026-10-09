@@ -35,14 +35,14 @@ const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
   'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const dispatcherBaseUrl =
-  process.env.DATABASE_DISPATCHER_URL ??
-  'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const runnerOwnsDatabase = process.env.PERTEXO_Q11_RUNNER_OWNS_DATABASE === '1';
 const databaseName = (() => {
   if (!runnerOwnsDatabase)
@@ -54,12 +54,7 @@ const databaseName = (() => {
 })();
 const databaseFixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: [
-    'pertexo_migration',
-    'pertexo_api',
-    'pertexo_worker',
-    'pertexo_dispatcher',
-  ],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -68,14 +63,10 @@ export const apiUrl = databaseFixture.databaseUrl(apiBaseUrl);
 export const workerUrl = databaseFixture.databaseUrl(workerBaseUrl);
 export const dispatcherUrl = databaseFixture.databaseUrl(dispatcherBaseUrl);
 export const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
+  appRole: 'pertexo_app',
   connectionString: migrationUrl,
-  dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 export let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;

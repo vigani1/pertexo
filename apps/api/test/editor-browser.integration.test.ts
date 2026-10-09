@@ -439,9 +439,9 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       }
       const ready = phase(worker, 'worker-ready');
       worker.send({
-        workerUrl: databaseUrl(process.env.DATABASE_WORKER_URL ?? ''),
-        dispatcherUrl: databaseUrl(process.env.DATABASE_DISPATCHER_URL ?? ''),
-        apiUrl: databaseUrl(process.env.DATABASE_API_URL ?? ''),
+        workerUrl: databaseUrl(process.env.DATABASE_URL ?? ''),
+        dispatcherUrl: databaseUrl(process.env.DATABASE_MAINTENANCE_URL ?? ''),
+        apiUrl: databaseUrl(process.env.DATABASE_URL ?? ''),
         migrationUrl: databaseUrl(process.env.DATABASE_MIGRATION_URL ?? ''),
         ...(httpMaster === undefined
           ? {}

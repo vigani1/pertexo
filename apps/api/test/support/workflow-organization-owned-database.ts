@@ -41,7 +41,7 @@ export function createWorkflowOrganizationOwnedDatabase() {
         created = true;
         await admin.query(`revoke all on database "${name}" from public`);
         await admin.query(
-          `grant connect on database "${name}" to pertexo_migration,pertexo_api`,
+          `grant connect on database "${name}" to pertexo_migration,pertexo_app`,
         );
       } finally {
         await admin.end();
@@ -49,12 +49,8 @@ export function createWorkflowOrganizationOwnedDatabase() {
       await migrateDatabase({
         connectionString: connection('migrationUrl'),
         ownerRole: 'pertexo_owner',
-        apiRuntimeRole: 'pertexo_api',
-        workerRuntimeRole: 'pertexo_worker',
-        dispatcherRole: 'pertexo_dispatcher',
+        appRole: 'pertexo_app',
         maintenanceRole: 'pertexo_maintenance',
-        lifecycleCommandRole: 'pertexo_lifecycle_command',
-        operatorRole: 'pertexo_operator',
       });
     },
     async drop() {

@@ -81,7 +81,6 @@ const options = {
     idleTimeoutMillis: 30_000,
     max: 5,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   leaseOwner: 'schedule:worker-test',
   onTimeWindowSeconds: 300,

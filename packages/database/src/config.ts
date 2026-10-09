@@ -48,7 +48,6 @@ const runtimeEnvironmentFields = Object.freeze({
   DATABASE_CONNECTION_TIMEOUT_MILLIS: environmentConnectionTimeoutMillis,
   DATABASE_IDLE_TIMEOUT_MILLIS: environmentIdleTimeoutMillis,
   POSTGRES_OWNER_USER: postgresRole('pertexo_owner'),
-  POSTGRES_WORKER_RUNTIME_USER: postgresRole('pertexo_worker'),
 });
 
 const databaseConfigSchema = z.object({
@@ -57,7 +56,6 @@ const databaseConfigSchema = z.object({
   idleTimeoutMillis,
   max: z.number().int().positive().max(100).default(10),
   ownerRole: postgresRole('pertexo_owner'),
-  workerRuntimeRole: postgresRole('pertexo_worker'),
 });
 
 export type DatabaseConfig = Readonly<z.output<typeof databaseConfigSchema>>;
@@ -76,23 +74,16 @@ const migrationEnvironmentSchema = z.object({
     .enum(['development', 'test', 'staging', 'production'])
     .default('development'),
   POSTGRES_OWNER_USER: postgresRole('pertexo_owner'),
-  POSTGRES_API_RUNTIME_USER: postgresRole('pertexo_api'),
-  POSTGRES_DISPATCHER_RUNTIME_USER: postgresRole('pertexo_dispatcher'),
+  POSTGRES_APP_USER: postgresRole('pertexo_app'),
   POSTGRES_MAINTENANCE_USER: postgresRole('pertexo_maintenance'),
-  POSTGRES_LIFECYCLE_COMMAND_USER: postgresRole('pertexo_lifecycle_command'),
-  POSTGRES_OPERATOR_USER: postgresRole('pertexo_operator'),
-  POSTGRES_WORKER_RUNTIME_USER: postgresRole('pertexo_worker'),
 });
 
+/** Owner runs migrations; app serves the API and worker; maintenance runs cross-workspace jobs. */
 export type MigrationConfig = Readonly<{
-  apiRuntimeRole: string;
+  appRole: string;
   connectionString: string;
-  dispatcherRole: string;
   maintenanceRole: string;
-  lifecycleCommandRole: string;
-  operatorRole: string;
   ownerRole: string;
-  workerRuntimeRole: string;
 }>;
 
 export function parseMigrationConfig(
@@ -100,21 +91,17 @@ export function parseMigrationConfig(
 ): MigrationConfig {
   const parsed = migrationEnvironmentSchema.parse(environment);
   return Object.freeze({
-    apiRuntimeRole: parsed.POSTGRES_API_RUNTIME_USER,
+    appRole: parsed.POSTGRES_APP_USER,
     connectionString: parsed.DATABASE_MIGRATION_URL,
-    dispatcherRole: parsed.POSTGRES_DISPATCHER_RUNTIME_USER,
     maintenanceRole: parsed.POSTGRES_MAINTENANCE_USER,
-    lifecycleCommandRole: parsed.POSTGRES_LIFECYCLE_COMMAND_USER,
-    operatorRole: parsed.POSTGRES_OPERATOR_USER,
     ownerRole: parsed.POSTGRES_OWNER_USER,
-    workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
 }
 
 const dispatcherEnvironmentSchema = z.object({
   ...runtimeEnvironmentFields,
-  DATABASE_DISPATCHER_URL: postgresUrl(
-    'DATABASE_DISPATCHER_URL must be a postgresql:// URL',
+  DATABASE_MAINTENANCE_URL: postgresUrl(
+    'DATABASE_MAINTENANCE_URL must be a postgresql:// URL',
   ),
   DATABASE_DISPATCHER_POOL_MAX: conservativePoolMax,
 });
@@ -127,38 +114,6 @@ const maintenanceEnvironmentSchema = z.object({
   DATABASE_MAINTENANCE_POOL_MAX: conservativePoolMax,
 });
 
-const lifecycleCommandEnvironmentSchema = z.object({
-  ...runtimeEnvironmentFields,
-  DATABASE_LIFECYCLE_COMMAND_URL: postgresUrl(
-    'DATABASE_LIFECYCLE_COMMAND_URL must be a postgresql:// URL',
-  ),
-  DATABASE_LIFECYCLE_COMMAND_POOL_MAX: conservativePoolMax,
-});
-
-const operatorEnvironmentSchema = z.object({
-  DATABASE_CONNECTION_TIMEOUT_MILLIS: environmentConnectionTimeoutMillis,
-  DATABASE_IDLE_TIMEOUT_MILLIS: environmentIdleTimeoutMillis,
-  DATABASE_OPERATOR_URL: postgresUrl(
-    'DATABASE_OPERATOR_URL must be a postgresql:// URL',
-  ),
-  POSTGRES_OPERATOR_USER: postgresRole('pertexo_operator'),
-  POSTGRES_OWNER_USER: postgresRole('pertexo_owner'),
-});
-
-export function parseLifecycleCommandDatabaseConfig(
-  environment: Readonly<Record<string, string | undefined>> = process.env,
-): DatabaseConfig {
-  const parsed = lifecycleCommandEnvironmentSchema.parse(environment);
-  return parseDatabaseConfig({
-    connectionString: parsed.DATABASE_LIFECYCLE_COMMAND_URL,
-    connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
-    idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
-    max: parsed.DATABASE_LIFECYCLE_COMMAND_POOL_MAX,
-    ownerRole: parsed.POSTGRES_OWNER_USER,
-    workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
-  });
-}
-
 export function parseMaintenanceDatabaseConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): DatabaseConfig {
@@ -169,23 +124,16 @@ export function parseMaintenanceDatabaseConfig(
     idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
     max: parsed.DATABASE_MAINTENANCE_POOL_MAX,
     ownerRole: parsed.POSTGRES_OWNER_USER,
-    workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
 }
 
+/** Ops commands run one at a time on the maintenance login. */
 export function parseOperatorDatabaseConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,
-): DatabaseConfig & Readonly<{ operatorRole: string }> {
-  const parsed = operatorEnvironmentSchema.parse(environment);
-  return Object.freeze({
-    ...parseDatabaseConfig({
-      connectionString: parsed.DATABASE_OPERATOR_URL,
-      connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
-      idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
-      max: 1,
-      ownerRole: parsed.POSTGRES_OWNER_USER,
-    }),
-    operatorRole: parsed.POSTGRES_OPERATOR_USER,
+): DatabaseConfig {
+  return parseDatabaseConfig({
+    ...parseMaintenanceDatabaseConfig(environment),
+    max: 1,
   });
 }
 
@@ -194,11 +142,10 @@ export function parseOutboxDispatcherConfig(
 ): DatabaseConfig {
   const parsed = dispatcherEnvironmentSchema.parse(environment);
   return parseDatabaseConfig({
-    connectionString: parsed.DATABASE_DISPATCHER_URL,
+    connectionString: parsed.DATABASE_MAINTENANCE_URL,
     connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
     idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
     max: parsed.DATABASE_DISPATCHER_POOL_MAX,
     ownerRole: parsed.POSTGRES_OWNER_USER,
-    workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
 }

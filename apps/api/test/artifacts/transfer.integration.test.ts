@@ -25,7 +25,7 @@ if (artifactTransferIntegrationRequested) {
     name: 'artifact transfer HTTP and object-store integration',
     requested: true,
     required: {
-      DATABASE_API_URL: process.env.DATABASE_API_URL,
+      DATABASE_URL: process.env.DATABASE_URL,
       ARTIFACT_STORE_ACCESS_KEY_ID: process.env.ARTIFACT_STORE_ACCESS_KEY_ID,
       ARTIFACT_STORE_BUCKET: process.env.ARTIFACT_STORE_BUCKET,
       ARTIFACT_STORE_ENDPOINT: process.env.ARTIFACT_STORE_ENDPOINT,

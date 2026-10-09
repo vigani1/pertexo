@@ -14,7 +14,6 @@ import {
   workspaceId,
   apiUrl,
   apiPool,
-  workerPool,
   dispatcherPool,
   authoring,
   currentRepresentationTag,
@@ -337,7 +336,7 @@ describe('bounded version-contextual run-input cases', () => {
       }),
     ).rejects.toBeInstanceOf(TypeError);
   });
-  it('forces tenant RLS and denies worker/dispatcher case access and API physical erasure', async () => {
+  it('forces tenant RLS and denies maintenance case access and app physical erasure', async () => {
     const scope = await fixture();
     const created = await database.createCase({
       ...scope,
@@ -365,9 +364,6 @@ describe('bounded version-contextual run-input cases', () => {
     expect(
       (await apiPool.query('select * from app.workflow_input_cases')).rows,
     ).toEqual([]);
-    await expect(
-      workerPool.query('select * from app.workflow_input_cases'),
-    ).rejects.toMatchObject({ code: '42501' });
     await expect(
       dispatcherPool.query('select * from app.workflow_input_case_payloads'),
     ).rejects.toMatchObject({ code: '42501' });

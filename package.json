@@ -56,7 +56,6 @@
     "contracts:generate": "pnpm --filter @pertexo/contracts contracts:generate",
     "database:schema:check": "node --test infrastructure/checks/validate-database-schema.test.mjs && node infrastructure/checks/validate-database-schema.mjs",
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
-    "db:provision-operator": "node infrastructure/postgres/provision-operator-role.mjs",
     "dependencies:check": "knip",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "dev": "node infrastructure/development/dev.mjs",

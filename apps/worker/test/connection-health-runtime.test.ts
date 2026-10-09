@@ -124,7 +124,6 @@ describe('independent durable health command worker', () => {
           idleTimeoutMillis: 30_000,
           max: 2,
           ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
         },
         redisUrl: 'redis://localhost:6379/0',
         previewReconciliation: false,
@@ -151,8 +150,8 @@ describe('independent durable health command worker', () => {
 
   it('selects application even in off mode to receipt pending commands without mutation', async () => {
     const config = parseWorkerConfig({
-      DATABASE_WORKER_URL: 'postgresql://worker:unused@localhost/db',
-      DATABASE_DISPATCHER_URL: 'postgresql://dispatcher:unused@localhost/db',
+      DATABASE_URL: 'postgresql://worker:unused@localhost/db',
+      DATABASE_MAINTENANCE_URL: 'postgresql://dispatcher:unused@localhost/db',
       REDIS_URL: 'redis://localhost:6379/0',
       OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.applyConnectionHealthObservation,
     });

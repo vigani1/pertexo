@@ -46,15 +46,15 @@ describe('transactional inbox duplicate proof', () => {
         worker_table_update: boolean;
       }>(`
         select
-          has_table_privilege('pertexo_api', table_class.oid, 'UPDATE')
+          has_table_privilege('pertexo_app', table_class.oid, 'UPDATE')
             as api_table_update,
           has_column_privilege(
-            'pertexo_api', table_class.oid, 'completed_at', 'UPDATE'
+            'pertexo_app', table_class.oid, 'completed_at', 'UPDATE'
           ) as api_completed_at_update,
-          has_table_privilege('pertexo_worker', table_class.oid, 'UPDATE')
+          has_table_privilege('pertexo_app', table_class.oid, 'UPDATE')
             as worker_table_update,
           has_column_privilege(
-            'pertexo_worker', table_class.oid, 'completed_at', 'UPDATE'
+            'pertexo_app', table_class.oid, 'completed_at', 'UPDATE'
           ) as worker_completed_at_update
         from pg_class table_class
         where table_class.oid = 'app.inbox_receipts'::regclass

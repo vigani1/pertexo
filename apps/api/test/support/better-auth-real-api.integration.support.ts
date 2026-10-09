@@ -38,8 +38,8 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const redisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 export const origin = 'https://app.integration.test';
@@ -191,17 +191,13 @@ export function useBetterAuthRealApi(
       }
     });
     await creator.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker`,
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_app`,
     );
     await migrateDatabase({
-      apiRuntimeRole: 'pertexo_api',
+      appRole: 'pertexo_app',
       connectionString: databaseUrl(migrationBaseUrl),
-      dispatcherRole: 'pertexo_dispatcher',
-      lifecycleCommandRole: 'pertexo_lifecycle_command',
       maintenanceRole: 'pertexo_maintenance',
-      operatorRole: 'pertexo_operator',
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     admin = owner.acquire(
       'inspection pool',

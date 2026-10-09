@@ -4,8 +4,8 @@ import { parseWorkerConfig } from '../src/config/worker-config.js';
 import { parseConnectionRunHealthMode } from '../src/config/connection-run-health-config.js';
 
 const environment = {
-  DATABASE_WORKER_URL: 'postgresql://worker:secret@localhost:5432/pertexo',
-  DATABASE_DISPATCHER_URL:
+  DATABASE_URL: 'postgresql://worker:secret@localhost:5432/pertexo',
+  DATABASE_MAINTENANCE_URL:
     'postgresql://dispatcher:secret@localhost:5432/pertexo',
   REDIS_URL: 'redis://localhost:6379/0',
 };

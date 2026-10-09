@@ -56,11 +56,11 @@ const migrationDatabaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiDatabaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerDatabaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 
 function databaseUrl(baseUrl: string, databaseName: string): string {
   const parsed = new URL(baseUrl);
@@ -116,10 +116,8 @@ function createArtifactDatabaseEnvironment() {
           await admin.query(
             `grant connect on database ${quoteIdentifier(databaseName)} to ${[
               process.env.POSTGRES_MIGRATION_USER ?? 'pertexo_migration',
-              process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api',
-              process.env.POSTGRES_WORKER_RUNTIME_USER ?? 'pertexo_worker',
-              process.env.POSTGRES_DISPATCHER_RUNTIME_USER ??
-                'pertexo_dispatcher',
+              process.env.POSTGRES_APP_USER ?? 'pertexo_app',
+              process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
               process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
             ]
               .map(quoteIdentifier)

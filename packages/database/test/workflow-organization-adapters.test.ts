@@ -41,7 +41,7 @@ const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const tagId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const secondWorkflow = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const config = parseDatabaseConfig({
-  connectionString: 'postgresql://pertexo_api:synthetic@127.0.0.1:5432/test',
+  connectionString: 'postgresql://pertexo_app:synthetic@127.0.0.1:5432/test',
 });
 const command = { ...scope, idempotencyKey: 'frozen-command' };
 const folder = {

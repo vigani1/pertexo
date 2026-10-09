@@ -33,7 +33,7 @@ describe('API runtime organization configuration forwarding', () => {
           database: {
             ...fixture.config.database,
             connectionString:
-              'postgresql://pertexo_api:unused@127.0.0.1:1/pertexo_test_f07_no_connection',
+              'postgresql://pertexo_app:unused@127.0.0.1:1/pertexo_test_f07_no_connection',
             max: 1,
           },
           ...(configured

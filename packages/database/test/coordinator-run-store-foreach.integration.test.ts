@@ -240,7 +240,6 @@ describe('Coordinator For Each persistence invariants', () => {
         connectionString: databaseUrl(workerBaseUrl),
         max: 1,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
     try {
@@ -254,7 +253,6 @@ describe('Coordinator For Each persistence invariants', () => {
         connectionString: databaseUrl(workerBaseUrl),
         max: 1,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
     try {

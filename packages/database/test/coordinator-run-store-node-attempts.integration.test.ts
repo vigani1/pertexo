@@ -1831,7 +1831,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
         connectionString: databaseUrl(workerBaseUrl),
         max: 1,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
     try {
@@ -1898,7 +1897,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
         connectionString: databaseUrl(workerBaseUrl),
         max: 1,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
     try {
@@ -2050,8 +2048,8 @@ describe('Coordinator node-attempt persistence invariants', () => {
 
   it('enforces current-head execution command roles and fence dry-run behavior', async () => {
     const operatorBaseUrl =
-      process.env.DATABASE_OPERATOR_URL ??
-      'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
+      process.env.DATABASE_MAINTENANCE_URL ??
+      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
     const operator = createOperatorCommandDatabase(
       parseDatabaseConfig({
         connectionString: databaseUrl(operatorBaseUrl),
@@ -2142,8 +2140,8 @@ describe('Coordinator node-attempt persistence invariants', () => {
 
   it('preserves exact 100/101 due-work boundaries and dry-run nonmutation', async () => {
     const operatorBaseUrl =
-      process.env.DATABASE_OPERATOR_URL ??
-      'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
+      process.env.DATABASE_MAINTENANCE_URL ??
+      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
     const operator = createOperatorCommandDatabase(
       parseDatabaseConfig({
         connectionString: databaseUrl(operatorBaseUrl),

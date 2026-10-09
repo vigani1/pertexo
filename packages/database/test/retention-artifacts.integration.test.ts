@@ -553,8 +553,8 @@ describe('retention artifact reclamation', () => {
   it('serializes late upload verification with expiry cleanup', async () => {
     const applicationName = `retention-finalize-${randomUUID()}`;
     const apiUrl = new URL(
-      process.env.DATABASE_API_URL ??
-        'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
+      process.env.DATABASE_URL ??
+        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
     );
     apiUrl.pathname = new URL(maintenanceUrl).pathname;
     const uploadDatabase = createArtifactUploadDatabase(

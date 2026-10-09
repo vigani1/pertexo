@@ -56,7 +56,6 @@ const config = {
     idleTimeoutMillis: 30_000,
     max: 1,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   dispatcherDatabase: {
     connectionString: 'postgresql://unused',
@@ -64,7 +63,6 @@ const config = {
     idleTimeoutMillis: 30_000,
     max: 1,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   logLevel: 'silent',
   nodeAttempt: {

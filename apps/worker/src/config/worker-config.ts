@@ -3,10 +3,7 @@ import {
   parseArtifactStoreConfig,
   type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import {
-  parseLifecycleCommandDatabaseConfig,
-  type DatabaseConfig,
-} from '@pertexo/database/lifecycle';
+import type { DatabaseConfig } from '@pertexo/database/lifecycle';
 import { parseMaintenanceDatabaseConfig } from '@pertexo/database/maintenance';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { platformServingReleaseRequiresHttpCapabilities } from '@pertexo/node-catalog';
@@ -73,15 +70,13 @@ const enabledJobNamesSchema = z
 
 const workerConfigSchema = z
   .object({
-    DATABASE_WORKER_URL: z
+    DATABASE_URL: z.url().refine((value) => value.startsWith('postgresql://'), {
+      message: 'DATABASE_URL must be a postgresql:// URL',
+    }),
+    DATABASE_MAINTENANCE_URL: z
       .url()
       .refine((value) => value.startsWith('postgresql://'), {
-        message: 'DATABASE_WORKER_URL must be a postgresql:// URL',
-      }),
-    DATABASE_DISPATCHER_URL: z
-      .url()
-      .refine((value) => value.startsWith('postgresql://'), {
-        message: 'DATABASE_DISPATCHER_URL must be a postgresql:// URL',
+        message: 'DATABASE_MAINTENANCE_URL must be a postgresql:// URL',
       }),
     DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
       .number()
@@ -266,10 +261,6 @@ const workerConfigSchema = z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
       .default('pertexo_owner'),
-    POSTGRES_WORKER_RUNTIME_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_worker'),
   })
   .superRefine((value, context) => {
     if (
@@ -302,8 +293,8 @@ const workerConfigSchema = z
   })
   .transform(
     ({
-      DATABASE_WORKER_URL,
-      DATABASE_DISPATCHER_URL,
+      DATABASE_URL,
+      DATABASE_MAINTENANCE_URL,
       DATABASE_CONNECTION_TIMEOUT_MILLIS,
       DATABASE_IDLE_TIMEOUT_MILLIS,
       DATABASE_POOL_MAX,
@@ -340,7 +331,6 @@ const workerConfigSchema = z
       WORKER_RESOURCE_SAMPLE_MILLIS,
       WORKER_RESOURCE_UNHEALTHY_SAMPLES,
       POSTGRES_OWNER_USER,
-      POSTGRES_WORKER_RUNTIME_USER,
     }) => ({
       nodeEnv: NODE_ENV,
       logLevel: LOG_LEVEL,
@@ -360,20 +350,18 @@ const workerConfigSchema = z
         unhealthySamplesBeforeDrain: WORKER_RESOURCE_UNHEALTHY_SAMPLES,
       },
       database: {
-        connectionString: DATABASE_WORKER_URL,
+        connectionString: DATABASE_URL,
         connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
         idleTimeoutMillis: DATABASE_IDLE_TIMEOUT_MILLIS,
         max: DATABASE_POOL_MAX,
         ownerRole: POSTGRES_OWNER_USER,
-        workerRuntimeRole: POSTGRES_WORKER_RUNTIME_USER,
       },
       dispatcherDatabase: {
-        connectionString: DATABASE_DISPATCHER_URL,
+        connectionString: DATABASE_MAINTENANCE_URL,
         connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
         idleTimeoutMillis: DATABASE_IDLE_TIMEOUT_MILLIS,
         max: DATABASE_DISPATCHER_POOL_MAX,
         ownerRole: POSTGRES_OWNER_USER,
-        workerRuntimeRole: POSTGRES_WORKER_RUNTIME_USER,
       },
       outboxDispatcher: {
         batchSize: OUTBOX_DISPATCH_BATCH_SIZE,
@@ -428,7 +416,6 @@ export type WorkerConfig = Readonly<
 >;
 
 export type RetentionConfig = Readonly<{
-  lifecycleDatabase: DatabaseConfig;
   maintenanceDatabase: DatabaseConfig;
   leaseOwner: string;
 }>;
@@ -501,23 +488,18 @@ function artifactStoreConfig(
   return parsed;
 }
 
-/** Retention runs in every deployed worker; locally it needs both logins. */
+/** Retention runs wherever artifacts are stored; a deployed worker has both. */
 function retentionConfig(
   environment: Readonly<Record<string, string | undefined>>,
   deployed: boolean,
   workerId: string,
   artifactStore: ArtifactStoreConfig | undefined,
 ): RetentionConfig | undefined {
-  if (
-    !deployed &&
-    environment.DATABASE_MAINTENANCE_URL === undefined &&
-    environment.DATABASE_LIFECYCLE_COMMAND_URL === undefined
-  )
+  if (artifactStore === undefined) {
+    if (deployed) throw new Error('Retention requires artifact storage');
     return undefined;
-  if (artifactStore === undefined)
-    throw new Error('Retention requires artifact storage');
+  }
   return Object.freeze({
-    lifecycleDatabase: parseLifecycleCommandDatabaseConfig(environment),
     maintenanceDatabase: parseMaintenanceDatabaseConfig(environment),
     leaseOwner: `retention:${workerId}`,
   });

@@ -7,10 +7,9 @@ import { JOB_NAME } from '@pertexo/queue';
 import { parseWorkerConfig } from '../src/config/worker-config.js';
 
 const requiredEnvironment = {
-  DATABASE_DISPATCHER_URL:
-    'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-  DATABASE_WORKER_URL:
-    'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+  DATABASE_MAINTENANCE_URL:
+    'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+  DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
   REDIS_URL: 'redis://:secret@localhost:6379/0',
 } as const;
 
@@ -57,10 +56,9 @@ describe('parseWorkerConfig', () => {
   it('applies safe defaults when optional environment values are absent', () => {
     expect(
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
       }),
     ).toEqual({
@@ -85,21 +83,19 @@ describe('parseWorkerConfig', () => {
       },
       database: {
         connectionString:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+          'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         connectionTimeoutMillis: 5_000,
         idleTimeoutMillis: 30_000,
         max: 5,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       dispatcherDatabase: {
         connectionString:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
         connectionTimeoutMillis: 5_000,
         idleTimeoutMillis: 30_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       nodeEnv: 'development',
       logLevel: 'info',
@@ -144,19 +140,23 @@ describe('parseWorkerConfig', () => {
 
   it('returns the typed worker settings for valid environment values', () => {
     const config = parseWorkerConfig({
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       REDIS_URL: 'redis://:secret@localhost:6379/0',
       NODE_ENV: 'test',
       LOG_LEVEL: 'debug',
-      POSTGRES_WORKER_RUNTIME_USER: 'custom_worker',
     });
 
     expect(config).toMatchObject({
-      database: { workerRuntimeRole: 'custom_worker' },
-      dispatcherDatabase: { workerRuntimeRole: 'custom_worker' },
+      database: {
+        connectionString:
+          'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      },
+      dispatcherDatabase: {
+        connectionString:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      },
       logLevel: 'debug',
       nodeEnv: 'test',
       observability: { environment: 'test', logLevel: 'debug' },
@@ -194,10 +194,9 @@ describe('parseWorkerConfig', () => {
 
   it('parses optional worker connection and artifact capability configuration', () => {
     const config = parseWorkerConfig({
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       REDIS_URL: 'redis://:secret@localhost:6379/0',
       CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
       CONNECTION_KMS_REGION: 'eu-central-1',
@@ -227,10 +226,9 @@ describe('parseWorkerConfig', () => {
     let thrown: unknown;
     try {
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.executeNodeAttempt,
       });
@@ -253,10 +251,9 @@ describe('parseWorkerConfig', () => {
   ])('rejects incomplete or insecure capability configuration', (override) => {
     expect(() =>
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         ...override,
       }),
@@ -292,8 +289,6 @@ describe('parseWorkerConfig', () => {
       ARTIFACT_STORE_ENDPOINT: 'https://artifacts.example.test',
       ARTIFACT_STORE_REGION: 'eu-central-1',
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
-      DATABASE_LIFECYCLE_COMMAND_URL:
-        'postgresql://pertexo_lifecycle_command:secret@localhost:5432/pertexo',
       DATABASE_MAINTENANCE_URL:
         'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       NODE_ENV: 'production',
@@ -322,15 +317,21 @@ describe('parseWorkerConfig', () => {
     ).toThrow('Invalid worker configuration');
   });
 
-  it('runs retention locally only with both maintenance logins and storage', () => {
+  it('runs retention only where artifacts are stored', () => {
     expect(parseWorkerConfig(requiredEnvironment).retention).toBeUndefined();
-    expect(() =>
+    expect(
       parseWorkerConfig({
         ...requiredEnvironment,
-        DATABASE_MAINTENANCE_URL:
-          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
-      }),
-    ).toThrow('Invalid worker configuration');
+        ARTIFACT_STORE_ACCESS_KEY_ID: 'local-access',
+        ARTIFACT_STORE_BUCKET: 'pertexo-artifacts',
+        ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
+        ARTIFACT_STORE_REGION: 'us-east-1',
+        ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
+      }).retention?.maintenanceDatabase,
+    ).toMatchObject({
+      connectionString: requiredEnvironment.DATABASE_MAINTENANCE_URL,
+      max: 2,
+    });
   });
 
   it('normalizes supported scalar environment values before nested parsing', () => {
@@ -374,10 +375,10 @@ describe('parseWorkerConfig', () => {
     (maximumAdmissions) => {
       expect(() =>
         parseWorkerConfig({
-          DATABASE_DISPATCHER_URL:
-            'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-          DATABASE_WORKER_URL:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+          DATABASE_MAINTENANCE_URL:
+            'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+          DATABASE_URL:
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           REDIS_URL: 'redis://:secret@localhost:6379/0',
           WORKFLOW_COORDINATOR_MAX_ADMISSIONS: maximumAdmissions,
         }),
@@ -387,10 +388,9 @@ describe('parseWorkerConfig', () => {
 
   it('enables run-timeout failure context production only explicitly', () => {
     const config = parseWorkerConfig({
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       REDIS_URL: 'redis://:secret@localhost:6379/0',
       FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED: 'true',
     });
@@ -403,10 +403,10 @@ describe('parseWorkerConfig', () => {
     (value) => {
       expect(() =>
         parseWorkerConfig({
-          DATABASE_DISPATCHER_URL:
-            'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-          DATABASE_WORKER_URL:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+          DATABASE_MAINTENANCE_URL:
+            'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+          DATABASE_URL:
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           REDIS_URL: 'redis://:secret@localhost:6379/0',
           FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED: value,
         }),
@@ -421,10 +421,9 @@ describe('parseWorkerConfig', () => {
     'records trigger outcomes and runs the auto-pause fold in %s mode',
     (mode, enforce) => {
       const config = parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         WORKFLOW_AUTO_PAUSE: mode,
         WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE: '250',
@@ -448,10 +447,9 @@ describe('parseWorkerConfig', () => {
   ])('rejects an invalid auto-pause setting (%s=%s)', (name, value) => {
     expect(() =>
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         [name]: value,
       }),
@@ -460,10 +458,9 @@ describe('parseWorkerConfig', () => {
 
   it('enables the workspace inbox producer and tunes its loop only when asked', () => {
     const config = parseWorkerConfig({
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       REDIS_URL: 'redis://:secret@localhost:6379/0',
       WORKSPACE_INBOX_PRODUCER: 'true',
       WORKSPACE_INBOX_FOLD_BATCH_SIZE: '1000',
@@ -489,10 +486,9 @@ describe('parseWorkerConfig', () => {
   ])('rejects an invalid workspace inbox setting (%s=%s)', (name, value) => {
     expect(() =>
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         [name]: value,
       }),
@@ -507,10 +503,9 @@ describe('parseWorkerConfig', () => {
   ])('rejects an invalid due-wakeup scanner bound (%s=%s)', (name, value) => {
     expect(() =>
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         [name]: value,
       }),
@@ -531,10 +526,9 @@ describe('parseWorkerConfig', () => {
   ])('rejects an invalid trigger scanner bound (%s=%s)', (name, value) => {
     expect(() =>
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         [name]: value,
       }),
@@ -590,10 +584,9 @@ describe('parseWorkerConfig', () => {
   it('rejects a node-attempt heartbeat that cannot renew before lease expiry', () => {
     expect(() =>
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         NODE_ATTEMPT_LEASE_SECONDS: '5',
         NODE_ATTEMPT_HEARTBEAT_MILLIS: '5000',
@@ -629,10 +622,9 @@ describe('parseWorkerConfig', () => {
   it('rejects an unsupported log level before the worker starts', () => {
     expect(() =>
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         LOG_LEVEL: 'verbose',
       }),
@@ -641,10 +633,9 @@ describe('parseWorkerConfig', () => {
 
   it('accepts a nonempty unique allowlist of supported dispatch capabilities', () => {
     const config = parseWorkerConfig({
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       REDIS_URL: 'redis://:secret@localhost:6379/0',
       OUTBOX_DISPATCH_JOB_NAMES: [
         JOB_NAME.advanceWorkflowRun,
@@ -669,10 +660,9 @@ describe('parseWorkerConfig', () => {
   ])('rejects an invalid dispatcher allowlist (%s)', (jobNames) => {
     expect(() =>
       parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis://:secret@localhost:6379/0',
         OUTBOX_DISPATCH_JOB_NAMES: jobNames,
       }),

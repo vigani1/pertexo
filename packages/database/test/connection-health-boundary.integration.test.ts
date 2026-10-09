@@ -27,8 +27,8 @@ import {
 } from './support/connection-run-health.fixture.js';
 
 const dispatcherBase =
-  process.env.DATABASE_DISPATCHER_URL ??
-  'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const maintenanceBase =
   process.env.DATABASE_MAINTENANCE_URL ??
   'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
@@ -56,7 +56,7 @@ beforeAll(async () => {
     if (!/^pertexo_test_[a-z0-9_]+$/u.test(name))
       throw new Error('Boundary test requires an isolated database');
     await admin.query(
-      `grant connect on database "${name}" to pertexo_dispatcher,pertexo_maintenance`,
+      `grant connect on database "${name}" to pertexo_maintenance,pertexo_maintenance`,
     );
   } finally {
     await admin.end();
@@ -120,9 +120,9 @@ async function evidenceCounts(attemptId: string, outboxId: string) {
 describe('connection health runtime boundary', () => {
   it('accepts the fresh protocol for every serving role without activating run health', async () => {
     for (const [pool, role] of [
-      [api, 'pertexo_api'],
-      [worker, 'pertexo_worker'],
-      [dispatcher, 'pertexo_dispatcher'],
+      [api, 'pertexo_app'],
+      [worker, 'pertexo_app'],
+      [dispatcher, 'pertexo_maintenance'],
     ] as const)
       await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
         role,
@@ -187,22 +187,20 @@ describe('connection health runtime boundary', () => {
     ).rejects.toMatchObject({ code: '42501' });
   });
 
-  it('proves API/dispatcher and worker negative ACLs plus tenant-fenced worker functions', async () => {
-    for (const base of [apiBaseUrl, dispatcherBase]) {
-      await expect(
-        asRuntime(base, workspaceA, (client) =>
-          client.query('select id from app.connection_health_observations'),
+  it('proves maintenance and app negative ACLs plus tenant-fenced app functions', async () => {
+    await expect(
+      asRuntime(dispatcherBase, workspaceA, (client) =>
+        client.query('select id from app.connection_health_observations'),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      asRuntime(dispatcherBase, workspaceA, (client) =>
+        client.query(
+          "select app.apply_connection_health_observation($1,$2,'enforce',$3,$4)",
+          [workspaceA, randomUUID(), randomUUID(), 'a'.repeat(64)],
         ),
-      ).rejects.toMatchObject({ code: '42501' });
-      await expect(
-        asRuntime(base, workspaceA, (client) =>
-          client.query(
-            "select app.apply_connection_health_observation($1,$2,'enforce',$3,$4)",
-            [workspaceA, randomUUID(), randomUUID(), 'a'.repeat(64)],
-          ),
-        ),
-      ).rejects.toMatchObject({ code: '42501' });
-    }
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
     await expect(
       asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query(
@@ -210,7 +208,7 @@ describe('connection health runtime boundary', () => {
           [workspaceA],
         ),
       ),
-    ).rejects.toMatchObject({ code: '42501' });
+    ).rejects.toThrow('connection health requires revision-aware writer');
     await expect(
       asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query('insert into app.connection_events(id) values($1)', [

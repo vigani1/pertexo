@@ -5,12 +5,8 @@ import { z } from 'zod';
 const databaseUrlNames = [
   'DATABASE_ADMIN_URL',
   'DATABASE_MIGRATION_URL',
-  'DATABASE_API_URL',
-  'DATABASE_WORKER_URL',
-  'DATABASE_DISPATCHER_URL',
+  'DATABASE_URL',
   'DATABASE_MAINTENANCE_URL',
-  'DATABASE_LIFECYCLE_COMMAND_URL',
-  'DATABASE_OPERATOR_URL',
 ] as const;
 const inspectedSchema = z
   .array(

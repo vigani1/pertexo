@@ -12,10 +12,7 @@ import {} from '@pertexo/workflow-engine';
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 
 export class NestWorkspaceDatabase implements WorkspaceDatabase {
-  public constructor(
-    private readonly database: WorkspaceDatabase,
-    private readonly expectedWorkerRole: string,
-  ) {}
+  public constructor(private readonly database: WorkspaceDatabase) {}
 
   public withWorkspace: WorkspaceDatabase['withWorkspace'] = (
     workspaceId,
@@ -23,20 +20,12 @@ export class NestWorkspaceDatabase implements WorkspaceDatabase {
     options,
   ) => this.database.withWorkspace(workspaceId, operation, options);
 
-  public async checkReadiness(): Promise<DatabaseReadiness> {
-    const readiness = await this.database.checkReadiness();
-    if (readiness.role !== this.expectedWorkerRole) {
-      throw new Error('Worker database role is incompatible');
-    }
-    return readiness;
+  public checkReadiness(): Promise<DatabaseReadiness> {
+    return this.database.checkReadiness();
   }
 
-  public async checkCompatibility(): Promise<DatabaseReadiness> {
-    const readiness = await this.database.checkCompatibility();
-    if (readiness.role !== this.expectedWorkerRole) {
-      throw new Error('Worker database role is incompatible');
-    }
-    return readiness;
+  public checkCompatibility(): Promise<DatabaseReadiness> {
+    return this.database.checkCompatibility();
   }
 
   public close(): ReturnType<WorkspaceDatabase['close']> {
@@ -62,7 +51,6 @@ function createDatabaseProvider(
             config,
             options.runtime === undefined ? {} : { runtime: options.runtime },
           ),
-        config.workerRuntimeRole,
       ),
   };
 }

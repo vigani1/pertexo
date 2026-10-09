@@ -21,7 +21,7 @@ export function useOrganizationOwnedApi(
     for (const name of [
       'DATABASE_ADMIN_URL',
       'DATABASE_MIGRATION_URL',
-      'DATABASE_API_URL',
+      'DATABASE_URL',
       'REDIS_URL',
     ])
       if (process.env[name] === undefined)

@@ -1,13 +1,8 @@
 import type { PoolConfig } from 'pg';
 
+/** The workload a pool serves; it picks the deadline budget and the metric label. */
 export type DatabasePoolRole =
-  | 'api'
-  | 'dispatcher'
-  | 'lifecycle_command'
-  | 'maintenance'
-  | 'operator'
-  | 'other'
-  | 'worker';
+  'api' | 'dispatcher' | 'maintenance' | 'other' | 'worker';
 
 const databaseDeadlineBudget: Readonly<
   Record<
@@ -32,19 +27,7 @@ const databaseDeadlineBudget: Readonly<
     queryMs: 125_000,
     statementMs: 120_000,
   }),
-  lifecycle_command: Object.freeze({
-    idleTransactionMs: 305_000,
-    lockMs: 15_000,
-    queryMs: 305_000,
-    statementMs: 300_000,
-  }),
   maintenance: Object.freeze({
-    idleTransactionMs: 305_000,
-    lockMs: 15_000,
-    queryMs: 305_000,
-    statementMs: 300_000,
-  }),
-  operator: Object.freeze({
     idleTransactionMs: 305_000,
     lockMs: 15_000,
     queryMs: 305_000,

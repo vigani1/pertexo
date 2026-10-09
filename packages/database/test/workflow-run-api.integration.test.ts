@@ -37,12 +37,12 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_run_api_${randomUUID().replaceAll('-', '')}`;
 const disposableDatabase = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_api'],
+  connectRoles: ['pertexo_migration', 'pertexo_app'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -63,14 +63,10 @@ const database = createWorkflowRunDatabase(
   BASELINE_COMPATIBILITY_EXPECTATION,
 );
 const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
+  appRole: 'pertexo_app',
   connectionString: migrationUrl,
-  dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 function digest(value: string): string {
@@ -917,7 +913,7 @@ describe('workflow run API persistence', () => {
       await vi.waitFor(
         async () => {
           const waiting = await apiQuery(
-            "select count(*)::int count from pg_stat_activity where usename='pertexo_api' and wait_event='advisory'",
+            "select count(*)::int count from pg_stat_activity where usename='pertexo_app' and wait_event='advisory'",
           );
           expect(waiting.rows[0]?.count).toBeGreaterThanOrEqual(1);
         },
@@ -936,7 +932,7 @@ describe('workflow run API persistence', () => {
       await vi.waitFor(
         async () => {
           const waiting = await apiQuery(
-            "select count(*)::int count from pg_stat_activity where usename='pertexo_api' and wait_event='advisory'",
+            "select count(*)::int count from pg_stat_activity where usename='pertexo_app' and wait_event='advisory'",
           );
           expect(waiting.rows[0]?.count).toBeGreaterThanOrEqual(2);
         },

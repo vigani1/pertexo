@@ -102,7 +102,6 @@ describe('@pertexo/database package contract', () => {
       idleTimeoutMillis: 1_000,
       max: 1,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     } as const;
     const connect = vi.spyOn(Pool.prototype, 'connect');
     const runtime = createDatabaseRuntime(config, {

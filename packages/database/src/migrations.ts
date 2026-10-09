@@ -77,30 +77,13 @@ function quoteIdentifier(identifier: string): string {
 }
 
 function renderMigration(sql: string, config: MigrationConfig): string {
-  return (
-    sql
-      .replaceAll('{{owner_role}}', quoteIdentifier(config.ownerRole))
-      .replaceAll(
-        '{{api_runtime_role}}',
-        quoteIdentifier(config.apiRuntimeRole),
-      )
-      .replaceAll('{{dispatcher_role}}', quoteIdentifier(config.dispatcherRole))
-      .replaceAll(
-        '{{maintenance_role}}',
-        quoteIdentifier(config.maintenanceRole),
-      )
-      .replaceAll(
-        '{{lifecycle_command_role}}',
-        quoteIdentifier(config.lifecycleCommandRole),
-      )
-      .replaceAll('{{operator_role}}', quoteIdentifier(config.operatorRole))
-      .replaceAll(
-        '{{worker_runtime_role}}',
-        quoteIdentifier(config.workerRuntimeRole),
-      )
-      // Migrations before 0137 create the removed regional write admission gate.
-      .replaceAll('{{regional_write_admission_enforced}}', 'false')
-  );
+  return sql
+    .replaceAll('{{owner_role}}', quoteIdentifier(config.ownerRole))
+    .replaceAll('{{app_role}}', quoteIdentifier(config.appRole))
+    .replaceAll(
+      '{{maintenance_role}}',
+      quoteIdentifier(config.maintenanceRole),
+    );
 }
 
 async function migrationNames(directory: string): Promise<string[]> {
@@ -233,10 +216,10 @@ export async function migrateDatabase(
 
     await transaction(async () => {
       await client.query(
-        `grant usage on schema pertexo_internal to ${quoteIdentifier(config.apiRuntimeRole)}, ${quoteIdentifier(config.workerRuntimeRole)}, ${quoteIdentifier(config.dispatcherRole)}, ${quoteIdentifier(config.maintenanceRole)}, ${quoteIdentifier(config.lifecycleCommandRole)}, ${quoteIdentifier(config.operatorRole)}`,
+        `grant usage on schema pertexo_internal to ${quoteIdentifier(config.appRole)}, ${quoteIdentifier(config.maintenanceRole)}`,
       );
       await client.query(
-        `grant select on pertexo_internal.schema_migrations to ${quoteIdentifier(config.apiRuntimeRole)}, ${quoteIdentifier(config.workerRuntimeRole)}, ${quoteIdentifier(config.dispatcherRole)}, ${quoteIdentifier(config.maintenanceRole)}, ${quoteIdentifier(config.lifecycleCommandRole)}, ${quoteIdentifier(config.operatorRole)}`,
+        `grant select on pertexo_internal.schema_migrations to ${quoteIdentifier(config.appRole)}, ${quoteIdentifier(config.maintenanceRole)}`,
       );
     });
     return Object.freeze(applied);

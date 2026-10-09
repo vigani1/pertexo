@@ -36,7 +36,7 @@ const proof = { generation, issuedAtSeconds: 100, expiresAtSeconds: 86500 };
 const state = { isFavorite: false, favoriteRevision: revision };
 const result = { ...state, replayed: false };
 const config = parseDatabaseConfig({
-  connectionString: 'postgresql://pertexo_api:synthetic@127.0.0.1:5432/test',
+  connectionString: 'postgresql://pertexo_app:synthetic@127.0.0.1:5432/test',
 });
 function fixture() {
   const authority: WorkflowFavoriteAbsenceTokenAuthority = {

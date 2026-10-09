@@ -40,7 +40,7 @@ import {
   rethrowFixtureSetupFailure,
 } from './fixture-resource-owner.js';
 
-const apiUrl = process.env.DATABASE_API_URL;
+const apiUrl = process.env.DATABASE_URL;
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo';
@@ -256,7 +256,7 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
     );
     const apiRole =
       apiUrl === undefined
-        ? 'pertexo_api'
+        ? 'pertexo_app'
         : decodeURIComponent(new URL(apiUrl).username);
     const configuredArtifactStore = artifactStoreConfig();
     const verificationStore = resources.acquire(
@@ -681,6 +681,6 @@ function databaseUrl(base: string, databaseName: string): string {
 }
 
 function databaseNameFromUrl(): string {
-  if (apiUrl === undefined) throw new Error('DATABASE_API_URL is required');
+  if (apiUrl === undefined) throw new Error('DATABASE_URL is required');
   return new URL(apiUrl).pathname.slice(1);
 }

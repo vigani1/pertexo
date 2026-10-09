@@ -50,14 +50,14 @@ const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 export const workerUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 export const dispatcherUrl =
-  process.env.DATABASE_DISPATCHER_URL ??
-  'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 export const maintenanceUrl =
   process.env.DATABASE_MAINTENANCE_URL ??
   'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
@@ -198,7 +198,7 @@ async function seedIdentity(): Promise<void> {
           nullif(current_setting('app.workspace_id', true), ''));
       revoke all on app.preview_process_provider_effects from public;
       grant select,insert,update on app.preview_process_provider_effects
-        to pertexo_worker;
+        to pertexo_app;
     `);
     await client.query(
       `insert into app.users (id, email, display_name, status)
@@ -696,7 +696,7 @@ beforeAll(async () => {
       databaseCreated = true;
       await admin.query(`revoke all on database "${databaseName}" from public`);
       await admin.query(
-        `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher, pertexo_maintenance`,
+        `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_app, pertexo_maintenance, pertexo_maintenance`,
       );
     } catch (error: unknown) {
       setupError = error;

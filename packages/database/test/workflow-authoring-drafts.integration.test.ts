@@ -18,7 +18,6 @@ import {
   queryAsOwner,
   randomUUID,
   saveCurrentDraft,
-  workerPool,
   workflowId,
   workspaceId,
 } from './support/workflow-authoring.integration.support.js';
@@ -249,11 +248,6 @@ describe('workflow draft persistence', () => {
     expect(secondPage.items.map((workflow) => workflow.id)).not.toContain(
       firstWorkflow.id,
     );
-
-    const grants = await workerPool.query<{ can_read: boolean }>(
-      "select has_table_privilege(current_user, 'app.workflow_versions', 'SELECT') as can_read",
-    );
-    expect(grants.rows[0]?.can_read).toBe(false);
 
     await expect(
       authoring.getDraft(otherWorkspaceId, otherWorkflowId, actorId),

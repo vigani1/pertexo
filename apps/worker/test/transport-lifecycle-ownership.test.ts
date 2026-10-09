@@ -19,10 +19,9 @@ import { OutboxDispatcherLifecycle } from '../src/transport/transport-lifecycle.
 
 function config() {
   return parseWorkerConfig({
-    DATABASE_DISPATCHER_URL:
-      'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-    DATABASE_WORKER_URL:
-      'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+    DATABASE_MAINTENANCE_URL:
+      'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+    DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     REDIS_URL: 'redis://localhost:6379/0',
     OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.advanceWorkflowRun,
   });

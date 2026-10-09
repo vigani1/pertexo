@@ -30,7 +30,7 @@ const databaseName = `pertexo_test_f06_origin_${randomUUID().replaceAll('-', '')
 const fixture = createDisposableDatabaseFixture({
   adminUrl:
     owned?.adminUrl ?? 'postgresql://disabled:disabled@invalid:1/postgres',
-  connectRoles: ['pertexo_migration', 'pertexo_api', 'pertexo_worker'],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_app'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });

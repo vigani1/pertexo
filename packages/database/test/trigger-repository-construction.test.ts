@@ -35,7 +35,6 @@ const config: DatabaseConfig = {
   idleTimeoutMillis: 2_000,
   max: 2,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 };
 const acceptanceConfig: DatabaseConfig = {
   ...config,

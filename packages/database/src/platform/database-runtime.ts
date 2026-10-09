@@ -27,7 +27,6 @@ function authority(config: DatabaseConfig): string {
     idleTimeoutMillis: config.idleTimeoutMillis,
     max: config.max,
     ownerRole: config.ownerRole,
-    workerRuntimeRole: config.workerRuntimeRole,
   });
 }
 

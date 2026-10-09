@@ -117,7 +117,6 @@ describe('Coordinator CAS and transition invariants', () => {
       connectionString: connectionUrl.toString(),
       max: 1,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     const wrappedClients = new WeakSet<PoolClient>();
     let loseCommitAcknowledgement = true;

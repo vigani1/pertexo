@@ -47,7 +47,7 @@
       "secrets": [
         "ARTIFACT_STORE_ACCESS_KEY_ID",
         "ARTIFACT_STORE_SECRET_ACCESS_KEY",
-        "DATABASE_API_URL",
+        "DATABASE_URL",
         "BETTER_AUTH_SECRET",
         "INVITATION_TOKEN_KEY",
         "REDIS_URL",
@@ -76,7 +76,6 @@
         "AUTH_MAIL_DELIVERY_ENABLED": "true",
         "CONNECTION_RUN_HEALTH_MODE": "off",
         "DATABASE_DISPATCHER_POOL_MAX": "2",
-        "DATABASE_LIFECYCLE_COMMAND_POOL_MAX": "2",
         "DATABASE_MAINTENANCE_POOL_MAX": "2",
         "DATABASE_POOL_MAX": "5",
         "FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED": "false",
@@ -101,13 +100,11 @@
       ],
       "secrets": [
         "AUTH_MAIL_EMAIL_API_KEY",
-        "DATABASE_WORKER_URL",
-        "DATABASE_DISPATCHER_URL",
+        "DATABASE_URL",
+        "DATABASE_MAINTENANCE_URL",
         "REDIS_URL",
         "ARTIFACT_STORE_ACCESS_KEY_ID",
-        "ARTIFACT_STORE_SECRET_ACCESS_KEY",
-        "DATABASE_MAINTENANCE_URL",
-        "DATABASE_LIFECYCLE_COMMAND_URL"
+        "ARTIFACT_STORE_SECRET_ACCESS_KEY"
       ],
       "sharedConfiguration": ["AUTH_MAIL_KEY_VERSION"],
       "sharedSecrets": ["AUTH_MAIL_KEY"],
@@ -123,7 +120,7 @@
         "NODE_ENV": "production"
       },
       "configuration": ["OTEL_EXPORTER_OTLP_ENDPOINT"],
-      "secrets": ["DATABASE_OPERATOR_URL"]
+      "secrets": ["DATABASE_MAINTENANCE_URL"]
     },
     "migration": {
       "kind": "release-job",

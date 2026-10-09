@@ -19,18 +19,13 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 
 const databaseName = `pertexo_test_tenant_hygiene_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: [
-    'pertexo_migration',
-    'pertexo_api',
-    'pertexo_worker',
-    'pertexo_dispatcher',
-  ],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -118,12 +113,8 @@ beforeAll(async () => {
   await migrateDatabase({
     connectionString: databaseUrl(migrationBaseUrl),
     ownerRole: 'pertexo_owner',
-    apiRuntimeRole: 'pertexo_api',
-    workerRuntimeRole: 'pertexo_worker',
-    dispatcherRole: 'pertexo_dispatcher',
+    appRole: 'pertexo_app',
     maintenanceRole: 'pertexo_maintenance',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
-    operatorRole: 'pertexo_operator',
   });
 }, 60_000);
 

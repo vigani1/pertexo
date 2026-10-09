@@ -12,9 +12,13 @@ function fixture() {
     EDITOR_BROWSER_OWNERSHIP_MANIFEST: JSON.stringify(manifest),
     REDIS_URL: 'redis://127.0.0.1:56380/0',
   };
-  for (const name of ['ADMIN', 'MIGRATION', 'API', 'WORKER', 'DISPATCHER'])
-    env[`DATABASE_${name}_URL`] =
-      'postgresql://runtime@127.0.0.1:55436/postgres';
+  for (const name of [
+    'DATABASE_ADMIN_URL',
+    'DATABASE_MIGRATION_URL',
+    'DATABASE_URL',
+    'DATABASE_MAINTENANCE_URL',
+  ])
+    env[name] = 'postgresql://runtime@127.0.0.1:55436/postgres';
   const inspect = vi.fn((id: string) =>
     Promise.resolve(
       JSON.stringify([
@@ -68,7 +72,7 @@ describe('editor browser fixture preflight', () => {
           postgres: { ...manifest.postgres, port: 55435 },
         });
       if (reason === 'url-mismatch')
-        env.DATABASE_API_URL = 'postgresql://runtime@127.0.0.1:55435/postgres';
+        env.DATABASE_URL = 'postgresql://runtime@127.0.0.1:55435/postgres';
       await expect(
         verifyEditorBrowserOwnership(env, inspect),
       ).rejects.toThrow();

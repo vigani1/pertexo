@@ -173,14 +173,14 @@ export function createScheduleTriggerFixture(
     environment.DATABASE_MIGRATION_URL ??
     'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
   const apiBaseUrl =
-    environment.DATABASE_API_URL ??
-    'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+    environment.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
   const workerBaseUrl =
-    environment.DATABASE_WORKER_URL ??
-    'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+    environment.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
   const dispatcherBaseUrl =
-    environment.DATABASE_DISPATCHER_URL ??
-    'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+    environment.DATABASE_MAINTENANCE_URL ??
+    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
   const configuredRedisUrl =
     environment.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
   const runnerOwnsDatabase =
@@ -401,7 +401,7 @@ export function createScheduleTriggerFixture(
             `revoke all on database "${databaseName}" from public`,
           );
           await admin.query(
-            `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher`,
+            `grant connect on database "${databaseName}" to pertexo_migration,pertexo_app,pertexo_app,pertexo_maintenance`,
           );
         } finally {
           await admin.end();
@@ -427,12 +427,8 @@ export function createScheduleTriggerFixture(
       await migrateDatabase({
         connectionString: databaseUrl(migrationBaseUrl),
         ownerRole: 'pertexo_owner',
-        apiRuntimeRole: 'pertexo_api',
-        workerRuntimeRole: 'pertexo_worker',
-        dispatcherRole: 'pertexo_dispatcher',
+        appRole: 'pertexo_app',
         maintenanceRole: 'pertexo_maintenance',
-        lifecycleCommandRole: 'pertexo_lifecycle_command',
-        operatorRole: 'pertexo_operator',
       });
       await queue.obliterate({ force: true });
     } catch (setupError: unknown) {

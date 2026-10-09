@@ -19,14 +19,13 @@ function fixture() {
     REDIS_URL: 'redis://:synthetic-unit@127.0.0.1:56391/0',
   };
   for (const [name, role] of [
-    ['ADMIN', 'postgres'],
-    ['MIGRATION', 'pertexo_migration'],
-    ['API', 'pertexo_api'],
-    ['WORKER', 'pertexo_worker'],
-    ['DISPATCHER', 'pertexo_dispatcher'],
+    ['DATABASE_ADMIN_URL', 'postgres'],
+    ['DATABASE_MIGRATION_URL', 'pertexo_migration'],
+    ['DATABASE_URL', 'pertexo_app'],
+    ['DATABASE_MAINTENANCE_URL', 'pertexo_maintenance'],
   ])
-    environment[`DATABASE_${name}_URL`] =
-      `postgresql://${role}:synthetic-unit@127.0.0.1:55461/${name === 'ADMIN' ? 'postgres' : 'pertexo'}`;
+    environment[name] =
+      `postgresql://${role}:synthetic-unit@127.0.0.1:55461/${name === 'DATABASE_ADMIN_URL' ? 'postgres' : 'pertexo'}`;
   let inspected = 0;
   const inspect = async (id) => {
     inspected++;
@@ -81,11 +80,15 @@ for (const reason of [
     if (reason === 'manifest')
       delete input.environment.EDITOR_BROWSER_OWNERSHIP_MANIFEST;
     if (reason === 'shared-port')
-      input.environment.DATABASE_API_URL =
-        input.environment.DATABASE_API_URL.replace('55461', '55435');
+      input.environment.DATABASE_URL = input.environment.DATABASE_URL.replace(
+        '55461',
+        '55435',
+      );
     if (reason === 'role')
-      input.environment.DATABASE_API_URL =
-        input.environment.DATABASE_API_URL.replace('pertexo_api', 'postgres');
+      input.environment.DATABASE_URL = input.environment.DATABASE_URL.replace(
+        'pertexo_app',
+        'postgres',
+      );
     if (reason === 'admin-database')
       input.environment.DATABASE_ADMIN_URL =
         input.environment.DATABASE_ADMIN_URL.replace(
@@ -95,7 +98,7 @@ for (const reason of [
     if (reason === 'redis-password')
       input.environment.REDIS_URL = 'redis://127.0.0.1:56391/0';
     if (reason === 'query')
-      input.environment.DATABASE_API_URL += '?application_name=unreviewed';
+      input.environment.DATABASE_URL += '?application_name=unreviewed';
     await assert.rejects(
       verifyCuratedFixtureOwnership(input.environment, input.inspect),
     );
@@ -125,8 +128,7 @@ test('curated namespace derivation cannot target shared databases or Redis DB0',
   const input = fixture();
   const name = `pertexo_test_f06_guard_${'a'.repeat(24)}`;
   assert.equal(
-    new URL(curatedDatabaseUrl(input.environment.DATABASE_API_URL, name))
-      .pathname,
+    new URL(curatedDatabaseUrl(input.environment.DATABASE_URL, name)).pathname,
     `/${name}`,
   );
   assert.equal(
@@ -140,7 +142,7 @@ test('curated namespace derivation cannot target shared databases or Redis DB0',
     `${name};drop`,
   ])
     assert.throws(() =>
-      curatedDatabaseUrl(input.environment.DATABASE_API_URL, rejected),
+      curatedDatabaseUrl(input.environment.DATABASE_URL, rejected),
     );
   for (const rejected of [0, 9, 13, -1, 1.5])
     assert.throws(() => curatedRedisUrl(input.environment.REDIS_URL, rejected));

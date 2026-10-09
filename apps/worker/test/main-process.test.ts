@@ -99,8 +99,8 @@ describe('compiled worker main process', () => {
   it('executes the actual main guard and fixed invalid-config formatter', async () => {
     const fixture = start(entrypointPath, {
       ...process.env,
-      DATABASE_DISPATCHER_URL: '',
-      DATABASE_WORKER_URL: '',
+      DATABASE_MAINTENANCE_URL: '',
+      DATABASE_URL: '',
       REDIS_URL: '',
     });
     const result = await waitForExit(fixture.child, fixture.output);
@@ -108,6 +108,6 @@ describe('compiled worker main process', () => {
     expect(result).toEqual({ code: 1, signal: null });
     expect(fixture.output()).toContain('"event":"worker.process_failed"');
     expect(fixture.output()).toContain('"errorType":"Error"');
-    expect(fixture.output()).not.toContain('DATABASE_WORKER_URL');
+    expect(fixture.output()).not.toContain('DATABASE_URL');
   });
 });

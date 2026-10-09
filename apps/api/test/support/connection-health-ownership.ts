@@ -37,16 +37,12 @@ export async function verifyConnectionHealthOwnership(
   const postgresPort = port(env.POSTGRES_PORT),
     redisPort = port(env.REDIS_PORT);
   for (const name of [
-    'ADMIN',
-    'MIGRATION',
-    'API',
-    'WORKER',
-    'DISPATCHER',
-    'MAINTENANCE',
-    'LIFECYCLE_COMMAND',
-    'OPERATOR',
+    'DATABASE_ADMIN_URL',
+    'DATABASE_MIGRATION_URL',
+    'DATABASE_URL',
+    'DATABASE_MAINTENANCE_URL',
   ]) {
-    const url = new URL(env[`DATABASE_${name}_URL`] ?? '');
+    const url = new URL(env[name] ?? '');
     if (
       url.protocol !== 'postgresql:' ||
       !['localhost', '127.0.0.1'].includes(url.hostname) ||

@@ -7,7 +7,7 @@ import { createApiWorkflowMetadataRuntime } from '../../src/platform/workflow/wo
 // Construction/ownership tests use lazy real stores and never send a query.
 const config = parseDatabaseConfig({
   connectionString:
-    'postgresql://pertexo_api:unused@127.0.0.1:1/pertexo_test_f07_no_connection',
+    'postgresql://pertexo_app:unused@127.0.0.1:1/pertexo_test_f07_no_connection',
   max: 1,
 });
 const testAuthoring = {

@@ -33,8 +33,8 @@ import {
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL('../../../../', import.meta.url));
-const apiUrl = process.env.DATABASE_API_URL;
-const workerUrl = process.env.DATABASE_WORKER_URL;
+const apiUrl = process.env.DATABASE_URL;
+const workerUrl = process.env.DATABASE_URL;
 const redisUrl = process.env.REDIS_URL;
 const composeProject = process.env.API_SSE_RESILIENCE_COMPOSE_PROJECT;
 const redisPort = process.env.REDIS_PORT ?? '6379';

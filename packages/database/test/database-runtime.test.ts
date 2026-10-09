@@ -20,7 +20,6 @@ const config = {
   idleTimeoutMillis: 2_000,
   max: 5,
   ownerRole: 'owner',
-  workerRuntimeRole: 'worker',
 } as const;
 
 describe('database process runtime', () => {
@@ -55,7 +54,6 @@ describe('database process runtime', () => {
       { idleTimeoutMillis: config.idleTimeoutMillis + 1 },
       { max: config.max + 1 },
       { ownerRole: 'other_owner' },
-      { workerRuntimeRole: 'other_worker' },
     ]) {
       expect(() =>
         acquireDatabasePool({ ...config, ...changed }, runtime),

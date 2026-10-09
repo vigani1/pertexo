@@ -378,7 +378,7 @@ describe('paused schedule admission after resume and scanner lag', () => {
     let pending: Promise<{ rows: { paused: boolean }[] }> | undefined;
     try {
       await resuming.query('begin');
-      await resuming.query('set local role pertexo_api');
+      await resuming.query('set local role pertexo_app');
       await resuming.query(
         "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
         [workspaceId, actorId],

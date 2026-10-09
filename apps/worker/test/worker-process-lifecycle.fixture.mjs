@@ -20,13 +20,13 @@ const database = {
       : Promise.resolve({
           migrationHead: '0076_replay_lineage_retention.sql',
           postgresMajor: 18,
-          role: 'pertexo_worker',
+          role: 'pertexo_app',
         }),
   checkReadiness: () =>
     Promise.resolve({
       migrationHead: '0076_replay_lineage_retention.sql',
       postgresMajor: 18,
-      role: 'pertexo_worker',
+      role: 'pertexo_app',
     }),
   close: () => {
     report('database.closed');
@@ -107,7 +107,6 @@ const config = {
     idleTimeoutMillis: 30_000,
     max: 5,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   dispatcherDatabase: {
     connectionString: 'postgresql://unused',
@@ -115,7 +114,6 @@ const config = {
     idleTimeoutMillis: 30_000,
     max: 2,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   nodeAttempt: {
     heartbeatIntervalMillis: 10_000,

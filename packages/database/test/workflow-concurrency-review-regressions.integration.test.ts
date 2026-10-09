@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
-import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createCoordinatorRunStore } from '../src/execution/coordinator/coordinator-run-store.js';
@@ -36,10 +35,10 @@ import {
 installExecutionAcceptanceFixture();
 
 function workerUrl() {
-  const url = new URL(process.env.DATABASE_WORKER_URL ?? migrationUrl);
-  if (process.env.DATABASE_WORKER_URL === undefined) {
-    url.username = 'pertexo_worker';
-    url.password = 'pertexo-local-worker';
+  const url = new URL(process.env.DATABASE_URL ?? migrationUrl);
+  if (process.env.DATABASE_URL === undefined) {
+    url.username = 'pertexo_app';
+    url.password = 'pertexo-local-app';
   }
   url.pathname = new URL(migrationUrl).pathname;
   return url.toString();
@@ -251,17 +250,10 @@ describe('workflow concurrency review regressions', () => {
     }
   });
 
-  it('restricts reservation rebind to the worker and installed workspace context', async () => {
+  it('restricts reservation rebind to the app role and installed workspace context', async () => {
     const run = await acceptRun();
     const next = await pendingDelivery(run.runId);
     const ids = [workspaceA, run.runId, run.outboxEventId, next] as const;
-    await expect(
-      apiDatabase.withWorkspace(workspaceA, ({ db }) =>
-        db.execute(sql`
-      select app.rebind_workflow_run_active_admission(${ids[0]},${ids[1]},${ids[2]},${ids[3]})
-    `),
-      ),
-    ).rejects.toSatisfy(hasPostgresCode('42501'));
     await expect(
       withDispatcher((client) =>
         client.query(

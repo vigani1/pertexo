@@ -958,25 +958,21 @@ describe('same-workspace workflow duplication through the runtime database role'
     expect(afterExpiry.workflowId).not.toBe(copied.workflowId);
   });
 
-  it('grants only API execution, not direct creation, and rejects direct function calls with forged tenant/actor/claim context', async () => {
+  it('grants only app execution, not direct creation, and rejects direct function calls with forged tenant/actor/claim context', async () => {
     const signature =
       'app.create_workflow_duplicate_draft(uuid,uuid,uuid,uuid,varchar,integer,jsonb,char,char,text,uuid)';
     const privileges = await queryAsOwner<{ role: string; allowed: boolean }>(
       `select role,has_function_privilege(role,$1,'EXECUTE') allowed
-      from unnest(array['pertexo_api','pertexo_worker','pertexo_dispatcher','pertexo_maintenance','pertexo_operator','pertexo_lifecycle_command']) role order by role`,
+      from unnest(array['pertexo_app','pertexo_maintenance']) role order by role`,
       [signature],
     );
     expect(privileges).toEqual([
-      { role: 'pertexo_api', allowed: true },
-      { role: 'pertexo_dispatcher', allowed: false },
-      { role: 'pertexo_lifecycle_command', allowed: false },
+      { role: 'pertexo_app', allowed: true },
       { role: 'pertexo_maintenance', allowed: false },
-      { role: 'pertexo_operator', allowed: false },
-      { role: 'pertexo_worker', allowed: false },
     ]);
     expect(
-      await queryAsOwner(`select has_table_privilege('pertexo_api','app.workflows','INSERT') workflow,
-      has_table_privilege('pertexo_api','app.workflow_drafts','INSERT') draft`),
+      await queryAsOwner(`select has_table_privilege('pertexo_app','app.workflows','INSERT') workflow,
+      has_table_privilege('pertexo_app','app.workflow_drafts','INSERT') draft`),
     ).toEqual([{ workflow: false, draft: false }]);
     const original = await source();
     const before = await commandFacts();

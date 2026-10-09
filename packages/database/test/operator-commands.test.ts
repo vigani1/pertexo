@@ -22,7 +22,6 @@ const config = {
   idleTimeoutMillis: 1_000,
   max: 1,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 const workspaceId = randomUUID();

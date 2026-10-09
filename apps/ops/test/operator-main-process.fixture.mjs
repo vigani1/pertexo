@@ -45,7 +45,6 @@ const config = {
     idleTimeoutMillis: 30_000,
     max: 1,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   forbiddenRoles: ['pertexo_owner'],
   observability: {
@@ -55,7 +54,6 @@ const config = {
     serviceName: 'operator-main-process-fixture',
     serviceVersion: 'test',
   },
-  operatorRole: 'pertexo_operator',
   timeoutMs: 30_000,
 };
 

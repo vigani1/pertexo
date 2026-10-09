@@ -155,10 +155,9 @@ describe('dispatch consumer capability registry', () => {
 describe('dispatch capability provider activation', () => {
   it('maps every active job to its intended composed consumer', () => {
     const config = parseWorkerConfig({
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       OUTBOX_DISPATCH_JOB_NAMES: ACTIVE_QUEUE_JOB_NAMES.join(','),
       REDIS_URL: 'redis://localhost:6379/0',
       INVITATION_EMAIL_API_KEY: 're_test',
@@ -205,10 +204,9 @@ describe('dispatch capability provider activation', () => {
   it('returns an explicit registry override without inspecting runtime inputs', () => {
     const override = createDispatchConsumerCapabilityRegistry([]);
     const config = parseWorkerConfig({
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       REDIS_URL: 'redis://localhost:6379/0',
     });
     const provider = dispatchCapabilitiesProvider(config, {
