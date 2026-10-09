@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { disabledAuthenticationMail } from '../../src/authentication/mail/delivery.js';
+import { LocalAuthenticationMailSink } from '../../src/authentication/mail/delivery.js';
 import { createPertexoBetterAuth } from '../../src/authentication/better-auth/options.js';
 import type { OwnedEmailProofs } from '../../src/authentication/mail/email-proofs.js';
 
@@ -25,7 +25,7 @@ describe('Better Auth session cookie', () => {
         secureCookies,
         sessionTtlSeconds: 3_600,
         trustedOrigins: [],
-        mail: disabledAuthenticationMail,
+        mail: new LocalAuthenticationMailSink(),
         emailProofs: {} as OwnedEmailProofs,
         availableLinkProviders: [],
       });

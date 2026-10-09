@@ -130,15 +130,6 @@ export function printLocalAuthenticationMail(
   );
 }
 
-export const disabledAuthenticationMail: AuthenticationMail = Object.freeze({
-  sendVerification: () =>
-    Promise.reject(new Error('Authentication mail delivery is not configured')),
-  sendPasswordReset: () =>
-    Promise.reject(new Error('Authentication mail delivery is not configured')),
-  sendEmailChangeConfirmation: () =>
-    Promise.reject(new Error('Authentication mail delivery is not configured')),
-});
-
 export class DurableAuthenticationMail implements AuthenticationMail {
   public constructor(
     private readonly store: AuthenticationMailEnqueueStore,

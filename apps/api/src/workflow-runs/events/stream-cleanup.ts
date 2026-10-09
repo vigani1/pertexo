@@ -84,7 +84,7 @@ function throwCleanupFailures(
     );
   if (cleanupErrors.length === 1) {
     const [cleanupError] = cleanupErrors;
-    throw safelyIsError(cleanupError)
+    throw cleanupError instanceof Error
       ? cleanupError
       : new Error('Workflow event stream cleanup failed', {
           cause: cleanupError,
@@ -94,14 +94,6 @@ function throwCleanupFailures(
     cleanupErrors,
     'Workflow event stream cleanup was incomplete',
   );
-}
-
-function safelyIsError(value: unknown): value is Error {
-  try {
-    return value instanceof Error;
-  } catch {
-    return false;
-  }
 }
 
 export async function preserveFailureDuringStreamCleanup(
@@ -154,11 +146,7 @@ export async function preserveFailureDuringBoundedStreamCleanup(
 export function streamCleanupCompletion(
   error: unknown,
 ): Promise<void> | undefined {
-  try {
-    return error instanceof StreamCleanupIncompleteError
-      ? error.completion
-      : undefined;
-  } catch {
-    return undefined;
-  }
+  return error instanceof StreamCleanupIncompleteError
+    ? error.completion
+    : undefined;
 }
