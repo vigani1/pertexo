@@ -1,3 +1,4 @@
+import type { InitialCheckpointFactory } from './initial-checkpoint.js';
 import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { sql } from 'drizzle-orm';
@@ -120,7 +121,7 @@ const startInputSchema = z
     traceId: requestIdentifierSchema.optional(),
     traceparent: traceparentSchema.optional(),
     signal: z.instanceof(AbortSignal).optional(),
-    checkpointFactory: z.custom<WorkflowRunCheckpointFactory>(
+    checkpointFactory: z.custom<InitialCheckpointFactory>(
       (value) => typeof value === 'function',
     ),
   })
@@ -142,7 +143,7 @@ const replayInputSchema = z
     traceId: requestIdentifierSchema.optional(),
     traceparent: traceparentSchema.optional(),
     signal: z.instanceof(AbortSignal).optional(),
-    checkpointFactory: z.custom<WorkflowRunCheckpointFactory>(
+    checkpointFactory: z.custom<InitialCheckpointFactory>(
       (value) => typeof value === 'function',
     ),
   })
@@ -159,11 +160,6 @@ const cancelInputSchema = z
     signal: z.instanceof(AbortSignal).optional(),
   })
   .strict();
-
-export type WorkflowRunCheckpointFactory = (
-  projection: PublishedWorkflowV2Projection,
-  currentCompatibilityRelease: CompatibilityReleaseExpectation,
-) => Readonly<{ engineVersion: string; checkpoint: unknown }>;
 
 export type StartPublishedWorkflowRunInput = Readonly<
   z.input<typeof startInputSchema>

@@ -24,7 +24,7 @@ import {
   createExecutableCompatibilityReleaseSupport,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
-import { createInitialCheckpoint } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/execution';
 
 export const operatorRunReplayFactories = Object.freeze({
   handler: createOperatorRunReplayHandler,
@@ -48,15 +48,15 @@ export function createDatabaseOperatorRunReplayStore(
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
     platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
   );
+  const checkpointFactory = initialCheckpointFactory({
+    releaseSupport: releaseHistory,
+  });
   return createOperatorRunReplayStore(
     database,
     releaseSupport.descriptions,
     (projection, currentCompatibilityRelease) => {
       try {
-        return createInitialCheckpoint(
-          { ...projection, currentCompatibilityRelease },
-          { releaseSupport: releaseHistory },
-        );
+        return checkpointFactory(projection, currentCompatibilityRelease);
       } catch (error: unknown) {
         if (isErrorInstance(error, WorkflowEngineError))
           throw new OperatorRunReplayNotExecutableError();

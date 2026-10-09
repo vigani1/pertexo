@@ -5,4 +5,5 @@ export type { PersistedWorkflowProjectionVerificationOptions } from './workflows
 export {
   createInitialCheckpoint,
   ENGINE_VERSION,
+  initialCheckpointFactory,
 } from './runs/initial-checkpoint.js';

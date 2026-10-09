@@ -206,12 +206,12 @@ export {
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
 } from '../runs/runs.repository.js';
+export type { InitialCheckpointFactory } from '../runs/initial-checkpoint.js';
 export type {
   CancelWorkflowRunInput,
   GetWorkflowRunInput,
   StartPublishedWorkflowRunInput,
   WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
-  WorkflowRunCheckpointFactory,
   WorkflowRunDatabase,
   WorkflowRunReadModel as ApiWorkflowRunReadModel,
   WorkflowRunRecord as ApiWorkflowRunRecord,

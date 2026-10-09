@@ -15,7 +15,6 @@ export {
   WebhookWorkflowPausedError,
   type AcceptVerifiedWebhookDeliveryInput,
   type SealedWebhookTriggerSecret,
-  type WebhookCheckpointFactory,
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
 } from './webhook-triggers.js';
@@ -30,7 +29,6 @@ export {
   ScheduleClaimLostError,
   ScheduleTriggerError,
   type ScanDueSchedulesResult,
-  type ScheduleCheckpointFactory,
   type ScheduleTriggerScanner,
   type ScheduleTriggerDatabase,
   type ScheduleTriggerCommandResult,

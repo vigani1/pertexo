@@ -1,3 +1,4 @@
+import type { InitialCheckpointFactory } from '../runs/initial-checkpoint.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
@@ -5,7 +6,6 @@ import { sha256HexSchema } from '../validation/persisted-primitives.js';
 import {
   selectServingCompatibilityRelease,
   parseCompatibilityReleaseExpectationSet,
-  type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
 } from '../compatibility/compatibility-release.js';
 import type { DatabaseConfig } from '../config.js';
@@ -14,10 +14,7 @@ import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { consumeInboxMessage } from '../execution/transport/inbox.js';
 import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
-import {
-  classifyPublishedWorkflowVersionRow,
-  type PublishedWorkflowV2Projection,
-} from '../execution/published-workflow-reader.js';
+import { classifyPublishedWorkflowVersionRow } from '../execution/published-workflow-reader.js';
 
 const inputSchema = z
   .object({
@@ -50,11 +47,6 @@ const requestRowSchema = z
     workflow_version_id: z.uuid(),
   })
   .strict();
-
-export type OperatorRunReplayCheckpointFactory = (
-  projection: PublishedWorkflowV2Projection,
-  currentCompatibilityRelease: CompatibilityReleaseExpectation,
-) => Readonly<{ checkpoint: unknown; engineVersion: string }>;
 
 export class OperatorRunReplayMismatchError extends Error {
   public constructor() {
@@ -90,7 +82,7 @@ export interface OperatorRunReplayStore {
 export function createOperatorRunReplayStore(
   config: DatabaseConfig,
   compatibilityReleaseInput: CompatibilityReleaseExpectationSet,
-  checkpointFactory: OperatorRunReplayCheckpointFactory,
+  checkpointFactory: InitialCheckpointFactory,
   runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
   const compatibilityReleases = parseCompatibilityReleaseExpectationSet(

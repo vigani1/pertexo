@@ -7,7 +7,7 @@ import {
 
 import {
   WebhookIngressRateLimitExceededError,
-  type WebhookCheckpointFactory,
+  type InitialCheckpointFactory,
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
 } from '@pertexo/database/api';
@@ -43,7 +43,7 @@ const WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS = 300;
 export type WebhookIngressDependencies = Readonly<{
   database: WebhookTriggerDatabase;
   encryption: WebhookTriggerEnvelopeEncryption;
-  checkpointFactory: WebhookCheckpointFactory;
+  checkpointFactory: InitialCheckpointFactory;
   telemetry?: WebhookIngressTelemetry;
 }>;
 

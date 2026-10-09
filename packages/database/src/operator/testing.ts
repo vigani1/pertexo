@@ -2,7 +2,6 @@ export {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-  type OperatorRunReplayCheckpointFactory,
   type OperatorRunReplayStore,
 } from './operator-run-replay.js';
 export {

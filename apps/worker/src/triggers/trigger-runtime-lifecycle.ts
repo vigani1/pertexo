@@ -1,6 +1,6 @@
 import type {
   PublishedWorkflowReader,
-  ScheduleCheckpointFactory,
+  InitialCheckpointFactory,
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationDatabase,
 } from '@pertexo/database/execution';
@@ -22,7 +22,7 @@ export type TriggerRuntimeComposition = Readonly<{
 
 export type TriggerScannerLifecycleOptions = Readonly<{
   batchSize: number;
-  checkpointFactory: ScheduleCheckpointFactory;
+  checkpointFactory: InitialCheckpointFactory;
   leaseDurationSeconds: number;
   leaseOwner: string;
   logger?: StructuredLogger;
