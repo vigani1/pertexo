@@ -146,7 +146,7 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
               count: number;
             }>(`select count(*)::int count from pg_stat_activity
           where datname=current_database() and usename='pertexo_app' and wait_event_type='Lock'
-            and query like '%apply_connection_health_observation%'`);
+            and query like '%from app.connections%for update%'`);
             return waiting.rows[0]?.count;
           }),
         )

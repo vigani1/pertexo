@@ -95,9 +95,6 @@ describe('workflow run notification pinning', () => {
     );
     const revoked = await createNotificationFixture();
     await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
-      await db.execute(
-        sql`select set_config('app.connection_health_protocol','1',true)`,
-      );
       await db.execute(sql`update app.connections set status='revoked',health_revision=health_revision+1,
         last_health_transition_at=clock_timestamp(),last_health_transition_source='revoke'
         where workspace_id=${workspaceA} and id=${revoked.connectionId}`);
@@ -236,9 +233,6 @@ describe('workflow run notification pinning', () => {
           fixture.connectionId,
           workspaceCreatorId,
         ],
-      );
-      await rotating.query(
-        "select set_config('app.connection_health_protocol','1',true)",
       );
       await rotating.query(
         `update app.connections set current_secret_version_id=$3,health_revision=health_revision+1,
@@ -384,9 +378,6 @@ describe('workflow run notification pinning', () => {
         ) values (${nextSecretVersionId},${workspaceA},${connectionId},1,
           'kms','key2','cipher2','BBBBBBBBBBBBBBBB',
           'BBBBBBBBBBBBBBBBBBBBBB',${workspaceCreatorId})
-      `);
-      await db.execute(sql`
-        select set_config('app.connection_health_protocol','1',true)
       `);
       await db.execute(sql`
         update app.connections set current_secret_version_id=${nextSecretVersionId},health_revision=health_revision+1,

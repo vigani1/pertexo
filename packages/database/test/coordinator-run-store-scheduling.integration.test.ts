@@ -338,9 +338,6 @@ function createTestFailureNotificationStore(
 async function restoreNotificationConfiguration(): Promise<void> {
   await asOwner(workspaceA, async (client) => {
     await client.query(
-      "select set_config('app.connection_health_protocol','1',true)",
-    );
-    await client.query(
       `update app.failure_notification_destinations
        set status='enabled',current_config_version=1
        where workspace_id=$1 and id=$2`,
@@ -2255,9 +2252,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         throw new Error('Isolated revocation fixture was not claimed');
       await asOwner(workspaceA, async (client) => {
         await client.query(
-          "select set_config('app.connection_health_protocol','1',true)",
-        );
-        await client.query(
           `update app.connections set status='revoked',health_revision=health_revision+1,
           last_health_transition_at=clock_timestamp(),last_health_transition_source='revoke'
           where workspace_id=$1 and id=$2`,
@@ -2371,9 +2365,6 @@ describe('Coordinator scheduling and notification invariants', () => {
           ).resolves.toBeUndefined();
           const rotatedSecretVersionId = randomUUID();
           await asRuntime(apiBaseUrl, workspaceA, async (client) => {
-            await client.query(
-              "select set_config('app.connection_health_protocol','1',true)",
-            );
             await client.query(
               `insert into app.connection_secret_versions (
                    id,workspace_id,connection_id,schema_version,kms_key_reference,

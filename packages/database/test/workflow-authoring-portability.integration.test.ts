@@ -862,10 +862,9 @@ describe('portable workflow persistence under the API role', () => {
       try {
         await owner.query('begin');
         await owner.query('set local role pertexo_owner');
-        await owner.query(
-          "select set_config('app.workspace_id',$1,true),set_config('app.connection_health_protocol','1',true)",
-          [workspaceId],
-        );
+        await owner.query("select set_config('app.workspace_id',$1,true)", [
+          workspaceId,
+        ]);
         await owner.query('select app.lock_workspace_run_admission($1)', [
           workspaceId,
         ]);

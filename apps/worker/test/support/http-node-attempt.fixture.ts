@@ -522,9 +522,6 @@ export async function resetProviderScenarioIsolation(
 ): Promise<void> {
   await withOwner(async (client) => {
     await client.query(
-      "select set_config('app.connection_health_protocol','1',true)",
-    );
-    await client.query(
       `update app.connections connection
           set current_secret_version_id=seed.secret_version_id,
               status='active',health_revision=health_revision+1,

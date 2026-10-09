@@ -455,9 +455,6 @@ export async function withConnectionTransaction<T>(
       ? { workspaceId }
       : { workspaceId, actorId: identifierSchema.parse(actorId) },
     async (client) => {
-      await client.query(
-        "select set_config('app.connection_health_protocol','1',true)",
-      );
       await client.query('select app.lock_workspace_run_admission($1)', [
         workspaceId,
       ]);

@@ -37,6 +37,109 @@ export type ConnectionHealthApplicationResult = Readonly<{
   kind: 'applied' | 'stale' | 'duplicate';
 }>;
 
+type Transaction = Parameters<Parameters<typeof consumeInboxMessage>[3]>[0];
+
+/**
+ * Applies one run's observation once. Only an enforced observation about the
+ * exact connection secret and health revision the attempt dispatched with,
+ * after the attempt ended, changes the connection: a healthy one refreshes
+ * it, any other marks it as needing reauthorization.
+ */
+async function applyObservation(
+  transaction: Transaction,
+  input: z.output<typeof inputSchema>,
+): Promise<boolean> {
+  const workspaceId = transaction.workspaceId;
+  const observations = await transaction.db.execute<{
+    attempt_id: string;
+    kind: string;
+    reason_code: string | null;
+    production_mode: string;
+    observed_at: Date;
+    outbox_event_id: string;
+    applied: boolean;
+  }>(sql`
+    select attempt_id, kind, reason_code, production_mode, observed_at,
+           outbox_event_id, applied_at is not null applied
+    from app.connection_health_observations
+    where workspace_id=${workspaceId} and id=${input.observationId}
+    for update`);
+  const observation = observations.rows[0];
+  if (observation === undefined || observation.applied) return false;
+  if (observation.outbox_event_id !== input.delivery.outboxEventId)
+    throw new InboxReceiptUnavailableError();
+  const dispatches = await transaction.db.execute<{
+    connection_id: string;
+    secret_version_id: string;
+    health_revision: string;
+  }>(sql`
+    select connection_id, secret_version_id, health_revision::text
+    from app.node_attempt_connection_dispatches
+    where workspace_id=${workspaceId} and attempt_id=${observation.attempt_id}`);
+  const dispatch = dispatches.rows[0];
+  if (dispatch === undefined) return false;
+  await transaction.db.execute(sql`
+    update app.connection_health_observations set applied_at=clock_timestamp()
+    where workspace_id=${workspaceId} and id=${input.observationId}`);
+  if (input.mode !== 'enforce' || observation.production_mode !== 'enforce')
+    return false;
+  const connections = await transaction.db.execute<{
+    status: string;
+    current_secret_version_id: string;
+    health_revision: string;
+    provider_key: string;
+    auth_type: string;
+  }>(sql`
+    select status, current_secret_version_id, health_revision::text,
+           provider_key, auth_type
+    from app.connections
+    where workspace_id=${workspaceId} and id=${dispatch.connection_id}
+    for update`);
+  const connection = connections.rows[0];
+  if (
+    connection === undefined ||
+    connection.status === 'revoked' ||
+    connection.current_secret_version_id !== dispatch.secret_version_id ||
+    connection.health_revision !== dispatch.health_revision ||
+    connection.provider_key !== 'slack' ||
+    connection.auth_type !== 'slack_bot_token'
+  )
+    return false;
+  const ended = await transaction.db.execute(sql`
+    select 1 from app.node_attempts
+    where workspace_id=${workspaceId} and id=${observation.attempt_id}
+      and dispatch_marked_at is not null
+      and status in ('succeeded','failed','canceled','timed_out','outcome_unknown')`);
+  if (ended.rows.length !== 1) return false;
+  if (observation.kind === 'healthy') {
+    if (connection.status !== 'active') return false;
+    await transaction.db.execute(sql`
+      update app.connections
+      set last_healthy_at=greatest(last_healthy_at, ${observation.observed_at}),
+          last_run_observed_at=greatest(last_run_observed_at, ${observation.observed_at}),
+          last_error_code=null, updated_at=clock_timestamp()
+      where workspace_id=${workspaceId} and id=${dispatch.connection_id}`);
+    return true;
+  }
+  await transaction.db.execute(sql`
+    update app.connections
+    set status='reauthorization_required', health_revision=health_revision+1,
+        last_error_code=${observation.reason_code},
+        last_run_observed_at=${observation.observed_at},
+        last_health_transition_at=clock_timestamp(),
+        last_health_transition_source='run', updated_at=clock_timestamp()
+    where workspace_id=${workspaceId} and id=${dispatch.connection_id}`);
+  await transaction.db.execute(sql`
+    insert into app.connection_events
+      (id, workspace_id, connection_id, event_type, actor_kind, actor_id, metadata)
+    values (${input.observationId}, ${workspaceId}, ${dispatch.connection_id},
+            'connection.reauthorization_required', 'worker',
+            'connection-health-worker',
+            jsonb_build_object('source', 'run', 'status', 'reauthorization_required',
+                               'reasonCode', ${observation.reason_code}::text))`);
+  return true;
+}
+
 /** Consumes persisted IDs, never a caller-chosen connection/status/reason. */
 export async function applyConnectionHealthObservation(
   database: WorkspaceDatabase,
@@ -88,11 +191,7 @@ export async function applyConnectionHealthObservation(
         payload.data.observationId !== parsed.observationId
       )
         throw new InboxReceiptUnavailableError();
-      const result = await transaction.db.execute<{
-        applied: boolean;
-      }>(sql`select app.apply_connection_health_observation(
-      ${transaction.workspaceId},${parsed.observationId},${parsed.mode},${parsed.delivery.outboxEventId},${parsed.delivery.payloadChecksum}) applied`);
-      return result.rows[0]?.applied === true;
+      return applyObservation(transaction, parsed);
     },
     {
       lockWorkspace: true,

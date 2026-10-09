@@ -552,9 +552,6 @@ describe('preview worker attempt lifecycle', () => {
         ],
       );
       await client.query(
-        "select set_config('app.connection_health_protocol','1',true)",
-      );
-      await client.query(
         `update app.connections set current_secret_version_id=$3,health_revision=health_revision+1
          where workspace_id=$1 and id=$2`,
         [workspaceId, connectionId, nextSecretVersionId],

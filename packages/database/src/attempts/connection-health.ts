@@ -54,20 +54,28 @@ export async function persistConnectionHealthObservation(
   if (observation === undefined) return;
   const observationId = generatePersistedId();
   const outboxEventId = generatePersistedId();
-  await client.query(
-    'select app.record_node_attempt_connection_health($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+  // Only an attempt that dispatched with a recorded connection can report on it.
+  const recorded = await client.query(
+    `insert into app.connection_health_observations
+       (id, workspace_id, attempt_id, kind, reason_code, production_mode,
+        outbox_event_id)
+     select $1, $2, $3, $4, $5, $6, $7
+     where exists (select 1 from app.node_attempt_connection_dispatches dispatch
+       where dispatch.workspace_id=$2 and dispatch.attempt_id=$3
+         and dispatch.worker_id=$8 and dispatch.fence_token=$9)`,
     [
+      observationId,
       input.lease.workspaceId,
       input.lease.attemptId,
-      input.lease.workerId,
-      input.lease.fenceToken,
       observation.kind,
       observation.kind === 'healthy' ? null : observation.reasonCode,
       observation.mode,
-      observationId,
       outboxEventId,
+      input.lease.workerId,
+      input.lease.fenceToken,
     ],
   );
+  if (recorded.rowCount !== 1) throw new NodeAttemptStateCorruptError();
   const payload = {
     schemaVersion: 1,
     workspaceId: input.lease.workspaceId,

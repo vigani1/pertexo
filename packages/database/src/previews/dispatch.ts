@@ -7,6 +7,7 @@ import {
   type PreviewAttemptLease,
 } from './contract.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { isConnectionFenceCurrent } from '../connections/dispatch-fence.js';
 
 export async function markPreviewDispatched(
   pool: Pool,
@@ -63,21 +64,17 @@ export async function markPreviewDispatched(
     { workspaceId: scope.workspaceId },
     async (client) => {
       if (scope.connectionFence !== undefined) {
-        const fencedConnection = await client.query<{
-          fence_current: boolean;
-        }>(
-          `select app.connection_dispatch_fence_current(
-             $1,$2,$3,$4,$5
-           ) fence_current`,
-          [
-            scope.workspaceId,
-            scope.connectionFence.connectionId,
-            scope.connectionFence.expectedProviderKey,
-            scope.connectionFence.expectedAuthType,
-            scope.connectionFence.secretVersionId,
-          ],
+        const current = await isConnectionFenceCurrent(
+          client,
+          scope.workspaceId,
+          {
+            connectionId: scope.connectionFence.connectionId,
+            providerKey: scope.connectionFence.expectedProviderKey,
+            authType: scope.connectionFence.expectedAuthType,
+            secretVersionId: scope.connectionFence.secretVersionId,
+          },
         );
-        if (fencedConnection.rows[0]?.fence_current !== true)
+        if (!current)
           throw new PreviewAttemptStateError('connection_fence_failed');
       }
       const locked = await client.query<{
