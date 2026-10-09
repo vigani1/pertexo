@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
 
 import {
   buildWorkflowExecutableV2,
@@ -563,12 +564,11 @@ describe('workflow executable V2 identity', () => {
       cursor.next = next;
       cursor = next;
     }
-    const oversizedArray = new Array<unknown>(10_001).fill(null);
-    const tooManyMembers = Object.fromEntries(
-      Array.from({ length: 10_001 }, (_, index) => [
-        `key${String(index)}`,
-        null,
-      ]),
+    const oversizedArray = new Array<unknown>(
+      WORKFLOW_EXECUTABLE_LIMITS_V2.members + 1,
+    ).fill(null);
+    const tooManyMembers = Array.from({ length: 1_001 }, () =>
+      new Array<number>(WORKFLOW_EXECUTABLE_LIMITS_V2.members / 1_000).fill(0),
     );
     const proxy = new Proxy(
       {},
@@ -836,17 +836,20 @@ describe('workflow executable V2 identity', () => {
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
-  it('compiles a large 300-node chain within the bounded publication budget', () => {
+  it('compiles a chain at the node limit within the bounded publication budget', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const middle = Array.from({ length: 298 }, (_, index) => ({
-      id: `set-${String(index)}`,
-      definition: { key: 'core.set', version: 1 } as const,
-      position: { x: index + 1, y: 0 },
-      configVersion: 1,
-      config: {},
-      inputMappings: {},
-      connectionRefs: {},
-    }));
+    const middle = Array.from(
+      { length: WORKFLOW_GRAPH_LIMITS.nodes - 2 },
+      (_, index) => ({
+        id: `set-${String(index)}`,
+        definition: { key: 'core.set', version: 1 } as const,
+        position: { x: index + 1, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      }),
+    );
     const nodes = [
       { ...graph().nodes[0], inputMappings: {} },
       ...middle,
@@ -869,7 +872,9 @@ describe('workflow executable V2 identity', () => {
       release,
     });
 
-    expect(executable.envelope.graph.nodes).toHaveLength(300);
+    expect(executable.envelope.graph.nodes).toHaveLength(
+      WORKFLOW_GRAPH_LIMITS.nodes,
+    );
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 });

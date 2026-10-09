@@ -8,7 +8,12 @@ import {
   projectWorkflowPortableManifest,
   type WorkflowPortabilityCatalog,
 } from '@pertexo/workflow-model/portability';
-import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
+import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
+import {
+  parseWorkflowGraphDraft,
+  WORKFLOW_GRAPH_LIMITS,
+} from '@pertexo/workflow-model/graph';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model/graph-contract';
 import { workflowImportCommandIdentity } from '../src/authoring/workflow-portability-receipts.js';
 
 describe('portable import receipt identity boundary', () => {
@@ -80,7 +85,7 @@ describe('portable import receipt identity boundary', () => {
       }),
     ).toEqual(direct);
   });
-  it('admits the exact public 2MiB boundary without duplicating internal actor/workspace bytes', () => {
+  it('admits the largest valid import without duplicating internal actor/workspace bytes', () => {
     const fingerprint = `node-compat:v1:sha256:${'1'.repeat(64)}`;
     const catalog: WorkflowPortabilityCatalog = {
       fingerprint,
@@ -97,45 +102,45 @@ describe('portable import receipt identity boundary', () => {
       ],
       selectionFingerprint: () => `node-select:v1:sha256:${'2'.repeat(64)}`,
     };
-    const nodes = Array.from({ length: 1000 }, (_, index) => ({
-      id: `${String(index).padStart(4, '0')}-${'n'.repeat(520)}`,
-      definition: { key: 'test.provider', version: 1 },
-      configVersion: 1,
-      config: { literal: '' },
-      inputMappings: {},
-      connectionRefs: {},
-      position: { x: 0, y: 0 },
-    }));
+    const nodes = Array.from(
+      { length: WORKFLOW_GRAPH_LIMITS.nodes },
+      (_, index) => ({
+        id: String(index).padEnd(
+          WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+          'n',
+        ),
+        definition: { key: 'test.provider', version: 1 },
+        configVersion: 1,
+        config: { literal: '' },
+        inputMappings: {},
+        connectionRefs: {},
+        position: { x: 0, y: 0 },
+      }),
+    );
     const graph = { schemaVersion: 1, nodes, edges: [], settings: {} };
     const bindings = nodes.map(({ id }) => ({
       nodeId: id,
       slot: 'account',
       connectionId: randomUUID(),
     }));
+    const first = nodes[0];
+    if (first === undefined) throw new Error('Expected boundary graph node');
+    first.config.literal = 'x'.repeat(
+      WORKFLOW_GRAPH_LIMITS.graphBytes -
+        Buffer.byteLength(canonicalJson(graph)),
+    );
     const manifest = projectWorkflowPortableManifest(
       parseWorkflowGraphDraft(graph),
       catalog,
     );
-    const publicBody = {
+    const body = {
       manifest,
       bindings,
       name: 'Boundary import',
       expectedCompatibilityFingerprint: fingerprint,
     };
-    const remaining =
-      WORKFLOW_PORTABILITY_LIMITS.bytes -
-      Buffer.byteLength(canonicalWorkflowPortableJson(publicBody));
-    expect(remaining).toBeGreaterThan(0);
-    const first = nodes[0];
-    if (first === undefined) throw new Error('Expected boundary graph node');
-    first.config.literal = 'x'.repeat(remaining);
-    const boundedManifest = projectWorkflowPortableManifest(
-      parseWorkflowGraphDraft(graph),
-      catalog,
-    );
-    const body = { ...publicBody, manifest: boundedManifest };
     const canonical = canonicalWorkflowPortableJson(body);
-    expect(Buffer.byteLength(canonical)).toBe(
+    expect(Buffer.byteLength(canonical)).toBeLessThanOrEqual(
       WORKFLOW_PORTABILITY_LIMITS.bytes,
     );
     const identity = workflowImportCommandIdentity({

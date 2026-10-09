@@ -716,16 +716,15 @@ describe('report and invocation-local policy cache', () => {
 
   it('preserves historical structural collection and full identifiers', () => {
     const source = required(graph().nodes[0]);
-    const id = 'n'.repeat(8_000);
+    const field = (i: number) => `field${String(i)}${'k'.repeat(8_000)}`;
     const candidate = parseWorkflowGraphDraft({
       ...graph(),
       nodes: [
         {
           ...source,
-          id,
           inputMappings: Object.fromEntries(
             Array.from({ length: 100 }, (_, i) => [
-              `field${String(i)}`,
+              field(i),
               { kind: 'node_output', nodeId: 'missing', path: '$' },
             ]),
           ),
@@ -737,7 +736,7 @@ describe('report and invocation-local policy cache', () => {
     expect(historical.issues).toHaveLength(100);
     expect(historical.issues[0]).toEqual({
       code: 'invalid_mapping',
-      path: `$.nodes.${id}.inputMappings.field0`,
+      path: `$.nodes.${source.id}.inputMappings.${field(0)}`,
       message: 'node output mappings must reference a direct local predecessor',
     });
     expect(Buffer.byteLength(JSON.stringify(historical))).toBeGreaterThan(
@@ -752,10 +751,9 @@ describe('report and invocation-local policy cache', () => {
       nodes: [
         {
           ...source,
-          id: 'n'.repeat(8_000),
           inputMappings: Object.fromEntries(
             Array.from({ length: 100 }, (_, i) => [
-              `field${String(i)}`,
+              `field${String(i)}${'k'.repeat(8_000)}`,
               { kind: 'node_output', nodeId: 'missing', path: '$' },
             ]),
           ),
@@ -787,10 +785,9 @@ describe('report and invocation-local policy cache', () => {
       nodes: [
         {
           ...source,
-          id: 'n'.repeat(500_000),
           inputMappings: Object.fromEntries(
             Array.from({ length: 100 }, (_, i) => [
-              `field${String(i)}`,
+              `field${String(i)}${'k'.repeat(5_000)}`,
               { kind: 'node_output', nodeId: 'missing', path: '$' },
             ]),
           ),
@@ -829,9 +826,11 @@ describe('report and invocation-local policy cache', () => {
 
   it('fails report byte overflow operationally instead of exposing source/AST or truncating paths', () => {
     const input = graph('runInput.');
-    required(input.nodes[0]).id = 'n'.repeat(
-      AUTHORING_VALIDATION_BUDGET.reportBytes,
-    );
+    const step = required(input.nodes[0]);
+    step.inputMappings = {
+      ['r'.repeat(AUTHORING_VALIDATION_BUDGET.reportBytes)]:
+        step.inputMappings.result,
+    } as typeof step.inputMappings;
     const admitted = parseWorkflowGraphDraft(input);
     expect(() => validateAuthoringBatch(admitted, policies)).toThrow(
       AuthoringValidationUnavailableError,

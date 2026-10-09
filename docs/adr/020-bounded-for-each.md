@@ -2,6 +2,8 @@
 
 - **Status:** accepted
 - **Date:** 2026-08-24
+- **Amended:** 2026-10-09 (limits sized to the checkpoint; see the amendment
+  below)
 
 ## Context
 
@@ -126,3 +128,21 @@ must use a future explicitly bounded aggregate contract.
 - Define concurrency as unbounded body attempts rather than active iterations.
 - Aggregate every body output into the parent For Each output.
 - Use queue jobs, completion order, or worker memory as the loop cursor.
+
+## Amendment: limits sized to the checkpoint (2026-10-09)
+
+A run's checkpoint keeps one record per invocation for the whole run, including
+finished iterations, and each record repeats its node IDs in the invocation
+key. Under the original 1,000-invocation cap, a single For Each overflowed the
+256 KiB checkpoint between 400 and 500 items with editor-generated IDs, and the
+run could not advance.
+
+The authoring limits now fit the checkpoint with headroom: at most 200 nodes,
+200 expanded invocations, 200 total loop iterations, 200 items and 200
+concurrent items per loop, and node IDs, ports and other graph identifiers of
+at most 64 characters. With maximum-length IDs, a For Each at the limit peaks
+at 141 KB, two nested loops at 191 KB and a 200-node chain at 87 KB
+(`packages/workflow-engine/test/checkpoint-capacity.test.ts`). The run's
+iteration budget is the same 200. Raising these limits means removing finished
+iterations from the checkpoint, not raising the checkpoint cap: the checkpoint
+is rewritten on every transition, so its size multiplies write volume.

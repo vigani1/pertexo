@@ -1,10 +1,9 @@
 import { types as nodeTypes } from 'node:util';
-import {
-  NODE_JSON_LIMITS_V1,
-  type DefinitionIdentity,
-  type NodeManifest,
-  type PolicyReference,
-  type RegistryRelease,
+import type {
+  DefinitionIdentity,
+  NodeManifest,
+  PolicyReference,
+  RegistryRelease,
 } from '@pertexo/node-sdk';
 import {
   canonicalJson,
@@ -110,7 +109,7 @@ function assertSafeExecutableJson(value: unknown): void {
     if (typeof item !== 'object') fail('executable envelope must contain JSON');
     if (nodeTypes.isProxy(item))
       fail('executable envelope must not contain proxies');
-    if (frame.depth > NODE_JSON_LIMITS_V1.depth)
+    if (frame.depth > WORKFLOW_EXECUTABLE_LIMITS_V2.depth)
       fail('executable envelope exceeds maximum depth');
     if (ancestors.has(item))
       fail('executable envelope must not contain cycles');
@@ -119,7 +118,7 @@ function assertSafeExecutableJson(value: unknown): void {
       object | null;
     if (!isArray && prototype !== Object.prototype && prototype !== null)
       fail('executable envelope must contain plain objects');
-    if (isArray && item.length > NODE_JSON_LIMITS_V1.members)
+    if (isArray && item.length > WORKFLOW_EXECUTABLE_LIMITS_V2.members)
       fail('executable envelope array is oversized');
     add(2 + (isArray ? Math.max(0, item.length - 1) : 0));
     ancestors.add(item);
@@ -136,7 +135,7 @@ function assertSafeExecutableJson(value: unknown): void {
       )
         fail('executable envelope must contain own data fields');
       members += 1;
-      if (members > NODE_JSON_LIMITS_V1.members)
+      if (members > WORKFLOW_EXECUTABLE_LIMITS_V2.members)
         fail('executable envelope exceeds maximum members');
       if (isArray && key !== String(enumerableCount))
         fail('executable envelope array is sparse or has extra fields');

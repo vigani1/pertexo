@@ -8913,7 +8913,7 @@
                     "const": 1
                   },
                   "nodes": {
-                    "maxItems": 1000,
+                    "maxItems": 200,
                     "type": "array",
                     "items": {
                       "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema0"
@@ -8927,18 +8927,21 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "source": {
                           "type": "object",
                           "properties": {
                             "nodeId": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "port": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           },
                           "required": [
@@ -8952,11 +8955,13 @@
                           "properties": {
                             "nodeId": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "port": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           },
                           "required": [
@@ -8999,14 +9004,16 @@
                     "properties": {
                       "id": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "maxLength": 64
                       },
                       "definition": {
                         "type": "object",
                         "properties": {
                           "key": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "maxLength": 64
                           },
                           "version": {
                             "type": "integer",
@@ -9100,7 +9107,8 @@
                                 },
                                 "nodeId": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 },
                                 "path": {
                                   "type": "string"
@@ -9150,7 +9158,8 @@
                                 },
                                 "port": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 },
                                 "path": {
                                   "type": "string"
@@ -9173,7 +9182,8 @@
                         },
                         "additionalProperties": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         }
                       },
                       "label": {
@@ -9192,12 +9202,12 @@
                           "maxIterations": {
                             "type": "integer",
                             "exclusiveMinimum": 0,
-                            "maximum": 1000
+                            "maximum": 200
                           },
                           "maxConcurrency": {
                             "type": "integer",
                             "exclusiveMinimum": 0,
-                            "maximum": 1000
+                            "maximum": 200
                           },
                           "body": {
                             "type": "object",
@@ -9219,18 +9229,21 @@
                                   "properties": {
                                     "id": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     },
                                     "source": {
                                       "type": "object",
                                       "properties": {
                                         "nodeId": {
                                           "type": "string",
-                                          "minLength": 1
+                                          "minLength": 1,
+                                          "maxLength": 64
                                         },
                                         "port": {
                                           "type": "string",
-                                          "minLength": 1
+                                          "minLength": 1,
+                                          "maxLength": 64
                                         }
                                       },
                                       "required": [
@@ -9244,11 +9257,13 @@
                                       "properties": {
                                         "nodeId": {
                                           "type": "string",
-                                          "minLength": 1
+                                          "minLength": 1,
+                                          "maxLength": 64
                                         },
                                         "port": {
                                           "type": "string",
-                                          "minLength": 1
+                                          "minLength": 1,
+                                          "maxLength": 64
                                         }
                                       },
                                       "required": [
@@ -9281,14 +9296,16 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 }
                               },
                               "outputPorts": {
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 }
                               }
                             },
@@ -9903,7 +9920,7 @@
                 "const": 1
               },
               "nodes": {
-                "maxItems": 1000,
+                "maxItems": 200,
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema0"
@@ -9917,18 +9934,21 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 64
                     },
                     "source": {
                       "type": "object",
                       "properties": {
                         "nodeId": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "port": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         }
                       },
                       "required": [
@@ -9942,11 +9962,13 @@
                       "properties": {
                         "nodeId": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "port": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         }
                       },
                       "required": [
@@ -9989,14 +10011,16 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 64
                   },
                   "definition": {
                     "type": "object",
                     "properties": {
                       "key": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "maxLength": 64
                       },
                       "version": {
                         "type": "integer",
@@ -10090,7 +10114,8 @@
                             },
                             "nodeId": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "path": {
                               "type": "string"
@@ -10140,7 +10165,8 @@
                             },
                             "port": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "path": {
                               "type": "string"
@@ -10163,7 +10189,8 @@
                     },
                     "additionalProperties": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 64
                     }
                   },
                   "label": {
@@ -10182,12 +10209,12 @@
                       "maxIterations": {
                         "type": "integer",
                         "exclusiveMinimum": 0,
-                        "maximum": 1000
+                        "maximum": 200
                       },
                       "maxConcurrency": {
                         "type": "integer",
                         "exclusiveMinimum": 0,
-                        "maximum": 1000
+                        "maximum": 200
                       },
                       "body": {
                         "type": "object",
@@ -10209,18 +10236,21 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 },
                                 "source": {
                                   "type": "object",
                                   "properties": {
                                     "nodeId": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     },
                                     "port": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     }
                                   },
                                   "required": [
@@ -10234,11 +10264,13 @@
                                   "properties": {
                                     "nodeId": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     },
                                     "port": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     }
                                   },
                                   "required": [
@@ -10271,14 +10303,16 @@
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           },
                           "outputPorts": {
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           }
                         },
@@ -10411,7 +10445,7 @@
                 "const": 1
               },
               "nodes": {
-                "maxItems": 1000,
+                "maxItems": 200,
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema0"
@@ -10425,18 +10459,21 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 64
                     },
                     "source": {
                       "type": "object",
                       "properties": {
                         "nodeId": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "port": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         }
                       },
                       "required": [
@@ -10450,11 +10487,13 @@
                       "properties": {
                         "nodeId": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "port": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         }
                       },
                       "required": [
@@ -10497,14 +10536,16 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 64
                   },
                   "definition": {
                     "type": "object",
                     "properties": {
                       "key": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "maxLength": 64
                       },
                       "version": {
                         "type": "integer",
@@ -10598,7 +10639,8 @@
                             },
                             "nodeId": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "path": {
                               "type": "string"
@@ -10648,7 +10690,8 @@
                             },
                             "port": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "path": {
                               "type": "string"
@@ -10671,7 +10714,8 @@
                     },
                     "additionalProperties": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 64
                     }
                   },
                   "label": {
@@ -10690,12 +10734,12 @@
                       "maxIterations": {
                         "type": "integer",
                         "exclusiveMinimum": 0,
-                        "maximum": 1000
+                        "maximum": 200
                       },
                       "maxConcurrency": {
                         "type": "integer",
                         "exclusiveMinimum": 0,
-                        "maximum": 1000
+                        "maximum": 200
                       },
                       "body": {
                         "type": "object",
@@ -10717,18 +10761,21 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 },
                                 "source": {
                                   "type": "object",
                                   "properties": {
                                     "nodeId": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     },
                                     "port": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     }
                                   },
                                   "required": [
@@ -10742,11 +10789,13 @@
                                   "properties": {
                                     "nodeId": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     },
                                     "port": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     }
                                   },
                                   "required": [
@@ -10779,14 +10828,16 @@
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           },
                           "outputPorts": {
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           }
                         },
@@ -11124,7 +11175,7 @@
                     "const": 1
                   },
                   "nodes": {
-                    "maxItems": 1000,
+                    "maxItems": 200,
                     "type": "array",
                     "items": {
                       "$ref": "#/components/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema0"
@@ -11138,18 +11189,21 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "source": {
                           "type": "object",
                           "properties": {
                             "nodeId": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "port": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           },
                           "required": [
@@ -11163,11 +11217,13 @@
                           "properties": {
                             "nodeId": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "port": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           },
                           "required": [
@@ -11210,14 +11266,16 @@
                     "properties": {
                       "id": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "maxLength": 64
                       },
                       "definition": {
                         "type": "object",
                         "properties": {
                           "key": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "maxLength": 64
                           },
                           "version": {
                             "type": "integer",
@@ -11311,7 +11369,8 @@
                                 },
                                 "nodeId": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 },
                                 "path": {
                                   "type": "string"
@@ -11361,7 +11420,8 @@
                                 },
                                 "port": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 },
                                 "path": {
                                   "type": "string"
@@ -11384,7 +11444,8 @@
                         },
                         "additionalProperties": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         }
                       },
                       "label": {
@@ -11403,12 +11464,12 @@
                           "maxIterations": {
                             "type": "integer",
                             "exclusiveMinimum": 0,
-                            "maximum": 1000
+                            "maximum": 200
                           },
                           "maxConcurrency": {
                             "type": "integer",
                             "exclusiveMinimum": 0,
-                            "maximum": 1000
+                            "maximum": 200
                           },
                           "body": {
                             "type": "object",
@@ -11430,18 +11491,21 @@
                                   "properties": {
                                     "id": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     },
                                     "source": {
                                       "type": "object",
                                       "properties": {
                                         "nodeId": {
                                           "type": "string",
-                                          "minLength": 1
+                                          "minLength": 1,
+                                          "maxLength": 64
                                         },
                                         "port": {
                                           "type": "string",
-                                          "minLength": 1
+                                          "minLength": 1,
+                                          "maxLength": 64
                                         }
                                       },
                                       "required": [
@@ -11455,11 +11519,13 @@
                                       "properties": {
                                         "nodeId": {
                                           "type": "string",
-                                          "minLength": 1
+                                          "minLength": 1,
+                                          "maxLength": 64
                                         },
                                         "port": {
                                           "type": "string",
-                                          "minLength": 1
+                                          "minLength": 1,
+                                          "maxLength": 64
                                         }
                                       },
                                       "required": [
@@ -11492,14 +11558,16 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 }
                               },
                               "outputPorts": {
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 }
                               }
                             },
@@ -11662,7 +11730,7 @@
                 "const": 1
               },
               "nodes": {
-                "maxItems": 1000,
+                "maxItems": 200,
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema0"
@@ -11676,18 +11744,21 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 64
                     },
                     "source": {
                       "type": "object",
                       "properties": {
                         "nodeId": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "port": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         }
                       },
                       "required": [
@@ -11701,11 +11772,13 @@
                       "properties": {
                         "nodeId": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "port": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         }
                       },
                       "required": [
@@ -11748,14 +11821,16 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 64
                   },
                   "definition": {
                     "type": "object",
                     "properties": {
                       "key": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "maxLength": 64
                       },
                       "version": {
                         "type": "integer",
@@ -11849,7 +11924,8 @@
                             },
                             "nodeId": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "path": {
                               "type": "string"
@@ -11899,7 +11975,8 @@
                             },
                             "port": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "path": {
                               "type": "string"
@@ -11922,7 +11999,8 @@
                     },
                     "additionalProperties": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 64
                     }
                   },
                   "label": {
@@ -11941,12 +12019,12 @@
                       "maxIterations": {
                         "type": "integer",
                         "exclusiveMinimum": 0,
-                        "maximum": 1000
+                        "maximum": 200
                       },
                       "maxConcurrency": {
                         "type": "integer",
                         "exclusiveMinimum": 0,
-                        "maximum": 1000
+                        "maximum": 200
                       },
                       "body": {
                         "type": "object",
@@ -11968,18 +12046,21 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 64
                                 },
                                 "source": {
                                   "type": "object",
                                   "properties": {
                                     "nodeId": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     },
                                     "port": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     }
                                   },
                                   "required": [
@@ -11993,11 +12074,13 @@
                                   "properties": {
                                     "nodeId": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     },
                                     "port": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 64
                                     }
                                   },
                                   "required": [
@@ -12030,14 +12113,16 @@
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           },
                           "outputPorts": {
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             }
                           }
                         },
@@ -12196,7 +12281,7 @@
                       "const": 1
                     },
                     "nodes": {
-                      "maxItems": 1000,
+                      "maxItems": 200,
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema0"
@@ -12210,18 +12295,21 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "maxLength": 64
                           },
                           "source": {
                             "type": "object",
                             "properties": {
                               "nodeId": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "maxLength": 64
                               },
                               "port": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "maxLength": 64
                               }
                             },
                             "required": [
@@ -12235,11 +12323,13 @@
                             "properties": {
                               "nodeId": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "maxLength": 64
                               },
                               "port": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "maxLength": 64
                               }
                             },
                             "required": [
@@ -12282,14 +12372,16 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 64
                         },
                         "definition": {
                           "type": "object",
                           "properties": {
                             "key": {
                               "type": "string",
-                              "minLength": 1
+                              "minLength": 1,
+                              "maxLength": 64
                             },
                             "version": {
                               "type": "integer",
@@ -12383,7 +12475,8 @@
                                   },
                                   "nodeId": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 64
                                   },
                                   "path": {
                                     "type": "string"
@@ -12433,7 +12526,8 @@
                                   },
                                   "port": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 64
                                   },
                                   "path": {
                                     "type": "string"
@@ -12456,7 +12550,8 @@
                           },
                           "additionalProperties": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "maxLength": 64
                           }
                         },
                         "label": {
@@ -12475,12 +12570,12 @@
                             "maxIterations": {
                               "type": "integer",
                               "exclusiveMinimum": 0,
-                              "maximum": 1000
+                              "maximum": 200
                             },
                             "maxConcurrency": {
                               "type": "integer",
                               "exclusiveMinimum": 0,
-                              "maximum": 1000
+                              "maximum": 200
                             },
                             "body": {
                               "type": "object",
@@ -12502,18 +12597,21 @@
                                     "properties": {
                                       "id": {
                                         "type": "string",
-                                        "minLength": 1
+                                        "minLength": 1,
+                                        "maxLength": 64
                                       },
                                       "source": {
                                         "type": "object",
                                         "properties": {
                                           "nodeId": {
                                             "type": "string",
-                                            "minLength": 1
+                                            "minLength": 1,
+                                            "maxLength": 64
                                           },
                                           "port": {
                                             "type": "string",
-                                            "minLength": 1
+                                            "minLength": 1,
+                                            "maxLength": 64
                                           }
                                         },
                                         "required": [
@@ -12527,11 +12625,13 @@
                                         "properties": {
                                           "nodeId": {
                                             "type": "string",
-                                            "minLength": 1
+                                            "minLength": 1,
+                                            "maxLength": 64
                                           },
                                           "port": {
                                             "type": "string",
-                                            "minLength": 1
+                                            "minLength": 1,
+                                            "maxLength": 64
                                           }
                                         },
                                         "required": [
@@ -12564,14 +12664,16 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 64
                                   }
                                 },
                                 "outputPorts": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 64
                                   }
                                 }
                               },

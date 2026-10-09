@@ -44,7 +44,7 @@ describe('contract schema projection', () => {
       type: 'object',
       additionalProperties: false,
       properties: {
-        nodes: { type: 'array', maxItems: 1_000 },
+        nodes: { type: 'array', maxItems: 200 },
         edges: { type: 'array', maxItems: 4_000 },
         settings: { type: 'object' },
       },
@@ -87,7 +87,7 @@ describe('contract schema projection', () => {
       'x-pertexo-runtime-bounds': true,
     });
     expect(saveRequest.properties?.graph?.properties).toMatchObject({
-      nodes: { type: 'array', maxItems: 1_000 },
+      nodes: { type: 'array', maxItems: 200 },
       edges: { type: 'array', maxItems: 4_000 },
       settings: { type: 'object' },
     });

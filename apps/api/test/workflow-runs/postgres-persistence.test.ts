@@ -18,6 +18,7 @@ import {
   PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
 } from '@pertexo/node-catalog';
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
 import { describe, expect, it, vi } from 'vitest';
 import {
   WorkflowManualStartUnavailableError,
@@ -332,7 +333,7 @@ function expectInitialCheckpoint(
     engineVersion: ENGINE_VERSION,
     revision: 0,
     nextEventSequence: 2,
-    remainingIterationBudget: 1_000,
+    remainingIterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
   });
 }
 

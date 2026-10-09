@@ -34,9 +34,12 @@ export const BODY_PORTS = Object.freeze({
   inputs: Object.freeze(['item', 'ordinal']),
   outputs: Object.freeze(['result']),
 });
-/** Bounds a new For each starts with: one item at a time, up to 100. */
+/**
+ * Bounds a new For each starts with: one item at a time, up to 50, leaving
+ * room in a run's invocation limit for a body of a few steps.
+ */
 const DEFAULT_LOOP_BOUNDS = Object.freeze({
-  maxIterations: 100,
+  maxIterations: 50,
   maxConcurrency: 1,
 });
 

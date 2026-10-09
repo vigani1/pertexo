@@ -2,6 +2,8 @@
 
 - **Status:** accepted
 - **Date:** 2026-08-20
+- **Amended:** 2026-10-09 by [ADR 020](020-bounded-for-each.md#amendment-limits-sized-to-the-checkpoint-2026-10-09)
+  (the run-wide loop-iteration limit is 200)
 
 ## Context
 
