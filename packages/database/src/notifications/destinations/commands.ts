@@ -9,7 +9,7 @@ import {
   FailureNotificationDestinationError,
   type FailureNotificationDestinationErrorCode,
 } from './errors.js';
-import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 /*
  * Transaction, idempotency, authorization and audit steps shared by the

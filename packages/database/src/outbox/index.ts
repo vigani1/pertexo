@@ -1,8 +1,8 @@
-export { createOutboxDispatcherDatabase } from './dispatcher.js';
+export { createOutboxDispatcherDatabase } from './dispatcher/database.js';
 export type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from './dispatcher.js';
+} from './dispatcher/database.js';
 export {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,

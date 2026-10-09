@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, expect } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
-import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher.js';
+import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher/database.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { generatePersistedId } from '../src/platform/persisted-id.js';
 import {

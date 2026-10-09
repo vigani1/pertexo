@@ -10,7 +10,7 @@ import {
 } from './acceptance.js';
 import { previewRuns } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
 export type ResolvePreviewReplayInput = Readonly<{
   actorUserId: string;

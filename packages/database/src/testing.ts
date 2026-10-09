@@ -149,7 +149,7 @@ export type {
   PublishedWorkflowVersionIdentity,
   ReadPublishedWorkflowForExecutionInput,
 } from './runs/published-workflow.js';
-export { createOutboxDispatcherDatabase } from './outbox/dispatcher.js';
+export { createOutboxDispatcherDatabase } from './outbox/dispatcher/database.js';
 export type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,
@@ -157,7 +157,7 @@ export type {
   OutboxBacklogSnapshot,
   OutboxDispatcherDatabase,
   ReleaseOutboxResult,
-} from './outbox/dispatcher.js';
+} from './outbox/dispatcher/database.js';
 export {
   consumeInboxMessage,
   InboxChecksumMismatchError,

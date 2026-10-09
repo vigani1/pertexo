@@ -3,7 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
 import { PREVIEW_STATUS, type PreviewStatus } from './acceptance.js';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../platform/persisted-primitives.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,

@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
 export const failureNotificationIdentitySchema = z.uuid();
 export const failureNotificationChecksumSchema = sha256HexSchema;

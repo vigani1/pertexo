@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { WorkspaceDatabase } from '../../database.js';
-import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import {
   consumeInboxMessage,
   InboxReceiptUnavailableError,

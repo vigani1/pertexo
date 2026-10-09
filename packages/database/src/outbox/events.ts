@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import { outboxEvents } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
 const checksumSchema = sha256HexSchema;
 const outboxEventInputSchema = z

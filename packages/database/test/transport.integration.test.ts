@@ -6,9 +6,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
-import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher.js';
+import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher/database.js';
 import { consumeInboxMessage } from '../src/testing.js';
-import { OperatorCommandConflictError } from '../src/operator/operator-commands.js';
+import { OperatorCommandConflictError } from '../src/operator/commands.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

@@ -28,7 +28,7 @@ import {
 import { requireConnectionUser } from '../authority.js';
 import { markConnectionTestDispatched } from './dispatch.js';
 import { applyCurrentConnectionTestHealth } from '../health/transitions.js';
-import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 import type {
   ConnectionDatabase,
   ConnectionRecord,

@@ -4,7 +4,7 @@ import { acquireDatabasePool } from '../../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 import { withPlatformTransaction } from '../transactions.js';
 import { z } from 'zod';
-import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../../config.js';
 import { IdentityConflictError } from '../errors.js';

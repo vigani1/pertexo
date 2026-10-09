@@ -2,7 +2,7 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import { withPlatformTransaction } from '../transactions.js';
 
 import type {

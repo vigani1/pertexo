@@ -21,7 +21,7 @@ import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
 } from './published-workflow.js';
-import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
 import { withWorkspaceTransaction } from '../tenant-access/transactions.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { requestWorkflowRunCancellation } from './commands/cancel.js';

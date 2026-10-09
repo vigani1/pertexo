@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
+import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 import { requireConnectionUser } from '../authority.js';
 import {
   connectionTestClaim,
