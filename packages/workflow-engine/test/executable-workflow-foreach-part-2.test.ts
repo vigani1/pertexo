@@ -719,7 +719,6 @@ describe('For Each production operations', () => {
 
   it('keeps the generic scheduler graph seam on the server-only testing entry', () => {
     for (const internalName of [
-      'assertAttemptTransition',
       'assertNodeTransition',
       'assertRunTransition',
       'createLoopState',

@@ -24,17 +24,6 @@ export const NODE_STATUSES = [
 ] as const;
 export type NodeStatus = (typeof NODE_STATUSES)[number];
 
-export const ATTEMPT_STATUSES = [
-  'pending',
-  'ready',
-  'running',
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-] as const;
-export type AttemptStatus = (typeof ATTEMPT_STATUSES)[number];
 export type SideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
 export type WaitKind = 'node_wait' | 'retry_backoff';
 export type AdmissionKind = 'execute' | 'retry' | 'wait_resume';
