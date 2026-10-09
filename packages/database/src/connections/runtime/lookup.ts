@@ -1,4 +1,4 @@
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -15,8 +15,8 @@ import {
   withConnectionTransaction,
   type RequestMetadata,
   type ResolvedConnectionSecretRecord,
-} from './connection-persistence.js';
-import { requireConnectionUser } from './connection-authority.js';
+} from '../records.js';
+import { requireConnectionUser } from '../authority.js';
 
 /**
  * Owns API credential resolution for ADR 046 read-only provider lookups and

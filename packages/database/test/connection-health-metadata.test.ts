@@ -4,7 +4,7 @@ import {
   connectionHealthSnapshotSchema,
   deserializeConnectionHealthMetadata,
   mapConnectionHealthMetadata,
-} from '../src/connections/connection-health-metadata.js';
+} from '../src/connections/health/metadata.js';
 
 describe('safe connection health metadata codec', () => {
   it('normalizes legacy absence without inventing evidence', () => {

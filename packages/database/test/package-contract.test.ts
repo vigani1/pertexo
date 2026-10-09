@@ -3,13 +3,13 @@ import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createApiConnectionDatabase } from '../src/connections/connections.js';
-import { createWorkerConnectionResolutionDatabase } from '../src/connections/connections.js';
+import { createApiConnectionDatabase } from '../src/connections/database.js';
+import { createWorkerConnectionResolutionDatabase } from '../src/connections/database.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 import type {
   ApiConnectionDatabase,
   WorkerConnectionResolutionDatabase,
-} from '../src/connections/connections.js';
+} from '../src/connections/database.js';
 
 const areas = [
   'artifacts',

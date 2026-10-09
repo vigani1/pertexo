@@ -1,10 +1,7 @@
 import type { PoolClient } from 'pg';
 
 import { rolesForCapability } from '../tenant-access/policy.js';
-import {
-  ConnectionNotFoundError,
-  uuidSchema,
-} from './connection-persistence.js';
+import { ConnectionNotFoundError, uuidSchema } from './records.js';
 
 async function requireConnectionCapability(
   client: PoolClient,

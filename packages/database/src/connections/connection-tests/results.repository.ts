@@ -1,4 +1,4 @@
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool } from 'pg';
 import {
@@ -19,23 +19,23 @@ import {
   connectionTestOutcomeSchema,
   parseConnectionTestResult,
   serializeConnectionTestResult,
-} from './connection-persistence.js';
+} from '../records.js';
 import {
   connectionTestClaim,
   connectionTestClaimSchema,
   connectionTestScope,
-} from './connection-test-claim.js';
-import { requireConnectionUser } from './connection-authority.js';
-import { markConnectionTestDispatched } from './connection-test-dispatch.js';
-import { applyCurrentConnectionTestHealth } from './connection-health-transitions.js';
-import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
+} from './claim.js';
+import { requireConnectionUser } from '../authority.js';
+import { markConnectionTestDispatched } from './dispatch.js';
+import { applyCurrentConnectionTestHealth } from '../health/transitions.js';
+import { sha256HexSchema as digestSchema } from '../../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
   ConnectionRecord,
   ResolvedConnectionSecretRecord,
   StartConnectionTestResult,
   ConnectionTestResult,
-} from './connection-persistence.js';
+} from '../records.js';
 
 /** Owns connection-test claim, dispatch, completion, and abandonment. */
 

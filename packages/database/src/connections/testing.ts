@@ -11,7 +11,7 @@ export {
   createConnectionDatabase,
   createApiConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
-} from './connections.js';
+} from './database.js';
 export type {
   ConnectionAuthType,
   ConnectionDatabase,
@@ -43,12 +43,12 @@ export type {
   RevokeConnectionInput,
   RotateConnectionSecretInput,
   SealedConnectionSecretRecord,
-} from './connections.js';
-export { createWorkflowIntegrationUsageDatabase } from './workflow-integration-usage.js';
+} from './database.js';
+export { createWorkflowIntegrationUsageDatabase } from './integration-usage.queries.js';
 export type {
   FindConnectionImpactInput,
   FindProviderOperationImpactInput,
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
   WorkflowIntegrationUsageDatabase,
-} from './workflow-integration-usage.js';
+} from './integration-usage.queries.js';

@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
 /** The connection secret a run or preview was given to use. */
 export type ConnectionFence = Readonly<{

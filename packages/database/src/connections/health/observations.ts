@@ -1,13 +1,13 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import type { WorkspaceDatabase } from '../database.js';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import type { WorkspaceDatabase } from '../../database.js';
+import { sha256HexSchema } from '../../validation/persisted-primitives.js';
 import {
   consumeInboxMessage,
   InboxReceiptUnavailableError,
-} from '../outbox/receipts.js';
-import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
+} from '../../outbox/receipts.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 
 const payloadSchema = z
   .object({

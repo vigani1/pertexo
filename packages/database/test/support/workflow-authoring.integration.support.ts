@@ -13,7 +13,7 @@ import { parseDatabaseConfig } from '../../src/config.js';
 import {
   CONNECTION_AUTH_TYPE,
   createConnectionDatabase,
-} from '../../src/connections/connections.js';
+} from '../../src/connections/database.js';
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/database.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { IdempotencyConflictError } from '../../src/platform/idempotency.js';
@@ -24,7 +24,7 @@ import {
   type WorkflowAuthoringDatabase,
 } from '../../src/authoring/workflows/database.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './workflow-authoring-admission.fixture.js';
-import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/workflow-integration-usage.js';
+import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/integration-usage.queries.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 import { purgeWorkspace } from './workspace-purge.js';
 import { enforceRetention } from './retention.js';

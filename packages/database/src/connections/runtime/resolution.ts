@@ -14,11 +14,11 @@ import {
   mapConnection,
   mapSealed,
   withConnectionTransaction,
-} from './connection-persistence.js';
+} from '../records.js';
 import type {
   ConnectionDatabase,
   ResolvedConnectionSecretRecord,
-} from './connection-persistence.js';
+} from '../records.js';
 
 /** Owns worker credential resolution and its access audit fact. */
 

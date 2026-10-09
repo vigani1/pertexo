@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { describe, it, expect } from 'vitest';
 
 import { NodeAttemptReconciliationRequiredError } from '../src/testing.js';
-import { isConnectionFenceCurrent } from '../src/connections/dispatch-fence.js';
+import { isConnectionFenceCurrent } from '../src/connections/runtime/dispatch-fence.js';
 import { createOperatorCommandDatabase } from '../src/operator/operator-commands.js';
 import {
   UnknownOutcomeReconciliationMismatchError,

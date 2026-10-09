@@ -4,7 +4,7 @@ import {
   connectionHealthSnapshotSchema,
   deserializeConnectionHealthMetadata,
   mapConnectionHealthMetadata,
-} from './connection-health-metadata.js';
+} from './health/metadata.js';
 
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
