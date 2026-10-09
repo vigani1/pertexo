@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION,
   DistributedRateLimiter,
   type RateLimitDecision,
   type RateLimitScriptExecutor,
@@ -46,13 +45,12 @@ describe('distributed abuse rate limiter', () => {
     expect(keyCount).toBe(3);
     expect(arguments_.slice(0, 3)).toHaveLength(3);
     expect(arguments_.slice(0, 3)).toEqual([
-      expect.stringMatching(/^pertexo:abuse:v1:provider_test:actor:/u),
-      expect.stringMatching(/^pertexo:abuse:v1:provider_test:workspace:/u),
-      expect.stringMatching(/^pertexo:abuse:v1:provider_test:connection:/u),
+      expect.stringMatching(/^pertexo:abuse:provider_test:actor:/u),
+      expect.stringMatching(/^pertexo:abuse:provider_test:workspace:/u),
+      expect.stringMatching(/^pertexo:abuse:provider_test:connection:/u),
     ]);
     expect(arguments_.slice(0, 3).join(':')).not.toContain('secret');
     expect(arguments_.slice(3)).toEqual(['60000', '10', '20', '5']);
-    expect(ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION).toBe(1);
   });
 
   it('returns a bounded retry and the rejected dimension', async () => {

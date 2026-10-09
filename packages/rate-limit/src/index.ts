@@ -5,7 +5,6 @@ export {
 } from './distributed-rate-limiter.js';
 export {
   AbuseRateLimitPolicy,
-  ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION,
   RATE_LIMIT_ENDPOINT_CLASSES,
   type RateLimitDecision,
   type RateLimitDimension,
