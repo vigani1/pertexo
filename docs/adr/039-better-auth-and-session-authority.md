@@ -4,6 +4,16 @@
 - **Date:** 2026-09-22
 - **Supersedes:** the managed-provider selection, authentication-method constraints, custom session ownership and digest-only session-storage rule in ADR 004
 - **Does not supersede:** Pertexo authorization, ActorContext, RLS, audit, CSRF, revocation or SSE authorization-lifetime guarantees
+- **Amended:** 2026-10-09 under ADR 069
+
+> **Amendment note (2026-10-09).** Nothing has launched, so there is no legacy
+> account to carry across (ADR 069). The generic OIDC sign-in, its opaque
+> sessions and identities, the legacy-method migration bridge and the
+> standalone cutover preflight and gate are removed (migration 0020). Better
+> Auth is the only authority whenever identity is configured, which needs
+> `BETTER_AUTH_SECRET` and `PUBLIC_WEB_ORIGIN`. The closure rule below about
+> legacy broker subjects no longer has anything to apply to; the other rules
+> are unchanged.
 
 ## Context
 

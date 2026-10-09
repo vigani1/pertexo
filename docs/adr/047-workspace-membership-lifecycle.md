@@ -85,8 +85,7 @@ previousOwnerRoleRevision, replayed }`.
   same bound ADR 043 uses for invitation acceptance and Better Auth uses for
   email changes (`SESSION_NOT_FRESH`). An older session is
   `403 auth.session_not_fresh`; the web app offers "Sign in again" and comes
-  back to Team. As in ADR 043, an authority that cannot supply sign-in
-  evidence (legacy opaque sessions) answers `404`.
+  back to Team.
 - A suspended or otherwise inactive target is
   `409 workspace.member_status_conflict`; a stale revision of either
   membership is `409 workspace.member_role_revision_conflict`.
