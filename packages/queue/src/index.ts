@@ -1,10 +1,8 @@
 export {
-  ACTIVE_QUEUE_JOB_NAMES,
   AdvanceWorkflowRunJobSchema,
   ApplyConnectionHealthObservationJobSchema,
   ExecuteNodeAttemptJobSchema,
   ExecutePreviewAttemptJobSchema,
-  ExpireArtifactsJobSchema,
   DeliverRunFailureNotificationJobSchema,
   QUEUE_JOB_REGISTRY,
   QUEUE_SCHEMA_VERSION,
@@ -12,19 +10,15 @@ export {
   ReconcilePreviewAttemptJobSchema,
   ReconcileUnknownOutcomeJobSchema,
   ReplayWorkflowRunJobSchema,
-  SweepExpiredPreviewsJobSchema,
   UnknownQueueJobError,
   parseQueueJob,
   safeParseQueueJob,
-  isActiveQueueJobName,
 } from './contracts.js';
 export type {
-  ActiveQueueJobName,
   AdvanceWorkflowRunJob,
   ApplyConnectionHealthObservationJob,
   ExecuteNodeAttemptJob,
   ExecutePreviewAttemptJob,
-  ExpireArtifactsJob,
   DeliverRunFailureNotificationJob,
   QueueJob,
   QueueJobDataByName,
@@ -33,7 +27,6 @@ export type {
   ReconcilePreviewAttemptJob,
   ReconcileUnknownOutcomeJob,
   ReplayWorkflowRunJob,
-  SweepExpiredPreviewsJob,
 } from './contracts.js';
 export { JOB_NAME, QUEUE_FOR_JOB, QUEUE_NAME } from './names.js';
 export type { JobName, QueueName } from './names.js';

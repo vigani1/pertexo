@@ -19,20 +19,6 @@ import {
 } from '@pertexo/database/testing';
 import type { TransportMetrics } from '@pertexo/observability';
 import type { NodeArtifactReference } from '@pertexo/node-sdk/server';
-import {
-  createQueueConsumer,
-  createQueueProducer,
-  jobIdForOutboxEvent,
-  JOB_NAME,
-  QUEUE_NAME,
-} from '@pertexo/queue';
-import type {
-  QueueConsumer,
-  QueueDelivery,
-  QueueJob,
-  QueueProducer,
-} from '@pertexo/queue';
-import { Queue } from 'bullmq';
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
@@ -40,15 +26,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { observeWorkspaceArtifactCapacity } from '../src/runtime/artifact-metrics.js';
 import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
-import { createRedisTestNamespace } from './support/redis-test-namespace.js';
 import { runWithCleanup } from './support/test-operation.js';
 
 const integration =
   process.env.ARTIFACT_STORE_INTEGRATION === 'true' &&
   process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = integration ? describe : describe.skip;
-const redisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
 const adminDatabaseUrl =
   process.env.DATABASE_ADMIN_URL ??
   'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
@@ -70,18 +53,6 @@ function databaseUrl(baseUrl: string, databaseName: string): string {
 
 function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
-}
-
-function bullConnection(privateRedisUrl: string) {
-  const parsed = new URL(privateRedisUrl);
-  return {
-    db: Number(parsed.pathname.slice(1)),
-    host: parsed.hostname,
-    port: Number(parsed.port || 6379),
-    ...(parsed.password === ''
-      ? {}
-      : { password: decodeURIComponent(parsed.password) }),
-  };
 }
 
 function createArtifactDatabaseEnvironment() {
@@ -183,31 +154,9 @@ function sha256Base64(body: Buffer): string {
   return createHash('sha256').update(body).digest('base64');
 }
 
-async function bounded<T>(
-  operation: Promise<T>,
-  timeoutMs: number,
-): Promise<T> {
-  let timeout: NodeJS.Timeout | undefined;
-  const expired = new Promise<never>((_resolve, reject) => {
-    timeout = setTimeout(() => {
-      reject(new Error('Artifact reference proof timed out'));
-    }, timeoutMs);
-  });
-  try {
-    return await Promise.race([operation, expired]);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-describeIntegration('Phase 0D artifact reference delivery proof', () => {
-  it('finalizes a direct upload before delivering only its identifiers', async () => {
+describeIntegration('artifact direct upload', () => {
+  it('finalizes, verifies and expires a direct upload', async () => {
     const databaseEnvironment = createArtifactDatabaseEnvironment();
-    const redisNamespace = createRedisTestNamespace(
-      redisUrl,
-      9,
-      'artifact-reference',
-    );
     const body = Buffer.from('phase-0d finalized artifact');
     const corruptedBody = Buffer.from(body);
     corruptedBody[0] = corruptedBody[0] === 0x50 ? 0x51 : 0x50;
@@ -227,12 +176,8 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
       artifactId: randomUUID(),
     };
     const expiresAt = new Date(Date.now() + 300_000);
-    const outboxEventId = randomUUID();
     let store: ReturnType<typeof createArtifactStore> | undefined;
     let database: ReturnType<typeof createWorkspaceDatabase> | undefined;
-    let inspectionQueue: Queue | undefined;
-    let consumer: QueueConsumer | undefined;
-    let producer: QueueProducer | undefined;
     let corruptObjectWritten = false;
     let availableObjectWritten = false;
     let expiredObjectWritten = false;
@@ -240,13 +185,8 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
     await runWithCleanup(
       async () => {
         await databaseEnvironment.initialize();
-        await redisNamespace.acquire();
         store = createArtifactStore(parseArtifactStoreConfig(process.env));
         database = createWorkspaceDatabase(databaseEnvironment.apiConfig);
-        inspectionQueue = new Queue(QUEUE_NAME.maintenance, {
-          connection: bullConnection(redisNamespace.redisUrl),
-        });
-        await inspectionQueue.obliterate({ force: true });
 
         await database.withWorkspace(
           metadata.workspaceId,
@@ -406,84 +346,6 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
           { bytes: 0, count: 0, status: 'deleting' },
           { bytes: body.byteLength, count: 1, status: 'pending' },
         ]);
-
-        let resolveDelivery: ((delivery: QueueDelivery) => void) | undefined;
-        const delivered = new Promise<QueueDelivery>((resolve) => {
-          resolveDelivery = resolve;
-        });
-        consumer = createQueueConsumer({
-          handler: (delivery) => {
-            if (
-              delivery.name === JOB_NAME.expireArtifacts &&
-              delivery.data.artifactId === metadata.artifactId
-            ) {
-              resolveDelivery?.(delivery);
-            }
-            return Promise.resolve();
-          },
-          queueName: QUEUE_NAME.maintenance,
-          redisUrl: redisNamespace.redisUrl,
-        });
-        producer = createQueueProducer({ redisUrl: redisNamespace.redisUrl });
-        await Promise.all([
-          consumer.waitUntilReady(5_000),
-          producer.waitUntilReady(5_000),
-        ]);
-
-        for (const [field, value] of [
-          ['bytes', body.toString('base64')],
-          ['graph', { nodes: [] }],
-          ['secret', 'must-never-enter-redis'],
-        ] as const) {
-          const invalidOutboxEventId = randomUUID();
-          const invalidJob = {
-            name: JOB_NAME.expireArtifacts,
-            data: {
-              artifactId: metadata.artifactId,
-              [field]: value,
-              outboxEventId: invalidOutboxEventId,
-              schemaVersion: 1,
-              workspaceId: metadata.workspaceId,
-            },
-          } as unknown as QueueJob;
-          await expect(producer.publish(invalidJob)).rejects.toMatchObject({
-            name: 'ZodError',
-          });
-          await expect(
-            inspectionQueue.getJob(jobIdForOutboxEvent(invalidOutboxEventId)),
-          ).resolves.toBeUndefined();
-        }
-
-        const referenceJob = {
-          name: JOB_NAME.expireArtifacts,
-          data: {
-            artifactId: metadata.artifactId,
-            outboxEventId,
-            schemaVersion: 1,
-            workspaceId: metadata.workspaceId,
-          },
-        } as const satisfies QueueJob;
-        await producer.publish(referenceJob);
-        const delivery = await bounded(delivered, 5_000);
-
-        expect(delivery.data).toEqual(referenceJob.data);
-        expect(Object.keys(delivery.data).toSorted()).toEqual([
-          'artifactId',
-          'outboxEventId',
-          'schemaVersion',
-          'workspaceId',
-        ]);
-        const serialized = JSON.stringify(delivery);
-        for (const forbidden of [
-          body.toString('base64'),
-          metadata.mediaType,
-          metadata.sha256,
-          upload.url,
-          'graph',
-          'must-never-enter-redis',
-        ]) {
-          expect(serialized).not.toContain(forbidden);
-        }
       },
       async () => {
         const errors: unknown[] = [];
@@ -492,10 +354,6 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
             .then(operation)
             .catch((error: unknown) => errors.push(error));
         };
-        await attempt(() => producer?.close());
-        await attempt(() => consumer?.close());
-        await attempt(() => inspectionQueue?.obliterate({ force: true }));
-        await attempt(() => inspectionQueue?.close());
         if (availableObjectWritten)
           await attempt(() => store?.delete(metadata));
         if (corruptObjectWritten)
@@ -504,7 +362,6 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
           await attempt(() => store?.delete(expiredMetadata));
         await attempt(() => store?.close());
         await attempt(() => database?.close());
-        await attempt(() => redisNamespace.close());
         await attempt(() => databaseEnvironment.close());
         if (errors.length > 0)
           throw new AggregateError(

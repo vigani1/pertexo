@@ -95,7 +95,7 @@ describe('queue transport metrics adapter', () => {
     });
     const observer = createQueueMetricsObserver(selected);
     const job = {
-      jobName: JOB_NAME.expireArtifacts,
+      jobName: JOB_NAME.replayWorkflowRun,
       queueName: QUEUE_NAME.maintenance,
     } as const;
 

@@ -74,25 +74,11 @@ export const ReplayWorkflowRunJobSchema = z
   })
   .strict();
 
-export const SweepExpiredPreviewsJobSchema = z
-  .object({
-    ...commonJobShape,
-    previewRunId: z.uuid(),
-  })
-  .strict();
-
 export const ReconcileWorkflowTriggersJobSchema = z
   .object({
     ...commonJobShape,
     workflowId: z.uuid(),
     publishedVersionId: z.uuid(),
-  })
-  .strict();
-
-export const ExpireArtifactsJobSchema = z
-  .object({
-    ...commonJobShape,
-    artifactId: z.uuid(),
   })
   .strict();
 
@@ -130,13 +116,9 @@ export type ReconcileUnknownOutcomeJob = z.infer<
   typeof ReconcileUnknownOutcomeJobSchema
 >;
 export type ReplayWorkflowRunJob = z.infer<typeof ReplayWorkflowRunJobSchema>;
-export type SweepExpiredPreviewsJob = z.infer<
-  typeof SweepExpiredPreviewsJobSchema
->;
 export type ReconcileWorkflowTriggersJob = z.infer<
   typeof ReconcileWorkflowTriggersJobSchema
 >;
-export type ExpireArtifactsJob = z.infer<typeof ExpireArtifactsJobSchema>;
 export type DeliverRunFailureNotificationJob = z.infer<
   typeof DeliverRunFailureNotificationJobSchema
 >;
@@ -151,9 +133,7 @@ export interface QueueJobDataByName {
   [JOB_NAME.reconcilePreviewAttempt]: ReconcilePreviewAttemptJob;
   [JOB_NAME.reconcileUnknownOutcome]: ReconcileUnknownOutcomeJob;
   [JOB_NAME.replayWorkflowRun]: ReplayWorkflowRunJob;
-  [JOB_NAME.sweepExpiredPreviews]: SweepExpiredPreviewsJob;
   [JOB_NAME.reconcileWorkflowTriggers]: ReconcileWorkflowTriggersJob;
-  [JOB_NAME.expireArtifacts]: ExpireArtifactsJob;
   [JOB_NAME.deliverRunFailureNotification]: DeliverRunFailureNotificationJob;
   [JOB_NAME.deliverWorkspaceInvitation]: DeliverWorkspaceInvitationJob;
   [JOB_NAME.applyConnectionHealthObservation]: ApplyConnectionHealthObservationJob;
@@ -166,30 +146,7 @@ export type QueueJob = {
   };
 }[JobName];
 
-export const ACTIVE_QUEUE_JOB_NAMES = Object.freeze([
-  JOB_NAME.advanceWorkflowRun,
-  JOB_NAME.executeNodeAttempt,
-  JOB_NAME.executePreviewAttempt,
-  JOB_NAME.reconcilePreviewAttempt,
-  JOB_NAME.reconcileUnknownOutcome,
-  JOB_NAME.replayWorkflowRun,
-  JOB_NAME.reconcileWorkflowTriggers,
-  JOB_NAME.deliverRunFailureNotification,
-  JOB_NAME.deliverWorkspaceInvitation,
-  JOB_NAME.applyConnectionHealthObservation,
-] as const satisfies readonly JobName[]);
-
-export type ActiveQueueJobName = (typeof ACTIVE_QUEUE_JOB_NAMES)[number];
-
-const activeQueueJobNames = new Set<JobName>(ACTIVE_QUEUE_JOB_NAMES);
-
-export function isActiveQueueJobName(
-  jobName: JobName,
-): jobName is ActiveQueueJobName {
-  return activeQueueJobNames.has(jobName);
-}
-
-const QUEUE_JOB_COMPATIBILITY_REGISTRY = Object.freeze({
+export const QUEUE_JOB_REGISTRY = Object.freeze({
   [JOB_NAME.advanceWorkflowRun]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.advanceWorkflowRun],
     schema: AdvanceWorkflowRunJobSchema,
@@ -214,17 +171,9 @@ const QUEUE_JOB_COMPATIBILITY_REGISTRY = Object.freeze({
     queueName: QUEUE_FOR_JOB[JOB_NAME.replayWorkflowRun],
     schema: ReplayWorkflowRunJobSchema,
   },
-  [JOB_NAME.sweepExpiredPreviews]: {
-    queueName: QUEUE_FOR_JOB[JOB_NAME.sweepExpiredPreviews],
-    schema: SweepExpiredPreviewsJobSchema,
-  },
   [JOB_NAME.reconcileWorkflowTriggers]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.reconcileWorkflowTriggers],
     schema: ReconcileWorkflowTriggersJobSchema,
-  },
-  [JOB_NAME.expireArtifacts]: {
-    queueName: QUEUE_FOR_JOB[JOB_NAME.expireArtifacts],
-    schema: ExpireArtifactsJobSchema,
   },
   [JOB_NAME.deliverRunFailureNotification]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.deliverRunFailureNotification],
@@ -240,17 +189,7 @@ const QUEUE_JOB_COMPATIBILITY_REGISTRY = Object.freeze({
   },
 } as const);
 
-for (const entry of Object.values(QUEUE_JOB_COMPATIBILITY_REGISTRY))
-  Object.freeze(entry);
-
-export const QUEUE_JOB_REGISTRY = Object.freeze(
-  Object.fromEntries(
-    ACTIVE_QUEUE_JOB_NAMES.map((jobName) => [
-      jobName,
-      QUEUE_JOB_COMPATIBILITY_REGISTRY[jobName],
-    ]),
-  ) as Pick<typeof QUEUE_JOB_COMPATIBILITY_REGISTRY, ActiveQueueJobName>,
-);
+for (const entry of Object.values(QUEUE_JOB_REGISTRY)) Object.freeze(entry);
 
 export class UnknownQueueJobError extends Error {
   public override readonly name = 'UnknownQueueJobError';
@@ -289,8 +228,8 @@ export function parseQueueJob(value: unknown): QueueJob {
 
   const registryEntry =
     typeof value.name === 'string' &&
-    Object.hasOwn(QUEUE_JOB_COMPATIBILITY_REGISTRY, value.name)
-      ? QUEUE_JOB_COMPATIBILITY_REGISTRY[value.name as JobName]
+    Object.hasOwn(QUEUE_JOB_REGISTRY, value.name)
+      ? QUEUE_JOB_REGISTRY[value.name as JobName]
       : undefined;
 
   if (registryEntry === undefined) {

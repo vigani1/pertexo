@@ -4,7 +4,6 @@ import {
   QUEUE_FOR_JOB,
   QUEUE_NAME,
   parseQueueJob,
-  isActiveQueueJobName,
 } from '../src/index.js';
 
 const data = {
@@ -22,9 +21,6 @@ describe('ID-only connection health application job', () => {
     expect(QUEUE_FOR_JOB[JOB_NAME.applyConnectionHealthObservation]).toBe(
       QUEUE_NAME.maintenance,
     );
-    expect(
-      isActiveQueueJobName(JOB_NAME.applyConnectionHealthObservation),
-    ).toBe(true);
   });
   it.each([
     'connectionId',

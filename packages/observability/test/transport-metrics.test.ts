@@ -374,7 +374,7 @@ describe('createTransportMetrics', () => {
       act: (metrics: ReturnType<typeof createTransportMetrics>) => {
         metrics.recordHandlerFinished({
           durationSeconds: Number.NaN,
-          jobName: 'expire-artifacts',
+          jobName: 'replay-workflow-run',
           outcome: 'completed',
           queueName: 'maintenance',
         });
@@ -406,7 +406,7 @@ describe('createTransportMetrics', () => {
         metrics.addActiveConcurrency({
           // @ts-expect-error exercises the runtime boundary for untyped callers.
           delta: 0,
-          jobName: 'expire-artifacts',
+          jobName: 'replay-workflow-run',
           queueName: 'maintenance',
         });
       },
