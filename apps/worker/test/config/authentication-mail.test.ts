@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parseAuthenticationMailDeliveryConfig } from '../../src/config/authentication-mail.js';
 
 const mailKey = Buffer.alloc(32, 4).toString('base64');
-const enabledEnvironment = {
-  AUTH_MAIL_DELIVERY_ENABLED: 'true',
+const configuredEnvironment = {
   AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
   AUTH_MAIL_KEY: mailKey,
   AUTH_MAIL_KEY_VERSION: 'mail-v1',
@@ -13,17 +12,11 @@ const enabledEnvironment = {
 describe('parseAuthenticationMailDeliveryConfig', () => {
   it('stays absent for a local worker without authentication mail', () => {
     expect(parseAuthenticationMailDeliveryConfig({}, false)).toBeUndefined();
-    expect(
-      parseAuthenticationMailDeliveryConfig(
-        { AUTH_MAIL_DELIVERY_ENABLED: 'false' },
-        false,
-      ),
-    ).toBeUndefined();
   });
 
   it('applies bounded defaults and derives a dedicated worker identity', () => {
     const config = parseAuthenticationMailDeliveryConfig(
-      enabledEnvironment,
+      configuredEnvironment,
       false,
     );
 
@@ -46,7 +39,7 @@ describe('parseAuthenticationMailDeliveryConfig', () => {
     expect(
       parseAuthenticationMailDeliveryConfig(
         {
-          ...enabledEnvironment,
+          ...configuredEnvironment,
           AUTH_MAIL_EMAIL_TIMEOUT_MILLIS: '2500',
           AUTH_MAIL_POLL_MILLIS: '750',
           AUTH_MAIL_PREVIOUS_KEYS: JSON.stringify([
@@ -70,29 +63,20 @@ describe('parseAuthenticationMailDeliveryConfig', () => {
     expect(() => parseAuthenticationMailDeliveryConfig({}, true)).toThrow(
       'Deployed workers require authentication mail delivery',
     );
-    expect(() =>
-      parseAuthenticationMailDeliveryConfig(
-        { ...enabledEnvironment, AUTH_MAIL_DELIVERY_ENABLED: 'false' },
-        true,
-      ),
-    ).toThrow('Deployed workers require authentication mail delivery');
   });
 
   it.each([
     'AUTH_MAIL_EMAIL_API_KEY',
     'AUTH_MAIL_KEY',
     'AUTH_MAIL_KEY_VERSION',
-  ] as const)(
-    'fails closed when %s is present while delivery is disabled',
-    (name) => {
-      expect(() =>
-        parseAuthenticationMailDeliveryConfig(
-          { [name]: enabledEnvironment[name] },
-          false,
-        ),
-      ).toThrow('Authentication mail delivery configuration is inactive');
-    },
-  );
+  ] as const)('rejects a partial configuration with only %s', (name) => {
+    expect(() =>
+      parseAuthenticationMailDeliveryConfig(
+        { [name]: configuredEnvironment[name] },
+        false,
+      ),
+    ).toThrow();
+  });
 
   it.each([
     ['a missing provider key', { AUTH_MAIL_EMAIL_API_KEY: undefined }],
@@ -105,10 +89,10 @@ describe('parseAuthenticationMailDeliveryConfig', () => {
       'an invalid retired key',
       { AUTH_MAIL_PREVIOUS_KEYS: JSON.stringify([{ version: 'v0' }]) },
     ],
-  ])('rejects enabled delivery with %s', (_label, override) => {
+  ])('rejects delivery with %s', (_label, override) => {
     expect(() =>
       parseAuthenticationMailDeliveryConfig(
-        { ...enabledEnvironment, ...override },
+        { ...configuredEnvironment, ...override },
         false,
       ),
     ).toThrow();

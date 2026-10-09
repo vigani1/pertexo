@@ -63,7 +63,6 @@
         "export WORKER_INSTANCE_ID=$HOSTNAME; exec node apps/worker/dist/main.js"
       ],
       "environment": {
-        "AUTH_MAIL_DELIVERY_ENABLED": "true",
         "DATABASE_DISPATCHER_POOL_MAX": "2",
         "DATABASE_MAINTENANCE_POOL_MAX": "2",
         "DATABASE_POOL_MAX": "5",

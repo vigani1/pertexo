@@ -38,22 +38,17 @@ const authenticationMailSchema = z
   .strict();
 
 /**
- * Parses the dedicated authentication-mail delivery configuration from the
- * already validated worker environment. Deployed workers must deliver
- * authentication mail, and a worker with delivery disabled fails closed when
- * it still carries delivery credentials instead of silently ignoring them.
+ * Parses authentication-mail delivery when any of its credentials is present;
+ * without them a local worker does not deliver it. Deployed workers must.
  */
 export function parseAuthenticationMailDeliveryConfig(
   environment: Readonly<Record<string, string | undefined>>,
   deployed: boolean,
 ): AuthenticationMailDeliveryConfig | undefined {
-  const enabled = environment.AUTH_MAIL_DELIVERY_ENABLED === 'true';
-  if (deployed && !enabled)
-    throw new Error('Deployed workers require authentication mail delivery');
-  if (!enabled) {
-    if (credentialNames.every((name) => environment[name] === undefined))
-      return undefined;
-    throw new Error('Authentication mail delivery configuration is inactive');
+  if (credentialNames.every((name) => environment[name] === undefined)) {
+    if (deployed)
+      throw new Error('Deployed workers require authentication mail delivery');
+    return undefined;
   }
   const parsed = authenticationMailSchema.parse({
     apiKey: environment.AUTH_MAIL_EMAIL_API_KEY,

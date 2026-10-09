@@ -371,8 +371,10 @@ now, as one ordered program — not "whenever we touch it".
           database modules; the API and worker check readiness at startup.
     - [x] Every feature switch is on, as step 3 intended. The worker
           consumes every job kind: failure notifications once connection
-          encryption is configured, invitations once invitation email is.
-          `OUTBOX_DISPATCH_JOB_NAMES`, the dispatch consumer registry and
+          encryption is configured, invitations once invitation email is,
+          authentication mail once its credentials are (deployed workers
+          require them). `OUTBOX_DISPATCH_JOB_NAMES`,
+          `AUTH_MAIL_DELIVERY_ENABLED`, the dispatch consumer registry and
           the per-handler maintenance switches go. The inbox producer,
           run-timeout notification context, trigger outcomes, auto-pause and
           connection run health always run; their env switches go, and
