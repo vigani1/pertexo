@@ -1,3 +1,4 @@
+import { invocationKey } from '../src/transition/scheduling.js';
 import {
   createRegistryRelease,
   type ExecutorLifecycle,
@@ -636,4 +637,16 @@ export function nestedForEachGraph() {
     },
   });
   return result;
+}
+
+/** Completed root-scoped upstream outputs, as the database hands them to an attempt. */
+export function completedOutputs(
+  outputs: Readonly<Record<string, unknown>>,
+  workflowVersionId = '00000000-0000-4000-8000-000000000001',
+) {
+  return Object.entries(outputs).map(([nodeId, value]) => ({
+    nodeId,
+    invocationKey: invocationKey({ workflowVersionId, nodeId }),
+    value,
+  }));
 }

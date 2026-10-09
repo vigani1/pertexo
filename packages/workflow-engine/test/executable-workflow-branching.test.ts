@@ -603,7 +603,7 @@ describe('branching production operations', () => {
           invocationKey: mergeAttempt.invocationKey,
           nodeId: 'merge',
           runInput: {},
-          completedNodeOutputs: {},
+          completedNodeOutputs: [],
           coordinatorInput,
           registry: {
             execute: (request) => {

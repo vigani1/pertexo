@@ -14,7 +14,11 @@ import {
   invocationKey,
   resolveSingleNodePreviewInput,
 } from '../src/index.js';
-import { graph, nodeRelease } from './executable-workflow.fixtures.js';
+import {
+  graph,
+  nodeRelease,
+  completedOutputs,
+} from './executable-workflow.fixtures.js';
 
 const expressionEvaluator = new JsonataEvaluator();
 afterAll(async () => expressionEvaluator.shutdown());
@@ -88,7 +92,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'manual',
         runInput: envelope,
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         registry: {
           execute: (request) => {
             received = request.input;
@@ -176,7 +180,7 @@ describe('input resolution production operations', () => {
       }),
       nodeId: 'set',
       runInput: { name: 'Ada', count: 2 },
-      completedNodeOutputs: { manual: { base: 3 } },
+      completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
       expressionEvaluator,
       registry,
       signal: new AbortController().signal,
@@ -209,7 +213,17 @@ describe('input resolution production operations', () => {
         nodeId: 'set',
         branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: [
+          {
+            nodeId: 'manual',
+            invocationKey: invocationKey({
+              workflowVersionId: '00000000-0000-4000-8000-000000000001',
+              nodeId: 'manual',
+              branchPath: ['condition:true'],
+            }),
+            value: { base: 3 },
+          },
+        ],
         expressionEvaluator,
         registry,
         signal: new AbortController().signal,
@@ -261,7 +275,7 @@ describe('input resolution production operations', () => {
       }),
       nodeId: 'manual',
       runInput,
-      completedNodeOutputs: {},
+      completedNodeOutputs: [],
       registry: {
         execute: () => Promise.resolve({ kind: 'succeeded', output: runInput }),
       },
@@ -279,7 +293,7 @@ describe('input resolution production operations', () => {
       }),
       nodeId: 'set',
       runInput,
-      completedNodeOutputs: { manual: manualOutcome.output },
+      completedNodeOutputs: completedOutputs({ manual: manualOutcome.output }),
       registry: {
         execute: (request) => {
           setInput = request.input;
@@ -321,7 +335,7 @@ describe('input resolution production operations', () => {
         invocationKey: 'node:set',
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
         expressionEvaluator,
         registry,
         signal: new AbortController().signal,
@@ -340,7 +354,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { terminate: {} },
+        completedNodeOutputs: completedOutputs({ terminate: {} }),
         registry,
         signal: new AbortController().signal,
       }),
@@ -364,7 +378,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
         expressionEvaluator,
         registry: {
           execute: (request: { readonly input: unknown }) => {
@@ -399,7 +413,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
         expressionEvaluator,
         registry: {
           execute: () => Promise.reject(new NodeExecutionAbortedError()),
@@ -426,7 +440,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
         expressionEvaluator,
         registry: { execute: () => Promise.reject(unknownOutcome) },
         signal: new AbortController().signal,
@@ -451,7 +465,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
         expressionEvaluator,
         registry: { execute: () => Promise.reject(retry) },
         signal: new AbortController().signal,
@@ -471,7 +485,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
         expressionEvaluator,
         registry: {
           execute: () =>
@@ -494,7 +508,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
         expressionEvaluator,
         registry: {
           execute: () => Promise.reject(new Error('invalid output')),
@@ -553,7 +567,7 @@ describe('input resolution production operations', () => {
       }),
       nodeId: 'set',
       runInput: { value: 1 },
-      completedNodeOutputs: { manual: {} },
+      completedNodeOutputs: completedOutputs({ manual: {} }),
       signal: new AbortController().signal,
     } as const;
     for (const rejection of [throwingName, prototypeTrap, revoked.proxy])
@@ -629,7 +643,7 @@ describe('input resolution production operations', () => {
           }),
           nodeId: 'manual',
           runInput,
-          completedNodeOutputs: {},
+          completedNodeOutputs: [],
           registry: {
             execute: (request) =>
               Promise.resolve({
@@ -719,7 +733,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { large: 'x'.repeat(600_000) },
-        completedNodeOutputs: { manual: {} },
+        completedNodeOutputs: completedOutputs({ manual: {} }),
         registry: {
           execute: () => {
             executions += 1;
@@ -763,7 +777,7 @@ describe('input resolution production operations', () => {
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
-        completedNodeOutputs: { manual: { base: 3 } },
+        completedNodeOutputs: completedOutputs({ manual: { base: 3 } }),
         expressionEvaluator,
         registry: failing,
         signal: new AbortController().signal,

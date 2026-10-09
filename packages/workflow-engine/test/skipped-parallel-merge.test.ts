@@ -569,7 +569,7 @@ async function runBypass(kind: 'condition' | 'switch') {
       ? {}
       : { iterationPath: bypassInvocation.iterationPath }),
     runInput: {},
-    completedNodeOutputs: {},
+    completedNodeOutputs: [],
     registry: {
       execute: () =>
         Promise.resolve({ kind: 'succeeded' as const, output: {} }),
