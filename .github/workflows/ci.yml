@@ -134,6 +134,8 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up workspace
         uses: ./.github/actions/setup
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
       - name: Build
         run: pnpm build
       - name: Start services
@@ -215,6 +217,8 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up workspace
         uses: ./.github/actions/setup
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
       - name: Install Playwright browsers
         run: pnpm --filter @pertexo/web exec playwright install --with-deps
       - name: Browser tests against the mocked API
@@ -264,6 +268,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
       - name: Build production image
         run: docker buildx build --load --tag pertexo-ci:${{ github.sha }} .
       - name:

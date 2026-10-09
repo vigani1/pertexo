@@ -1,0 +1,18 @@
+name: Pull through the Docker Hub mirror
+description:
+  Route Docker Hub pulls through Google's mirror, so shared runners stay under
+  Docker Hub's anonymous rate limit. Docker falls back to Docker Hub for images
+  the mirror does not hold, and digests are unchanged.
+runs:
+  using: composite
+  steps:
+    - name: Configure the registry mirror
+      shell: bash
+      run: |
+        set -euo pipefail
+        config=/etc/docker/daemon.json
+        current=$(sudo cat "$config" 2>/dev/null || echo '{}')
+        jq '. + {"registry-mirrors": ["https://mirror.gcr.io"]}' <<<"$current" \
+          | sudo tee "$config" >/dev/null
+        sudo systemctl restart docker
+        docker info --format '{{json .RegistryConfig.Mirrors}}'
