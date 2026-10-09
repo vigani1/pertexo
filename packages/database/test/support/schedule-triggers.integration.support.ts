@@ -9,11 +9,9 @@ import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/databas
 import { migrateDatabase } from '../../src/migrations.js';
 import { createOperatorCommandDatabase } from '../../src/operator/operator-commands.js';
 import { createOperatorRunReplayStore } from '../../src/operator/operator-run-replay.js';
-import {
-  createScheduleTriggerDatabase,
-  createScheduleTriggerScanner,
-} from '../../src/triggers/schedule-triggers.js';
-import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/workflow-triggers.js';
+import { createScheduleTriggerDatabase } from '../../src/triggers/schedules/database.js';
+import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
+import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/reconciliation/database.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 
 export function createScheduleTriggerTestEnvironment(

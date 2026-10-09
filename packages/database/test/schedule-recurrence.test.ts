@@ -6,7 +6,7 @@ import {
   parseScheduleRecurrence,
   resolveScheduleObservation,
   SCHEDULE_CRON_PARSER_VERSION,
-} from '../src/triggers/schedule-recurrence.js';
+} from '../src/triggers/schedules/recurrence.js';
 
 describe('schedule recurrence', () => {
   it('translates mutually exclusive persisted recurrence columns strictly', () => {

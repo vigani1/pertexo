@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 
-import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import type { ScheduleOccurrenceDisposition } from './schedule-misfire.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
+import type { ScheduleOccurrenceDisposition } from './misfire.js';
 
 /** ADR 056: a paused workflow's occurrence is recorded without a run. */
 export type RecordedScheduleOccurrence =

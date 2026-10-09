@@ -10,7 +10,7 @@ import {
   parseWorkspaceId,
   withWorkspaceTransaction,
 } from '../src/tenant-access/transactions.js';
-import { claimedScheduleWorkflowPaused } from '../src/triggers/schedule-pause.js';
+import { claimedScheduleWorkflowPaused } from '../src/triggers/schedules/pause.js';
 import { createScheduleTriggerTestEnvironment } from './support/schedule-triggers.integration.support.js';
 
 // Every scenario is relative to PostgreSQL's clock; no occurrence-time waits,

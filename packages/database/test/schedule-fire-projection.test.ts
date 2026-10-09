@@ -6,7 +6,7 @@ import {
   projectScheduleOccurrences,
   resolveScheduleObservation,
   type ScheduleRecurrence,
-} from '../src/triggers/schedule-recurrence.js';
+} from '../src/triggers/schedules/recurrence.js';
 
 function project(
   recurrence: ScheduleRecurrence,

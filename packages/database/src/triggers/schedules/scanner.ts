@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from '../runs/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../runs/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
@@ -7,36 +7,36 @@ import { z } from 'zod';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import type { DatabaseConfig } from '../config.js';
+} from '../../platform/database-runtime.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
-} from '../runs/commands/acceptance.js';
-import { classifyPublishedWorkflowVersionRow } from '../runs/published-workflow.js';
+} from '../../runs/commands/acceptance.js';
+import { classifyPublishedWorkflowVersionRow } from '../../runs/published-workflow.js';
 import {
   scheduleOccurrenceDisposition,
   type ScheduleOccurrenceDisposition,
-} from './schedule-misfire.js';
+} from './misfire.js';
 import {
   parsePersistedScheduleRecurrence,
   resolveScheduleObservation,
-} from './schedule-recurrence.js';
+} from './recurrence.js';
 import {
   claimedScheduleWorkflowPaused,
   type RecordedScheduleOccurrence,
-} from './schedule-pause.js';
+} from './pause.js';
 import {
   claimCleanupTimeoutMillis,
   retireInterruptedBatch,
   retireScheduleClaim,
-} from './schedule-claim-retirement.js';
+} from './claim-retirement.js';
 import {
   withPlatformTransaction,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
-} from '../tenant-access/transactions.js';
+} from '../../tenant-access/transactions.js';
 
 const claimSchema = z.object({
   trigger_id: z.uuid(),

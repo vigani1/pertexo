@@ -4,16 +4,16 @@ import { z } from 'zod';
 import {
   withTenantScopedClient,
   withTenantScopedReadClient,
-} from '../tenant-access/transactions.js';
-import { SCHEDULE_TRIGGER_READ_ROLES } from '../tenant-access/policy.js';
+} from '../../tenant-access/transactions.js';
+import { SCHEDULE_TRIGGER_READ_ROLES } from '../../tenant-access/policy.js';
 import {
   MAX_SCHEDULE_PROJECTION,
   parsePersistedScheduleRecurrence,
   parseScheduleRecurrence,
   projectScheduleOccurrences,
   type ScheduleRecurrence,
-} from './schedule-recurrence.js';
-import { ScheduleTriggerError } from './schedule-trigger-errors.js';
+} from './recurrence.js';
+import { ScheduleTriggerError } from './errors.js';
 
 /**
  * ADR 048: reads of what a schedule did and will do. Occurrence history is

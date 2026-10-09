@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { workflowTriggerProjection } from '../../triggers/workflow-trigger-projection.js';
+import { workflowTriggerProjection } from '../../triggers/reconciliation/projection.js';
 import type { WorkflowVersionRecord } from '../workflows/records.js';
 
 const uuidSchema = z.uuid();

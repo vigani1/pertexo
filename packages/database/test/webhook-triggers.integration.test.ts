@@ -24,21 +24,19 @@ import {
   WebhookIngressRateLimitExceededError,
   WebhookTriggerNotFoundError,
   WebhookWorkflowPausedError,
-} from '../src/triggers/webhook-triggers.js';
+} from '../src/triggers/webhooks/database.js';
 import {
   createWorkflowTriggerReconciliationDatabase,
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from '../src/triggers/workflow-triggers.js';
-import {
-  createScheduleTriggerDatabase,
-  ScheduleTriggerError,
-} from '../src/triggers/schedule-triggers.js';
-import type { WebhookDeliveryPosition } from '../src/triggers/webhook-trigger-deliveries.js';
+} from '../src/triggers/reconciliation/database.js';
+import { createScheduleTriggerDatabase } from '../src/triggers/schedules/database.js';
+import { ScheduleTriggerError } from '../src/triggers/schedules/errors.js';
+import type { WebhookDeliveryPosition } from '../src/triggers/webhooks/deliveries.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import { withWorkspaceTransaction } from '../src/tenant-access/transactions.js';
-import { claimedScheduleWorkflowPaused } from '../src/triggers/schedule-pause.js';
-import { isScheduleClaimEligible } from '../src/triggers/schedule-trigger-scanner.js';
+import { claimedScheduleWorkflowPaused } from '../src/triggers/schedules/pause.js';
+import { isScheduleClaimEligible } from '../src/triggers/schedules/scanner.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

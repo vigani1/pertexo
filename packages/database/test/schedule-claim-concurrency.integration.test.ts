@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createScheduleTriggerScanner } from '../src/triggers/schedule-trigger-scanner.js';
+import { createScheduleTriggerScanner } from '../src/triggers/schedules/scanner.js';
 import {
   scopedConnectionUrl,
   waitForApplicationLock,

@@ -2,14 +2,14 @@ import { sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
-} from '../tenant-access/transactions.js';
-import { WEBHOOK_TRIGGER_READ_ROLES } from '../tenant-access/policy.js';
-import { WebhookTriggerNotFoundError } from './webhook-trigger-errors.js';
+} from '../../tenant-access/transactions.js';
+import { WEBHOOK_TRIGGER_READ_ROLES } from '../../tenant-access/policy.js';
+import { WebhookTriggerNotFoundError } from './errors.js';
 
 /**
  * ADR 045: one metadata-only row per attributed webhook attempt. Each outcome
