@@ -39,7 +39,7 @@ function deriveRootReadiness(
     graph,
     workflowVersionId: current.workflowVersionId,
     invocations: [...invocations.values()],
-    ...(current.schemaVersion === 2 ? { branchSelections } : {}),
+    branchSelections,
   })) {
     if (input.coordinatorNodeIds.has(decision.nodeId)) continue;
     const invocation: InvocationState = {
@@ -95,7 +95,7 @@ function deriveLoopBodyReadiness(
         graph: { deriveReadiness: true, nodes: body.nodes, edges: body.edges },
         workflowVersionId: current.workflowVersionId,
         invocations: [...invocations.values()],
-        ...(current.schemaVersion === 2 ? { branchSelections } : {}),
+        branchSelections,
         branchPath: loop.branchPath,
         iterationPath,
       })) {

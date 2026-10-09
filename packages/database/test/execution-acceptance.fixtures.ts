@@ -129,7 +129,7 @@ export async function lockManualFixtureStart(
 
 export function initialCheckpoint() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion: 'phase0-engine-v1',
     workflowVersionId,
     revision: 0,
@@ -143,6 +143,7 @@ export function initialCheckpoint() {
     remainingIterationBudget: 0,
     cancelRequested: false,
     deadlineExpired: false,
+    branchSelections: [],
   } as const;
 }
 

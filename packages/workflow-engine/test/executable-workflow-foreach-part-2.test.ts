@@ -9,7 +9,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
   executeNodeAttempt,
   verifyWorkflowExecutableV2,
   invocationKey,
@@ -117,7 +117,7 @@ describe('For Each production operations', () => {
     } as const;
     const initial = await advanceWorkflow({
       ...base,
-      checkpoint: createCheckpointV2({
+      checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 3,

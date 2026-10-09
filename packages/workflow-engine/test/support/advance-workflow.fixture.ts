@@ -1,7 +1,7 @@
 import {
   createCheckpoint,
   parseCheckpoint,
-  type WorkflowCheckpointV1,
+  type WorkflowCheckpoint,
 } from '../../src/index.js';
 import {
   parseSchedulerGraph,
@@ -31,7 +31,7 @@ export const chainGraph = {
   ],
 } as const;
 
-export function checkpoint(): WorkflowCheckpointV1 {
+export function checkpoint(): WorkflowCheckpoint {
   return createCheckpoint({
     engineVersion: 'engine-v1',
     workflowVersionId: '00000000-0000-4000-8000-000000000001',

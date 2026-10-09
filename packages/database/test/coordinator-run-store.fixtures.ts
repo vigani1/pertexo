@@ -160,7 +160,7 @@ function checkpoint(input: {
   admittedInvocationKeys?: readonly string[];
 }) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion: 'engine-v1',
     workflowVersionId: input.workflowVersionId ?? versionA,
     revision: input.revision ?? 0,
@@ -174,6 +174,7 @@ function checkpoint(input: {
     remainingIterationBudget: 0,
     cancelRequested: input.cancelRequested ?? false,
     deadlineExpired: input.deadlineExpired ?? false,
+    branchSelections: [],
   } as const;
 }
 

@@ -5,7 +5,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
 } from '@pertexo/workflow-engine';
 import { curatedScheduleInputCase } from './curated-template-worker-evidence.js';
 
@@ -44,7 +44,7 @@ it('the actual reviewed For Each fails its pinned bound before any body admissio
   } as const;
   let result = await advanceWorkflow({
     ...base,
-    checkpoint: createCheckpointV2({
+    checkpoint: createCheckpoint({
       engineVersion: 'engine-v1',
       workflowVersionId: version,
       iterationBudget: 10,

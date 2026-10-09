@@ -4,7 +4,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
   invocationKey,
 } from '../src/index.js';
 import {
@@ -37,7 +37,7 @@ function setup() {
     workflowVersionId,
     executable,
     checkpoint: {
-      ...createCheckpointV2({
+      ...createCheckpoint({
         engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,

@@ -5,7 +5,6 @@ import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
-  createCheckpointV2,
   executeNodeAttempt,
   invocationKey,
 } from '../src/index.js';
@@ -124,7 +123,7 @@ describe('branching production operations', () => {
       branchPath: ['condition:true'],
     });
     const checkpoint = {
-      ...createCheckpointV2({
+      ...createCheckpoint({
         engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
@@ -237,7 +236,7 @@ describe('branching production operations', () => {
     });
     const attemptId = '00000000-0000-4000-8000-000000000102';
     const checkpoint = {
-      ...createCheckpointV2({
+      ...createCheckpoint({
         engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
@@ -346,7 +345,7 @@ describe('branching production operations', () => {
     const switchKey = invocationKey({ workflowVersionId, nodeId: 'switch' });
     const attemptId = '00000000-0000-4000-8000-000000000103';
     const checkpoint = {
-      ...createCheckpointV2({
+      ...createCheckpoint({
         engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,
@@ -443,7 +442,7 @@ describe('branching production operations', () => {
       });
       const attemptId = '00000000-0000-4000-8000-000000000106';
       const checkpoint = {
-        ...createCheckpointV2({
+        ...createCheckpoint({
           engineVersion: 'engine-v2',
           workflowVersionId,
           iterationBudget: 0,
@@ -666,7 +665,7 @@ describe('branching production operations', () => {
     });
     const attemptId = '00000000-0000-4000-8000-000000000109';
     const checkpoint = {
-      ...createCheckpointV2({
+      ...createCheckpoint({
         engineVersion: 'engine-v2',
         workflowVersionId,
         iterationBudget: 0,

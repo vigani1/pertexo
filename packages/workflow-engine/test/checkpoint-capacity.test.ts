@@ -12,7 +12,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
   WORKFLOW_CHECKPOINT_LIMITS_V1,
 } from '../src/index.js';
 import {
@@ -138,7 +138,7 @@ async function runToCompletion(
   };
   let plan = await advanceWorkflow({
     ...base,
-    checkpoint: createCheckpointV2({
+    checkpoint: createCheckpoint({
       engineVersion: 'phase3-engine-v1',
       workflowVersionId,
       iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,

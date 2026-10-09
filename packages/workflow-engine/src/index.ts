@@ -17,7 +17,6 @@ export type {
 } from './operations.js';
 export {
   createCheckpoint,
-  createCheckpointV2,
   parseCheckpoint,
   reconstructReadySet,
   WORKFLOW_CHECKPOINT_LIMITS_V1,

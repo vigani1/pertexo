@@ -207,8 +207,14 @@ export interface LoopState {
   >;
 }
 
-export interface WorkflowCheckpointV1 {
-  readonly schemaVersion: 1;
+export interface BranchSelection {
+  readonly invocationKey: string;
+  readonly nodeId: string;
+  readonly selectedOutputPort: string;
+}
+
+export interface WorkflowCheckpoint {
+  readonly schemaVersion: 2;
   readonly engineVersion: string;
   readonly workflowVersionId: string;
   readonly revision: number;
@@ -222,24 +228,9 @@ export interface WorkflowCheckpointV1 {
   readonly remainingIterationBudget: number;
   readonly cancelRequested: boolean;
   readonly deadlineExpired: boolean;
-}
-
-export interface BranchSelection {
-  readonly invocationKey: string;
-  readonly nodeId: string;
-  readonly selectedOutputPort: string;
-}
-
-export interface WorkflowCheckpointV2 extends Omit<
-  WorkflowCheckpointV1,
-  'schemaVersion'
-> {
-  readonly schemaVersion: 2;
   readonly branchSelections: readonly BranchSelection[];
   readonly initialIterationBudget?: number;
 }
-
-export type WorkflowCheckpoint = WorkflowCheckpointV1 | WorkflowCheckpointV2;
 
 export type EngineEventName =
   | 'run.started'

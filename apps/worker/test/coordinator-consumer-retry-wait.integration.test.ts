@@ -97,7 +97,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
     const firstAttemptIds = nodeIds.map(() => randomUUID());
     let dueAt = new Date(Date.now() + 60_000).toISOString();
     const waitingCheckpoint = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
       engineVersion,
       workflowVersionId,
       revision: 0,
@@ -129,6 +129,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
       remainingIterationBudget: 0,
       cancelRequested: false,
       deadlineExpired: false,
+      branchSelections: [],
     };
     await apiQuery(
       `insert into app.workflow_runs (

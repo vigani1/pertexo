@@ -11,7 +11,7 @@ const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 
 function checkpoint(population: number) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion: 'engine-v1',
     workflowVersionId,
     revision: 0,
@@ -30,6 +30,7 @@ function checkpoint(population: number) {
     remainingIterationBudget: 0,
     cancelRequested: false,
     deadlineExpired: false,
+    branchSelections: [],
   };
 }
 

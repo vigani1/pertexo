@@ -201,7 +201,7 @@ beforeAll(async () => {
   }
   api = new Pool({ connectionString: apiUrl, max: 2 });
   const queuedCheckpoint = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion: 'phase0-engine-v1',
     workflowVersionId,
     revision: 0,
@@ -215,6 +215,7 @@ beforeAll(async () => {
     remainingIterationBudget: 0,
     cancelRequested: false,
     deadlineExpired: false,
+    branchSelections: [],
   };
   const runningCheckpoint = {
     ...queuedCheckpoint,

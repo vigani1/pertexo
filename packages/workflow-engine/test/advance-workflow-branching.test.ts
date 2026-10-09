@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createCheckpointV2, invocationKey } from '../src/index.js';
+import { createCheckpoint, invocationKey } from '../src/index.js';
 import {
   advanceWorkflow as advanceWorkflowForTesting,
   deriveReadyNodes,
@@ -515,7 +515,7 @@ describe('AdvanceWorkflow branching', () => {
     );
     const plan = advanceWorkflowForTesting({
       checkpoint: {
-        ...createCheckpointV2({
+        ...createCheckpoint({
           engineVersion: 'engine-v2',
           workflowVersionId: '00000000-0000-4000-8000-000000000003',
           iterationBudget: 0,
@@ -624,7 +624,7 @@ describe('AdvanceWorkflow branching', () => {
     });
     const plan = advanceWorkflowForTesting({
       checkpoint: {
-        ...createCheckpointV2({
+        ...createCheckpoint({
           engineVersion: 'engine-v2',
           workflowVersionId: '00000000-0000-4000-8000-000000000002',
           iterationBudget: 1_000,

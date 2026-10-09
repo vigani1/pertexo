@@ -4,7 +4,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
   invocationKey,
 } from '../src/index.js';
 import { forEachGraph, nodeRelease } from './executable-workflow.fixtures.js';
@@ -26,7 +26,7 @@ async function startForEach() {
   } as const;
   const initial = await advanceWorkflow({
     ...base,
-    checkpoint: createCheckpointV2({
+    checkpoint: createCheckpoint({
       engineVersion: 'engine-v1',
       workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 2,

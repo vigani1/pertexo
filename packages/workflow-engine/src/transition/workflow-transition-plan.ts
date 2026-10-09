@@ -32,13 +32,12 @@ function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
   )
     return false;
   const allInvocations = [...invocations.values()];
-  const selections = current.schemaVersion === 2 ? { branchSelections } : {};
   if (
     deriveReadyNodes({
       graph,
       workflowVersionId: current.workflowVersionId,
       invocations: allInvocations,
-      ...selections,
+      branchSelections,
     }).length > 0
   )
     return true;
@@ -60,7 +59,7 @@ function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
           },
           workflowVersionId: current.workflowVersionId,
           invocations: allInvocations,
-          ...selections,
+          branchSelections,
           branchPath: loop.branchPath,
           iterationPath: [
             ...loop.iterationPath,
@@ -214,7 +213,7 @@ export function buildWorkflowTransitionPlan(
       ...current,
       invocations: finalInvocations,
     }),
-    ...(current.schemaVersion === 2 ? { branchSelections } : {}),
+    branchSelections,
   });
   const nodeRunAdmissions: NodeRunAdmissionPlan[] = [...nodeRunAdmissionKeys]
     .sort(compareOrdinal)

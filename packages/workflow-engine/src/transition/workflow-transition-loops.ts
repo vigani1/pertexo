@@ -27,18 +27,6 @@ export function applyLoopStart(
   occurredAt: string,
 ): void {
   if (state.cancelRequested) return;
-  if (
-    state.current.schemaVersion === 1 &&
-    (observation.controlInvocationKey !== undefined ||
-      observation.branchPath !== undefined ||
-      observation.iterationPath !== undefined ||
-      observation.bodyRootNodeIds !== undefined ||
-      observation.bodySinkNodeId !== undefined)
-  )
-    throw new WorkflowEngineError(
-      'checkpoint_invalid',
-      'structured For Each requires checkpoint V2',
-    );
   const controlInvocationKey =
     observation.controlInvocationKey ??
     rootInvocationKey(state.current.workflowVersionId, observation.loopId);
