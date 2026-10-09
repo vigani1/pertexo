@@ -360,7 +360,7 @@ now, as one ordered program — not "whenever we touch it".
           Authoring reads one `AuthoringCatalogs` value instead of selecting
           catalogs per transaction.
   - [ ] execution
-  - [ ] worker
+  - [x] worker
     - [x] Files grouped by the feature they serve: `runs/`, `attempts/`
           (with `artifacts/`), `previews/`, `providers/`, `notifications/`,
           `connections/`, `identity/`, `workflows/` and `operator/`;
@@ -414,7 +414,11 @@ now, as one ordered program — not "whenever we touch it".
           invoker no longer re-checks the node, definition and executor
           acceptance pinned, failure-notification handling no longer
           re-parses its own delivery result, and invitation delivery leaves
-          the origin check to config.
+          the origin check to config. The outbox deadline reuses the shared
+          deadline helper, and process shutdown closes once without guarding
+          against its own calls throwing. Guards that stay are deliberate:
+          values from node executors (a plugin boundary) and diagnostics
+          that must never change durable outcomes.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration
