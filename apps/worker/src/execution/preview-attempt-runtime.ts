@@ -7,7 +7,6 @@ import {
   PLATFORM_REGISTRY_RELEASE,
 } from '@pertexo/node-catalog';
 import {
-  composeExecutableCompatibilityRelease,
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
@@ -38,32 +37,15 @@ const previewExecutableNodeSchema = z
   })
   .strict();
 
-function releaseDescriptionKey(epoch: number, fingerprint: string): string {
-  return `${String(epoch)}:${fingerprint}`;
-}
-
 /**
- * Resolves the exact pinned release identity against this worker artifact's
- * compatibility history with no latest-version fallback, then executes the
- * pinned definition through the platform registry.
+ * Resolves the pinned definition in the served release, with no
+ * latest-version fallback, then executes it through the platform registry.
  */
 export function createPlatformPreviewNodeInvoker(
   dependencies: Readonly<{
     registry: ReturnType<typeof createPlatformNodeRegistryForRelease>;
   }>,
 ): PreviewNodeInvoker {
-  // The durable authority binds engine-composed release identities (node
-  // catalogs plus this artifact's engine runtime policies), so the supported
-  // set derives from exactly the same composition production uses.
-  const supported = new Map(
-    [PLATFORM_REGISTRY_RELEASE].map((release) => {
-      const composed = composeExecutableCompatibilityRelease(release);
-      return [
-        releaseDescriptionKey(composed.epoch, composed.fingerprint),
-        release,
-      ] as const;
-    }),
-  );
   const failedWith = (safeErrorCode: string): PreviewInvocationOutcome =>
     Object.freeze({
       safeErrorCode,
@@ -94,14 +76,6 @@ export function createPlatformPreviewNodeInvoker(
   }: Parameters<
     PreviewNodeInvoker['invoke']
   >[0]): Promise<PreviewInvocationOutcome> => {
-    const release = supported.get(
-      releaseDescriptionKey(
-        lease.compatibilityReleaseEpoch,
-        lease.compatibilityReleaseFingerprint,
-      ),
-    );
-    if (release === undefined)
-      return failedWith('preview.executor_unavailable');
     if (lease.input.kind !== 'inline')
       return failedWith('preview.input_artifact_unsupported');
     try {
@@ -119,7 +93,7 @@ export function createPlatformPreviewNodeInvoker(
       >['manifest'];
       try {
         definition = resolvePlatformNodeDefinitionForRelease(
-          release,
+          PLATFORM_REGISTRY_RELEASE,
           node.definition,
         ).manifest;
       } catch {

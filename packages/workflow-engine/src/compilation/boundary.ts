@@ -1,10 +1,6 @@
 import { parseRegistryRelease } from '@pertexo/node-sdk';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
-import {
-  computeWorkflowExecutableChecksum,
-  selectionFingerprint,
-} from './identity.js';
-import { executableNodes } from './graph.js';
+import { computeWorkflowExecutableChecksum } from './identity.js';
 import {
   type CompiledWorkflowExecutable,
   type VerifiedWorkflowExecutable,
@@ -29,9 +25,7 @@ import {
 
 export function parseBoundary(input: {
   readonly envelope: unknown;
-  readonly admissionRelease: unknown;
-  readonly currentRelease?: unknown;
-  readonly execution?: { readonly alreadyAdmitted: boolean };
+  readonly release: unknown;
 }): WorkflowExecutable {
   const normalizedEnvelope: unknown = normalizeBoundedEngineJson(
     input.envelope,
@@ -42,77 +36,28 @@ export function parseBoundary(input: {
     'sourceGraphSchemaVersion',
     'graph',
     'runtimePolicies',
-    'configMigrations',
-    'compatibilitySelectionFingerprint',
-    'compatibilityReleaseEpoch',
-    'compatibilityReleaseFingerprint',
   ]);
   if (envelope.schemaVersion !== 2 || envelope.sourceGraphSchemaVersion !== 1)
     fail('unsupported executable schema version');
-  const admission = parseRegistryRelease(input.admissionRelease);
-  const current = parseRegistryRelease(
-    input.currentRelease ?? input.admissionRelease,
-  );
-  let alreadyAdmitted = false;
-  if (input.execution !== undefined) {
-    const normalizedExecution: unknown = normalizeBoundedEngineJson(
-      input.execution,
-    );
-    const execution = record(normalizedExecution, 'execution context');
-    exactKeys(execution, ['alreadyAdmitted']);
-    if (typeof execution.alreadyAdmitted !== 'boolean')
-      fail('execution alreadyAdmitted must be boolean');
-    alreadyAdmitted = execution.alreadyAdmitted;
-  }
-  if (
-    envelope.compatibilityReleaseEpoch !== admission.epoch ||
-    envelope.compatibilityReleaseFingerprint !== admission.fingerprint
-  )
-    fail('executable admission provenance does not match');
+  const release = parseRegistryRelease(input.release);
   const runtimePolicies = parseGlobals(envelope.runtimePolicies);
-  validateGlobals(runtimePolicies, admission);
-  validateGlobals(runtimePolicies, current);
-  if (
-    !Array.isArray(envelope.configMigrations) ||
-    envelope.configMigrations.length
-  )
-    fail('Baseline runtime config migrations must be empty');
+  validateGlobals(runtimePolicies, release);
   const rawGraph = readRawExecutableGraph(envelope.graph, false);
   const graph = parseWorkflowGraphForPublish(authoringGraph(rawGraph), {
     schemaVersion: 1,
-    definitions: admission.definitions.map(({ definition }) => definition),
+    definitions: release.definitions.map(({ definition }) => definition),
   });
-  const executableGraph = validateExecutableGraph(
-    rawGraph,
-    graph,
-    admission,
-    current,
-    alreadyAdmitted,
-  );
-  const expectedSelection = selectionFingerprint(
-    admission,
-    executableNodes(executableGraph),
-    runtimePolicies,
-  );
-  if (envelope.compatibilitySelectionFingerprint !== expectedSelection)
-    fail('compatibility selection fingerprint does not match');
   return {
     schemaVersion: 2,
     sourceGraphSchemaVersion: 1,
-    graph: executableGraph,
+    graph: validateExecutableGraph(rawGraph, graph, release),
     runtimePolicies,
-    configMigrations: [],
-    compatibilitySelectionFingerprint: expectedSelection,
-    compatibilityReleaseEpoch: admission.epoch,
-    compatibilityReleaseFingerprint: admission.fingerprint,
   };
 }
 
 export function parseWorkflowExecutable(input: {
   readonly envelope: unknown;
-  readonly admissionRelease: unknown;
-  readonly currentRelease?: unknown;
-  readonly execution?: { readonly alreadyAdmitted: boolean };
+  readonly release: unknown;
 }): VerifiedWorkflowExecutable {
   try {
     return freezeExecutable(parseBoundary(input)) as VerifiedWorkflowExecutable;
@@ -121,16 +66,15 @@ export function parseWorkflowExecutable(input: {
   }
 }
 
+/** Parses a stored executable against the served release and checks its checksum. */
 export function verifyWorkflowExecutable(input: {
   readonly envelope: unknown;
   readonly checksum: unknown;
-  readonly admissionRelease: unknown;
-  readonly currentRelease?: unknown;
-  readonly execution?: { readonly alreadyAdmitted: boolean };
+  readonly release: unknown;
 }): CompiledWorkflowExecutable {
   const envelope = parseWorkflowExecutable(input);
   const checksum = computeWorkflowExecutableChecksum(envelope);
   if (input.checksum !== checksum)
-    fail('workflow executable V2 checksum does not match');
+    fail('workflow executable checksum does not match');
   return registerExecutableIdentity(Object.freeze({ envelope, checksum }));
 }

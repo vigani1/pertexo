@@ -25,12 +25,7 @@ export {
   parseWorkflowExecutable,
   verifyWorkflowExecutable,
 } from './compilation/boundary.js';
-export {
-  composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseSupport,
-  createExecutableCompatibilityReleaseHistory,
-  describeExecutableCompatibilityRelease,
-} from './compilation/compatibility.js';
+export { composeExecutableCompatibilityRelease } from './compilation/compatibility.js';
 export {
   buildWorkflowExecutable,
   computeWorkflowExecutableChecksum,
@@ -39,10 +34,6 @@ export {
   BASELINE_RUNTIME_POLICIES,
   WORKFLOW_EXECUTABLE_LIMITS,
 } from './compilation/foundation.js';
-export type {
-  ExecutableCompatibilityReleaseDescription,
-  ExecutableCompatibilityReleaseSupport,
-} from './compilation/compatibility.js';
 export type {
   CompiledWorkflowExecutable,
   ExecutableRuntimePolicies,

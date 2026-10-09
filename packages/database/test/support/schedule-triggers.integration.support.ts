@@ -14,7 +14,6 @@ import {
   createScheduleTriggerScanner,
 } from '../../src/triggers/schedule-triggers.js';
 import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/workflow-triggers.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 
 export function createScheduleTriggerTestEnvironment(
@@ -155,17 +154,9 @@ export function createScheduleTriggerTestEnvironment(
     identity = createIdentityWorkspaceDatabase(apiConfig);
     reconciliation = createWorkflowTriggerReconciliationDatabase(apiConfig);
     schedules = createScheduleTriggerDatabase(apiConfig);
-    scannerOne = createScheduleTriggerScanner(
-      workerConfig,
-      BASELINE_COMPATIBILITY_EXPECTATION,
-      apiConfig,
-    );
+    scannerOne = createScheduleTriggerScanner(workerConfig, apiConfig);
     if (options.scannerCount === 2)
-      scannerTwo = createScheduleTriggerScanner(
-        workerConfig,
-        BASELINE_COMPATIBILITY_EXPECTATION,
-        apiConfig,
-      );
+      scannerTwo = createScheduleTriggerScanner(workerConfig, apiConfig);
     if (options.includeOperator === true) {
       operator = createOperatorCommandDatabase(
         parseDatabaseConfig({
@@ -175,7 +166,6 @@ export function createScheduleTriggerTestEnvironment(
       );
       replayStore = createOperatorRunReplayStore(
         workerConfig,
-        [BASELINE_COMPATIBILITY_EXPECTATION],
         checkpointFactory,
       );
       sourceRunDatabase = createWorkspaceDatabase(apiConfig);
@@ -199,10 +189,9 @@ export function createScheduleTriggerTestEnvironment(
     );
     await ownerQuery(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-         schema_version,graph_json,checksum,executable_schema_version,executable_json,
-         compatibility_release_epoch,published_by)
+         schema_version,graph_json,checksum,executable_schema_version,executable_json,published_by)
        values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
-         $4,2,'{}'::jsonb,1,$5)`,
+         $4,2,'{}'::jsonb,$5)`,
       [
         versionId,
         workspaceId,

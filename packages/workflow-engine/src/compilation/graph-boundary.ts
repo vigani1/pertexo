@@ -23,8 +23,6 @@ import {
 } from './foundation.js';
 import {
   exactKeys,
-  immutableDefinitionBehavior,
-  immutableExecutorBehavior,
   parseIdentity,
   parsePolicies,
   parseSideEffectClass,
@@ -132,142 +130,31 @@ export function authoringGraph(tree: RawExecutableGraph): unknown {
   };
 }
 
-type DefinitionManifest = ReturnType<typeof definitionManifest>;
-type ExecutorManifest = ReturnType<typeof executorManifest>;
-
-function assertAdmissionLifecycle(
-  definition: DefinitionManifest,
-  executor: ExecutorManifest,
-): void {
-  if (
-    (definition.lifecycle !== 'active' &&
-      definition.lifecycle !== 'deprecated') ||
-    executor.lifecycle !== 'active'
-  )
-    fail('node executable pins are incompatible');
-}
-
-function assertRetainedBehavior(
-  admissionDefinition: DefinitionManifest,
-  currentDefinition: DefinitionManifest,
-  admissionExecutor: ExecutorManifest,
-  currentExecutor: ExecutorManifest,
-): void {
-  if (
-    canonicalJson(immutableDefinitionBehavior(admissionDefinition)) !==
-      canonicalJson(immutableDefinitionBehavior(currentDefinition)) ||
-    canonicalJson(immutableExecutorBehavior(admissionExecutor)) !==
-      canonicalJson(immutableExecutorBehavior(currentExecutor))
-  )
-    fail('node executable pins are incompatible');
-}
-
-function assertNodePinIdentity(
-  node: WorkflowNode,
-  definition: WorkflowExecutableNode['definition'],
-  executor: WorkflowExecutableNode['executor'],
-  executorAbi: unknown,
-  selectedSideEffectClass: WorkflowExecutableNode['sideEffectClass'],
-  admissionDefinition: DefinitionManifest,
-  currentDefinition: DefinitionManifest,
-  admissionExecutor: ExecutorManifest,
-  currentExecutor: ExecutorManifest,
-): void {
-  if (
-    !sameIdentity(node.definition, definition) ||
-    !sameIdentity(admissionDefinition.executor, executor) ||
-    !sameIdentity(currentDefinition.executor, executor) ||
-    admissionDefinition.configVersion !== node.configVersion ||
-    currentDefinition.configVersion !== node.configVersion ||
-    executorAbi !== admissionExecutor.abiVersion ||
-    executorAbi !== currentExecutor.abiVersion ||
-    selectedSideEffectClass !==
-      sideEffectClass(admissionDefinition.retryClass) ||
-    selectedSideEffectClass !== sideEffectClass(currentDefinition.retryClass)
-  )
-    fail('node executable pins are incompatible');
-}
-
-function assertPinnedPolicies(
-  expectedPolicies: string,
-  admissionDefinition: DefinitionManifest,
-  currentDefinition: DefinitionManifest,
-): void {
-  if (
-    expectedPolicies !==
-      canonicalJson(
-        [...admissionDefinition.policyReferences].sort(compareIdentity),
-      ) ||
-    expectedPolicies !==
-      canonicalJson(
-        [...currentDefinition.policyReferences].sort(compareIdentity),
-      )
-  )
-    fail('node executable pins are incompatible');
-}
-
-function assertCurrentExecutionEligibility(
-  currentExecutor: ExecutorManifest,
-  definition: WorkflowExecutableNode['definition'],
-  alreadyAdmitted: boolean,
-): void {
-  if (
-    !currentExecutor.definitions.some((value) =>
-      sameIdentity(value, definition),
-    ) ||
-    !(
-      currentExecutor.lifecycle === 'active' ||
-      currentExecutor.lifecycle === 'retained' ||
-      (currentExecutor.lifecycle === 'retirement_blocked' && alreadyAdmitted)
-    )
-  )
-    fail('node executable pins are incompatible');
-}
-
 function validatePin(
   raw: Record<string, unknown>,
   node: WorkflowNode,
-  admission: RegistryRelease,
-  current: RegistryRelease,
-  alreadyAdmitted: boolean,
+  release: RegistryRelease,
 ): WorkflowExecutableNode {
   const definition = parseIdentity(raw.definition, 'node definition');
   const executor = parseIdentity(raw.executor, 'node executor');
   const policies = parsePolicies(raw.policyReferences);
   const selectedSideEffectClass = parseSideEffectClass(raw.sideEffectClass);
-  const admissionDefinition = definitionManifest(admission, definition);
-  const currentDefinition = definitionManifest(current, definition);
-  const admissionExecutor = executorManifest(admission, executor);
-  const currentExecutor = executorManifest(current, executor);
-  const expectedPolicies = canonicalJson(policies);
-  assertAdmissionLifecycle(admissionDefinition, admissionExecutor);
-  assertRetainedBehavior(
-    admissionDefinition,
-    currentDefinition,
-    admissionExecutor,
-    currentExecutor,
-  );
-  assertNodePinIdentity(
-    node,
-    definition,
-    executor,
-    raw.executorAbi,
-    selectedSideEffectClass,
-    admissionDefinition,
-    currentDefinition,
-    admissionExecutor,
-    currentExecutor,
-  );
-  assertPinnedPolicies(
-    expectedPolicies,
-    admissionDefinition,
-    currentDefinition,
-  );
-  assertCurrentExecutionEligibility(
-    currentExecutor,
-    definition,
-    alreadyAdmitted,
-  );
+  const definitionPin = definitionManifest(release, definition);
+  const executorPin = executorManifest(release, executor);
+  if (
+    (definitionPin.lifecycle !== 'active' &&
+      definitionPin.lifecycle !== 'deprecated') ||
+    executorPin.lifecycle !== 'active' ||
+    !executorPin.definitions.some((value) => sameIdentity(value, definition)) ||
+    !sameIdentity(node.definition, definition) ||
+    !sameIdentity(definitionPin.executor, executor) ||
+    definitionPin.configVersion !== node.configVersion ||
+    raw.executorAbi !== executorPin.abiVersion ||
+    selectedSideEffectClass !== sideEffectClass(definitionPin.retryClass) ||
+    canonicalJson(policies) !==
+      canonicalJson([...definitionPin.policyReferences].sort(compareIdentity))
+  )
+    fail('node executable pins are incompatible');
   assertExpressionPolicies(node, policies);
   return {
     id: node.id,
@@ -279,7 +166,7 @@ function validatePin(
     disabled: node.disabled ?? false,
     sideEffectClass: selectedSideEffectClass,
     executor,
-    executorAbi: admissionExecutor.abiVersion,
+    executorAbi: executorPin.abiVersion,
     policyReferences: policies,
   };
 }
@@ -287,25 +174,17 @@ function validatePin(
 export function validateExecutableGraph(
   tree: RawExecutableGraph,
   graph: WorkflowGraph,
-  admission: RegistryRelease,
-  current: RegistryRelease,
-  alreadyAdmitted: boolean,
+  release: RegistryRelease,
 ): WorkflowExecutableGraph {
   const index = graphValidationIndex(graph);
-  assertGraphPorts(graph, admission, index);
+  assertGraphPorts(graph, release, index);
   assertBranchesDoNotReconverge(graph, index);
   const parsedById = new Map(graph.nodes.map((node) => [node.id, node]));
   const nodes = tree.nodes.map((rawNode) => {
     if (typeof rawNode.raw.id !== 'string') fail('node ID is invalid');
     const node = parsedById.get(rawNode.raw.id);
     if (node === undefined) fail('node is absent from parsed graph');
-    const executable = validatePin(
-      rawNode.raw,
-      node,
-      admission,
-      current,
-      alreadyAdmitted,
-    );
+    const executable = validatePin(rawNode.raw, node, release);
     if (rawNode.structured === undefined && node.structured === undefined)
       return executable;
     if (rawNode.structured === undefined || node.structured === undefined)
@@ -313,9 +192,7 @@ export function validateExecutableGraph(
     const body = validateExecutableGraph(
       rawNode.structured.body,
       node.structured.body,
-      admission,
-      current,
-      alreadyAdmitted,
+      release,
     );
     return {
       ...executable,

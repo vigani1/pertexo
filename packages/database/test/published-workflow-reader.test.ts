@@ -16,14 +16,12 @@ describe('published workflow row classification', () => {
   const v1 = {
     ...base,
     checksum: `wf:v1:sha256:${'1'.repeat(64)}`,
-    compatibility_release_epoch: null,
     executable_json: null,
     executable_schema_version: null,
   } as const;
   const v2 = {
     ...base,
     checksum: `wf:v2:sha256:${'2'.repeat(64)}`,
-    compatibility_release_epoch: 7,
     executable_json: { deliberately: 'shallow projection only' },
     executable_schema_version: 2,
   } as const;
@@ -40,7 +38,6 @@ describe('published workflow row classification', () => {
       kind: 'v2_projection',
       workflowVersion: {
         executableJson: v2.executable_json,
-        compatibilityReleaseEpoch: 7,
       },
     });
   });
@@ -51,7 +48,6 @@ describe('published workflow row classification', () => {
     ['malformed checksum', { ...v2, checksum: 'wf:v2:sha256:nope' }],
     ['array executable', { ...v2, executable_json: [] }],
     ['null executable', { ...v2, executable_json: null }],
-    ['invalid epoch', { ...v2, compatibility_release_epoch: 0 }],
     ['unexpected column', { ...v2, graph_json: {} }],
   ])('fails closed for %s', (_name, row) => {
     expect(() => classifyPublishedWorkflowVersionRow(row)).toThrow(

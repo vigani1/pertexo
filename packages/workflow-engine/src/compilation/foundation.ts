@@ -80,10 +80,6 @@ export interface WorkflowExecutable {
   readonly sourceGraphSchemaVersion: 1;
   readonly graph: WorkflowExecutableGraph;
   readonly runtimePolicies: ExecutableRuntimePolicies;
-  readonly configMigrations: readonly [];
-  readonly compatibilitySelectionFingerprint: string;
-  readonly compatibilityReleaseEpoch: number;
-  readonly compatibilityReleaseFingerprint: string;
 }
 
 declare const verifiedExecutable: unique symbol;

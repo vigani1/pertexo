@@ -6,7 +6,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createScheduleTriggerScanner } from '../src/triggers/schedule-trigger-scanner.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import {
   scopedConnectionUrl,
   waitForApplicationLock,
@@ -184,7 +183,6 @@ describe('schedule claim concurrency', () => {
     const blocker = await control.connect();
     const scanner = createScheduleTriggerScanner(
       parseDatabaseConfig({ connectionString: workerUrl, max: 1 }),
-      BASELINE_COMPATIBILITY_EXPECTATION,
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     const controller = new AbortController();

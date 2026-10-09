@@ -29,8 +29,6 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
@@ -218,10 +216,6 @@ async function createProductionNodeAttemptRuntime(
   dependencies: NodeAttemptRuntimeDependencies,
   own: OwnNodeAttemptResource,
 ): Promise<ProductionNodeAttemptRuntime> {
-  const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-  );
-  const latestNodeRelease = PLATFORM_REGISTRY_RELEASE;
   const expressionEvaluator =
     dependencies.engine === undefined ? new JsonataEvaluator() : undefined;
   own(
@@ -229,14 +223,14 @@ async function createProductionNodeAttemptRuntime(
     expressionEvaluator?.shutdown.bind(expressionEvaluator),
   );
   const engineOptions: NodeAttemptExecutionEngineOptions = {
-    releaseSupport,
+    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
     ...(expressionEvaluator === undefined ? {} : { expressionEvaluator }),
   };
   const engine =
     dependencies.engine ?? createNodeAttemptExecutionEngine(engineOptions);
   const registry =
     dependencies.registry ??
-    createPlatformNodeRegistryForRelease(latestNodeRelease, {
+    createPlatformNodeRegistryForRelease(PLATFORM_REGISTRY_RELEASE, {
       httpRequestTelemetry: createProductionHttpProviderTelemetry(),
       slackSendMessageTelemetry: createProductionSlackProviderTelemetry(),
       emailSendNotificationTelemetry: createProductionEmailProviderTelemetry(),
@@ -247,13 +241,7 @@ async function createProductionNodeAttemptRuntime(
   own('node-attempt run store', runStore.close.bind(runStore));
   const reader =
     dependencies.reader ??
-    createPublishedWorkflowReader(
-      options.database,
-      createExecutableCompatibilityReleaseSupport(
-        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-      ).descriptions,
-      options.databaseRuntime,
-    );
+    createPublishedWorkflowReader(options.database, options.databaseRuntime);
   own('published workflow reader', reader.close.bind(reader));
   const notifications =
     dependencies.notifications ??

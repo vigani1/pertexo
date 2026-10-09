@@ -5,12 +5,9 @@ import {
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
 import { createWorkflowRunDatabase } from '@pertexo/database/runs';
-import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {
-  composeExecutableCompatibilityRelease,
   createCheckpoint,
-  createExecutableCompatibilityReleaseSupport,
   invocationKey,
   parseCheckpoint,
   type WorkflowTransitionPlan,
@@ -248,9 +245,6 @@ export async function cancelFixtureRun(
       connectionString: databaseUrl(apiUrl),
       max: 2,
     }),
-    createExecutableCompatibilityReleaseSupport(
-      [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-    ).descriptions,
   );
   try {
     await database.cancel({
@@ -272,9 +266,6 @@ export async function acceptReplayRun(): Promise<AcceptedReplayRun> {
       connectionString: databaseUrl(apiUrl),
       max: 2,
     }),
-    createExecutableCompatibilityReleaseSupport(
-      [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-    ).descriptions,
   );
   try {
     const accepted = await database.replay({
@@ -517,12 +508,6 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
   );
   const store = createRunAdvanceStore(
     parseDatabaseConfig({ connectionString: databaseUrl(workerUrl), max: 2 }),
-    undefined,
-    {
-      compatibilityReleases: createExecutableCompatibilityReleaseSupport(
-        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-      ).descriptions,
-    },
   );
   try {
     const [acceptedDelivery] = await workerQuery<{

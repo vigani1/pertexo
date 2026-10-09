@@ -1,59 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import {
-  platformBrowserNodeDefinitionCatalog,
-  PLATFORM_REGISTRY_RELEASE,
-} from '@pertexo/node-catalog';
-import {
-  composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
-} from '@pertexo/workflow-engine';
-import {
-  verifiedScheduleAcceptanceInstant,
-  verifyScheduleReleasePairs,
-} from './editor-schedule-evidence.js';
-
-describe('schedule catalog and executable release evidence', () => {
-  const catalog = platformBrowserNodeDefinitionCatalog().release;
-  const { epoch, fingerprint } = describeExecutableCompatibilityRelease(
-    composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
-  );
-  const executable = { epoch, fingerprint };
-
-  it('verifies distinct real projections from the same cohort and epoch', () => {
-    expect(catalog.epoch).toBe(executable.epoch);
-    expect(catalog.fingerprint).not.toBe(executable.fingerprint);
-    expect(() => {
-      verifyScheduleReleasePairs(catalog, executable);
-    }).not.toThrow();
-  });
-
-  it.each([
-    ['swapped projections', executable, catalog],
-    ['executable fingerprint presented as catalog', executable, executable],
-    ['catalog fingerprint presented as executable', catalog, catalog],
-    [
-      'wrong catalog epoch',
-      { ...catalog, epoch: catalog.epoch + 1 },
-      executable,
-    ],
-    ['wrong executable epoch', catalog, { ...executable, epoch: epoch + 1 }],
-    [
-      'wrong catalog fingerprint at the same epoch',
-      { ...catalog, fingerprint: `node-compat:v1:sha256:${'0'.repeat(64)}` },
-      executable,
-    ],
-    [
-      'wrong executable fingerprint at the same epoch',
-      catalog,
-      { ...executable, fingerprint: `node-compat:v1:sha256:${'0'.repeat(64)}` },
-    ],
-  ])('rejects %s', (_name, catalogInput, executableInput) => {
-    expect(() => {
-      verifyScheduleReleasePairs(catalogInput, executableInput);
-    }).toThrow();
-  });
-});
+import { verifiedScheduleAcceptanceInstant } from './editor-schedule-evidence.js';
 
 describe('schedule history precision and original acceptance identity', () => {
   it.each(['000', '148'])(

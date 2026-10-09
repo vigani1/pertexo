@@ -21,8 +21,6 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 import { initialCheckpointFactory } from '@pertexo/execution';
@@ -41,21 +39,14 @@ export function createDatabaseOperatorRunReplayStore(
   database: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
-  const releaseHistory = createExecutableCompatibilityReleaseHistory(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-  );
-  const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-  );
   const checkpointFactory = initialCheckpointFactory({
-    releaseSupport: releaseHistory,
+    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
   });
   return createOperatorRunReplayStore(
     database,
-    releaseSupport.descriptions,
-    (projection, currentCompatibilityRelease) => {
+    (projection) => {
       try {
-        return checkpointFactory(projection, currentCompatibilityRelease);
+        return checkpointFactory(projection);
       } catch (error: unknown) {
         if (isErrorInstance(error, WorkflowEngineError))
           throw new OperatorRunReplayNotExecutableError();

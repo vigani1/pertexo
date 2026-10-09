@@ -52,7 +52,6 @@ const {
   ownerQuery,
   ownerQueryIn,
   redisUrl,
-  scheduleCompatibility,
   workerConfig,
   workerQuery,
   workspaceId,
@@ -126,9 +125,11 @@ describeIntegration('direct Schedule worker integration gate', () => {
     const identity = registerResource(
       createIdentityWorkspaceDatabase(apiConfig),
     );
-    const compatibility = authoringOptions;
     const authoring = registerResource(
-      createWorkflowAuthoringDatabase(apiConfig, compatibility.databaseOptions),
+      createWorkflowAuthoringDatabase(
+        apiConfig,
+        authoringOptions.databaseOptions,
+      ),
     );
     await identity.createUser({
       id: actorId,
@@ -182,7 +183,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
       expectedRevision: 1,
       graphJson: graph,
     });
-    const catalog = compatibility.definitionCatalog;
+    const catalog = authoringOptions.definitionCatalog;
     const publication = await authoring.publishWorkflow({
       actorId,
       workspaceId,
@@ -214,11 +215,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
     if (event === undefined) throw new Error('Publication outbox is missing');
 
     const runtimeScanner = registerResource(
-      createScheduleTriggerScanner(
-        workerConfig,
-        scheduleCompatibility,
-        workerConfig,
-      ),
+      createScheduleTriggerScanner(workerConfig, workerConfig),
     );
     benchmarkScanGate = createBenchmarkScanGate(
       process.env.PERTEXO_Q11_OPERATION_TIMING === '1',
@@ -457,18 +454,10 @@ describeIntegration('direct Schedule worker integration gate', () => {
     await runtime.close();
     transferResource(runtime);
     const scannerOne = registerResource(
-      createScheduleTriggerScanner(
-        workerConfig,
-        scheduleCompatibility,
-        workerConfig,
-      ),
+      createScheduleTriggerScanner(workerConfig, workerConfig),
     );
     const scannerTwo = registerResource(
-      createScheduleTriggerScanner(
-        workerConfig,
-        scheduleCompatibility,
-        workerConfig,
-      ),
+      createScheduleTriggerScanner(workerConfig, workerConfig),
     );
     const duplicateCheckpointFactory = () => ({
       engineVersion: 'phase3-engine-v1',

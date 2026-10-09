@@ -127,17 +127,12 @@ describe('API webhook runtime ownership', () => {
     expect(databaseClose).toHaveBeenCalledOnce();
   });
 
-  it('passes compatibility and the shared runtime to the database lease factory', async () => {
+  it('passes the shared runtime to the database lease factory', async () => {
     const sharedRuntime = {} as DatabaseRuntime;
     const databaseClose = vi.fn();
     const envelopeClose = vi.fn();
     const factory = vi.fn(
-      (
-        _config: DatabaseConfig,
-        descriptions: unknown,
-        selectedRuntime?: DatabaseRuntime,
-      ) => {
-        expect(descriptions).toBeDefined();
+      (_config: DatabaseConfig, selectedRuntime?: DatabaseRuntime) => {
         expect(selectedRuntime).toBe(sharedRuntime);
         return database(databaseClose);
       },

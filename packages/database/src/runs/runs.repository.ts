@@ -5,13 +5,6 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import {
-  selectServingCompatibilityRelease,
-  parseCompatibilityReleaseExpectation,
-  parseCompatibilityReleaseExpectationSet,
-  type CompatibilityReleaseExpectation,
-  type CompatibilityReleaseExpectationSet,
-} from '../compatibility/compatibility-release.js';
 import { readWorkflowRunAcceptanceReplay } from './commands/acceptance.js';
 import {
   lockManualStartCommand,
@@ -217,15 +210,8 @@ export interface WorkflowRunDatabase {
 
 export function createWorkflowRunDatabase(
   config: DatabaseConfig,
-  compatibilityReleaseInput:
-    CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
   runtime?: DatabaseRuntime,
 ): WorkflowRunDatabase {
-  const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
-    ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
-    : Object.freeze([
-        parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
-      ]);
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
@@ -234,8 +220,7 @@ export function createWorkflowRunDatabase(
       const result = await withWorkspaceTransaction(
         pool,
         parsed.workspaceId,
-        async (transaction) =>
-          startInTransaction(transaction, parsed, compatibilityReleases),
+        async (transaction) => startInTransaction(transaction, parsed),
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
       if ('kind' in result)
@@ -251,11 +236,7 @@ export function createWorkflowRunDatabase(
         pool,
         parsed.workspaceId,
         async (transaction) =>
-          replayWorkflowRunInTransaction(
-            transaction,
-            parsed,
-            compatibilityReleases,
-          ),
+          replayWorkflowRunInTransaction(transaction, parsed),
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
     },
@@ -292,7 +273,6 @@ export function createWorkflowRunDatabase(
 async function startInTransaction(
   transaction: WorkspaceTransaction,
   input: z.output<typeof startInputSchema>,
-  compatibilityReleases: CompatibilityReleaseExpectationSet,
 ): Promise<
   Readonly<{ run: WorkflowRunRecord; replayed: boolean }> | ManualStartRejection
 > {
@@ -312,10 +292,6 @@ async function startInTransaction(
   const rejection = await readManualStartRejection(transaction, input);
   if (rejection !== null) return rejection;
 
-  const currentCompatibilityRelease = selectServingCompatibilityRelease(
-    compatibilityReleases,
-  );
-
   const projection = await lockPublishedExecution(
     transaction,
     input.workflowId,
@@ -331,10 +307,7 @@ async function startInTransaction(
       projection.id,
     );
   }
-  const initial = input.checkpointFactory(
-    projection,
-    currentCompatibilityRelease,
-  );
+  const initial = input.checkpointFactory(projection);
   return acceptWorkflowRunWithAudit(transaction, {
     acceptance: {
       engineVersion: initial.engineVersion,
@@ -375,8 +348,7 @@ async function lockPublishedExecution(
       v.schema_version,
       v.checksum,
       v.executable_schema_version,
-      v.executable_json,
-      v.compatibility_release_epoch
+      v.executable_json
     from app.workflows w
     join app.workflow_versions v
       on v.workspace_id = w.workspace_id

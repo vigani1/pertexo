@@ -156,7 +156,7 @@ export async function verifyHttpEvidence(
   verifyWorkflowExecutable({
     envelope: version.executable_json,
     checksum: version.checksum,
-    admissionRelease: executable,
+    release: executable,
   });
   const graph = workflowGraphSchema.parse(version.graph_json);
   expect(graph.nodes.map(({ definition }) => definition.key).sort()).toEqual([

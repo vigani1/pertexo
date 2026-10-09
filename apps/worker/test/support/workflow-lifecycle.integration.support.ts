@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { lockManualFixtureClient } from './manual-start.fixture.js';
-import { readFileSync } from 'node:fs';
 
 import {
   createIdentityWorkspaceDatabase,
@@ -65,22 +64,6 @@ const dispatcherBaseUrl =
   'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
-
-const baselineCatalog: unknown = JSON.parse(
-  readFileSync(
-    new URL(
-      '../../../../packages/database/test/fixtures/baseline-compatibility-catalog.json',
-      import.meta.url,
-    ),
-    'utf8',
-  ),
-);
-const baselineCompatibilityExpectation = Object.freeze({
-  epoch: 1,
-  fingerprint:
-    'node-compat:v1:sha256:cf21b2e644563beb8b031481e9d5182b361b4ae2d4abd1d7d86d7b3fe0299f59',
-  catalogJson: JSON.stringify(baselineCatalog),
-});
 
 /** The fixture acquires an exclusive lease for Redis database 15 before use. */
 export const workflowLifecycleIntegrationRedisUrl = (() => {
@@ -286,7 +269,6 @@ async function seedWorkflowRows(
   };
   const executable = {
     schemaVersion: 2,
-    compatibilityReleaseEpoch: 1,
     nodes: [],
     edges: [],
   };
@@ -322,9 +304,8 @@ async function seedWorkflowRows(
   await client.query(
     `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-        checksum,published_by,executable_schema_version,executable_json,
-        compatibility_release_epoch)
-     values ($1,$2,$3,3,1,$4::jsonb,$5,$6,2,$7::jsonb,1)`,
+        checksum,published_by,executable_schema_version,executable_json)
+     values ($1,$2,$3,3,1,$4::jsonb,$5,$6,2,$7::jsonb)`,
     [
       ids.version,
       workspaceId,
@@ -963,10 +944,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
   const createRuntime = async (leaseOwner: string): Promise<TriggerRuntime> => {
     const reader = registerCloseable(
       'published workflow reader',
-      createPublishedWorkflowReader(
-        workerConfig,
-        baselineCompatibilityExpectation,
-      ),
+      createPublishedWorkflowReader(workerConfig),
     );
     const reconciliation = registerCloseable(
       'trigger reconciliation database',

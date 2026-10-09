@@ -1,10 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import {
-  selectServingCompatibilityRelease,
-  type CompatibilityReleaseExpectationSet,
-} from '../../compatibility/compatibility-release.js';
 import { readWorkflowRunAcceptanceReplay } from './acceptance.js';
 import {
   classifyPublishedWorkflowVersionRow,
@@ -26,7 +22,6 @@ import type { WorkflowRunRecord } from './records.js';
 export async function replayWorkflowRunInTransaction(
   transaction: WorkspaceTransaction,
   input: ReplayPublishedWorkflowRunInput,
-  compatibilityReleases: CompatibilityReleaseExpectationSet,
 ): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>> {
   const identity = {
     keyHash: input.idempotencyKeyHash,
@@ -40,19 +35,13 @@ export async function replayWorkflowRunInTransaction(
     return Object.freeze({ run, replayed: true });
   }
 
-  const currentCompatibilityRelease = selectServingCompatibilityRelease(
-    compatibilityReleases,
-  );
   const source = await lockReplaySource(transaction, input.sourceRunId);
   const projection = await lockReplayVersion(
     transaction,
     source.workflowId,
     input.workflowVersionId,
   );
-  const initial = input.checkpointFactory(
-    projection,
-    currentCompatibilityRelease,
-  );
+  const initial = input.checkpointFactory(projection);
   return acceptWorkflowRunWithAudit(transaction, {
     acceptance: {
       engineVersion: initial.engineVersion,
@@ -116,8 +105,7 @@ async function lockReplayVersion(
       schema_version,
       checksum,
       executable_schema_version,
-      executable_json,
-      compatibility_release_epoch
+      executable_json
     from app.lock_workflow_run_replay_version(
       ${transaction.workspaceId}, ${workflowId}, ${workflowVersionId}
     )

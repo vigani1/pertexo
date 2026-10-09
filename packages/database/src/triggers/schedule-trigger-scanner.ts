@@ -11,13 +11,6 @@ import {
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type { DatabaseConfig } from '../config.js';
 import {
-  selectServingCompatibilityRelease,
-  parseCompatibilityReleaseExpectation,
-  parseCompatibilityReleaseExpectationSet,
-  type CompatibilityReleaseExpectation,
-  type CompatibilityReleaseExpectationSet,
-} from '../compatibility/compatibility-release.js';
-import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
 } from '../runs/commands/acceptance.js';
@@ -135,7 +128,6 @@ type ClaimedOccurrence = Readonly<{
 type ScannerResources = Readonly<{
   acceptancePool: Pool;
   claimPool: Pool;
-  compatibilityReleases: CompatibilityReleaseExpectationSet;
 }>;
 
 async function claimDueSchedules(
@@ -203,21 +195,19 @@ export async function isScheduleClaimEligible(
 
 /**
  * The single admission path for an admitted occurrence under either misfire
- * policy: lease eligibility, the published version, the compatibility lock,
- * and idempotent acceptance keyed by trigger and scheduled instant.
+ * policy: lease eligibility, the published version and idempotent acceptance keyed by trigger and scheduled instant.
  */
 async function admitScheduledRun(
   transaction: WorkspaceTransaction,
   claim: ScheduleClaim,
   scheduledAt: Date,
-  compatibilityReleases: CompatibilityReleaseExpectationSet,
   checkpointFactory: InitialCheckpointFactory,
 ): Promise<string> {
   if (!(await isScheduleClaimEligible(transaction, claim)))
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
   const version = await transaction.db.execute(sql<Record<string, unknown>>`
     select id,workspace_id,workflow_id,version_number,schema_version,checksum,
-           executable_schema_version,executable_json,compatibility_release_epoch
+           executable_schema_version,executable_json
       from app.workflow_versions
      where workspace_id=${claim.workspace_id}
        and id=${claim.workflow_version_id}
@@ -225,13 +215,7 @@ async function admitScheduledRun(
   const classified = classifyPublishedWorkflowVersionRow(version.rows[0]);
   if (classified.kind !== 'v2_projection')
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
-  const currentCompatibilityRelease = selectServingCompatibilityRelease(
-    compatibilityReleases,
-  );
-  const initial = checkpointFactory(
-    classified.workflowVersion,
-    currentCompatibilityRelease,
-  );
+  const initial = checkpointFactory(classified.workflowVersion);
   const identity = `${claim.trigger_id}:${scheduledAt.toISOString()}`;
   const result = await acceptWorkflowRun(transaction, {
     engineVersion: initial.engineVersion,
@@ -259,7 +243,6 @@ async function persistClaimedOccurrence(
   transaction: WorkspaceTransaction,
   claim: ScheduleClaim,
   occurrence: ClaimedOccurrence,
-  compatibilityReleases: CompatibilityReleaseExpectationSet,
   checkpointFactory: InitialCheckpointFactory,
 ): Promise<RecordedScheduleOccurrence> {
   const disposition: RecordedScheduleOccurrence =
@@ -276,7 +259,6 @@ async function persistClaimedOccurrence(
           transaction,
           claim,
           occurrence.scheduledAt,
-          compatibilityReleases,
           checkpointFactory,
         )
       : null;
@@ -379,7 +361,6 @@ async function processScheduleClaim(
           transaction,
           claim,
           occurrence,
-          resources.compatibilityReleases,
           input.checkpointFactory,
         ),
       input.signal === undefined ? {} : { signal: input.signal },
@@ -450,19 +431,12 @@ async function scanDueSchedules(
 
 export function createScheduleTriggerScanner(
   claimConfig: DatabaseConfig,
-  compatibilityReleaseInput:
-    CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
   acceptanceConfig: DatabaseConfig,
   runtimes: Readonly<{
     acceptance?: DatabaseRuntime;
     claim?: DatabaseRuntime;
   }> = {},
 ): ScheduleTriggerScanner {
-  const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
-    ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
-    : Object.freeze([
-        parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
-      ]);
   const claimLease = acquireDatabasePool(claimConfig, runtimes.claim);
   let acceptanceLease: ReturnType<typeof acquireDatabasePool>;
   try {
@@ -477,7 +451,6 @@ export function createScheduleTriggerScanner(
   const resources: ScannerResources = Object.freeze({
     acceptancePool: acceptanceLease.pool,
     claimPool: claimLease.pool,
-    compatibilityReleases,
   });
   return Object.freeze({
     scanDue: (input: ScanDueInput) => scanDueSchedules(resources, input),

@@ -3,11 +3,6 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
-import {
-  selectServingCompatibilityRelease,
-  parseCompatibilityReleaseExpectationSet,
-  type CompatibilityReleaseExpectationSet,
-} from '../compatibility/compatibility-release.js';
 import type { DatabaseConfig } from '../config.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createWorkspaceDatabase } from '../database.js';
@@ -81,13 +76,9 @@ export interface OperatorRunReplayStore {
 
 export function createOperatorRunReplayStore(
   config: DatabaseConfig,
-  compatibilityReleaseInput: CompatibilityReleaseExpectationSet,
   checkpointFactory: InitialCheckpointFactory,
   runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
-  const compatibilityReleases = parseCompatibilityReleaseExpectationSet(
-    compatibilityReleaseInput,
-  );
   const database = createWorkspaceDatabase(
     config,
     runtime === undefined ? {} : { runtime },
@@ -147,14 +138,10 @@ export function createOperatorRunReplayStore(
           if (!request.success || request.data.status !== 'pending')
             throw new OperatorRunReplayMismatchError();
 
-          const currentCompatibilityRelease = selectServingCompatibilityRelease(
-            compatibilityReleases,
-          );
           const versions = await transaction.db.execute(
             sql<Record<string, unknown>>`
               select id,workspace_id,workflow_id,version_number,schema_version,
-                checksum,executable_schema_version,executable_json,
-                compatibility_release_epoch
+                checksum,executable_schema_version,executable_json
               from app.workflow_versions
               where workspace_id=${transaction.workspaceId}
                 and id=${request.data.workflow_version_id}
@@ -168,10 +155,7 @@ export function createOperatorRunReplayStore(
             classified.workflowVersion.workflowId !== request.data.workflow_id
           )
             throw new OperatorRunReplayNotExecutableError();
-          const initial = checkpointFactory(
-            classified.workflowVersion,
-            currentCompatibilityRelease,
-          );
+          const initial = checkpointFactory(classified.workflowVersion);
           const accepted = await acceptWorkflowRun(transaction, {
             engineVersion: initial.engineVersion,
             initialCheckpoint: initial.checkpoint,

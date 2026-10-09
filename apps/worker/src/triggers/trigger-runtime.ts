@@ -24,11 +24,7 @@ import {
   type QueueConsumer,
   type QueueConsumerObserver,
 } from '@pertexo/queue';
-import {
-  composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
-} from '@pertexo/workflow-engine';
+import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 
 import { createTriggerReconciliationHandler } from './trigger-handler.js';
 import {
@@ -121,15 +117,11 @@ export async function createTriggerRuntime(
   validateOptions(options);
   const backgroundTaskShutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
-  const releaseHistory = createExecutableCompatibilityReleaseHistory(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-  );
-  const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-  );
   const checkpointFactory: InitialCheckpointFactory =
     dependencies.checkpointFactory ??
-    initialCheckpointFactory({ releaseSupport: releaseHistory });
+    initialCheckpointFactory({
+      release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
+    });
   // Telemetry owns no closeable resources. Construct it before acquiring the
   // database and queue owners so constructor failure cannot strand them.
   const telemetry = dependencies.telemetry ?? factories.telemetry();
@@ -144,16 +136,11 @@ export async function createTriggerRuntime(
       factories.reconciliation(options.database, options.databaseRuntime);
     reader =
       dependencies.reader ??
-      factories.reader(
-        options.database,
-        releaseSupport.descriptions,
-        options.databaseRuntime,
-      );
+      factories.reader(options.database, options.databaseRuntime);
     scanner =
       dependencies.scanner ??
       factories.scanner(
         options.database,
-        releaseSupport.descriptions,
         options.database,
         options.databaseRuntime === undefined
           ? {}

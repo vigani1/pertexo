@@ -11,8 +11,6 @@ import { QUEUE_NAME } from '@pertexo/queue';
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
@@ -28,71 +26,60 @@ import { createRedisTestNamespace } from './redis-test-namespace.js';
 function scheduleAuthoringOptions(
   validator: Pick<WorkflowAuthoringValidator, 'validate'>,
 ) {
-  const nodeReleases = [PLATFORM_REGISTRY_RELEASE];
-  const history = createExecutableCompatibilityReleaseHistory(
-    nodeReleases.map(composeExecutableCompatibilityRelease),
-  );
-  const readiness = createExecutableCompatibilityReleaseSupport(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-  );
-  const variants = nodeReleases.map((nodeRelease) => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease);
-    const description = history.descriptions.find(
-      ({ epoch, fingerprint }) =>
-        epoch === release.epoch && fingerprint === release.fingerprint,
-    );
-    if (description === undefined)
-      throw new Error('Schedule compatibility description is missing');
-    const authoringPolicies = {
-      releaseFingerprint: release.fingerprint,
-      definitions: nodeRelease.definitions.map((manifest) => ({
-        definition: {
-          key: manifest.definition.key,
-          version: manifest.definition.version,
-        },
-        policyReferences: manifest.policyReferences.map(({ key, version }) => ({
-          key,
-          version,
-        })),
+  const nodeRelease = PLATFORM_REGISTRY_RELEASE;
+  const release = composeExecutableCompatibilityRelease(nodeRelease);
+  const authoringPolicies = {
+    releaseFingerprint: release.fingerprint,
+    definitions: nodeRelease.definitions.map((manifest) => ({
+      definition: {
+        key: manifest.definition.key,
+        version: manifest.definition.version,
+      },
+      policyReferences: manifest.policyReferences.map(({ key, version }) => ({
+        key,
+        version,
       })),
-    };
-    const catalog = (placement: boolean) =>
-      Object.freeze({
-        schemaVersion: 1 as const,
-        releaseFingerprint: release.fingerprint,
-        definitions: Object.freeze(
-          nodeRelease.definitions
-            .filter(
-              (manifest) =>
-                (manifest.lifecycle === 'active' ||
-                  (!placement && manifest.lifecycle === 'deprecated')) &&
-                nodeRelease.executors.some(
-                  (executor) =>
-                    executor.lifecycle === 'active' &&
-                    executor.executor.key === manifest.executor.key &&
-                    executor.executor.version === manifest.executor.version,
-                ),
-            )
-            .map(({ definition, integration, connectionRequirements }) =>
-              Object.freeze({
-                ...definition,
-                ...(integration === undefined
-                  ? {}
-                  : {
-                      integration: Object.freeze({
-                        ...integration,
-                        connectionSlots: Object.freeze([
-                          ...connectionRequirements,
-                        ]),
-                      }),
+    })),
+  };
+  const catalog = (placement: boolean) =>
+    Object.freeze({
+      schemaVersion: 1 as const,
+      releaseFingerprint: release.fingerprint,
+      definitions: Object.freeze(
+        nodeRelease.definitions
+          .filter(
+            (manifest) =>
+              (manifest.lifecycle === 'active' ||
+                (!placement && manifest.lifecycle === 'deprecated')) &&
+              nodeRelease.executors.some(
+                (executor) =>
+                  executor.lifecycle === 'active' &&
+                  executor.executor.key === manifest.executor.key &&
+                  executor.executor.version === manifest.executor.version,
+              ),
+          )
+          .map(({ definition, integration, connectionRequirements }) =>
+            Object.freeze({
+              ...definition,
+              ...(integration === undefined
+                ? {}
+                : {
+                    integration: Object.freeze({
+                      ...integration,
+                      connectionSlots: Object.freeze([
+                        ...connectionRequirements,
+                      ]),
                     }),
-              }),
-            ),
-        ),
-      });
-    return {
-      compatibilityRelease: description,
-      definitionCatalog: catalog(false),
+                  }),
+            }),
+          ),
+      ),
+    });
+  const definitionCatalog = catalog(false);
+  return Object.freeze({
+    definitionCatalog,
+    databaseOptions: Object.freeze({
+      definitionCatalog,
       placementDefinitionCatalog: catalog(true),
       validateAuthoringGraph: (
         graph: WorkflowGraph,
@@ -106,22 +93,8 @@ function scheduleAuthoringOptions(
           checksum: compiled.checksum,
           executableSchemaVersion: 2 as const,
           executableJson: compiled.envelope,
-          compatibilityReleaseEpoch:
-            compiled.envelope.compatibilityReleaseEpoch,
-          compatibilityReleaseFingerprint:
-            compiled.envelope.compatibilityReleaseFingerprint,
         };
       },
-    };
-  });
-  const latest = variants.at(-1);
-  if (latest === undefined)
-    throw new Error('Schedule release history is empty');
-  return Object.freeze({
-    definitionCatalog: latest.definitionCatalog,
-    databaseOptions: Object.freeze({
-      compatibilityReadinessReleases: readiness.descriptions,
-      compatibilityReleaseVariants: variants,
     }),
   });
 }
@@ -143,9 +116,6 @@ export interface ScheduleTriggerFixture {
   ) => Promise<QueryResult<Row>>;
   readonly queue: Queue;
   readonly redisUrl: string;
-  readonly scheduleCompatibility: ReturnType<
-    typeof createExecutableCompatibilityReleaseSupport
-  >['descriptions'];
   readonly setup: () => Promise<void>;
   readonly workerConfig: DatabaseConfig;
   readonly workerQuery: <Row extends QueryResultRow = QueryResultRow>(
@@ -227,9 +197,6 @@ export function createScheduleTriggerFixture(
       return authoringValidator.validate(...args);
     },
   });
-  const scheduleCompatibility = createExecutableCompatibilityReleaseSupport(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-  ).descriptions;
 
   let owner: Pool | undefined;
   let apiEvidence: Pool | undefined;
@@ -456,7 +423,6 @@ export function createScheduleTriggerFixture(
       return queue;
     },
     redisUrl,
-    scheduleCompatibility,
     setup,
     workerConfig,
     workerQuery,

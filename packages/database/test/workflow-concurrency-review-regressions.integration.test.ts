@@ -338,9 +338,8 @@ async function publishExecutableVersion(): Promise<void> {
     await client.query(
       `insert into app.workflow_versions (
          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-         checksum,executable_schema_version,executable_json,
-         compatibility_release_epoch,published_by
-       ) values ($1,$2,$3,1,1,'{}'::jsonb,$4,2,$5::jsonb,1,$6)
+         checksum,executable_schema_version,executable_json,published_by
+       ) values ($1,$2,$3,1,1,'{}'::jsonb,$4,2,$5::jsonb,$6)
        on conflict (id) do nothing`,
       [
         workflowVersionId,

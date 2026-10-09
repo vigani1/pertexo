@@ -2,7 +2,6 @@ import { parseRegistryRelease, type RegistryRelease } from '@pertexo/node-sdk';
 import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { graphValidationIndex } from './graph-validation-index.js';
-import { executableNodes } from './graph.js';
 import { parseBoundary } from './boundary.js';
 import {
   assertBranchesDoNotReconverge,
@@ -12,10 +11,7 @@ import {
   definitionManifest,
   executorManifest,
 } from './graph-rules.js';
-import {
-  computeWorkflowExecutableChecksum,
-  selectionFingerprint,
-} from './identity.js';
+import { computeWorkflowExecutableChecksum } from './identity.js';
 import {
   type CompiledWorkflowExecutable,
   BASELINE_RUNTIME_POLICIES,
@@ -120,17 +116,9 @@ function buildBoundary(input: {
     sourceGraphSchemaVersion: 1,
     graph: executableGraph,
     runtimePolicies: BASELINE_RUNTIME_POLICIES,
-    configMigrations: [],
-    compatibilitySelectionFingerprint: selectionFingerprint(
-      release,
-      executableNodes(executableGraph),
-      BASELINE_RUNTIME_POLICIES,
-    ),
-    compatibilityReleaseEpoch: release.epoch,
-    compatibilityReleaseFingerprint: release.fingerprint,
   };
   const normalizedEnvelope = freezeExecutable(
-    parseBoundary({ envelope, admissionRelease: release }),
+    parseBoundary({ envelope, release }),
   ) as VerifiedWorkflowExecutable;
   return registerExecutableIdentity(
     Object.freeze({

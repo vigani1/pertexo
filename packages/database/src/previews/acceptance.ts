@@ -30,9 +30,6 @@ import {
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
-const compatibilityFingerprintSchema = z
-  .string()
-  .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u);
 const identityKeySchema = z
   .string()
   .regex(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u);
@@ -54,8 +51,6 @@ const inputSourceSchema = z.discriminatedUnion('kind', [
 const acceptPreviewRunInputSchema = z
   .object({
     actorUserId: z.uuid(),
-    compatibilityReleaseEpoch: z.number().int().positive(),
-    compatibilityReleaseFingerprint: compatibilityFingerprintSchema,
     definitionKey: identityKeySchema,
     definitionVersion: z.number().int().positive(),
     draftFingerprint: sha256HexSchema,
@@ -401,8 +396,6 @@ export async function acceptPreviewRun(
       executorKey: parsed.executorKey,
       executorVersion: parsed.executorVersion,
       executionDeadlineAt: parsed.executionDeadlineAt,
-      compatibilityReleaseEpoch: parsed.compatibilityReleaseEpoch,
-      compatibilityReleaseFingerprint: parsed.compatibilityReleaseFingerprint,
       actorUserId: parsed.actorUserId,
       idempotencyKeyHash: parsed.keyHash,
       requestHash: parsed.requestHash,

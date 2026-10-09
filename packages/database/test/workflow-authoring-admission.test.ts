@@ -359,7 +359,6 @@ describe('snapshot validation and publication ordering', () => {
     const executableCompiler = vi.fn();
     const selectVariant = vi.fn().mockResolvedValue({
       definitionCatalog: catalog,
-      compatibilityRelease: undefined,
       executableCompiler,
       validateAuthoringGraph: validator,
     });

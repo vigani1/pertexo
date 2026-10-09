@@ -21,7 +21,6 @@ import { createPlatformPreviewNodeInvoker } from '../src/execution/preview-attem
 import {
   acceptDelivery,
   acceptWorkflowDelivery,
-  activateArtifactRelease,
   databaseUrl,
   providerEffectCount,
   redisConnectionOptions,
@@ -102,8 +101,6 @@ async function createValidateRuntime() {
 
 describeIntegration('core.validate persisted preview execution', () => {
   it('persists mismatch and matching results and survives exact redelivery after restart', async () => {
-    await activateArtifactRelease();
-
     const config = CORE_VALIDATE_CONFIG_SCHEMA.parse(validateConfigInput);
     const runInput = {
       profile: { email: 'bad', role: 'member' },
@@ -264,7 +261,6 @@ describeIntegration('core.validate persisted preview execution', () => {
 
 describeIntegration('core.validate persisted workflow execution', () => {
   it('executes a published Validate node through coordinator and attempt workers', async () => {
-    await activateArtifactRelease();
     const runInput = {
       profile: { email: 'bad', role: 'member' },
       secret: 'workflow-secret-must-not-be-echoed',

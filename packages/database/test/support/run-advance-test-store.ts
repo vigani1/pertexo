@@ -10,7 +10,6 @@ import {
   createRunAdvanceStore,
   type RunAdvanceStoreOptions,
 } from '../../src/runs/advance/store.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
 
 type AdvanceInput = Readonly<{
   delivery: CoordinatorAdvanceDelivery;
@@ -44,12 +43,9 @@ function withAdmissionKinds(plan: RunTransitionPlan): RunTransitionPlan {
 export function createTestRunStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-  options: Partial<RunAdvanceStoreOptions> = {},
+  options: RunAdvanceStoreOptions = {},
 ) {
-  const store = createRunAdvanceStore(config, runtime, {
-    compatibilityReleases: BASELINE_COMPATIBILITY_EXPECTATION,
-    ...options,
-  });
+  const store = createRunAdvanceStore(config, runtime, options);
   const readPool = new Pool({
     connectionString: config.connectionString,
     max: 1,
@@ -71,7 +67,6 @@ export function createTestRunStore(
         const loaded = await loadRunForAdvance(client, {
           workspaceId: input.workspaceId,
           runId: input.runId,
-          servingRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         });
         return loaded.kind === 'loaded'
           ? Object.freeze({ kind: 'ready' as const, state: loaded.state })

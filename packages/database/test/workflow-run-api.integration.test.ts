@@ -25,7 +25,6 @@ import {
   WorkflowPublishedVersionConflictError,
 } from '../src/runs/runs.repository.js';
 import type { ExecutionStateConflictError } from '../src/runs/state-errors.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { explainDocument, explainWork } from './support/query-plan.js';
 import { enforceRetention } from './support/retention.js';
@@ -64,7 +63,6 @@ const owner = new Pool({ connectionString: migrationUrl, max: 1 });
 const api = new Pool({ connectionString: apiUrl, max: 1 });
 const database = createWorkflowRunDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-  BASELINE_COMPATIBILITY_EXPECTATION,
 );
 const migrationConfig = {
   appRole: 'pertexo_app',
@@ -290,13 +288,12 @@ async function resetFixture(): Promise<void> {
   await ownerQuery(
     `insert into app.workflow_versions
        (id, workspace_id, workflow_id, version_number, schema_version,
-        graph_json, checksum, executable_schema_version, executable_json,
-        compatibility_release_epoch, published_by)
+        graph_json, checksum, executable_schema_version, executable_json, published_by)
      values
-       ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, 1, $7),
+       ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7),
        ($8, $2, $3, 2, 1,
         jsonb_set($4::jsonb, '{settings}', '{"maxRunDurationMs":5000}'::jsonb),
-        $9, 2, $10::jsonb, 1, $7)`,
+        $9, 2, $10::jsonb, $7)`,
     [
       workflowVersionId,
       workspaceId,
@@ -317,9 +314,8 @@ async function resetFixture(): Promise<void> {
   await ownerQuery(
     `insert into app.workflow_versions
        (id, workspace_id, workflow_id, version_number, schema_version,
-        graph_json, checksum, executable_schema_version, executable_json,
-        compatibility_release_epoch, published_by)
-     values ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, 1, $7)`,
+        graph_json, checksum, executable_schema_version, executable_json, published_by)
+     values ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7)`,
     [
       otherWorkflowVersionId,
       otherWorkspaceId,
@@ -584,12 +580,11 @@ describe('workflow run API persistence', () => {
     await ownerQuery(
       `insert into app.workflow_versions
          (id, workspace_id, workflow_id, version_number, schema_version,
-          graph_json, checksum, executable_schema_version, executable_json,
-          compatibility_release_epoch, published_by)
+          graph_json, checksum, executable_schema_version, executable_json, published_by)
        select gen_random_uuid(), $1, workflow.id, 1, 1,
               '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
               'wf:v2:sha256:' || repeat('d', 64), 2,
-              '{"schemaVersion":2}'::jsonb, 1, $2
+              '{"schemaVersion":2}'::jsonb, $2
        from app.workflows workflow
        where workflow.workspace_id = $1
          and workflow.name similar to '(Common|Selective|Other)%'`,
@@ -1649,9 +1644,8 @@ describe('workflow run API persistence', () => {
     await ownerQuery(
       `insert into app.workflow_versions
          (id, workspace_id, workflow_id, version_number, schema_version,
-          graph_json, checksum, executable_schema_version, executable_json,
-          compatibility_release_epoch, published_by)
-       values ($1, $2, $3, 3, 1, $4::jsonb, $5, 2, $6::jsonb, 1, $7)`,
+          graph_json, checksum, executable_schema_version, executable_json, published_by)
+       values ($1, $2, $3, 3, 1, $4::jsonb, $5, 2, $6::jsonb, $7)`,
       [
         loopVersionId,
         workspaceId,

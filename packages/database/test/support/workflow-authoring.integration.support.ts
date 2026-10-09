@@ -16,7 +16,7 @@ import {
 } from '../../src/connections/connections.js';
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
+import { BASELINE_RELEASE_FINGERPRINT } from '../baseline-compatibility-fixture.js';
 import { IdempotencyConflictError } from '../../src/platform/idempotency.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
 import {
@@ -132,7 +132,7 @@ export const testDefinitionCatalog = Object.freeze({
 });
 export const baselineEmptyDefinitionCatalog = Object.freeze({
   schemaVersion: 1 as const,
-  releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
   definitions: Object.freeze([]),
 });
 export let authoring: WorkflowAuthoringDatabase;
@@ -528,9 +528,9 @@ afterAll(async () => {
 });
 
 export {
+  BASELINE_RELEASE_FINGERPRINT,
   CONNECTION_AUTH_TYPE,
   EMPTY_DEFINITION_CATALOG,
-  BASELINE_COMPATIBILITY_EXPECTATION,
   IdempotencyConflictError,
   Pool,
   WorkflowNotFoundError,

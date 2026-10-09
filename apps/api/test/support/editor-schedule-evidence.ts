@@ -8,7 +8,6 @@ import {
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
   verifyWorkflowExecutable,
 } from '@pertexo/workflow-engine';
 import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
@@ -19,25 +18,6 @@ export const scheduleCatalogRelease =
 const scheduleExecutableRelease = composeExecutableCompatibilityRelease(
   PLATFORM_REGISTRY_RELEASE,
 );
-export const scheduleExecutableReleaseDescription =
-  describeExecutableCompatibilityRelease(scheduleExecutableRelease);
-
-/** Discovery and execution fingerprint different policy sets in one cohort. */
-export function verifyScheduleReleasePairs(
-  catalogInput: unknown,
-  executableInput: unknown,
-) {
-  expect(scheduleCatalogRelease.epoch).toBe(
-    scheduleExecutableReleaseDescription.epoch,
-  );
-  expect(catalogReleaseSchema.parse(catalogInput)).toEqual(
-    scheduleCatalogRelease,
-  );
-  expect(catalogReleaseSchema.parse(executableInput)).toEqual({
-    epoch: scheduleExecutableReleaseDescription.epoch,
-    fingerprint: scheduleExecutableReleaseDescription.fingerprint,
-  });
-}
 export const scheduleScopeSchema = z.strictObject({
   workspaceId: z.uuid(),
   workflowId: z.uuid(),
@@ -143,20 +123,18 @@ export async function verifyScheduleEvidence(
     evidence.firstDueAt,
     evidence.scheduledAt,
   );
-  verifyScheduleReleasePairs(evidence.catalogRelease, {
-    epoch: scheduleExecutableReleaseDescription.epoch,
-    fingerprint: scheduleExecutableReleaseDescription.fingerprint,
-  });
+  expect(catalogReleaseSchema.parse(evidence.catalogRelease)).toEqual(
+    scheduleCatalogRelease,
+  );
   const scope = [evidence.workspaceId, evidence.workflowId];
   const versions = await database.query<{
     id: string;
     graph_json: unknown;
     checksum: string;
     executable_schema_version: number;
-    compatibility_release_epoch: number;
     executable_json: unknown;
   }>(
-    'select id,graph_json,checksum,executable_schema_version,compatibility_release_epoch,executable_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2',
+    'select id,graph_json,checksum,executable_schema_version,executable_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2',
     scope,
   );
   expect(versions.rows).toHaveLength(1);
@@ -164,15 +142,10 @@ export async function verifyScheduleEvidence(
   if (version === undefined) throw new Error('Owned immutable version missing');
   expect(version.id).toBe(evidence.workflowVersionId);
   expect(version.executable_schema_version).toBe(2);
-  expect(version.compatibility_release_epoch).toBe(
-    scheduleExecutableReleaseDescription.epoch,
-  );
-  // This new version was published by this fixture's current cohort. Retained
-  // historical versions need their own admission release, not this expectation.
   verifyWorkflowExecutable({
     envelope: version.executable_json,
     checksum: version.checksum,
-    admissionRelease: scheduleExecutableRelease,
+    release: scheduleExecutableRelease,
   });
   const graph = workflowGraphSchema.parse(version.graph_json);
   const draft = await database.query<{ graph_json: unknown }>(

@@ -21,7 +21,6 @@ vi.mock('../src/platform/postgres-telemetry.js', () => ({
 }));
 
 import type { DatabaseConfig } from '../src/config.js';
-import type { CompatibilityReleaseExpectation } from '../src/compatibility/compatibility-release.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 import { createPublishedWorkflowReader } from '../src/runs/published-workflow.js';
 import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher.js';
@@ -40,26 +39,15 @@ const acceptanceConfig: DatabaseConfig = {
   ...config,
   connectionString: 'postgresql://api:secret@db/pertexo',
 };
-const release: CompatibilityReleaseExpectation = Object.freeze({
-  epoch: 1,
-  fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-  catalogJson:
-    '{"domain":"pertexo.node-compatibility-release","schemaVersion":1}',
-});
 
 describe('trigger repository construction ownership', () => {
   beforeEach(() => {
     database.pools.length = 0;
   });
 
-  it('rejects invalid webhook compatibility before creating a pool', () => {
-    expect(() => createWebhookTriggerDatabase(config, [])).toThrow();
-    expect(database.pools).toHaveLength(0);
-  });
-
   it('keeps an injected webhook runtime borrowed and closes owned pools once', async () => {
     const runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
-    const borrowed = createWebhookTriggerDatabase(config, release, runtime);
+    const borrowed = createWebhookTriggerDatabase(config, runtime);
     expect(database.pools).toHaveLength(1);
 
     await borrowed.close();
@@ -67,28 +55,15 @@ describe('trigger repository construction ownership', () => {
     await runtime.close();
     expect(database.pools[0]?.end).toHaveBeenCalledOnce();
 
-    const owned = createWebhookTriggerDatabase(config, release);
+    const owned = createWebhookTriggerDatabase(config);
     await Promise.all([owned.close(), owned.close()]);
     expect(database.pools[1]?.end).toHaveBeenCalledOnce();
   });
 
-  it('rejects invalid scanner compatibility before either pool lease', () => {
-    expect(() =>
-      createScheduleTriggerScanner(config, [], acceptanceConfig),
-    ).toThrow();
-    expect(database.pools).toHaveLength(0);
-  });
-
-  it('rejects invalid execution-reader compatibility before creating a pool', () => {
-    expect(() => createPublishedWorkflowReader(config, [])).toThrow();
-    expect(() => createWorkflowRunDatabase(config, [])).toThrow();
-    expect(database.pools).toHaveLength(0);
-  });
-
   it('performs no checkout for pre-aborted execution reads', async () => {
     const signal = AbortSignal.abort();
-    const reader = createPublishedWorkflowReader(config, release);
-    const runs = createWorkflowRunDatabase(config, release);
+    const reader = createPublishedWorkflowReader(config);
+    const runs = createWorkflowRunDatabase(config);
 
     await expect(
       reader.readForExecution({
@@ -111,8 +86,8 @@ describe('trigger repository construction ownership', () => {
 
   it('keeps an execution-reader runtime caller-owned', async () => {
     const runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
-    const reader = createPublishedWorkflowReader(config, release, runtime);
-    const runs = createWorkflowRunDatabase(config, release, runtime);
+    const reader = createPublishedWorkflowReader(config, runtime);
+    const runs = createWorkflowRunDatabase(config, runtime);
     await Promise.all([reader.close(), runs.close()]);
     expect(database.pools[0]?.end).not.toHaveBeenCalled();
     await runtime.close();
@@ -264,7 +239,7 @@ describe('trigger repository construction ownership', () => {
       monitorLockWaits: false,
     });
     expect(() =>
-      createScheduleTriggerScanner(config, release, acceptanceConfig, {
+      createScheduleTriggerScanner(config, acceptanceConfig, {
         acceptance: wrongAcceptanceRuntime,
       }),
     ).toThrow('authority does not match');
@@ -284,12 +259,10 @@ describe('trigger repository construction ownership', () => {
     const acceptanceRuntime = createDatabaseRuntime(acceptanceConfig, {
       monitorLockWaits: false,
     });
-    const scanner = createScheduleTriggerScanner(
-      config,
-      release,
-      acceptanceConfig,
-      { acceptance: acceptanceRuntime, claim: claimRuntime },
-    );
+    const scanner = createScheduleTriggerScanner(config, acceptanceConfig, {
+      acceptance: acceptanceRuntime,
+      claim: claimRuntime,
+    });
 
     await scanner.close();
     expect(database.pools[0]?.end).not.toHaveBeenCalled();
@@ -300,11 +273,7 @@ describe('trigger repository construction ownership', () => {
   });
 
   it('attempts both owned scanner closers when each rejects', async () => {
-    const scanner = createScheduleTriggerScanner(
-      config,
-      release,
-      acceptanceConfig,
-    );
+    const scanner = createScheduleTriggerScanner(config, acceptanceConfig);
     const firstFailure = new Error('claim pool close failed');
     const secondFailure = new Error('acceptance pool close failed');
     database.pools[0]?.end.mockRejectedValueOnce(firstFailure);

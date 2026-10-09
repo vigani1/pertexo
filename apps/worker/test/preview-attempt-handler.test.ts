@@ -27,8 +27,6 @@ const previewAttemptId = randomUUID();
 function leaseFixture(): PreviewAttemptLease {
   return {
     attemptFenceToken: 1,
-    compatibilityReleaseEpoch: 1,
-    compatibilityReleaseFingerprint: 'node-compat:v1:sha256:' + 'a'.repeat(64),
     definitionKey: 'core.set',
     definitionVersion: 1,
     dryRun: 'not_supported',

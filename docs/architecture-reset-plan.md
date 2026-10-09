@@ -248,6 +248,16 @@ now, as one ordered program — not "whenever we touch it".
         move to `test/support`, files are named by role and version
         suffixes go. The compatibility-release functions stay until the
         node-sdk pass removes release machinery.
+  - [ ] Release machinery (crosses node-sdk, node-catalog, the engine and
+        the database):
+    - [x] The API and worker serve one release with every node; successor
+          releases, release history and lifecycle transitions go
+          ([#189](https://github.com/vigani1/pertexo/pull/189)).
+    - [x] Published executables and preview runs no longer pin a release:
+          the engine checks a stored executable against the served catalog,
+          and migration 0017 drops the epoch and fingerprint columns.
+    - [ ] The node catalog has no lifecycles or release fingerprints, and
+          node manifests have one grammar.
   - [ ] node-sdk
   - [ ] nodes-core
   - [ ] integrations

@@ -9,7 +9,6 @@ import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-w
 import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/runs/published-workflow.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './support/workflow-authoring-admission.fixture.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =
@@ -51,11 +50,9 @@ const authoring = createWorkflowAuthoringDatabase(
 );
 const apiReader = createPublishedWorkflowReader(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-  BASELINE_COMPATIBILITY_EXPECTATION,
 );
 const workerReader = createPublishedWorkflowReader(
   parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
-  BASELINE_COMPATIBILITY_EXPECTATION,
 );
 
 const actorId = randomUUID();
@@ -159,11 +156,10 @@ beforeAll(async () => {
   await executeAsOwner(
     `insert into app.workflow_versions (
        id, workspace_id, workflow_id, version_number, schema_version,
-       graph_json, checksum, executable_schema_version, executable_json,
-       compatibility_release_epoch, published_by
+       graph_json, checksum, executable_schema_version, executable_json, published_by
      ) values
-       ($1, $3, $4, 1, 1, $5::jsonb, $6, null, null, null, $9),
-       ($2, $3, $4, 2, 1, $5::jsonb, $7, 2, $8::jsonb, 7, $9)`,
+       ($1, $3, $4, 1, 1, $5::jsonb, $6, null, null, $9),
+       ($2, $3, $4, 2, 1, $5::jsonb, $7, 2, $8::jsonb, $9)`,
     [
       v1VersionId,
       v2VersionId,
@@ -229,8 +225,6 @@ describe('PublishedWorkflowReader', () => {
       kind: 'v2_projection',
       workflowVersion: {
         checksum: `wf:v2:sha256:${'2'.repeat(64)}`,
-        compatibilityReleaseEpoch: 7,
-        currentCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         executableJson: { schemaVersion: 2, nodes: [], edges: [] },
         executableSchemaVersion: 2,
         id: v2VersionId,
@@ -258,8 +252,7 @@ describe('PublishedWorkflowReader', () => {
     await expect(
       queryAsWorker(
         `select id, workspace_id, workflow_id, version_number, schema_version,
-                checksum, executable_schema_version, executable_json,
-                compatibility_release_epoch
+                checksum, executable_schema_version, executable_json
          from app.workflow_versions where id = $1`,
         [v2VersionId],
         workspaceId,
@@ -283,15 +276,14 @@ describe('PublishedWorkflowReader', () => {
   it('rejects partial, malformed and oversized executable rows and keeps versions append-only', async () => {
     const insertPrefix = `insert into app.workflow_versions
       (id, workspace_id, workflow_id, version_number, schema_version,
-       graph_json, checksum, executable_schema_version, executable_json,
-       compatibility_release_epoch, published_by) values`;
+       graph_json, checksum, executable_schema_version, executable_json, published_by) values`;
     const cases = [
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 10,
-        1, '{}', 'wf:v2:sha256:${'a'.repeat(64)}', 2, '{}', null, '${actorId}')`,
+        1, '{}', 'wf:v2:sha256:${'a'.repeat(64)}', 2, null, '${actorId}')`,
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 11,
-        1, '{}', 'wf:v2:sha256:${'b'.repeat(64)}', 2, '[]', 1, '${actorId}')`,
+        1, '{}', 'wf:v2:sha256:${'b'.repeat(64)}', 2, '[]', '${actorId}')`,
       `${insertPrefix} ('${randomUUID()}', '${workspaceId}', '${workflowId}', 12,
-        1, '{}', 'wf:v1:sha256:${'c'.repeat(64)}', 2, '{}', 1, '${actorId}')`,
+        1, '{}', 'wf:v1:sha256:${'c'.repeat(64)}', 2, '{}', '${actorId}')`,
     ];
     for (const statement of cases) {
       await expect(executeAsOwner(statement)).rejects.toSatisfy(
@@ -301,7 +293,7 @@ describe('PublishedWorkflowReader', () => {
     await expect(
       executeAsOwner(
         `${insertPrefix} ($1, $2, $3, 13, 1, '{}', $4, 2,
-          jsonb_build_object('payload', $5::text), 1, $6)`,
+          jsonb_build_object('payload', $5::text), $6)`,
         [
           randomUUID(),
           workspaceId,

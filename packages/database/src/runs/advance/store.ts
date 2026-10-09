@@ -2,13 +2,6 @@ import type { Pool } from 'pg';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
-  parseCompatibilityReleaseExpectation,
-  parseCompatibilityReleaseExpectationSet,
-  selectServingCompatibilityRelease,
-  type CompatibilityReleaseExpectation,
-  type CompatibilityReleaseExpectationSet,
-} from '../../compatibility/compatibility-release.js';
-import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/database-runtime.js';
@@ -37,9 +30,6 @@ import {
 } from './transactions.js';
 
 export type RunAdvanceStoreOptions = Readonly<{
-  /** The releases this worker serves; the newest is the current one. */
-  compatibilityReleases:
-    CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet;
   runTimeoutFailureContextEnabled?: boolean;
   /** ADR 055: record terminal failures for the workspace inbox. */
   workspaceInboxProducerEnabled?: boolean;
@@ -52,7 +42,6 @@ async function advance(
   input: RunAdvanceInput,
   decide: (state: RunAdvanceState) => Promise<RunAdvanceDecision>,
   context: Readonly<{
-    servingRelease: CompatibilityReleaseExpectation;
     settings: RunAdvanceSettings;
   }>,
 ): Promise<RunAdvanceResult> {
@@ -77,7 +66,6 @@ async function advance(
         const loaded = await loadRunForAdvance(client, {
           workspaceId,
           runId,
-          servingRelease: context.servingRelease,
         });
         if (loaded.kind !== 'loaded') return loaded;
         assertCoordinatorNotAborted(signal);
@@ -133,16 +121,10 @@ async function advance(
 
 export function createRunAdvanceStore(
   config: DatabaseConfig,
-  runtime: DatabaseRuntime | undefined,
-  options: RunAdvanceStoreOptions,
+  runtime?: DatabaseRuntime,
+  options: RunAdvanceStoreOptions = {},
 ): RunAdvanceStore {
-  const releases = Array.isArray(options.compatibilityReleases)
-    ? parseCompatibilityReleaseExpectationSet(options.compatibilityReleases)
-    : Object.freeze([
-        parseCompatibilityReleaseExpectation(options.compatibilityReleases),
-      ]);
   const context = Object.freeze({
-    servingRelease: selectServingCompatibilityRelease(releases),
     settings: Object.freeze({
       runTimeoutFailureContextEnabled:
         options.runTimeoutFailureContextEnabled ?? false,

@@ -28,14 +28,14 @@ const scheduleGraph: WorkflowGraph = {
   edges: [],
 };
 
-function variants(fixture: ReturnType<typeof createScheduleTriggerFixture>) {
+function admission(fixture: ReturnType<typeof createScheduleTriggerFixture>) {
   const options: WorkflowAuthoringDatabaseOptions =
     fixture.authoringOptions.databaseOptions;
-  return options.compatibilityReleaseVariants ?? [];
+  return options.validateAuthoringGraph;
 }
 
 describe('Schedule fixture authoring admission ownership', () => {
-  it('forwards every retained release policy and command through the same fixture owner', async () => {
+  it('forwards the catalog policies and command through the same fixture owner', async () => {
     const fixture = createScheduleTriggerFixture({});
     const validate = vi
       .spyOn(WorkflowAuthoringValidator.prototype, 'validate')
@@ -46,46 +46,34 @@ describe('Schedule fixture authoring admission ownership', () => {
         worstCaseLoopIterations: 0,
       });
     try {
-      const releases = [PLATFORM_REGISTRY_RELEASE];
       const command = { signal: new AbortController().signal };
-      expect(releases.length).toBeGreaterThan(0);
-      expect(variants(fixture)).toHaveLength(releases.length);
-      for (const [index, variant] of variants(fixture).entries()) {
-        expect(variant.validateAuthoringGraph).toBeTypeOf('function');
-        if (variant.validateAuthoringGraph === undefined)
-          throw new Error('Schedule authoring admission is not wired');
-        const release = releases[index];
-        if (release === undefined)
-          throw new Error('Retained release is missing');
-        const fingerprint =
-          composeExecutableCompatibilityRelease(release).fingerprint;
-        expect(variant.compatibilityRelease.fingerprint).toBe(fingerprint);
-        await variant.validateAuthoringGraph(scheduleGraph, command);
-        expect(validate).toHaveBeenLastCalledWith(
-          scheduleGraph,
-          {
-            releaseFingerprint: fingerprint,
-            definitions: release.definitions.map((manifest) => ({
+      const validateAuthoringGraph = admission(fixture);
+      if (validateAuthoringGraph === undefined)
+        throw new Error('Schedule authoring admission is not wired');
+      await validateAuthoringGraph(scheduleGraph, command);
+      expect(validate).toHaveBeenLastCalledWith(
+        scheduleGraph,
+        {
+          releaseFingerprint: composeExecutableCompatibilityRelease(
+            PLATFORM_REGISTRY_RELEASE,
+          ).fingerprint,
+          definitions: PLATFORM_REGISTRY_RELEASE.definitions.map(
+            (manifest) => ({
               definition: {
                 key: manifest.definition.key,
                 version: manifest.definition.version,
               },
               policyReferences: manifest.policyReferences.map(
-                ({ key, version }) => ({
-                  key,
-                  version,
-                }),
+                ({ key, version }) => ({ key, version }),
               ),
-            })),
-          },
-          command,
-        );
-        expect(validate.mock.lastCall?.[0]).toBe(scheduleGraph);
-        expect(validate.mock.lastCall?.[2]).toBe(command);
-        expect(validate.mock.lastCall?.[2]?.signal).toBe(command.signal);
-      }
-      expect(validate).toHaveBeenCalledTimes(releases.length);
-      expect(new Set(validate.mock.contexts).size).toBe(1);
+            }),
+          ),
+        },
+        command,
+      );
+      expect(validate.mock.lastCall?.[0]).toBe(scheduleGraph);
+      expect(validate.mock.lastCall?.[2]).toBe(command);
+      expect(validate).toHaveBeenCalledOnce();
       expect(validate.mock.contexts[0]).toBeInstanceOf(
         WorkflowAuthoringValidator,
       );
@@ -101,7 +89,7 @@ describe('Schedule fixture authoring admission ownership', () => {
   it('rejects malformed expressions through the real restricted parser', async () => {
     const fixture = createScheduleTriggerFixture({});
     try {
-      const validate = variants(fixture).at(-1)?.validateAuthoringGraph;
+      const validate = admission(fixture);
       expect(validate).toBeTypeOf('function');
       if (validate === undefined) throw new Error('Admission is not wired');
       const schedule = scheduleGraph.nodes[0];
@@ -139,7 +127,7 @@ describe('Schedule fixture authoring admission ownership', () => {
 
   it('preserves cancellation and closes the admission owner idempotently', async () => {
     const fixture = createScheduleTriggerFixture({});
-    const validate = variants(fixture).at(-1)?.validateAuthoringGraph;
+    const validate = admission(fixture);
     try {
       expect(validate).toBeTypeOf('function');
       if (validate === undefined) throw new Error('Admission is not wired');
@@ -164,7 +152,7 @@ describe('Schedule fixture authoring admission ownership', () => {
 
   it('does not acquire an admission worker after a never-started fixture closes', async () => {
     const fixture = createScheduleTriggerFixture({});
-    const validate = variants(fixture).at(-1)?.validateAuthoringGraph;
+    const validate = admission(fixture);
     const closing = fixture.close();
     try {
       expect(validate).toBeTypeOf('function');

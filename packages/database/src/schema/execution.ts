@@ -313,11 +313,6 @@ export const previewRuns = appSchema.table(
     definitionVersion: integer('definition_version').notNull(),
     executorKey: varchar('executor_key', { length: 128 }).notNull(),
     executorVersion: integer('executor_version').notNull(),
-    compatibilityReleaseEpoch: integer('compatibility_release_epoch').notNull(),
-    compatibilityReleaseFingerprint: varchar(
-      'compatibility_release_fingerprint',
-      { length: 128 },
-    ).notNull(),
     actorUserId: uuid('actor_user_id').notNull(),
     idempotencyKeyHash: varchar('idempotency_key_hash', {
       length: 64,

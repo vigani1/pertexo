@@ -1,4 +1,3 @@
-import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
 import type { PublishedWorkflowV2Projection } from './published-workflow.js';
 
 /**
@@ -7,5 +6,4 @@ import type { PublishedWorkflowV2Projection } from './published-workflow.js';
  */
 export type InitialCheckpointFactory = (
   projection: PublishedWorkflowV2Projection,
-  currentCompatibilityRelease: CompatibilityReleaseExpectation,
 ) => Readonly<{ engineVersion: string; checkpoint: unknown }>;

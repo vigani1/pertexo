@@ -34,8 +34,6 @@ async function loadPreviewLease(
 ): Promise<PreviewAttemptLease> {
   const runs = await client.query<
     Readonly<{
-      compatibility_release_epoch: number;
-      compatibility_release_fingerprint: string;
       definition_key: string;
       definition_version: number;
       dry_run: string;
@@ -53,8 +51,7 @@ async function loadPreviewLease(
       workflow_id: string;
     }> & { execution_deadline_at: Date; retention_expires_at: Date }
   >(
-    `select compatibility_release_epoch,compatibility_release_fingerprint,
-            definition_key,definition_version,dry_run,executable_node_json,
+    `select definition_key,definition_version,dry_run,executable_node_json,
             executor_key,executor_version,input_ref,may_contact_provider,
              may_cause_external_side_effect,node_id,operation_key,provider_key,
              side_effect_class,
@@ -93,8 +90,6 @@ async function loadPreviewLease(
       .nonnegative()
       .parse(input.attemptFenceToken),
     workspaceId: input.workspaceId,
-    compatibilityReleaseEpoch: run.compatibility_release_epoch,
-    compatibilityReleaseFingerprint: run.compatibility_release_fingerprint,
     definitionKey: run.definition_key,
     definitionVersion: run.definition_version,
     dryRun: z.enum(['not_supported', 'provider_supported']).parse(run.dry_run),

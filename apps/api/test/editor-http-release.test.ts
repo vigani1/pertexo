@@ -1,20 +1,8 @@
 import { expect, it } from 'vitest';
-import {
-  platformBrowserNodeDefinitionCatalog,
-  PLATFORM_REGISTRY_RELEASE,
-} from '@pertexo/node-catalog';
-import {
-  composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
-} from '@pertexo/workflow-engine';
+import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
 
-it('the HTTP gate uses one cohort while respecting distinct browser and executable fingerprints', () => {
+it('the HTTP gate exposes every editor node as available and publishable', () => {
   const catalog = platformBrowserNodeDefinitionCatalog();
-  const executable = describeExecutableCompatibilityRelease(
-    composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
-  );
-  expect(catalog.release.epoch).toBe(executable.epoch);
-  expect(catalog.release.fingerprint).not.toBe(executable.fingerprint);
   for (const key of [
     'core.webhook',
     'core.validate',

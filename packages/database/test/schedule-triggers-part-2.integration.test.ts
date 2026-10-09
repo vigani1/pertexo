@@ -76,10 +76,9 @@ describe('schedule trigger PostgreSQL slice', () => {
     );
     await ownerQuery(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-         schema_version,graph_json,checksum,executable_schema_version,executable_json,
-         compatibility_release_epoch,published_by)
+         schema_version,graph_json,checksum,executable_schema_version,executable_json,published_by)
        values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
-         $4,2,'{}'::jsonb,1,$5)`,
+         $4,2,'{}'::jsonb,$5)`,
       [
         dedupeVersionId,
         workspaceId,
@@ -268,10 +267,9 @@ describe('schedule trigger PostgreSQL slice', () => {
     );
     await ownerQuery(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-         schema_version,graph_json,checksum,executable_schema_version,executable_json,
-         compatibility_release_epoch,published_by)
+         schema_version,graph_json,checksum,executable_schema_version,executable_json,published_by)
        values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
-         $4,2,'{}'::jsonb,1,$5)`,
+         $4,2,'{}'::jsonb,$5)`,
       [
         healthVersionId,
         workspaceId,
@@ -436,9 +434,9 @@ describe('schedule trigger PostgreSQL slice', () => {
     const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(nextTriggerId).digest('hex')}`;
     await ownerQuery(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,
-         graph_json,checksum,executable_schema_version,executable_json,compatibility_release_epoch,published_by)
+         graph_json,checksum,executable_schema_version,executable_json,published_by)
        values($1,$2,$3,2,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
-         $4,2,'{}'::jsonb,1,$5)`,
+         $4,2,'{}'::jsonb,$5)`,
       [
         nextVersionId,
         workspaceId,

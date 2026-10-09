@@ -4,7 +4,6 @@ import { createWorkflowAuthoringDatabase as createUnwiredAuthoringDatabase } fro
 
 import {
   CONNECTION_AUTH_TYPE,
-  BASELINE_COMPATIBILITY_EXPECTATION,
   actorId,
   apiPool,
   apiUrl,
@@ -413,22 +412,15 @@ describe('workflow publication projections', () => {
     const executableJson = {
       schemaVersion: 2,
       marker: 'compiled-in-api',
-      compatibilityReleaseEpoch: 1,
-      compatibilityReleaseFingerprint:
-        BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
     };
     const executableAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
-        compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         definitionCatalog: executableDefinitionCatalog,
         executableCompiler: () => ({
           checksum,
           executableSchemaVersion: 2,
           executableJson,
-          compatibilityReleaseEpoch: 1,
-          compatibilityReleaseFingerprint:
-            BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
         }),
       },
     );
@@ -460,8 +452,7 @@ describe('workflow publication projections', () => {
       expect(published.version.checksum).toBe(checksum);
       await expect(
         queryAsOwner(
-          `select checksum, executable_schema_version, executable_json,
-                  compatibility_release_epoch
+          `select checksum, executable_schema_version, executable_json
              from app.workflow_versions
             where workspace_id = $1 and id = $2`,
           [workspaceId, published.version.id],
@@ -472,18 +463,12 @@ describe('workflow publication projections', () => {
           checksum,
           executable_schema_version: 2,
           executable_json: executableJson,
-          compatibility_release_epoch: 1,
         },
       ]);
 
       const drifted = createWorkflowAuthoringDatabase(
         parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
         {
-          compatibilityRelease: {
-            ...BASELINE_COMPATIBILITY_EXPECTATION,
-            fingerprint:
-              'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-          },
           definitionCatalog: {
             schemaVersion: 1,
             releaseFingerprint:
@@ -494,9 +479,6 @@ describe('workflow publication projections', () => {
             checksum,
             executableSchemaVersion: 2,
             executableJson,
-            compatibilityReleaseEpoch: 1,
-            compatibilityReleaseFingerprint:
-              BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
           }),
         },
       );
@@ -516,47 +498,11 @@ describe('workflow publication projections', () => {
         await drifted.close();
       }
 
-      const corruptCompiler = createWorkflowAuthoringDatabase(
-        parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-        {
-          compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
-          definitionCatalog: {
-            schemaVersion: 1,
-            releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
-            definitions: [],
-          },
-          executableCompiler: () => ({
-            checksum,
-            executableSchemaVersion: 2,
-            executableJson: {
-              ...executableJson,
-              compatibilityReleaseFingerprint:
-                'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-            },
-            compatibilityReleaseEpoch: 1,
-            compatibilityReleaseFingerprint:
-              BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
-          }),
-        },
-      );
-      try {
-        await expect(
-          corruptCompiler.publishWorkflow({
-            ...command,
-            idempotencyKey: 'publish-v2-corrupt-envelope-release',
-            requestHash: '9'.repeat(64),
-          }),
-        ).rejects.toThrow('does not match the locked authority');
-      } finally {
-        await corruptCompiler.close();
-      }
-
       await queryAsOwner(
         `insert into app.workflow_versions
            (id,workspace_id,workflow_id,version_number,schema_version,
-            graph_json,checksum,executable_schema_version,executable_json,
-            compatibility_release_epoch,published_by)
-         values($1,$2,$3,2,1,'{}'::jsonb,$4,2,$5::jsonb,1,$6)
+            graph_json,checksum,executable_schema_version,executable_json,published_by)
+         values($1,$2,$3,2,1,'{}'::jsonb,$4,2,$5::jsonb,$6)
          returning id`,
         [
           randomUUID(),
