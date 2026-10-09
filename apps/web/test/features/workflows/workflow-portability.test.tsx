@@ -5,10 +5,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   accessibleWorkspaceSchema,
   workflowSummarySchema,
+} from '@pertexo/contracts';
+import {
   portableGraphDigest,
   workflowPortableManifestSchema,
   WORKFLOW_PORTABILITY_LIMITS,
-} from '@pertexo/contracts';
+} from '@pertexo/workflow-model';
 import { WorkflowExportDialog } from '@/features/workflows/portability.public';
 import { WorkflowImportDialog } from '@/features/workflows/components/portability/workflow-import-dialog';
 import { createApiClient } from '@/lib/api/client';

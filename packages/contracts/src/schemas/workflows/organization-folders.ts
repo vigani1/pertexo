@@ -14,7 +14,7 @@ export const WORKFLOW_FOLDER_LIMITS = Object.freeze({
 });
 
 /** Display casing is retained. Sibling identity is an internal server concern. */
-export function normalizeWorkflowFolderName(name: string): string {
+function normalizeWorkflowFolderName(name: string): string {
   return trimSpaces(name);
 }
 export const workflowFolderNameSchema = z
@@ -33,8 +33,7 @@ export const workflowFolderNameInputSchema = z
   .describe(
     'Trim only outer U+0020; retain display casing. Runtime validation requires 1–128 UTF-8 bytes after trimming and rejects C0 controls and DEL.',
   );
-export const workflowFolderRevisionSchema =
-  workflowOrganizationRevisionSchema.clone();
+const workflowFolderRevisionSchema = workflowOrganizationRevisionSchema.clone();
 const identifier = z.uuid().overwrite((id) => id.toLowerCase());
 const canonicalIdentifier = z
   .uuid()
@@ -213,45 +212,20 @@ export const workflowOrganizationBulkResponseSchema = z
   .strict();
 
 export type WorkflowFolder = z.output<typeof workflowFolderSchema>;
-export type WorkflowFolderWorkspaceParams = z.output<
-  typeof workflowFolderWorkspaceParamsSchema
->;
-export type WorkflowFolderParams = z.output<typeof workflowFolderParamsSchema>;
-export type WorkflowFolderListQuery = z.output<
-  typeof workflowFolderListQuerySchema
->;
-export type WorkflowFolderListResponse = z.output<
-  typeof workflowFolderListResponseSchema
->;
 export type WorkflowFolderCreateRequest = z.output<
   typeof workflowFolderCreateRequestSchema
->;
-export type WorkflowFolderCreateResponse = z.output<
-  typeof workflowFolderCreateResponseSchema
 >;
 export type WorkflowFolderRenameRequest = z.output<
   typeof workflowFolderRenameRequestSchema
 >;
-export type WorkflowFolderRenameResponse = z.output<
-  typeof workflowFolderRenameResponseSchema
->;
 export type WorkflowFolderMoveRequest = z.output<
   typeof workflowFolderMoveRequestSchema
->;
-export type WorkflowFolderMoveResponse = z.output<
-  typeof workflowFolderMoveResponseSchema
 >;
 export type WorkflowFolderDeleteRequest = z.output<
   typeof workflowFolderDeleteRequestSchema
 >;
-export type WorkflowFolderDeleteResponse = z.output<
-  typeof workflowFolderDeleteResponseSchema
->;
 export type WorkflowFolderPlacementRequest = z.output<
   typeof workflowFolderPlacementRequestSchema
->;
-export type WorkflowFolderPlacementResponse = z.output<
-  typeof workflowFolderPlacementResponseSchema
 >;
 export type WorkflowOrganizationBulkItem = z.output<
   typeof workflowOrganizationBulkItemSchema
@@ -259,15 +233,6 @@ export type WorkflowOrganizationBulkItem = z.output<
 export type WorkflowOrganizationBulkRequest = z.output<
   typeof workflowOrganizationBulkRequestSchema
 >;
-export type WorkflowOrganizationBulkResponse = z.output<
-  typeof workflowOrganizationBulkResponseSchema
->;
 export type WorkflowOrganizationBulkItemOutcome = z.output<
   typeof workflowOrganizationBulkItemOutcomeSchema
->;
-export type WorkflowOrganizationBulkConflictCode = z.output<
-  typeof workflowOrganizationBulkConflictCodeSchema
->;
-export type WorkflowOrganizationFolderFilter = z.output<
-  typeof workflowOrganizationFolderFilterSchema
 >;

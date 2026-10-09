@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-export const WORKFLOW_INPUT_CASE_MAX_BYTES = 65_536;
-export const WORKFLOW_INPUT_CASE_MAX_DEPTH = 64;
-export const WORKFLOW_INPUT_CASE_MAX_MEMBERS = 10_000;
+const WORKFLOW_INPUT_CASE_MAX_BYTES = 65_536;
+const WORKFLOW_INPUT_CASE_MAX_DEPTH = 64;
+const WORKFLOW_INPUT_CASE_MAX_MEMBERS = 10_000;
 
 function supportedString(value: string): boolean {
   return (
@@ -105,7 +105,7 @@ export const workflowInputCaseJsonSchema = z
     'x-pertexo-runtime-max-members': WORKFLOW_INPUT_CASE_MAX_MEMBERS,
   });
 
-export const workflowInputCaseRevisionSchema = z
+const workflowInputCaseRevisionSchema = z
   .number()
   .int()
   .min(1)
@@ -141,7 +141,7 @@ export function parseWorkflowInputCaseTag(
   return { caseId, revision };
 }
 
-export const workflowInputCaseNameSchema = z
+const workflowInputCaseNameSchema = z
   .string()
   .trim()
   .min(1)
@@ -203,22 +203,10 @@ export const workflowInputCaseCommandResponseSchema = z
   })
   .strict();
 
-export type WorkflowInputCaseMetadata = z.output<
-  typeof workflowInputCaseMetadataSchema
->;
 export type WorkflowInputCase = z.output<typeof workflowInputCaseSchema>;
-export type WorkflowInputCaseResponse = z.output<
-  typeof workflowInputCaseResponseSchema
->;
-export type WorkflowInputCaseListResponse = z.output<
-  typeof workflowInputCaseListResponseSchema
->;
 export type WorkflowInputCaseCreateRequest = z.output<
   typeof workflowInputCaseCreateRequestSchema
 >;
 export type WorkflowInputCaseUpdateRequest = z.output<
   typeof workflowInputCaseUpdateRequestSchema
->;
-export type WorkflowInputCaseCommandResponse = z.output<
-  typeof workflowInputCaseCommandResponseSchema
 >;

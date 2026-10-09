@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const webhookCredentialSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
-export const webhookTriggerStatusSchema = z.enum([
+const webhookTriggerStatusSchema = z.enum([
   'desired',
   'configuration_required',
   'pending',
@@ -10,7 +10,7 @@ export const webhookTriggerStatusSchema = z.enum([
   'disabled',
   'error',
 ]);
-export const webhookTriggerHealthStatusSchema = z.enum([
+const webhookTriggerHealthStatusSchema = z.enum([
   'pending',
   'healthy',
   'degraded',
@@ -34,7 +34,6 @@ export const webhookTriggerHealthSchema = z
 export const webhookTriggerListResponseSchema = z
   .object({ items: z.array(webhookTriggerHealthSchema).max(1_000) })
   .strict();
-export const webhookManagementCommandRequestSchema = z.object({}).strict();
 export const webhookRotateSecretRequestSchema = z
   .object({ endpointKey: webhookCredentialSchema })
   .strict();
@@ -68,7 +67,7 @@ export const webhookIngressResponseSchema = z
  * adds `paused`: a verified delivery refused with 423 while the workflow's
  * triggers are paused.
  */
-export const webhookDeliveryOutcomeSchema = z.enum([
+const webhookDeliveryOutcomeSchema = z.enum([
   'accepted',
   'replayed',
   'authentication_failed',
@@ -77,12 +76,12 @@ export const webhookDeliveryOutcomeSchema = z.enum([
   'rate_limited',
   'paused',
 ]);
-export const webhookDeliverySignatureCheckSchema = z.enum([
+const webhookDeliverySignatureCheckSchema = z.enum([
   'verified',
   'mismatch',
   'not_checked',
 ]);
-export const webhookDeliveryReplayCheckSchema = z.enum([
+const webhookDeliveryReplayCheckSchema = z.enum([
   'new',
   'duplicate',
   'conflict',

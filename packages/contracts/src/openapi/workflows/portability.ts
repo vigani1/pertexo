@@ -1,6 +1,6 @@
 import { apiProblemSchema } from '../../errors/api-problem.js';
+import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import {
-  workflowPortableManifestSchema,
   workflowExportRequestSchema,
   workflowImportPreviewRequestSchema,
   workflowImportRequestSchema,

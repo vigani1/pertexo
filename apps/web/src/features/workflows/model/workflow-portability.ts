@@ -4,7 +4,7 @@ import {
   workflowPortableManifestSchema,
   WORKFLOW_PORTABILITY_LIMITS,
   type WorkflowPortableManifest,
-} from '@pertexo/contracts';
+} from '@pertexo/workflow-model';
 
 export async function readPortableWorkflowFile(
   file: File,

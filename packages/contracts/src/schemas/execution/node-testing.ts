@@ -8,7 +8,7 @@ import {
 
 export { NODE_TEST_JSON_MAX_DEPTH };
 
-export const NODE_TEST_LIMITS_V1 = Object.freeze({
+const NODE_TEST_LIMITS = Object.freeze({
   validationIssues: 100,
   nodeIdLength: 256,
   safeErrorCodeLength: 128,
@@ -18,7 +18,7 @@ export const nodeTestParamsSchema = z
   .object({
     workspaceId: z.uuid(),
     workflowId: z.uuid(),
-    nodeId: z.string().min(1).max(NODE_TEST_LIMITS_V1.nodeIdLength),
+    nodeId: z.string().min(1).max(NODE_TEST_LIMITS.nodeIdLength),
   })
   .strict();
 
@@ -26,7 +26,7 @@ export const previewRunParamsSchema = z
   .object({ workspaceId: z.uuid(), previewRunId: z.uuid() })
   .strict();
 
-export const nodeSideEffectClassSchema = z.enum([
+const nodeSideEffectClassSchema = z.enum([
   'safe',
   'idempotent_with_key',
   'unsafe',
@@ -41,7 +41,7 @@ export const nodeSideEffectDisclosureSchema = z
   })
   .strict();
 
-export const nodeTestInputSourceSchema = z.discriminatedUnion('kind', [
+const nodeTestInputSourceSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('manual'),
@@ -56,7 +56,7 @@ export const nodeTestInputSourceSchema = z.discriminatedUnion('kind', [
     .strict(),
 ]);
 
-export const nodeValidateRequestSchema = z
+const nodeValidateRequestSchema = z
   .object({
     mode: z.literal('validate'),
     expectedRevision: z.number().int().positive(),
@@ -64,7 +64,7 @@ export const nodeValidateRequestSchema = z
   })
   .strict();
 
-export const nodeTestExecuteRequestSchema = z
+const nodeTestExecuteRequestSchema = z
   .object({
     mode: z.literal('test_execute'),
     expectedRevision: z.number().int().positive(),
@@ -83,15 +83,15 @@ export const nodeValidationResponseSchema = z
     mode: z.literal('validate'),
     valid: z.boolean(),
     revision: z.number().int().positive(),
-    nodeId: z.string().min(1).max(NODE_TEST_LIMITS_V1.nodeIdLength),
+    nodeId: z.string().min(1).max(NODE_TEST_LIMITS.nodeIdLength),
     issues: z
       .array(apiProblemIssueSchema)
-      .max(NODE_TEST_LIMITS_V1.validationIssues),
+      .max(NODE_TEST_LIMITS.validationIssues),
     disclosure: nodeSideEffectDisclosureSchema,
   })
   .strict();
 
-export const previewRunStatusSchema = z.enum([
+const previewRunStatusSchema = z.enum([
   'queued',
   'running',
   'succeeded',
@@ -101,7 +101,7 @@ export const previewRunStatusSchema = z.enum([
   'outcome_unknown',
 ]);
 
-export const previewOutputSchema = z.discriminatedUnion('kind', [
+const previewOutputSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('inline'), value: z.json() }).strict(),
   z.object({ kind: z.literal('artifact'), artifactId: z.uuid() }).strict(),
 ]);
@@ -112,14 +112,14 @@ export const previewRunSummarySchema = z
     workspaceId: z.uuid(),
     workflowId: z.uuid(),
     draftRevision: z.number().int().positive(),
-    nodeId: z.string().min(1).max(NODE_TEST_LIMITS_V1.nodeIdLength),
+    nodeId: z.string().min(1).max(NODE_TEST_LIMITS.nodeIdLength),
     status: previewRunStatusSchema,
     disclosure: nodeSideEffectDisclosureSchema,
     output: previewOutputSchema.nullable(),
     safeErrorCode: z
       .string()
       .min(1)
-      .max(NODE_TEST_LIMITS_V1.safeErrorCodeLength)
+      .max(NODE_TEST_LIMITS.safeErrorCodeLength)
       .nullable(),
     createdAt: z.iso.datetime({ offset: true }),
     startedAt: z.iso.datetime({ offset: true }).nullable(),

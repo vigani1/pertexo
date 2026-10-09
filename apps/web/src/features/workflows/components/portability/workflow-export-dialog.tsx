@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  portableGraphDigest,
-  type WorkflowExportRequest,
-} from '@pertexo/contracts';
+import type { WorkflowExportRequest } from '@pertexo/contracts';
+import { portableGraphDigest } from '@pertexo/workflow-model';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

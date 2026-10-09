@@ -4,9 +4,9 @@ import { utf8ByteLength } from './shared/text.js';
 import { isSupportedHttpFieldValue } from './shared/http-field-value.js';
 
 export const connectionIdentifierSchema = z.uuid();
-export const connectionSecretVersionIdentifierSchema = z.uuid();
-export const connectionProviderKeySchema = z.enum(['http', 'slack', 'email']);
-export const connectionAuthTypeSchema = z.enum([
+const connectionSecretVersionIdentifierSchema = z.uuid();
+const connectionProviderKeySchema = z.enum(['http', 'slack', 'email']);
+const connectionAuthTypeSchema = z.enum([
   'http_headers',
   'slack_bot_token',
   'resend_api_key',
@@ -176,7 +176,7 @@ export const resendApiKeyCredentialSchema = z
   .strict()
   .readonly();
 
-export const connectionCredentialSchema = z.discriminatedUnion('type', [
+const connectionCredentialSchema = z.discriminatedUnion('type', [
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
   resendApiKeyCredentialSchema,
@@ -302,7 +302,7 @@ export const connectionListResponseSchema = z
   .strict()
   .readonly();
 
-export const connectionUsageItemSchema = z
+const connectionUsageItemSchema = z
   .object({
     workflowId: z.uuid(),
     workflowName: z.string().min(1).max(128),
@@ -323,12 +323,11 @@ export const connectionUsageResponseSchema = z
   .strict()
   .readonly();
 
-export type ConnectionUsageItem = z.output<typeof connectionUsageItemSchema>;
 export type ConnectionUsageResponse = z.output<
   typeof connectionUsageResponseSchema
 >;
 
-export const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
+const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
   z
     .object({
       ok: z.literal(true),
@@ -420,19 +419,10 @@ export const connectionIdParamSchema = z
 export type ConnectionCreateRequest = z.input<
   typeof connectionCreateRequestSchema
 >;
-export type ParsedConnectionCreateRequest = z.output<
-  typeof connectionCreateRequestSchema
->;
 export type ConnectionRotateSecretRequest = z.input<
   typeof connectionRotateSecretRequestSchema
 >;
-export type ParsedConnectionRotateSecretRequest = z.output<
-  typeof connectionRotateSecretRequestSchema
->;
 export type ConnectionTestRequest = z.input<typeof connectionTestRequestSchema>;
-export type ParsedConnectionTestRequest = z.output<
-  typeof connectionTestRequestSchema
->;
 export type ConnectionResponse = z.output<typeof connectionResponseSchema>;
 export type ConnectionListResponse = z.output<
   typeof connectionListResponseSchema

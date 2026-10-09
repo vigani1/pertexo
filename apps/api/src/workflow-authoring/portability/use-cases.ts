@@ -1,11 +1,11 @@
 import {
   workflowExportRequestSchema,
-  workflowPortableManifestSchema,
   workflowImportPreviewRequestSchema,
   workflowImportPreviewResponseSchema,
   workflowImportRequestSchema,
   workflowImportResponseSchema,
 } from '@pertexo/contracts';
+import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

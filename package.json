@@ -32,6 +32,9 @@
           "e2e-live/support/*.lifetime-probe.ts"
         ]
       },
+      "packages/contracts": {
+        "includeEntryExports": true
+      },
       "packages/workflow-model": {
         "entry": [
           "src/expressions/evaluation-thread.ts",

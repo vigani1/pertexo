@@ -281,7 +281,7 @@ now, as one ordered program — not "whenever we touch it".
         setup checks live in `@pertexo/templates` (one door, behavior tests);
         the registered setup check stays in node-catalog because it needs the
         node schemas.
-  - [ ] contracts
+  - [x] contracts
     - [x] Two doors: `@pertexo/contracts` (request, response and problem
           schemas, browser-safe) and `@pertexo/contracts/server` (OpenAPI
           documents and client contracts, projected at import). Folders
@@ -292,6 +292,14 @@ now, as one ordered program — not "whenever we touch it".
           files drop the prefix their folder names (the `-paths` fragments
           sit beside the document that composes them) and problem files
           drop `-problems`.
+    - [x] What nothing reads goes: 62 inferred types, two schemas, the
+          artifact transfer client contract export and the
+          `provider.rate_limited` problem (never raised). Building blocks
+          used only in their own file are no longer exported, and knip
+          checks the package's entry exports. Contracts no longer
+          re-export workflow-model's portability helpers; their consumers
+          import `@pertexo/workflow-model`. `NODE_TEST_LIMITS_V1` loses its
+          version.
   - [x] queue
     - [x] No runtime guard; plain export map; structure-only surface tests
           go.
@@ -394,6 +402,10 @@ now, as one ordered program — not "whenever we touch it".
   - [ ] ops
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
+  - [ ] Numbered stored formats go with the re-squash: digest prefixes
+        (`wf:v2:sha256:`, `wf-compat:v1:`, `trigger:v1:`, `email:v1:`) lose
+        their versions with the check constraints that pin them, and the
+        failure-notification `policy_version` (always 1) goes.
 
 **Package pass checklist** (every package, every file):
 1. Purpose: the package does one clear job; anything else moves to its owner.

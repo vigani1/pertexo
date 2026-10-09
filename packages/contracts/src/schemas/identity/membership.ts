@@ -49,14 +49,8 @@ export const workspaceOwnershipTransferResponseSchema = z
 export type WorkspaceLeaveResponse = z.output<
   typeof workspaceLeaveResponseSchema
 >;
-export type WorkspaceMemberStatusRequest = z.input<
-  typeof workspaceMemberStatusRequestSchema
->;
 export type WorkspaceMemberStatusResponse = z.output<
   typeof workspaceMemberStatusResponseSchema
->;
-export type WorkspaceOwnershipTransferRequest = z.input<
-  typeof workspaceOwnershipTransferRequestSchema
 >;
 export type WorkspaceOwnershipTransferResponse = z.output<
   typeof workspaceOwnershipTransferResponseSchema

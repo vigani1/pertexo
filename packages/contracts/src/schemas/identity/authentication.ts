@@ -33,7 +33,7 @@ export const authenticationCapabilitiesResponseSchema = z
     socialProviders: z.array(authenticationProviderSchema).max(4),
   })
   .strict();
-export const accountSecuritySessionSchema = z
+const accountSecuritySessionSchema = z
   .object({
     id: z.uuid(),
     current: z.boolean(),
@@ -56,7 +56,7 @@ export const accountSecuritySessionRevokeResponseSchema = z
 export const accountSecurityRevokeOthersResponseSchema = z
   .object({ revokedCount: z.number().int().nonnegative() })
   .strict();
-export const accountSecurityMethodSchema = z
+const accountSecurityMethodSchema = z
   .object({
     id: z.uuid(),
     kind: z.enum(['password', 'social']),
@@ -115,20 +115,11 @@ export const accountSecurityPasswordSetupResponseSchema = z
   .object({ configured: z.literal(true) })
   .strict();
 
-export type AuthenticationReturnPath = z.output<
-  typeof authenticationReturnPathSchema
->;
 export type AuthenticationCapabilitiesResponse = z.output<
   typeof authenticationCapabilitiesResponseSchema
 >;
-export type AccountSecuritySession = z.output<
-  typeof accountSecuritySessionSchema
->;
 export type AccountSecuritySessionsResponse = z.output<
   typeof accountSecuritySessionsResponseSchema
->;
-export type AccountSecuritySessionRevokeRequest = z.input<
-  typeof accountSecuritySessionRevokeRequestSchema
 >;
 export type AccountSecurityResponse = z.output<
   typeof accountSecurityResponseSchema

@@ -8,22 +8,6 @@ import {
   workflowPortableManifestSchema,
 } from '@pertexo/workflow-model';
 
-export {
-  canonicalWorkflowPortableJson,
-  parsePortableJson,
-  portableGraphDigest,
-  PortableJsonError,
-  portableManifestDigest,
-  WORKFLOW_PORTABILITY_LIMITS,
-  workflowPortableManifestSchema,
-} from '@pertexo/workflow-model';
-export type {
-  PortableConnectionBinding,
-  PortableConnectionSlot,
-  PortableIssue,
-  WorkflowPortableManifest,
-} from '@pertexo/workflow-model';
-
 const source = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('draft') }).strict(),
   z.object({ kind: z.literal('version'), versionId: z.uuid() }).strict(),
@@ -77,7 +61,4 @@ export type WorkflowImportPreviewRequest = z.infer<
 export type WorkflowImportRequest = z.infer<typeof workflowImportRequestSchema>;
 export type WorkflowImportPreviewResponse = z.infer<
   typeof workflowImportPreviewResponseSchema
->;
-export type WorkflowImportResponse = z.infer<
-  typeof workflowImportResponseSchema
 >;

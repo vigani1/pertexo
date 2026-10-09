@@ -125,9 +125,6 @@ export type WorkspaceAutoPauseSettingsRequest = z.output<
 export type WorkflowAutoPauseCommandResponse = z.output<
   typeof workflowAutoPauseCommandResponseSchema
 >;
-export type WorkspaceAutoPauseCommandResponse = z.output<
-  typeof workspaceAutoPauseCommandResponseSchema
->;
 export type WorkflowPauseConflictProblem = z.output<
   typeof workflowPauseConflictProblemSchema
 >;
