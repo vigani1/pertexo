@@ -30,7 +30,7 @@ const folder = {
   depth: 1,
 };
 const tag = { id: secondWorkflowId, key: 'ops', revision: 3 };
-const cursor = 'opaque.continuation';
+const cursor = 'opaque-continuation';
 function installVocabulary() {
   mockServer.use(
     ...discoveryHandlers(),
@@ -743,7 +743,7 @@ describe('workflow organization manager', () => {
               .slice(start, start + 25)
               .map((id) => ({ workflowId: id, organizationRevision: 1 })),
             nextCursor:
-              start === 0 ? cursor : start === 25 ? 'opaque.page2' : null,
+              start === 0 ? cursor : start === 25 ? 'opaque-page2' : null,
           });
         },
       ),

@@ -17,8 +17,12 @@ import {
 } from '@pertexo/database/authoring';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import type { WorkflowAuthoringPersistence } from '../ports.js';
-import type { WorkflowOrganizationCursorCodec } from './cursors/organization.js';
-import type { WorkflowOrganizationPageCursorCodec } from './cursors/page.js';
+import {
+  decodeOrganizationPageCursor,
+  decodeWorkflowOrganizationCursor,
+  encodeOrganizationPageCursor,
+  encodeWorkflowOrganizationCursor,
+} from './cursors.js';
 import {
   authorizeWorkflowOrganization,
   workflowOrganizationContext,
@@ -43,10 +47,6 @@ export class WorkflowOrganizationReadsUseCase {
       WorkflowTagDatabase,
       'listTags' | 'listTagAssignments'
     >,
-    private readonly cursors: Readonly<{
-      workflows: WorkflowOrganizationCursorCodec;
-      pages: WorkflowOrganizationPageCursorCodec;
-    }>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly origin: Pick<
       WorkflowAuthoringPersistence,
@@ -89,13 +89,15 @@ export class WorkflowOrganizationReadsUseCase {
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined
         ? {}
-        : { after: this.cursors.workflows.decode(query.after, cursorContext) }),
+        : {
+            after: decodeWorkflowOrganizationCursor(query.after, cursorContext),
+          }),
     });
     input.signal?.throwIfAborted();
     const nextCursor =
       page.nextCursor === null
         ? null
-        : this.cursors.workflows.encode(cursorContext, page.nextCursor);
+        : encodeWorkflowOrganizationCursor(cursorContext, page.nextCursor);
     if (query.include === undefined)
       return serializeWorkflowList(
         page.items.map((item) => item.workflow),
@@ -169,7 +171,7 @@ export class WorkflowOrganizationReadsUseCase {
       ...(query.after === undefined
         ? {}
         : {
-            afterId: this.cursors.pages.decode(query.after, cursorContext).id,
+            afterId: decodeOrganizationPageCursor(query.after, cursorContext),
           }),
     });
     input.signal?.throwIfAborted();
@@ -178,7 +180,7 @@ export class WorkflowOrganizationReadsUseCase {
       nextCursor:
         page.nextId === null
           ? null
-          : this.cursors.pages.encode(cursorContext, { id: page.nextId }),
+          : encodeOrganizationPageCursor(cursorContext, page.nextId),
     });
   }
 
@@ -201,7 +203,7 @@ export class WorkflowOrganizationReadsUseCase {
       ...(query.after === undefined
         ? {}
         : {
-            afterId: this.cursors.pages.decode(query.after, cursorContext).id,
+            afterId: decodeOrganizationPageCursor(query.after, cursorContext),
           }),
     });
     input.signal?.throwIfAborted();
@@ -210,7 +212,7 @@ export class WorkflowOrganizationReadsUseCase {
       nextCursor:
         page.nextId === null
           ? null
-          : this.cursors.pages.encode(cursorContext, { id: page.nextId }),
+          : encodeOrganizationPageCursor(cursorContext, page.nextId),
     });
   }
 }

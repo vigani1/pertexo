@@ -45,10 +45,7 @@ export type {
   WorkflowFavoriteDatabase,
   WorkflowFavoriteState,
 } from './organization/favorites.repository.js';
-export {
-  WorkflowOrganizationUnavailableError,
-  WorkflowOrganizationValidationError,
-} from './organization/errors.js';
+export { WorkflowOrganizationValidationError } from './organization/errors.js';
 export {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseLimitError,

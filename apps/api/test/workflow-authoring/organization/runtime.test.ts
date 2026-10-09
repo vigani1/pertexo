@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import type { WorkflowInputCaseDatabase } from '@pertexo/database/authoring';
@@ -26,56 +25,20 @@ function inputCases() {
   } satisfies WorkflowInputCaseDatabase;
 }
 describe('organization metadata runtime ownership', () => {
-  it('leaves missing organization key unsupported and preserves explicitly opted-in test adapters', async () => {
+  it('composes the organization stores without querying', async () => {
     const runtime = await createApiWorkflowMetadataRuntime(
       config,
       testAuthoring,
-    );
-    expect(runtime.organization).toBeUndefined();
-    expect(runtime.inputCases).toBeUndefined();
-    await runtime.close();
-  });
-  it('composes real stores and distinct-purpose cryptographic capabilities without querying', async () => {
-    const runtime = await createApiWorkflowMetadataRuntime(
-      config,
-      testAuthoring,
-      { cursorSigningKey: Buffer.alloc(32, 29).toString('base64') },
     );
     try {
-      const organization = runtime.organization;
-      if (organization === undefined)
-        throw new Error('Missing configured organization capability');
-      expect(Object.keys(organization).sort()).toEqual([
+      expect(Object.keys(runtime.organization).sort()).toEqual([
         'batches',
-        'cursors',
         'favorites',
         'folders',
         'reader',
         'tags',
       ]);
-      const workspaceId = randomUUID(),
-        actorId = randomUUID(),
-        id = randomUUID();
-      const wire = organization.cursors.pages.encode(
-        { purpose: 'tags', workspaceId, actorId, selectedTagId: null },
-        { id },
-      );
-      expect(
-        organization.cursors.pages.decode(wire, {
-          purpose: 'tags',
-          workspaceId,
-          actorId,
-          selectedTagId: null,
-        }),
-      ).toEqual({ id });
-      expect(() =>
-        organization.cursors.workflows.decode(wire, {
-          workspaceId,
-          actorId,
-          order: 'created_asc',
-          filterHash: 'ab'.repeat(32),
-        }),
-      ).toThrow('workflow cursor is invalid');
+      expect(runtime.inputCases).toBeUndefined();
     } finally {
       await runtime.close();
       await runtime.close();
@@ -94,19 +57,7 @@ describe('organization metadata runtime ownership', () => {
     await first;
     expect(cases.close).toHaveBeenCalledTimes(1);
   });
-  it('closes already acquired metadata on invalid configuration without leaking key material', async () => {
-    const cases = inputCases(),
-      key = 'private-invalid-key';
-    await expect(
-      createApiWorkflowMetadataRuntime(
-        config,
-        { ...testAuthoring, inputCasePersistence: cases },
-        { cursorSigningKey: key },
-      ),
-    ).rejects.toThrow('Workflow organization configuration is invalid');
-    expect(cases.close).toHaveBeenCalledTimes(1);
-  });
-  it('preserves an individual close failure and aggregates startup plus cleanup failure', async () => {
+  it('preserves an individual close failure', async () => {
     const cases = inputCases(),
       failure = new Error('owned close failure');
     cases.close.mockRejectedValue(failure);
@@ -115,15 +66,5 @@ describe('organization metadata runtime ownership', () => {
       inputCasePersistence: cases,
     });
     await expect(runtime.close()).rejects.toBe(failure);
-    await expect(
-      createApiWorkflowMetadataRuntime(
-        config,
-        { ...testAuthoring, inputCasePersistence: cases },
-        { cursorSigningKey: 'invalid' },
-      ),
-    ).rejects.toMatchObject({
-      name: 'AggregateError',
-      errors: [expect.any(Error), failure],
-    });
   });
 });

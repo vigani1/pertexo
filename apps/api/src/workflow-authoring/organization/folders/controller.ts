@@ -4,7 +4,6 @@ import {
   Get,
   Header,
   HttpCode,
-  Optional,
   Param,
   Post,
   Query,
@@ -26,17 +25,12 @@ import { WorkflowReadGuard } from '../../http/guards.js';
 import { parseIdempotencyKey } from '../../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../../types.js';
 import { WorkflowFoldersUseCase } from './use-case.js';
-import {
-  requireWorkflowOrganization,
-  withWorkflowOrganizationRequest,
-} from '../http.js';
+import { withWorkflowOrganizationRequest } from '../http.js';
 
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class WorkflowFoldersController {
-  public constructor(
-    @Optional() private readonly folders?: WorkflowFoldersUseCase,
-  ) {}
+  public constructor(private readonly folders: WorkflowFoldersUseCase) {}
 
   @Get('workflow-folders')
   @Header('Cache-Control', 'private, no-store')
@@ -48,7 +42,7 @@ export class WorkflowFoldersController {
   ) {
     const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.folders).list({
+      this.folders.list({
         ...input,
         query: query ?? {},
       }),
@@ -67,7 +61,7 @@ export class WorkflowFoldersController {
   ) {
     const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.folders).create({
+      this.folders.create({
         ...input,
         request: body,
         idempotencyKey: commandKey(request),
@@ -87,7 +81,7 @@ export class WorkflowFoldersController {
   ) {
     const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.folders).rename({
+      this.folders.rename({
         ...input,
         folderId,
         request: body,
@@ -108,7 +102,7 @@ export class WorkflowFoldersController {
   ) {
     const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.folders).move({
+      this.folders.move({
         ...input,
         folderId,
         request: body,
@@ -129,7 +123,7 @@ export class WorkflowFoldersController {
   ) {
     const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.folders).delete({
+      this.folders.delete({
         ...input,
         folderId,
         request: body,
@@ -150,7 +144,7 @@ export class WorkflowFoldersController {
   ) {
     const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.folders).place({
+      this.folders.place({
         ...input,
         workflowId,
         request: body,

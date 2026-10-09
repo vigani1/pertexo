@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
   WorkflowFolderConflictError,
   WorkflowNotFoundError,
-  WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
   type WorkflowOrganizationBatchDatabase,
   type WorkflowOrganizationBatchInput,
@@ -183,7 +182,6 @@ describe('workflow organization full-parent batch orchestration', () => {
 
   it.each([
     new IdempotencyConflictError(),
-    new WorkflowOrganizationUnavailableError(),
     new Error('admission transport outcome unknown'),
   ])(
     'does not attempt an item or retry after parent admission rejects: %s',
@@ -217,7 +215,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       .mockRejectedValueOnce(new IdempotencyConflictError())
       .mockRejectedValueOnce(new WorkflowTagConflictError('lifecycle'))
       .mockRejectedValueOnce(new WorkflowFolderConflictError('not_visible'))
-      .mockRejectedValueOnce(new WorkflowOrganizationUnavailableError())
+      .mockRejectedValueOnce(new Error('transient item failure'))
       .mockRejectedValueOnce(
         new Error(`private actor=${actorId}, retained revision=999`),
       );
@@ -252,11 +250,7 @@ describe('workflow organization full-parent batch orchestration', () => {
           status: 'conflict',
           code: 'workflow.folder_not_visible',
         },
-        {
-          workflowId: ids[6],
-          status: 'unavailable',
-          code: 'workflow.organization_unavailable',
-        },
+        { workflowId: ids[6], status: 'outcome_unknown' },
         { workflowId: ids[7], status: 'outcome_unknown' },
       ],
     });

@@ -30,9 +30,6 @@ export function useOrganizationOwnedApi(
   const api = useBetterAuthRealApi(suite, {
     ...options,
     databaseNamespace: 'f07_organization',
-    workflowOrganization: {
-      cursorSigningKey: Buffer.alloc(32, 0x7a).toString('base64'),
-    },
     afterMigration: () => recheckCuratedFixtureOwnership(ownership),
     beforeDrop: () => recheckCuratedFixtureOwnership(ownership),
   });

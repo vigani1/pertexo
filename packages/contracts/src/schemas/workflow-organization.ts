@@ -44,12 +44,12 @@ export const workflowTagWorkspaceParamsSchema = z
 export const workflowTagParamsSchema = workflowTagWorkspaceParamsSchema.extend({
   tagId: commandIdentifierSchema,
 });
-/** UUID-page continuation; authenticity, scope, purpose and expiry are server checks. */
+/** Opaque UUID-page continuation; scope and purpose are server checks. */
 export const workflowOrganizationPageCursorSchema = z
   .string()
   .min(1)
   .max(512)
-  .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?![\s\S])/u);
+  .regex(/^[A-Za-z0-9_-]+(?![\s\S])/u);
 export const workflowTagListQuerySchema = z
   .object({
     limit: z
@@ -197,13 +197,6 @@ export const workflowTagCleanupItemOutcomeSchema = z.discriminatedUnion(
         ...cleanupItemIdentity,
         status: z.literal('conflict'),
         code: workflowTagCleanupConflictCodeSchema,
-      })
-      .strict(),
-    z
-      .object({
-        ...cleanupItemIdentity,
-        status: z.literal('unavailable'),
-        code: z.literal('workflow.organization_unavailable'),
       })
       .strict(),
     z

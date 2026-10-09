@@ -89,32 +89,21 @@ describe('organization editing presentation model', () => {
     });
     expect(canEditOrganization(workspace, [row()], 'move')).toBe(false);
   });
-  it.each([
-    'not_visible',
-    'unavailable',
-    'outcome_unknown',
-    'forbidden',
-  ] as const)('has distinct safe %s feedback', (status) => {
-    const response = workflowOrganizationBulkResponseSchema.parse({
-      items: [
+  it.each(['not_visible', 'outcome_unknown', 'forbidden'] as const)(
+    'has distinct safe %s feedback',
+    (status) => {
+      const response = workflowOrganizationBulkResponseSchema.parse({
+        items: [{ workflowId, status }],
+      });
+      const item = response.items[0];
+      if (item === undefined) throw new Error('Missing fixture');
+      expect(organizationOutcomeText(item)).toMatch(
         {
-          workflowId,
-          status,
-          ...(status === 'unavailable'
-            ? { code: 'workflow.organization_unavailable' }
-            : {}),
-        },
-      ],
-    });
-    const item = response.items[0];
-    if (item === undefined) throw new Error('Missing fixture');
-    expect(organizationOutcomeText(item)).toMatch(
-      {
-        not_visible: /Not visible/,
-        unavailable: /Unavailable/,
-        outcome_unknown: /Outcome unknown/,
-        forbidden: /Access lost/,
-      }[status],
-    );
-  });
+          not_visible: /Not visible/,
+          outcome_unknown: /Outcome unknown/,
+          forbidden: /Access lost/,
+        }[status],
+      );
+    },
+  );
 });

@@ -11,7 +11,6 @@ import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   WorkflowFolderConflictError,
   WorkflowNotFoundError,
-  WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
   type WorkflowOrganizationBatchDatabase,
   type WorkflowOrganizationBatchRequest,
@@ -152,12 +151,6 @@ export class WorkflowOrganizationBatchesUseCase {
         };
       }
     }
-    if (error instanceof WorkflowOrganizationUnavailableError)
-      return {
-        workflowId,
-        status: 'unavailable',
-        code: 'workflow.organization_unavailable',
-      };
     if (error instanceof IdempotencyConflictError)
       return {
         workflowId,

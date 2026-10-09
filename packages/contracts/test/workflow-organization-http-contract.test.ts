@@ -244,12 +244,10 @@ describe('organization HTTP manifest and generated structural contracts', () => 
   });
 
   it('centralizes exactly the accepted sanitized problems without private extension fields', () => {
-    expect(WORKFLOW_ORGANIZATION_PROBLEM_CODES).toHaveLength(12);
+    expect(WORKFLOW_ORGANIZATION_PROBLEM_CODES).toHaveLength(11);
     for (const code of WORKFLOW_ORGANIZATION_PROBLEM_CODES) {
       const entry = API_PROBLEM_MANIFEST[code];
-      expect(entry.status).toBe(
-        code === 'workflow.organization_unavailable' ? 503 : 409,
-      );
+      expect(entry.status).toBe(409);
       const problem = {
         type: entry.type,
         title: entry.title,

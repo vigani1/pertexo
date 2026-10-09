@@ -247,14 +247,13 @@ describe('ephemeral organization command lifetime', () => {
     ).toEqual({ currentWorkflow: true });
   });
 
-  it('preserves exact whole-parent recovery when an item is unavailable', async () => {
+  it('preserves exact whole-parent recovery when an item outcome is unknown', async () => {
     const f = setup();
     const response = {
       items: [
         {
           workflowId: secondWorkflowId,
-          status: 'unavailable' as const,
-          code: 'workflow.organization_unavailable' as const,
+          status: 'outcome_unknown' as const,
         },
         {
           workflowId,

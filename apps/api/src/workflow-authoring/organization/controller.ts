@@ -4,7 +4,6 @@ import {
   Get,
   Header,
   HttpCode,
-  Optional,
   Param,
   Post,
   Put,
@@ -28,17 +27,14 @@ import { parseIdempotencyKey } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowOrganizationCommandsUseCase } from './commands.js';
 import { WorkflowOrganizationReadsUseCase } from './reads.js';
-import {
-  requireWorkflowOrganization,
-  withWorkflowOrganizationRequest,
-} from './http.js';
+import { withWorkflowOrganizationRequest } from './http.js';
 
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
 export class WorkflowOrganizationController {
   public constructor(
-    @Optional() private readonly commands?: WorkflowOrganizationCommandsUseCase,
-    @Optional() private readonly reads?: WorkflowOrganizationReadsUseCase,
+    private readonly commands: WorkflowOrganizationCommandsUseCase,
+    private readonly reads: WorkflowOrganizationReadsUseCase,
   ) {}
 
   @Get('workflow-tags')
@@ -51,7 +47,7 @@ export class WorkflowOrganizationController {
   ) {
     const { workspaceId } = workflowTagWorkspaceParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.reads).listTags({
+      this.reads.listTags({
         ...input,
         query: query ?? {},
       }),
@@ -70,7 +66,7 @@ export class WorkflowOrganizationController {
   ) {
     const { workspaceId } = workflowTagWorkspaceParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.commands).createTag({
+      this.commands.createTag({
         ...input,
         request: body,
         idempotencyKey: commandKey(request),
@@ -90,7 +86,7 @@ export class WorkflowOrganizationController {
   ) {
     const { workspaceId, tagId } = workflowTagParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.commands).renameTag({
+      this.commands.renameTag({
         ...input,
         tagId,
         request: body,
@@ -111,7 +107,7 @@ export class WorkflowOrganizationController {
   ) {
     const { workspaceId, tagId } = workflowTagParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.commands).deleteTag({
+      this.commands.deleteTag({
         ...input,
         tagId,
         request: body,
@@ -130,7 +126,7 @@ export class WorkflowOrganizationController {
   ) {
     const { workspaceId, tagId } = workflowTagParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.reads).listTagAssignments({
+      this.reads.listTagAssignments({
         ...input,
         tagId,
         query: query ?? {},
@@ -154,7 +150,7 @@ export class WorkflowOrganizationController {
   ) {
     const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.commands).replaceTags({
+      this.commands.replaceTags({
         ...input,
         workflowId,
         request: body,
@@ -175,7 +171,7 @@ export class WorkflowOrganizationController {
   ) {
     const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.commands).setFavorite({
+      this.commands.setFavorite({
         ...input,
         workflowId,
         request: body,

@@ -13,6 +13,7 @@ import type {
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import type { ApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
+import type { WorkflowAuthoringDependencies } from '../../src/workflow-authoring/index.js';
 
 export function createApiPlatformFixture(migrationHead: string) {
   const database: WorkspaceDatabase = {
@@ -69,6 +70,26 @@ export function createApiPlatformFixture(migrationHead: string) {
   return { config, database, logger, rateLimitConsumer, telemetry };
 }
 
+/** Organization stores a test never reaches; any call rejects. */
+export function unusedWorkflowOrganization(): WorkflowAuthoringDependencies['organization'] {
+  const unused = new Proxy(
+    {},
+    {
+      get: (_target, key) =>
+        key === 'then'
+          ? undefined
+          : () => Promise.reject(new Error('not used')),
+    },
+  );
+  return {
+    tags: unused,
+    favorites: unused,
+    reader: unused,
+    folders: unused,
+    batches: unused,
+  } as unknown as WorkflowAuthoringDependencies['organization'];
+}
+
 export function createStubApiWorkflowRuntime(
   authorization: IdentityWorkspaceDependencies['authorization'],
   close: () => Promise<void> = vi.fn().mockResolvedValue(undefined),
@@ -76,6 +97,7 @@ export function createStubApiWorkflowRuntime(
   return Object.freeze({
     dependencies: {
       authorization,
+      organization: unusedWorkflowOrganization(),
       persistence: {
         createWorkflow: () => Promise.reject(new Error('not used')),
         listWorkflows: () => Promise.resolve({ items: [] }),

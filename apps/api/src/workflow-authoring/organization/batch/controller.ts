@@ -3,7 +3,6 @@ import {
   Controller,
   Header,
   HttpCode,
-  Optional,
   Param,
   Post,
   Req,
@@ -20,16 +19,13 @@ import { WorkflowReadGuard } from '../../http/guards.js';
 import { parseIdempotencyKey } from '../../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../../types.js';
 import { WorkflowOrganizationBatchesUseCase } from './use-case.js';
-import {
-  requireWorkflowOrganization,
-  withWorkflowOrganizationRequest,
-} from '../http.js';
+import { withWorkflowOrganizationRequest } from '../http.js';
 
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('ordinary_mutation')
 export class WorkflowOrganizationBatchesController {
   public constructor(
-    @Optional() private readonly batches?: WorkflowOrganizationBatchesUseCase,
+    private readonly batches: WorkflowOrganizationBatchesUseCase,
   ) {}
 
   @Post('workflows/organization/bulk')
@@ -43,7 +39,7 @@ export class WorkflowOrganizationBatchesController {
   ) {
     const { workspaceId } = workflowTagWorkspaceParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.batches).bulk({
+      this.batches.bulk({
         ...input,
         request: body,
         idempotencyKey: parseIdempotencyKey(
@@ -64,7 +60,7 @@ export class WorkflowOrganizationBatchesController {
   ) {
     const { workspaceId } = workflowTagWorkspaceParamsSchema.parse(params);
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-      requireWorkflowOrganization(this.batches).cleanup({
+      this.batches.cleanup({
         ...input,
         request: body,
         idempotencyKey: parseIdempotencyKey(

@@ -16,8 +16,6 @@ import type {
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import type { WorkflowAuthoringTelemetry } from './telemetry.js';
 import type { WorkflowTemplateOriginProjectionResponse } from '@pertexo/contracts';
-import type { WorkflowOrganizationCursorCodec } from './organization/cursors/organization.js';
-import type { WorkflowOrganizationPageCursorCodec } from './organization/cursors/page.js';
 
 /** Narrow persistence seam; runtime owns lifecycle, and callers preserve single-snapshot CAS conflicts. */
 export type WorkflowAuthoringPersistence = Pick<
@@ -56,17 +54,12 @@ export type WorkflowAuthoringDependencies = Readonly<{
   autoPausePersistence?: WorkflowAutoPauseDatabase;
   concurrencyPersistence?: WorkflowConcurrencyDatabase;
   inputCasePersistence?: WorkflowInputCaseDatabase;
-  organization?: Readonly<{
+  organization: Readonly<{
     tags: WorkflowTagDatabase;
     favorites: WorkflowFavoriteDatabase;
     reader: WorkflowOrganizationReadDatabase;
-    /** Missing follow-on adapters stay unavailable in explicit older test seams. */
-    folders?: WorkflowFolderDatabase;
-    batches?: WorkflowOrganizationBatchDatabase;
-    cursors: Readonly<{
-      workflows: WorkflowOrganizationCursorCodec;
-      pages: WorkflowOrganizationPageCursorCodec;
-    }>;
+    folders: WorkflowFolderDatabase;
+    batches: WorkflowOrganizationBatchDatabase;
   }>;
   authorization: WorkspaceAuthorizationSource;
   telemetry?: WorkflowAuthoringTelemetry;

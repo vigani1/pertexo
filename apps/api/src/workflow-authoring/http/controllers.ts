@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   HttpCode,
-  Optional,
   Param,
   Post,
   Put,
@@ -35,10 +34,7 @@ import {
   workflowVersionRestoreParamsSchema,
 } from '@pertexo/contracts';
 import { WorkflowOrganizationReadsUseCase } from '../organization/reads.js';
-import {
-  requireWorkflowOrganization,
-  withWorkflowOrganizationRequest,
-} from '../organization/http.js';
+import { withWorkflowOrganizationRequest } from '../organization/http.js';
 import { RestoreWorkflowVersionUseCase } from '../commands/restore-version.js';
 import { throwWorkflowApplicationError } from '../errors.js';
 import {
@@ -87,8 +83,7 @@ export class WorkflowAuthoringController {
     private readonly restoreWorkflowVersion: RestoreWorkflowVersionUseCase,
     private readonly renameWorkflow: RenameWorkflowUseCase,
     private readonly duplicateWorkflow: DuplicateWorkflowUseCase,
-    @Optional()
-    private readonly organization?: WorkflowOrganizationReadsUseCase,
+    private readonly organization: WorkflowOrganizationReadsUseCase,
   ) {}
 
   @Get()
@@ -111,7 +106,7 @@ export class WorkflowAuthoringController {
     ) {
       response?.header('Cache-Control', 'private, no-store');
       return withWorkflowOrganizationRequest(request, workspaceId, (context) =>
-        requireWorkflowOrganization(this.organization).list({
+        this.organization.list({
           ...context,
           query: input,
         }),
@@ -175,7 +170,7 @@ export class WorkflowAuthoringController {
         request,
         route.workspaceId,
         (context) =>
-          requireWorkflowOrganization(this.organization).get({
+          this.organization.get({
             ...context,
             workflowId: route.workflowId,
             query: projection,

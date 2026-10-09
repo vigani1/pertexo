@@ -11,29 +11,19 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import {
-  createWorkflowOrganizationCursorCodec,
-  createWorkflowOrganizationPageCursorCodec,
-  type WorkflowAuthoringDependencies,
-} from '../../workflow-authoring/index.js';
-import {
-  parseWorkflowOrganizationConfig,
-  type WorkflowOrganizationConfig,
-} from '../config/workflow-organization-config.js';
+import type { WorkflowAuthoringDependencies } from '../../workflow-authoring/index.js';
 import type { ApiWorkflowRuntimeOverrides } from './workflow-runtime.module.js';
 
 export type ApiWorkflowMetadataRuntime = Readonly<{
   inputCases?: WorkflowInputCaseDatabase;
-  organization?: NonNullable<WorkflowAuthoringDependencies['organization']>;
+  organization: WorkflowAuthoringDependencies['organization'];
   close(): Promise<void>;
 }>;
 
-/** One lifecycle owner for non-executable authoring metadata. A missing dedicated
- * key leaves organization unsupported; never generate/borrow key material. */
+/** One lifecycle owner for non-executable authoring metadata. */
 export async function createApiWorkflowMetadataRuntime(
   config: DatabaseConfig,
   authoring: NonNullable<ApiWorkflowRuntimeOverrides['authoring']>,
-  organizationConfig?: WorkflowOrganizationConfig,
   runtime?: DatabaseRuntime,
 ): Promise<ApiWorkflowMetadataRuntime> {
   const resources: Readonly<{ close(): Promise<void> }>[] = [];
@@ -68,39 +58,25 @@ export async function createApiWorkflowMetadataRuntime(
             createWorkflowInputCaseDatabase
           )(config, lease));
     if (inputCases !== undefined) resources.push(inputCases);
-    let organization: ApiWorkflowMetadataRuntime['organization'];
-    if (organizationConfig !== undefined) {
-      const parsed = parseWorkflowOrganizationConfig({
-        WORKFLOW_ORGANIZATION_CURSOR_KEY: organizationConfig.cursorSigningKey,
-      });
-      if (parsed === undefined)
-        throw new TypeError('Organization configuration is missing');
-      const key = Buffer.from(parsed.cursorSigningKey, 'base64');
-      const tags = createWorkflowTagDatabase(config, lease);
-      resources.push(tags);
-      const favorites = createWorkflowFavoriteDatabase(config, lease);
-      resources.push(favorites);
-      const reader = createWorkflowOrganizationReadDatabase(config, lease);
-      resources.push(reader);
-      const folders = createWorkflowFolderDatabase(config, lease);
-      resources.push(folders);
-      const batches = createWorkflowOrganizationBatchDatabase(config, lease);
-      resources.push(batches);
-      organization = Object.freeze({
+    const tags = createWorkflowTagDatabase(config, lease);
+    resources.push(tags);
+    const favorites = createWorkflowFavoriteDatabase(config, lease);
+    resources.push(favorites);
+    const reader = createWorkflowOrganizationReadDatabase(config, lease);
+    resources.push(reader);
+    const folders = createWorkflowFolderDatabase(config, lease);
+    resources.push(folders);
+    const batches = createWorkflowOrganizationBatchDatabase(config, lease);
+    resources.push(batches);
+    return Object.freeze({
+      ...(inputCases === undefined ? {} : { inputCases }),
+      organization: Object.freeze({
         tags,
         favorites,
         reader,
         folders,
         batches,
-        cursors: Object.freeze({
-          workflows: createWorkflowOrganizationCursorCodec(key),
-          pages: createWorkflowOrganizationPageCursorCodec(key),
-        }),
-      });
-    }
-    return Object.freeze({
-      ...(inputCases === undefined ? {} : { inputCases }),
-      ...(organization === undefined ? {} : { organization }),
+      }),
       close,
     });
   } catch (error: unknown) {

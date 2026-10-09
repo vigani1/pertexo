@@ -5,7 +5,7 @@ import { workflowGetQuerySchema } from '../src/schemas/workflow-authoring.js';
 const id = (number: number) =>
   `${number.toString(16).padStart(8, '0')}-aaaa-4aaa-8aaa-aaaaaaaaaaaa`;
 const tag = { id: id(1), key: 'ops', revision: 1 };
-const cursor = `${'A'.repeat(468)}.${'A'.repeat(43)}`;
+const cursor = 'A'.repeat(512);
 
 describe('strict organization endpoint transport schemas', () => {
   it('normalizes scoped UUID parameters without accepting extra selectors', () => {
@@ -248,11 +248,6 @@ describe('strict organization endpoint transport schemas', () => {
         status: 'conflict',
         code: 'workflow.organization_revision_conflict',
       },
-      {
-        workflowId: id(4),
-        status: 'unavailable',
-        code: 'workflow.organization_unavailable',
-      },
       { workflowId: id(3), status: 'outcome_unknown' },
       { workflowId: id(2), status: 'forbidden' },
       { workflowId: id(1), status: 'not_processed' },
@@ -299,7 +294,6 @@ describe('strict organization endpoint transport schemas', () => {
       'workflow.tag_revision_conflict',
       'internal.unexpected',
       'auth.forbidden',
-      'workflow.organization_unavailable',
     ])
       expect(
         organization.workflowTagCleanupItemOutcomeSchema.safeParse({

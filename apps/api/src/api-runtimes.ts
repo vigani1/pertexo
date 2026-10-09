@@ -138,12 +138,7 @@ export async function acquireApiRuntimes(
         config.database,
         identityRuntime,
         config.redisUrl,
-        {
-          ...dependencies.workflowOverrides,
-          ...(config.workflowOrganization === undefined
-            ? {}
-            : { organization: config.workflowOrganization }),
-        },
+        dependencies.workflowOverrides,
         databaseRuntime,
       );
 

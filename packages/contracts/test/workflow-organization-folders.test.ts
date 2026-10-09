@@ -277,11 +277,6 @@ describe('accepted folder and general-bulk public contracts', () => {
       },
       { workflowId: a, status: 'not_visible' },
       { workflowId: a, status: 'outcome_unknown' },
-      {
-        workflowId: a,
-        status: 'unavailable',
-        code: 'workflow.organization_unavailable',
-      },
       ...schemas.workflowOrganizationBulkConflictCodeSchema.options.map(
         (code) => ({ workflowId: a, status: 'conflict', code }),
       ),
