@@ -340,6 +340,12 @@ now, as one ordered program — not "whenever we touch it".
         any state but completed is refused. Workspace creation (no workspace
         yet) and connection tests (several transactions) keep their own
         claims.
+    - [x] One stored executable format: every published version carries
+          its executable and an executable checksum (migration 0019). The
+          checksum-only "V1" version, its read path, the `not_executable`
+          advance outcome and workflow-model's V1 checksum helpers go.
+          Authoring reads one `AuthoringCatalogs` value instead of selecting
+          catalogs per transaction.
   - [ ] execution
   - [ ] worker
   - [ ] api
