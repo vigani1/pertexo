@@ -5,13 +5,6 @@ import {
   type WorkflowGraph,
 } from './graph-contract.js';
 
-export {
-  InvalidInvocationScopeError,
-  invocationIdentity,
-  type InvocationIdentityInput,
-  type InvocationScopePart,
-} from './invocation-identity.js';
-
 export type {
   ForEachStructure,
   NodeId,
