@@ -17,8 +17,6 @@ import {
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
-import './server-only.js';
-
 import type { ObservabilityConfig } from './config.js';
 import {
   installErrorSanitizer,

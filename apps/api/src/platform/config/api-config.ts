@@ -5,8 +5,8 @@ import {
   parseArtifactStoreConfig,
   type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import { parseObservabilityConfig } from '@pertexo/observability/config';
-import type { ObservabilityConfig } from '@pertexo/observability/config';
+import { parseObservabilityConfig } from '@pertexo/observability/startup';
+import type { ObservabilityConfig } from '@pertexo/observability/startup';
 
 import {
   identityEnvironmentShape,

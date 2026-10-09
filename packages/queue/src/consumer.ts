@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import { performance } from 'node:perf_hooks';
 
 import { UnrecoverableError, Worker } from 'bullmq';

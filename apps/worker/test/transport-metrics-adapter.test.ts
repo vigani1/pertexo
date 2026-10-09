@@ -1,4 +1,4 @@
-import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
+import type { TransportMetrics } from '@pertexo/observability';
 import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 

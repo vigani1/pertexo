@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import { z } from 'zod';
 
 const httpEndpointSchema = z.url().refine((value) => {

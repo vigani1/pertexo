@@ -1,5 +1,3 @@
-import './server-only.js';
-
 export { parseArtifactStoreConfig } from './config.js';
 export type { ArtifactStoreConfig } from './config.js';
 export {
@@ -44,4 +42,4 @@ export type {
   DirectDownload,
   GetObjectPresignRequest,
   GetObjectPresigner,
-} from './artifact-download.js';
+} from './download.js';

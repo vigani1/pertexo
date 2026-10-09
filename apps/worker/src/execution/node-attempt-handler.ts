@@ -22,7 +22,7 @@ import type {
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { classifyProcessError } from '@pertexo/observability/process-error-classification';
+import { classifyProcessError } from '@pertexo/observability/startup';
 import { waitForCancelableDelay } from '../runtime/abortable-delay.js';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import {

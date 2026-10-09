@@ -23,7 +23,7 @@ import {
   submittedHttpEvidenceIds,
   verifyHttpEvidence,
 } from './support/editor-http-evidence.js';
-import { createStructuredLogger } from '@pertexo/observability/logging';
+import { createStructuredLogger } from '@pertexo/observability';
 import {
   workspaceResponseSchema,
   workflowCreateResponseSchema,

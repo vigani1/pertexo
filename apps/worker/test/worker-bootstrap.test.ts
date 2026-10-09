@@ -12,8 +12,8 @@ import {
 import type {
   StructuredLogger,
   TelemetryLifecycle,
+  TransportMetrics,
 } from '@pertexo/observability';
-import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 import { describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */

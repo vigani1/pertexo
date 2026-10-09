@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import { QUEUE_NAME, type QueueName } from './names.js';
 
 const HOUR_SECONDS = 60 * 60;

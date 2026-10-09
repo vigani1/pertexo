@@ -3,7 +3,7 @@ import { getEventListeners } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 
-import { awaitWithSignal } from '../src/artifact-request-lifecycle.js';
+import { awaitWithSignal } from '../src/request-lifecycle.js';
 
 describe('artifact request lifecycle', () => {
   it('preserves an ordinary operation Error unchanged', async () => {
@@ -122,10 +122,7 @@ describe('artifact request lifecycle', () => {
 
   it('does not emit an unhandled rejection for pre-abort plus late failure', () => {
     const fixture = fileURLToPath(
-      new URL(
-        './artifact-request-lifecycle-process.fixture.ts',
-        import.meta.url,
-      ),
+      new URL('./request-lifecycle-process.fixture.ts', import.meta.url),
     );
     const child = spawnSync(process.execPath, ['--import', 'tsx', fixture], {
       encoding: 'utf8',

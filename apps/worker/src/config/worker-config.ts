@@ -8,7 +8,7 @@ import {
   type DatabaseConfig,
 } from '@pertexo/database/platform';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
-import { parseObservabilityConfig } from '@pertexo/observability/config';
+import { parseObservabilityConfig } from '@pertexo/observability/startup';
 import { ACTIVE_QUEUE_JOB_NAMES, JOB_NAME, type JobName } from '@pertexo/queue';
 
 import {

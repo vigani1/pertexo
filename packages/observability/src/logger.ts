@@ -2,8 +2,6 @@ import { context, isSpanContextValid, trace } from '@opentelemetry/api';
 import pino from 'pino';
 import type { DestinationStream, Logger as PinoLogger } from 'pino';
 
-import './server-only.js';
-
 import type { ObservabilityConfig } from './config.js';
 
 export type LogFields = Readonly<Record<string, unknown>>;
