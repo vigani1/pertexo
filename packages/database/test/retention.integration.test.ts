@@ -1,7 +1,7 @@
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { RETENTION_RULES } from '../src/lifecycle/retention.js';
+import { RETENTION_RULES } from '../src/lifecycle/retention-rules.js';
 import {
   adminUrl,
   randomUUID,
