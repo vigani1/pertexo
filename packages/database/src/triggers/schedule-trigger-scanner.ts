@@ -178,6 +178,30 @@ async function claimDueSchedules(
 }
 
 /**
+ * Whether the claim still holds its lease and its trigger, workflow and
+ * workspace are still active on the trigger's published version.
+ */
+export async function isScheduleClaimEligible(
+  transaction: WorkspaceTransaction,
+  claim: Readonly<{ trigger_id: string; lease_token: string }>,
+): Promise<boolean> {
+  const eligible = await transaction.db.execute(sql`
+    select 1 from app.trigger_schedules schedule
+    join app.workflow_triggers trigger on trigger.id=schedule.trigger_id
+    join app.workflows workflow on workflow.id=trigger.workflow_id
+    join app.workspaces workspace on workspace.id=trigger.workspace_id
+    where schedule.trigger_id=${claim.trigger_id}
+      and schedule.lease_token=${claim.lease_token}
+      and schedule.lease_expires_at>clock_timestamp()
+      and schedule.status='enabled' and trigger.status='active'
+      and workflow.lifecycle_status='active'
+      and workflow.activation_status in ('active','degraded')
+      and workflow.published_version_id=trigger.workflow_version_id
+      and workspace.status='active'`);
+  return eligible.rows.length === 1;
+}
+
+/**
  * The single admission path for an admitted occurrence under either misfire
  * policy: lease eligibility, the published version, the compatibility lock,
  * and idempotent acceptance keyed by trigger and scheduled instant.
@@ -189,11 +213,7 @@ async function admitScheduledRun(
   compatibilityReleases: CompatibilityReleaseExpectationSet,
   checkpointFactory: InitialCheckpointFactory,
 ): Promise<string> {
-  const eligible = await transaction.db.execute<{ eligible: boolean }>(sql`
-    select app.schedule_claim_is_eligible(
-      ${claim.trigger_id},${claim.lease_token}) eligible
-  `);
-  if (eligible.rows[0]?.eligible !== true)
+  if (!(await isScheduleClaimEligible(transaction, claim)))
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
   const version = await transaction.db.execute(sql<Record<string, unknown>>`
     select id,workspace_id,workflow_id,version_number,schema_version,checksum,
@@ -260,14 +280,35 @@ async function persistClaimedOccurrence(
           checkpointFactory,
         )
       : null;
-  const completed = await transaction.db.execute<{ completed: boolean }>(sql`
-    select app.complete_trigger_schedule_claim(
-      ${claim.trigger_id},${claim.lease_token},${generatePersistedId()},
-      ${occurrence.scheduledAt},${disposition},${runId},
-      ${occurrence.nextAt}) completed
-  `);
-  if (completed.rows[0]?.completed !== true)
+  // Record the occurrence once, move the schedule on and release the lease.
+  const schedule = await transaction.db.execute(sql`
+    select 1 from app.trigger_schedules
+    where trigger_id=${claim.trigger_id} and lease_token=${claim.lease_token}
+      and lease_expires_at>clock_timestamp()
+    for update`);
+  if (schedule.rows.length !== 1)
     throw new ScheduleClaimLostError('Schedule claim expired');
+  await transaction.db.execute(sql`
+    insert into app.trigger_schedule_occurrences
+      (id, workspace_id, trigger_id, scheduled_at, disposition, workflow_run_id)
+    values (${generatePersistedId()}, ${transaction.workspaceId},
+            ${claim.trigger_id}, ${occurrence.scheduledAt}, ${disposition},
+            ${runId})
+    on conflict (trigger_id, scheduled_at) do nothing`);
+  await transaction.db.execute(sql`
+    update app.trigger_schedules
+    set last_fire_at=${occurrence.scheduledAt},
+        next_fire_at=${occurrence.nextAt},
+        lease_owner=null, lease_token=null, lease_acquired_at=null,
+        lease_expires_at=null, admission_deferred_until=null,
+        health_status='healthy', last_error_code=null,
+        updated_at=clock_timestamp()
+    where trigger_id=${claim.trigger_id} and lease_token=${claim.lease_token}`);
+  await transaction.db.execute(sql`
+    update app.workflow_triggers
+    set health_status='healthy', last_error_code=null,
+        updated_at=clock_timestamp()
+    where id=${claim.trigger_id} and workspace_id=${transaction.workspaceId}`);
   return disposition;
 }
 

@@ -209,7 +209,12 @@ now, as one ordered program — not "whenever we touch it".
           notification connection lock) run as statements in TypeScript; the
           health "protocol" marker trigger and the observation cleanup trigger
           go.
-  - [ ] Triggers: schedules and webhooks.
+  - [x] Triggers: schedules and webhooks. A claimed occurrence's eligibility,
+        pause check and completion run as statements in its workspace's
+        transaction. The cross-workspace schedule claims, the public webhook
+        lookup and the ingress limit stay in SQL. So do the triggers that keep
+        an integration from being activated in an inactive workspace: they
+        guard eight writers in five areas and races with deletion.
   - [x] Notifications and inbox: the policy and dispatch locks are
         statements in TypeScript, run and intent pins are checked once where
         they are made, inbox reads only move forward in TypeScript, and idle
