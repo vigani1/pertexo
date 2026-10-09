@@ -113,8 +113,10 @@ now, as one ordered program — not "whenever we touch it".
         (`compatibility/persisted-workflow-checkpoint*`, ~800 lines) is gone;
         run acceptance keeps only the check that the checkpoint belongs to the
         run row.
-  - [ ] Attempts, previews, notifications and outbox move to their own
-        database areas (claim, heartbeat, completion stay storage).
+  - [x] `database/src/execution` is gone: attempts, previews,
+        notifications (with destinations), outbox, inbox, trigger pause and
+        artifacts each have their own area. Claim, heartbeat, completion and
+        delivery stay storage there.
   - [ ] For Each overflow check.
 - [ ] **7. Database feature areas** — authoring, workspaces, connections,
       triggers, notifications, inbox, workspace lifecycle and retention: rules
