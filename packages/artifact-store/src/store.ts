@@ -19,18 +19,18 @@ import { Readable, Transform } from 'node:stream';
 import type { TransformCallback } from 'node:stream';
 import { z } from 'zod';
 
-import { artifactMetadataMatches } from './artifact-metadata.js';
+import { artifactMetadataMatches } from './metadata.js';
 import {
   artifactIdentitySchema,
   artifactStorageKey,
   type ArtifactIdentity,
-} from './artifact-identity.js';
+} from './identity.js';
 import {
   ArtifactInputIntegrityError,
   ArtifactIntegrityError,
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
-} from './artifact-errors.js';
+} from './errors.js';
 import type { ArtifactStoreConfig } from './config.js';
 import {
   createProductionObjectStoreObserver,
@@ -41,10 +41,7 @@ import {
 import type { ObjectStoreObserver } from './object-store-telemetry.js';
 import { sendS3 } from './s3-client-contract.js';
 import type { ObjectStoreS3Client } from './s3-client-contract.js';
-import {
-  awaitWithSignal,
-  requestSignal,
-} from './artifact-request-lifecycle.js';
+import { awaitWithSignal, requestSignal } from './request-lifecycle.js';
 import {
   createArtifactDownloadPresigner,
   signArtifactDownload,
@@ -52,7 +49,7 @@ import {
   type BeginDirectDownloadRequest,
   type DirectDownload,
   type GetObjectPresigner,
-} from './artifact-download.js';
+} from './download.js';
 import {
   assertWorkspaceVersionListing,
   validateWorkspaceVersionDeletion,
@@ -62,9 +59,9 @@ export {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
-} from './artifact-errors.js';
+} from './errors.js';
 export type S3ClientLike = ObjectStoreS3Client;
-export type { ArtifactIdentity } from './artifact-identity.js';
+export type { ArtifactIdentity } from './identity.js';
 
 export interface ArtifactMetadata extends ArtifactIdentity {
   readonly byteLength: number;

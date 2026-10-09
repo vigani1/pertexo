@@ -5,7 +5,7 @@ import {
 import {
   parseObservabilityConfig,
   type ObservabilityConfig,
-} from '@pertexo/observability/config';
+} from '@pertexo/observability/startup';
 import { z } from 'zod';
 
 const dryRunSchema = z

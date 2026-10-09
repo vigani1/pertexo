@@ -4,7 +4,7 @@ import type {
   OutboxDispatcherDatabase,
   ReleaseOutboxResult,
 } from '@pertexo/database/testing';
-import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
+import type { TransportMetrics } from '@pertexo/observability';
 import { JOB_NAME, type QueueJob, type QueueProducer } from '@pertexo/queue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

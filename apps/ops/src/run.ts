@@ -4,9 +4,9 @@ import type {
   OperatorCommandResult,
   GenericOperatorCommandResult,
 } from '@pertexo/database/operator';
-import type { StructuredLogger } from '@pertexo/observability/logging';
-import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
-import { classifyProcessError } from '@pertexo/observability/process-error-classification';
+import type { StructuredLogger } from '@pertexo/observability';
+import type { TelemetryLifecycle } from '@pertexo/observability/startup';
+import { classifyProcessError } from '@pertexo/observability/startup';
 
 import type { OperatorCommandConfig } from './config.js';
 

@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import { Queue } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
 import { Redis } from 'ioredis';

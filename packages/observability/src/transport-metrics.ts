@@ -1,7 +1,5 @@
 import { metrics, type Attributes, type Meter } from '@opentelemetry/api';
 
-import './server-only.js';
-
 export const TRANSPORT_METRIC_NAME = Object.freeze({
   artifactBytes: 'pertexo.transport.artifact.bytes',
   artifactCount: 'pertexo.transport.artifact.count',

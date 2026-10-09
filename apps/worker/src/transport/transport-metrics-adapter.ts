@@ -1,7 +1,7 @@
 import type {
   TransportErrorClass,
   TransportMetrics,
-} from '@pertexo/observability/transport-metrics';
+} from '@pertexo/observability';
 import type {
   QueueConsumerObserver,
   QueueConsumerLifecycleObservation,

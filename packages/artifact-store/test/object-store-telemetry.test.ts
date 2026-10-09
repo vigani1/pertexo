@@ -13,7 +13,7 @@ import {
   type ObjectStoreRequestObservation,
   type ObjectStoreSafetyObservation,
 } from '../src/object-store-telemetry.js';
-import { createArtifactDownloadPresigner } from '../src/artifact-download.js';
+import { createArtifactDownloadPresigner } from '../src/download.js';
 import { createArtifactStore } from '../src/store.js';
 import type { S3ClientLike } from '../src/store.js';
 

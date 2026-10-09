@@ -6,7 +6,7 @@ import {
 import {
   createTransportMetrics,
   type TransportMetrics,
-} from '@pertexo/observability/transport-metrics';
+} from '@pertexo/observability';
 import {
   createQueueProducer,
   JOB_NAME,

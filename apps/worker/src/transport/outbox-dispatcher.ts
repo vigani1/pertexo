@@ -10,7 +10,7 @@ import {
   type TransportErrorClass,
   type TransportJob,
   type TransportMetrics,
-} from '@pertexo/observability/transport-metrics';
+} from '@pertexo/observability';
 import {
   JOB_NAME,
   QUEUE_FOR_JOB,
