@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime } from '@/lib/format-time';
+import { formatDate, formatDateTime } from '@/lib/format/time';
 import type { RunPresetRange, RunSearch } from './run-search';
 import { describeRunStatus, describeTrigger } from '../run-status';
 

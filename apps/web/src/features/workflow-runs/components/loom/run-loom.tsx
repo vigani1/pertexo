@@ -3,9 +3,9 @@ import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { CoreOrb } from '@/components/patterns/core-orb';
 import { Status } from '@/components/ui/status';
-import { formatDateTime, formatDurationMs } from '@/lib/format-time';
-import { useCanvasRenderer } from '@/lib/use-canvas-renderer';
-import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import { formatDateTime, formatDurationMs } from '@/lib/format/time';
+import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
+import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
 import {
   runsAtPointer,
   LOOM_TALL_HEIGHT,
@@ -16,7 +16,7 @@ import {
   type LoomRun,
 } from '../../model/loom/loom-model';
 import { describeRunStatus } from '../../model/run-status';
-import { useNow } from '@/lib/use-now';
+import { useNow } from '@/lib/hooks/use-now';
 import { LoomRunList } from './loom-run-list';
 import { LoomRenderer } from '../../model/loom/loom-renderer';
 

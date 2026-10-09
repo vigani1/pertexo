@@ -5,7 +5,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   useWorkflowVersionRestore,
   type RestoreRecovery,
-} from '../../mutations/use-version-restore';
+} from '../../data/mutations/use-version-restore';
 
 const CONFIRM: Readonly<Record<RestoreRecovery | 'start', string>> = {
   start: 'Restore to draft',

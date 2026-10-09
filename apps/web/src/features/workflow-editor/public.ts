@@ -1,1 +1,1 @@
-export { WorkflowEditorPage } from './workflow-editor';
+export { WorkflowEditorPage } from './pages/workflow-editor';

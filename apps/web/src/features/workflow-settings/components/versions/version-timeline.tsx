@@ -2,7 +2,7 @@ import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { EyeIcon, RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import { stepCountLabel } from '../../model/versions/version-steps';
 

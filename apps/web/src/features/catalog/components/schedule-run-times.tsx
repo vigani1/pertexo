@@ -2,7 +2,7 @@ import {
   formatDateTimeInZone,
   formatRelativeTime,
   localTimeZone,
-} from '@/lib/format-time';
+} from '@/lib/format/time';
 
 /**
  * Upcoming run times on the schedule's own clock and, when that differs, on

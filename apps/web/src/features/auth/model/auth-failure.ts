@@ -1,4 +1,4 @@
-import { NativeAuthenticationError } from '../native-auth.api';
+import { NativeAuthenticationError } from '../data/native-auth.api';
 
 // One place for what went wrong on the sign-in family of pages, in words.
 // Every sentence says what happened and what to do next.

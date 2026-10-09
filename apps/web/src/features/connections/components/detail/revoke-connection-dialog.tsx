@@ -4,11 +4,11 @@ import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
-import { connectionCommandError } from '../../connection-errors';
+import { connectionCommandError } from '../../model/connection-errors';
 import {
   useRevokeConnectionMutation,
   type ConnectionMutationScope,
-} from '../../connections.mutations';
+} from '../../data/connections.mutations';
 
 /** Revoke lives here, behind a confirmation — never as a button in each row. */
 export function RevokeConnectionDialog({

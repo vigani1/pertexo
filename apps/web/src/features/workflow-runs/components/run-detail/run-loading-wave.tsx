@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { useCanvasRenderer } from '@/lib/use-canvas-renderer';
+import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
 import { LoadingWaveRenderer } from './loading-wave-renderer';
 
 /**

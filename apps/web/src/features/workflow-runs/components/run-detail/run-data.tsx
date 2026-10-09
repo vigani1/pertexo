@@ -19,7 +19,7 @@ import {
   nodeRunInputQueryOptions,
   nodeRunOutputQueryOptions,
   workflowRunInputQueryOptions,
-} from '../../workflow-run-data.queries';
+} from '../../data/workflow-run-data.queries';
 import {
   describeValue,
   isEmptyValue,

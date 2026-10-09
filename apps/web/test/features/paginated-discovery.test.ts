@@ -1,6 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { getAllConnections } from '@/features/connections/connections.api';
+import { getAllConnections } from '@/features/connections/data/connections.api';
 import { getAllWorkflowVersions } from '@/features/workflow-versions/public';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../support/mock-server';

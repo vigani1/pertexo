@@ -8,7 +8,7 @@ import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { readFailureReason } from '@/lib/api/api-error-copy';
 import { ROLE_NAMES } from '../../model/workspace-roles';
-import { accessibleWorkspacesQueryOptions } from '../../workspaces.queries';
+import { accessibleWorkspacesQueryOptions } from '../../data/workspaces.queries';
 import { WorkspaceMark } from '../shell/workspace-mark';
 
 /**

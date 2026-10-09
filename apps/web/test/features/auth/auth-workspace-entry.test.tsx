@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { createApiClient, type ApiClient } from '@/lib/api/client';
-import { LoginPage } from '@/features/auth/login-page';
+import { LoginPage } from '@/features/auth/pages/login';
 import { AccountMethodsSection } from '@/features/auth/components/account/account-methods-section';
 import { endBrowserSession } from '@/features/auth/model/session/session-actions';
 import { mockServer } from '../../support/mock-server';

@@ -1,1 +1,1 @@
-export { ArtifactDownload } from './artifact-download';
+export { ArtifactDownload } from './components/artifact-download';

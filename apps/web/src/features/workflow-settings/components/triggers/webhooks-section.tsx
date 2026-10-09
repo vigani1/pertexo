@@ -6,7 +6,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   useWebhookCommand,
   type WebhookCommand,
-} from '../../mutations/use-trigger-commands';
+} from '../../data/mutations/use-trigger-commands';
 import { RotateSecretDialog } from './rotate-secret-dialog';
 import { SecretRevealDialog } from './secret-reveal-dialog';
 import { WebhookCard } from './webhook-card';

@@ -6,7 +6,7 @@ import type {
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { describeStep } from '@/features/catalog/presentation.public';
-import { formatDurationMs } from '@/lib/format-time';
+import { formatDurationMs } from '@/lib/format/time';
 import {
   describeNodeStatus,
   isActiveRunStatus,

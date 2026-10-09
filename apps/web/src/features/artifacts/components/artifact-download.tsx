@@ -1,0 +1,149 @@
+import { useQuery } from '@tanstack/react-query';
+import { DownloadIcon, FileTextIcon } from 'lucide-react';
+import { useState } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
+import { Notice } from '@/components/ui/notice';
+import { describeReadError } from '@/lib/api/api-error-copy';
+import type { ApiClient } from '@/lib/api/client';
+import { formatByteLength } from '@/lib/format/bytes';
+import { formatClock } from '@/lib/format/time';
+import { useLatestRequest } from '@/lib/hooks/use-latest-request';
+import {
+  getArtifactMetadata,
+  prepareArtifactDownload,
+} from '../data/artifacts.api';
+import { artifactMetadataQueryOptions } from '../data/artifacts.queries';
+import { describeFileKind, shortArtifactId } from '../model/artifact-labels';
+
+type PreparedDownload = Awaited<ReturnType<typeof prepareArtifactDownload>>;
+
+type ArtifactDownloadProps = Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  artifactId: string;
+  /** With the person's ID the card shows the file's type and size up front. */
+  userId?: string;
+}>;
+
+/**
+ * A file output as a card: its kind and size, and one Download button that
+ * checks the file is ready, prepares a short-lived signed link and opens it.
+ * If the browser blocks the new tab, the link stays on the card.
+ */
+export function ArtifactDownload(props: ArtifactDownloadProps) {
+  return (
+    <ArtifactDownloadScope
+      key={`${props.userId ?? ''}:${props.workspaceId}:${props.artifactId}`}
+      {...props}
+    />
+  );
+}
+
+function ArtifactDownloadScope({
+  apiClient,
+  workspaceId,
+  artifactId,
+  userId,
+}: ArtifactDownloadProps) {
+  const metadata = useQuery({
+    ...artifactMetadataQueryOptions(
+      apiClient,
+      userId ?? '',
+      workspaceId,
+      artifactId,
+    ),
+    enabled: userId !== undefined,
+  });
+  const [error, setError] = useState<string>();
+  const [download, setDownload] = useState<PreparedDownload>();
+  const requests = useLatestRequest();
+  const { pending } = requests;
+
+  async function prepare() {
+    if (pending) return;
+    const request = requests.begin();
+    setError(undefined);
+    setDownload(undefined);
+    try {
+      const known =
+        metadata.data?.status === 'available'
+          ? metadata.data
+          : await getArtifactMetadata(
+              apiClient,
+              workspaceId,
+              artifactId,
+              request.signal,
+            );
+      if (known.status !== 'available') {
+        setError('This file is still being written. Try again in a moment.');
+        return;
+      }
+      const prepared = await prepareArtifactDownload(
+        apiClient,
+        workspaceId,
+        artifactId,
+        request.signal,
+      );
+      if (!request.isCurrent()) return;
+      setDownload(prepared);
+      // Opening straight away keeps it to one click; if the browser blocks
+      // the tab, the link below still works.
+      const opened = window.open(prepared.url, '_blank');
+      if (opened) opened.opener = null;
+    } catch (cause) {
+      if (request.isCurrent()) setError(describeReadError(cause, 'The file'));
+    } finally {
+      request.finish();
+    }
+  }
+
+  const details = metadata.data;
+  return (
+    <div className="rounded-lg border border-white/8 bg-card px-3 py-2.5 text-sm">
+      <div className="flex items-center gap-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-md border border-white/8 bg-white/[0.03] text-muted-foreground">
+          <FileTextIcon aria-hidden="true" className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">
+            {describeFileKind(details?.mediaType)}
+          </p>
+          <p className="truncate font-mono text-[0.7rem] text-subtle-foreground">
+            {details === undefined
+              ? shortArtifactId(artifactId)
+              : `${details.mediaType} · ${formatByteLength(details.byteLength)}`}
+          </p>
+        </div>
+        <ProgressButton
+          type="button"
+          size="sm"
+          variant="outline"
+          pending={pending}
+          pendingLabel="Preparing…"
+          icon={<DownloadIcon data-icon="inline-start" aria-hidden="true" />}
+          onClick={() => void prepare()}
+        >
+          Download
+        </ProgressButton>
+      </div>
+      {download === undefined ? null : (
+        <p className="mt-2 text-xs text-muted-foreground">
+          <a
+            className="font-medium text-accent-foreground underline underline-offset-4"
+            href={download.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open download link
+          </a>{' '}
+          · expires at {formatClock(download.expiresAt)}
+        </p>
+      )}
+      {error === undefined ? null : (
+        <Notice tone="destructive" className="mt-2">
+          {error}
+        </Notice>
+      )}
+    </div>
+  );
+}

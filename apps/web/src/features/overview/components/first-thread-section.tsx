@@ -4,7 +4,7 @@ import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/quer
 import type { ApiClient } from '@/lib/api/client';
 import { firstThreadSteps, type FirstThreadFacts } from '../model/first-thread';
 import { FirstThread } from './first-thread';
-import { useSetupReads } from '../use-setup-reads';
+import { useSetupReads } from '../hooks/use-setup-reads';
 
 /**
  * The checklist for a workspace that hasn't run anything yet. The caller

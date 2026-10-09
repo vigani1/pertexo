@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AuthLens, AuthLensFooter, AuthLensTitle } from './auth-lens';
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
-import { authenticationCapabilitiesQueryOptions } from '../../auth.queries';
+import { authenticationCapabilitiesQueryOptions } from '../../data/auth.queries';
 
 /**
  * The lens while Pertexo checks which sign-in methods are available. The

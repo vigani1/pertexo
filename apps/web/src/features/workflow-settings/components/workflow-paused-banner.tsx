@@ -7,9 +7,9 @@ import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDateTime } from '@/lib/format-time';
-import { workflowAutoPauseQueryOptions } from '../auto-pause.queries';
-import { useAutoPauseCommand } from '../mutations/use-auto-pause-command';
+import { formatDateTime } from '@/lib/format/time';
+import { workflowAutoPauseQueryOptions } from '../data/auto-pause.queries';
+import { useAutoPauseCommand } from '../data/mutations/use-auto-pause-command';
 import { visibleSettingsData } from '../model/settings-query';
 import { SettingsQueryState } from './settings-query-state';
 

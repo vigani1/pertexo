@@ -16,7 +16,7 @@ import {
   accessibleWorkspaceSchema,
   userProfileResponseSchema,
 } from '@pertexo/contracts';
-import { WorkflowListPage } from '@/features/workflows/workflow-list-page';
+import { WorkflowListPage } from '@/features/workflows/pages/workflow-list';
 import { createApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/api-error';
 import { workflowKeys } from '@/features/workflows/queries.public';

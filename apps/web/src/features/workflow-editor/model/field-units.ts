@@ -1,4 +1,4 @@
-import { formatByteLength } from '@/lib/format-bytes';
+import { formatByteLength } from '@/lib/format/bytes';
 
 // Setup fields in people's words and units. Catalog schemas name settings
 // like `timeoutMillis` or `maxResponseBytes`; the Setup tab reads them as

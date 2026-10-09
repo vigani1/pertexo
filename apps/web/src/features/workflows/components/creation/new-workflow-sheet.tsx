@@ -31,7 +31,7 @@ import {
   useCreateWorkflow,
   type CreateWorkflowResult,
   type StarterDraftWriter,
-} from '../../workflows.mutations';
+} from '../../data/workflows.mutations';
 import { StarterChoice, type StartChoice } from './starter-choice';
 
 type Attempt = Readonly<{ name: string; idempotencyKey: string }>;

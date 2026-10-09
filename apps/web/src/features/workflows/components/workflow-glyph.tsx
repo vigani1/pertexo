@@ -1,7 +1,7 @@
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowShapeQueryOptions } from '../workflows.queries';
+import { workflowShapeQueryOptions } from '../data/workflows.queries';
 import { PatternGlyph, PatternGlyphPlaceholder } from './pattern-glyph';
 
 /**

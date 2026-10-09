@@ -17,7 +17,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import {
   canRunWorkflow,
@@ -30,7 +30,7 @@ import {
 } from '../../model/workflow-shape';
 import { useWorkflowRunTicks } from './use-workflow-run-ticks';
 import { useHasBeenVisible } from './use-has-been-visible';
-import { workflowShapeQueryOptions } from '../../workflows.queries';
+import { workflowShapeQueryOptions } from '../../data/workflows.queries';
 import { PatternGlyph, PatternGlyphPlaceholder } from '../pattern-glyph';
 import { RunStrip, RunStripPlaceholder } from './run-strip';
 import {

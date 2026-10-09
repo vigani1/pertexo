@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Notice } from '@/components/ui/notice';
 import { Status, type StatusTone } from '@/components/ui/status';
-import { formatDateTime } from '@/lib/format-time';
+import { formatDateTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 
 type Operation = WorkspaceLifecycleOperationResponse;

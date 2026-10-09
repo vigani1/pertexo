@@ -5,8 +5,8 @@ import type {
 } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
-import { setWorkflowFavorite } from '../../organization.api';
-import { workflowOrganizationKeys } from '../../organization.queries';
+import { setWorkflowFavorite } from '../../data/organization.api';
+import { workflowOrganizationKeys } from '../../data/organization.queries';
 
 /** Marks or unmarks a workflow as one of the user's favorites. */
 export function WorkflowFavoriteButton({

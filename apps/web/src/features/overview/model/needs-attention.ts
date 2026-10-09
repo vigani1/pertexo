@@ -5,7 +5,7 @@ import type {
   WorkflowRunReadSummary,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { formatElapsedTime } from '@/lib/format-time';
+import { formatElapsedTime } from '@/lib/format/time';
 
 // "Needs attention" is derived from reads the app already makes: problem
 // runs from the last day, workflows whose triggers aren't healthy,

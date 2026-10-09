@@ -10,7 +10,7 @@ import { InfoHint } from '@/components/patterns/info-hint';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDurationMs, formatRelativeTime } from '@/lib/format-time';
+import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import { describeNodeStatus } from '../../model/run-status';
 import { shortStepError } from '../../model/step-inspection/step-error-copy';
@@ -18,7 +18,7 @@ import { loopItemOf } from '../../model/timeline/run-timeline-model';
 import {
   stepHealthQueryOptions,
   stepRunsQueryOptions,
-} from '../../workflow-runs.queries';
+} from '../../data/workflow-runs.queries';
 import { StepRunOutput } from '../run-detail/run-data';
 
 const RECENT_RUNS = 10;

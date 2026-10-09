@@ -2,9 +2,9 @@ import type { ScheduleOccurrenceResponse } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { RecentLog, RecentLogEntry } from '@/components/patterns/recent-log';
 import type { ApiClient } from '@/lib/api/client';
-import { formatDateTime } from '@/lib/format-time';
+import { formatDateTime } from '@/lib/format/time';
 import { describeOccurrence } from '../../model/triggers/occurrence-outcome';
-import { scheduleOccurrencesInfiniteQueryOptions } from '../../workflow-settings.queries';
+import { scheduleOccurrencesInfiniteQueryOptions } from '../../data/workflow-settings.queries';
 import { RunLink } from './run-link';
 
 function OccurrenceEntry({

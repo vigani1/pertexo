@@ -6,7 +6,7 @@ import {
   formatRelativeTime,
   localTimeZone,
   localUtcOffset,
-} from '@/lib/format-time';
+} from '@/lib/format/time';
 import { AccountSection } from './account-section';
 
 function Fact({

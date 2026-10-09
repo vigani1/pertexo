@@ -1,8 +1,8 @@
 import { createRouter, type RouterHistory } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { PagePending } from '../routes/page-pending';
-import { routeTree } from '../routes/route-tree';
+import { PagePending } from '../routes/root/page-pending';
+import { routeTree } from '../routes/root/route-tree';
 
 export function createAppRouter(
   queryClient: QueryClient,

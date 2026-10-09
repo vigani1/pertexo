@@ -4,8 +4,8 @@ import { LoadMore } from '@/components/patterns/load-more';
 import { ReadFailure } from '@/components/patterns/read-failure';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { describeStep } from '@/features/catalog/presentation.public';
-import type { ConnectionMutationScope } from '../../connections.mutations';
-import { connectionUsageQueryOptions } from '../../connections.queries';
+import type { ConnectionMutationScope } from '../../data/connections.mutations';
+import { connectionUsageQueryOptions } from '../../data/connections.queries';
 
 /** Retained published versions, not drafts or an inferred current graph. */
 export function ConnectionUsage({

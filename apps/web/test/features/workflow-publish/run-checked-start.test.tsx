@@ -9,7 +9,7 @@ import {
 } from '@pertexo/contracts';
 import { RunInputDialog } from '@/features/workflow-publish/components/run-submission/run-input-dialog';
 import { RunMenu } from '@/features/workflow-publish/components/run-submission/run-menu';
-import { useWorkflowRunSubmission } from '@/features/workflow-publish/mutations/use-workflow-run-submission';
+import { useWorkflowRunSubmission } from '@/features/workflow-publish/data/mutations/use-workflow-run-submission';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { renderInRouter } from '../../support/render-in-router';

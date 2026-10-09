@@ -17,9 +17,9 @@ import { Status } from '@/components/ui/status';
 import { describeReadError, isNotFound } from '@/lib/api/api-error-copy';
 import { cn } from '@/lib/utils';
 import { ReadFailure } from '@/components/patterns/read-failure';
-import { connectionAccessLost } from '../../connection-access';
-import type { ConnectionMutationScope } from '../../connections.mutations';
-import { connectionDetailQueryOptions } from '../../connections.queries';
+import { connectionAccessLost } from '../../model/connection-access';
+import type { ConnectionMutationScope } from '../../data/connections.mutations';
+import { connectionDetailQueryOptions } from '../../data/connections.queries';
 import {
   describeConnectionHealth,
   describeConnectionStatus,

@@ -6,7 +6,7 @@ import {
 } from '@pertexo/contracts';
 import type { ApiProblemIssue } from '@pertexo/contracts';
 import type { FieldErrors } from '@/components/ui/use-field-validation';
-import type { ConnectionCredential } from '../connections.api';
+import type { ConnectionCredential } from '../data/connections.api';
 import type { ProviderKey } from './connection-providers';
 
 export type HeaderRow = Readonly<{ id: string; name: string; value: string }>;

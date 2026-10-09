@@ -13,7 +13,7 @@ import {
   needsAutoValidation,
 } from '@/features/workflow-publish/model/validation-throttle';
 import { groupWorkflowIssues } from '@/features/workflow-publish/model/workflow-issues';
-import { useWorkflowPublication } from '@/features/workflow-publish/mutations/use-workflow-publication';
+import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
 import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];

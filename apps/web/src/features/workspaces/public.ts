@@ -1,1 +1,1 @@
-export { WorkspaceShell } from './workspace-shell';
+export { WorkspaceShell } from './pages/workspace-shell';

@@ -17,7 +17,7 @@ import {
 import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
 import { Status, type StatusTone } from '@/components/ui/status';
-import { useMediaQuery } from '@/lib/use-media-query';
+import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import {
   projectRunGraph,

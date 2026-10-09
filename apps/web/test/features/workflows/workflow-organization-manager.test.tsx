@@ -7,7 +7,7 @@ import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { createApiClient } from '../../../src/lib/api/client';
 import { WorkflowOrganizationManager } from '../../../src/features/workflows/components/organization/workflow-organization-manager';
 import { WorkflowFolderPicker } from '../../../src/features/workflows/components/organization/workflow-folder-picker';
-import { workflowOrganizationKeys } from '@/features/workflows/organization.queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization.queries';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';
 import {

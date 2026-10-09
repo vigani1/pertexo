@@ -1,1 +1,1 @@
-export { FailureNotificationDestinationsPage } from './failure-notification-destinations-page';
+export { FailureNotificationDestinationsPage } from './pages/failure-notification-destinations';

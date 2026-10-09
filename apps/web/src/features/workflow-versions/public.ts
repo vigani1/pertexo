@@ -2,4 +2,4 @@ export {
   findWorkflowVersion,
   getAllWorkflowVersions,
   restoreWorkflowVersion,
-} from './workflow-versions.api';
+} from './data/workflow-versions.api';

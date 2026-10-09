@@ -12,8 +12,8 @@ import {
   useEditorStore,
   useEditorStoreApi,
 } from '../../model/editor-store-context';
-import type { EditorFocusTarget } from '../../use-editor-actions';
-import type { InspectorTab } from '../../use-inspector-navigation';
+import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
+import type { InspectorTab } from '../../hooks/use-inspector-navigation';
 import { updateWorkflowNode } from '../../model/graph/graph-commands';
 import {
   findStep,

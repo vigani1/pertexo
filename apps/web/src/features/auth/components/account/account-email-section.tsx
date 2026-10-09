@@ -4,7 +4,7 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
-import { useRequestAccountEmailChange } from '../../account-security.mutations';
+import { useRequestAccountEmailChange } from '../../data/account-security.mutations';
 import { emailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { AccountCommandFailure, AccountSection } from './account-section';

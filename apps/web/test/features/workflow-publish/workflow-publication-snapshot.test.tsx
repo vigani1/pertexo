@@ -4,8 +4,8 @@ import { StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
 import { workflowIssuesView } from '@/features/workflow-publish/model/issues-state';
-import { useWorkflowPublication } from '@/features/workflow-publish/mutations/use-workflow-publication';
-import { validateWorkflow } from '@/features/workflow-publish/workflow-publish.api';
+import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
+import { validateWorkflow } from '@/features/workflow-publish/data/workflow-publish.api';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

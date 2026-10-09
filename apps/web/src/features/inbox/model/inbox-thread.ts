@@ -1,7 +1,7 @@
 import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { describeListedFailure } from '@/features/workflow-runs/failure.public';
 import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
-import { formatDateTime } from '@/lib/format-time';
+import { formatDateTime } from '@/lib/format/time';
 
 /** How a failing workflow's notice reads in the inbox. */
 export type InboxThreadView = Readonly<{

@@ -15,7 +15,7 @@ import {
   workspaceId,
   userId,
 } from './workflow-list.fixtures';
-import { workflowOrganizationKeys } from '@/features/workflows/organization.queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization.queries';
 
 vi.mock('@/features/workflows/model/organization-feature-gates', () => ({
   workflowOrganizationControlsEnabled: () => true,

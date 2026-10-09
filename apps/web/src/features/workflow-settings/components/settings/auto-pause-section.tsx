@@ -17,8 +17,8 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   workflowAutoPauseQueryOptions,
   workspaceAutoPauseQueryOptions,
-} from '../../auto-pause.queries';
-import { useAutoPauseCommand } from '../../mutations/use-auto-pause-command';
+} from '../../data/auto-pause.queries';
+import { useAutoPauseCommand } from '../../data/mutations/use-auto-pause-command';
 import { visibleSettingsData } from '../../model/settings-query';
 import { SettingsQueryState } from '../settings-query-state';
 

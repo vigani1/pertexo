@@ -6,7 +6,7 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import type { WorkspaceCreationCommand } from '../../mutations/use-workspace-creation';
+import type { WorkspaceCreationCommand } from '../../data/mutations/use-workspace-creation';
 
 type Field = 'name' | 'slug';
 

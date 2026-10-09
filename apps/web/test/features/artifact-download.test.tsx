@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
-import { ArtifactDownload } from '@/features/artifacts/artifact-download';
+import { ArtifactDownload } from '@/features/artifacts/components/artifact-download';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../support/mock-server';
 import { testFetch } from '../support/render-app';

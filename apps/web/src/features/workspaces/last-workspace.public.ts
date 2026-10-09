@@ -2,4 +2,4 @@ export {
   knownWorkspaceName,
   landingWorkspace,
   rememberLastWorkspace,
-} from './last-workspace';
+} from './model/last-workspace';
