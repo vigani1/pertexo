@@ -1,4 +1,3 @@
-import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database/lifecycle';
 import type {
   PreviewRetentionCoordinator,
   RetentionDatabase,
@@ -20,7 +19,6 @@ export const RETENTION_RUNTIME = Symbol('RETENTION_RUNTIME');
 
 export type RetentionRuntimeResources = Readonly<{
   database: RetentionDatabase;
-  lifecycleCommands: WorkspaceLifecycleCommandCoordinator;
   preview: PreviewRetentionCoordinator;
   runArtifacts: RunArtifactRetentionCoordinator;
   workspacePurge: WorkspacePurgeCoordinator;
@@ -62,18 +60,6 @@ export function createRetentionRuntime(
     RetentionOperation,
     RetentionOperationStep,
   ])[] = [
-    [
-      'lifecycle_command',
-      async (signal) => {
-        const result = await timed(
-          () => resources.lifecycleCommands.processNext({ signal }),
-          (result, seconds) => {
-            metrics.recordLifecycleCommand(result, seconds);
-          },
-        );
-        return result.status === 'completed' || result.status === 'failed';
-      },
-    ],
     [
       'transient_data_reap',
       async (signal) => {
@@ -170,7 +156,6 @@ export function createRetentionRuntime(
     pollMillis,
     checkCompatibility: async (signal) => {
       await resources.database.checkReadiness(signal);
-      await resources.lifecycleCommands.checkReadiness(signal);
     },
     cycle: async (signal) => {
       for (const [operation, step] of operations)
@@ -181,7 +166,6 @@ export function createRetentionRuntime(
     },
     release: async () => {
       const closed = await Promise.allSettled([
-        resources.lifecycleCommands.close(),
         resources.preview.close(),
         resources.runArtifacts.close(),
         resources.workspacePurge.close(),

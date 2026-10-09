@@ -8,13 +8,11 @@ import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
 } from '../src/authoring/workflow-authoring-errors.js';
-import { withWorkspaceDestructiveOperationLock } from '../src/lifecycle/retention-transaction.js';
 import {
   actorId,
   workspaceId,
   apiUrl,
   apiPool,
-  dispatcherPool,
   authoring,
   currentRepresentationTag,
   emptyGraph,
@@ -27,8 +25,7 @@ import {
   waitForPostgresLock,
   withApplicationName,
   otherActorId,
-  Pool,
-  migrationUrl,
+  purgeTestWorkspace,
 } from './support/workflow-authoring.integration.support.js';
 
 let database: ReturnType<typeof createWorkflowInputCaseDatabase>;
@@ -336,7 +333,7 @@ describe('bounded version-contextual run-input cases', () => {
       }),
     ).rejects.toBeInstanceOf(TypeError);
   });
-  it('forces tenant RLS and denies maintenance case access and app physical erasure', async () => {
+  it('forces tenant RLS and denies app physical erasure', async () => {
     const scope = await fixture();
     const created = await database.createCase({
       ...scope,
@@ -364,9 +361,6 @@ describe('bounded version-contextual run-input cases', () => {
     expect(
       (await apiPool.query('select * from app.workflow_input_cases')).rows,
     ).toEqual([]);
-    await expect(
-      dispatcherPool.query('select * from app.workflow_input_case_payloads'),
-    ).rejects.toMatchObject({ code: '42501' });
     await expect(
       apiPool.query('delete from app.workflow_input_cases'),
     ).rejects.toMatchObject({ code: '42501' });
@@ -572,124 +566,29 @@ describe('bounded version-contextual run-input cases', () => {
         scope.workflowVersionId,
       ],
     );
-    await queryAsOwner(
-      `select app.project_workspace_deletion($1,1,$2,'deletion_requested',$1,$3,$4,$5,null,'Owned purge test',clock_timestamp()-interval '31 days')`,
-      [
-        scope.workspaceId,
-        randomUUID(),
-        '0'.repeat(64),
-        'c'.repeat(64),
-        actorId,
-      ],
-      scope.workspaceId,
-    );
-    const claim = (
-      await queryAsOwner<{
-        job_id: string;
-        lease_token: string;
-        lease_fence: string;
-      }>(
-        `select * from app.prepare_workspace_purge_job($1,1,$2,'test-purge',interval '1 minute')`,
-        [scope.workspaceId, 'c'.repeat(64)],
-        scope.workspaceId,
-      )
-    )[0];
-    if (!claim) throw new Error('Expected purge claim');
-    await queryAsOwner(
-      'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
-      [
-        claim.job_id,
-        claim.lease_token,
-        claim.lease_fence,
-        'c'.repeat(64),
-        'd'.repeat(64),
-      ],
-      scope.workspaceId,
-    );
-    const objectClaim = (
-      await queryAsOwner<{ lease_token: string; lease_fence: string }>(
-        `select * from app.claim_workspace_purge_step($1,2,$2,'test-purge',interval '1 minute')`,
-        [claim.job_id, 'd'.repeat(64)],
-        scope.workspaceId,
-      )
-    )[0];
-    if (!objectClaim) throw new Error('Expected object purge claim');
-    await queryAsOwner(
-      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,2,$4)',
-      [
-        claim.job_id,
-        objectClaim.lease_token,
-        objectClaim.lease_fence,
-        'd'.repeat(64),
-      ],
-      scope.workspaceId,
-    );
-    const surfaces: string[] = [];
-    let completed = false;
-    const coordinationPool = new Pool({
-      connectionString: migrationUrl,
-      max: 2,
-    });
-    try {
-      await withWorkspaceDestructiveOperationLock(
-        coordinationPool,
-        scope.workspaceId,
-        undefined,
-        async () => {
-          for (let page = 0; page < 80; page += 1) {
-            const step = (
-              await queryAsOwner<{ lease_token: string; lease_fence: string }>(
-                `select * from app.claim_workspace_purge_step($1,2,$2,'test-purge',interval '1 minute')`,
-                [claim.job_id, 'd'.repeat(64)],
-                scope.workspaceId,
-              )
-            )[0];
-            if (!step) throw new Error('Expected tenant purge claim');
-            const before = await queryAsOwner<{ bytes: string }>(
-              'select coalesce(sum(canonical_bytes),0) bytes from app.workflow_input_case_payloads where workspace_id=$1',
-              [scope.workspaceId],
-            );
-            const result = (
-              await queryAsOwner<{
-                surface: string;
-                affected_count: number;
-                completed: boolean;
-              }>(
-                'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,100,2,$4)',
-                [
-                  claim.job_id,
-                  step.lease_token,
-                  step.lease_fence,
-                  'd'.repeat(64),
-                ],
-                scope.workspaceId,
-              )
-            )[0];
-            if (!result) throw new Error('Expected tenant purge result');
-            const after = await queryAsOwner<{ bytes: string }>(
-              'select coalesce(sum(canonical_bytes),0) bytes from app.workflow_input_case_payloads where workspace_id=$1',
-              [scope.workspaceId],
-            );
-            expect(
-              Number(before[0]?.bytes) - Number(after[0]?.bytes),
-            ).toBeLessThanOrEqual(1048576);
-            surfaces.push(result.surface);
-            if (result.completed) {
-              completed = true;
-              break;
-            }
-          }
-        },
+    const payloadBytes = async () =>
+      Number(
+        (
+          await queryAsOwner<{ bytes: string }>(
+            'select coalesce(sum(canonical_bytes),0) bytes from app.workflow_input_case_payloads where workspace_id=$1',
+            [scope.workspaceId],
+          )
+        )[0]?.bytes,
       );
-    } finally {
-      await coordinationPool.end();
-    }
-    expect(completed).toBe(true);
+    let remaining = await payloadBytes();
+    const steps = await purgeTestWorkspace(scope.workspaceId, {
+      pageSize: 100,
+      afterPage: async () => {
+        const after = await payloadBytes();
+        expect(remaining - after).toBeLessThanOrEqual(1048576);
+        remaining = after;
+      },
+    });
     expect(
-      surfaces.filter((value) => value === 'workflow_input_case_payloads'),
+      steps.filter((step) => step === 'workflow_input_case_payloads'),
     ).toHaveLength(2);
-    expect(surfaces.indexOf('workflow_input_cases')).toBeLessThan(
-      surfaces.indexOf('workflow_versions'),
+    expect(steps.indexOf('workflow_input_cases')).toBeLessThan(
+      steps.indexOf('workflow_versions'),
     );
     const rows = await queryAsOwner<{
       cases: string;

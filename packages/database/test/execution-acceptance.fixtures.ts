@@ -202,8 +202,6 @@ async function resetExecutionFixture(): Promise<void> {
     await client.query('set local role pertexo_owner');
     await client.query(`
       truncate table
-        app.workspace_purge_steps,
-        app.workspace_purge_jobs,
         app.idempotency_records,
         app.workflow_concurrency_command_receipts,
         app.run_events,

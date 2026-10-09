@@ -1,5 +1,4 @@
 import { metrics, type Meter } from '@opentelemetry/api';
-import type { WorkspaceLifecycleCommandOutcome } from '@pertexo/database/lifecycle';
 import type {
   PreviewRetentionProcessResult,
   RetentionPassResult,
@@ -13,8 +12,6 @@ export const RETENTION_METRIC_NAME = Object.freeze({
   batchDuration: 'pertexo.retention.batch.duration',
   failureCount: 'pertexo.retention.operation.failure.count',
   failureDuration: 'pertexo.retention.operation.failure.duration',
-  lifecycleCommandCount: 'pertexo.lifecycle_command.process.count',
-  lifecycleCommandDuration: 'pertexo.lifecycle_command.process.duration',
   pageCount: 'pertexo.retention.page.count',
   purgeCount: 'pertexo.purge.batch.count',
   purgeDuration: 'pertexo.purge.batch.duration',
@@ -27,14 +24,9 @@ export type RetentionOperation =
   | 'preview'
   | 'run_artifact'
   | 'workspace_purge'
-  | 'transient_data_reap'
-  | 'lifecycle_command';
+  | 'transient_data_reap';
 
 export interface RetentionMetrics {
-  recordLifecycleCommand(
-    result: WorkspaceLifecycleCommandOutcome,
-    durationSeconds: number,
-  ): void;
   recordTransientDataReap(
     result: TransientDataReapResult,
     durationSeconds: number,
@@ -167,23 +159,7 @@ export function createRetentionMetrics(
       unit: 's',
     },
   );
-  const lifecycleCommandCount = meter.createCounter(
-    RETENTION_METRIC_NAME.lifecycleCommandCount,
-    { description: 'Lifecycle command processing outcomes', unit: '{command}' },
-  );
-  const lifecycleCommandDuration = meter.createHistogram(
-    RETENTION_METRIC_NAME.lifecycleCommandDuration,
-    { description: 'Lifecycle command processing duration', unit: 's' },
-  );
   const retentionMetrics: RetentionMetrics = {
-    recordLifecycleCommand: (result, durationSeconds) => {
-      const attributes = {
-        command_type: result.status === 'idle' ? 'none' : result.commandType,
-        outcome: result.status,
-      };
-      lifecycleCommandCount.add(1, attributes);
-      lifecycleCommandDuration.record(durationSeconds, attributes);
-    },
     recordTransientDataReap: createTransientDataReapRecorder(meter, duration),
     recordRetention: (result, durationSeconds) => {
       let removed = 0;

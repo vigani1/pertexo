@@ -1,13 +1,14 @@
 export {
-  createWorkspaceLifecycleCommandCoordinator,
-  type WorkspaceLifecycleCommandCoordinator,
-  type WorkspaceLifecycleCommandOutcome,
-  type WorkspaceLifecycleCommandType,
-} from './workspace-lifecycle-commands.js';
-export { workspaceControlRecordHash } from './control-record.js';
+  changeWorkspaceLifecycle,
+  WORKSPACE_RECOVERY_DAYS,
+} from './workspace-deletion.js';
 export { createRetentionDatabase, RETENTION_RULES } from './retention.js';
 export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
-export { createWorkspacePurgeCoordinator } from './workspace-purge.js';
+export {
+  createWorkspacePurgeCoordinator,
+  PURGE_PRESERVED_TABLES,
+  PURGE_STEPS,
+} from './workspace-purge.js';
 export type {
   WorkspacePurgeCoordinator,
   WorkspacePurgeObjectStore,

@@ -33,10 +33,10 @@ import {
   IdempotencyRequestConflictError,
 } from '../runs/commands/acceptance.js';
 import {
-  mapWorkspace,
-  mapWorkspaceLifecycleOperation,
-  workspaceLifecycleOperationRowSelection,
-} from './identity-workspace-rows.js';
+  changeWorkspaceLifecycle,
+  readWorkspaceLifecycleOperation,
+} from '../lifecycle/workspace-deletion.js';
+import { mapWorkspace } from './identity-workspace-rows.js';
 import { createIdentityWorkspaceSessionStore } from './identity-workspace-session-store.js';
 import { createIdentityWorkspaceIdentityStore } from './identity-workspace-identity-store.js';
 import {
@@ -396,38 +396,25 @@ export function createIdentityWorkspaceDatabase(
         .enum(['deletion_requested', 'deletion_restored'])
         .parse(input.commandType);
       const reason = z.string().trim().min(1).max(512).parse(input.reason);
-      const idempotencyKeyHash = commandKeyHash(input.idempotencyKey);
-      const requestHash = commandRequestHash({
-        actorUserId,
-        commandType,
-        reason,
-        workspaceId,
-      });
       try {
         return await withTenantScopedClient(
           pool,
           { workspaceId, actorId: actorUserId },
-          async (client) => {
-            const result = await client.query(
-              `select ${workspaceLifecycleOperationRowSelection} from
-                 app.request_workspace_lifecycle_operation($1::uuid,$2::uuid,
-                   $3::char(64),$4::varchar,$5::uuid,$6::varchar,$7::char(64))`,
-              [
-                generatePersistedId(),
-                workspaceId,
-                idempotencyKeyHash,
-                commandType,
+          (client) =>
+            changeWorkspaceLifecycle(client, {
+              operationId: generatePersistedId(),
+              workspaceId,
+              actorUserId,
+              commandType,
+              reason,
+              idempotencyKeyHash: commandKeyHash(input.idempotencyKey),
+              requestHash: commandRequestHash({
                 actorUserId,
+                commandType,
                 reason,
-                requestHash,
-              ],
-            );
-            const row = result.rows[0] as Record<string, unknown> | undefined;
-            if (result.rowCount !== 1 || row === undefined) {
-              throw new Error('Workspace lifecycle operation was not returned');
-            }
-            return mapWorkspaceLifecycleOperation(row);
-          },
+                workspaceId,
+              }),
+            }),
         );
       } catch (error: unknown) {
         throwWorkspaceLifecycleError(error);
@@ -442,25 +429,12 @@ export function createIdentityWorkspaceDatabase(
       const workspaceId = parseIdentityUuid(workspaceIdInput);
       const operationId = parseIdentityUuid(operationIdInput);
       const actorUserId = parseIdentityUuid(actorUserIdInput);
-      try {
-        return await withTenantScopedClient(
-          pool,
-          { workspaceId, actorId: actorUserId },
-          async (client) => {
-            const result = await client.query(
-              `select ${workspaceLifecycleOperationRowSelection} from
-                 app.read_workspace_lifecycle_operation($1::uuid,$2::uuid,$3::uuid)`,
-              [workspaceId, operationId, actorUserId],
-            );
-            const row = result.rows[0] as Record<string, unknown> | undefined;
-            return row === undefined
-              ? null
-              : mapWorkspaceLifecycleOperation(row);
-          },
-        );
-      } catch (error: unknown) {
-        throwWorkspaceLifecycleError(error);
-      }
+      return withTenantScopedClient(
+        pool,
+        { workspaceId, actorId: actorUserId },
+        (client) =>
+          readWorkspaceLifecycleOperation(client, workspaceId, operationId),
+      );
     },
 
     close: () => lease.close(),

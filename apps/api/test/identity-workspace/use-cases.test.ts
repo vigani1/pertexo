@@ -45,11 +45,7 @@ function operation(
     id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
     workspaceId,
     commandType,
-    status: 'pending' as const,
     submittedAt: new Date('2026-08-20T12:00:00.000Z'),
-    updatedAt: new Date('2026-08-20T12:00:00.000Z'),
-    completedAt: null,
-    errorCode: null,
   };
 }
 
@@ -630,14 +626,14 @@ describe('identity/workspace application use cases', () => {
         routeWorkspaceId: workspaceId,
         reason: 'retiring the suspended workspace',
       }),
-    ).resolves.toMatchObject({ status: 'pending' });
+    ).resolves.toMatchObject({ status: 'completed' });
     await expect(
       app.restore({
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
       }),
-    ).resolves.toMatchObject({ status: 'pending' });
+    ).resolves.toMatchObject({ status: 'completed' });
     const conflict = new WorkspaceLifecycleConflictError(
       'invalid_state',
       'Workspace is not pending deletion',
@@ -653,13 +649,9 @@ describe('identity/workspace application use cases', () => {
     expect(store.requestWorkspaceLifecycleOperation).toHaveBeenCalledTimes(3);
   });
 
-  it('returns the bounded result for a completed lifecycle operation', async () => {
+  it('reports a lifecycle operation as completed when it was submitted', async () => {
     const store = persistence();
-    store.readWorkspaceLifecycleOperation.mockResolvedValue({
-      ...operation(),
-      status: 'completed',
-      completedAt: new Date('2026-08-20T12:01:00.000Z'),
-    });
+    store.readWorkspaceLifecycleOperation.mockResolvedValue(operation());
     const app = new WorkspaceLifecycleUseCase(store, {
       findAccess: vi.fn().mockResolvedValue(activeAccess()),
     });
@@ -677,7 +669,7 @@ describe('identity/workspace application use cases', () => {
       status: 'completed',
       submittedAt: '2026-08-20T12:00:00.000Z',
       updatedAt: '2026-08-20T12:00:00.000Z',
-      completedAt: '2026-08-20T12:01:00.000Z',
+      completedAt: '2026-08-20T12:00:00.000Z',
       errorCode: null,
       result: { workspaceId },
     });
@@ -720,8 +712,8 @@ describe('identity/workspace application use cases', () => {
       }),
     ).resolves.toMatchObject({
       commandType: 'deletion_requested',
-      status: 'pending',
-      result: null,
+      status: 'completed',
+      result: { workspaceId },
     });
     await expect(
       app.restore({
@@ -731,7 +723,7 @@ describe('identity/workspace application use cases', () => {
       }),
     ).resolves.toMatchObject({
       commandType: 'deletion_restored',
-      status: 'pending',
+      status: 'completed',
     });
 
     const failure = new Error('transaction rolled back');

@@ -416,15 +416,12 @@ export type WorkspaceRenamePersistenceResult = Readonly<{
   replayed: boolean;
 }>;
 
+/** The receipt of a deletion or restore request, applied when submitted. */
 export type WorkspaceLifecycleOperationRecord = Readonly<{
   id: string;
   workspaceId: string;
   commandType: 'deletion_requested' | 'deletion_restored';
-  status: 'pending' | 'running' | 'completed' | 'failed';
   submittedAt: Date;
-  updatedAt: Date;
-  completedAt: Date | null;
-  errorCode: string | null;
 }>;
 
 export interface WorkspaceAuthorizationReader {

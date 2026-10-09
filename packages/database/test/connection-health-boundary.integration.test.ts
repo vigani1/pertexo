@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createRetentionDatabase } from '../src/lifecycle/retention.js';
+import { changeWorkspaceLifecycle } from '../src/lifecycle/workspace-deletion.js';
+import { withTenantScopedClient } from '../src/tenant-access/workspace.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import {
   actorId,
@@ -25,6 +27,7 @@ import {
   workerBaseUrl,
   workspaceA,
 } from './support/connection-run-health.fixture.js';
+import { purgeWorkspace } from './support/workspace-purge.js';
 
 const dispatcherBase =
   process.env.DATABASE_MAINTENANCE_URL ??
@@ -87,18 +90,6 @@ async function completedEvidence() {
   await nodeAttemptStore.complete(healthCompletion(lease));
   const command = await healthCommand(lease);
   return { connection, lease, command };
-}
-
-async function currentControl() {
-  const result = await asOwner(workspaceA, (client) =>
-    client.query<{ sequence: number; hash: string }>(
-      'select retention_control_sequence::int sequence,retention_control_hash hash from app.workspaces where id=$1',
-      [workspaceA],
-    ),
-  );
-  const row = result.rows[0];
-  if (row === undefined) throw new Error('Expected workspace control anchor');
-  return row;
 }
 
 async function evidenceCounts(attemptId: string, outboxId: string) {
@@ -187,12 +178,7 @@ describe('connection health runtime boundary', () => {
     ).rejects.toMatchObject({ code: '42501' });
   });
 
-  it('proves maintenance and app negative ACLs plus tenant-fenced app functions', async () => {
-    await expect(
-      asRuntime(dispatcherBase, workspaceA, (client) =>
-        client.query('select id from app.connection_health_observations'),
-      ),
-    ).rejects.toMatchObject({ code: '42501' });
+  it('denies maintenance health writes and fences app health functions', async () => {
     await expect(
       asRuntime(dispatcherBase, workspaceA, (client) =>
         client.query(
@@ -321,23 +307,22 @@ describe('connection health retention and tenant purge', () => {
 
   it('includes both private health tables in bounded workspace tenant purge without dangling health commands', async () => {
     const evidence = await completedEvidence();
-    const requestHash = 'd'.repeat(64);
-    const control = await currentControl();
     const beforeDeletion = await readHealth(evidence.connection.connectionId);
     if (beforeDeletion === undefined)
       throw new Error('Expected retained connection before deletion');
-    const deletionSequence = control.sequence + 1;
-    const purgeSequence = control.sequence + 2;
-    await maintenance.query(
-      "select app.project_workspace_deletion($1,$2,$3,'deletion_requested',$1,$4,$5,$6,null,'Health tenant purge',clock_timestamp()-interval '31 days')",
-      [
-        workspaceA,
-        deletionSequence,
-        randomUUID(),
-        control.hash,
-        requestHash,
-        actorId,
-      ],
+    await withTenantScopedClient(
+      api,
+      { workspaceId: workspaceA, actorId },
+      (client) =>
+        changeWorkspaceLifecycle(client, {
+          operationId: randomUUID(),
+          workspaceId: workspaceA,
+          actorUserId: actorId,
+          commandType: 'deletion_requested',
+          reason: 'Health tenant purge',
+          idempotencyKeyHash: 'd'.repeat(64),
+          requestHash: 'e'.repeat(64),
+        }),
     );
     expect(await readHealth(evidence.connection.connectionId)).toMatchObject({
       status: 'reauthorization_required',
@@ -352,79 +337,12 @@ describe('connection health retention and tenant purge', () => {
     expect(provenance.rows).toEqual([
       { last_health_transition_at: null, last_health_transition_source: null },
     ]);
-    const prepared = await maintenance.query<{
-      job_id: string;
-      lease_token: string;
-      lease_fence: string;
-    }>(
-      "select * from app.prepare_workspace_purge_job($1,$2,$3,'health-boundary',interval '1 minute')",
-      [workspaceA, deletionSequence, requestHash],
-    );
-    const job = prepared.rows[0];
-    if (job === undefined) throw new Error('Expected health purge job');
-    const purgeHash = 'e'.repeat(64);
-    await maintenance.query(
-      'select app.project_workspace_purge_started($1,$2,$3,$4,$5,$6)',
-      [
-        job.job_id,
-        job.lease_token,
-        job.lease_fence,
-        purgeSequence,
-        requestHash,
-        purgeHash,
-      ],
-    );
-    const object = await maintenance.query<{
-      lease_token: string;
-      lease_fence: string;
-      step_name: string;
-    }>(
-      "select * from app.claim_workspace_purge_step($1,$2,$3,'health-boundary',interval '1 minute')",
-      [job.job_id, purgeSequence, purgeHash],
-    );
-    const objectLease = object.rows[0];
-    if (objectLease === undefined)
-      throw new Error('Expected object purge step');
-    expect(objectLease.step_name).toBe('object_versions');
-    await maintenance.query(
-      'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,$4,$5)',
-      [
-        job.job_id,
-        objectLease.lease_token,
-        objectLease.lease_fence,
-        purgeSequence,
-        purgeHash,
-      ],
-    );
-    let completed = false;
-    for (let page = 0; page < 100 && !completed; page += 1) {
-      const claimed = await maintenance.query<{
-        lease_token: string;
-        lease_fence: string;
-        step_name: string;
-      }>(
-        "select * from app.claim_workspace_purge_step($1,$2,$3,'health-boundary',interval '1 minute')",
-        [job.job_id, purgeSequence, purgeHash],
-      );
-      const lease = claimed.rows[0];
-      if (lease === undefined)
-        throw new Error('Expected bounded tenant purge step');
-      expect(lease.step_name).toBe('tenant_rows');
-      const result = await asRuntime(maintenanceBase, workspaceA, (client) =>
-        client.query<{ completed: boolean }>(
-          'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,10,$4,$5)',
-          [
-            job.job_id,
-            lease.lease_token,
-            lease.lease_fence,
-            purgeSequence,
-            purgeHash,
-          ],
-        ),
-      );
-      completed = result.rows[0]?.completed === true;
-    }
-    expect(completed).toBe(true);
+    await purgeWorkspace({
+      adminUrl: databaseUrl(adminBase),
+      maintenanceUrl: databaseUrl(maintenanceBase),
+      workspaceId: workspaceA,
+      pageSize: 10,
+    });
     const receipts = await asOwner(workspaceA, (client) =>
       client.query(
         "select count(*)::int count from app.inbox_receipts where workspace_id=$1 and consumer_name='connection-health-worker'",

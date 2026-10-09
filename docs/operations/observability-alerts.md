@@ -171,23 +171,9 @@ signals and are not sufficient by themselves to claim user impact.
 
 ## PertexoRetentionOperationFailure
 
-Use the finite `operation` label to locate the failed stage: lifecycle
-commands, retention, transient data, preview, run-artifact retention, or
-workspace purge. The worker runs these stages and retries a failed one on its
+Use the finite `operation` label to locate the failed stage: retention,
+transient data, preview, run-artifact retention, or workspace purge. The worker runs these stages and retries a failed one on its
 next cycle, so fixing the cause is enough; nothing needs to be rerun by hand.
-
-## PertexoWorkspacePurgeReleasedOrStale
-
-Inspect the purge job's persisted step, lease, fence, and object deletion
-evidence. A released or stale attempt is retried by the worker and is not a
-completion claim.
-
-## PertexoLifecycleCommandFailure
-
-Inspect the lifecycle operation and its bounded failure code, then correlate
-the worker's `retention.operation_failed` logs. Keep tenant access fenced for
-deletion. Retry through the supported operation path rather than direct
-workspace mutation.
 
 ## Coverage Boundaries
 

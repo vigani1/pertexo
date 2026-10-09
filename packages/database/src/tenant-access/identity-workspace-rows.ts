@@ -6,7 +6,6 @@ import type {
   AuthIdentityRecord,
   SessionRecord,
   UserRecord,
-  WorkspaceLifecycleOperation,
   WorkspaceRecord,
 } from './identity-workspace-contracts.js';
 
@@ -67,22 +66,6 @@ const workspaceRowSchema = z
     updated_at: z.coerce.date(),
   })
   .strict();
-const lifecycleOperationRowSchema = z
-  .object({
-    operation_id: uuidSchema,
-    workspace_id: uuidSchema,
-    command_type: z.enum(['deletion_requested', 'deletion_restored']),
-    status: z.enum(['pending', 'running', 'completed', 'failed']),
-    occurred_at: z.coerce.date(),
-    updated_at: z.coerce.date(),
-    completed_at: z.coerce.date().nullable(),
-    error_code: z.string().nullable(),
-  })
-  .strict();
-
-export const workspaceLifecycleOperationRowSelection =
-  'operation_id,workspace_id,command_type,status,occurred_at,error_code,updated_at,completed_at';
-
 export function mapUser(row: Record<string, unknown>): UserRecord {
   const parsed = userRowSchema.parse(row);
   return Object.freeze({
@@ -140,21 +123,5 @@ export function mapWorkspace(row: Record<string, unknown>): WorkspaceRecord {
     purgeAfter: parsed.purge_after,
     createdAt: parsed.created_at,
     updatedAt: parsed.updated_at,
-  });
-}
-
-export function mapWorkspaceLifecycleOperation(
-  row: Record<string, unknown>,
-): WorkspaceLifecycleOperation {
-  const parsed = lifecycleOperationRowSchema.parse(row);
-  return Object.freeze({
-    id: parsed.operation_id,
-    workspaceId: parsed.workspace_id,
-    commandType: parsed.command_type,
-    status: parsed.status,
-    submittedAt: parsed.occurred_at,
-    updatedAt: parsed.updated_at,
-    completedAt: parsed.completed_at,
-    errorCode: parsed.error_code,
   });
 }

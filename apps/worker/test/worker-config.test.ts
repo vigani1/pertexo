@@ -302,7 +302,7 @@ describe('parseWorkerConfig', () => {
     expect(selected.artifactStore?.endpoint).toBe(
       'https://artifacts.example.test',
     );
-    expect(selected.retention?.leaseOwner).toMatch(/^retention:/u);
+    expect(selected.retention?.maintenanceDatabase).toBeDefined();
   });
 
   it('rejects a partially configured artifact store', () => {
@@ -683,6 +683,6 @@ describe('parseWorkerConfig', () => {
       JOB_NAME.advanceWorkflowRun,
       JOB_NAME.executeNodeAttempt,
     ]);
-    expect(config.retention?.leaseOwner).toMatch(/^retention:/u);
+    expect(config.retention?.maintenanceDatabase).toBeDefined();
   });
 });

@@ -475,7 +475,6 @@ export default tseslint.config(
             {
               group: [
                 '@pertexo/database/execution',
-                '@pertexo/database/lifecycle',
                 '@pertexo/database/maintenance',
                 '@pertexo/database/operator',
               ],
@@ -497,7 +496,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Worker production code must use the execution, lifecycle or maintenance database surfaces.',
+                'Worker production code must use the execution or maintenance database surfaces.',
             },
           ],
           patterns: [
@@ -509,7 +508,7 @@ export default tseslint.config(
             {
               group: ['@pertexo/database/api', '@pertexo/database/operator'],
               message:
-                'Worker production code must use the execution, lifecycle or maintenance database surfaces.',
+                'Worker production code must use the execution or maintenance database surfaces.',
             },
           ],
         },
@@ -572,7 +571,6 @@ export default tseslint.config(
               group: [
                 '@pertexo/database/api',
                 '@pertexo/database/execution',
-                '@pertexo/database/lifecycle',
                 '@pertexo/database/maintenance',
               ],
               message:

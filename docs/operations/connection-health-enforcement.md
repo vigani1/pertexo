@@ -38,19 +38,11 @@ invert their connection/run lock order. Lifecycle fencing advances revision,
 retains its existing pending-deletion reason, and leaves provider transition
 provenance unknown rather than labeling it as a run or test.
 
-Attempt retention owns its existing workspace lock before deleting attempts.
-Observations cascade with their source attempt; corresponding unapplied commands
-must be removed in the same transaction. Delivered commands after legitimate
-purge are receipted no-ops. Workspace purge removes observations before attempts
-and connections. Neither evidence nor command extends source retention.
-
-The combined proof also requires deleting completed retention batches and real
-coordinator/attempt transport receipts. The retention guard now admits only the
-existing armed, leased tenant-purge delete capability. Inbox owner SELECT,
-DELETE and candidate-lock UPDATE policies require that same workspace-bound
-capability; outbox owner DELETE does too. They add no serving-role table grants
-and remain inert outside an authorized purge. Ordinary mutation and forged-token
-deletion remain rejected.
+Retention deletes attempts with their node run. Observations cascade with
+their source attempt, and the unapplied health command is removed in the same
+transaction. Delivered commands after a purge are receipted no-ops. Workspace
+purge removes observations before attempts and connections. Neither evidence
+nor command extends source retention.
 
 ## Schema, ACL and mixed versions
 

@@ -447,28 +447,16 @@ describe('workflow run notification pinning', () => {
       try {
         await client.query('begin');
         await client.query('set local role pertexo_owner');
-        if (status === 'deleted') {
-          await client.query(
-            `with job as (
-               insert into app.workspace_purge_jobs
-                 (id,workspace_id,command_id,actor_ref,reason,occurred_at,status,
-                  control_sequence,control_record_hash,completed_at)
-               values (gen_random_uuid(),$1,gen_random_uuid(),'fixture:purge',
-                 'Completed purge fixture',now(),'completed',1,$2,now())
-               returning id
-             ) insert into app.workspace_purge_steps
-                 (job_id,step_name,status,completed_at)
-               select id,step_name,'completed',now() from job
-               cross join unnest(array['object_versions','tenant_rows']) step_name`,
-            [workspaceA, 'f'.repeat(64)],
-          );
-        }
         await client.query(
           `update app.workspaces
            set status = $2::varchar,
+               name = case when $2::text = 'deleted' then 'Deleted workspace' else name end,
+               slug = case when $2::text = 'deleted' then 'deleted-' || id::text else slug end,
+               created_by = case when $2::text = 'deleted' then null else created_by end,
                deletion_requested_at = case when $2::text = 'suspended' then null else now() end,
-               deletion_requested_by = case when $2::text = 'suspended' then null::uuid else $3::uuid end,
-               deletion_reason = case when $2::text = 'suspended' then null::varchar else 'fixture deletion'::varchar end,
+               deletion_requested_by = case when $2::text = 'pending_deletion' then $3::uuid else null::uuid end,
+               deletion_reason = case $2::text when 'suspended' then null::varchar
+                 when 'deleted' then 'purged'::varchar else 'fixture deletion'::varchar end,
                purge_after = case when $2::text = 'suspended' then null else now() + interval '30 days' end
            where id = $1`,
           [workspaceA, status, workspaceCreatorId],

@@ -35,13 +35,6 @@ const pools = {
     ),
     max: 1,
   }),
-  lifecycle: new Pool({
-    connectionString: roleUrl(
-      'DATABASE_MAINTENANCE_URL',
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-    ),
-    max: 1,
-  }),
   maintenance: new Pool({
     connectionString: roleUrl(
       'DATABASE_MAINTENANCE_URL',
@@ -182,44 +175,5 @@ describe('SQL boundary integrity', () => {
         "select * from app.claim_due_trigger_schedules('q10-worker',1,1)",
       ),
     ).resolves.toMatchObject({ rows: [] });
-  });
-
-  it('rejects absent lifecycle and purge lease identity as the granted roles', async () => {
-    const operationId = randomUUID();
-    const token = randomUUID();
-    const lifecycleCalls = [
-      'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
-      'select app.authorize_workspace_lifecycle_append($1,$2,$3)',
-      `select app.project_and_complete_workspace_lifecycle_operation(
-        $1,$2,$3,1,'${'0'.repeat(64)}','${'1'.repeat(64)}'
-      )`,
-    ];
-    for (const statement of lifecycleCalls)
-      for (const [candidateToken, fence] of [
-        [null, 1],
-        [token, null],
-        [token, 0],
-      ])
-        await expect(
-          pools.lifecycle.query(statement, [
-            operationId,
-            candidateToken,
-            fence,
-          ]),
-        ).rejects.toSatisfy(hasCode('22023'));
-
-    for (const [candidateToken, fence] of [
-      [null, 1],
-      [token, null],
-      [token, 0],
-    ])
-      await expect(
-        pools.maintenance.query(
-          `select app.project_workspace_purge_started(
-            $1,$2,$3,1,'${'0'.repeat(64)}','${'1'.repeat(64)}'
-          )`,
-          [operationId, candidateToken, fence],
-        ),
-      ).rejects.toSatisfy(hasCode('22023'));
   });
 });

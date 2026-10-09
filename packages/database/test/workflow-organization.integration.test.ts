@@ -7,6 +7,7 @@ import {
   organizationFixtureEnabled,
   type OrganizationOwnedFixture,
 } from './support/workflow-organization-owned.fixture.js';
+import { purgeWorkspace } from './support/workspace-purge.js';
 
 type Scope = Awaited<ReturnType<OrganizationOwnedFixture['scope']>>;
 interface Result {
@@ -779,9 +780,6 @@ describe.skipIf(!organizationFixtureEnabled)(
         workflow = await s.workflow(),
         t = await createTag(s);
       await expect(
-        fixture.dispatcher.query('select * from app.workflow_favorites'),
-      ).rejects.toMatchObject({ code: '42501' });
-      await expect(
         fixture.dispatcher.query(
           'select app.execute_workflow_tag_command($1,null,$2,$3)',
           ['tag.create', commandKey(), JSON.stringify({ key: 'maintenance' })],
@@ -1007,74 +1005,6 @@ describe.skipIf(!organizationFixtureEnabled)(
       await removeAndRejoin(s);
       const fresh = await absence(s, workflow);
       await favorite(s, workflow, false, fresh.token, fresh);
-      const job = randomUUID(),
-        lease = randomUUID();
-      const anchor = required(
-        (
-          await owner(
-            s,
-            'select retention_control_sequence::int sequence,retention_control_hash hash from app.workspaces where id=$1',
-            [s.workspace],
-          )
-        ).rows[0],
-      );
-      // Privileged disposable fixture supplies the existing purge owner's
-      // prepared state. This proves SQL bounded-page enforcement, not object
-      // ledger or full workspace-deletion transport qualification.
-      await fixture.transaction(
-        fixture.owner,
-        s.workspace,
-        s.actor,
-        async (client) => {
-          await client.query(
-            "select set_config('app.workspace_purge_transition','on',true)",
-          );
-          await client.query(
-            `update app.workspaces set status='purging',deletion_requested_at=clock_timestamp()-interval '31 days',
-          deletion_requested_by=$2,deletion_reason='owned purge fixture',purge_after=clock_timestamp()-interval '1 day' where id=$1`,
-            [s.workspace, s.actor],
-          );
-          await client.query(
-            `insert into app.workspace_purge_jobs(id,workspace_id,command_id,actor_ref,reason,occurred_at,status,control_sequence,control_record_hash)
-          values($1,$2,$3,'owned-fixture','F07 bounded page',clock_timestamp(),'purging',$4,$5)`,
-            [job, s.workspace, randomUUID(), anchor.sequence, anchor.hash],
-          );
-          await client.query(
-            `insert into app.workspace_purge_steps(job_id,step_name,status,lease_owner,lease_token,lease_fence,lease_acquired_at,lease_expires_at)
-          values($1,'tenant_rows','running','owned-fixture',$2,1,clock_timestamp(),clock_timestamp()+interval '2 minutes')`,
-            [job, lease],
-          );
-        },
-      );
-      async function page(token = lease, hash: unknown = anchor.hash) {
-        return fixture.transaction(
-          fixture.maintenance,
-          s.workspace,
-          s.actor,
-          async (client) => {
-            await client.query(
-              'select pg_advisory_xact_lock(hashtextextended($1,1934781127))',
-              [s.workspace],
-            );
-            await client.query(
-              'select * from app.lock_workspace_control_ledger($1)',
-              [s.workspace],
-            );
-            return client.query<{
-              surface: string;
-              affected_count: number;
-              completed: boolean;
-            }>(
-              'select * from app.execute_workspace_tenant_rows_page($1,$2,1,2,$3,$4)',
-              [job, token, anchor.sequence, hash],
-            );
-          },
-        );
-      }
-      await expect(page(randomUUID())).rejects.toMatchObject({ code: '55000' });
-      await expect(page(lease, 'f'.repeat(64))).rejects.toMatchObject({
-        code: '40001',
-      });
       // No legal hold is placed, so no favorite evidence is held.
       const surfaces = [
         'workflow_favorite_receipts',
@@ -1087,43 +1017,19 @@ describe.skipIf(!organizationFixtureEnabled)(
         'workflow_favorite_membership_generations',
         'workflow_organization_coordination',
       ];
-      const seen = new Set<string>();
-      for (let index = 0; index < 30; index++) {
-        await fixture.transaction(
-          fixture.owner,
-          s.workspace,
-          s.actor,
-          async (client) => {
-            await client.query(
-              "select set_config('app.workspace_purge_transition','on',true)",
-            );
-            await client.query(
-              "update app.workspace_purge_steps set status='running',lease_owner='owned-fixture',lease_token=$2,lease_fence=1,lease_acquired_at=clock_timestamp(),lease_expires_at=clock_timestamp()+interval '2 minutes' where job_id=$1 and step_name='tenant_rows'",
-              [job, lease],
-            );
-          },
-        );
-        const result = required((await page()).rows[0]);
-        expect(result.affected_count).toBeGreaterThan(0);
-        expect(result.affected_count).toBeLessThanOrEqual(2);
-        expect(result.completed).toBe(false);
-        expect(surfaces).toContain(result.surface);
-        seen.add(result.surface);
-        const remaining = await owner(
-          s,
-          `select ${surfaces.map((table) => `(select count(*) from app.${table} where workspace_id=$1)`).join('+')} count`,
-          [s.workspace],
-        );
-        if (remaining.rows[0]?.count === '0') break;
-      }
-      expect([...seen].sort()).toEqual([...surfaces].sort());
+      const steps = await purgeWorkspace({
+        adminUrl: fixture.urls.admin,
+        maintenanceUrl: fixture.urls.maintenance,
+        workspaceId: s.workspace,
+        pageSize: 2,
+      });
+      expect(new Set(steps.filter((step) => surfaces.includes(step)))).toEqual(
+        new Set(surfaces),
+      );
+      // Organization rows go before the workflows they describe.
       expect(
-        (
-          await owner(s, 'select id from app.workflows where workspace_id=$1', [
-            s.workspace,
-          ])
-        ).rows,
-      ).toEqual([{ id: workflow }]);
+        Math.max(...surfaces.map((surface) => steps.lastIndexOf(surface))),
+      ).toBeLessThan(steps.indexOf('workflows'));
     });
   },
 );

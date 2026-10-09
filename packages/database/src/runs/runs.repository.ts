@@ -401,6 +401,32 @@ async function lockPublishedExecution(
   return classified.workflowVersion;
 }
 
+/**
+ * Requests cancellation of every run in the workspace that has not finished
+ * and is not already being canceled, as one actor with one reason.
+ */
+export async function requestActiveRunCancellations(
+  transaction: WorkspaceTransaction,
+  input: Readonly<{ actorId: string; reason: string }>,
+): Promise<number> {
+  const active = await transaction.db.execute<{ id: string }>(sql`
+    select id from app.workflow_runs
+    where workspace_id = ${transaction.workspaceId}
+      and status in ('queued', 'running', 'waiting')
+      and cancel_requested_at is null
+    order by id
+    for update
+  `);
+  for (const { id } of active.rows)
+    await cancelInTransaction(transaction, {
+      actorId: input.actorId,
+      workspaceId: transaction.workspaceId,
+      runId: id,
+      reason: input.reason,
+    });
+  return active.rows.length;
+}
+
 async function cancelInTransaction(
   transaction: WorkspaceTransaction,
   input: z.output<typeof cancelInputSchema>,

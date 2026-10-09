@@ -13,7 +13,8 @@ export function createCuratedOriginOwnedDatabase() {
   const name = `pertexo_test_f06_guard_${randomUUID().replaceAll('-', '').slice(0, 24)}`;
   let owned: CuratedOwnedFixture | undefined;
   const connection = (
-    role: 'adminUrl' | 'migrationUrl' | 'apiUrl' | 'workerUrl',
+    role:
+      'adminUrl' | 'migrationUrl' | 'apiUrl' | 'workerUrl' | 'dispatcherUrl',
   ) => {
     if (owned === undefined)
       throw new Error('Curated database ownership has not been attested');
@@ -31,6 +32,9 @@ export function createCuratedOriginOwnedDatabase() {
     get workerUrl() {
       return connection('workerUrl');
     },
+    get maintenanceUrl() {
+      return connection('dispatcherUrl');
+    },
     get inspectorUrl() {
       return connection('adminUrl');
     },
@@ -46,7 +50,7 @@ export function createCuratedOriginOwnedDatabase() {
         created = true;
         await admin.query(`revoke all on database "${name}" from public`);
         await admin.query(
-          `grant connect on database "${name}" to pertexo_migration,pertexo_app,pertexo_app`,
+          `grant connect on database "${name}" to pertexo_migration,pertexo_app,pertexo_maintenance`,
         );
       } finally {
         await admin.end();

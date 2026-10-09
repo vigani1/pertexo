@@ -63,8 +63,6 @@ describe('retention metrics', () => {
         [RETENTION_METRIC_NAME.batchDuration, 's'],
         [RETENTION_METRIC_NAME.failureCount, '{failure}'],
         [RETENTION_METRIC_NAME.failureDuration, 's'],
-        [RETENTION_METRIC_NAME.lifecycleCommandCount, '{command}'],
-        [RETENTION_METRIC_NAME.lifecycleCommandDuration, 's'],
         [RETENTION_METRIC_NAME.pageCount, '{page}'],
         [RETENTION_METRIC_NAME.purgeCount, '{attempt}'],
         [RETENTION_METRIC_NAME.purgeDuration, 's'],
@@ -85,29 +83,10 @@ describe('retention metrics', () => {
     ).toEqual([[0.25, { operation: 'workspace_purge' }]]);
   });
 
-  it('records lifecycle command outcomes by command type', () => {
-    const { instruments, metrics } = setupMetrics();
-    metrics.recordLifecycleCommand(
-      {
-        commandType: 'deletion_requested',
-        operationId: 'ignored',
-        status: 'completed',
-      },
-      0.5,
-    );
-    metrics.recordLifecycleCommand({ status: 'idle' }, 0.1);
-    expect(
-      callsFor(instruments, RETENTION_METRIC_NAME.lifecycleCommandCount, 'add'),
-    ).toEqual([
-      [1, { command_type: 'deletion_requested', outcome: 'completed' }],
-      [1, { command_type: 'none', outcome: 'idle' }],
-    ]);
-  });
-
   it('records purge outcome and duration without tenant identifiers', () => {
     const { instruments, metrics } = setupMetrics();
     metrics.recordWorkspacePurge(
-      { status: 'progressed', jobId: 'ignored', workspaceId: 'ignored' },
+      { status: 'progressed', workspaceId: 'ignored', step: 'workflow_runs' },
       0.5,
     );
     expect(

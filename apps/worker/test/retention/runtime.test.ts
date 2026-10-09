@@ -26,11 +26,6 @@ function setup() {
       enforce: vi.fn().mockResolvedValue({ removed: {}, more: false }),
       reapTransientData: vi.fn().mockResolvedValue(idleReap),
     },
-    lifecycleCommands: {
-      checkReadiness: vi.fn().mockResolvedValue(undefined),
-      close: vi.fn().mockResolvedValue(undefined),
-      processNext: vi.fn().mockResolvedValue({ status: 'idle' }),
-    },
     preview: {
       close: vi.fn().mockResolvedValue(undefined),
       processNext: vi.fn().mockResolvedValue({ status: 'idle' }),
@@ -47,7 +42,6 @@ function setup() {
   };
   const metrics = {
     recordFailure: vi.fn(),
-    recordLifecycleCommand: vi.fn(),
     recordPreview: vi.fn(),
     recordRetention: vi.fn(),
     recordRunArtifact: vi.fn(),
@@ -65,25 +59,14 @@ function setup() {
 }
 
 describe('retention runtime', () => {
-  it('checks both databases, then drains each operation until it is idle', async () => {
+  it('checks the database, then drains each operation until it is idle', async () => {
     const { metrics, resources, runtime } = setup();
-    resources.lifecycleCommands.processNext
-      .mockResolvedValueOnce({
-        commandType: 'deletion_requested',
-        operationId: 'operation-1',
-        status: 'completed',
-      })
-      .mockResolvedValueOnce({ status: 'idle' });
     resources.workspacePurge.processNext
+      .mockResolvedValueOnce({ status: 'started', workspaceId: 'workspace-1' })
       .mockResolvedValueOnce({
-        jobId: 'job-1',
-        status: 'started',
-        workspaceId: 'workspace-1',
-      })
-      .mockResolvedValueOnce({
-        jobId: 'job-1',
         status: 'progressed',
         workspaceId: 'workspace-1',
+        step: 'workflow_runs',
       })
       .mockResolvedValueOnce({ status: 'idle' });
 
@@ -91,11 +74,8 @@ describe('retention runtime', () => {
     await runtime.checkReadiness();
 
     expect(resources.database.checkReadiness).toHaveBeenCalledOnce();
-    expect(resources.lifecycleCommands.checkReadiness).toHaveBeenCalledOnce();
-    expect(resources.lifecycleCommands.processNext).toHaveBeenCalledTimes(2);
     expect(resources.workspacePurge.processNext).toHaveBeenCalledTimes(3);
     expect(resources.database.enforce).toHaveBeenCalledOnce();
-    expect(metrics.recordLifecycleCommand).toHaveBeenCalledTimes(2);
     expect(metrics.recordWorkspacePurge).toHaveBeenCalledTimes(3);
     await runtime.close();
   });
@@ -130,7 +110,6 @@ describe('retention runtime', () => {
 
     for (const resource of [
       resources.database,
-      resources.lifecycleCommands,
       resources.preview,
       resources.runArtifacts,
       resources.workspacePurge,

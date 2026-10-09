@@ -40,13 +40,7 @@ import {
   workflowConcurrencyPolicies,
   workflowConcurrencyCommandReceipts,
 } from './schema/workflow-concurrency.js';
-import {
-  workspaceControlLedgerProjection,
-  workspaceLegalHolds,
-  retentionControlAuditFacts,
-  retentionBatches,
-  retentionScheduleState,
-} from './schema/retention.js';
+import { workspaceLegalHolds } from './schema/retention.js';
 import {
   connections,
   connectionSecretVersions,
@@ -183,10 +177,6 @@ export const databaseSchema = {
   outboxEvents,
   previewAttempts,
   previewRuns,
-  retentionBatches,
-  retentionControlAuditFacts,
-  retentionScheduleState,
-  workspaceControlLedgerProjection,
   rlsProbeRecords,
   runCheckpoints,
   runEvents,
