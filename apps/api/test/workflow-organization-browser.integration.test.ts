@@ -302,7 +302,7 @@ describe
         const receipt = await api
           .database()
           .query<{ count: number }>(
-            "select count(*)::int count from app.workflow_organization_receipts where workspace_id=$1 and operation='organization.batch.identity' and admission_xid is not null",
+            "select count(*)::int count from app.idempotency_records where workspace_id=$1 and operation='organization.batch' and status='completed'",
             [evidence.workspaceId],
           );
         expect(receipt.rows[0]?.count).toBeGreaterThanOrEqual(2);
