@@ -1,7 +1,7 @@
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
-import { platformServingRegistryRelease } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import {
   createWorkspaceDatabase,
   type DatabaseConfig,
@@ -219,7 +219,7 @@ export async function createApiWorkflowRuntime(
       nodeTestingDependencies: Object.freeze({
         persistence: database,
         authorization: identityRuntime.dependencies.authorization,
-        release: platformServingRegistryRelease(),
+        release: PLATFORM_REGISTRY_RELEASE,
         expressionEvaluator,
       }),
       runDependencies: Object.freeze({

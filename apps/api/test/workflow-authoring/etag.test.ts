@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
+import { createRegistryRelease } from '@pertexo/node-sdk';
 import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 
@@ -79,8 +79,7 @@ describe('workflow authoring strong draft ETag', () => {
       CORE_REGISTRY_RELEASE,
     );
     const target = composeExecutableCompatibilityRelease(
-      createRegistryReleaseSuccessor({
-        previous: CORE_REGISTRY_RELEASE,
+      createRegistryRelease({
         epoch: CORE_REGISTRY_RELEASE.epoch + 1,
         definitions: CORE_REGISTRY_RELEASE.definitions.map((manifest) => ({
           ...manifest,

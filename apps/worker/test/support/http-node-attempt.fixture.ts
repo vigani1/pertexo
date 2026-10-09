@@ -15,7 +15,7 @@ import {
   type ConnectionSecretContext,
   type EnvelopeKeyProvider,
 } from '@pertexo/integrations/server';
-import { PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
@@ -77,7 +77,7 @@ export const emailSubject = `subject-${randomUUID()}`;
 export const emailText = `text-${randomUUID()}`;
 export const responseBytes = 70_000;
 const activeRelease = composeExecutableCompatibilityRelease(
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE,
 );
 
 export function databaseUrl(base: string): string {

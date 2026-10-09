@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
@@ -63,9 +63,7 @@ try {
       workerId: `for-each-process-${randomUUID()}`,
     },
     {
-      registry: createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-      ),
+      registry: createPlatformNodeRegistryForRelease(PLATFORM_REGISTRY_RELEASE),
       runtimeCapabilities: {
         connections: () => ({
           resolve: () => Promise.reject(new Error('not used')),

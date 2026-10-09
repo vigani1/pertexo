@@ -13,10 +13,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import type { StructuredLogger } from '@pertexo/observability';
 import {
@@ -125,12 +122,10 @@ export async function createTriggerRuntime(
   const backgroundTaskShutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
   const releaseHistory = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory().map(
-      composeExecutableCompatibilityRelease,
-    ),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   );
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   );
   const checkpointFactory: InitialCheckpointFactory =
     dependencies.checkpointFactory ??

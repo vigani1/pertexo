@@ -12,10 +12,7 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { advanceRun } from '@pertexo/execution';
-import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import {
   createQueueTraceRunner,
   type StructuredLogger,
@@ -179,15 +176,11 @@ export async function createCoordinatorRuntime(
       'Background task shutdown timeout must be between 1 and 120000',
     );
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory().map(
-      composeExecutableCompatibilityRelease,
-    ),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   );
   const currentReleaseDescriptions =
     createExecutableCompatibilityReleaseSupport(
-      platformRegistryReleaseSupport().map(
-        composeExecutableCompatibilityRelease,
-      ),
+      [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
     ).descriptions;
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();

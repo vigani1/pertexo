@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import {
   platformBrowserNodeDefinitionCatalog,
-  platformServingRegistryRelease,
+  PLATFORM_REGISTRY_RELEASE,
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
@@ -11,7 +11,7 @@ import {
 it('the HTTP gate uses one cohort while respecting distinct browser and executable fingerprints', () => {
   const catalog = platformBrowserNodeDefinitionCatalog();
   const executable = describeExecutableCompatibilityRelease(
-    composeExecutableCompatibilityRelease(platformServingRegistryRelease()),
+    composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
   );
   expect(catalog.release.epoch).toBe(executable.epoch);
   expect(catalog.release.fingerprint).not.toBe(executable.fingerprint);

@@ -3,8 +3,8 @@ import {
   PreviewDeliveryMismatchError,
 } from '@pertexo/database/previews';
 import {
-  platformExecutableRegistryHistory,
   resolvePlatformNodeDefinitionForRelease,
+  PLATFORM_REGISTRY_RELEASE,
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
@@ -56,7 +56,7 @@ export function createPlatformPreviewNodeInvoker(
   // catalogs plus this artifact's engine runtime policies), so the supported
   // set derives from exactly the same composition production uses.
   const supported = new Map(
-    platformExecutableRegistryHistory().map((release) => {
+    [PLATFORM_REGISTRY_RELEASE].map((release) => {
       const composed = composeExecutableCompatibilityRelease(release);
       return [
         releaseDescriptionKey(composed.epoch, composed.fingerprint),

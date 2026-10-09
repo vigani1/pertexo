@@ -25,7 +25,7 @@ export function cloneAndFreeze<T>(value: T): T {
   return Object.freeze(copy) as T;
 }
 
-export function stableJson(value: unknown): string {
+function stableJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value))
     return `[${value.map((item) => stableJson(item)).join(',')}]`;
@@ -132,7 +132,7 @@ function sha256Hex(input: string): string {
     .join('');
 }
 
-export function definitionProjection(manifest: NodeManifest) {
+function definitionProjection(manifest: NodeManifest) {
   return {
     schemaVersion: manifest.schemaVersion,
     definition: manifest.definition,
@@ -160,7 +160,7 @@ export function definitionProjection(manifest: NodeManifest) {
   };
 }
 
-export function executorProjection(executor: ExecutorManifest) {
+function executorProjection(executor: ExecutorManifest) {
   return {
     executor: executor.executor,
     abiVersion: executor.abiVersion,

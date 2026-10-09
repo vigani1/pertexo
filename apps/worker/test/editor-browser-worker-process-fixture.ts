@@ -23,7 +23,7 @@ import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createTransportMetrics } from '@pertexo/observability/transport-metrics';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { createRedisTestNamespace } from './support/redis-test-namespace.js';
-import { platformServingRegistryRelease } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { EditorBrowserWorkerShutdownError } from './support/editor-browser-worker-cleanup.js';
 import {
   createEditorBrowserWorkerLifetime,
@@ -386,7 +386,7 @@ async function constructRuntimes(
           }
         : {
             registry: createPlatformNodeRegistryForRelease(
-              platformServingRegistryRelease(),
+              PLATFORM_REGISTRY_RELEASE,
               {
                 httpRequest: { httpClient: controlledHttpClient },
                 // Never allow unused provider executors to fall back to real networking.

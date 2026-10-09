@@ -10,10 +10,7 @@ import {
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
 
-import {
-  platformExecutableRegistryHistory,
-  platformServingRegistryRelease,
-} from './registry.js';
+import { PLATFORM_REGISTRY_RELEASE } from './registry.js';
 
 export type PlatformNodeDefinition = NodeDefinitionRegistration;
 
@@ -80,11 +77,8 @@ export function platformIdentityToken(
 export function parseSupportedPlatformRelease(releaseInput: unknown) {
   const release = parseRegistryRelease(releaseInput);
   if (
-    !platformExecutableRegistryHistory().some(
-      (supported) =>
-        supported.epoch === release.epoch &&
-        supported.fingerprint === release.fingerprint,
-    )
+    release.epoch !== PLATFORM_REGISTRY_RELEASE.epoch ||
+    release.fingerprint !== PLATFORM_REGISTRY_RELEASE.fingerprint
   )
     throw new Error('Platform compatibility release identity is not supported');
   return release;
@@ -140,9 +134,7 @@ function compareDefinitionIdentity(
  * available while its release is still staged.
  */
 export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBrowserCatalog {
-  const release = parseSupportedPlatformRelease(
-    platformServingRegistryRelease(),
-  );
+  const release = PLATFORM_REGISTRY_RELEASE;
   const activeExecutors = new Set(
     release.executors
       .filter(({ lifecycle }) => lifecycle === 'active')

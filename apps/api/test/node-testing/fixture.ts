@@ -1,4 +1,4 @@
-import { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import type {
   PreviewRunRecord,
   WorkflowDraftRecord,
@@ -55,7 +55,7 @@ export function nodeTestingDraft(
     graphJson: httpNodeTestingGraph(),
     compatibility: {
       compatible: true,
-      fingerprint: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.fingerprint,
+      fingerprint: PLATFORM_REGISTRY_RELEASE.fingerprint,
       issues: [],
     },
     updatedBy: nodeTestingIds.actorId,

@@ -1,17 +1,8 @@
-import { readFile } from 'node:fs/promises';
-
-import {
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
 } from '@pertexo/workflow-engine';
-import { z } from 'zod';
 
 type Query = (
   statement: string,
@@ -41,17 +32,42 @@ function edgesFromTuples(edges: readonly EdgeTuple[]) {
   );
 }
 
-const retainedFixtureSchema = z
-  .object({
-    checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
-    executable: z.looseObject({
-      compatibilityReleaseEpoch: z.number().int().positive(),
-    }),
-    format: z.literal('pertexo.retained-workflow-v2-fixture'),
-    graph: z.unknown(),
-    schemaVersion: z.literal(1),
-  })
-  .loose();
+/** Manual, then Set, then Terminate: the linear proof workflow. */
+function linearGraph() {
+  const node = (id: string, key: string, x: number) => ({
+    id,
+    definition: { key, version: 1 },
+    position: { x, y: 0 },
+    configVersion: 1,
+    config: {},
+    inputMappings: {},
+    connectionRefs: {},
+  });
+  return {
+    schemaVersion: 1,
+    settings: { maxRunDurationMs: 60_000 },
+    nodes: [
+      node('manual', 'core.manual', 0),
+      {
+        ...node('set', 'core.set', 10),
+        inputMappings: {
+          literal: { kind: 'literal', value: 1 },
+          fromRun: { kind: 'run_input', path: '$.name' },
+        },
+      },
+      {
+        ...node('terminate', 'core.terminate', 20),
+        inputMappings: {
+          result: { kind: 'node_output', nodeId: 'set', path: '$' },
+        },
+      },
+    ],
+    edges: edgesFromTuples([
+      ['manual-set', 'manual', 'out', 'set', 'in'],
+      ['set-terminate', 'set', 'out', 'terminate', 'in'],
+    ]),
+  };
+}
 
 export interface CoordinatorWorkflowFixtureIdentities {
   readonly actorId: string;
@@ -489,7 +505,7 @@ export async function seedSerialForEachWorkflow(
     ...input,
     graph: forEachGraph(1),
     name: 'Serial For Each continuation proof',
-    release: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+    release: PLATFORM_REGISTRY_RELEASE,
   });
 }
 
@@ -563,7 +579,7 @@ export async function seedStructuredForEachWorkflow(
     identity: input.identity,
     graph,
     name: `Structured ${input.kind} For Each continuation proof`,
-    release: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+    release: PLATFORM_REGISTRY_RELEASE,
   });
 }
 
@@ -571,14 +587,6 @@ export async function seedCoordinatorWorkflowFixtures(
   query: Query,
   identities: CoordinatorWorkflowFixtureIdentities,
 ): Promise<void> {
-  const retained = retainedFixtureSchema.parse(
-    JSON.parse(
-      await readFile(
-        new URL('../fixtures/retained-core-workflow-v2.json', import.meta.url),
-        'utf8',
-      ),
-    ) as unknown,
-  );
   await query(
     `insert into app.users (id, email, display_name, status)
        values ($1, $2, 'Coordinator proof', 'active')`,
@@ -598,39 +606,21 @@ export async function seedCoordinatorWorkflowFixtures(
        values ($1,$2,'owner','active')`,
     [identities.workspaceId, identities.actorId],
   );
-  await query(
-    `insert into app.workflows (id, workspace_id, name, created_by)
-       values ($1, $2, 'Coordinator proof', $3)`,
-    [
-      identities.retained.workflowId,
-      identities.workspaceId,
-      identities.actorId,
-    ],
-  );
-  await query(
-    `insert into app.workflow_versions (
-       id, workspace_id, workflow_id, version_number, schema_version,
-       graph_json, checksum, executable_schema_version, executable_json,
-       compatibility_release_epoch, published_by
-     ) values ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7, $8)`,
-    [
-      identities.retained.workflowVersionId,
-      identities.workspaceId,
-      identities.retained.workflowId,
-      JSON.stringify(retained.graph),
-      retained.checksum,
-      JSON.stringify(retained.executable),
-      retained.executable.compatibilityReleaseEpoch,
-      identities.actorId,
-    ],
-  );
+  await insertCompiledWorkflow(query, {
+    actorId: identities.actorId,
+    graph: linearGraph(),
+    identity: identities.retained,
+    name: 'Coordinator proof',
+    release: PLATFORM_REGISTRY_RELEASE,
+    workspaceId: identities.workspaceId,
+  });
   await Promise.all([
     insertCompiledWorkflow(query, {
       actorId: identities.actorId,
       graph: forEachGraph(),
       identity: identities.forEach,
       name: 'For Each recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+      release: PLATFORM_REGISTRY_RELEASE,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -638,7 +628,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: waitGraph(),
       identity: identities.wait,
       name: 'Wait control precedence proof',
-      release: PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+      release: PLATFORM_REGISTRY_RELEASE,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -646,7 +636,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: nestedParallelGraph(),
       identity: identities.nestedParallel,
       name: 'Nested Parallel admission recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+      release: PLATFORM_REGISTRY_RELEASE,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -654,7 +644,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: parallelGraph(),
       identity: identities.parallel,
       name: 'Parallel Merge recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+      release: PLATFORM_REGISTRY_RELEASE,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -662,7 +652,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: branchGraph('switch'),
       identity: identities.switch,
       name: 'Switch recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+      release: PLATFORM_REGISTRY_RELEASE,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {
@@ -670,7 +660,7 @@ export async function seedCoordinatorWorkflowFixtures(
       graph: branchGraph('condition'),
       identity: identities.condition,
       name: 'Condition recovery proof',
-      release: PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+      release: PLATFORM_REGISTRY_RELEASE,
       workspaceId: identities.workspaceId,
     }),
   ]);

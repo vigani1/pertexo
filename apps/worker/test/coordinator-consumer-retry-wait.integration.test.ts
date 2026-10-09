@@ -7,10 +7,7 @@ import {
   parseDatabaseConfig,
   type RunAdvanceStore,
 } from '@pertexo/database/testing';
-import {
-  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-  platformRegistryReleaseSupport,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {
@@ -328,7 +325,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
       undefined,
       {
         compatibilityReleases: createExecutableCompatibilityReleaseSupport(
-          platformRegistryReleaseSupport().map(
+          [PLATFORM_REGISTRY_RELEASE].map(
             composeExecutableCompatibilityRelease,
           ),
         ).descriptions,
@@ -578,7 +575,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
       },
       {
         registry: createPlatformNodeRegistryForRelease(
-          PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+          PLATFORM_REGISTRY_RELEASE,
         ),
         runtimeCapabilities: {
           connections: () => ({

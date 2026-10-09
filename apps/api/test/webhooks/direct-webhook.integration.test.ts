@@ -13,10 +13,7 @@ import {
   WebhookTriggerEnvelopeEncryption,
   type WebhookEnvelopeKeyProvider,
 } from '@pertexo/integrations/server';
-import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -240,14 +237,10 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         ownerRole,
       });
       releaseSupport = createExecutableCompatibilityReleaseSupport(
-        platformRegistryReleaseSupport().map(
-          composeExecutableCompatibilityRelease,
-        ),
+        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
       );
       releaseHistory = createExecutableCompatibilityReleaseHistory(
-        platformExecutableRegistryHistory().map(
-          composeExecutableCompatibilityRelease,
-        ),
+        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
       );
       await migrateDatabase({
         connectionString: configuredDatabaseUrl(migrationBaseUrl),

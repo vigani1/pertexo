@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { expect } from 'vitest';
 import {
   platformBrowserNodeDefinitionCatalog,
-  platformServingRegistryRelease,
+  PLATFORM_REGISTRY_RELEASE,
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
@@ -17,7 +17,7 @@ import { catalogReleaseSchema } from '@pertexo/contracts/schemas/catalog';
 export const scheduleCatalogRelease =
   platformBrowserNodeDefinitionCatalog().release;
 const scheduleExecutableRelease = composeExecutableCompatibilityRelease(
-  platformServingRegistryRelease(),
+  PLATFORM_REGISTRY_RELEASE,
 );
 export const scheduleExecutableReleaseDescription =
   describeExecutableCompatibilityRelease(scheduleExecutableRelease);

@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import { describe, expect, it } from 'vitest';
 import {
   HTTP_REQUEST_DEFINITION_REGISTRATION,
@@ -9,10 +10,7 @@ import {
   validateCuratedTemplateSetupValue,
   isCuratedHttpsEndpoint,
 } from '@pertexo/templates';
-import {
-  PLATFORM_REGISTRY_RELEASE_HISTORY,
-  platformServingRegistryRelease,
-} from '../src/registry.js';
+import { PLATFORM_REGISTRY_RELEASE } from '../src/registry.js';
 import { platformPortableDefinitionPolicy } from '../src/portable-definition-policy.js';
 import { validateRegisteredCuratedTemplateSetup } from '../src/curated-template-policy.js';
 
@@ -75,7 +73,7 @@ const corpus = JSON.parse(
 ) as readonly CorpusCase[];
 
 describe('browser template setup versus registered server policy', () => {
-  const release = platformServingRegistryRelease();
+  const release = PLATFORM_REGISTRY_RELEASE;
   const policy = platformPortableDefinitionPolicy(release);
   const http = required(
     policy.definitions.find(({ key }) => key === 'http.request'),
@@ -313,7 +311,7 @@ describe('browser template setup versus registered server policy', () => {
     );
     expect(
       validateRegisteredCuratedTemplateSetup(
-        PLATFORM_REGISTRY_RELEASE_HISTORY[0],
+        CORE_REGISTRY_RELEASE,
         descriptor.manifest,
         origin,
       ),

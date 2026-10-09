@@ -1,6 +1,6 @@
 import type { Provider } from '@nestjs/common';
 import { createDatabasePreviewAttemptRunStore } from '@pertexo/database/previews';
-import { platformServingRegistryRelease } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 
@@ -93,7 +93,7 @@ export function nodeAttemptRuntimeProvider(
       try {
         previewInvoker = factories.createPreviewInvoker({
           registry: createPlatformNodeRegistryForRelease(
-            platformServingRegistryRelease(),
+            PLATFORM_REGISTRY_RELEASE,
           ),
         });
       } catch (error: unknown) {

@@ -12,11 +12,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
-  platformServingRegistryRelease,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
@@ -223,11 +219,9 @@ async function createProductionNodeAttemptRuntime(
   own: OwnNodeAttemptResource,
 ): Promise<ProductionNodeAttemptRuntime> {
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory().map(
-      composeExecutableCompatibilityRelease,
-    ),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   );
-  const latestNodeRelease = platformServingRegistryRelease();
+  const latestNodeRelease = PLATFORM_REGISTRY_RELEASE;
   const expressionEvaluator =
     dependencies.engine === undefined ? new JsonataEvaluator() : undefined;
   own(
@@ -256,9 +250,7 @@ async function createProductionNodeAttemptRuntime(
     createPublishedWorkflowReader(
       options.database,
       createExecutableCompatibilityReleaseSupport(
-        platformRegistryReleaseSupport().map(
-          composeExecutableCompatibilityRelease,
-        ),
+        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
       ).descriptions,
       options.databaseRuntime,
     );

@@ -1,14 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
-import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
-import {
-  composeExecutableCompatibilityRelease,
-  invocationKey,
-} from '@pertexo/workflow-engine';
+import { invocationKey } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -73,7 +69,7 @@ describeIntegration('Linear node execution resilience', () => {
       },
       {
         registry: createPlatformNodeRegistryForRelease(
-          PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+          PLATFORM_REGISTRY_RELEASE,
           { httpRequest: { httpClient: { executeStreaming: httpRequest } } },
         ),
         runtimeCapabilities: {
@@ -343,26 +339,6 @@ describeIntegration('Linear node execution resilience', () => {
         branchSelections: [],
         initialIterationBudget: 0,
       });
-      const epoch2 = composeExecutableCompatibilityRelease(
-        CORE_REGISTRY_RELEASE_SUCCESSOR,
-      );
-      await expect(
-        workerQuery<{
-          executable_epoch: number;
-          executable_fingerprint: string;
-        }>(
-          `select version.compatibility_release_epoch executable_epoch,
-                    version.executable_json->>'compatibilityReleaseFingerprint' executable_fingerprint
-             from app.workflow_versions version
-             where version.workspace_id=$1 and version.id=$2`,
-          [workspaceId, workflowVersionId],
-        ),
-      ).resolves.toEqual([
-        {
-          executable_epoch: 2,
-          executable_fingerprint: epoch2.fingerprint,
-        },
-      ]);
     } finally {
       await Promise.allSettled([
         producer.close(),

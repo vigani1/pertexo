@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   platformBrowserNodeDefinitionCatalog,
-  platformServingRegistryRelease,
+  PLATFORM_REGISTRY_RELEASE,
 } from '../src/index.js';
 
 function expectDeepFrozen(value: unknown): void {
@@ -17,8 +17,8 @@ describe('browser-safe platform catalog projection', () => {
     const second = platformBrowserNodeDefinitionCatalog();
     expect(first).toEqual(second);
     expect(first.release).toEqual({
-      epoch: platformServingRegistryRelease().epoch,
-      fingerprint: platformServingRegistryRelease().fingerprint,
+      epoch: PLATFORM_REGISTRY_RELEASE.epoch,
+      fingerprint: PLATFORM_REGISTRY_RELEASE.fingerprint,
     });
     expect(first.definitions.length).toBeGreaterThan(0);
     expect(first.definitions.map(({ definition }) => definition)).toEqual(

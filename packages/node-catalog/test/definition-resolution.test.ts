@@ -4,13 +4,13 @@ import {
   HTTP_REQUEST_MANIFEST,
 } from '@pertexo/integrations';
 
-import { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '../src/registry.js';
+import { PLATFORM_REGISTRY_RELEASE } from '../src/registry.js';
 import { resolvePlatformNodeDefinitionForRelease } from '../src/server.js';
 
 describe('platform node definition resolution', () => {
   it('resolves exact schemas without constructing or calling an executor', () => {
     const resolved = resolvePlatformNodeDefinitionForRelease(
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       HTTP_REQUEST_DEFINITION,
     );
     expect(resolved.manifest).toStrictEqual(HTTP_REQUEST_MANIFEST);
@@ -26,10 +26,10 @@ describe('platform node definition resolution', () => {
       }).success,
     ).toBe(true);
     expect(() =>
-      resolvePlatformNodeDefinitionForRelease(
-        PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-        { key: 'missing.node', version: 1 },
-      ),
+      resolvePlatformNodeDefinitionForRelease(PLATFORM_REGISTRY_RELEASE, {
+        key: 'missing.node',
+        version: 1,
+      }),
     ).toThrow(/not implemented/u);
   });
 
@@ -40,8 +40,8 @@ describe('platform node definition resolution', () => {
     expect(() =>
       resolvePlatformNodeDefinitionForRelease(
         {
-          ...PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-          epoch: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.epoch + 1_000,
+          ...PLATFORM_REGISTRY_RELEASE,
+          epoch: PLATFORM_REGISTRY_RELEASE.epoch + 1_000,
         },
         HTTP_REQUEST_DEFINITION,
       ),

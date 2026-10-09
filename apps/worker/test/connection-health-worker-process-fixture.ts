@@ -7,7 +7,7 @@ import {
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createTransportMetrics } from '@pertexo/observability/transport-metrics';
-import { platformServingRegistryRelease } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import {
   ConnectionEnvelopeEncryption,
@@ -421,7 +421,7 @@ async function construct(
     },
     {
       registry: createPlatformNodeRegistryForRelease(
-        platformServingRegistryRelease(),
+        PLATFORM_REGISTRY_RELEASE,
         {
           slackSendMessage: { client },
           httpRequest: {
