@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+} from '../platform/http/opaque-cursor.js';
+
 const workflowCursorPayloadSchema = z
   .object({
     kind: z.literal('workflow'),
@@ -40,20 +45,13 @@ export class InvalidWorkflowCursorError extends TypeError {
 }
 
 function encodeCursor(payload: z.input<typeof cursorPayloadSchema>): string {
-  return Buffer.from(
-    JSON.stringify(cursorPayloadSchema.parse(payload)),
-    'utf8',
-  ).toString('base64url');
+  return encodeOpaqueCursor(cursorPayloadSchema, payload);
 }
 
 function decodeCursor(value: string): z.output<typeof cursorPayloadSchema> {
-  try {
-    return cursorPayloadSchema.parse(
-      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-    );
-  } catch {
-    throw new InvalidWorkflowCursorError();
-  }
+  const payload = decodeOpaqueCursor(cursorPayloadSchema, value);
+  if (payload === undefined) throw new InvalidWorkflowCursorError();
+  return payload;
 }
 
 export function encodeWorkflowCursor(

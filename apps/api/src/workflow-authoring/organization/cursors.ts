@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import {
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+} from '../../platform/http/opaque-cursor.js';
 import { InvalidWorkflowCursorError } from '../cursor.js';
 
 /*
@@ -47,31 +51,21 @@ export type OrganizationPageCursorContext = Readonly<{
   selectedTagId: string | null;
 }>;
 
-function encode(payload: unknown): string {
-  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
-}
-
 function decode<T>(value: string, schema: z.ZodType<T>): T {
-  try {
-    return schema.parse(
-      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-    );
-  } catch {
-    throw new InvalidWorkflowCursorError();
-  }
+  const payload = decodeOpaqueCursor(schema, value);
+  if (payload === undefined) throw new InvalidWorkflowCursorError();
+  return payload;
 }
 
 export function encodeWorkflowOrganizationCursor(
   context: WorkflowOrganizationCursorContext,
   position: WorkflowOrganizationCursorPosition,
 ): string {
-  return encode(
-    workflowCursorSchema.parse({
-      kind: 'workflow-organization',
-      ...context,
-      ...position,
-    }),
-  );
+  return encodeOpaqueCursor(workflowCursorSchema, {
+    kind: 'workflow-organization',
+    ...context,
+    ...position,
+  });
 }
 
 export function decodeWorkflowOrganizationCursor(
@@ -93,15 +87,13 @@ export function encodeOrganizationPageCursor(
   context: OrganizationPageCursorContext,
   id: string,
 ): string {
-  return encode(
-    pageCursorSchema.parse({
-      kind: context.purpose,
-      workspaceId: context.workspaceId,
-      actorId: context.actorId,
-      selectedTagId: context.selectedTagId,
-      id,
-    }),
-  );
+  return encodeOpaqueCursor(pageCursorSchema, {
+    kind: context.purpose,
+    workspaceId: context.workspaceId,
+    actorId: context.actorId,
+    selectedTagId: context.selectedTagId,
+    id,
+  });
 }
 
 export function decodeOrganizationPageCursor(

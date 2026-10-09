@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+} from '../platform/http/opaque-cursor.js';
+
 const occurrenceCursorPayloadSchema = z
   .object({
     kind: z.literal('schedule_occurrences'),
@@ -25,34 +30,20 @@ export function encodeScheduleOccurrenceCursor(
   triggerId: string,
   position: ScheduleOccurrencePosition,
 ): string {
-  const payload = occurrenceCursorPayloadSchema.parse({
+  return encodeOpaqueCursor(occurrenceCursorPayloadSchema, {
     kind: 'schedule_occurrences',
     triggerId,
     scheduledAt: position.scheduledAt,
     id: position.id,
   });
-  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 }
 
 export function decodeScheduleOccurrenceCursor(
   value: string,
   triggerId: string,
 ): ScheduleOccurrencePosition {
-  const payload = occurrenceCursorPayloadSchema.safeParse(
-    parseCursorJson(value),
-  );
-  if (!payload.success || payload.data.triggerId !== triggerId)
+  const payload = decodeOpaqueCursor(occurrenceCursorPayloadSchema, value);
+  if (payload?.triggerId !== triggerId)
     throw new InvalidScheduleOccurrenceCursorError();
-  return Object.freeze({
-    scheduledAt: payload.data.scheduledAt,
-    id: payload.data.id,
-  });
-}
-
-function parseCursorJson(value: string): unknown {
-  try {
-    return JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
-  } catch {
-    return undefined;
-  }
+  return Object.freeze({ scheduledAt: payload.scheduledAt, id: payload.id });
 }
