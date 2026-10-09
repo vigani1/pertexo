@@ -324,10 +324,29 @@ now, as one ordered program — not "whenever we touch it".
           design*. Left for the execution and API passes: the manual-start
           writer fence (an authority check the API already makes), the
           preview artifact retention trigger and the lifecycle time trigger.
-    - [ ] Repository review.
+    - [x] Repository review.
+      - Every area is grouped by sub-area (authoring `workflows/`,
+        `portability/`, `publication/`, `settings/`; tenant access
+        `invitations/`, `members/`, `users/`; connections `health/`,
+        `runtime/`, `connection-tests/`; triggers `schedules/`, `webhooks/`,
+        `reconciliation/`; previews `runs/`, `attempts/`, `reconciliation/`;
+        `platform/pool/`), and no file repeats its folder.
+      - Authoring commands lose their test hooks; tests hold or fail a
+        command at one of its writes with a trigger in the disposable test
+        database.
+      - One stored replay format per command (the connection "legacy
+        pointer" and the pre-ADR 041 name-revision default go).
+      - One idempotency helper for every workspace command; a claim left in
+        any state but completed is refused. Workspace creation (no workspace
+        yet) and connection tests (several transactions) keep their own
+        claims.
   - [ ] execution
   - [ ] worker
   - [ ] api
+    - [ ] Decide the legacy authentication migration (legacy OIDC
+          identities and opaque sessions, the method-migration journey,
+          `auth_legacy_method_migration_attempts`, the cutover preflight and
+          gate): nothing is launched, so it is a removal candidate.
   - [ ] web
     - [x] Feature folders by role: only public entry files stay at a
           feature's root; screens go to `pages/`, hooks to `hooks/`, server
