@@ -195,7 +195,7 @@ async function installRoutes(page: Page, workflowName?: string) {
               schemaVersion: 1,
               graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
               checksum:
-                'wf:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                'wf:v2:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
               publishedAt: timestamp,
             },
           ],

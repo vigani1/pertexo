@@ -116,7 +116,7 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
         versionNumber: 1,
         schemaVersion: 1,
         graph: structuredClone(remote.graph),
-        checksum: `wf:v1:sha256:${'b'.repeat(64)}`,
+        checksum: `wf:v2:sha256:${'b'.repeat(64)}`,
         publishedAt: user.updatedAt,
       });
       return route.fulfill({

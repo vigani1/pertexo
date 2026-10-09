@@ -288,7 +288,7 @@ function version(graph: Graph, checksum: string) {
     versionNumber: 1,
     schemaVersion: 1,
     graph,
-    checksum: `wf:v1:sha256:${checksum.repeat(64)}`,
+    checksum: `wf:v2:sha256:${checksum.repeat(64)}`,
     publishedAt: '2026-09-14T10:02:00.000Z',
   };
 }
