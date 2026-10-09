@@ -1,14 +1,17 @@
 import type {
   AccessibleWorkspace,
-  WorkspaceLifecycleOperationResponse,
+  WorkspaceLifecycleChangeResponse,
 } from '@pertexo/contracts';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { SettingsSection } from '@/components/patterns/settings-section';
+import { Button } from '@/components/ui/button';
+import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceLifecycleCommand } from '../../data/mutations/lifecycle/use-workspace-lifecycle-command';
 import { WorkspaceDeletionDialog } from './workspace-deletion-dialog';
-import { WorkspaceLifecycleOperation } from './workspace-lifecycle-operation';
 import { WorkspaceRestoreDialog } from './workspace-restore-dialog';
+
+type LifecycleChange = WorkspaceLifecycleChangeResponse['change'];
 
 /** Irreversible or hard-to-undo actions, fenced off from the rest. */
 export function DangerZone({ children }: Readonly<{ children: ReactNode }>) {
@@ -44,78 +47,91 @@ export function DangerAction({
   );
 }
 
-/** Delete or restore the workspace, with its lifecycle operation. */
+const COMPLETED: Readonly<Record<LifecycleChange, string>> = {
+  deletion_requested:
+    'The workspace is scheduled for deletion. Restore it within 30 days of the request to keep it.',
+  deletion_restored:
+    'The workspace is back, suspended. Triggers and integrations stay off until you reconnect them.',
+};
+
+/** Delete or restore the workspace; what the request did stays until dismissed. */
 export function WorkspaceLifecycleControls({
   apiClient,
   workspace,
-  operation,
-  operationLoading,
-  operationReadError,
-  onOperationAccepted,
-  onOperationDismissed,
-  onRetryOperationRead,
+  onCompleted,
 }: Readonly<{
   apiClient: ApiClient;
   workspace: AccessibleWorkspace;
-  operation: WorkspaceLifecycleOperationResponse | undefined;
-  operationLoading: boolean;
-  operationReadError: boolean;
-  onOperationAccepted: (operationId: string) => void;
-  onOperationDismissed: () => void;
-  onRetryOperationRead: () => void;
+  onCompleted: () => void;
 }>) {
+  const [completed, setCompleted] = useState<LifecycleChange>();
   const command = useWorkspaceLifecycleCommand({
     apiClient,
     workspaceId: workspace.id,
-    onAccepted: onOperationAccepted,
+    onCompleted: (change) => {
+      setCompleted(change);
+      onCompleted();
+    },
   });
   const pendingDeletion = workspace.status === 'pending_deletion';
-  const showAction =
-    operation === undefined && !operationLoading && !operationReadError;
 
+  if (completed !== undefined)
+    return (
+      <Notice
+        tone="success"
+        aria-label={
+          completed === 'deletion_requested'
+            ? 'Deletion request'
+            : 'Restore request'
+        }
+        action={
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            onClick={() => {
+              setCompleted(undefined);
+            }}
+          >
+            Dismiss
+          </Button>
+        }
+      >
+        {COMPLETED[completed]}
+      </Notice>
+    );
   return (
-    <div className="flex flex-col gap-4">
-      {showAction ? (
-        <DangerAction
-          title={pendingDeletion ? 'Restore workspace' : 'Delete workspace'}
-          description={
-            pendingDeletion
-              ? 'It’s scheduled for deletion within 30 days of the request. Restoring brings it back suspended; integrations stay off until they’re reconnected.'
-              : 'Access and triggers stop straight away. You can restore it for 30 days; after that it’s gone for good.'
+    <DangerAction
+      title={pendingDeletion ? 'Restore workspace' : 'Delete workspace'}
+      description={
+        pendingDeletion
+          ? 'It’s scheduled for deletion within 30 days of the request. Restoring brings it back suspended; integrations stay off until they’re reconnected.'
+          : 'Access and triggers stop straight away. You can restore it for 30 days; after that it’s gone for good.'
+      }
+    >
+      {pendingDeletion ? (
+        <WorkspaceRestoreDialog
+          workspaceName={workspace.name}
+          pending={command.pending}
+          retryAvailable={command.retryAvailable}
+          error={command.error}
+          onDismissUncertain={command.dismissUncertain}
+          onRestore={() => command.start({ command: 'restore' })}
+          onRetry={command.retry}
+        />
+      ) : (
+        <WorkspaceDeletionDialog
+          workspaceName={workspace.name}
+          pending={command.pending}
+          retryAvailable={command.retryAvailable}
+          error={command.error}
+          onDismissUncertain={command.dismissUncertain}
+          onRequest={(reason) =>
+            command.start({ command: 'request-deletion', reason })
           }
-        >
-          {pendingDeletion ? (
-            <WorkspaceRestoreDialog
-              workspaceName={workspace.name}
-              pending={command.pending}
-              retryAvailable={command.retryAvailable}
-              error={command.error}
-              onDismissUncertain={command.dismissUncertain}
-              onRestore={() => command.start({ command: 'restore' })}
-              onRetry={command.retry}
-            />
-          ) : (
-            <WorkspaceDeletionDialog
-              workspaceName={workspace.name}
-              pending={command.pending}
-              retryAvailable={command.retryAvailable}
-              error={command.error}
-              onDismissUncertain={command.dismissUncertain}
-              onRequest={(reason) =>
-                command.start({ command: 'request-deletion', reason })
-              }
-              onRetry={command.retry}
-            />
-          )}
-        </DangerAction>
-      ) : null}
-      <WorkspaceLifecycleOperation
-        operation={operation}
-        loading={operationLoading}
-        readError={operationReadError}
-        onRetryRead={onRetryOperationRead}
-        onDismiss={onOperationDismissed}
-      />
-    </div>
+          onRetry={command.retry}
+        />
+      )}
+    </DangerAction>
   );
 }

@@ -10,7 +10,6 @@ import { expectSignInPage, renderApp } from '../../support/render-app';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const operationId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const timestamp = '2026-09-15T10:00:00.000Z';
 const user = {
   id: userId,
@@ -42,24 +41,14 @@ function identityHandlers(currentWorkspace: unknown = workspace) {
   ];
 }
 
-function operation(
-  status: 'pending' | 'running' | 'completed' | 'failed',
-  commandType:
-    'deletion_requested' | 'deletion_restored' = 'deletion_requested',
+function lifecycleChange(
+  change: 'deletion_requested' | 'deletion_restored' = 'deletion_requested',
 ) {
-  return {
-    id: operationId,
-    workspaceId,
-    commandType,
-    status,
-    submittedAt: timestamp,
-    updatedAt: timestamp,
-    completedAt:
-      status === 'completed' || status === 'failed' ? timestamp : null,
-    errorCode: status === 'failed' ? 'workspace.lifecycle_failed' : null,
-    result: status === 'completed' ? { workspaceId } : null,
-  };
+  return { workspaceId, change, occurredAt: timestamp };
 }
+
+const scheduledForDeletion =
+  'The workspace is scheduled for deletion. Restore it within 30 days of the request to keep it.';
 
 function problem(status: number, code: string, title: string) {
   return HttpResponse.json(
@@ -399,18 +388,12 @@ describe('workspace settings', () => {
           attempts += 1;
           return attempts === 1
             ? HttpResponse.error()
-            : HttpResponse.json(operation('pending'), { status: 202 });
+            : HttpResponse.json(lifecycleChange());
         },
-      ),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/lifecycle-operations/${operationId}`,
-        () => HttpResponse.json(operation('running')),
       ),
     );
 
-    const { router } = renderApp(`/w/${workspaceId}/settings`, {
-      strict: true,
-    });
+    renderApp(`/w/${workspaceId}/settings`, { strict: true });
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Delete workspace' }),
@@ -449,77 +432,63 @@ describe('workspace settings', () => {
     expect(reason).toBeDisabled();
     await actor.click(dialog.getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByText('Running')).toBeVisible();
+    expect(await screen.findByText(scheduledForDeletion)).toBeVisible();
     expect(commands).toHaveLength(2);
     expect(commands[0]).toEqual(commands[1]);
     expect(commands[0]?.body).toEqual({ reason: 'No longer needed' });
-    await waitFor(() => {
-      expect(router.state.location.search.operationId).toBe(operationId);
-    });
   });
 
-  it('resumes and exposes a failed operation until explicit dismissal', async () => {
-    mockServer.use(
-      ...identityHandlers(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/lifecycle-operations/${operationId}`,
-        () => HttpResponse.json(operation('failed')),
-      ),
-    );
-    const { router } = renderApp(
-      `/w/${workspaceId}/settings?operationId=${operationId}`,
-    );
-    expect(await screen.findByText('Failed')).toBeVisible();
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'The deletion didn’t finish, so nothing changed.',
-    );
-    expect(screen.getByRole('alert')).not.toHaveTextContent(
-      'workspace.lifecycle_failed',
-    );
-    expect(screen.getByText('workspace.lifecycle_failed')).toBeInTheDocument();
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Dismiss' }));
-    expect(
-      await screen.findByRole('button', { name: 'Delete workspace' }),
-    ).toBeVisible();
-    await waitFor(() => {
-      expect(router.state.location.search.operationId).toBeUndefined();
-    });
-  });
-
-  it('refreshes authoritative workspace state when an operation completes', async () => {
-    let workspaceReads = 0;
+  it('refreshes the workspace once a deletion completes and offers restore after dismissal', async () => {
+    let deleted = false;
     mockServer.use(
       http.get('http://pertexo.test/v1/users/me', () =>
         HttpResponse.json(user),
       ),
-      http.get('http://pertexo.test/v1/workspaces', () => {
-        workspaceReads += 1;
-        return HttpResponse.json({
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({
           items: [
-            {
-              ...workspace,
-              status: workspaceReads === 1 ? 'active' : 'pending_deletion',
-            },
+            { ...workspace, status: deleted ? 'pending_deletion' : 'active' },
           ],
           nextCursor: null,
-        });
-      }),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/lifecycle-operations/${operationId}`,
-        () => HttpResponse.json(operation('completed')),
+        }),
+      ),
+      http.post(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/deletion`,
+        () => {
+          deleted = true;
+          return HttpResponse.json(lifecycleChange());
+        },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings?operationId=${operationId}`);
-    expect(await screen.findByText('Done')).toBeVisible();
+    renderApp(`/w/${workspaceId}/settings`);
+    const actor = userEvent.setup();
+    await actor.click(
+      await screen.findByRole('button', { name: 'Delete workspace' }),
+    );
+    const dialog = within(
+      screen.getByRole('dialog', { name: 'Delete Control Operations?' }),
+    );
+    await actor.type(
+      dialog.getByLabelText('Type “Control Operations” to confirm'),
+      'Control Operations',
+    );
+    await actor.type(
+      dialog.getByLabelText('Reason (required)'),
+      'No longer needed',
+    );
+    await actor.click(dialog.getByRole('button', { name: 'Delete workspace' }));
+
+    expect(await screen.findByText(scheduledForDeletion)).toBeVisible();
     await waitFor(() => {
-      expect(workspaceReads).toBeGreaterThanOrEqual(2);
       expect(screen.getByRole('link', { name: 'Restore' })).toBeVisible();
     });
+    await actor.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(
+      await screen.findByRole('button', { name: 'Restore workspace' }),
+    ).toBeVisible();
   });
 
-  it('restores a pending-deletion workspace with a durable command', async () => {
+  it('restores a pending-deletion workspace', async () => {
     let deletes = 0;
     mockServer.use(
       ...identityHandlers({ ...workspace, status: 'pending_deletion' }),
@@ -528,14 +497,8 @@ describe('workspace settings', () => {
         ({ request }) => {
           deletes += 1;
           expect(request.headers.get('idempotency-key')).toBeTruthy();
-          return HttpResponse.json(operation('pending', 'deletion_restored'), {
-            status: 202,
-          });
+          return HttpResponse.json(lifecycleChange('deletion_restored'));
         },
-      ),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/lifecycle-operations/${operationId}`,
-        () => HttpResponse.json(operation('running', 'deletion_restored')),
       ),
     );
     renderApp(`/w/${workspaceId}/settings`);
@@ -550,7 +513,11 @@ describe('workspace settings', () => {
     await actor.click(
       within(dialog).getByRole('button', { name: 'Restore workspace' }),
     );
-    expect(await screen.findByText('Restoring the workspace')).toBeVisible();
+    expect(
+      await screen.findByText(
+        'The workspace is back, suspended. Triggers and integrations stay off until you reconnect them.',
+      ),
+    ).toBeVisible();
     expect(deletes).toBe(1);
   });
 
@@ -658,7 +625,7 @@ describe('workspace settings', () => {
         `http://pertexo.test/v1/workspaces/${workspaceId}/deletion`,
         () => {
           requests += 1;
-          return HttpResponse.json(operation('pending'), { status: 202 });
+          return HttpResponse.json(lifecycleChange());
         },
       ),
     );

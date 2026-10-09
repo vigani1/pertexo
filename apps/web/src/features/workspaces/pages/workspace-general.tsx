@@ -2,8 +2,8 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { CopyButton } from '@/components/ui/copy-button';
 import type { ApiClient } from '@/lib/api/client';
@@ -20,10 +20,7 @@ import { WorkspaceAccess } from '../components/settings/workspace-access';
 import { WorkspaceOverview } from '../components/settings/workspace-overview';
 import { WorkspaceMark } from '../components/shell/workspace-mark';
 import { ROLE_SUMMARIES, withArticle } from '../model/workspace-roles';
-import {
-  accessibleWorkspacesQueryOptions,
-  workspaceLifecycleOperationQueryOptions,
-} from '../data/workspaces.queries';
+import { accessibleWorkspacesQueryOptions } from '../data/workspaces.queries';
 
 function Fact({
   term,
@@ -47,55 +44,18 @@ export function WorkspaceGeneralPage({
   apiClient,
   user,
   workspace,
-  operationId,
-  onOperationChange,
   onWorkspaceChanged,
   onLeft,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
-  operationId?: string;
-  onOperationChange: (operationId?: string) => void;
   onWorkspaceChanged: () => void;
   /** The person left; their sessions have ended. */
   onLeft: () => void;
 }>) {
   const queryClient = useQueryClient();
   const canManage = workspace.capabilities.includes('workspace:manage');
-  const operationQuery = useQuery({
-    ...workspaceLifecycleOperationQueryOptions(
-      apiClient,
-      user.id,
-      workspace.id,
-      operationId ?? '00000000-0000-4000-8000-000000000000',
-    ),
-    enabled: canManage && operationId !== undefined,
-  });
-  const handledTerminal = useRef<string | undefined>(undefined);
-
-  // A finished lifecycle request changes the workspace itself; reload it once.
-  useEffect(() => {
-    const operation = operationQuery.data;
-    if (
-      operation === undefined ||
-      (operation.status !== 'completed' && operation.status !== 'failed') ||
-      handledTerminal.current === operation.id
-    )
-      return;
-    handledTerminal.current = operation.id;
-    void queryClient.invalidateQueries({
-      queryKey: accessibleWorkspacesQueryOptions(apiClient, user.id).queryKey,
-    });
-    onWorkspaceChanged();
-  }, [
-    apiClient,
-    onWorkspaceChanged,
-    operationQuery.data,
-    queryClient,
-    user.id,
-  ]);
-
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <PageHeader>
@@ -175,19 +135,13 @@ export function WorkspaceGeneralPage({
             <WorkspaceLifecycleControls
               apiClient={apiClient}
               workspace={workspace}
-              operation={operationQuery.data}
-              operationLoading={
-                operationQuery.isPending && operationId !== undefined
-              }
-              operationReadError={operationQuery.isError}
-              onOperationAccepted={(id) => {
-                onOperationChange(id);
-              }}
-              onOperationDismissed={() => {
-                onOperationChange();
-              }}
-              onRetryOperationRead={() => {
-                void operationQuery.refetch();
+              onCompleted={() => {
+                // Deletion and restore change the workspace itself.
+                void queryClient.invalidateQueries({
+                  queryKey: accessibleWorkspacesQueryOptions(apiClient, user.id)
+                    .queryKey,
+                });
+                onWorkspaceChanged();
               }}
             />
           ) : null}

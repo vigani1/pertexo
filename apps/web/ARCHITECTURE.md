@@ -2475,28 +2475,23 @@ prerequisite.
   email string does not grant membership. ADR 038 records the approved policy.
   Existing workflow email actions and workspace-owned Resend connections are not
   an identity-invitation delivery service.
-- Keep workspace lifecycle operations asynchronous under
-  [ADR 027](../../docs/adr/027-workspace-lifecycle-command-dispatch.md):
-  acceptance returns an operation, not completed deletion/restoration. Poll the
-  operation resource and refresh authorized workspace data on completion.
-  Restoration returns the workspace to suspended and does not reactivate
-  sessions, connections, triggers or runs. Never put control-ledger/maintenance
-  authority in the API.
+- Workspace deletion and restore complete in the request
+  ([ADR 069](../../docs/adr/069-architecture-reset.md) supersedes ADR 027): the
+  answer is the change that was applied, and the page refreshes authorized
+  workspace data from it. Restoration returns the workspace to suspended and
+  does not reactivate sessions, connections, triggers or runs.
 - The lifecycle UI is delivered under `workspace:manage`. General settings show
   authoritative read-only identity, validate deletion reasons with the shared
-  request schema, retain an exact body/idempotency key after uncertain command
-  responses, and keep the accepted operation ID in validated URL search state.
-  Pending/running reads poll the operation resource; terminal results refresh
-  workspace discovery and remain visible until explicit dismissal. Component
-  coverage exercises StrictMode retry identity, failed-operation recovery,
-  permission suppression and restore dispatch; the Chromium journey verifies
-  CSRF/idempotency headers, confirmation Escape behavior and accepted-versus-
-  completed presentation.
+  request schema and retain an exact body/idempotency key after uncertain
+  command responses. A completed request shows what it did until it is
+  dismissed. Component coverage exercises StrictMode retry identity, the refresh
+  after completion, permission suppression and restore; the Chromium journey
+  verifies CSRF/idempotency headers, confirmation Escape behavior and the
+  completed notice.
 - Evidence: member-list isolation and pagination; for newly authorized commands,
   denied/escalation cases, concurrent privilege changes, invitation
-  expiry/reuse, idempotency and CSRF; for lifecycle UI,
-  pending/failure/completion and recovery states against the existing operation
-  contract.
+  expiry/reuse, idempotency and CSRF; for lifecycle UI, uncertain-outcome retry
+  and completion.
 
 #### Implementation-ready slice: existing-member role management
 

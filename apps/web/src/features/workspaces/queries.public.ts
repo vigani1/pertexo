@@ -1,6 +1,5 @@
 export {
   accessibleWorkspacesQueryOptions,
-  workspaceLifecycleOperationQueryOptions,
   workspaceMembersInfiniteQueryOptions,
 } from './data/workspaces.queries';
 export { parseTeamSearch } from './model/team-search';

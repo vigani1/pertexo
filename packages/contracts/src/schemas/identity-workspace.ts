@@ -29,15 +29,8 @@ export const workspaceDeletionRequestSchema = z
   })
   .strict();
 export const workspaceIdentifierSchema = z.uuid();
-export const workspaceLifecycleOperationIdentifierSchema = z.uuid();
 export const workspaceIdParamSchema = z
   .object({ workspaceId: workspaceIdentifierSchema })
-  .strict();
-export const workspaceLifecycleOperationParamsSchema = z
-  .object({
-    workspaceId: workspaceIdentifierSchema,
-    operationId: workspaceLifecycleOperationIdentifierSchema,
-  })
   .strict();
 export const workspaceMemberRoleParamsSchema = z
   .object({
@@ -337,23 +330,12 @@ export const accessibleWorkspacesResponseSchema = z
     nextCursor: workspaceIdentifierSchema.nullable(),
   })
   .strict();
-export const workspaceLifecycleOperationResponseSchema = z
+/** Deletion and restore finish inside the request; a retry with the same key replays it. */
+export const workspaceLifecycleChangeResponseSchema = z
   .object({
-    id: workspaceLifecycleOperationIdentifierSchema,
     workspaceId: workspaceIdentifierSchema,
-    commandType: z.enum(['deletion_requested', 'deletion_restored']),
-    status: z.enum(['pending', 'running', 'completed', 'failed']),
-    submittedAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-    completedAt: z.iso.datetime().nullable(),
-    errorCode: z
-      .string()
-      .regex(/^[a-z][a-z0-9_.:-]{0,63}$/u)
-      .nullable(),
-    result: z
-      .object({ workspaceId: workspaceIdentifierSchema })
-      .strict()
-      .nullable(),
+    change: z.enum(['deletion_requested', 'deletion_restored']),
+    occurredAt: z.iso.datetime(),
   })
   .strict();
 
@@ -422,6 +404,6 @@ export type AccessibleWorkspace = z.output<typeof accessibleWorkspaceSchema>;
 export type AccessibleWorkspacesResponse = z.output<
   typeof accessibleWorkspacesResponseSchema
 >;
-export type WorkspaceLifecycleOperationResponse = z.output<
-  typeof workspaceLifecycleOperationResponseSchema
+export type WorkspaceLifecycleChangeResponse = z.output<
+  typeof workspaceLifecycleChangeResponseSchema
 >;

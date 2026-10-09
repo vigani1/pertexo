@@ -7,8 +7,8 @@ import {
   type WorkspaceRenameResponse,
   workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
-  workspaceLifecycleOperationResponseSchema,
-  type WorkspaceLifecycleOperationResponse,
+  workspaceLifecycleChangeResponseSchema,
+  type WorkspaceLifecycleChangeResponse,
   workspaceMembersQuerySchema,
   workspaceMembersResponseSchema,
   type WorkspaceMembersResponse,
@@ -321,7 +321,7 @@ export function requestWorkspaceDeletion(
   apiClient: ApiClient,
   workspaceId: string,
   input: Readonly<{ reason: string; idempotencyKey: string }>,
-): Promise<WorkspaceLifecycleOperationResponse> {
+): Promise<WorkspaceLifecycleChangeResponse> {
   const body = workspaceDeletionRequestSchema.parse({ reason: input.reason });
   return apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/deletion`,
@@ -330,7 +330,7 @@ export function requestWorkspaceDeletion(
     headers: { 'Idempotency-Key': input.idempotencyKey },
     response: {
       kind: 'json',
-      decode: (value) => decodeLifecycleOperation(value, workspaceId),
+      decode: (value) => decodeLifecycleChange(value, workspaceId),
     },
   });
 }
@@ -339,44 +339,23 @@ export function restoreWorkspaceDeletion(
   apiClient: ApiClient,
   workspaceId: string,
   idempotencyKey: string,
-): Promise<WorkspaceLifecycleOperationResponse> {
+): Promise<WorkspaceLifecycleChangeResponse> {
   return apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/deletion`,
     method: 'DELETE',
     headers: { 'Idempotency-Key': idempotencyKey },
     response: {
       kind: 'json',
-      decode: (value) => decodeLifecycleOperation(value, workspaceId),
+      decode: (value) => decodeLifecycleChange(value, workspaceId),
     },
   });
 }
 
-export function getWorkspaceLifecycleOperation(
-  apiClient: ApiClient,
-  workspaceId: string,
-  operationId: string,
-  signal?: AbortSignal,
-): Promise<WorkspaceLifecycleOperationResponse> {
-  return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/lifecycle-operations/${encodeURIComponent(operationId)}`,
-    ...(signal === undefined ? {} : { signal }),
-    response: {
-      kind: 'json',
-      decode: (value) => {
-        const operation = decodeLifecycleOperation(value, workspaceId);
-        if (operation.id !== operationId)
-          throw new Error('Lifecycle operation identifier mismatch.');
-        return operation;
-      },
-    },
-  });
-}
-
-function decodeLifecycleOperation(value: unknown, workspaceId: string) {
-  const operation = workspaceLifecycleOperationResponseSchema.parse(value);
-  if (operation.workspaceId !== workspaceId)
-    throw new Error('Lifecycle operation workspace mismatch.');
-  return operation;
+function decodeLifecycleChange(value: unknown, workspaceId: string) {
+  const change = workspaceLifecycleChangeResponseSchema.parse(value);
+  if (change.workspaceId !== workspaceId)
+    throw new Error('Lifecycle change workspace mismatch.');
+  return change;
 }
 
 export async function getAllAccessibleWorkspaces(
