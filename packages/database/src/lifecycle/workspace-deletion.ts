@@ -216,11 +216,12 @@ export async function changeWorkspaceLifecycle(
 
   if (change.commandType === 'deletion_requested') {
     await client.query(
+      // One timestamp, so the purge comes exactly the recovery period later.
       `update app.workspaces
-       set status = 'pending_deletion', deletion_requested_at = clock_timestamp(),
+       set status = 'pending_deletion', deletion_requested_at = statement_timestamp(),
            deletion_requested_by = $2, deletion_reason = $3,
-           purge_after = clock_timestamp() + make_interval(days => $4),
-           updated_at = clock_timestamp()
+           purge_after = statement_timestamp() + make_interval(days => $4),
+           updated_at = statement_timestamp()
        where id = $1`,
       [
         change.workspaceId,
