@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
 import type { WorkflowConcurrencyDatabase } from '../src/authoring/workflow-concurrency.js';
 import { parseDatabaseConfig } from '../src/config.js';
-import { acceptWorkflowRun } from '../src/execution/runs/execution-acceptance.js';
+import { acceptWorkflowRun } from '../src/runs/commands/acceptance.js';
 import {
   acceptanceInput,
   apiDatabase,

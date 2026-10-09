@@ -6,7 +6,7 @@ import {
   withWorkspaceReadTransaction,
   type WorkspaceTransaction,
 } from '../../tenant-access/workspace.js';
-import { runStatusSchema } from './workflow-run-persistence-support.js';
+import { runStatusSchema } from '../commands/records.js';
 
 // Exact run counts for one workspace snapshot (ADR 044). Every statement
 // reads one bounded index range: the non-terminal statuses, or the runs

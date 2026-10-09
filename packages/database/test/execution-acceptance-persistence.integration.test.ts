@@ -7,7 +7,7 @@ import {
   acceptWorkflowRun,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-} from '../src/execution/runs/execution-acceptance.js';
+} from '../src/runs/commands/acceptance.js';
 import {
   idempotencyRecords,
   outboxEvents,

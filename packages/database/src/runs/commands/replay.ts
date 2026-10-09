@@ -5,23 +5,23 @@ import {
   selectServingCompatibilityRelease,
   type CompatibilityReleaseExpectationSet,
 } from '../../compatibility/compatibility-release.js';
-import { readWorkflowRunAcceptanceReplay } from './execution-acceptance.js';
+import { readWorkflowRunAcceptanceReplay } from './acceptance.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from '../published-workflow-reader.js';
+} from '../../execution/published-workflow-reader.js';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
-} from './workflow-run-errors.js';
+} from '../errors.js';
 import {
   acceptWorkflowRunWithAudit,
   requireWorkflowRunRecord,
-} from './workflow-run-persistence-support.js';
-import type { ReplayPublishedWorkflowRunInput } from './workflow-run-api.js';
-import type { WorkflowRunRecord } from './workflow-run-persistence-support.js';
+} from './records.js';
+import type { ReplayPublishedWorkflowRunInput } from '../runs.repository.js';
+import type { WorkflowRunRecord } from './records.js';
 
 export async function replayWorkflowRunInTransaction(
   transaction: WorkspaceTransaction,

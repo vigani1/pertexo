@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { IdempotencyRequestConflictError } from '../execution/runs/execution-acceptance.js';
+import { IdempotencyRequestConflictError } from '../runs/commands/acceptance.js';
 import {
   IdentityConflictError,
   WorkspaceLifecycleConflictError,

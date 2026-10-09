@@ -6,7 +6,7 @@ import {
   acceptWorkflowRun,
   IDEMPOTENCY_STATUS_VALUES,
   RUN_STATUS_VALUES,
-} from '../src/execution/runs/execution-acceptance.js';
+} from '../src/runs/commands/acceptance.js';
 import {
   idempotencyRecords,
   outboxEvents,

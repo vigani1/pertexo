@@ -4,7 +4,7 @@ import { z } from 'zod';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../transport/outbox.js';
+} from '../../execution/transport/outbox.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   idempotencyRecords,
@@ -12,11 +12,11 @@ import {
   runEvents,
   workflowRuns,
 } from '../../schema.js';
-import { serializeStoredExecutionValueV1 } from '../stored-execution-value.js';
-import { resolveWorkflowFailureNotificationPolicy } from '../notifications/failure-notification-policy.js';
+import { serializeStoredExecutionValueV1 } from '../../execution/stored-execution-value.js';
+import { resolveWorkflowFailureNotificationPolicy } from '../../execution/notifications/failure-notification-policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import { sha256HexSchema as sha256Schema } from '../../validation/persisted-primitives.js';
-import { prepareWorkflowRunAcceptanceInput } from './execution-acceptance-input.js';
+import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';
 const traceparentSchema = z
   .string()
   .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)

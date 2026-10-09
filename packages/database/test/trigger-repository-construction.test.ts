@@ -25,7 +25,7 @@ import type { CompatibilityReleaseExpectation } from '../src/compatibility/compa
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 import { createPublishedWorkflowReader } from '../src/execution/published-workflow-reader.js';
 import { createOutboxDispatcherDatabase } from '../src/execution/transport/dispatcher.js';
-import { createWorkflowRunDatabase } from '../src/execution/runs/workflow-run-api.js';
+import { createWorkflowRunDatabase } from '../src/runs/runs.repository.js';
 import { createScheduleTriggerScanner } from '../src/triggers/schedule-trigger-scanner.js';
 import { createWebhookTriggerDatabase } from '../src/triggers/webhook-triggers.js';
 

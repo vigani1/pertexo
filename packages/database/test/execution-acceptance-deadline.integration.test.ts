@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { acceptWorkflowRun } from '../src/execution/runs/execution-acceptance.js';
+import { acceptWorkflowRun } from '../src/runs/commands/acceptance.js';
 import { workflowRuns } from '../src/schema.js';
 import {
   acceptanceInput,

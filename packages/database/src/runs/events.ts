@@ -4,9 +4,9 @@ import { z } from 'zod';
 import {
   ExecutionStateConflictError,
   RunEventGapError,
-} from './execution-state.js';
-import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
-import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
+} from './state-errors.js';
+import { serializeStoredExecutionJsonValue } from '../execution/stored-execution-value.js';
+import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 
 export const RUN_EVENT_TYPE = {
   queued: 'run.queued',

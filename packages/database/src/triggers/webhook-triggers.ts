@@ -13,7 +13,7 @@ import {
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
 } from '../compatibility/compatibility-release.js';
-import { acceptWorkflowRun } from '../execution/runs/execution-acceptance.js';
+import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,

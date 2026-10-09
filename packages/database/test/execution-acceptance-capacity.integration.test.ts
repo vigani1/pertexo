@@ -6,7 +6,7 @@ import {
   acceptWorkflowRun,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '../src/execution/runs/execution-acceptance.js';
+} from '../src/runs/commands/acceptance.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

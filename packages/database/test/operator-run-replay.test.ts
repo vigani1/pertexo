@@ -16,7 +16,7 @@ vi.mock('../src/database.js', () => ({
 vi.mock('../src/execution/transport/inbox.js', () => ({
   consumeInboxMessage: mocks.consumeInboxMessage,
 }));
-vi.mock('../src/execution/runs/execution-acceptance.js', () => ({
+vi.mock('../src/runs/commands/acceptance.js', () => ({
   acceptWorkflowRun: mocks.acceptWorkflowRun,
 }));
 vi.mock('../src/execution/published-workflow-reader.js', () => ({

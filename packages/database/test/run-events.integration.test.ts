@@ -6,13 +6,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
-import { acceptWorkflowRun } from '../src/execution/runs/execution-acceptance.js';
-import { ExecutionStateConflictError } from '../src/execution/runs/execution-state.js';
+import { acceptWorkflowRun } from '../src/runs/commands/acceptance.js';
+import { ExecutionStateConflictError } from '../src/runs/state-errors.js';
 import { migrateDatabase } from '../src/migrations.js';
-import {
-  appendRunEvent,
-  readRunEventsAfter,
-} from '../src/execution/runs/run-events.js';
+import { appendRunEvent, readRunEventsAfter } from '../src/runs/events.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =

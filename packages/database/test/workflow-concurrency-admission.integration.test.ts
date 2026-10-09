@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { acceptWorkflowRun } from '../src/execution/runs/execution-acceptance.js';
+import { acceptWorkflowRun } from '../src/runs/commands/acceptance.js';
 import { assertWorkspaceTenantPurgeChain } from './support/workspace-tenant-purge-chain.js';
 import {
   apiDatabase,

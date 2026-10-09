@@ -5,7 +5,7 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createWorkflowRunDatabase } from '../src/execution/runs/workflow-run-api.js';
+import { createWorkflowRunDatabase } from '../src/runs/runs.repository.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { WorkspaceAccessDeniedError } from '../src/tenant-access/identity-workspace-errors.js';
