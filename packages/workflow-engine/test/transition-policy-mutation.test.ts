@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertNodeTransition, assertRunTransition } from '../src/testing.js';
+import { assertNodeTransition, assertRunTransition } from './support/engine.js';
 
 const policies = [
   {

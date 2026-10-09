@@ -11,55 +11,55 @@ import {
 } from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
-import { advanceWorkflowFromSchedulerState } from './transition/advance-workflow.js';
+import { advanceWorkflowFromSchedulerState } from './transition/advance.js';
 import { WorkflowEngineError } from './errors.js';
 import { resolveAttemptFailures } from './observation/coordinator-failures.js';
 import {
   branchSelectionObservations,
   mergeCoordinatorObservations,
-} from './observation/coordinator-observations.js';
-import { forEachCoordinatorObservations } from './observation/coordinator-loop-observations.js';
+} from './observation/coordinator.js';
+import { forEachCoordinatorObservations } from './observation/coordinator-loops.js';
 import {
   indexPersistedSuccessfulOutcomes,
   parseCompletedOutputItems,
 } from './observation/coordinator-output.js';
-import { executableNodes } from './compilation/executable-graph.js';
+import { executableNodes } from './compilation/graph.js';
 import {
   assertAuthenticExecutableIdentity,
-  normalizeBoundedEngineJson,
   type CompiledWorkflowExecutableV2,
   type WorkflowExecutableNodeV2,
   type WorkflowExecutableGraphV2,
-} from './executable-workflow.js';
+} from './compilation/foundation.js';
+import { normalizeBoundedEngineJson } from './compilation/validation.js';
 import type { WorkflowObservation } from './types.js';
-import { parseCheckpoint } from './checkpoint/checkpoint.js';
-import type { SchedulerState } from './transition/graph-scheduler.js';
+import { parseCheckpoint } from './checkpoint/create-and-parse.js';
+import type { SchedulerState } from './transition/scheduler.js';
 import { operationError, record } from './operation-values.js';
-import { parsePersistedObservations } from './observation/persisted-observations.js';
+import { parsePersistedObservations } from './observation/persisted.js';
 import { providerIdempotencyKey } from './attempt/retries.js';
-import { prepareNodeAttemptInput } from './attempt/node-attempt-input.js';
+import { prepareNodeAttemptInput } from './attempt/input.js';
 import type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
-} from './attempt/node-attempt-contract.js';
+} from './attempt/contract.js';
 import type { WorkflowTransitionPlan } from './types.js';
 import {
   isCoreMergeDefinition,
   isTriggerSourceDefinition,
 } from './core-definition-identities.js';
-import { assertCheckpointMatchesExecutable } from './checkpoint/checkpoint-executable-validation.js';
+import { assertCheckpointMatchesExecutable } from './checkpoint/matches-executable.js';
 
 export type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
   NodeExecutionRegistry,
-} from './attempt/node-attempt-contract.js';
+} from './attempt/contract.js';
 export type {
   AttemptFailureObservation,
   DeadlineExpiredObservation,
   DueAtObservation,
   PersistedWorkflowObservation,
-} from './observation/persisted-observations.js';
+} from './observation/persisted.js';
 
 export interface AdvanceWorkflowInput {
   readonly runId: string;

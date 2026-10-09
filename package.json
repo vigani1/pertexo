@@ -16,9 +16,6 @@
     "ignoreIssues": {
       "packages/contracts/src/http/workflow-authoring.ts": [
         "duplicates"
-      ],
-      "packages/workflow-engine/src/compilation/executable-foundation.ts": [
-        "duplicates"
       ]
     },
     "workspaces": {

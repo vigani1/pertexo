@@ -4,7 +4,7 @@ import {
   createCheckpoint,
   invocationKey,
   parseCheckpoint,
-} from '../src/testing.js';
+} from './support/engine.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 

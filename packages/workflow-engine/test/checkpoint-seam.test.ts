@@ -15,7 +15,7 @@ import {
 import {
   advanceWorkflow as advanceWorkflowAtSeam,
   type AdvanceWorkflowInput,
-} from '../src/testing.js';
+} from './support/engine.js';
 
 function advanceWorkflow(input: AdvanceWorkflowInput) {
   return advanceWorkflowAtSeam(withExplicitSchedulerState(input));

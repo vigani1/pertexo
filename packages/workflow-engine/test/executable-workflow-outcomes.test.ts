@@ -6,7 +6,7 @@ import {
   composeExecutableCompatibilityRelease,
   createCheckpoint,
 } from '../src/index.js';
-import { providerIdempotencyKey } from '../src/testing.js';
+import { providerIdempotencyKey } from './support/engine.js';
 import { graph, nodeRelease } from './executable-workflow.fixtures.js';
 
 describe('attempt outcome production operations', () => {

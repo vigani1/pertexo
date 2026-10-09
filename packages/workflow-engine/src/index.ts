@@ -1,5 +1,3 @@
-import './server-only.js';
-
 export {
   advanceWorkflow,
   executeNodeAttempt,
@@ -20,31 +18,37 @@ export {
   parseCheckpoint,
   reconstructReadySet,
   WORKFLOW_CHECKPOINT_LIMITS_V1,
-} from './checkpoint/checkpoint.js';
+} from './checkpoint/create-and-parse.js';
 export { WorkflowEngineError } from './errors.js';
 export type { EngineErrorCode } from './errors.js';
 export {
-  buildWorkflowExecutableV2,
+  parseWorkflowExecutableV2,
+  verifyWorkflowExecutableV2,
+} from './compilation/boundary.js';
+export {
   composeExecutableCompatibilityRelease,
-  computeWorkflowExecutableChecksumV2,
   createExecutableCompatibilityReleaseSupport,
   createExecutableCompatibilityReleaseHistory,
   describeExecutableCompatibilityRelease,
-  parseWorkflowExecutableV2,
+} from './compilation/compatibility.js';
+export {
+  buildWorkflowExecutableV2,
+  computeWorkflowExecutableChecksumV2,
+} from './compilation/compile.js';
+export {
   BASELINE_RUNTIME_POLICIES_V1,
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Public compatibility alias.
-  PHASE3_RUNTIME_POLICIES_V1,
-  verifyWorkflowExecutableV2,
   WORKFLOW_EXECUTABLE_LIMITS_V2,
-} from './executable-workflow.js';
+} from './compilation/foundation.js';
 export type {
-  CompiledWorkflowExecutableV2,
   ExecutableCompatibilityReleaseDescription,
   ExecutableCompatibilityReleaseSupport,
+} from './compilation/compatibility.js';
+export type {
+  CompiledWorkflowExecutableV2,
   ExecutableRuntimePoliciesV1,
   VerifiedWorkflowExecutableV2,
   WorkflowExecutableNodeV2,
   WorkflowExecutableV2,
-} from './executable-workflow.js';
+} from './compilation/foundation.js';
 export { invocationKey } from './transition/scheduling.js';
 export type * from './types.js';
