@@ -262,15 +262,20 @@ now, as one ordered program — not "whenever we touch it".
           Draft and import compatibility use the definition-list
           fingerprint, and portable manifests no longer carry a selection
           fingerprint.
-  - [ ] node-sdk
-  - [ ] nodes-core
+  - [x] node-sdk — one catalog type (`NodeCatalog`), one manifest grammar,
+        no lifecycles, release identity or runtime guard; executors register
+        only `{ executor, execute }` and take their metadata from the catalog.
+  - [x] nodes-core
     - [x] One version of each node: Schedule, Parallel and Merge keep only
           version 1, with the newest semantics (strict cron and timezone,
           trigger envelope input, unique branch IDs, settled merge ledger).
           `CORE_NODE_CATALOG` holds every core node, and executor manifests
           derive from node manifests (`executorManifestFor`).
-  - [ ] integrations
-  - [ ] node-catalog
+  - [x] integrations — manifests and executors follow the node-sdk changes.
+  - [x] node-catalog — `catalog.ts` derives `PLATFORM_NODE_CATALOG` from
+        the definition registrations; `browser-catalog.ts` projects it for
+        HTTP. The registered template setup check stays here because it
+        needs the node schemas.
   - [ ] templates (new) — the curated templates, their origin schema and
         setup checks now live in `@pertexo/templates`; the registered setup
         check still in node-catalog moves with the node-catalog pass.

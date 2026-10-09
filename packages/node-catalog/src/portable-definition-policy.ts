@@ -1,8 +1,10 @@
-import { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
-
 import { isDeepStrictEqual } from 'node:util';
-import { resolvePlatformNodeDefinition } from './definition-resolution.js';
-import { PLATFORM_NODE_CATALOG } from './registry.js';
+
+import {
+  PLATFORM_NODE_CATALOG,
+  resolvePlatformNodeDefinition,
+} from './catalog.js';
+import { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
 
 const CONNECTION_SLOT_POLICIES: Readonly<
   Record<string, Readonly<{ providerKey: string; authType: string }>>
