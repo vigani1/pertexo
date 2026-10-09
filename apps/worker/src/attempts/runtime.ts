@@ -38,9 +38,11 @@ import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,
 } from './engine.js';
-import { createProductionHttpProviderTelemetry } from '../providers/http-telemetry.js';
-import { createProductionSlackProviderTelemetry } from '../providers/slack-telemetry.js';
-import { createProductionEmailProviderTelemetry } from '../providers/email-telemetry.js';
+import {
+  createEmailProviderTelemetry,
+  createHttpProviderTelemetry,
+  createSlackProviderTelemetry,
+} from '../providers/telemetry.js';
 import {
   createProductionPreviewTelemetry,
   type PreviewTelemetry,
@@ -226,9 +228,9 @@ async function createProductionNodeAttemptRuntime(
   const registry =
     dependencies.registry ??
     createPlatformNodeRegistry({
-      httpRequestTelemetry: createProductionHttpProviderTelemetry(),
-      slackSendMessageTelemetry: createProductionSlackProviderTelemetry(),
-      emailSendNotificationTelemetry: createProductionEmailProviderTelemetry(),
+      httpRequestTelemetry: createHttpProviderTelemetry(),
+      slackSendMessageTelemetry: createSlackProviderTelemetry(),
+      emailSendNotificationTelemetry: createEmailProviderTelemetry(),
     });
   const runStore =
     dependencies.runStore ??

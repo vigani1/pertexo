@@ -233,21 +233,16 @@ function createPreviewExecutionEnvironment(
           workerId: dependencies.workerId,
         });
       } catch (error: unknown) {
-        let durableCode: string | undefined;
-        try {
-          if (error instanceof PreviewAttemptStateError)
-            durableCode = error.code;
-        } catch {
-          // Hostile unknown values cannot claim a durable state-error code.
+        if (error instanceof PreviewAttemptStateError) {
+          if (error.code === 'connection_fence_failed')
+            throw new NodeDispatchEvidenceError(
+              'provider_connection_fence_failed',
+            );
+          if (error.code === 'dispatch_binding_mismatch')
+            throw new NodeDispatchEvidenceError(
+              'provider_dispatch_binding_mismatch',
+            );
         }
-        if (durableCode === 'connection_fence_failed')
-          throw new NodeDispatchEvidenceError(
-            'provider_connection_fence_failed',
-          );
-        if (durableCode === 'dispatch_binding_mismatch')
-          throw new NodeDispatchEvidenceError(
-            'provider_dispatch_binding_mismatch',
-          );
         throw error;
       }
       dispatchState = 'marked';
