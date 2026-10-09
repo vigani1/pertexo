@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { FailureNotificationDeliveryResultV1Schema } from '@pertexo/workflow-model';
+import { FailureNotificationDeliveryResultSchema } from '@pertexo/workflow-model';
 
 import { FailureNotificationStateError } from './errors.js';
 import {
@@ -17,7 +17,7 @@ import {
 
 type CompletionStore = Pick<FailureNotificationStore, 'completeDelivery'>;
 type DeliveryResult = ReturnType<
-  typeof FailureNotificationDeliveryResultV1Schema.parse
+  typeof FailureNotificationDeliveryResultSchema.parse
 >;
 type LockedIntent = Readonly<{
   delivery_attempts: number;
@@ -101,9 +101,7 @@ export function createFailureNotificationCompletionStore(
         raw.workspaceId,
       );
       const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
-      const result = FailureNotificationDeliveryResultV1Schema.parse(
-        raw.result,
-      );
+      const result = FailureNotificationDeliveryResultSchema.parse(raw.result);
       const attemptNumber = parseFailureNotificationAttemptNumber(
         raw.attemptNumber,
       );

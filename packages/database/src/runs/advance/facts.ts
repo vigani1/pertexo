@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model';
+import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
 
 import { CoordinatorRunStateCorruptError } from './contract.js';
 import {
@@ -16,11 +16,10 @@ import {
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const maximumCanonicalEventPayloadBytes =
-  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalFactBytes;
-export const maximumPersistedFacts =
-  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.facts;
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS.canonicalFactBytes;
+export const maximumPersistedFacts = WORKFLOW_OBSERVATION_WINDOW_LIMITS.facts;
 const maximumCanonicalPersistedFactBytes =
-  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalWindowBytes;
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS.canonicalWindowBytes;
 // Keep each result bounded while avoiding a long-lived coordinator snapshot
 // spending hundreds of network round trips on the accepted observation window.
 const maximumPersistedFactRowsPerFetch = 1_000;

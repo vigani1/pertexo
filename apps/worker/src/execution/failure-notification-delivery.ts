@@ -23,8 +23,8 @@ import {
 } from '@pertexo/integrations/server';
 import {
   assertNever,
-  type FailureNotificationContextV1,
-  type FailureNotificationDeliveryResultV1,
+  type FailureNotificationContext,
+  type FailureNotificationDeliveryResult,
 } from '@pertexo/workflow-model';
 import type { FailureNotificationDeliveryCapability } from './failure-notification-handler.js';
 const TIMEOUT_MILLIS = 30_000;
@@ -43,7 +43,7 @@ function isErrorInstance<T extends Error>(
 function localFailure(
   error: unknown,
   provider: 'slack' | 'email',
-): FailureNotificationDeliveryResultV1 {
+): FailureNotificationDeliveryResult {
   if (isErrorInstance(error, ConnectionSecretEncryptionError))
     return {
       schemaVersion: 1,
@@ -80,9 +80,9 @@ function localFailure(
   throw error;
 }
 function settleUnresolvedDelivery(
-  result: FailureNotificationDeliveryResultV1,
+  result: FailureNotificationDeliveryResult,
   deliveryUnresolved: boolean,
-): FailureNotificationDeliveryResultV1 {
+): FailureNotificationDeliveryResult {
   if (!deliveryUnresolved || result.kind === 'delivered') return result;
   return {
     schemaVersion: 1,
@@ -91,7 +91,7 @@ function settleUnresolvedDelivery(
     possiblyDispatched: true,
   };
 }
-function render(context: FailureNotificationContextV1): Readonly<{
+function render(context: FailureNotificationContext): Readonly<{
   subject: string;
   text: string;
 }> {
@@ -114,7 +114,7 @@ function render(context: FailureNotificationContextV1): Readonly<{
 }
 function slackResult(
   result: SlackApiResult,
-): FailureNotificationDeliveryResultV1 {
+): FailureNotificationDeliveryResult {
   switch (result.kind) {
     case 'succeeded':
       return {
@@ -187,7 +187,7 @@ function slackResult(
 
 function emailResult(
   result: ResendApiResult,
-): FailureNotificationDeliveryResultV1 {
+): FailureNotificationDeliveryResult {
   switch (result.kind) {
     case 'succeeded':
       return {
@@ -260,7 +260,7 @@ type EmailDestination = Extract<
   Readonly<{ kind: 'email' }>
 >;
 
-function canceled(input: DeliveryInput): FailureNotificationDeliveryResultV1 {
+function canceled(input: DeliveryInput): FailureNotificationDeliveryResult {
   return settleUnresolvedDelivery(
     {
       schemaVersion: 1,
@@ -276,7 +276,7 @@ async function deliverSlack(
   dependencies: DeliveryDependencies,
   destination: SlackDestination,
   input: DeliveryInput,
-): Promise<FailureNotificationDeliveryResultV1> {
+): Promise<FailureNotificationDeliveryResult> {
   let bytes: Uint8Array;
   try {
     bytes = await dependencies.encryption.open(
@@ -351,7 +351,7 @@ async function deliverEmail(
   dependencies: DeliveryDependencies,
   destination: EmailDestination,
   input: DeliveryInput,
-): Promise<FailureNotificationDeliveryResultV1> {
+): Promise<FailureNotificationDeliveryResult> {
   let bytes: Uint8Array;
   try {
     bytes = await dependencies.encryption.open(
@@ -457,7 +457,7 @@ export function createProviderFailureNotificationDelivery(
   return Object.freeze({
     deliver: async (
       input: DeliveryInput,
-    ): Promise<FailureNotificationDeliveryResultV1> => {
+    ): Promise<FailureNotificationDeliveryResult> => {
       let destination: Awaited<
         ReturnType<FailureNotificationStore['loadDestination']>
       >;

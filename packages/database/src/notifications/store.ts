@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
 import { z } from 'zod';
-import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model';
+import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 
 import type { DatabaseConfig } from '../config.js';
 import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
@@ -207,7 +207,7 @@ export function createFailureNotificationStore(
           throw new FailureNotificationStateError(
             'Intent lifecycle is corrupt',
           );
-        const context = FailureNotificationContextV1Schema.parse(row.context);
+        const context = FailureNotificationContextSchema.parse(row.context);
         const checksum = createHash('sha256')
           .update(serializeStoredExecutionJsonValue(context))
           .digest('hex');

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
 
-import { EMPTY_WORKFLOW_GRAPH_V1, parseWorkflowGraphDraft } from './graph.js';
+import { EMPTY_WORKFLOW_GRAPH, parseWorkflowGraphDraft } from './graph.js';
 
 import {
   authorizeWorkspaceOperation,
@@ -198,7 +198,7 @@ export class CreateWorkflowUseCase {
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,
           name: request.name,
-          emptyGraph: EMPTY_WORKFLOW_GRAPH_V1,
+          emptyGraph: EMPTY_WORKFLOW_GRAPH,
           idempotencyKey: input.idempotencyKey,
           ...(input.requestId === undefined
             ? {}

@@ -6,7 +6,7 @@ import {
 } from '@pertexo/workflow-model';
 import {
   workflowCompatibilityReport,
-  type WorkflowDefinitionCatalogV1,
+  type WorkflowDefinitionCatalog,
   workflowRetainedExecutableChecksum,
 } from '@pertexo/workflow-model/server';
 
@@ -115,7 +115,7 @@ export function mapWorkflow(row: Record<string, unknown>): WorkflowRecord {
 
 export function mapDraft(
   row: Record<string, unknown>,
-  definitionCatalog: WorkflowDefinitionCatalogV1,
+  definitionCatalog: WorkflowDefinitionCatalog,
 ): WorkflowDraftRecord {
   const parsed = workflowDraftRowSchema.parse(row);
   const graph = parseWorkflowGraphDraft(parsed.graph_json);

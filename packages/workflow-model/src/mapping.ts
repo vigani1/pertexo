@@ -1,6 +1,6 @@
 import { canonicalizeJson, type JsonValue } from './json/canonical-json.js';
 import type {
-  ExpressionContextV1,
+  ExpressionContext,
   ExpressionEvaluator,
   ExpressionResult,
 } from './expressions/policy.js';
@@ -16,7 +16,7 @@ export type ValueResolution =
       readonly message: string;
       readonly expression?: Extract<ExpressionResult, { kind: 'error' }>;
     };
-export interface ValueResolutionContext extends ExpressionContextV1 {
+export interface ValueResolutionContext extends ExpressionContext {
   readonly structuredInputs?: Readonly<Record<string, JsonValue>>;
 }
 export async function resolveValueSource(

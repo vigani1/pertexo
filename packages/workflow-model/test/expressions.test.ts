@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { canonicalJson, type JsonValue } from '../src/json/canonical-json.js';
 import { JsonataEvaluator } from '../src/expressions/evaluator.js';
 import {
-  EXPRESSION_POLICY_V1,
+  EXPRESSION_POLICY,
   JSONATA_EVALUATOR_DIAGNOSTICS,
   validateExpression,
 } from '../src/expressions/policy.js';
@@ -152,13 +152,13 @@ describe('restricted JSONata policy v1', () => {
   it('accepts exact expression AST limits and rejects one unit over', () => {
     expect(
       validateExpression(
-        `1${' '.repeat(EXPRESSION_POLICY_V1.expressionBytes - 1)}`,
+        `1${' '.repeat(EXPRESSION_POLICY.expressionBytes - 1)}`,
         1,
       ),
     ).toEqual({ kind: 'valid' });
     expect(
       validateExpression(
-        `1${' '.repeat(EXPRESSION_POLICY_V1.expressionBytes)}`,
+        `1${' '.repeat(EXPRESSION_POLICY.expressionBytes)}`,
         1,
       ),
     ).toEqual(
@@ -378,7 +378,7 @@ describe('restricted JSONata policy v1', () => {
     const evaluator = new JsonataEvaluator({ maxActive: 1, maxQueued: 0 });
     evaluators.push(evaluator);
     const context = {
-      runInput: { text: 'x'.repeat(EXPRESSION_POLICY_V1.inputBytes) },
+      runInput: { text: 'x'.repeat(EXPRESSION_POLICY.inputBytes) },
       nodeOutputs: {},
     };
     expect(
@@ -408,7 +408,7 @@ describe('restricted JSONata policy v1', () => {
     const empty = { runInput: '', nodeOutputs: {} };
     const overhead = new TextEncoder().encode(JSON.stringify(empty)).byteLength;
     const exactContext = {
-      runInput: 'x'.repeat(EXPRESSION_POLICY_V1.inputBytes - overhead),
+      runInput: 'x'.repeat(EXPRESSION_POLICY.inputBytes - overhead),
       nodeOutputs: {},
     };
     expect(
@@ -583,7 +583,7 @@ describe('restricted JSONata policy v1', () => {
     expect(
       () =>
         new JsonataEvaluator({
-          maxActive: EXPRESSION_POLICY_V1.maxActive + 1,
+          maxActive: EXPRESSION_POLICY.maxActive + 1,
         }),
     ).toThrow('bounds');
     const evaluator = new JsonataEvaluator({ maxActive: 1 });

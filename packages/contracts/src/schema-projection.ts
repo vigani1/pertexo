@@ -1,8 +1,8 @@
 import {
   workflowGraphSchema,
-  workflowGraphStructuralSchemaV1,
+  workflowGraphStructuralSchema,
   workflowPortableManifestSchema,
-  workflowPortableManifestStructuralSchemaV1,
+  workflowPortableManifestStructuralSchema,
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
@@ -13,10 +13,10 @@ import {
 
 type JsonSchema = Record<string, unknown>;
 
-const structuralWorkflowGraph = z.toJSONSchema(
-  workflowGraphStructuralSchemaV1,
-  { target: 'draft-2020-12', reused: 'inline' },
-);
+const structuralWorkflowGraph = z.toJSONSchema(workflowGraphStructuralSchema, {
+  target: 'draft-2020-12',
+  reused: 'inline',
+});
 
 const recursiveJsonValue = z.toJSONSchema(z.json(), {
   target: 'draft-2020-12',
@@ -119,7 +119,7 @@ export function projectContractSchema(
       ) {
         replaceObject(
           jsonSchema,
-          z.toJSONSchema(workflowPortableManifestStructuralSchemaV1, {
+          z.toJSONSchema(workflowPortableManifestStructuralSchema, {
             target: 'draft-2020-12',
             reused: 'inline',
             unrepresentable: 'any',

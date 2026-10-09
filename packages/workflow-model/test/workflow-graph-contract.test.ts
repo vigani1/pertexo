@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { workflowGraphSchema } from '../src/graph/contract.js';
 import {
-  EMPTY_WORKFLOW_GRAPH_V1,
+  EMPTY_WORKFLOW_GRAPH,
   type WorkflowGraph,
 } from '../src/graph/contract.js';
 import {
@@ -84,7 +84,7 @@ describe('workflow integration usage projection', () => {
 
     expect(
       workflowIntegrationUsage(
-        { ...EMPTY_WORKFLOW_GRAPH_V1, nodes: [outer, node('duplicate')] },
+        { ...EMPTY_WORKFLOW_GRAPH, nodes: [outer, node('duplicate')] },
         catalog,
       ),
     ).toEqual([
@@ -105,7 +105,7 @@ describe('workflow integration usage projection', () => {
     expect(() =>
       workflowIntegrationUsage(
         {
-          ...EMPTY_WORKFLOW_GRAPH_V1,
+          ...EMPTY_WORKFLOW_GRAPH,
           nodes: [{ ...node('missing'), connectionRefs: {} }],
         },
         catalog,
@@ -118,7 +118,7 @@ describe('workflow integration usage projection', () => {
       schemaVersion: 1 as const,
       definitions: [{ key: 'core.set', version: 1 }],
     };
-    const graph = { ...EMPTY_WORKFLOW_GRAPH_V1, nodes: [node('usage')] };
+    const graph = { ...EMPTY_WORKFLOW_GRAPH, nodes: [node('usage')] };
     expect(workflowCompatibilityReport(graph, catalog).fingerprint).toBe(
       workflowCompatibilityReport(graph, withoutMetadata).fingerprint,
     );
@@ -156,10 +156,10 @@ function nestedObject(depth: number): Record<string, unknown> {
 }
 
 function nestedStructuredGraph(depth: number): unknown {
-  let graph: unknown = EMPTY_WORKFLOW_GRAPH_V1;
+  let graph: unknown = EMPTY_WORKFLOW_GRAPH;
   for (let index = 0; index < depth; index += 1) {
     graph = {
-      ...EMPTY_WORKFLOW_GRAPH_V1,
+      ...EMPTY_WORKFLOW_GRAPH,
       nodes: [
         {
           ...node(`loop-${String(index)}`),
@@ -192,10 +192,10 @@ function contractError(input: unknown): WorkflowGraphContractError {
 
 describe('workflow graph V1 public contract', () => {
   it('parses the V1 empty graph and reports deterministic empty-catalog compatibility', () => {
-    expect(parseWorkflowGraphDraft(EMPTY_WORKFLOW_GRAPH_V1)).toEqual(
-      EMPTY_WORKFLOW_GRAPH_V1,
+    expect(parseWorkflowGraphDraft(EMPTY_WORKFLOW_GRAPH)).toEqual(
+      EMPTY_WORKFLOW_GRAPH,
     );
-    expect(workflowCompatibilityReport(EMPTY_WORKFLOW_GRAPH_V1)).toEqual({
+    expect(workflowCompatibilityReport(EMPTY_WORKFLOW_GRAPH)).toEqual({
       compatible: true,
       fingerprint:
         'wf-compat:v1:sha256:1b272141677a1d308d454d2f22a9d00cfe040d48b54ef926e9c02132b206239e',
@@ -213,11 +213,11 @@ describe('workflow graph V1 public contract', () => {
 
   it('strictly rejects unknown schema versions, graph fields, settings, and nested fields', () => {
     for (const input of [
-      { ...EMPTY_WORKFLOW_GRAPH_V1, schemaVersion: 2 },
-      { ...EMPTY_WORKFLOW_GRAPH_V1, unknown: true },
-      { ...EMPTY_WORKFLOW_GRAPH_V1, settings: { unknown: true } },
+      { ...EMPTY_WORKFLOW_GRAPH, schemaVersion: 2 },
+      { ...EMPTY_WORKFLOW_GRAPH, unknown: true },
+      { ...EMPTY_WORKFLOW_GRAPH, settings: { unknown: true } },
       {
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: [{ ...node('a'), secret: 'not part of the graph contract' }],
       },
     ]) {
@@ -232,13 +232,13 @@ describe('workflow graph V1 public contract', () => {
     );
     expect(
       parseWorkflowGraphDraft({
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: exactNodes,
       }),
     ).toHaveProperty('nodes.length', WORKFLOW_GRAPH_LIMITS.nodes);
     expect(() =>
       parseWorkflowGraphDraft({
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: [...exactNodes, node('over')],
       }),
     ).toThrow();
@@ -253,14 +253,14 @@ describe('workflow graph V1 public contract', () => {
     );
     expect(
       parseWorkflowGraphDraft({
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: [node('a'), node('b')],
         edges: exactEdges,
       }),
     ).toHaveProperty('edges.length', WORKFLOW_GRAPH_LIMITS.edges);
     expect(() =>
       parseWorkflowGraphDraft({
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: [node('a'), node('b')],
         edges: [...exactEdges, { ...exactEdges[0], id: 'over' }],
       }),
@@ -268,19 +268,19 @@ describe('workflow graph V1 public contract', () => {
 
     expect(
       parseWorkflowGraphDraft({
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         settings: { maxRunDurationMs: 3_600_000 },
       }),
     ).toHaveProperty('settings.maxRunDurationMs', 3_600_000);
     expect(() =>
       parseWorkflowGraphDraft({
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         settings: { maxRunDurationMs: 3_600_001 },
       }),
     ).toThrow();
 
     const byteTemplate = {
-      ...EMPTY_WORKFLOW_GRAPH_V1,
+      ...EMPTY_WORKFLOW_GRAPH,
       nodes: [{ ...node('s'), label: '' }],
     };
     const base = JSON.stringify(byteTemplate).length;
@@ -330,21 +330,21 @@ describe('workflow graph V1 public contract', () => {
         maxIterations: WORKFLOW_GRAPH_LIMITS.maxLoopIterations,
         maxConcurrency: WORKFLOW_GRAPH_LIMITS.maxLoopConcurrency,
         body: {
-          ...EMPTY_WORKFLOW_GRAPH_V1,
+          ...EMPTY_WORKFLOW_GRAPH,
           inputPorts: ['item'],
           outputPorts: ['result'],
         },
       },
     };
     expect(
-      parseWorkflowGraphDraft({ ...EMPTY_WORKFLOW_GRAPH_V1, nodes: [loop] }),
+      parseWorkflowGraphDraft({ ...EMPTY_WORKFLOW_GRAPH, nodes: [loop] }),
     ).toHaveProperty(
       'nodes.0.structured.maxIterations',
       WORKFLOW_GRAPH_LIMITS.maxLoopIterations,
     );
     expect(() =>
       parseWorkflowGraphDraft({
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: [
           {
             ...loop,
@@ -397,7 +397,7 @@ describe('workflow graph V1 public contract', () => {
       WORKFLOW_GRAPH_LIMITS.structuredDepth + 1,
     );
     const overConfig = {
-      ...EMPTY_WORKFLOW_GRAPH_V1,
+      ...EMPTY_WORKFLOW_GRAPH,
       nodes: [
         {
           ...node('config-depth'),
@@ -420,11 +420,11 @@ describe('workflow graph V1 public contract', () => {
       nestedStructuredGraph(500),
       overConfig,
       {
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: [{ ...node('deep-object'), config: nestedObject(500) }],
       },
       {
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: [
           {
             ...node('mapping-depth'),
@@ -448,7 +448,7 @@ describe('workflow graph V1 public contract', () => {
     }
     expect(
       parseWorkflowGraphDraft({
-        ...EMPTY_WORKFLOW_GRAPH_V1,
+        ...EMPTY_WORKFLOW_GRAPH,
         nodes: [
           {
             ...node('exact-json-depth'),
@@ -461,7 +461,7 @@ describe('workflow graph V1 public contract', () => {
 
   it('keeps draft structure separate from publish semantics and compatibility', () => {
     const intermediate = {
-      ...EMPTY_WORKFLOW_GRAPH_V1,
+      ...EMPTY_WORKFLOW_GRAPH,
       nodes: [node('a'), node('b')],
       edges: [
         {
@@ -688,7 +688,7 @@ describe('workflow executable identity V1', () => {
         ],
       });
     const structuredGraph = {
-      ...EMPTY_WORKFLOW_GRAPH_V1,
+      ...EMPTY_WORKFLOW_GRAPH,
       nodes: [
         {
           ...node('loop'),
@@ -698,7 +698,7 @@ describe('workflow executable identity V1', () => {
             maxIterations: 2,
             maxConcurrency: 1,
             body: {
-              ...EMPTY_WORKFLOW_GRAPH_V1,
+              ...EMPTY_WORKFLOW_GRAPH,
               nodes: [node('inner')],
               inputPorts: ['item', 'ordinal'],
               outputPorts: ['result'],

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import {
-  workflowGraphStructuralSchemaV1,
+  workflowGraphStructuralSchema,
   type WorkflowGraph,
 } from './contract.js';
 import { inspectWorkflowGraphAdmission } from './admission.js';
@@ -38,7 +38,7 @@ export function parseWorkflowGraphDraft(input: unknown): WorkflowGraph {
     );
   workflowGraphAggregateAdmissionSchema.parse(admitted.snapshot);
   return restoreDroppedInputMappingKeys(
-    workflowGraphStructuralSchemaV1.parse(
+    workflowGraphStructuralSchema.parse(
       escapeDroppedInputMappingKeys(admitted.snapshot),
     ),
   );

@@ -6,7 +6,7 @@ import type { PoolClient } from 'pg';
 import { v5 as uuidv5 } from 'uuid';
 import {
   FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
-  FailureNotificationContextV1Schema,
+  FailureNotificationContextSchema,
 } from '@pertexo/workflow-model';
 
 import { CoordinatorRunStateCorruptError } from './contract.js';
@@ -101,7 +101,7 @@ export async function persistFailureNotificationIntent(
         `execution.${primary.status}`,
     };
   }
-  const context = FailureNotificationContextV1Schema.parse({
+  const context = FailureNotificationContextSchema.parse({
     schemaVersion: 1,
     runId: input.runId,
     workflowId: input.workflowId,

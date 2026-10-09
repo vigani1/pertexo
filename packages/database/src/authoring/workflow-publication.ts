@@ -12,7 +12,7 @@ import {
 import {
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
-  type WorkflowDefinitionCatalogV1,
+  type WorkflowDefinitionCatalog,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,
   workflowIntegrationUsage,
@@ -80,7 +80,7 @@ const executableSchema = z
 
 type PublicationVariant = Readonly<{
   compatibilityRelease: CompatibilityReleaseExpectation | undefined;
-  definitionCatalog: WorkflowDefinitionCatalogV1;
+  definitionCatalog: WorkflowDefinitionCatalog;
   executableCompiler: WorkflowExecutableCompiler | undefined;
   validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
 }>;
@@ -109,7 +109,7 @@ type PublicationClaim = Readonly<{
 
 type CompiledPublication = Readonly<{
   checksum: string;
-  definitionCatalog: WorkflowDefinitionCatalogV1;
+  definitionCatalog: WorkflowDefinitionCatalog;
   executable: z.output<typeof executableSchema> | undefined;
   graph: WorkflowGraph;
   schemaVersion: number;

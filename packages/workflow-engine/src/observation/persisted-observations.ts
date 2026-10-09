@@ -2,7 +2,7 @@ import { types as nodeTypes } from 'node:util';
 
 import {
   type JsonValue,
-  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1,
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS,
 } from '@pertexo/workflow-model';
 
 import type { parseCheckpoint } from '../checkpoint/checkpoint.js';
@@ -120,7 +120,7 @@ function admitObservationArray(value: unknown): readonly unknown[] {
   }
   if (admittedArray === undefined || admittedLength === undefined)
     operationError('observation_invalid', 'observations must be an array');
-  if (admittedLength > WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.facts)
+  if (admittedLength > WORKFLOW_OBSERVATION_WINDOW_LIMITS.facts)
     operationError('observation_invalid', 'observation window is too large');
 
   try {
@@ -163,7 +163,7 @@ function normalizeObservationFact(item: unknown): Readonly<{
     operationError('observation_invalid', 'observations are invalid');
   }
   const bytes = utf8Encoder.encode(JSON.stringify(value)).length;
-  if (bytes > WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalFactBytes)
+  if (bytes > WORKFLOW_OBSERVATION_WINDOW_LIMITS.canonicalFactBytes)
     operationError('observation_invalid', 'observation fact is too large');
   return { bytes, value };
 }
@@ -178,8 +178,7 @@ function normalizePersistedObservationWindow(
     const normalized = normalizeObservationFact(item);
     canonicalBytes += normalized.bytes;
     if (
-      canonicalBytes >
-      WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalWindowBytes
+      canonicalBytes > WORKFLOW_OBSERVATION_WINDOW_LIMITS.canonicalWindowBytes
     )
       operationError('observation_invalid', 'observation window is too large');
     normalizedEntries.push(normalized.value);

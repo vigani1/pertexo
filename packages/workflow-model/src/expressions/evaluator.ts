@@ -1,12 +1,12 @@
 import { Worker } from 'node:worker_threads';
 import { canonicalizeJson, inspectJsonValue } from '../json/canonical-json.js';
 import {
-  EXPRESSION_POLICY_V1,
+  EXPRESSION_POLICY,
   JSONATA_EVALUATOR_DIAGNOSTICS,
   expressionError,
   projectExpressionContext,
   validateExpression,
-  type ExpressionContextV1,
+  type ExpressionContext,
   type ExpressionEvaluator,
   type ExpressionRequest,
   type ExpressionResult,
@@ -57,23 +57,23 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       readonly workerFactory?: ExpressionWorkerFactory;
     } = {},
   ) {
-    this.#maxActive = options.maxActive ?? EXPRESSION_POLICY_V1.maxActive;
-    this.#maxQueued = options.maxQueued ?? EXPRESSION_POLICY_V1.maxQueued;
+    this.#maxActive = options.maxActive ?? EXPRESSION_POLICY.maxActive;
+    this.#maxQueued = options.maxQueued ?? EXPRESSION_POLICY.maxQueued;
     this.#startupTimeoutMs =
-      options.startupTimeoutMs ?? EXPRESSION_POLICY_V1.startupTimeoutMs;
+      options.startupTimeoutMs ?? EXPRESSION_POLICY.startupTimeoutMs;
     this.#workerFactory =
       options.workerFactory ??
       ((runtimeUrl, workerOptions) => new Worker(runtimeUrl, workerOptions));
     if (
       !Number.isSafeInteger(this.#maxActive) ||
       this.#maxActive < 1 ||
-      this.#maxActive > EXPRESSION_POLICY_V1.maxActive ||
+      this.#maxActive > EXPRESSION_POLICY.maxActive ||
       !Number.isSafeInteger(this.#maxQueued) ||
       this.#maxQueued < 0 ||
-      this.#maxQueued > EXPRESSION_POLICY_V1.maxQueued ||
+      this.#maxQueued > EXPRESSION_POLICY.maxQueued ||
       !Number.isSafeInteger(this.#startupTimeoutMs) ||
       this.#startupTimeoutMs < 1 ||
-      this.#startupTimeoutMs > EXPRESSION_POLICY_V1.startupTimeoutMs
+      this.#startupTimeoutMs > EXPRESSION_POLICY.startupTimeoutMs
     )
       throw new RangeError('evaluator pool options exceed policy v1 bounds');
   }
@@ -102,7 +102,7 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       request.policyVersion,
     );
     if (validation.kind === 'error') return Promise.resolve(validation);
-    let context: ExpressionContextV1;
+    let context: ExpressionContext;
     let inspection;
     try {
       context = projectExpressionContext(request.context);
@@ -116,9 +116,9 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       );
     }
     for (const [limit, actual, maximum] of [
-      ['input_bytes', inspection.bytes, EXPRESSION_POLICY_V1.inputBytes],
-      ['input_depth', inspection.depth, EXPRESSION_POLICY_V1.inputDepth],
-      ['input_members', inspection.members, EXPRESSION_POLICY_V1.inputMembers],
+      ['input_bytes', inspection.bytes, EXPRESSION_POLICY.inputBytes],
+      ['input_depth', inspection.depth, EXPRESSION_POLICY.inputDepth],
+      ['input_members', inspection.members, EXPRESSION_POLICY.inputMembers],
     ] as const)
       if (actual > maximum)
         return Promise.resolve(
@@ -364,10 +364,10 @@ export class JsonataEvaluator implements ExpressionEvaluator {
           void finish(
             expressionError(
               'timed_out',
-              `evaluation exceeded ${String(EXPRESSION_POLICY_V1.timeoutMs)} ms`,
+              `evaluation exceeded ${String(EXPRESSION_POLICY.timeoutMs)} ms`,
             ),
           );
-        }, EXPRESSION_POLICY_V1.timeoutMs);
+        }, EXPRESSION_POLICY.timeoutMs);
         return;
       }
       if (!started) {
@@ -393,13 +393,9 @@ export class JsonataEvaluator implements ExpressionEvaluator {
         const value = canonicalizeJson(response.value);
         const output = inspectJsonValue(value);
         for (const [limit, actual, maximum] of [
-          ['output_bytes', output.bytes, EXPRESSION_POLICY_V1.outputBytes],
-          ['output_depth', output.depth, EXPRESSION_POLICY_V1.outputDepth],
-          [
-            'output_members',
-            output.members,
-            EXPRESSION_POLICY_V1.outputMembers,
-          ],
+          ['output_bytes', output.bytes, EXPRESSION_POLICY.outputBytes],
+          ['output_depth', output.depth, EXPRESSION_POLICY.outputDepth],
+          ['output_members', output.members, EXPRESSION_POLICY.outputMembers],
         ] as const)
           if (actual > maximum) {
             void finish(

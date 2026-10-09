@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model';
+import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
 import type { CompatibilityReleaseExpectation } from '../../compatibility/compatibility-release.js';
 import { classifyPublishedWorkflowVersionRow } from '../published-workflow.js';
@@ -220,7 +220,7 @@ export async function loadRunForAdvance(
 
   let controlOutputNodeIds: ReadonlySet<string>;
   try {
-    controlOutputNodeIds = workflowControlOutputNodeIdsV2(
+    controlOutputNodeIds = workflowControlOutputNodeIds(
       version.workflowVersion.executableJson,
     );
   } catch {

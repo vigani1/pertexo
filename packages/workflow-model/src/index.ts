@@ -7,20 +7,20 @@ export {
 export {
   FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
   FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
-  FailureNotificationContextV1Schema,
-  FailureNotificationDeliveryResultV1Schema,
+  FailureNotificationContextSchema,
+  FailureNotificationDeliveryResultSchema,
   FailureNotificationDestinationConfigSchema,
-  type FailureNotificationContextV1,
-  type FailureNotificationDeliveryResultV1,
+  type FailureNotificationContext,
+  type FailureNotificationDeliveryResult,
   type FailureNotificationDestinationConfig,
 } from './failure-notification.js';
 export {
-  EMPTY_WORKFLOW_GRAPH_V1,
-  WORKFLOW_EXECUTION_LIMITS_V1,
+  EMPTY_WORKFLOW_GRAPH,
+  WORKFLOW_EXECUTION_LIMITS,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
   WORKFLOW_VALIDATION_MAX_ISSUES,
   workflowGraphSchema,
-  workflowGraphStructuralSchemaV1,
+  workflowGraphStructuralSchema,
   type ForEachStructure,
   type StructuredBody,
   type ValueSource,
@@ -31,7 +31,7 @@ export {
 } from './graph/contract.js';
 export {
   workflowControlOutputKind,
-  workflowControlOutputNodeIdsV2,
+  workflowControlOutputNodeIds,
 } from './graph/control-output-selection.js';
 export {
   workflowDefinitionPlacementIssues,
@@ -67,7 +67,7 @@ export {
   type WorkflowTriggerStatus,
 } from './lifecycle.js';
 export { resolveValueSource, type ValueResolution } from './mapping.js';
-export { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from './observation-window.js';
+export { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from './observation-window.js';
 export {
   PortableJsonError,
   WORKFLOW_PORTABILITY_LIMITS,
@@ -79,7 +79,7 @@ export {
   portableIssueSchema,
   portableManifestDigest,
   workflowPortableManifestSchema,
-  workflowPortableManifestStructuralSchemaV1,
+  workflowPortableManifestStructuralSchema,
   type PortableConnectionBinding,
   type PortableConnectionSlot,
   type PortableIssue,

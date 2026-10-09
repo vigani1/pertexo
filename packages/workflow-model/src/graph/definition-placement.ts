@@ -1,5 +1,5 @@
 import type { WorkflowGraph } from './contract.js';
-import type { WorkflowDefinitionCatalogV1 } from './identity.js';
+import type { WorkflowDefinitionCatalog } from './identity.js';
 
 export type WorkflowDefinitionPlacementIssue = Readonly<{
   code: 'definition_not_placeable';
@@ -53,7 +53,7 @@ function occurrenceCounts(
 export function workflowDefinitionPlacementIssues(
   previous: WorkflowGraph,
   next: WorkflowGraph,
-  catalog: WorkflowDefinitionCatalogV1,
+  catalog: WorkflowDefinitionCatalog,
 ): readonly WorkflowDefinitionPlacementIssue[] {
   const placeable = new Set(catalog.definitions.map(definitionToken));
   const previousCounts = occurrenceCounts(nodeLocations(previous));

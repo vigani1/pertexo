@@ -3,7 +3,7 @@ import type { Worker, WorkerOptions } from 'node:worker_threads';
 import jsonata from 'jsonata';
 import { canonicalizeJson, type JsonValue } from '../json/canonical-json.js';
 
-export const EXPRESSION_POLICY_V1 = Object.freeze({
+export const EXPRESSION_POLICY = Object.freeze({
   policyVersion: 1 as const,
   expressionBytes: 16_384,
   astDepth: 64,
@@ -52,7 +52,7 @@ export type ExpressionResult =
       readonly limit?: ExpressionLimit;
     };
 
-export interface ExpressionContextV1 {
+export interface ExpressionContext {
   readonly runInput: JsonValue;
   readonly nodeOutputs: Readonly<Record<string, JsonValue>>;
 }
@@ -60,7 +60,7 @@ export interface ExpressionContextV1 {
 export interface ExpressionRequest {
   readonly expression: string;
   readonly policyVersion: number;
-  readonly context: ExpressionContextV1;
+  readonly context: ExpressionContext;
   readonly signal?: AbortSignal;
 }
 
@@ -268,7 +268,7 @@ export function validateExpression(
       'invalid_expression',
       `unsupported expression policy ${String(policyVersion)}`,
     );
-  if (Buffer.byteLength(source, 'utf8') > EXPRESSION_POLICY_V1.expressionBytes)
+  if (Buffer.byteLength(source, 'utf8') > EXPRESSION_POLICY.expressionBytes)
     return expressionError(
       'limit_exceeded',
       'expression bytes exceed policy',
@@ -277,13 +277,13 @@ export function validateExpression(
   try {
     const ast = readJsonataAst(jsonata(source).ast());
     const size = astSize(ast);
-    if (size.depth > EXPRESSION_POLICY_V1.astDepth)
+    if (size.depth > EXPRESSION_POLICY.astDepth)
       return expressionError(
         'limit_exceeded',
         'AST depth exceeds policy',
         'ast_depth',
       );
-    if (size.nodes > EXPRESSION_POLICY_V1.astNodes)
+    if (size.nodes > EXPRESSION_POLICY.astNodes)
       return expressionError(
         'limit_exceeded',
         'AST node count exceeds policy',
@@ -314,7 +314,7 @@ export const JSONATA_EVALUATOR_DIAGNOSTICS = Object.freeze({
  * Canonicalizes only the two values exposed to JSONata. The evaluator calls
  * this before queue admission so hostile context values cannot reach a worker.
  */
-export function projectExpressionContext(value: unknown): ExpressionContextV1 {
+export function projectExpressionContext(value: unknown): ExpressionContext {
   try {
     if (value === null || typeof value !== 'object') throw new TypeError();
     const runInputDescriptor = Object.getOwnPropertyDescriptor(
