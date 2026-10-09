@@ -3,7 +3,7 @@ import {
   NodeExecutionAbortedError,
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
-import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
+import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 
 import {
   advanceWorkflow,

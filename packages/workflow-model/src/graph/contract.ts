@@ -1,19 +1,14 @@
 import { z } from 'zod';
 
-import { hasBoundedGraphAggregateUnsafe } from './graph/aggregate.js';
-import { inspectWorkflowGraphAdmission } from './graph/admission.js';
+import type { JsonValue } from '../json/canonical-json.js';
+
+import { hasBoundedGraphAggregateUnsafe } from './aggregate.js';
+import { inspectWorkflowGraphAdmission } from './admission.js';
 import {
   escapeDroppedInputMappingKeys,
   restoreDroppedInputMappingKeys,
-} from './graph/input-mapping-keys.js';
+} from './input-mapping-keys.js';
 
-export type JsonValue =
-  | null
-  | boolean
-  | number
-  | string
-  | readonly JsonValue[]
-  | { readonly [key: string]: JsonValue };
 export type NodeId = string;
 export type ValueSource =
   | { readonly kind: 'literal'; readonly value: JsonValue }
@@ -124,7 +119,7 @@ const valueSourceSchema = z.discriminatedUnion('kind', [
     })
     .strict(),
 ]);
-export const workflowSettingsSchemaV1 = z
+const workflowSettingsSchemaV1 = z
   .object({
     maxRunDurationMs: z
       .number()
@@ -246,3 +241,10 @@ export const workflowGraphSchema: z.ZodType<WorkflowGraph> =
   workflowGraphPreflightSchema
     .pipe(workflowGraphStructuralSchemaV1)
     .transform(restoreDroppedInputMappingKeys);
+
+export const EMPTY_WORKFLOW_GRAPH_V1: WorkflowGraph = Object.freeze({
+  schemaVersion: 1,
+  nodes: Object.freeze([]),
+  edges: Object.freeze([]),
+  settings: Object.freeze({}),
+});

@@ -1,7 +1,4 @@
-import {
-  canonicalJson,
-  type JsonValue,
-} from '@pertexo/workflow-model/canonical-json';
+import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
 
 import type { parseCheckpoint } from '../checkpoint/checkpoint.js';
 import { executableEdges } from '../compilation/executable-graph.js';

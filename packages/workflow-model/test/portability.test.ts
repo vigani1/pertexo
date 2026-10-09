@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { WorkflowGraph } from '../src/graph-contract.js';
+import type { WorkflowGraph } from '../src/graph/contract.js';
 import {
   canonicalWorkflowPortableJson,
   parsePortableJson,
@@ -8,13 +8,13 @@ import {
   PortableJsonError,
   workflowPortableManifestSchema,
   WORKFLOW_PORTABILITY_LIMITS,
-} from '../src/portability-contract.js';
+} from '../src/portability/contract.js';
 import {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,
   WorkflowPortabilityError,
   type WorkflowPortabilityCatalog,
-} from '../src/portability.js';
+} from '../src/portability/projection.js';
 
 const fingerprint = `node-select:v1:sha256:${'1'.repeat(64)}`;
 const catalog: WorkflowPortabilityCatalog = {

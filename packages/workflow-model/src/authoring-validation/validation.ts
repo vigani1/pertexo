@@ -1,7 +1,7 @@
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
-} from '../graph-contract.js';
+} from '../graph/contract.js';
 import { validateWorkflowGraphWithIssueAdmission } from '../graph/validation.js';
 import type {
   GraphValidationIssue,

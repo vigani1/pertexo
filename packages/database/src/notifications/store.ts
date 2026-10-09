@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
 import { z } from 'zod';
-import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model/failure-notification';
+import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model';
 
 import type { DatabaseConfig } from '../config.js';
 import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';

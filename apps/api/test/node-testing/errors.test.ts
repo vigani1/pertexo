@@ -8,7 +8,7 @@ import {
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 

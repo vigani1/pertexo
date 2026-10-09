@@ -9,7 +9,7 @@ import type {
   WorkflowEdge,
   WorkflowGraph,
   WorkflowNode,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model';
 import {
   nodePortKey,
   type GraphValidationIndex,

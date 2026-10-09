@@ -18,7 +18,7 @@ import {
   PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
 } from '@pertexo/node-catalog';
-import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { WorkflowPublishedVersionConflictError } from '@pertexo/database/runs';
 

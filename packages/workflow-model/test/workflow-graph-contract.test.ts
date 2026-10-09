@@ -1,21 +1,25 @@
 import { spawnSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
-import { workflowGraphSchema } from '../src/graph-contract.js';
+import { workflowGraphSchema } from '../src/graph/contract.js';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
-  InvalidWorkflowGraphError,
-  WORKFLOW_GRAPH_LIMITS,
-  WorkflowGraphContractError,
-  parseWorkflowGraphDraft,
+  type WorkflowGraph,
+} from '../src/graph/contract.js';
+import {
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum as computeWorkflowExecutableChecksum,
   workflowIntegrationUsage,
   workflowRetainedExecutableChecksum,
-  type WorkflowGraph,
-} from '../src/graph.js';
+} from '../src/graph/identity.js';
+import { parseWorkflowGraphDraft } from '../src/graph/preflight.js';
+import {
+  InvalidWorkflowGraphError,
+  WORKFLOW_GRAPH_LIMITS,
+  WorkflowGraphContractError,
+} from '../src/graph/validation-contract.js';
 
 const TEST_DEFINITION_CATALOG_V1 = {
   schemaVersion: 1 as const,
@@ -534,7 +538,7 @@ describe('workflow executable identity V1', () => {
         'tsx',
         '--input-type=module',
         '--eval',
-        `import { workflowExecutableChecksum } from './src/graph.ts'; process.stdout.write(workflowExecutableChecksum(${JSON.stringify(
+        `import { workflowExecutableChecksum } from './src/graph/identity.ts'; process.stdout.write(workflowExecutableChecksum(${JSON.stringify(
           reordered,
         )}, ${JSON.stringify(TEST_DEFINITION_CATALOG_V1)}))`,
       ],

@@ -1,13 +1,13 @@
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
-import type { WorkflowPortabilityCatalog } from '@pertexo/workflow-model/portability';
-import type { WorkflowPortableManifest } from '@pertexo/workflow-model/portability-contract';
+import type {
+  GraphValidationResult,
+  WorkflowGraph,
+  WorkflowPortabilityCatalog,
+  WorkflowPortableManifest,
+} from '@pertexo/workflow-model';
+import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/server';
 import type { WorkflowTemplateOriginRequest } from '@pertexo/templates';
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
-import type {
-  WorkflowDefinitionCatalogV1,
-  WorkflowGraph,
-  GraphValidationResult,
-} from '@pertexo/workflow-model/graph';
 
 export type WorkflowAuthoringTestHooks = Readonly<{
   /** Integration-only ordered-lock and atomic rollback seam. */

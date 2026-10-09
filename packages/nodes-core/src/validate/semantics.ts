@@ -1,5 +1,4 @@
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
-import { resolveJsonPath } from '@pertexo/workflow-model/json-path';
+import { type JsonValue, resolveJsonPath } from '@pertexo/workflow-model';
 
 import { coreValidateIssueMessageByCode } from './issue-metadata.js';
 import {

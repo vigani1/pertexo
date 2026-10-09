@@ -1,8 +1,6 @@
 import type { PoolClient } from 'pg';
-import type {
-  WorkflowDefinitionCatalogV1,
-  WorkflowGraph,
-} from '@pertexo/workflow-model/graph';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
+import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/server';
 
 import type {
   PortableCatalog,

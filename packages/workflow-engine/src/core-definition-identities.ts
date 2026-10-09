@@ -1,4 +1,4 @@
-import { workflowControlOutputKind } from '@pertexo/workflow-model/graph';
+import { workflowControlOutputKind } from '@pertexo/workflow-model';
 
 type DefinitionIdentity = Readonly<{ key: string; version: number }>;
 

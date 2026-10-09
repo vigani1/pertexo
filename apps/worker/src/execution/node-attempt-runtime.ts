@@ -38,7 +38,7 @@ import {
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
-import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
+import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import type { ConnectionRunHealthMode } from '../config/connection-run-health-config.js';
 import {
   createNodeAttemptExecutionEngine,

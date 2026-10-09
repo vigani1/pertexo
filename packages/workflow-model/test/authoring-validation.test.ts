@@ -4,13 +4,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
-  WorkflowAuthoringValidator,
   type WorkflowExpressionPolicyProjection,
-} from '../src/authoring-validation.js';
-import {
-  parseWorkflowGraphDraft,
-  validateWorkflowGraph,
-} from '../src/graph.js';
+} from '../src/authoring-validation/contracts.js';
+import { WorkflowAuthoringValidator } from '../src/authoring-validation/validator.js';
+import { parseWorkflowGraphDraft } from '../src/graph/preflight.js';
+import { validateWorkflowGraph } from '../src/graph/validation.js';
 import * as policy from '../src/expressions/policy.js';
 import { validateAuthoringBatch } from '../src/authoring-validation/validation.js';
 

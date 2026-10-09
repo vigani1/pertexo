@@ -1,4 +1,4 @@
-import { CANONICAL_JSON_MAX_DEPTH } from '@pertexo/workflow-model/canonical-json';
+import { CANONICAL_JSON_MAX_DEPTH } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import {

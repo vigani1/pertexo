@@ -1,6 +1,6 @@
 import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
 import type { RegistryRelease } from '@pertexo/node-sdk';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 

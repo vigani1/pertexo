@@ -19,12 +19,12 @@ import type { RegistryRelease } from '@pertexo/node-sdk';
 import {
   canonicalJson,
   type JsonValue,
-} from '@pertexo/workflow-model/canonical-json';
-import {
   parseWorkflowGraphDraft,
+} from '@pertexo/workflow-model';
+import {
+  type ExpressionEvaluator,
   workflowDraftRepresentationTag,
-} from '@pertexo/workflow-model/graph';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
+} from '@pertexo/workflow-model/server';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 

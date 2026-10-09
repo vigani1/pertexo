@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import {
   EMPTY_DEFINITION_CATALOG_V1,
   type WorkflowDefinitionCatalogV1,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model/server';
 
 import {
   selectServingCompatibilityRelease,

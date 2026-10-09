@@ -16,11 +16,11 @@ import {
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
-  WorkflowAuthoringValidator,
   AuthoringValidationUnavailableError,
-} from '@pertexo/workflow-model/authoring-validation';
-import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
+  WorkflowAuthoringValidator,
+} from '@pertexo/workflow-model/server';
 import { platformPortableDefinitionPolicy } from '@pertexo/node-catalog/server';
 
 type PlatformRegistryRelease = ReturnType<

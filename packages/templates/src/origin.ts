@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { canonicalWorkflowPortableJson } from '@pertexo/workflow-model/portability-contract';
+import { canonicalWorkflowPortableJson } from '@pertexo/workflow-model';
 
 const originFields = {
   schemaVersion: z.literal(1),

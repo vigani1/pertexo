@@ -5,21 +5,19 @@ import {
   verifyCuratedTemplateManifest,
   workflowTemplateOriginRequestSchema,
 } from '@pertexo/templates';
-import { EMPTY_WORKFLOW_GRAPH_V1 } from '@pertexo/workflow-model/graph';
-import {
-  inspectWorkflowPortableManifest,
-  projectWorkflowPortableManifest,
-  WorkflowPortabilityError,
-} from '@pertexo/workflow-model/portability';
 import {
   canonicalWorkflowPortableJson,
-  portableGraphDigest,
-  portableManifestDigest,
+  EMPTY_WORKFLOW_GRAPH_V1,
+  inspectWorkflowPortableManifest,
   portableConnectionBindingSchema,
-  workflowPortableManifestSchema,
-  WORKFLOW_PORTABILITY_LIMITS,
+  portableGraphDigest,
   type PortableIssue,
-} from '@pertexo/workflow-model/portability-contract';
+  portableManifestDigest,
+  projectWorkflowPortableManifest,
+  WORKFLOW_PORTABILITY_LIMITS,
+  WorkflowPortabilityError,
+  workflowPortableManifestSchema,
+} from '@pertexo/workflow-model';
 
 import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';

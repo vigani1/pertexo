@@ -10,18 +10,18 @@ import type {
   WorkflowRecord,
   WorkflowVersionRecord,
 } from './workflow-authoring-records.js';
-import type { GraphValidationResult } from '@pertexo/workflow-model/graph';
+import type {
+  GraphValidationResult,
+  PortableConnectionBinding,
+  PortableIssue,
+  WorkflowPortableManifest,
+} from '@pertexo/workflow-model';
 import type { WorkflowAutoPauseDatabase } from './workflow-auto-pause.js';
 import type { WorkflowConcurrencyDatabase } from './workflow-concurrency.js';
 import type {
   WorkflowTemplateOriginRequest,
   WorkflowTemplateOrigin,
 } from '@pertexo/templates';
-import type {
-  WorkflowPortableManifest,
-  PortableConnectionBinding,
-  PortableIssue,
-} from '@pertexo/workflow-model/portability-contract';
 
 export type ExportWorkflowInput = Readonly<{
   workspaceId: string;

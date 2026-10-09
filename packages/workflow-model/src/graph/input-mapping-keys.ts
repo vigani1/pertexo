@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '../graph-contract.js';
+import type { WorkflowGraph } from './contract.js';
 
 const INPUT_MAPPING_ESCAPE_PREFIX = '\u0000pertexo.input-mapping.';
 const INPUT_MAPPING_ESCAPED_PREFIX = `${INPUT_MAPPING_ESCAPE_PREFIX}escaped.`;

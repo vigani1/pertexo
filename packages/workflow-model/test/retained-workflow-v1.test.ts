@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseRetainedWorkflowVersionV1,
   workflowRetainedExecutableChecksum,
-} from '../src/graph.js';
+} from '../src/graph/identity.js';
 
 async function retainedFixture(): Promise<unknown> {
   return JSON.parse(

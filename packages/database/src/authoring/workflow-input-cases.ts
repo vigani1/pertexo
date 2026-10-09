@@ -1,9 +1,6 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  canonicalJson,
-  inspectJsonValue,
-} from '@pertexo/workflow-model/canonical-json';
+import { canonicalJson, inspectJsonValue } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '../config.js';
 import {
   acquireDatabasePool,

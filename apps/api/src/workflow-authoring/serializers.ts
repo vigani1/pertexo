@@ -21,7 +21,7 @@ import {
 } from './types.js';
 import { parseWorkflowGraphDraft } from './graph.js';
 import type { validateWorkflowGraph } from './graph.js';
-import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/authoring-validation';
+import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import {
   createDraftRepresentationTag,
   type DraftRepresentation,

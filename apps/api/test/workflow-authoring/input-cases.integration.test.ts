@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import {
-  workflowRetainedExecutableChecksum,
-  parseWorkflowGraphDraft,
-} from '@pertexo/workflow-model/graph';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/server';
 import {
   workflowInputCaseCommandResponseSchema,
   workflowInputCaseResponseSchema,

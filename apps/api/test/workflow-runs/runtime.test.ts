@@ -6,7 +6,7 @@ import type {
   WorkflowAuthoringDatabase,
   WorkflowInputCaseDatabase,
 } from '@pertexo/database/authoring';
-import type { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
+import type { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { RunEventNotificationPublisher } from '../../src/executions/index.js';

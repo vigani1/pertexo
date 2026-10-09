@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { portableGraphDigest } from '@pertexo/workflow-model/portability-contract';
 import {
+  parseWorkflowGraphDraft,
+  portableGraphDigest,
   projectWorkflowPortableManifest,
   type WorkflowPortabilityCatalog,
-} from '@pertexo/workflow-model/portability';
+} from '@pertexo/workflow-model';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
-import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,

@@ -21,11 +21,11 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
 } from '@pertexo/integrations/server';
-import { assertNever } from '@pertexo/workflow-model/assert-never';
-import type {
-  FailureNotificationContextV1,
-  FailureNotificationDeliveryResultV1,
-} from '@pertexo/workflow-model/failure-notification';
+import {
+  assertNever,
+  type FailureNotificationContextV1,
+  type FailureNotificationDeliveryResultV1,
+} from '@pertexo/workflow-model';
 import type { FailureNotificationDeliveryCapability } from './failure-notification-handler.js';
 const TIMEOUT_MILLIS = 30_000;
 

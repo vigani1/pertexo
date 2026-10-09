@@ -7,7 +7,7 @@ import { v5 as uuidv5 } from 'uuid';
 import {
   FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
   FailureNotificationContextV1Schema,
-} from '@pertexo/workflow-model/failure-notification';
+} from '@pertexo/workflow-model';
 
 import { CoordinatorRunStateCorruptError } from './contract.js';
 import type { RunTransitionPlan } from './plan.js';

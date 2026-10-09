@@ -5,9 +5,9 @@ import { afterAll, beforeAll } from 'vitest';
 import {
   EMPTY_DEFINITION_CATALOG_V1,
   workflowCompatibilityReport,
-  workflowDraftRepresentationTag,
   type WorkflowDefinitionCatalogV1,
-} from '@pertexo/workflow-model/graph';
+  workflowDraftRepresentationTag,
+} from '@pertexo/workflow-model/server';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import {

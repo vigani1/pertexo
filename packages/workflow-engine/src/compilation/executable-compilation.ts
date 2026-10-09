@@ -1,9 +1,6 @@
 import { parseRegistryRelease, type RegistryRelease } from '@pertexo/node-sdk';
-import {
-  parseWorkflowGraphForPublish,
-  type WorkflowGraph,
-  type WorkflowNode,
-} from '@pertexo/workflow-model/graph';
+import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
+import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { graphValidationIndex } from './executable-graph-validation-index.js';
 import { executableNodes } from './executable-graph.js';
 import { parseBoundary } from './executable-boundary.js';

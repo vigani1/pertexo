@@ -9,12 +9,10 @@ import {
 import {
   canonicalJson,
   type JsonValue,
-} from '@pertexo/workflow-model/canonical-json';
-import type {
-  ValueSource,
-  WorkflowEdge,
-  WorkflowGraph,
-} from '@pertexo/workflow-model/graph';
+  type ValueSource,
+  type WorkflowEdge,
+  type WorkflowGraph,
+} from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
 import type { SideEffectClass } from '../types.js';
 export { compareOrdinal } from '../ordering.js';

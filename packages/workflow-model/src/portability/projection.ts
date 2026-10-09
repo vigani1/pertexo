@@ -1,7 +1,6 @@
-import './server-only.js';
-
-import { parseWorkflowGraphDraft, type WorkflowGraph } from './graph.js';
-import type { JsonValue } from './graph-contract.js';
+import type { WorkflowGraph } from '../graph/contract.js';
+import { parseWorkflowGraphDraft } from '../graph/preflight.js';
+import type { JsonValue } from '../json/canonical-json.js';
 import {
   canonicalWorkflowPortableJson,
   workflowPortableManifestSchema,
@@ -10,7 +9,7 @@ import {
   type PortableConnectionSlot,
   type PortableIssue,
   WORKFLOW_PORTABILITY_LIMITS,
-} from './portability-contract.js';
+} from './contract.js';
 
 export type WorkflowPortabilityCatalog = Readonly<{
   fingerprint: string;

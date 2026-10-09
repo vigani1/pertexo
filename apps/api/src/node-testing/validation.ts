@@ -3,13 +3,11 @@ import type { RegistryRelease } from '@pertexo/node-sdk';
 import {
   canonicalizeJson,
   type JsonValue,
-} from '@pertexo/workflow-model/canonical-json';
-import type {
-  WorkflowGraph,
-  WorkflowNode,
-} from '@pertexo/workflow-model/graph-contract';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
-import { resolveValueSource } from '@pertexo/workflow-model/mapping';
+  resolveValueSource,
+  type WorkflowGraph,
+  type WorkflowNode,
+} from '@pertexo/workflow-model';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 export type NodeValidationIssue = Readonly<{
   path: string;

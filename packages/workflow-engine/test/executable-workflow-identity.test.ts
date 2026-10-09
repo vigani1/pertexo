@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 
 import {
   buildWorkflowExecutableV2,

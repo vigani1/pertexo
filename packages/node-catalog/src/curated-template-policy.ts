@@ -1,11 +1,11 @@
 import './server-only.js';
 
 import { verifyCuratedTemplateManifest } from '@pertexo/templates';
-import { workflowPortableManifestSchema } from '@pertexo/workflow-model/portability-contract';
-import type {
-  WorkflowGraph,
-  WorkflowNode,
-} from '@pertexo/workflow-model/graph-contract';
+import {
+  type WorkflowGraph,
+  type WorkflowNode,
+  workflowPortableManifestSchema,
+} from '@pertexo/workflow-model';
 import {
   parseSupportedPlatformRelease,
   resolvePlatformNodeDefinitionForRelease,

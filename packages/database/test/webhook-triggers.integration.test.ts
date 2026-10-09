@@ -12,7 +12,7 @@ import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDataba
 import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model/server';
 import {
   checkDatabaseReadiness,
   EXPECTED_MIGRATION_HEAD,

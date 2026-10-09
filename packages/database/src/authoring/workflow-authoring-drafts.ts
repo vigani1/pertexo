@@ -4,8 +4,8 @@ import { z } from 'zod';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
-  workflowDraftRepresentationTag,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 
 import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import {

@@ -3,9 +3,9 @@ import { z } from 'zod';
 import {
   workflowActivationAfterReconciliation,
   workflowLifecycleStatusSchema,
-  workflowTriggerStatusSchema,
   type WorkflowTriggerStatus,
-} from '@pertexo/workflow-model/lifecycle';
+  workflowTriggerStatusSchema,
+} from '@pertexo/workflow-model';
 
 export type WorkflowTriggerHealth = Readonly<{
   id: string;

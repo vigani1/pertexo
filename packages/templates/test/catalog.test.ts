@@ -12,7 +12,7 @@ import {
   canonicalWorkflowPortableJson,
   portableManifestDigest,
   workflowPortableManifestSchema,
-} from '@pertexo/workflow-model/portability-contract';
+} from '@pertexo/workflow-model';
 
 function required<T>(value: T | undefined): T {
   if (value === undefined) throw new Error('Missing reviewed test fixture');

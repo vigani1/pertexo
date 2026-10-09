@@ -7,7 +7,7 @@ import {
   createCheckpointV2,
   type WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
-import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model/graph';
+import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 
 import {
   verifyPersistedWorkflowProjection,

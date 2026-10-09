@@ -12,14 +12,12 @@ import {
   workflowOrganizationViewSchema,
 } from './workflow-organization.js';
 import {
-  workflowActivationStatusSchema,
-  workflowLifecycleStatusSchema,
-} from '@pertexo/workflow-model/lifecycle';
-import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
-  workflowGraphSchema,
+  workflowActivationStatusSchema,
   type WorkflowGraph,
-} from '@pertexo/workflow-model/graph-contract';
+  workflowGraphSchema,
+  workflowLifecycleStatusSchema,
+} from '@pertexo/workflow-model';
 
 import {
   apiProblemIssueSchema,
@@ -69,7 +67,7 @@ export const workflowNameSchema = z.string().trim().min(1).max(128);
 const positiveVersionSchema = z.number().int().positive();
 export { workflowGraphSchema };
 // Browser-safe graph bounds, shared with the structural schema and admission.
-export { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model/graph-contract';
+export { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 export type WorkflowGraphContract = WorkflowGraph;
 
 export const workflowCreateRequestSchema = z

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { workflowForEachBoundsV2 } from '../src/graph.js';
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../src/graph-contract.js';
+import { workflowForEachBoundsV2 } from '../src/graph/control-output-selection.js';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../src/graph/contract.js';
 
 const ordinary = (id: string) => ({
   id,

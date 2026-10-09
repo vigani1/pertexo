@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   workflowGraphStructuralSchemaV1,
   type WorkflowGraph,
-} from '../graph-contract.js';
+} from './contract.js';
 import { inspectWorkflowGraphAdmission } from './admission.js';
 import { hasBoundedGraphAggregateUnsafe } from './aggregate.js';
 import {

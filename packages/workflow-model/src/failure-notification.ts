@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES = 4_096;
 export const FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT = 100;
-export const FAILURE_NOTIFICATION_POLICY_VERSION = 1 as const;
+const FAILURE_NOTIFICATION_POLICY_VERSION = 1 as const;
 
 const safeCodeSchema = z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
 
@@ -117,9 +117,6 @@ export const FailureNotificationDeliveryResultV1Schema = z.discriminatedUnion(
   ],
 );
 
-export type FailureNotificationPolicyV1 = Readonly<
-  z.output<typeof FailureNotificationPolicyV1Schema>
->;
 export type FailureNotificationContextV1 = Readonly<
   z.output<typeof FailureNotificationContextV1Schema>
 >;

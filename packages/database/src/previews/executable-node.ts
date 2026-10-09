@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { canonicalizeJson } from '@pertexo/workflow-model/canonical-json';
+import { canonicalizeJson } from '@pertexo/workflow-model';
 
 export const executableNodeSchema = z.unknown().transform((value, context) => {
   try {

@@ -1,7 +1,9 @@
 import { types as nodeTypes } from 'node:util';
 
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
-import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model/observation-window';
+import {
+  type JsonValue,
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1,
+} from '@pertexo/workflow-model';
 
 import type { parseCheckpoint } from '../checkpoint/checkpoint.js';
 import { normalizeBoundedEngineJson } from '../executable-workflow.js';

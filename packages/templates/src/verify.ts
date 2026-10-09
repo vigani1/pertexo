@@ -1,13 +1,11 @@
-import type {
-  WorkflowGraph,
-  WorkflowNode,
-} from '@pertexo/workflow-model/graph-contract';
 import {
   canonicalWorkflowPortableJson,
-  workflowPortableManifestSchema,
   type PortableIssue,
+  type WorkflowGraph,
+  type WorkflowNode,
   type WorkflowPortableManifest,
-} from '@pertexo/workflow-model/portability-contract';
+  workflowPortableManifestSchema,
+} from '@pertexo/workflow-model';
 
 import {
   CURATED_WORKFLOW_TEMPLATES,

@@ -2,12 +2,12 @@ import { acquireDatabasePool } from '../platform/database-runtime.js';
 
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
-import type {
-  WorkflowDefinitionCatalogV1,
-  WorkflowGraph,
-  WorkflowDefinitionPlacementIssue,
-} from '@pertexo/workflow-model/graph';
-import { workflowDefinitionPlacementIssues } from '@pertexo/workflow-model/graph';
+import {
+  type WorkflowDefinitionPlacementIssue,
+  workflowDefinitionPlacementIssues,
+  type WorkflowGraph,
+} from '@pertexo/workflow-model';
+import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/server';
 
 import type { DatabaseConfig } from '../config.js';
 import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
@@ -65,7 +65,7 @@ export type {
 } from './workflow-authoring-contracts.js';
 import type { WorkflowAuthoringDatabase } from './workflow-authoring-contracts.js';
 
-export type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model/graph';
+export type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model';
 
 export class WorkflowDefinitionPlacementError extends Error {
   public override readonly name = 'WorkflowDefinitionPlacementError';

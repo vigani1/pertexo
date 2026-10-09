@@ -3,13 +3,13 @@ import {
   NodeExecutorFailure,
   type NodeExecutionResult,
 } from '@pertexo/node-sdk/server';
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
-import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import {
+  type JsonValue,
+  parseWorkflowGraphDraft,
   resolveValueSource,
   type ValueResolution,
-} from '@pertexo/workflow-model/mapping';
+} from '@pertexo/workflow-model';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import { advanceWorkflowFromSchedulerState } from './transition/advance-workflow.js';
 import { WorkflowEngineError } from './errors.js';

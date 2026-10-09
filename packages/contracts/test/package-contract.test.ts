@@ -97,6 +97,6 @@ describe('contracts package boundary', () => {
         new URL('../src/http/workflow-authoring.ts', import.meta.url),
         'utf8',
       ),
-    ).toContain("from '@pertexo/workflow-model/graph-contract'");
+    ).toContain("from '@pertexo/workflow-model'");
   });
 });

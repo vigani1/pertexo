@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import {
-  AuthoringValidationUnavailableError,
-  WorkflowAuthoringValidator,
-} from '@pertexo/workflow-model/authoring-validation';
-import {
   EMPTY_WORKFLOW_GRAPH_V1,
   InvalidWorkflowGraphError,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model';
+import {
+  AuthoringValidationUnavailableError,
+  WorkflowAuthoringValidator,
+} from '@pertexo/workflow-model/server';
 import {
   createCoreAuthoringOptions,
   createCoreWorkflowCompatibility,

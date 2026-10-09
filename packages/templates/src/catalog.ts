@@ -1,4 +1,4 @@
-import type { WorkflowPortableManifest } from '@pertexo/workflow-model/portability-contract';
+import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 
 import { CONTROLLED_HTTP_NOTIFICATION_MANIFEST } from './manifests/controlled-http-notification.js';
 import { SCHEDULE_BOUNDED_BATCH_MANIFEST } from './manifests/schedule-bounded-batch.js';

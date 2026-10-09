@@ -1,14 +1,11 @@
-import './server-only.js';
-import { canonicalizeJson, type JsonValue } from './canonical-json.js';
+import { canonicalizeJson, type JsonValue } from './json/canonical-json.js';
 import type {
   ExpressionContextV1,
   ExpressionEvaluator,
   ExpressionResult,
-} from './expressions.js';
-import type { ValueSource } from './graph.js';
-import { resolveJsonPath } from './json-path.js';
-
-export { resolveJsonPath } from './json-path.js';
+} from './expressions/policy.js';
+import type { ValueSource } from './graph/contract.js';
+import { resolveJsonPath } from './json/json-path.js';
 
 export type ValueResolution =
   | { readonly kind: 'value'; readonly value: JsonValue }

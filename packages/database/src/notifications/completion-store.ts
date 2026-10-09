@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { FailureNotificationDeliveryResultV1Schema } from '@pertexo/workflow-model/failure-notification';
+import { FailureNotificationDeliveryResultV1Schema } from '@pertexo/workflow-model';
 
 import { FailureNotificationStateError } from './errors.js';
 import {

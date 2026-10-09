@@ -1,12 +1,10 @@
 import {
   workflowGraphSchema,
   workflowGraphStructuralSchemaV1,
-} from '@pertexo/workflow-model/graph-contract';
-import { z } from 'zod';
-import {
   workflowPortableManifestSchema,
   workflowPortableManifestStructuralSchemaV1,
-} from '@pertexo/workflow-model/portability-contract';
+} from '@pertexo/workflow-model';
+import { z } from 'zod';
 
 import {
   boundedNodeTestJsonInputSchema,

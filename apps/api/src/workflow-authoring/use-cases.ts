@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 
 import { EMPTY_WORKFLOW_GRAPH_V1, parseWorkflowGraphDraft } from './graph.js';
 

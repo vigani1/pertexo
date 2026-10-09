@@ -2,10 +2,10 @@ import type { FailureNotificationStore } from '@pertexo/database/notifications';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 import {
-  FailureNotificationDeliveryResultV1Schema,
   type FailureNotificationContextV1,
   type FailureNotificationDeliveryResultV1,
-} from '@pertexo/workflow-model/failure-notification';
+  FailureNotificationDeliveryResultV1Schema,
+} from '@pertexo/workflow-model';
 
 type Delivery = Extract<
   QueueDelivery,

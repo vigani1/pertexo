@@ -1,9 +1,9 @@
 import type { RegistryRelease } from '@pertexo/node-sdk';
-import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
-import type {
-  WorkflowGraph,
-  WorkflowNode,
-} from '@pertexo/workflow-model/graph';
+import {
+  canonicalJson,
+  type WorkflowGraph,
+  type WorkflowNode,
+} from '@pertexo/workflow-model';
 import { graphValidationIndex } from './executable-graph-validation-index.js';
 import {
   assertBranchesDoNotReconverge,

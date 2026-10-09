@@ -5,10 +5,7 @@ import type {
   PolicyReference,
   RegistryRelease,
 } from '@pertexo/node-sdk';
-import {
-  canonicalJson,
-  type JsonValue,
-} from '@pertexo/workflow-model/canonical-json';
+import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
 import type { SideEffectClass } from '../types.js';
 import {
   type ExecutableRuntimePoliciesV1,

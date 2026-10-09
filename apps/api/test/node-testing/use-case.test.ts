@@ -6,13 +6,13 @@ import {
   PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
 } from '@pertexo/node-catalog';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
+import type { JsonValue } from '@pertexo/workflow-model';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import type { AcceptedPreviewRun } from '@pertexo/database/testing';
 import {
   PreviewIdempotencyConflictError,
   WorkflowNotFoundError,
 } from '@pertexo/database/testing';
-import type { JsonValue } from '@pertexo/workflow-model/graph-contract';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestInvalidError } from '../../src/node-testing/errors.js';

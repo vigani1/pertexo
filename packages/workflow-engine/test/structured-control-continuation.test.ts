@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
-import type {
-  WorkflowGraph,
-  WorkflowNode,
-} from '@pertexo/workflow-model/graph';
+import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 
 import {
   advanceWorkflow,

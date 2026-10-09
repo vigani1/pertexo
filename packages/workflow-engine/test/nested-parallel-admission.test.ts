@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 import type {
   ForEachStructure,
+  JsonValue,
   StructuredBody,
   WorkflowEdge,
   WorkflowGraph,
   WorkflowNode,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model';
 
 import {
   advanceWorkflow,

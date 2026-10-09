@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model/graph-contract';
 import {
-  WORKFLOW_GRAPH_LIMITS,
   validateWorkflowGraph,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  WORKFLOW_GRAPH_LIMITS,
   type WorkflowGraph,
-} from '@pertexo/workflow-model/graph';
+} from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import {

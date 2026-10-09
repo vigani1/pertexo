@@ -2,7 +2,7 @@ import { http } from 'msw';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { WORKFLOW_EXECUTION_LIMITS_V1 } from '@pertexo/workflow-model/graph-contract';
+import { WORKFLOW_EXECUTION_LIMITS_V1 } from '@pertexo/workflow-model';
 import { RUN_DURATION_LIMIT_MS } from '@/features/workflow-settings/model/run-duration';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';

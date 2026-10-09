@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model/graph';
+import { workflowControlOutputNodeIdsV2 } from '@pertexo/workflow-model';
 
 import {
   buildWorkflowExecutableV2,

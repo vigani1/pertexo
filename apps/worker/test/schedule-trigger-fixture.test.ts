@@ -1,8 +1,8 @@
 import type { WorkflowAuthoringDatabaseOptions } from '@pertexo/database/testing';
 import { platformExecutableRegistryHistory } from '@pertexo/node-catalog';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
-import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/authoring-validation';
-import type { WorkflowGraph } from '@pertexo/workflow-model/graph';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
+import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createScheduleTriggerFixture } from './support/schedule-trigger-fixture.js';

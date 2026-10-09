@@ -20,8 +20,8 @@ import type {
   WorkflowDraftRecord,
   WorkflowVersionRecord,
 } from './workflow-authoring-records.js';
-import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/graph';
-import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/server';
 import type { WorkflowAuthoringGraphValidator } from './workflow-authoring-types.js';
 import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
 

@@ -5,7 +5,7 @@ import type {
   NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import {
   executeNodeAttempt,
   invocationKey,

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
-import { safeParseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
+import { safeParseWorkflowGraphDraft } from '@pertexo/workflow-model';
 
 import * as productionEngine from '../src/index.js';
 import * as testingEngine from '../src/testing.js';

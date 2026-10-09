@@ -1,5 +1,5 @@
 import { parseRegistryRelease } from '@pertexo/node-sdk';
-import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/graph';
+import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import {
   computeWorkflowExecutableChecksumV2,
   selectionFingerprint,
