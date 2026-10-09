@@ -6,13 +6,16 @@ class BackgroundTaskShutdownTimeoutError extends Error {
   }
 }
 
+/** Settles with the task, or rejects with the timeout error once it is due. */
 export function boundedBackgroundTask<T>(
   task: Promise<T>,
   timeoutMillis: number,
+  timeoutError: () => Error = () =>
+    new BackgroundTaskShutdownTimeoutError(timeoutMillis),
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new BackgroundTaskShutdownTimeoutError(timeoutMillis));
+      reject(timeoutError());
     }, timeoutMillis);
     timer.unref();
     task.then(
