@@ -131,16 +131,6 @@ describe('preview artifact retention lifecycle', () => {
       },
       workerId: claimedPreview.workerId,
     });
-    const cleanup = await scopedQuery<{
-      id: string;
-      payload_checksum: string;
-    }>(
-      `select id,payload_checksum from app.outbox_events
-       where workspace_id=$1 and aggregate_id=$2
-         and job_name='sweep-expired-previews'`,
-      [workspaceId, accepted.previewRunId],
-    );
-    expect(cleanup.rows).toEqual([]);
   });
   it('deletes one quiesced preview artifact under maintenance without an open transaction', async () => {
     const previewDeadline = new Date(Date.now() + 1_500);

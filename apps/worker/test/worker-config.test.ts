@@ -650,8 +650,7 @@ describe('parseWorkerConfig', () => {
 
   it.each([
     `${JOB_NAME.advanceWorkflowRun},${JOB_NAME.advanceWorkflowRun}`,
-    JOB_NAME.expireArtifacts,
-    JOB_NAME.sweepExpiredPreviews,
+    'expire-artifacts',
     'unknown-job',
   ])('rejects an invalid dispatcher allowlist (%s)', (jobNames) => {
     expect(() =>

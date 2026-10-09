@@ -9,7 +9,7 @@ import {
 } from '@pertexo/database/platform';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { parseObservabilityConfig } from '@pertexo/observability/startup';
-import { ACTIVE_QUEUE_JOB_NAMES, JOB_NAME, type JobName } from '@pertexo/queue';
+import { JOB_NAME, type JobName } from '@pertexo/queue';
 
 import {
   parseAuthenticationMailDeliveryConfig,
@@ -37,7 +37,9 @@ const workerLogLevels = [
   'trace',
 ] as const;
 
-const supportedDispatchCapabilitySet = new Set<JobName>(ACTIVE_QUEUE_JOB_NAMES);
+const supportedDispatchCapabilitySet = new Set<JobName>(
+  Object.values(JOB_NAME),
+);
 
 export function isSupportedDispatchCapability(jobName: JobName): boolean {
   return supportedDispatchCapabilitySet.has(jobName);

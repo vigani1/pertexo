@@ -1,8 +1,4 @@
-import {
-  ACTIVE_QUEUE_JOB_NAMES,
-  JOB_NAME,
-  type QueueConsumer,
-} from '@pertexo/queue';
+import { JOB_NAME, type QueueConsumer } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -158,7 +154,7 @@ describe('dispatch capability provider activation', () => {
       DATABASE_MAINTENANCE_URL:
         'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-      OUTBOX_DISPATCH_JOB_NAMES: ACTIVE_QUEUE_JOB_NAMES.join(','),
+      OUTBOX_DISPATCH_JOB_NAMES: Object.values(JOB_NAME).join(','),
       REDIS_URL: 'redis://localhost:6379/0',
       INVITATION_EMAIL_API_KEY: 're_test',
       INVITATION_EMAIL_FROM: 'invites@example.test',
@@ -198,7 +194,7 @@ describe('dispatch capability provider activation', () => {
       { consumer: triggerConsumer } as TriggerRuntime,
     );
 
-    expect(registry.readyJobNames()).toEqual(ACTIVE_QUEUE_JOB_NAMES);
+    expect(registry.readyJobNames()).toEqual(Object.values(JOB_NAME));
   });
 
   it('returns an explicit registry override without inspecting runtime inputs', () => {
