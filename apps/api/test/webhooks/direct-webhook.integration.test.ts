@@ -31,7 +31,7 @@ import { Pool, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
-import { createInitialWorkflowCheckpoint } from '../../src/executions/index.js';
+import { createInitialCheckpoint } from '@pertexo/execution';
 import { DatabaseIdentityWorkspaceAdapter } from '../../src/identity-workspace/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
@@ -355,11 +355,10 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
             ingress: {
               database: ingressDatabase,
               encryption,
-              checkpointFactory: (projection, currentRelease) =>
-                createInitialWorkflowCheckpoint(
-                  projection,
-                  releaseHistory,
-                  currentRelease,
+              checkpointFactory: (projection, currentCompatibilityRelease) =>
+                createInitialCheckpoint(
+                  { ...projection, currentCompatibilityRelease },
+                  { releaseSupport: releaseHistory },
                 ),
             },
             close: () => Promise.resolve(),

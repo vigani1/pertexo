@@ -8,6 +8,7 @@ import {
   describeExecutableCompatibilityRelease,
   parseCheckpoint,
   createExecutableCompatibilityReleaseHistory,
+  WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
@@ -23,10 +24,7 @@ import {
   WorkflowPublishedVersionConflictError,
 } from '@pertexo/database/api';
 
-import {
-  API_ENGINE_VERSION,
-  createInitialWorkflowCheckpoint,
-} from '../../src/executions/index.js';
+import { createInitialCheckpoint, ENGINE_VERSION } from '@pertexo/execution';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
 import { usageCapacitySnapshot } from '../support/usage-capacity.fixture.js';
 import {
@@ -324,14 +322,14 @@ function projection(
 }
 
 function expectInitialCheckpoint(
-  checkpoint: ReturnType<typeof createInitialWorkflowCheckpoint>,
+  checkpoint: ReturnType<typeof createInitialCheckpoint>,
   schemaVersion: 1 | 2,
 ): void {
-  expect(checkpoint.engineVersion).toBe(API_ENGINE_VERSION);
+  expect(checkpoint.engineVersion).toBe(ENGINE_VERSION);
   expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
     schemaVersion,
     workflowVersionId,
-    engineVersion: API_ENGINE_VERSION,
+    engineVersion: ENGINE_VERSION,
     revision: 0,
     nextEventSequence: 2,
     remainingIterationBudget: 1_000,
@@ -856,7 +854,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         ],
       },
     });
-    const checkpoint = createInitialWorkflowCheckpoint(
+    const checkpoint = createInitialCheckpoint(
       {
         id: workflowVersionId,
         workspaceId,
@@ -867,9 +865,12 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         executableSchemaVersion: 2,
         executableJson: compiled.envelope,
         compatibilityReleaseEpoch: release.epoch,
+        currentCompatibilityRelease:
+          describeExecutableCompatibilityRelease(release),
       },
-      createExecutableCompatibilityReleaseHistory([release]),
-      describeExecutableCompatibilityRelease(release),
+      {
+        releaseSupport: createExecutableCompatibilityReleaseHistory([release]),
+      },
     );
 
     expectInitialCheckpoint(checkpoint, 2);
@@ -930,7 +931,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         ],
       },
     });
-    const checkpoint = createInitialWorkflowCheckpoint(
+    const checkpoint = createInitialCheckpoint(
       {
         id: workflowVersionId,
         workspaceId,
@@ -941,9 +942,12 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         executableSchemaVersion: 2,
         executableJson: compiled.envelope,
         compatibilityReleaseEpoch: release.epoch,
+        currentCompatibilityRelease:
+          describeExecutableCompatibilityRelease(release),
       },
-      createExecutableCompatibilityReleaseHistory([release]),
-      describeExecutableCompatibilityRelease(release),
+      {
+        releaseSupport: createExecutableCompatibilityReleaseHistory([release]),
+      },
     );
 
     expectInitialCheckpoint(checkpoint, 2);
@@ -954,7 +958,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
 
   it('initializes checkpoint V2 for a verified For Each executable', () => {
     const { compiled, release } = forEachExecutable();
-    const checkpoint = createInitialWorkflowCheckpoint(
+    const checkpoint = createInitialCheckpoint(
       {
         id: workflowVersionId,
         workspaceId,
@@ -965,9 +969,12 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         executableSchemaVersion: 2,
         executableJson: compiled.envelope,
         compatibilityReleaseEpoch: release.epoch,
+        currentCompatibilityRelease:
+          describeExecutableCompatibilityRelease(release),
       },
-      createExecutableCompatibilityReleaseHistory([release]),
-      describeExecutableCompatibilityRelease(release),
+      {
+        releaseSupport: createExecutableCompatibilityReleaseHistory([release]),
+      },
     );
 
     expectInitialCheckpoint(checkpoint, 2);
@@ -980,10 +987,17 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     'initializes checkpoint V2 for a verified Parallel V%s executable',
     (version) => {
       const { compiled, release } = parallelExecutable(version);
-      const checkpoint = createInitialWorkflowCheckpoint(
-        projection(compiled, release),
-        createExecutableCompatibilityReleaseHistory([release]),
-        describeExecutableCompatibilityRelease(release),
+      const checkpoint = createInitialCheckpoint(
+        {
+          ...projection(compiled, release),
+          currentCompatibilityRelease:
+            describeExecutableCompatibilityRelease(release),
+        },
+        {
+          releaseSupport: createExecutableCompatibilityReleaseHistory([
+            release,
+          ]),
+        },
       );
 
       expectInitialCheckpoint(checkpoint, 2);
@@ -998,10 +1012,15 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     const release = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,
     );
-    const checkpoint = createInitialWorkflowCheckpoint(
-      projection(compiled, release),
-      createExecutableCompatibilityReleaseHistory([release]),
-      describeExecutableCompatibilityRelease(release),
+    const checkpoint = createInitialCheckpoint(
+      {
+        ...projection(compiled, release),
+        currentCompatibilityRelease:
+          describeExecutableCompatibilityRelease(release),
+      },
+      {
+        releaseSupport: createExecutableCompatibilityReleaseHistory([release]),
+      },
     );
 
     expectInitialCheckpoint(checkpoint, 1);
@@ -1033,12 +1052,15 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     );
 
     expect(() =>
-      createInitialWorkflowCheckpoint(
-        invalidProjection,
-        history,
-        describeExecutableCompatibilityRelease(successor),
+      createInitialCheckpoint(
+        {
+          ...invalidProjection,
+          currentCompatibilityRelease:
+            describeExecutableCompatibilityRelease(successor),
+        },
+        { releaseSupport: history },
       ),
-    ).toThrow('not executable by this API release');
+    ).toThrow(WorkflowEngineError);
   });
 
   it('verifies the exact V2 release and creates the initial event-bound checkpoint', async () => {
@@ -1074,11 +1096,11 @@ describe('PostgreSQL workflow run persistence adapter', () => {
             composeExecutableCompatibilityRelease(nodeRelease),
           ),
         );
-        expect(initial.engineVersion).toBe(API_ENGINE_VERSION);
+        expect(initial.engineVersion).toBe(ENGINE_VERSION);
         expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
           schemaVersion: 1,
           workflowVersionId,
-          engineVersion: API_ENGINE_VERSION,
+          engineVersion: ENGINE_VERSION,
           revision: 0,
           nextEventSequence: 2,
           runStatus: 'queued',

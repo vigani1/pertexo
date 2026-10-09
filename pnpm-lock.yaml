@@ -72,6 +72,9 @@ importers:
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@pertexo/execution':
+        specifier: workspace:*
+        version: link:../../packages/execution
       '@pertexo/integrations':
         specifier: workspace:*
         version: link:../../packages/integrations

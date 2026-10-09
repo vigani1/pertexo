@@ -16,7 +16,7 @@ import {
 } from '@pertexo/workflow-engine';
 
 import type { ApiConfig } from '../config/api-config.js';
-import { createInitialWorkflowCheckpoint } from '../../executions/index.js';
+import { createInitialCheckpoint } from '@pertexo/execution';
 import { WebhookManagementService } from '../../webhooks/service.js';
 import type { WebhookIngressDependencies } from '../../webhooks/ingress.js';
 
@@ -78,11 +78,10 @@ export async function createApiWebhookRuntime(
       ingress: Object.freeze({
         database: acquiredDatabase,
         encryption: acquiredEnvelope.encryption,
-        checkpointFactory: ((projection, currentRelease) =>
-          createInitialWorkflowCheckpoint(
-            projection,
-            releaseSupport,
-            currentRelease,
+        checkpointFactory: ((projection, currentCompatibilityRelease) =>
+          createInitialCheckpoint(
+            { ...projection, currentCompatibilityRelease },
+            { releaseSupport },
           )) satisfies WebhookCheckpointFactory,
       }),
       close: () => {

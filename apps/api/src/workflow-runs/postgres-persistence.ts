@@ -17,10 +17,12 @@ import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
 } from '@pertexo/node-catalog';
+import { createInitialCheckpoint } from '@pertexo/execution';
 import {
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
+  WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 
 import {
@@ -37,11 +39,7 @@ import type {
   WorkflowRunPersistence,
 } from './ports.js';
 import { WorkflowRunNotFoundError } from './use-cases.js';
-import {
-  createInitialWorkflowCheckpoint,
-  InitialWorkflowCheckpointError,
-  type RunEventNotificationPublisher,
-} from '../executions/index.js';
+import type { RunEventNotificationPublisher } from '../executions/index.js';
 
 export type PostgresWorkflowRunPersistence = Readonly<{
   persistence: WorkflowRunPersistence;
@@ -223,10 +221,9 @@ function createCheckpointFactory(
   >,
 ): WorkflowRunCheckpointFactory {
   return (projection, currentCompatibilityRelease) =>
-    createInitialWorkflowCheckpoint(
-      projection,
-      releaseSupport,
-      currentCompatibilityRelease,
+    createInitialCheckpoint(
+      { ...projection, currentCompatibilityRelease },
+      { releaseSupport },
     );
 }
 
@@ -259,7 +256,7 @@ function mapPersistenceError(error: unknown): never {
     throw new WorkflowRunNotFoundError();
   if (error instanceof DatabaseWorkflowRunNotExecutableError)
     throw new WorkflowRunNotExecutableError();
-  if (error instanceof InitialWorkflowCheckpointError)
+  if (error instanceof WorkflowEngineError)
     throw new WorkflowRunNotExecutableError();
   if (error instanceof IdempotencyRequestConflictError)
     throw new WorkflowRunIdempotencyConflictError();

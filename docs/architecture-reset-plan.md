@@ -95,6 +95,9 @@ now, as one ordered program — not "whenever we touch it".
         proof, the transition fingerprint) are removed; a redelivered message
         is recognised by its receipt. `run_checkpoints.last_transition_fingerprint`
         is unused and goes in the step 9 re-squash.
+  - [x] One initial checkpoint for every way a run starts (manual, replay,
+        webhook, schedule, operator replay): `createInitialCheckpoint` in
+        execution replaces the API's and the worker's copies.
   - [ ] Run actions (start, cancel, replay, manual start) and run reads.
   - [ ] Attempts (claim, heartbeat, decisions), previews, notifications,
         outbox; the database's checkpoint schema copy goes with the last user.

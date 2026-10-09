@@ -181,10 +181,6 @@ export async function createCoordinatorRuntime(
       composeExecutableCompatibilityRelease,
     ),
   );
-  const firstRelease = releaseSupport.resolve(
-    releaseSupport.descriptions[0]?.epoch ?? 0,
-    releaseSupport.descriptions[0]?.fingerprint ?? '',
-  );
   const currentReleaseDescriptions =
     createExecutableCompatibilityReleaseSupport(
       platformRegistryReleaseSupport().map(
@@ -221,7 +217,7 @@ export async function createCoordinatorRuntime(
     const clock = dependencies.clock ?? systemClock();
     const advanceDependencies = Object.freeze({
       runs: runStore,
-      verification: { admissionRelease: firstRelease, releaseSupport },
+      verification: { releaseSupport },
       maximumAdmissions: options.maximumAdmissions,
       now: () => clock.now(),
     });

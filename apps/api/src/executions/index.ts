@@ -9,4 +9,3 @@ export {
   type LiveRunEventSource,
   type PersistedRunEventReader,
 } from './run-event-stream.js';
-export * from './initial-workflow-checkpoint.js';

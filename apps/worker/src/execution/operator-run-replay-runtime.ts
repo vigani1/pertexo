@@ -8,7 +8,6 @@ import {
   type DatabaseConfig,
   type DatabaseRuntime,
   type OperatorRunReplayStore,
-  type PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
@@ -23,11 +22,10 @@ import {
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
-  verifyWorkflowExecutableV2,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
+import { createInitialCheckpoint } from '@pertexo/execution';
 
-import { createWorkerInitialCheckpoint } from './core-definition-identities.js';
 export const operatorRunReplayFactories = Object.freeze({
   handler: createOperatorRunReplayHandler,
   store: createDatabaseOperatorRunReplayStore,
@@ -55,10 +53,9 @@ export function createDatabaseOperatorRunReplayStore(
     releaseSupport.descriptions,
     (projection, currentCompatibilityRelease) => {
       try {
-        return initialCheckpoint(
-          projection,
-          releaseHistory,
-          currentCompatibilityRelease,
+        return createInitialCheckpoint(
+          { ...projection, currentCompatibilityRelease },
+          { releaseSupport: releaseHistory },
         );
       } catch (error: unknown) {
         if (isErrorInstance(error, WorkflowEngineError))
@@ -68,36 +65,6 @@ export function createDatabaseOperatorRunReplayStore(
     },
     runtime,
   );
-}
-
-function initialCheckpoint(
-  projection: PublishedWorkflowV2Projection,
-  releaseHistory: ReturnType<
-    typeof createExecutableCompatibilityReleaseHistory
-  >,
-  currentCompatibilityRelease: Readonly<{
-    epoch: number;
-    fingerprint: string;
-  }>,
-) {
-  const admissionDescription = releaseHistory.descriptions.find(
-    ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
-  );
-  if (admissionDescription === undefined)
-    throw new OperatorRunReplayNotExecutableError();
-  const executable = verifyWorkflowExecutableV2({
-    envelope: projection.executableJson,
-    checksum: projection.checksum,
-    admissionRelease: releaseHistory.resolve(
-      admissionDescription.epoch,
-      admissionDescription.fingerprint,
-    ),
-    currentRelease: releaseHistory.resolve(
-      currentCompatibilityRelease.epoch,
-      currentCompatibilityRelease.fingerprint,
-    ),
-  });
-  return createWorkerInitialCheckpoint(executable, projection.id);
 }
 
 export function createOperatorRunReplayHandler(store: OperatorRunReplayStore) {

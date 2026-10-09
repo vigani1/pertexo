@@ -27,7 +27,6 @@ import {
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
-  verifyWorkflowExecutableV2,
 } from '@pertexo/workflow-engine';
 
 import { createTriggerReconciliationHandler } from './trigger-handler.js';
@@ -35,7 +34,7 @@ import {
   createTriggerRuntimeTelemetry,
   type TriggerRuntimeTelemetry,
 } from './trigger-telemetry.js';
-import { createWorkerInitialCheckpoint } from '../execution/core-definition-identities.js';
+import { createInitialCheckpoint } from '@pertexo/execution';
 import {
   closeTriggerDependencies,
   createTriggerRuntimeLifecycle,
@@ -131,26 +130,11 @@ export async function createTriggerRuntime(
   );
   const checkpointFactory: ScheduleCheckpointFactory =
     dependencies.checkpointFactory ??
-    ((projection, currentCompatibilityRelease) => {
-      const admissionDescription = releaseHistory.descriptions.find(
-        ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
-      );
-      if (admissionDescription === undefined)
-        throw new Error('Published schedule workflow is not executable');
-      const executable = verifyWorkflowExecutableV2({
-        envelope: projection.executableJson,
-        checksum: projection.checksum,
-        admissionRelease: releaseHistory.resolve(
-          admissionDescription.epoch,
-          admissionDescription.fingerprint,
-        ),
-        currentRelease: releaseHistory.resolve(
-          currentCompatibilityRelease.epoch,
-          currentCompatibilityRelease.fingerprint,
-        ),
-      });
-      return createWorkerInitialCheckpoint(executable, projection.id);
-    });
+    ((projection, currentCompatibilityRelease) =>
+      createInitialCheckpoint(
+        { ...projection, currentCompatibilityRelease },
+        { releaseSupport: releaseHistory },
+      ));
   // Telemetry owns no closeable resources. Construct it before acquiring the
   // database and queue owners so constructor failure cannot strand them.
   const telemetry = dependencies.telemetry ?? factories.telemetry();
