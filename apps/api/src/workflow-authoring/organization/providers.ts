@@ -14,35 +14,25 @@ export const workflowOrganizationControllers = [
   WorkflowOrganizationBatchesController,
 ] as const;
 
-/** Unsupported cryptographic/read capabilities stay unavailable, not empty. */
 export function workflowOrganizationProviders(
   dependencies: WorkflowAuthoringDependencies,
 ): Provider[] {
-  const organization = dependencies.organization;
-  if (organization === undefined) return [];
+  const { organization } = dependencies;
   return [
-    ...(organization.folders === undefined
-      ? []
-      : [
-          {
-            provide: WorkflowFoldersUseCase,
-            useValue: new WorkflowFoldersUseCase(
-              organization.folders,
-              dependencies.authorization,
-            ),
-          },
-        ]),
-    ...(organization.batches === undefined
-      ? []
-      : [
-          {
-            provide: WorkflowOrganizationBatchesUseCase,
-            useValue: new WorkflowOrganizationBatchesUseCase(
-              organization.batches,
-              dependencies.authorization,
-            ),
-          },
-        ]),
+    {
+      provide: WorkflowFoldersUseCase,
+      useValue: new WorkflowFoldersUseCase(
+        organization.folders,
+        dependencies.authorization,
+      ),
+    },
+    {
+      provide: WorkflowOrganizationBatchesUseCase,
+      useValue: new WorkflowOrganizationBatchesUseCase(
+        organization.batches,
+        dependencies.authorization,
+      ),
+    },
     {
       provide: WorkflowOrganizationCommandsUseCase,
       useValue: new WorkflowOrganizationCommandsUseCase(
@@ -56,7 +46,6 @@ export function workflowOrganizationProviders(
       useValue: new WorkflowOrganizationReadsUseCase(
         organization.reader,
         organization.tags,
-        organization.cursors,
         dependencies.authorization,
         dependencies.persistence,
       ),

@@ -15,7 +15,6 @@ import {
 import { Test } from '@nestjs/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
   type WorkflowTagDatabase,
   type WorkflowFavoriteDatabase,
@@ -23,8 +22,6 @@ import {
 import { WorkflowOrganizationController } from '../../../src/workflow-authoring/organization/controller.js';
 import { WorkflowOrganizationCommandsUseCase } from '../../../src/workflow-authoring/organization/commands.js';
 import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/reads.js';
-import { createWorkflowOrganizationCursorCodec } from '../../../src/workflow-authoring/organization/cursors/organization.js';
-import { createWorkflowOrganizationPageCursorCodec } from '../../../src/workflow-authoring/organization/cursors/page.js';
 import {
   WorkflowReadGuard,
   WorkflowUpdateGuard,
@@ -167,14 +164,6 @@ function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'owner') {
   const reads = new WorkflowOrganizationReadsUseCase(
     { getWorkflow: vi.fn(), listWorkflows: vi.fn() },
     tags,
-    {
-      workflows: createWorkflowOrganizationCursorCodec(
-        new Uint8Array(32).fill(1),
-      ),
-      pages: createWorkflowOrganizationPageCursorCodec(
-        new Uint8Array(32).fill(1),
-      ),
-    },
     authorization,
   );
   return { tags, favorites, authorization, commands, reads };
@@ -189,7 +178,6 @@ afterEach(async () => {
  * and persistence. This does not qualify production session auth or live SQL. */
 async function httpFixture(
   role: 'owner' | 'admin' | 'builder' | 'viewer' = 'owner',
-  available = true,
 ) {
   const f = fixture(role);
   const contexts = new RequestContextStore();
@@ -198,15 +186,8 @@ async function httpFixture(
     providers: [
       { provide: WORKFLOW_AUTHORING_AUTHORIZATION, useValue: f.authorization },
       { provide: RequestContextStore, useValue: contexts },
-      ...(available
-        ? [
-            {
-              provide: WorkflowOrganizationCommandsUseCase,
-              useValue: f.commands,
-            },
-            { provide: WorkflowOrganizationReadsUseCase, useValue: f.reads },
-          ]
-        : []),
+      { provide: WorkflowOrganizationCommandsUseCase, useValue: f.commands },
+      { provide: WorkflowOrganizationReadsUseCase, useValue: f.reads },
     ],
   })
     .overrideGuard(SessionAuthenticationGuard)
@@ -239,11 +220,10 @@ async function httpFixture(
     .compile();
   // Vitest's source transform omits compiler design:paramtypes. Explicit test
   // wiring exercises production routes, not compiler-generated constructor DI.
-  if (available)
-    Object.assign(module.get(WorkflowOrganizationController), {
-      commands: f.commands,
-      reads: f.reads,
-    });
+  Object.assign(module.get(WorkflowOrganizationController), {
+    commands: f.commands,
+    reads: f.reads,
+  });
   const app = module.createNestApplication<NestFastifyApplication>(
     new FastifyAdapter(),
     { logger: false },
@@ -352,26 +332,6 @@ describe('organization controller registered HTTP seam (fake session and persist
     }
   });
 
-  it.each(routes)(
-    'fails closed safely when $path capability is absent',
-    async (route) => {
-      const f = await httpFixture('owner', false);
-      const response = await f.app.inject({
-        method: route.method,
-        url: prefix + route.suffix,
-        headers,
-        ...(route.body === undefined ? {} : { payload: route.body }),
-      });
-      expect(response.statusCode).toBe(503);
-      expect(response.json<{ code: string }>().code).toBe(
-        'workflow.organization_unavailable',
-      );
-      expect(response.body).not.toContain(
-        'WorkflowOrganizationUnavailableError',
-      );
-    },
-  );
-
   it('uses session and real CSRF guards before mutations', async () => {
     const f = await httpFixture();
     const route = routes[1];
@@ -440,10 +400,7 @@ describe('organization controller registered HTTP seam (fake session and persist
 
   it('maps known failures without leaking private cause or conflict metadata', async () => {
     const f = await httpFixture();
-    for (const error of [
-      new WorkflowTagConflictError('tag_revision'),
-      new WorkflowOrganizationUnavailableError(),
-    ]) {
+    for (const error of [new WorkflowTagConflictError('tag_revision')]) {
       Object.assign(error, {
         actorId,
         generation: 'private-generation',

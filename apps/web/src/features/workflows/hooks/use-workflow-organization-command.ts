@@ -190,10 +190,7 @@ export function useWorkflowOrganizationCommand({
       const retryAvailable =
         'items' in result &&
         !authorityLost &&
-        result.items.some(
-          (item) =>
-            item.status === 'outcome_unknown' || item.status === 'unavailable',
-        );
+        result.items.some((item) => item.status === 'outcome_unknown');
       attempt.current = retryAvailable ? frozen : undefined;
       denied.current = authorityLost;
       if (authorityLost)

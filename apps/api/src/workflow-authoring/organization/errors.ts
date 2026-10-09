@@ -1,6 +1,5 @@
 import {
   WorkflowFolderConflictError,
-  WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
   WorkflowTagConflictError,
   type WorkflowFolderConflictKind,
@@ -72,10 +71,6 @@ const folderConflicts: Readonly<
 export function mapWorkflowOrganizationError(
   error: unknown,
 ): ApplicationError | undefined {
-  if (error instanceof WorkflowOrganizationUnavailableError)
-    return applicationError('workflow.organization_unavailable', {
-      safeDetail: 'Workflow organization is temporarily unavailable.',
-    });
   if (error instanceof WorkflowOrganizationValidationError)
     return applicationError('request.invalid', {
       safeDetail: 'The workflow organization request is invalid.',

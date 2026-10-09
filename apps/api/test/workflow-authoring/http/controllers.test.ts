@@ -124,6 +124,7 @@ function makeController() {
       restoreVersion as never,
       renameWorkflow as never,
       duplicateWorkflow as never,
+      {} as never,
     ),
     transitionLifecycle,
     duplicateWorkflow,

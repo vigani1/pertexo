@@ -1,4 +1,3 @@
-import { WorkflowOrganizationUnavailableError } from '@pertexo/database/authoring';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
 import type { WorkflowOrganizationInput } from './authority.js';
@@ -22,8 +21,4 @@ export async function withWorkflowOrganizationRequest<T>(
   } catch (error: unknown) {
     return throwWorkflowApplicationError(error);
   }
-}
-export function requireWorkflowOrganization<T>(value: T | undefined): T {
-  if (value === undefined) throw new WorkflowOrganizationUnavailableError();
-  return value;
 }

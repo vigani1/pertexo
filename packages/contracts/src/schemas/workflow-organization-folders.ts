@@ -184,13 +184,6 @@ export const workflowOrganizationBulkItemOutcomeSchema = z.discriminatedUnion(
       })
       .strict(),
     z
-      .object({
-        ...itemIdentity,
-        status: z.literal('unavailable'),
-        code: z.literal('workflow.organization_unavailable'),
-      })
-      .strict(),
-    z
       .object({ ...itemIdentity, status: z.literal('outcome_unknown') })
       .strict(),
     z.object({ ...itemIdentity, status: z.literal('forbidden') }).strict(),

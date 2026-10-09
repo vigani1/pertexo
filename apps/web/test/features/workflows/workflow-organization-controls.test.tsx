@@ -349,7 +349,7 @@ describe('organization editing controls', () => {
   it('says when a favorite was not saved', async () => {
     mockServer.use(
       http.put(`${api}/workflows/${workflowId}/favorite`, () =>
-        problem(503, 'workflow.organization_unavailable'),
+        problem(500, 'internal.unexpected'),
       ),
     );
     setup({ favorite: true });

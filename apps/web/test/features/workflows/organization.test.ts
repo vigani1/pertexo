@@ -456,11 +456,7 @@ describe('folder and bounded batch data layer', () => {
         status: 'conflict',
         code: 'workflow.folder_not_visible',
       },
-      {
-        workflowId: ids[3],
-        status: 'unavailable',
-        code: 'workflow.organization_unavailable',
-      },
+      { workflowId: ids[3], status: 'outcome_unknown' },
       { workflowId: ids[4], status: 'outcome_unknown' },
       { workflowId: ids[5], status: 'forbidden' },
       { workflowId: ids[6], status: 'not_processed' },
@@ -743,14 +739,14 @@ describe('workflow organization transport', () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
-          type: 'urn:pertexo:problem:workflow.organization_unavailable',
-          title: 'Workflow organization unavailable',
-          status: 503,
-          code: 'workflow.organization_unavailable',
+          type: 'urn:pertexo:problem:workflow.folder_not_visible',
+          title: 'Workflow folder is not visible',
+          status: 409,
+          code: 'workflow.folder_not_visible',
           requestId: 'request-123',
         }),
         {
-          status: 503,
+          status: 409,
           headers: { 'content-type': 'application/problem+json' },
         },
       ),
@@ -768,7 +764,7 @@ describe('workflow organization transport', () => {
       ),
     ).rejects.toMatchObject({
       kind: 'problem',
-      problem: { code: 'workflow.organization_unavailable' },
+      problem: { code: 'workflow.folder_not_visible' },
     });
     expect(fetch).toHaveBeenCalledTimes(1);
     queries.clear();

@@ -22,6 +22,8 @@ import {
 import { WorkflowFoldersController } from '../../../../src/workflow-authoring/organization/folders/controller.js';
 import { WorkflowOrganizationBatchesController } from '../../../../src/workflow-authoring/organization/batch/controller.js';
 import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/controller.js';
+import { WorkflowOrganizationCommandsUseCase } from '../../../../src/workflow-authoring/organization/commands.js';
+import { WorkflowOrganizationReadsUseCase } from '../../../../src/workflow-authoring/organization/reads.js';
 import { WorkflowAuthoringController } from '../../../../src/workflow-authoring/http/controllers.js';
 import { WorkflowFoldersUseCase } from '../../../../src/workflow-authoring/organization/folders/use-case.js';
 import { WorkflowOrganizationBatchesUseCase } from '../../../../src/workflow-authoring/organization/batch/use-case.js';
@@ -146,7 +148,7 @@ afterEach(async () => {
 
 /** Real HTTP/CSRF/problem handling with fake session admission and persistence.
  * This fixture is not evidence for production session authentication or SQL. */
-async function setup(available = true) {
+async function setup() {
   const folders = {
     listFolders: vi.fn().mockResolvedValue({ items: [folder] }),
     createFolder: vi.fn().mockResolvedValue({ folder, replayed: false }),
@@ -211,15 +213,11 @@ async function setup(available = true) {
       ...siblingProviders,
       { provide: WORKFLOW_AUTHORING_AUTHORIZATION, useValue: authorization },
       { provide: RequestContextStore, useValue: contexts },
-      ...(available
-        ? [
-            { provide: WorkflowFoldersUseCase, useValue: folderUseCase },
-            {
-              provide: WorkflowOrganizationBatchesUseCase,
-              useValue: batchUseCase,
-            },
-          ]
-        : []),
+      { provide: WorkflowFoldersUseCase, useValue: folderUseCase },
+      { provide: WorkflowOrganizationBatchesUseCase, useValue: batchUseCase },
+      // The sibling tag/favorite routes are registered for collisions only.
+      { provide: WorkflowOrganizationCommandsUseCase, useValue: {} },
+      { provide: WorkflowOrganizationReadsUseCase, useValue: {} },
     ],
   });
   builder.overrideGuard(SessionAuthenticationGuard).useValue({
@@ -251,7 +249,7 @@ async function setup(available = true) {
     .useValue(new WorkflowUpdateGuard(authorization, contexts));
   const module = await builder.compile();
   // The source transform does not retain constructor design:paramtypes.
-  if (available) {
+  {
     Object.assign(module.get(WorkflowFoldersController), {
       folders: folderUseCase,
     });
@@ -364,15 +362,6 @@ describe('folder and batch HTTP routes with controlled session/persistence', () 
           folderId: null,
           expectedOrganizationRevision: 1,
         });
-    });
-    it(`${route.method}: missing optional capability fails safely`, async () => {
-      const f = await setup(false);
-      const response = await f.inject(route);
-      expect(response.statusCode).toBe(503);
-      expect(response.json<{ code: string }>().code).toBe(
-        'workflow.organization_unavailable',
-      );
-      expect(f.port(route)).not.toHaveBeenCalled();
     });
     it(`${route.method}: unauthenticated or private input never reaches persistence`, async () => {
       const f = await setup();

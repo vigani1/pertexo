@@ -1,7 +1,6 @@
 import {
   WorkflowFolderConflictError,
   WorkflowNotFoundError,
-  WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
   WorkflowTagConflictError,
   type WorkflowFolderConflictKind,
@@ -16,11 +15,6 @@ import { mapWorkflowAuthoringError } from '../../../src/workflow-authoring/error
 import { AuthorizationError } from '../../../src/authorization/index.js';
 
 const cases = [
-  [
-    new WorkflowOrganizationUnavailableError(),
-    'workflow.organization_unavailable',
-    503,
-  ],
   [new WorkflowOrganizationValidationError(), 'request.invalid', 400],
   [new WorkflowTagConflictError('key'), 'workflow.tag_key_conflict', 409],
   [new WorkflowTagConflictError('limit'), 'workflow.tag_limit_exceeded', 409],
@@ -116,7 +110,6 @@ describe('workflow organization error mapping', () => {
     new IdempotencyConflictError(),
     new AuthorizationError('resource.not_found', 'not authorized'),
     new Error('unrelated failure'),
-    { name: 'WorkflowOrganizationUnavailableError' },
     { code: 'workflow.organization_revision_conflict' },
     { name: 'WorkflowFolderConflictError', kind: 'name' },
     null,

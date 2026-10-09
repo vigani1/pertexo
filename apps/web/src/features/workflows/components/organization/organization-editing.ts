@@ -95,8 +95,6 @@ export function organizationOutcomeText(
       return item.replayed ? 'Updated — original result replayed' : 'Updated';
     case 'not_visible':
       return 'Not visible — no change confirmed';
-    case 'unavailable':
-      return 'Unavailable — retry the original request';
     case 'outcome_unknown':
       return 'Outcome unknown — retry the original request';
     case 'forbidden':

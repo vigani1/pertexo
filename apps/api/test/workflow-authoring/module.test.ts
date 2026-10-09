@@ -12,6 +12,7 @@ import { WorkflowConcurrencyController } from '../../src/workflow-authoring/sett
 import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/settings/concurrency.js';
 import { WorkflowInputCasesController } from '../../src/workflow-authoring/input-cases/controller.js';
 import { WorkflowInputCasesUseCase } from '../../src/workflow-authoring/input-cases/use-case.js';
+import { unusedWorkflowOrganization } from '../support/api-platform.fixture.js';
 
 const dependencies = {
   persistence: {
@@ -30,6 +31,7 @@ const dependencies = {
     publishWorkflow: () => Promise.reject(new Error('not exercised')),
   },
   authorization: { findAccess: () => Promise.resolve(undefined) },
+  organization: unusedWorkflowOrganization(),
 } satisfies WorkflowAuthoringDependencies;
 
 // Nest dynamic modules require a class token.

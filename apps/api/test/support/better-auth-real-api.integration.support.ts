@@ -121,7 +121,6 @@ export function useBetterAuthRealApi(
   suite: string,
   options: Readonly<{
     publicWebOrigin?: string;
-    workflowOrganization?: ApiConfig['workflowOrganization'];
     /** F07-owned qualification namespace, never a shared database selection. */
     databaseNamespace?: 'f07_organization';
     redisUrl?: string;
@@ -212,9 +211,6 @@ export function useBetterAuthRealApi(
       ...defaults,
       identity,
       redisUrl: options.redisUrl ?? redisUrl,
-      ...(options.workflowOrganization === undefined
-        ? {}
-        : { workflowOrganization: options.workflowOrganization }),
       ...(options.connections === undefined
         ? {}
         : { connections: options.connections.config }),

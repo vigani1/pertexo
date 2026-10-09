@@ -11,8 +11,6 @@ import {
   AuthorizationError,
 } from '../../../src/authorization/index.js';
 import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/reads.js';
-import { createWorkflowOrganizationCursorCodec } from '../../../src/workflow-authoring/organization/cursors/organization.js';
-import { createWorkflowOrganizationPageCursorCodec } from '../../../src/workflow-authoring/organization/cursors/page.js';
 import { InvalidWorkflowCursorError } from '../../../src/workflow-authoring/cursor.js';
 
 function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'viewer') {
@@ -80,15 +78,9 @@ function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'viewer') {
       .fn()
       .mockResolvedValue({ workflow: item.workflow, templateOrigin: null }),
   };
-  const key = Buffer.alloc(32, 11);
-  const cursors = {
-    workflows: createWorkflowOrganizationCursorCodec(key),
-    pages: createWorkflowOrganizationPageCursorCodec(key),
-  };
   const reads = new WorkflowOrganizationReadsUseCase(
     reader,
     tags,
-    cursors,
     authorization,
     origin,
   );
@@ -102,7 +94,6 @@ function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'viewer') {
     authorization,
     origin,
     reads,
-    cursors,
   };
 }
 
@@ -299,7 +290,6 @@ describe('workflow organization read interface', () => {
     const reads = new WorkflowOrganizationReadsUseCase(
       f.reader,
       f.tags,
-      f.cursors,
       f.authorization,
     );
     const input = {

@@ -19,7 +19,6 @@ import {
 } from '@pertexo/workflow-model/server';
 
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
-import type { WorkflowOrganizationConfig } from '../config/workflow-organization-config.js';
 import {
   createApiWorkflowMetadataRuntime,
   type ApiWorkflowMetadataRuntime,
@@ -66,7 +65,6 @@ export type ApiWorkflowRuntime = Readonly<{
 }>;
 
 export type ApiWorkflowRuntimeOverrides = Readonly<{
-  organization?: WorkflowOrganizationConfig;
   authoring?: Readonly<{
     database?: WorkflowAuthoringDatabase;
     databaseFactory?: typeof createWorkflowAuthoringDatabase;
@@ -137,7 +135,6 @@ export async function createApiWorkflowRuntime(
     metadataRuntime = await createApiWorkflowMetadataRuntime(
       databaseConfig,
       authoring,
-      overrides.organization,
       runtime,
     );
     if (persistence.runs === undefined) {
@@ -199,9 +196,7 @@ export async function createApiWorkflowRuntime(
         ...(metadataRuntime.inputCases === undefined
           ? {}
           : { inputCasePersistence: metadataRuntime.inputCases }),
-        ...(metadataRuntime.organization === undefined
-          ? {}
-          : { organization: metadataRuntime.organization }),
+        organization: metadataRuntime.organization,
         ...(database.concurrency === undefined
           ? {}
           : { concurrencyPersistence: database.concurrency }),

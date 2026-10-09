@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
-  WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
   type WorkflowTagDatabase,
   type WorkflowFavoriteDatabase,
@@ -252,7 +251,6 @@ describe('workflow organization commands', () => {
     'does not convert or retry $method persistence errors',
     async ({ method, request }) => {
       for (const error of [
-        new WorkflowOrganizationUnavailableError(),
         new WorkflowTagConflictError('organization_revision'),
         new Error('unexpected'),
       ]) {

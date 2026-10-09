@@ -1,5 +1,4 @@
 export const WORKFLOW_ORGANIZATION_PROBLEM_CODES = [
-  'workflow.organization_unavailable',
   'workflow.tag_key_conflict',
   'workflow.tag_limit_exceeded',
   'workflow.tag_revision_conflict',
@@ -14,12 +13,6 @@ export const WORKFLOW_ORGANIZATION_PROBLEM_CODES = [
 ] as const;
 
 export const workflowOrganizationProblems = {
-  'workflow.organization_unavailable': {
-    status: 503,
-    title: 'Workflow organization unavailable',
-    severity: 'warn',
-    exposeDetail: true,
-  },
   'workflow.tag_key_conflict': {
     status: 409,
     title: 'Workflow tag key conflict',
