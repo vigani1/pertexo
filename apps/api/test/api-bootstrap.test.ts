@@ -88,9 +88,10 @@ function identityRuntime(
       requestWorkspaceLifecycleOperation: notUsed,
     },
     authorization: {
-      findAccess: () =>
+      findAccess: ({ workspaceId }: { workspaceId: string }) =>
         Promise.resolve(
-          authenticated
+          authenticated &&
+            workspaceId === 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
             ? {
                 actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
                 workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

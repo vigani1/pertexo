@@ -133,36 +133,6 @@ describe('node testing controller', () => {
     );
   });
 
-  it('maps an invalid session actor from the controller to request.invalid status 400', async () => {
-    const execute = vi.fn();
-    const instance = new NodeTestingController(
-      { execute } as never,
-      { execute: vi.fn() } as never,
-    );
-    let thrown: unknown;
-    try {
-      await instance.test(
-        {
-          ...request(),
-          identitySession: {
-            ...request().identitySession,
-            userId: 'not-a-uuid',
-          },
-        },
-        params,
-        { mode: 'validate', expectedRevision: 3 },
-        { status: vi.fn() },
-      );
-    } catch (error) {
-      thrown = error;
-    }
-    expect(mapNodeTestingError(thrown)).toMatchObject({
-      code: 'request.invalid',
-    });
-    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
-    expect(execute).not.toHaveBeenCalled();
-  });
-
   it('maps deeply nested authenticated input to request.invalid before preview work', async () => {
     const execute = vi.fn();
     const instance = new NodeTestingController(

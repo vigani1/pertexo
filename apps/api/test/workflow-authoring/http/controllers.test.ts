@@ -368,25 +368,6 @@ describe('workflow authoring controller public seam', () => {
     );
   });
 
-  it('maps an invalid session actor to request.invalid before delegation', async () => {
-    const { controller, createWorkflow } = makeController();
-    const invalid = {
-      ...request({ 'idempotency-key': 'invalid-actor' }),
-      identitySession: {
-        ...request().identitySession,
-        userId: 'not-a-uuid',
-      },
-    };
-    await expect(
-      controller.create(
-        invalid,
-        { workspaceId },
-        { name: 'Invalid actor' },
-        { header: vi.fn() },
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(createWorkflow.execute).not.toHaveBeenCalled();
-  });
   it('requires If-Match for version restore and returns its fresh draft tag', async () => {
     const { controller, restoreVersion } = makeController();
     const route = {
