@@ -1,5 +1,7 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type {
+  AccessibleWorkspace,
+  WorkflowRunReadSummary,
+} from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { OctagonXIcon, RefreshCwIcon, RotateCcwIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';

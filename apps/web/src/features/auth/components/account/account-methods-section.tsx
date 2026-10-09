@@ -1,4 +1,4 @@
-import type { AccountSecurityResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccountSecurityResponse } from '@pertexo/contracts';
 import { KeyRoundIcon, PlusIcon } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';

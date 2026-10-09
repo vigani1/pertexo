@@ -8,7 +8,7 @@ import {
   type NodeTestExecuteAcceptedResponse,
   type NodeValidationResponse,
   type PreviewRunResponse,
-} from '@pertexo/contracts/node-testing';
+} from '@pertexo/contracts';
 import { PreviewIdempotencyConflictError } from '@pertexo/database/previews';
 import {
   WorkflowNotFoundError,

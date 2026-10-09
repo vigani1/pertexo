@@ -1,4 +1,4 @@
-import type { AccountSecuritySessionsResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccountSecuritySessionsResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { LaptopIcon, SmartphoneIcon } from 'lucide-react';
 import { useState } from 'react';

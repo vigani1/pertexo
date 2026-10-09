@@ -4,8 +4,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   authenticationCapabilitiesResponseSchema,
   type AuthenticationCapabilitiesResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import type { ApiProblemCode } from '@pertexo/contracts/errors';
+} from '@pertexo/contracts';
+import type { ApiProblemCode } from '@pertexo/contracts';
 import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
 
 import type { RateLimitConsumer } from '../platform/rate-limit/interceptor.js';

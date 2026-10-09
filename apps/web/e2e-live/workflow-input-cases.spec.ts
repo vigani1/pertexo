@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
-import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';
 import {
+  nodeDefinitionListResponseSchema,
   workflowDraftResponseSchema,
   workflowInputCaseListResponseSchema,
   workflowPublishResponseSchema,
   workflowValidateResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import { workflowRunStartResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
-import { apiProblemSchema } from '@pertexo/contracts/schemas/errors';
+  workflowRunStartResponseSchema,
+  apiProblemSchema,
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
   createEditorWorkspace,

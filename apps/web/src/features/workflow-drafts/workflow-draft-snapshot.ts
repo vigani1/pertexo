@@ -2,7 +2,7 @@ import {
   strongEtagSchema,
   workflowDraftResponseSchema,
   type WorkflowDraftResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 
 export type WorkflowDraftSnapshot = Readonly<{
   draft: WorkflowDraftResponse;

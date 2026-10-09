@@ -1,8 +1,8 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type {
+  WorkflowGraphContract,
   WorkflowRunFailedStep,
   WorkflowRunResponse,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { shortStepError } from './step-inspection/step-error-copy';
 

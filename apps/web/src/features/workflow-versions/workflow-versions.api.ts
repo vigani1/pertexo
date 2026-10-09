@@ -4,7 +4,7 @@ import {
   workflowVersionsResponseSchema,
   type WorkflowVersionResponse,
   type WorkflowVersionsResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   decodeWorkflowDraftSnapshot,
   type WorkflowDraftSnapshot,

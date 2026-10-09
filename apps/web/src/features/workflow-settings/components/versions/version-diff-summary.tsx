@@ -1,4 +1,4 @@
-import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { cn } from '@/lib/utils';
 import {
   diffWorkflowGraphs,

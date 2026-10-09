@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
-import { connectionTestRequestSchema } from '@pertexo/contracts/schemas/connections';
-import type { ConnectionTestRequest } from '@pertexo/contracts/schemas/connections';
+import { connectionTestRequestSchema } from '@pertexo/contracts';
+import type { ConnectionTestRequest } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {

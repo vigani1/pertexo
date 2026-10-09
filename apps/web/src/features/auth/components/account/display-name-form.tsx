@@ -2,7 +2,7 @@ import {
   USER_DISPLAY_NAME_MAX_LENGTH,
   userDisplayNameSchema,
   type UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';

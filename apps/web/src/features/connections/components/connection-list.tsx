@@ -1,4 +1,4 @@
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 import { ChevronRightIcon } from 'lucide-react';
 import { Status } from '@/components/ui/status';
 import { formatRelativeTime } from '@/lib/format-time';

@@ -1,4 +1,4 @@
-import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts';
 
 /**
  * How the invited account is proven: a fresh sign-in by the session

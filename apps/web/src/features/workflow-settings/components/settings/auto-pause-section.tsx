@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type {
+  AccessibleWorkspace,
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { SettingsSection } from '@/components/patterns/settings-section';
 import { LabelledField } from '@/components/ui/field';

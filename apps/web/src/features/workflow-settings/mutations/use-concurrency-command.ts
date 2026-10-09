@@ -4,7 +4,7 @@ import {
   workflowConcurrencyRevisionConflictProblemSchema,
   workflowConcurrencyLimitExceededProblemSchema,
   type WorkflowConcurrencySettingsRequest,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
 import {

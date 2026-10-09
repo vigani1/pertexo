@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { workflowOrganizationListResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowOrganizationListResponseSchema } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowOrganizationInfiniteQueryOptions } from './organization.queries';
 import {

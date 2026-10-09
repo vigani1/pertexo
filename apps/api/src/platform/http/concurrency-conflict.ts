@@ -1,10 +1,10 @@
-import type { ApiProblem } from '@pertexo/contracts/errors';
+import type { ApiProblem } from '@pertexo/contracts';
 import {
   workflowConcurrencyLimitSchema,
   workflowConcurrencyRevisionSchema,
   workflowConcurrencyLimitExceededProblemSchema,
   workflowConcurrencyRevisionConflictProblemSchema,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import type { ApplicationError } from './application-error.js';
 
 export type ConcurrencyConflict =

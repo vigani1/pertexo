@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { artifactTransferOpenApiDocument } from '../src/server.js';
 import {
-  artifactTransferOpenApiDocument,
   artifactDownloadResponseSchema,
   artifactFinalizeRequestSchema,
   artifactMetadataResponseSchema,
   artifactUploadRequestSchema,
   artifactUploadResponseSchema,
-} from '../src/artifact-transfer.js';
+} from '../src/index.js';
 
 const metadata = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

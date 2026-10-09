@@ -1,7 +1,7 @@
 import {
   workspaceInboxStreamEventSchema,
   type WorkspaceInboxStreamEventName,
-} from '@pertexo/contracts/workspace-inbox';
+} from '@pertexo/contracts';
 
 import { nextFrameOrAuthorizationLoss } from '../workflow-runs/sse-authorization-lifetime.js';
 import type { InboxHintSubscription } from './inbox-hint-hub.js';

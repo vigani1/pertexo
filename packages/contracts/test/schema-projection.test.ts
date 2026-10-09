@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { nodeTestingClientContract } from '../src/node-testing.js';
-import { projectContractSchema } from '../src/schema-projection.js';
-import { workflowAuthoringClientContract } from '../src/workflow-authoring.js';
-import { workflowPortabilityClientContract } from '../src/workflow-portability.js';
+import {
+  nodeTestingClientContract,
+  workflowAuthoringClientContract,
+  workflowPortabilityClientContract,
+} from '../src/server.js';
+import { projectContractSchema } from '../src/openapi/schema-projection.js';
 
 function references(value: unknown, output: string[] = []): readonly string[] {
   if (value === null || typeof value !== 'object') return output;

@@ -1,5 +1,7 @@
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import type {
+  ConnectionResponse,
+  FailureNotificationDestinationResponse,
+} from '@pertexo/contracts';
 import { PencilIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';

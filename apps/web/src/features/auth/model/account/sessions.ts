@@ -1,4 +1,4 @@
-import type { AccountSecuritySessionsResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccountSecuritySessionsResponse } from '@pertexo/contracts';
 
 type Session = AccountSecuritySessionsResponse['items'][number];
 

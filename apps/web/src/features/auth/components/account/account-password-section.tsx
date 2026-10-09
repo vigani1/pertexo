@@ -1,4 +1,4 @@
-import type { AccountSecurityResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccountSecurityResponse } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type SyntheticEvent } from 'react';
 import { useFieldValues } from '@/components/ui/use-field-validation';

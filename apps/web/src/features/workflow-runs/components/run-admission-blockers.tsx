@@ -1,4 +1,4 @@
-import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { formatDateTime } from '@/lib/format-time';
 
 const reasons = {

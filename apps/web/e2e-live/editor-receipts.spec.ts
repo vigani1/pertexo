@@ -2,12 +2,10 @@ import { expect } from '@playwright/test';
 import {
   workflowPublishResponseSchema,
   workflowVersionsResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   workflowRunStartRequestSchema,
   workflowRunStartResponseSchema,
   workflowNodeRunOutputResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
   createEditorWorkspace,

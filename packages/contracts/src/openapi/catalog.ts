@@ -1,18 +1,16 @@
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   authenticatedComponents,
   jsonResponse,
   problemResponse,
   responseReference,
-} from './openapi-primitives.js';
+} from './primitives.js';
 import {
   catalogQuerySchema,
   integrationListResponseSchema,
   nodeDefinitionListResponseSchema,
-} from './http/catalog.js';
+} from '../schemas/catalog.js';
 import { projectContractSchema } from './schema-projection.js';
-
-export * from './http/catalog.js';
 
 function contractSchemas(target: 'client' | 'openapi') {
   return Object.freeze({

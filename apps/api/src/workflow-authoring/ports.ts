@@ -15,7 +15,7 @@ import type {
 } from '../workspaces/index.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import type { WorkflowAuthoringTelemetry } from './telemetry.js';
-import type { WorkflowTemplateOriginProjectionResponse } from '@pertexo/contracts/workflow-authoring';
+import type { WorkflowTemplateOriginProjectionResponse } from '@pertexo/contracts';
 import type { WorkflowOrganizationCursorCodec } from './organization-cursor.js';
 import type { WorkflowOrganizationPageCursorCodec } from './organization-page-cursor.js';
 

@@ -24,11 +24,11 @@ import {
   verifyHttpEvidence,
 } from './support/editor-http-evidence.js';
 import { createStructuredLogger } from '@pertexo/observability/logging';
-import { workspaceResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import {
+  workspaceResponseSchema,
   workflowCreateResponseSchema,
   workflowGraphSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { FixtureResourceOwner } from './support/fixture-resource-owner.js';
 import { useBetterAuthRealApi } from './support/better-auth-real-api.integration.support.js';
 import { ownEditorBrowserProcess } from './support/editor-browser-process.js';

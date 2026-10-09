@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { ScheduleStepConfig } from '@pertexo/contracts/schemas/schedules';
+import type { ScheduleStepConfig } from '@pertexo/contracts';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {

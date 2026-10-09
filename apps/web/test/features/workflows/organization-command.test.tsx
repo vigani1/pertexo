@@ -1,8 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import { apiProblemSchema } from '@pertexo/contracts/schemas/errors';
+import {
+  accessibleWorkspaceSchema,
+  apiProblemSchema,
+} from '@pertexo/contracts';
 import { assertSessionIdentity } from '@/features/auth/session-identity.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { sendWorkflowOrganizationCommand } from '@/features/workflows/organization.api';

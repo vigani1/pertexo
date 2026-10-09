@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts/schemas/schedules';
+import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { ReadFailure } from '@/components/patterns/read-failure';
 import { Skeleton } from '@/components/ui/skeleton';

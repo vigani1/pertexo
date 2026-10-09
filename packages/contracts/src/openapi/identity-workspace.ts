@@ -1,12 +1,12 @@
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   authenticationContractPaths,
   authenticationContractSchemas,
-} from './authentication-contract.js';
+} from './authentication-paths.js';
 import {
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
-} from './http/authentication.js';
+} from '../schemas/authentication.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -17,11 +17,11 @@ import {
   problemResponse,
   queryParameter,
   responseReference,
-} from './openapi-primitives.js';
+} from './primitives.js';
 import {
   workspaceInvitationContractPaths,
   workspaceInvitationContractSchemas,
-} from './workspace-invitations-contract.js';
+} from './workspace-invitations-paths.js';
 import {
   accessibleWorkspacesQuerySchema,
   accessibleWorkspacesResponseSchema,
@@ -48,9 +48,7 @@ import {
   workspaceMemberStatusResponseSchema,
   workspaceOwnershipTransferRequestSchema,
   workspaceOwnershipTransferResponseSchema,
-} from './http/identity-workspace.js';
-
-export * from './http/identity-workspace.js';
+} from '../schemas/identity-workspace.js';
 
 const schemas = Object.freeze({
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),

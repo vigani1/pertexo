@@ -16,7 +16,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { levelPositions } from '../../model/graph/for-each-body-layout';
 import { forEachBodyIssues } from '../../model/graph/for-each-body-rules';
 import {

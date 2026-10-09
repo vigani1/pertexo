@@ -12,8 +12,8 @@ import {
 import {
   artifactParamsSchema,
   artifactWorkspaceParamsSchema,
-} from '@pertexo/contracts/artifacts';
-import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
+  idempotencyKeySchema,
+} from '@pertexo/contracts';
 
 import {
   CsrfProtectionGuard,

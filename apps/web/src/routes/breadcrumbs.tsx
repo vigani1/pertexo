@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link, useMatches } from '@tanstack/react-router';
 import {
   shortRunId,

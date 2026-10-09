@@ -17,7 +17,7 @@ import {
   workspaceInboxReadAllRequestSchema,
   workspaceInboxReadRequestSchema,
   workspaceInboxThreadParamsSchema,
-} from '@pertexo/contracts/workspace-inbox';
+} from '@pertexo/contracts';
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 

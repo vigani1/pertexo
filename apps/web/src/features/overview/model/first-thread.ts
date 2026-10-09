@@ -1,4 +1,4 @@
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 
 // The "First thread" checklist for a new workspace. Each step is derived from
 // real reads; a step the person's role can't check is left out rather than

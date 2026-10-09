@@ -1,22 +1,22 @@
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   workflowOrganizationContractPaths,
   workflowOrganizationContractSchemas,
   workflowOrganizationGetReadContract,
   workflowOrganizationListReadContract,
-} from './workflow-organization-contract.js';
+} from './workflow-organization-paths.js';
 import {
   workflowInputCaseContractPaths,
   workflowInputCaseContractSchemas,
-} from './workflow-input-cases-contract.js';
+} from './workflow-input-cases-paths.js';
 import {
   workflowConcurrencyContractPaths,
   workflowConcurrencyContractSchemas,
-} from './workflow-concurrency-contract.js';
+} from './workflow-concurrency-paths.js';
 import {
   workflowAutoPauseContractPaths,
   workflowAutoPauseContractSchemas,
-} from './workflow-auto-pause-contract.js';
+} from './workflow-auto-pause-paths.js';
 import {
   workflowCompatibilityReportSchema,
   workflowCreateRequestSchema,
@@ -37,12 +37,12 @@ import {
   workflowVersionsQuerySchema,
   workflowVersionsResponseSchema,
   strongEtagSchema,
-} from './http/workflow-authoring.js';
+} from '../schemas/workflow-authoring.js';
 import { projectContractSchema } from './schema-projection.js';
 import {
   workflowRevisionCommandPaths,
   workflowRevisionCommandSchemas,
-} from './workflow-revision-commands-contract.js';
+} from './workflow-revision-commands-paths.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -53,10 +53,8 @@ import {
   problemResponse,
   responseReference,
   uuidPathParameter as pathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 import type { z } from 'zod';
-
-export * from './http/workflow-authoring.js';
 
 function contractSchemas(target: 'client' | 'openapi') {
   const project = (name: string, schema: z.ZodType, io: 'input' | 'output') =>

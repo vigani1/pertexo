@@ -1,4 +1,4 @@
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 import { PlusIcon } from 'lucide-react';
 import { use, useState } from 'react';
 import { Button } from '@/components/ui/button';

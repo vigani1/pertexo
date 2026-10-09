@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { RefreshCwIcon, XIcon } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';

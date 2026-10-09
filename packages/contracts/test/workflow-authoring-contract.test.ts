@@ -10,11 +10,11 @@ import {
   workflowRevisionConflictProblemSchema,
   workflowVersionsQuerySchema,
   workflowValidationIssueSchema,
-} from '../src/http/workflow-authoring.js';
+} from '../src/schemas/workflow-authoring.js';
 import {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
-} from '../src/workflow-authoring.js';
+} from '../src/server.js';
 
 describe('workflow-authoring public contracts', () => {
   it('keeps expression and executable issue codes representable and declares checked snapshot/unavailability metadata', () => {

@@ -1,7 +1,7 @@
 import type {
   WorkspaceInvitation,
   WorkspaceInvitationsResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import type {
   InfiniteData,
   UseInfiniteQueryResult,

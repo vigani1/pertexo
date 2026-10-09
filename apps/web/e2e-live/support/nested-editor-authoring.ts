@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import {
   workflowDraftResponseSchema,
   type WorkflowDraftResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 
 /** Browser authoring only; request calls observe saved state, never seed graphs. */
 export async function authorNestedMappingGraph(page: Page, draftPath: string) {

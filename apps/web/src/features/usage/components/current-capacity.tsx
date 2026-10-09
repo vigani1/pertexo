@@ -1,4 +1,4 @@
-import type { UsageCapacityResponse } from '@pertexo/contracts/schemas/workflow-runs';
+import type { UsageCapacityResponse } from '@pertexo/contracts';
 
 const policyLabels: Readonly<
   Record<UsageCapacityResponse['execution']['policy']['state'], string>

@@ -3,8 +3,8 @@ import { WorkflowExportDialog } from '@/features/workflows/portability.public';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+  WorkflowVersionResponse,
+} from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {

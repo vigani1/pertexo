@@ -1,5 +1,7 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type {
+  NodeDefinitionCatalogItem,
+  ConnectionResponse,
+} from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { CheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';

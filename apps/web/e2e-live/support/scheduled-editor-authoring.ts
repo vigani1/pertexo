@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import {
   scheduleFireTimesResponseSchema,
   schedulePreviewRequestSchema,
-} from '@pertexo/contracts/schemas/schedules';
+} from '@pertexo/contracts';
 import { addSingleStep, readEditorDraft } from './single-step-authoring';
 
 /** Uses ordinary inspector controls; requests only observe the saved graph. */

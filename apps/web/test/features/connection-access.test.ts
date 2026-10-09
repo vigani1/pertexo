@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
 import {

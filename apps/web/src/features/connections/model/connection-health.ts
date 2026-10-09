@@ -1,7 +1,7 @@
 import type {
   ConnectionResponse,
   ConnectionTestResponse,
-} from '@pertexo/contracts/schemas/connections';
+} from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { formatElapsedTime } from '@/lib/format-time';
 import type { ProviderKey } from './connection-providers';

@@ -16,7 +16,7 @@ import {
   type WorkflowVersionResponse,
   type WorkflowVersionsResponse,
   type WorkflowSummary,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 

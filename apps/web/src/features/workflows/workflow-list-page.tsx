@@ -2,8 +2,8 @@ import { useRef, useState, type ComponentProps } from 'react';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+  WorkflowSummary,
+} from '@pertexo/contracts';
 import {
   keepPreviousData,
   useInfiniteQuery,

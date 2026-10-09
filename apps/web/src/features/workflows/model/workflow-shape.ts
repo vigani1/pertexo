@@ -1,5 +1,5 @@
 import { describeStep } from '@/features/catalog/presentation.public';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 type StepSource = Pick<WorkflowNode, 'definition' | 'label'>;

@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { platformBrowserNodeDefinitionCatalog } from '../../../packages/node-catalog/dist/index.js';
-import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';
 import {
+  nodeDefinitionListResponseSchema,
   workflowDraftResponseSchema,
   workflowVersionResponseSchema,
   type WorkflowVersionResponse,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { authorWebhookHttpGraph } from '../e2e-live/support/webhook-http-authoring';
 import {
   addCsrfCookie,

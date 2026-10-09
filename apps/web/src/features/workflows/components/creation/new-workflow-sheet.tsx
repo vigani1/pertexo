@@ -1,5 +1,5 @@
 import { useRef, useState, type SyntheticEvent } from 'react';
-import { workflowCreateRequestSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowCreateRequestSchema } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';

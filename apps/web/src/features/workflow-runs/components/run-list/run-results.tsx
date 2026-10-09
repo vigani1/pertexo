@@ -1,5 +1,7 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowRunListItem } from '@pertexo/contracts/schemas/workflow-runs';
+import type {
+  AccessibleWorkspace,
+  WorkflowRunListItem,
+} from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
 import { StaleLine } from '@/components/patterns/stale-line';

@@ -1,4 +1,4 @@
-import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 export function readWorkflowTemplateOrigin(

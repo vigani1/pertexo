@@ -5,7 +5,7 @@ import {
 import {
   scheduleManagementCommandResponseSchema,
   scheduleTriggerListResponseSchema,
-} from '@pertexo/contracts/schedules';
+} from '@pertexo/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ScheduleManagementService } from '../../src/schedules/service.js';

@@ -1,7 +1,7 @@
 import {
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
   type WorkflowGraphContract,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';

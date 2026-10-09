@@ -17,7 +17,7 @@ import {
   parseWorkflowInputCaseTag,
   workflowIdParamSchema,
   workflowInputCaseParamSchema,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,

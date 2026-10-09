@@ -1,6 +1,8 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type {
+  NodeDefinitionCatalogItem,
+  ConnectionResponse,
+  AccessibleWorkspace,
+} from '@pertexo/contracts';
 import {
   useCallback,
   useMemo,

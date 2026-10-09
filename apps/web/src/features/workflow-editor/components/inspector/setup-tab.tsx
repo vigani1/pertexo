@@ -1,6 +1,8 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  NodeDefinitionCatalogItem,
+  ConnectionResponse,
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
 import { BracesIcon, ListIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';

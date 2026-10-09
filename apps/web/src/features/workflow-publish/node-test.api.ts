@@ -6,7 +6,7 @@ import {
   type NodeTestExecuteAcceptedResponse,
   type NodeValidationResponse,
   type PreviewRunResponse,
-} from '@pertexo/contracts/schemas/node-testing';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 /** A test runs on typed JSON, or on the output of an earlier test. */

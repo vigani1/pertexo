@@ -1,7 +1,9 @@
 import { usableConnections } from '../model/destination-copy';
 import { useId, useRef, useState } from 'react';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import type {
+  ConnectionResponse,
+  FailureNotificationDestinationResponse,
+} from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';

@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react';
-import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import {

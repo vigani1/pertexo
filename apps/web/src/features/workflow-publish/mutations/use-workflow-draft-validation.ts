@@ -1,4 +1,4 @@
-import type { WorkflowValidateResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowValidateResponse } from '@pertexo/contracts';
 import { useCallback, useRef, useState, type RefObject } from 'react';
 import { retryAfterSeconds } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';

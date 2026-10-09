@@ -1,4 +1,4 @@
-import type { WorkflowFolder } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowFolder } from '@pertexo/contracts';
 
 /** Names in the bounded current hierarchy; neither recursive workflow discovery nor authority. */
 export function workflowFolderOptions(folders: readonly WorkflowFolder[]) {

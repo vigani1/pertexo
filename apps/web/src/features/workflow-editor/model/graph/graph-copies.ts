@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { cardSize, overlaps, settleBodyLayout } from './for-each-body-layout';
 import { removeWorkflowElements } from './graph-commands';
 import {

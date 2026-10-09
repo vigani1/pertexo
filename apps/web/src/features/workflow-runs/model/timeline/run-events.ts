@@ -2,7 +2,7 @@ import {
   workflowRunEventSchema,
   type WorkflowRunEvent,
   type WorkflowRunSummary,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import type { SseMessage } from '@/lib/api/sse';
 
 /** Enough for the thread view of long, retry-heavy runs; still bounded. */

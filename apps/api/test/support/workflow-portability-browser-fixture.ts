@@ -2,15 +2,15 @@ import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { expect } from 'vitest';
 import { z } from 'zod';
-import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';
-import { connectionListResponseSchema } from '@pertexo/contracts/schemas/connections';
 import {
+  nodeDefinitionListResponseSchema,
+  connectionListResponseSchema,
   workflowCreateResponseSchema,
   workflowDraftResponseSchema,
   workflowPublishResponseSchema,
   type WorkflowGraphContract,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import { workspaceResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';
+  workspaceResponseSchema,
+} from '@pertexo/contracts';
 import type { useBetterAuthRealApi } from './better-auth-real-api.integration.support.js';
 
 type Api = ReturnType<typeof useBetterAuthRealApi>;

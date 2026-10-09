@@ -11,11 +11,11 @@ import {
   workflowInputCaseResponseSchema,
   workflowInputCaseListResponseSchema,
   workflowInputCaseTagSchema,
-} from '../src/http/workflow-input-cases.js';
+} from '../src/schemas/workflow-input-cases.js';
 import {
   workflowAuthoringOpenApiDocument,
   workflowAuthoringClientContract,
-} from '../src/workflow-authoring.js';
+} from '../src/server.js';
 import { API_PROBLEM_MANIFEST } from '../src/errors/api-problem.js';
 
 const caseId = '11111111-1111-4111-8111-111111111111';

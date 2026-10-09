@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { UsageCapacityResponse } from '@pertexo/contracts/workflow-runs';
+import type { UsageCapacityResponse } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {

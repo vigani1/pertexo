@@ -1,4 +1,4 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { FinalConnectionState } from '@xyflow/react';
 import type { PortRef } from './graph/graph-commands';
 import type { GraphLevel } from './graph/graph-scopes';

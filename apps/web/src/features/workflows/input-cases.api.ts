@@ -6,7 +6,7 @@ import {
   workflowInputCaseUpdateRequestSchema,
   type WorkflowInputCaseCreateRequest,
   type WorkflowInputCaseUpdateRequest,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 function casesPath(workspaceId: string, workflowId: string): `/v1${string}` {

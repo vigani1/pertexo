@@ -1,4 +1,4 @@
-import { workspaceInboxStreamEventSchema } from '@pertexo/contracts/schemas/workspace-inbox';
+import { workspaceInboxStreamEventSchema } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';

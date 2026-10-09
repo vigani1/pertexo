@@ -8,7 +8,7 @@ import {
   oidcStartResponseSchema,
   type InvitationAcceptanceJourney,
   type InvitationAcceptanceReceipt,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 export function resolveInvitation(

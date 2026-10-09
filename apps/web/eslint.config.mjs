@@ -39,8 +39,7 @@ export default tseslint.config(
                 'Browser-only app. Add a reviewed browser-safe public contract subpath explicitly when wiring the API; never import backend runtime code.',
             },
             {
-              regex:
-                '^@pertexo/(?!(?:contracts/schemas/(?:artifacts|catalog|connections|errors|failure-notifications|identity-workspace|node-testing|schedules|transport|webhooks|workflow-authoring|workflow-portability|workflow-runs|workspace-inbox)|workflow-model|templates)$).+',
+              regex: '^@pertexo/(?!(?:contracts|workflow-model|templates)$).+',
               message:
                 'Import only an explicitly reviewed browser-safe contract schema subpath.',
             },
@@ -94,9 +93,9 @@ export default tseslint.config(
                 'Shared UI and utilities cannot depend on application orchestration, features, or backend runtimes.',
             },
             {
-              regex: '^@pertexo/(?!contracts/schemas/(?:errors|transport)$).+',
+              regex: '^@pertexo/(?!contracts$).+',
               message:
-                'Shared UI and utilities may import only reviewed browser-safe contract schema subpaths.',
+                'Shared UI and utilities may import only the browser-safe contracts.',
             },
           ],
         },

@@ -1,8 +1,8 @@
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
+  WorkflowRunEvent,
+} from '@pertexo/contracts';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {

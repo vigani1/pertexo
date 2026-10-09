@@ -2,8 +2,8 @@ import {
   apiProblemSchema,
   apiProblemShape,
   type ApiProblem,
-} from '@pertexo/contracts/schemas/errors';
-import { csrfTokenSchema } from '@pertexo/contracts/schemas/transport';
+  csrfTokenSchema,
+} from '@pertexo/contracts';
 import { ApiError, isApiError } from './api-error';
 import { requestController } from './request-controller';
 

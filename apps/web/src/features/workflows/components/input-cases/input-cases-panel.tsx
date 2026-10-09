@@ -1,11 +1,11 @@
 import { useEffect, useId, useState } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
   workflowInputCaseCreateRequestSchema,
   workflowInputCaseUpdateRequestSchema,
   type WorkflowInputCase,
   type WorkflowSummary,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

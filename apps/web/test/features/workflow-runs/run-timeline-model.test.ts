@@ -3,7 +3,7 @@ import type {
   WorkflowNodeRunSummary,
   WorkflowRunEvent,
   WorkflowRunSummary,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { describeRunEvent } from '@/features/workflow-runs/model/timeline/event-copy';
 import { describeRunSentence } from '@/features/workflow-runs/model/run-sentence';

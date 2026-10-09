@@ -2,8 +2,10 @@ import { http, HttpResponse } from 'msw';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import { workflowSummarySchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  accessibleWorkspaceSchema,
+  workflowSummarySchema,
+} from '@pertexo/contracts';
 import { InputCasesPanel } from '@/features/workflows/input-cases.public';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';

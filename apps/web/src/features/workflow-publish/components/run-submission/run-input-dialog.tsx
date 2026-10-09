@@ -1,8 +1,7 @@
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import {
   InputCasesPanel,
   type LoadedInputCase,

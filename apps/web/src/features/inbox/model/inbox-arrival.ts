@@ -1,4 +1,4 @@
-import type { WorkspaceInboxThread } from '@pertexo/contracts/schemas/workspace-inbox';
+import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
 import { describeInboxThread } from './inbox-thread';

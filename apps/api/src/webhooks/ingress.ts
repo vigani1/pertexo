@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   idempotencyKeySchema,
   webhookJsonContentTypeSchema,
-} from '@pertexo/contracts/transport';
+} from '@pertexo/contracts';
 
 import {
   WebhookIngressRateLimitExceededError,

@@ -1,4 +1,4 @@
-import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunEvent } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { formatClock, formatDurationMs } from '@/lib/format-time';
 

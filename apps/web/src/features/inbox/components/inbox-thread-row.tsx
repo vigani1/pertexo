@@ -1,4 +1,4 @@
-import type { WorkspaceInboxThread } from '@pertexo/contracts/schemas/workspace-inbox';
+import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
 import { Button } from '@/components/ui/button';

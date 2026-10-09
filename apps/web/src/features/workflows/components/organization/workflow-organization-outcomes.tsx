@@ -1,7 +1,7 @@
 import type {
   WorkflowOrganizationProjectionResponse,
   WorkflowOrganizationBulkItemOutcome,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { organizationOutcomeText } from './organization-editing';
 
 /** Ordered receipts explain this command, never replace current metadata. */

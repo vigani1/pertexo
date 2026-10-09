@@ -2,7 +2,7 @@ import type {
   WorkflowRunListResponse,
   WorkflowRunStatisticsResponse,
   WorkflowRunStatisticsWindow,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import {
   infiniteQueryOptions,
   queryOptions,

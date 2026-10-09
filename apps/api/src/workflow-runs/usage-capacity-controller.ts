@@ -1,5 +1,5 @@
 import { Controller, Get, Header, Param, Req, UseGuards } from '@nestjs/common';
-import { workflowRunListParamsSchema } from '@pertexo/contracts/workflow-runs';
+import { workflowRunListParamsSchema } from '@pertexo/contracts';
 
 import { SessionAuthenticationGuard } from '../identity-workspace/index.js';
 import { optionalAuthorizedWorkspace } from '../identity-workspace/authenticated-command-context.js';

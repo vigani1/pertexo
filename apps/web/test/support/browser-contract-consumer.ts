@@ -1,21 +1,21 @@
-import { artifactMetadataResponseSchema } from '@pertexo/contracts/schemas/artifacts';
-import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';
-import { connectionListResponseSchema } from '@pertexo/contracts/schemas/connections';
-import { apiProblemSchema } from '@pertexo/contracts/schemas/errors';
-import { accessibleWorkspacesResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import { nodeValidationResponseSchema } from '@pertexo/contracts/schemas/node-testing';
-import { failureNotificationDestinationListResponseSchema } from '@pertexo/contracts/schemas/failure-notifications';
-import { scheduleTriggerListResponseSchema } from '@pertexo/contracts/schemas/schedules';
-import { workflowListResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
+  artifactMetadataResponseSchema,
+  nodeDefinitionListResponseSchema,
+  connectionListResponseSchema,
+  apiProblemSchema,
+  accessibleWorkspacesResponseSchema,
+  nodeValidationResponseSchema,
+  failureNotificationDestinationListResponseSchema,
+  scheduleTriggerListResponseSchema,
+  workflowListResponseSchema,
   workflowPortableManifestSchema,
   workflowImportPreviewResponseSchema,
   parsePortableJson,
   portableGraphDigest,
-} from '@pertexo/contracts/schemas/workflow-portability';
-import { workflowRunResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
-import { webhookTriggerListResponseSchema } from '@pertexo/contracts/schemas/webhooks';
-import { workspaceInboxListResponseSchema } from '@pertexo/contracts/schemas/workspace-inbox';
+  workflowRunResponseSchema,
+  webhookTriggerListResponseSchema,
+  workspaceInboxListResponseSchema,
+} from '@pertexo/contracts';
 
 export const browserContractConsumer = Object.freeze({
   artifact: artifactMetadataResponseSchema,

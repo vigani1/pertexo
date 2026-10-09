@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { WorkflowDuplicateResponse } from '@pertexo/contracts/workflow-authoring';
+import type { WorkflowDuplicateResponse } from '@pertexo/contracts';
 import {
   closeWorkflowLifecycleApiFixture,
   createWorkflowLifecycleApiFixture,

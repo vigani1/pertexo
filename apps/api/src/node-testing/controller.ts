@@ -13,7 +13,7 @@ import {
   nodeTestParamsSchema,
   nodeTestRequestSchema,
   previewRunParamsSchema,
-} from '@pertexo/contracts/node-testing';
+} from '@pertexo/contracts';
 
 import {
   CsrfProtectionGuard,

@@ -3,8 +3,10 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { expect, it, vi } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import { workflowSummarySchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  accessibleWorkspaceSchema,
+  workflowSummarySchema,
+} from '@pertexo/contracts';
 import { RunInputDialog } from '@/features/workflow-publish/components/run-submission/run-input-dialog';
 import { RunMenu } from '@/features/workflow-publish/components/run-submission/run-menu';
 import { useWorkflowRunSubmission } from '@/features/workflow-publish/mutations/use-workflow-run-submission';

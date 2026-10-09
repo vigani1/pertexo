@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { connectionUsageResponseSchema } from '@pertexo/contracts/connections';
+import { connectionUsageResponseSchema } from '@pertexo/contracts';
 
 import {
   ListConnectionUsageUseCase,

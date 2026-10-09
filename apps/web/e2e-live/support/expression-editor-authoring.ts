@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 import {
   strongEtagSchema,
   workflowDraftResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { addSingleStep, readEditorDraft } from './single-step-authoring';
 
 export async function readTaggedExpressionDraft(

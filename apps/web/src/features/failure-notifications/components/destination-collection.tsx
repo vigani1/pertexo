@@ -1,5 +1,7 @@
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import type {
+  ConnectionResponse,
+  FailureNotificationDestinationResponse,
+} from '@pertexo/contracts';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import { StaleLine } from '@/components/patterns/stale-line';

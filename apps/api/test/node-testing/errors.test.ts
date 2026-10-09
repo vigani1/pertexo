@@ -1,5 +1,5 @@
 import type { ArgumentsHost } from '@nestjs/common';
-import { apiProblemSchema } from '@pertexo/contracts/errors';
+import { apiProblemSchema } from '@pertexo/contracts';
 import {
   PriorPreviewInputUnavailableError,
   WorkflowNotFoundError,

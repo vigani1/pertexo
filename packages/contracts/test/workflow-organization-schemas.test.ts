@@ -18,7 +18,7 @@ import {
   workflowTagRevisionSchema,
   workflowTagSchema,
   WORKFLOW_ORGANIZATION_LIMITS,
-} from '../src/http/workflow-organization.js';
+} from '../src/schemas/workflow-organization.js';
 
 const firstId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const secondId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

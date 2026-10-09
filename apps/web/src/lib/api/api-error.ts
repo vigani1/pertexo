@@ -1,4 +1,4 @@
-import type { ApiProblem } from '@pertexo/contracts/schemas/errors';
+import type { ApiProblem } from '@pertexo/contracts';
 
 type ApiErrorKind = 'canceled' | 'network' | 'problem' | 'protocol' | 'timeout';
 

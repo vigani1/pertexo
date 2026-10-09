@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { oidcCallbackRequestSchema } from '@pertexo/contracts/identity-workspace';
+import { oidcCallbackRequestSchema } from '@pertexo/contracts';
 
 export const oidcConfigurationSchema = z.object({
   issuer: z.url(),

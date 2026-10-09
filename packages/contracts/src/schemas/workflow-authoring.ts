@@ -28,7 +28,6 @@ import {
 export const strongEtagSchema = z
   .string()
   .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
-export const ifMatchHeaderSchema = strongEtagSchema;
 export const workflowIdentifierSchema = z.uuid();
 export const workflowLifecycleRevisionSchema = z
   .number()
@@ -110,7 +109,7 @@ export const workflowCompatibilityReportSchema = z
   .strict();
 /** Includes server authoring findings such as invalid_expression; executable issues remain supported. */
 export const workflowValidationIssueSchema = apiProblemIssueSchema;
-export const workflowValidationReportSchema = z
+export const workflowValidateResponseSchema = z
   .object({
     valid: z.boolean(),
     issues: z
@@ -187,7 +186,6 @@ export const workflowDraftResponseSchema = z
 export const workflowDraftSaveRequestSchema = z
   .object({ graph: workflowGraphSchema })
   .strict();
-export const workflowValidateResponseSchema = workflowValidationReportSchema;
 
 export const workflowVersionResponseSchema = z
   .object({

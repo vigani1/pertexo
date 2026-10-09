@@ -15,12 +15,12 @@ import {
   workspaceRenameRequestSchema,
   workspaceInvitationCreateRequestSchema,
   workspaceMemberRoleChangeRequestSchema,
-} from '../src/http/identity-workspace.js';
+} from '../src/schemas/identity-workspace.js';
 import {
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
-} from '../src/identity-workspace.js';
-import { manifestProblemResponse } from '../src/openapi-primitives.js';
+} from '../src/server.js';
+import { manifestProblemResponse } from '../src/openapi/primitives.js';
 
 describe('identity and problem public contracts', () => {
   it('fails closed for mismatched canonical problem metadata', () => {

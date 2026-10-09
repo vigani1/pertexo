@@ -6,7 +6,7 @@ import {
   authenticationProviderSchema,
   legacyMethodMigrationStartRequestSchema,
   legacyMethodMigrationStartResponseSchema,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 
 import type { OidcLoginService } from '../identity/oidc.js';
 import type { LinkProviderGateway } from './account-linking.js';

@@ -1,4 +1,4 @@
-import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
+import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';

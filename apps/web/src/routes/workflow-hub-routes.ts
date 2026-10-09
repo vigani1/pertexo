@@ -1,5 +1,5 @@
 import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
-import { workflowIdentifierSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowIdentifierSchema } from '@pertexo/contracts';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import {
   failureNotificationPolicyQueryOptions,

@@ -2,7 +2,7 @@ import type {
   AccessibleWorkspace,
   WorkspaceCreateRequest,
   WorkspaceResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import {
   mutationOptions,
   useMutation,

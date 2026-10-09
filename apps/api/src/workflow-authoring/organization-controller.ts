@@ -16,7 +16,7 @@ import {
   workflowTagWorkspaceParamsSchema,
   workflowTagParamsSchema,
   workflowIdParamSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   SessionAuthenticationGuard,
   CsrfProtectionGuard,

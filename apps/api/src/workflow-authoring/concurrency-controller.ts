@@ -9,7 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { workflowIdParamSchema } from '@pertexo/contracts/workflow-authoring';
+import { workflowIdParamSchema } from '@pertexo/contracts';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,

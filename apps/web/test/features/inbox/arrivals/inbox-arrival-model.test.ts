@@ -1,4 +1,4 @@
-import type { WorkspaceInboxThread } from '@pertexo/contracts/schemas/workspace-inbox';
+import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import {
   arrivedThreads,

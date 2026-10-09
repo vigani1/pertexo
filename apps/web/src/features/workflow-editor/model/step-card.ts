@@ -1,5 +1,7 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { PreviewRunSummary } from '@pertexo/contracts/schemas/node-testing';
+import type {
+  NodeDefinitionCatalogItem,
+  PreviewRunSummary,
+} from '@pertexo/contracts';
 import {
   describeRecurrence,
   portName,

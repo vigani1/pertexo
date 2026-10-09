@@ -1,4 +1,4 @@
-import { idempotencyKeySchema } from '@pertexo/contracts/transport';
+import { idempotencyKeySchema } from '@pertexo/contracts';
 
 export class InvalidIdempotencyKeyError extends Error {
   public override readonly name = 'InvalidIdempotencyKeyError';

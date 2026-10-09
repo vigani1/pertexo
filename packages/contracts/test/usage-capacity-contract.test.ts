@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { usageCapacityResponseSchema } from '../src/http/workflow-runs.js';
-import { workflowRunsOpenApiDocument } from '../src/workflow-runs.js';
+import { usageCapacityResponseSchema } from '../src/schemas/workflow-runs.js';
+import { workflowRunsOpenApiDocument } from '../src/server.js';
 
 const capacity = {
   asOf: '2026-10-01T12:00:00.123456Z',

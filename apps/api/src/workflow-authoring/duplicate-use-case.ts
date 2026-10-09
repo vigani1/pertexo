@@ -2,7 +2,7 @@ import {
   workflowDuplicateRequestSchema,
   workflowDuplicateResponseSchema,
   type WorkflowDuplicateResponse,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

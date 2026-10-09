@@ -37,7 +37,7 @@ import {
   workspaceResponseSchema,
   workspaceRenameRequestSchema,
   workspaceRenameResponseSchema,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { collectPages, searchParams } from '@/lib/api/pagination';
 

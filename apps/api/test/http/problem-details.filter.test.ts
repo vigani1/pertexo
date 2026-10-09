@@ -1,13 +1,13 @@
 import { BadRequestException, HttpException } from '@nestjs/common';
 import type { ArgumentsHost } from '@nestjs/common';
-import { apiProblemSchema } from '@pertexo/contracts/errors';
 import {
+  apiProblemSchema,
   workflowPauseConflictProblemSchema,
   workflowConcurrencyRevisionConflictProblemSchema,
   workflowConcurrencyLimitExceededProblemSchema,
   workflowAutoPauseSettingsConflictProblemSchema,
   workspaceAutoPauseSettingsConflictProblemSchema,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 

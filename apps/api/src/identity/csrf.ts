@@ -1,4 +1,4 @@
-import { csrfTokenSchema } from '@pertexo/contracts/transport';
+import { csrfTokenSchema } from '@pertexo/contracts';
 
 import {
   constantTimeStringEqual,

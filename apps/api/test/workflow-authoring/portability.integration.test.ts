@@ -3,7 +3,7 @@ import {
   portableGraphDigest,
   type WorkflowPortableManifest,
   type WorkflowImportPreviewResponse,
-} from '@pertexo/contracts/workflow-portability';
+} from '@pertexo/contracts';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   closeWorkflowLifecycleApiFixture,

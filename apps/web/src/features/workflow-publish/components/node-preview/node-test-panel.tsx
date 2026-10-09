@@ -1,4 +1,4 @@
-import type { PreviewRunSummary } from '@pertexo/contracts/schemas/node-testing';
+import type { PreviewRunSummary } from '@pertexo/contracts';
 import { FlaskConicalIcon, ListChecksIcon } from 'lucide-react';
 import { useImperativeHandle, useState, type Ref } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';

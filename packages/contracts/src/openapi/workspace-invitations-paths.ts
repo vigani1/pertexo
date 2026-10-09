@@ -8,7 +8,7 @@ import {
   problemResponse,
   queryParameter,
   responseReference,
-} from './openapi-primitives.js';
+} from './primitives.js';
 import {
   invitationAcceptanceCompleteRequestSchema,
   invitationAcceptanceJourneySchema,
@@ -23,7 +23,7 @@ import {
   workspaceInvitationIdentifierSchema,
   workspaceInvitationsQuerySchema,
   workspaceInvitationsResponseSchema,
-} from './http/identity-workspace.js';
+} from '../schemas/identity-workspace.js';
 
 /**
  * Invitation management and browser-bound invitation acceptance operations

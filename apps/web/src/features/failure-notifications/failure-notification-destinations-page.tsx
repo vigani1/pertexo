@@ -1,7 +1,7 @@
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { useIsMutating, useQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import { useState, type ComponentProps } from 'react';

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { expect } from 'vitest';
 import { z } from 'zod';
-import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { workflowGraphSchema } from '@pertexo/contracts';
 
 // Test-control messages contain only result identifiers and command keys, never
 // authentication cookies, verification URLs or raw session credentials.

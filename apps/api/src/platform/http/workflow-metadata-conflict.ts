@@ -1,7 +1,7 @@
 import {
   workflowLifecycleRevisionSchema,
   workflowNameRevisionSchema,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import type { ApplicationError } from './application-error.js';
 
 type MetadataConflict = Readonly<{

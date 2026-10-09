@@ -49,7 +49,7 @@ import {
   type WorkflowValidationResult,
 } from './serializers.js';
 import { createDraftRepresentationTag } from './etag.js';
-import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts/workflow-authoring';
+import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts';
 import {
   applicationError,
   throwApplicationError,

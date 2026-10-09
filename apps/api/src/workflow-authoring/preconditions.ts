@@ -1,4 +1,4 @@
-import { idempotencyKeySchema } from '@pertexo/contracts/transport';
+import { idempotencyKeySchema } from '@pertexo/contracts';
 
 const strongDraftTagPattern = /^"draft-v1\.[A-Za-z0-9_-]{43}"$/u;
 

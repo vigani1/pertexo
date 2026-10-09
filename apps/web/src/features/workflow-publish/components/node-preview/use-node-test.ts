@@ -1,7 +1,7 @@
 import type {
   NodeValidationResponse,
   PreviewRunSummary,
-} from '@pertexo/contracts/schemas/node-testing';
+} from '@pertexo/contracts';
 import { useEffect, useRef, useState } from 'react';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';

@@ -1,4 +1,4 @@
-import { workflowRunEventSchema } from '@pertexo/contracts/workflow-runs';
+import { workflowRunEventSchema } from '@pertexo/contracts';
 
 import type {
   SseVisibilityMetrics,

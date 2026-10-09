@@ -1,5 +1,7 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowAutoPauseSettings } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  AccessibleWorkspace,
+  WorkflowAutoPauseSettings,
+} from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';

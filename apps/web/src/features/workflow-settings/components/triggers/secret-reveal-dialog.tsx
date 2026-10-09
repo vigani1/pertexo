@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import type { WebhookManagementCommandResponse } from '@pertexo/contracts/schemas/webhooks';
+import type { WebhookManagementCommandResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

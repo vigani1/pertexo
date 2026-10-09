@@ -1,5 +1,5 @@
 // @vitest-environment node
-import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunReadSummary } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import {
   firstThreadSteps,

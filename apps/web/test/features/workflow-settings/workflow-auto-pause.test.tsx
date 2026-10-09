@@ -2,7 +2,7 @@ import { HttpResponse, http } from 'msw';
 import { screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import type { WorkflowAutoPauseSettings } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
 import { mockServer } from '../../support/mock-server';
 import { unpausedWorkflowSettings } from '../../support/auto-pause-fixtures';
 import { renderApp } from '../../support/render-app';

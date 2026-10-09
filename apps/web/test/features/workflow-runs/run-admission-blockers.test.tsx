@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RunAdmissionBlockers } from '@/features/workflow-runs/components/run-admission-blockers';
 import { fixtureIds, fixtureRun } from '../../support/run-fixtures';
-import { workflowRunReadSummarySchema } from '@pertexo/contracts/schemas/workflow-runs';
+import { workflowRunReadSummarySchema } from '@pertexo/contracts';
 
 function run(
   status: Parameters<typeof fixtureRun>[1],

@@ -6,8 +6,8 @@ import {
 import {
   workspaceLifecycleOperationIdentifierSchema,
   type AccessibleWorkspace,
-} from '@pertexo/contracts/schemas/identity-workspace';
-import { workflowRunIdentifierSchema } from '@pertexo/contracts/schemas/workflow-runs';
+  workflowRunIdentifierSchema,
+} from '@pertexo/contracts';
 import {
   connectionDiscoveryQueryOptions,
   connectionsInfiniteQueryOptions,

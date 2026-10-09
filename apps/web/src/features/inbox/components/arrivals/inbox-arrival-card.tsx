@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { WorkspaceInboxThread } from '@pertexo/contracts/schemas/workspace-inbox';
+import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { Toast } from '@base-ui/react/toast';
 import { Link } from '@tanstack/react-router';
 import { XIcon } from 'lucide-react';

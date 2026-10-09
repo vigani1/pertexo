@@ -1,4 +1,4 @@
-import { slackChannelLookupIdSchema } from '@pertexo/contracts/schemas/connections';
+import { slackChannelLookupIdSchema } from '@pertexo/contracts';
 import type { WorkflowNode } from '../graph/graph-scopes';
 import type { FieldParseResult } from './inspector-draft';
 

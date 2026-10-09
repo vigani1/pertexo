@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import {

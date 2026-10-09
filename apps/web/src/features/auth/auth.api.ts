@@ -6,7 +6,7 @@ import {
   type AuthenticationCapabilitiesResponse,
   type UserProfileResponse,
   type UserProfileUpdateResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 export function getAuthenticationCapabilities(

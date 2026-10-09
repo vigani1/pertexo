@@ -8,7 +8,7 @@ import type {
   ConnectionCreateRequest,
   ConnectionResponse,
   ConnectionTestRequest,
-} from '@pertexo/contracts/schemas/connections';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import {
   createConnection,

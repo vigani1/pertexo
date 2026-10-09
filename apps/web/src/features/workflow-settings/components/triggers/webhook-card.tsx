@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
+import type { WebhookTriggerHealthResponse } from '@pertexo/contracts';
 import { KeyRoundIcon, RefreshCwIcon } from 'lucide-react';
 import { StepTile, describeStep } from '@/features/catalog/presentation.public';
 import { Notice } from '@/components/ui/notice';

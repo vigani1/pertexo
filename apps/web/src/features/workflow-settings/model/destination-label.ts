@@ -1,4 +1,4 @@
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import {
   channelKey,
   describeChannel,

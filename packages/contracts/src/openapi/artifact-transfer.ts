@@ -1,4 +1,4 @@
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -9,16 +9,14 @@ import {
   problemResponse,
   responseReference,
   uuidPathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 import {
   artifactDownloadResponseSchema,
   artifactFinalizeRequestSchema,
   artifactMetadataResponseSchema,
   artifactUploadRequestSchema,
   artifactUploadResponseSchema,
-} from './http/artifact-transfer.js';
-
-export * from './http/artifact-transfer.js';
+} from '../schemas/artifact-transfer.js';
 
 const schemas = Object.freeze({
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),

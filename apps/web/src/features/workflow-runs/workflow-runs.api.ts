@@ -23,7 +23,7 @@ import {
   type WorkflowRunStartResponse,
   type WorkflowRunStatisticsQuery,
   type WorkflowRunStatisticsResponse,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
 import type { RunHistoryFilters } from './model/list/run-search';
 import { searchParams } from '@/lib/api/pagination';

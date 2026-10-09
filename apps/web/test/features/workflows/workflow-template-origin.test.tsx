@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { createQueryClient } from '@/app/query-client';
 import { WorkflowTemplateOrigin } from '@/features/workflows/components/templates/workflow-template-origin';
 import {

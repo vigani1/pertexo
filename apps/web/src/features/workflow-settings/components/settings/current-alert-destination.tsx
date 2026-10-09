@@ -1,4 +1,4 @@
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';

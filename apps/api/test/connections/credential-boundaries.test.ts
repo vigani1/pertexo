@@ -2,7 +2,7 @@ import {
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
   slackBotTokenCredentialSchema,
-} from '@pertexo/contracts/connections';
+} from '@pertexo/contracts';
 import {
   resolvedHttpHeadersCredentialSchema,
   resolvedResendApiKeyCredentialSchema,

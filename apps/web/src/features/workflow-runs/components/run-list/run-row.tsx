@@ -1,5 +1,7 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowRunListItem } from '@pertexo/contracts/schemas/workflow-runs';
+import type {
+  AccessibleWorkspace,
+  WorkflowRunListItem,
+} from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
 import { cn } from '@/lib/utils';

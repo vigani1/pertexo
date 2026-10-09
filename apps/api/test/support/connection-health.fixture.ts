@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
   connectionResponseSchema,
   connectionUsageResponseSchema,
-} from '@pertexo/contracts/connections';
+} from '@pertexo/contracts';
 import {
   ConnectionEnvelopeEncryption,
   createSlackClient,

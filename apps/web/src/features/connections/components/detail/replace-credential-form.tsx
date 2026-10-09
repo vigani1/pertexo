@@ -1,5 +1,5 @@
 import { useId, useRef } from 'react';
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';

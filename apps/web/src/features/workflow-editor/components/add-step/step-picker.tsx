@@ -1,4 +1,4 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { SearchIcon } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { cn } from '@/lib/utils';

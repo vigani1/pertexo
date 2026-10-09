@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { catalogQuerySchema } from '@pertexo/contracts/catalog';
+import { catalogQuerySchema } from '@pertexo/contracts';
 
 import { SessionAuthenticationGuard } from '../identity-workspace/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';

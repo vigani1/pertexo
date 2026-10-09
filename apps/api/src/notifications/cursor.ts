@@ -1,4 +1,4 @@
-import type { WorkspaceInboxFilter } from '@pertexo/contracts/workspace-inbox';
+import type { WorkspaceInboxFilter } from '@pertexo/contracts';
 import { z } from 'zod';
 
 const cursorPayloadSchema = z

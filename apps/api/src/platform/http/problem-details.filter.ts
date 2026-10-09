@@ -5,7 +5,7 @@ import {
   type ConcurrencyConflict,
 } from './concurrency-conflict.js';
 
-import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts/errors';
+import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts';
 import {
   strongEtagSchema,
   workflowRevisionConflictProblemSchema,
@@ -14,7 +14,7 @@ import {
   type WorkflowLifecycleConflictProblem,
   type WorkflowNameConflictProblem,
   type WorkflowRevisionConflictProblem,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { ZodError } from 'zod';

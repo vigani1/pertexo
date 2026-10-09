@@ -1,10 +1,9 @@
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import type { ConnectionResponse, ApiProblemIssue } from '@pertexo/contracts';
 import {
   failureNotificationDestinationConfigSchema,
   type FailureNotificationDestinationConfig,
   type FailureNotificationDestinationResponse,
-} from '@pertexo/contracts/schemas/failure-notifications';
-import type { ApiProblemIssue } from '@pertexo/contracts/schemas/errors';
+} from '@pertexo/contracts';
 import {
   channelKey,
   describeChannel,

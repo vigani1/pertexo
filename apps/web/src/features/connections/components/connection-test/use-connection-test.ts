@@ -3,7 +3,7 @@ import type {
   ConnectionResponse,
   ConnectionTestRequest,
   ConnectionTestResponse,
-} from '@pertexo/contracts/schemas/connections';
+} from '@pertexo/contracts';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
 import { connectionCommandError } from '../../connection-errors';

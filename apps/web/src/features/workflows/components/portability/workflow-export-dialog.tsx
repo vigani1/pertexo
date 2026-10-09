@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   portableGraphDigest,
   type WorkflowExportRequest,
-} from '@pertexo/contracts/schemas/workflow-portability';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
+import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {

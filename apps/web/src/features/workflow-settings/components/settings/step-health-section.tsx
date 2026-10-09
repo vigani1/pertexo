@@ -1,5 +1,7 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  AccessibleWorkspace,
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { SettingsSection } from '@/components/patterns/settings-section';

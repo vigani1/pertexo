@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import {
   CURATED_WORKFLOW_TEMPLATES,
   verifyCuratedTemplateManifest,

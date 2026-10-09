@@ -1,4 +1,4 @@
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowSummary } from '@pertexo/contracts';
 
 /** Row controls that stay out of the way until the row is hovered or focused. */
 export const ROW_REVEAL_CLASS =

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
+import type { WebhookTriggerHealthResponse } from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';

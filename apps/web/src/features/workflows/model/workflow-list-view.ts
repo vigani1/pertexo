@@ -1,9 +1,6 @@
-import type {
-  WorkflowListQuery,
-  WorkflowSummary,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowListQuery, WorkflowSummary } from '@pertexo/contracts';
+import { workflowOrganizationListQuerySchema } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { workflowOrganizationListQuerySchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { describeWorkflowState } from './workflow-state';
 
 export type WorkflowView = 'active' | 'archived' | 'all';

@@ -7,7 +7,7 @@ import {
   problemResponse,
   queryParameter,
   responseReference,
-} from './openapi-primitives.js';
+} from './primitives.js';
 import {
   accountSecurityLinkStartRequestSchema,
   accountSecurityLinkStartResponseSchema,
@@ -27,7 +27,7 @@ import {
   legacyMethodMigrationStartResponseSchema,
   oidcAuthorizationCodeSchema,
   oidcStateSchema,
-} from './http/authentication.js';
+} from '../schemas/authentication.js';
 
 /**
  * Sign-in, browser-session and account-security operations of the

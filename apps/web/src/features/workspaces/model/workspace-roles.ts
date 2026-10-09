@@ -1,7 +1,4 @@
-import type {
-  AccessibleWorkspace,
-  WorkspaceMember,
-} from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace, WorkspaceMember } from '@pertexo/contracts';
 
 export type WorkspaceRole = AccessibleWorkspace['role'];
 export type ManagedRole = Exclude<WorkspaceRole, 'owner'>;

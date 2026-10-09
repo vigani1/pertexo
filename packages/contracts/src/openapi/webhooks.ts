@@ -1,6 +1,4 @@
-export * from './http/webhooks.js';
-
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   webhookDeliveryCursorSchema,
   webhookDeliveryListResponseSchema,
@@ -9,7 +7,7 @@ import {
   webhookManagementCommandResponseSchema,
   webhookRotateSecretRequestSchema,
   webhookTriggerListResponseSchema,
-} from './http/webhooks.js';
+} from '../schemas/webhooks.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -22,7 +20,7 @@ import {
   queryParameter,
   responseReference,
   webhookContentTypeHeaderParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
 function pathParameter(name: string, pattern?: string) {
   return openApiPathParameter(name, {

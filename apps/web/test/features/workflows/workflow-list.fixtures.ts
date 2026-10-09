@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import type { NodeDefinitionListResponse } from '@pertexo/contracts/schemas/catalog';
+import type { NodeDefinitionListResponse } from '@pertexo/contracts';
 
 // Contract-valid fixtures shared by the workflow list and New workflow tests.
 

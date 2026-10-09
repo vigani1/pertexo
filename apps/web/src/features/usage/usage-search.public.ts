@@ -1,7 +1,7 @@
 import {
   workflowRunStatisticsWindowSchema,
   type WorkflowRunStatisticsWindow,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 
 export type UsageSearch = Readonly<{ window: WorkflowRunStatisticsWindow }>;
 

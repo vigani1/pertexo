@@ -3,7 +3,7 @@ import {
   nodeDefinitionListResponseSchema,
   type IntegrationListResponse,
   type NodeDefinitionListResponse,
-} from '@pertexo/contracts/catalog';
+} from '@pertexo/contracts';
 import {
   platformBrowserNodeDefinitionCatalog,
   type PlatformNodeDefinitionBrowserCatalog,

@@ -9,7 +9,7 @@ import {
   type WorkflowRunInputResponse,
   type WorkflowStepHealthResponse,
   type WorkflowStepRunsResponse,
-} from '@pertexo/contracts/workflow-runs';
+} from '@pertexo/contracts';
 
 import {
   authorizeWorkspaceOperation,

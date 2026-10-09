@@ -2,7 +2,7 @@ import {
   authenticationProviderSchema,
   type AccountSecurityLinkStartRequest,
   type AccountSecurityResponse,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { useState, type SyntheticEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import {

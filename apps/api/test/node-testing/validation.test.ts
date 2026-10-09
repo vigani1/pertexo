@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { nodeValidationResponseSchema } from '@pertexo/contracts/node-testing';
+import { nodeValidationResponseSchema } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { prepareNodeValidation } from '../../src/node-testing/validation.js';

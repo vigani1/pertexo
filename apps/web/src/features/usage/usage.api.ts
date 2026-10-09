@@ -1,4 +1,4 @@
-import { usageCapacityResponseSchema } from '@pertexo/contracts/schemas/workflow-runs';
+import { usageCapacityResponseSchema } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 export function getUsageCapacity(

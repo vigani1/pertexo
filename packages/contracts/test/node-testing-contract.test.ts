@@ -7,11 +7,11 @@ import {
   nodeTestRequestSchema,
   nodeValidationResponseSchema,
   previewRunResponseSchema,
-} from '../src/http/node-testing.js';
+} from '../src/schemas/node-testing.js';
 import {
   nodeTestingClientContract,
   nodeTestingOpenApiDocument,
-} from '../src/node-testing.js';
+} from '../src/server.js';
 
 function nestedArray(depth: number): unknown {
   let value: unknown = null;

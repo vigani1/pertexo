@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import {
   usageCapacityResponseSchema,
   workflowRunStatisticsResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 
 test('reports real current capacity and retained activity with exact drilldowns', async ({

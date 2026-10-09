@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type {
+  AccessibleWorkspace,
   PortableConnectionBinding,
   WorkflowImportPreviewResponse,
   WorkflowPortableManifest,
-} from '@pertexo/contracts/schemas/workflow-portability';
+} from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

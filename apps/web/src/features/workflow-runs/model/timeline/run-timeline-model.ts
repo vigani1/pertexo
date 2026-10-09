@@ -1,9 +1,9 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type {
+  WorkflowGraphContract,
   WorkflowNodeRunSummary,
   WorkflowRunEvent,
   WorkflowRunSummary,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { formatDurationMs } from '@/lib/format-time';

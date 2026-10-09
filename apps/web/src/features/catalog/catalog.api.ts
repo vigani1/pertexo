@@ -1,7 +1,7 @@
 import {
   integrationListResponseSchema,
   nodeDefinitionListResponseSchema,
-} from '@pertexo/contracts/schemas/catalog';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 export async function getAuthoringCatalog(

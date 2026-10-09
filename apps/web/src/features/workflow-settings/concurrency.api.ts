@@ -5,7 +5,7 @@ import {
   workflowConcurrencyRevisionConflictProblemSchema,
   workflowConcurrencyLimitExceededProblemSchema,
   type WorkflowConcurrencySettingsRequest,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 
 function path(workspaceId: string, workflowId: string): `/v1${string}` {

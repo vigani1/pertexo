@@ -8,9 +8,9 @@ import {
   problemResponse,
   responseReference,
   uuidPathParameter as pathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import { projectContractSchema } from './schema-projection.js';
 import {
   lastRunEventIdHeaderSchema,
@@ -42,9 +42,7 @@ import {
   workflowStepHealthResponseSchema,
   workflowStepRunsResponseSchema,
   workflowStepRunsQuerySchema,
-} from './http/workflow-runs.js';
-
-export * from './http/workflow-runs.js';
+} from '../schemas/workflow-runs.js';
 
 const schemas = Object.freeze({
   UsageCapacityResponse: jsonSchema(usageCapacityResponseSchema, 'output'),

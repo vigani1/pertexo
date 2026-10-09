@@ -16,7 +16,7 @@ import {
 import {
   integrationListResponseSchema,
   nodeDefinitionListResponseSchema,
-} from '@pertexo/contracts/catalog';
+} from '@pertexo/contracts';
 import { RATE_LIMIT_METADATA } from '../../src/platform/rate-limit/metadata.js';
 
 describe('catalog controller public seam', () => {

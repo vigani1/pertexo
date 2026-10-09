@@ -8,8 +8,10 @@ import {
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import { workflowSummarySchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  accessibleWorkspaceSchema,
+  workflowSummarySchema,
+} from '@pertexo/contracts';
 import { useOrganizationList } from '@/features/workflows/use-organization-list';
 import { WorkflowOrganizationFilters } from '@/features/workflows/components/organization/workflow-organization-filters';
 import { workflowOrganizationKeys } from '@/features/workflows/organization.queries';

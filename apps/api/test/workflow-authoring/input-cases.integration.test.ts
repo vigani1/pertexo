@@ -6,7 +6,7 @@ import {
   workflowInputCaseCommandResponseSchema,
   workflowInputCaseResponseSchema,
   workflowInputCaseListResponseSchema,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   betterAuthIntegrationEnabled,
   expectProblem,

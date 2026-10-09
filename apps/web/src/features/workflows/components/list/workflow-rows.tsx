@@ -1,6 +1,5 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import { LoadMore } from '@/components/patterns/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';

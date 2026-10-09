@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { WorkflowPublication } from '../mutations/use-workflow-publication';
 import {
   groupWorkflowIssues,

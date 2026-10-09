@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
-import { authenticationReturnPathSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { authenticationReturnPathSchema } from '@pertexo/contracts';
 import {
   insertAuthenticationMail,
   recordIdentitySecurityFact,

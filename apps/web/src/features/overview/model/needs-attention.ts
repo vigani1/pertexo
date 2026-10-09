@@ -1,7 +1,9 @@
-import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
-import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
-import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type {
+  ConnectionResponse,
+  FailureNotificationDestinationResponse,
+  WorkflowSummary,
+  WorkflowRunReadSummary,
+} from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { formatElapsedTime } from '@/lib/format-time';
 

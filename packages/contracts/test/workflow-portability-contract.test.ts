@@ -3,16 +3,16 @@ import {
   workflowImportPreviewRequestSchema,
   workflowImportRequestSchema,
   workflowPortableManifestSchema,
-} from '../src/http/workflow-portability.js';
+} from '../src/schemas/workflow-portability.js';
 import {
   workflowSummaryResponseSchema,
   workflowTemplateOriginProjectionQuerySchema,
   workflowTemplateOriginProjectionResponseSchema,
-} from '../src/http/workflow-authoring.js';
+} from '../src/schemas/workflow-authoring.js';
 import {
   workflowPortabilityClientContract,
   workflowPortabilityOpenApiDocument,
-} from '../src/workflow-portability.js';
+} from '../src/server.js';
 
 describe('portable workflow public HTTP contract', () => {
   const manifest = {

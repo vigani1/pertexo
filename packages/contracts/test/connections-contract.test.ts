@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   connectionsClientContract,
   connectionsOpenApiDocument,
-} from '../src/connections.js';
+} from '../src/server.js';
 import {
   connectionCreateRequestSchema,
   connectionResponseSchema,
@@ -15,7 +15,7 @@ import {
   resendApiKeyCredentialSchema,
   slackChannelLookupQuerySchema,
   slackChannelLookupResponseSchema,
-} from '../src/http/connections.js';
+} from '../src/schemas/connections.js';
 
 const connection = {
   id: '00000000-0000-4000-8000-000000000001',

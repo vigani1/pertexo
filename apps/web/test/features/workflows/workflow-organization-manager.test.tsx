@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { createApiClient } from '../../../src/lib/api/client';
 import { WorkflowOrganizationManager } from '../../../src/features/workflows/components/organization/workflow-organization-manager';
 import { WorkflowFolderPicker } from '../../../src/features/workflows/components/organization/workflow-folder-picker';

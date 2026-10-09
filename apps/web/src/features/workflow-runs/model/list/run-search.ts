@@ -3,7 +3,7 @@ import {
   workflowRunListQuerySchema,
   workflowRunTriggerTypeSchema,
   type WorkflowRunListQuery,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import type { RunTriggerType } from '../run-status';
 
 /** The run-list filters the API applies. */

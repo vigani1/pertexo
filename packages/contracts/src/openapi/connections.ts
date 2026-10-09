@@ -1,4 +1,4 @@
-import { apiProblemSchema } from './errors/api-problem.js';
+import { apiProblemSchema } from '../errors/api-problem.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -9,7 +9,7 @@ import {
   problemResponse,
   queryParameter as requiredQueryParameter,
   responseReference,
-} from './openapi-primitives.js';
+} from './primitives.js';
 import {
   connectionCursorSchema,
   connectionCreateRequestSchema,
@@ -23,7 +23,7 @@ import {
   connectionUsageResponseSchema,
   slackChannelLookupChannelIdsSchema,
   slackChannelLookupResponseSchema,
-} from './http/connections.js';
+} from '../schemas/connections.js';
 import {
   failureNotificationDestinationAppendVersionRequestSchema,
   failureNotificationDestinationCreateRequestSchema,
@@ -32,11 +32,8 @@ import {
   failureNotificationDestinationStatusRequestSchema,
   workflowFailureNotificationPolicyRequestSchema,
   workflowFailureNotificationPolicyResponseSchema,
-} from './http/failure-notification-destinations.js';
+} from '../schemas/failure-notification-destinations.js';
 import type { z } from 'zod';
-
-export * from './http/connections.js';
-export * from './http/failure-notification-destinations.js';
 
 const schemas = Object.freeze({
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),

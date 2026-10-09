@@ -1,7 +1,7 @@
 import {
   usageCapacityResponseSchema,
   type UsageCapacityResponse,
-} from '@pertexo/contracts/workflow-runs';
+} from '@pertexo/contracts';
 
 import {
   authorizeWorkspaceOperation,

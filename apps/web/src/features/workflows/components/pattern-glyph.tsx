@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { cn } from '@/lib/utils';
 import { glyphEdgePath, layoutPatternGlyph } from '../model/workflow-shape';
 

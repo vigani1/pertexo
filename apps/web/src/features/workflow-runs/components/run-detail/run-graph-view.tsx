@@ -1,5 +1,5 @@
 import '@xyflow/react/dist/style.css';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import {
   BaseEdge,
   Handle,

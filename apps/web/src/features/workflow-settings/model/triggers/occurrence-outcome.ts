@@ -1,7 +1,7 @@
 import type {
   ScheduleOccurrenceResponse,
   ScheduleTriggerHealthResponse,
-} from '@pertexo/contracts/schemas/schedules';
+} from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { formatDurationMs } from '@/lib/format-time';
 

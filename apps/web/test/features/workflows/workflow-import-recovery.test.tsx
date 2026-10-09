@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   accessibleWorkspaceSchema,
   userProfileResponseSchema,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { WorkflowListPage } from '@/features/workflows/workflow-list-page';
 import { createApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/api-error';

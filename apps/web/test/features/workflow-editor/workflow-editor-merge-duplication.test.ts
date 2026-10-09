@@ -4,7 +4,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
 } from '../../../../../packages/workflow-engine/dist/index.js';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/graph-copies';
 import { createEditorStore } from '@/features/workflow-editor/model/editor.store';

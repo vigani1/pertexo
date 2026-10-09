@@ -3,7 +3,7 @@ import {
   workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunStartResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
   createEditorWorkspace,

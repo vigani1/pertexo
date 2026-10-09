@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type {
+  AccessibleWorkspace,
   PortableConnectionBinding,
   PortableConnectionSlot,
   WorkflowImportPreviewResponse,
-} from '@pertexo/contracts/schemas/workflow-portability';
+} from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';

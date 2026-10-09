@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 import { z } from 'zod';
-import { connectionResponseSchema } from '@pertexo/contracts/schemas/connections';
-import { workspaceResponseSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import {
+  connectionResponseSchema,
+  workspaceResponseSchema,
   workflowDraftResponseSchema,
   workflowTemplateOriginProjectionResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import type { useBetterAuthRealApi } from './better-auth-real-api.integration.support.js';
 import { executeCuratedTemplateGraphs } from './curated-template-worker-evidence.js';

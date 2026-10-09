@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowOrganizationProjectionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+import type {
+  AccessibleWorkspace,
+  WorkflowOrganizationProjectionResponse,
+} from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { setWorkflowFavorite } from '../../organization.api';

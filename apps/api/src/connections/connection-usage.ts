@@ -3,7 +3,7 @@ import {
   connectionListQuerySchema,
   connectionIdParamSchema,
   connectionUsageResponseSchema,
-} from '@pertexo/contracts/connections';
+} from '@pertexo/contracts';
 import type { ConnectionUsageDatabase } from '@pertexo/database/connections';
 import { z } from 'zod';
 

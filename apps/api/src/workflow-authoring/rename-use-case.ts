@@ -2,7 +2,7 @@ import {
   workflowRenameRequestSchema,
   workflowRenameResponseSchema,
   type WorkflowRenameResponse,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

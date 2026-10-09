@@ -12,7 +12,7 @@ import {
 import {
   webhookDeliveryListQuerySchema,
   webhookRotateSecretRequestSchema,
-} from '@pertexo/contracts/webhooks';
+} from '@pertexo/contracts';
 import { z } from 'zod';
 
 import {

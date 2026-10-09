@@ -1,4 +1,4 @@
-import { workflowVersionRestoreRequestSchema } from '@pertexo/contracts/workflow-authoring';
+import { workflowVersionRestoreRequestSchema } from '@pertexo/contracts';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

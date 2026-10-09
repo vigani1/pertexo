@@ -8,7 +8,7 @@ import {
   type WorkspaceInboxReadAllResponse,
   type WorkspaceInboxReadResponse,
   type WorkspaceInboxSummaryResponse,
-} from '@pertexo/contracts/workspace-inbox';
+} from '@pertexo/contracts';
 import type { WorkspaceInboxDatabase } from '@pertexo/database/inbox';
 
 import {

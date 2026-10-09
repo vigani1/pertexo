@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import type { WorkflowRunStatisticsWindow } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunStatisticsWindow } from '@pertexo/contracts';
 import {
   loomStatisticsQueryOptions,
   workflowRunKeys,

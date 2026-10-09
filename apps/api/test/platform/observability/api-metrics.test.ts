@@ -1,5 +1,5 @@
 import type { Meter } from '@opentelemetry/api';
-import { API_PROBLEM_MANIFEST } from '@pertexo/contracts/errors';
+import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

@@ -1,4 +1,4 @@
-import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';

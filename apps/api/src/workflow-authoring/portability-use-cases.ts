@@ -5,7 +5,7 @@ import {
   workflowImportPreviewResponseSchema,
   workflowImportRequestSchema,
   workflowImportResponseSchema,
-} from '@pertexo/contracts/workflow-portability';
+} from '@pertexo/contracts';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

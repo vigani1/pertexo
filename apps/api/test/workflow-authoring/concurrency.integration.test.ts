@@ -5,7 +5,7 @@ import {
   workflowConcurrencyRevisionConflictProblemSchema,
   workflowConcurrencyLimitExceededProblemSchema,
   type WorkflowConcurrencyCommandResponse,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   betterAuthIntegrationEnabled,
   expectProblem,

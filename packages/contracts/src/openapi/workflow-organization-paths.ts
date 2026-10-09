@@ -1,13 +1,13 @@
 import type { z } from 'zod';
-import * as organization from './http/workflow-organization.js';
-import * as folders from './http/workflow-organization-folders.js';
+import * as organization from '../schemas/workflow-organization.js';
+import * as folders from '../schemas/workflow-organization-folders.js';
 import {
   workflowOrganizationListQuerySchema,
   workflowOrganizationListResponseSchema,
   workflowOrganizationProjectionResponseSchema,
   workflowCombinedOrganizationProjectionResponseSchema,
   workflowGetQuerySchema,
-} from './http/workflow-authoring.js';
+} from '../schemas/workflow-authoring.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
@@ -17,7 +17,7 @@ import {
   queryParameter,
   responseReference,
   uuidPathParameter,
-} from './openapi-primitives.js';
+} from './primitives.js';
 
 const definitions = {
   WorkflowTagListQuery: [organization.workflowTagListQuerySchema, 'input'],

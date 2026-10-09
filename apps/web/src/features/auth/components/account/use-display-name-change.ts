@@ -1,4 +1,4 @@
-import type { UserProfileResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type { UserProfileResponse } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { isApiError } from '@/lib/api/api-error';

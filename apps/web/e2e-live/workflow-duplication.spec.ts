@@ -1,18 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
-import { nodeDefinitionListResponseSchema } from '@pertexo/contracts/schemas/catalog';
 import {
+  nodeDefinitionListResponseSchema,
   workflowDraftResponseSchema,
   workflowCreateResponseSchema,
   workflowDuplicateResponseSchema,
   workflowPublishResponseSchema,
   workflowValidateResponseSchema,
   type WorkflowGraphContract,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   workflowRunStartResponseSchema,
   workflowNodeRunOutputResponseSchema,
-} from '@pertexo/contracts/schemas/workflow-runs';
+} from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
 import {
   createEditorWorkspace,

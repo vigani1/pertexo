@@ -1,4 +1,4 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 // The nested-graph layer. A For each step owns its body (ADR 020): a graph
 // of its own, stored inside the step. Every step and connection lives on

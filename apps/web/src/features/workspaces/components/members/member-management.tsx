@@ -2,7 +2,7 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
   WorkspaceMember,
-} from '@pertexo/contracts/schemas/identity-workspace';
+} from '@pertexo/contracts';
 import { useState } from 'react';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';

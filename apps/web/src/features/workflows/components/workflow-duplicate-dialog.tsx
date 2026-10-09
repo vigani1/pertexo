@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
   workflowDuplicateRequestSchema,
   type WorkflowDuplicateRequest,
   type WorkflowSummary,
-} from '@pertexo/contracts/schemas/workflow-authoring';
+} from '@pertexo/contracts';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import {

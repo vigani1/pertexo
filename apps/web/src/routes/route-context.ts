@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { redirect } from '@tanstack/react-router';
-import { workspaceIdentifierSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { workspaceIdentifierSchema } from '@pertexo/contracts';
 import { isNotFound } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {

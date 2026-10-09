@@ -6,7 +6,7 @@ import type {
   ScheduleOccurrenceListResponse,
   ScheduleStepConfig,
   ScheduleTriggerHealthResponse,
-} from '@pertexo/contracts/schedules';
+} from '@pertexo/contracts';
 
 import {
   ScheduleTriggerError,

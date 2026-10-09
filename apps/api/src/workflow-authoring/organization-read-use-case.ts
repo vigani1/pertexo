@@ -8,7 +8,7 @@ import {
   workflowTagListQuerySchema,
   workflowTagListResponseSchema,
   workflowTagAssignmentsResponseSchema,
-} from '@pertexo/contracts/workflow-authoring';
+} from '@pertexo/contracts';
 import {
   WorkflowNotFoundError,
   WorkflowTemplateOriginUnavailableError,
