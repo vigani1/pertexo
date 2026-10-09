@@ -7,7 +7,7 @@ export default defineConfig({
     fileParallelism: false,
     hookTimeout: 120_000,
     include: [
-      'test/executions/run-event-stream.resilience.integration.test.ts',
+      'test/workflow-runs/events/stream.resilience.integration.test.ts',
     ],
     maxWorkers: 1,
     testTimeout: 240_000,
