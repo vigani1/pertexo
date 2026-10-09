@@ -1,6 +1,6 @@
 # ADR 062: Portable authoring graphs with explicit destination connections
 
-- **Status:** accepted; implementation authorized, production activation unauthorized
+- **Status:** accepted; implementation authorized, production activation unauthorized; superseded in part by [ADR 069](069-architecture-reset.md) (no rollout switch or SQL re-validation of imports)
 - **Date:** 2026-10-01
 - **Baseline:** fetched main `228a692dda5f67e7256be88ff496c8810ddc36f9`
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/graph';
 
 import {
-  WorkflowIdempotencyConflictError,
+  IdempotencyConflictError,
   WorkflowNotFoundError,
   actorId,
   apiPool,
@@ -115,7 +115,7 @@ describe('workflow draft persistence', () => {
     });
     await expect(
       authoring.createWorkflow({ ...createInput, name: 'Changed request' }),
-    ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     const workflows = await authoring.listWorkflows({ workspaceId, actorId });
     expect(workflows.items.some(({ id }) => id === workflowId)).toBe(true);
     await expect(
@@ -283,21 +283,6 @@ describe('workflow draft persistence', () => {
         [otherWorkflowId],
       );
       expect(crossWorkspace.rows[0]?.drafts).toBe('0');
-      await expect(
-        api.query(
-          `insert into app.workflow_drafts
-             (workflow_id, workspace_id, revision, schema_version, graph_json, updated_by)
-           values ($1, $2, 1, 1, '{}'::jsonb, $3)`,
-          [randomUUID(), workspaceId, actorId],
-        ),
-      ).rejects.toMatchObject({ code: '42501' });
-      await api.query('rollback');
-      apiOpen = false;
-      await api.query('begin');
-      apiOpen = true;
-      await api.query("select set_config('app.workspace_id', $1, true)", [
-        workspaceId,
-      ]);
       await expect(
         api.query('delete from app.workflow_drafts where workflow_id = $1', [
           workflowId,

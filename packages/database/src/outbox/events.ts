@@ -273,18 +273,6 @@ export function canonicalOutboxPayloadChecksum(payload: unknown): string {
     .digest('hex');
 }
 
-/** Internal bounded canonical hash for non-outbox idempotency request bodies. */
-export function canonicalApplicationPayloadChecksum(
-  payload: unknown,
-  maximumBytes: number,
-): string {
-  if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1)
-    throw new TypeError('canonical JSON payload byte limit is invalid');
-  return createHash('sha256')
-    .update(canonicalJson(payload, maximumBytes))
-    .digest('hex');
-}
-
 /** Immutable, descriptor-safe operator input serialization with explicit bounds. */
 export function serializeBoundedPlainJson(
   payload: unknown,

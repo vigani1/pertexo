@@ -6,11 +6,7 @@ import {
   sessions,
   oidcLoginTransactions,
 } from './schema/authentication.js';
-import {
-  curatedTemplateDescriptors,
-  curatedTemplateRollout,
-  workflowTemplateOrigins,
-} from './schema/curated-template-origin.js';
+import { workflowTemplateOrigins } from './schema/curated-template-origin.js';
 import {
   workflowInputCaseRollout,
   workflowManualStartRejections,
@@ -143,8 +139,6 @@ export {
 } from './schema/triggers.js';
 
 export const databaseSchema = {
-  curatedTemplateDescriptors,
-  curatedTemplateRollout,
   workflowTemplateOrigins,
   workflowInputCaseRollout,
   workflowManualStartRejections,

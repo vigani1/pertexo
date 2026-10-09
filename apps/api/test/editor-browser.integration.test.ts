@@ -524,28 +524,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       curatedFixture = await prepareCuratedTemplateBrowserFixture(
         api,
         webOrigin,
-        async () => {
-          await recheckOwnership();
-          const client = await api.database().connect();
-          try {
-            await client.query('begin');
-            for (const table of [
-              'workflow_portability_rollout',
-              'curated_template_rollout',
-            ]) {
-              const changed = await client.query(
-                `update app.${table} set import_enabled=true where singleton`,
-              );
-              expect(changed.rowCount).toBe(1);
-            }
-            await client.query('commit');
-          } catch (error) {
-            await client.query('rollback');
-            throw error;
-          } finally {
-            client.release();
-          }
-        },
+        recheckOwnership,
       );
     httpControl?.setApiOrigin(apiOrigin);
     const readiness = await fetch(`${apiOrigin}/health/ready`);

@@ -163,7 +163,7 @@ describe('workflow rename command persistence (ADR 041)', () => {
     );
     await expect(
       rename(workflowId, { name: 'Something else' }),
-    ).rejects.toMatchObject({ name: 'WorkflowIdempotencyConflictError' });
+    ).rejects.toMatchObject({ name: 'IdempotencyConflictError' });
     expect(await nameFacts(workflowId)).toMatchObject({
       name: 'Invoice sync (EU)',
       nameRevision: 3,

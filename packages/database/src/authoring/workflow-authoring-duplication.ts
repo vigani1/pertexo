@@ -9,14 +9,13 @@ import {
 } from '@pertexo/workflow-model/graph';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
-import { canonicalApplicationPayloadChecksum } from '../outbox/events.js';
+import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import type {
   DuplicateWorkflowInput,
   WorkflowAuthoringDatabase,
 } from './workflow-authoring-contracts.js';
 import type { WorkflowAuthoringWriteContext } from './workflow-authoring-context.js';
 import {
-  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring-errors.js';
@@ -48,65 +47,6 @@ const inputSchema = z
       input.source.kind !== 'draft' || input.representationTag !== undefined,
   );
 const resultSchema = z.object({ workflowId: uuid }).strict();
-
-/** Lock one durable source-scoped claim; mutable graph contents are not request identity. */
-async function claimDuplicate(
-  client: PoolClient,
-  context: WorkflowAuthoringWriteContext,
-  input: DuplicateWorkflowInput,
-  destinationId: string,
-) {
-  const digest = context.keyDigest(input.idempotencyKey);
-  const scope = `${input.actorId}:${input.workflowId}`;
-  const requestHash = canonicalApplicationPayloadChecksum(
-    {
-      workspaceId: input.workspaceId,
-      actorId: input.actorId,
-      workflowId: input.workflowId,
-      name: input.name,
-      source: input.source,
-      representationTag:
-        input.source.kind === 'draft' ? input.representationTag : null,
-    },
-    4_096,
-  );
-  await client.query(
-    `insert into app.idempotency_records
-       (id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref)
-     values($1,$2,'workflow.duplicate',$3,$4,$5,'in_progress',$6,'{}'::jsonb)
-     on conflict(workspace_id,operation,scope,key_hash) do nothing`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      scope,
-      digest,
-      requestHash,
-      destinationId,
-    ],
-  );
-  const result = await client.query<{
-    request_hash: string;
-    status: string;
-    result_ref: unknown;
-    resource_id: string;
-  }>(
-    `select request_hash,status,result_ref,resource_id from app.idempotency_records
-     where workspace_id=$1 and operation='workflow.duplicate' and scope=$2 and key_hash=$3 for update`,
-    [input.workspaceId, scope, digest],
-  );
-  const row = result.rows[0];
-  if (row === undefined)
-    throw new Error('Workflow duplication claim is unavailable');
-  if (row.request_hash !== requestHash)
-    throw new WorkflowIdempotencyConflictError(
-      'Idempotency key request mismatch',
-    );
-  const replay =
-    row.status === 'completed' ? resultSchema.parse(row.result_ref) : null;
-  if (replay !== null && replay.workflowId !== row.resource_id)
-    throw new Error('Workflow duplication receipt identity is inconsistent');
-  return { digest, scope, requestHash, replay };
-}
 
 async function selectedGraph(
   client: PoolClient,
@@ -195,23 +135,36 @@ export function createWorkflowDuplicationStore(
           if (sourceRow === undefined)
             throw new WorkflowNotFoundError('Workflow source is not visible');
           const destinationId = generatePersistedId();
-          const claim = await claimDuplicate(
-            client,
-            context,
-            input,
-            destinationId,
-          );
+          // The graph is not part of the request: a retry duplicates the same
+          // reviewed source, or replays the first result.
+          const command = {
+            workspaceId: input.workspaceId,
+            operation: 'workflow.duplicate',
+            scope: `${input.actorId}:${input.workflowId}`,
+            idempotencyKey: input.idempotencyKey,
+          };
+          const stored = await claimCommand(client, {
+            ...command,
+            request: {
+              name: input.name,
+              source: input.source,
+              representationTag:
+                input.source.kind === 'draft' ? input.representationTag : null,
+            },
+            resourceId: destinationId,
+          });
           await context.testHooks?.afterDuplicateStep?.('claim');
-          if (claim.replay !== null) {
+          if (stored !== null) {
+            const replay = resultSchema.parse(stored);
             const destination = await client.query(
               'select id from app.workflows where workspace_id=$1 and id=$2 for share',
-              [input.workspaceId, claim.replay.workflowId],
+              [input.workspaceId, replay.workflowId],
             );
             if (destination.rowCount !== 1)
               throw new WorkflowNotFoundError(
                 'Workflow destination is not visible',
               );
-            return Object.freeze(claim.replay);
+            return Object.freeze(replay);
           }
           if (sourceRow.lifecycle_status !== 'active')
             throw new WorkflowNotFoundError('Workflow source is not visible');
@@ -226,22 +179,32 @@ export function createWorkflowDuplicationStore(
           await requireOwnedConnections(client, input.workspaceId, graph);
           await context.testHooks?.afterDuplicateStep?.('source');
           await client.query(
-            'select app.create_workflow_duplicate_draft($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11)',
+            `insert into app.workflows
+               (id, workspace_id, name, lifecycle_status, activation_status, created_by)
+             values ($1, $2, $3, 'active', 'inactive', $4)`,
+            [destinationId, input.workspaceId, input.name, input.actorId],
+          );
+          await context.testHooks?.afterDuplicateStep?.('workflow');
+          await client.query(
+            `insert into app.workflow_drafts
+               (workflow_id, workspace_id, revision, schema_version, graph_json, updated_by)
+             values ($1, $2, 1, $3, $4::jsonb, $5)`,
             [
               destinationId,
               input.workspaceId,
-              input.workflowId,
-              input.actorId,
-              input.name,
               graph.schemaVersion,
               JSON.stringify(graph),
-              claim.digest,
-              claim.requestHash,
-              input.source.kind,
-              input.source.kind === 'version' ? input.source.versionId : null,
+              input.actorId,
             ],
           );
-          await context.testHooks?.afterDuplicateStep?.('workflow');
+          // A copy keeps its source's template origin, marked inherited.
+          await client.query(
+            `insert into app.workflow_template_origins (workspace_id, workflow_id, origin)
+             select workspace_id, $2, origin || '{"derivation":"inherited"}'::jsonb
+             from app.workflow_template_origins
+             where workspace_id = $1 and workflow_id = $3`,
+            [input.workspaceId, destinationId, input.workflowId],
+          );
           await context.testHooks?.afterDuplicateStep?.('draft');
           await client.query(
             `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
@@ -262,18 +225,7 @@ export function createWorkflowDuplicationStore(
           );
           await context.testHooks?.afterDuplicateStep?.('audit');
           const result = Object.freeze({ workflowId: destinationId });
-          const completed = await client.query(
-            `update app.idempotency_records set status='completed',result_ref=$1::jsonb,updated_at=transaction_timestamp()
-         where workspace_id=$2 and operation='workflow.duplicate' and scope=$3 and key_hash=$4 and status='in_progress'`,
-            [
-              JSON.stringify(result),
-              input.workspaceId,
-              claim.scope,
-              claim.digest,
-            ],
-          );
-          if (completed.rowCount !== 1)
-            throw new Error('Workflow duplication completion is unavailable');
+          await completeCommand(client, command, result);
           await context.testHooks?.afterDuplicateStep?.('idempotency');
           return result;
         },

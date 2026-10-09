@@ -1,9 +1,16 @@
+import { createHash } from 'node:crypto';
+
 import { z } from 'zod';
+import {
+  verifyCuratedTemplateManifest,
+  workflowTemplateOriginRequestSchema,
+} from '@pertexo/workflow-model/curated-templates';
 import { EMPTY_WORKFLOW_GRAPH_V1 } from '@pertexo/workflow-model/graph';
 import {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,
   WorkflowPortabilityError,
+  type WorkflowPortabilityCatalog,
 } from '@pertexo/workflow-model/portability';
 import {
   canonicalWorkflowPortableJson,
@@ -14,6 +21,10 @@ import {
   WORKFLOW_PORTABILITY_LIMITS,
   type PortableIssue,
 } from '@pertexo/workflow-model/portability-contract';
+
+import { claimCommand, completeCommand } from '../platform/idempotency.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
+import { rolesForCapability } from '../tenant-access/workspace-policy.js';
 import type {
   ExportWorkflowInput,
   ImportWorkflowInput,
@@ -29,22 +40,12 @@ import {
   WorkflowPortabilityValidationError,
 } from './workflow-authoring-errors.js';
 import { admitWorkflowAuthoring } from './workflow-authoring-admission.js';
+import { lockWorkflowAuthoringAuthority } from './workflow-authoring-authority.js';
 import {
   inspectPortableConnections,
   lockPortableSource,
-  requirePortabilityAuthority,
   reviewedSourceGraph,
 } from './workflow-portability-authority.js';
-import {
-  claimWorkflowImport,
-  completeWorkflowImport,
-} from './workflow-portability-receipts.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
-import { workflowTemplateOriginRequestSchema } from '@pertexo/workflow-model/curated-templates';
-import {
-  readCuratedTemplateDescriptor,
-  inspectCuratedTemplateOrigin,
-} from './workflow-curated-template-origin.js';
 
 const scope = z.object({
   workspaceId: z.uuid(),
@@ -71,6 +72,7 @@ const importInput = previewInput
     idempotencyKey: z.string(),
   })
   .strict();
+const importResultSchema = z.object({ workflowId: z.uuid() }).strict();
 const exportInput = scope
   .extend({
     workflowId: z.uuid(),
@@ -107,14 +109,69 @@ function selectedPolicy(
   return catalog;
 }
 
+/** A template origin must name a curated template and change only its setup values. */
+function inspectTemplateOrigin(
+  input: PreviewWorkflowImportInput,
+  catalog: WorkflowPortabilityCatalog,
+): readonly PortableIssue[] {
+  if (input.templateOrigin === undefined) return [];
+  const verified = verifyCuratedTemplateManifest(
+    input.manifest,
+    input.templateOrigin,
+  );
+  if (!verified.ok) return verified.issues;
+  if (catalog.validateTemplateSetup === undefined)
+    throw new WorkflowPortabilityUnavailableError(
+      'Registered template setup validation is unavailable',
+    );
+  if (!catalog.validateTemplateSetup(input.manifest, input.templateOrigin))
+    return [
+      {
+        code: 'template_setup_invalid',
+        path: '$.manifest',
+        message:
+          'Template setup does not satisfy the registered serving policy.',
+      },
+    ];
+  return [];
+}
+
+async function requirePortabilityAuthority(
+  client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
+  input: Readonly<{ workspaceId: string; actorId: string }>,
+  write: boolean,
+): Promise<void> {
+  await lockWorkflowAuthoringAuthority(
+    client,
+    input.workspaceId,
+    input.actorId,
+    rolesForCapability(write ? 'workflow:create' : 'workflow:read'),
+  );
+}
+
+/** The import command's digest, which a template origin records. */
+export function workflowImportCommandDigest(
+  input: ImportWorkflowInput,
+): string {
+  const command = canonicalWorkflowPortableJson({
+    manifest: input.manifest,
+    bindings: input.bindings,
+    name: input.name,
+    expectedCompatibilityFingerprint: input.expectedCompatibilityFingerprint,
+    ...(input.templateOrigin === undefined
+      ? {}
+      : { templateOrigin: input.templateOrigin }),
+  });
+  return createHash('sha256').update(command).digest('hex');
+}
+
 async function inspectImport(
-  client: Parameters<typeof requirePortabilityAuthority>[0],
+  client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
   context: WorkflowAuthoringWriteContext,
   input: PreviewWorkflowImportInput,
   selection: Awaited<
     ReturnType<WorkflowAuthoringWriteContext['selectCatalogs']>
   >,
-  descriptor: Awaited<ReturnType<typeof readCuratedTemplateDescriptor>>,
 ) {
   const catalog = selectedPolicy(selection);
   const inspected = inspectWorkflowPortableManifest(
@@ -134,7 +191,7 @@ async function inspectImport(
     input.signal,
   );
   const issues: PortableIssue[] = [
-    ...inspectCuratedTemplateOrigin(input, descriptor, catalog),
+    ...inspectTemplateOrigin(input, catalog),
     ...inspected.issues,
     ...admission.issues.map(({ code, path }) => ({
       code,
@@ -181,12 +238,7 @@ function exportPortableWorkflow(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await requirePortabilityAuthority(
-        client,
-        input.workspaceId,
-        input.actorId,
-        false,
-      );
+      await requirePortabilityAuthority(client, input, false);
       const row = await lockPortableSource(client, input);
       await context.testHooks?.afterExportSourceLock?.();
       const selection = await context.selectCatalogs(client);
@@ -258,26 +310,10 @@ function previewPortableWorkflow(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await requirePortabilityAuthority(
-        client,
-        input.workspaceId,
-        input.actorId,
-        true,
-      );
-      const descriptor = await readCuratedTemplateDescriptor(
-        client,
-        input,
-        false,
-      );
+      await requirePortabilityAuthority(client, input, true);
       const selection = await context.selectCatalogs(client);
       try {
-        const report = await inspectImport(
-          client,
-          context,
-          input,
-          selection,
-          descriptor,
-        );
+        const report = await inspectImport(client, context, input, selection);
         return {
           manifestDigest: await portableManifestDigest(input.manifest),
           compatibilityFingerprint: selectedPolicy(selection).fingerprint,
@@ -313,47 +349,34 @@ function importPortableWorkflow(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await requirePortabilityAuthority(
-        client,
-        input.workspaceId,
-        input.actorId,
-        true,
-      );
+      await requirePortabilityAuthority(client, input, true);
       await context.testHooks?.afterImportStep?.('authority');
-      const claim = await claimWorkflowImport(client, context, input);
+      const destinationId = generatePersistedId();
+      const commandDigest = workflowImportCommandDigest(input);
+      const command = {
+        workspaceId: input.workspaceId,
+        operation: 'workflow.import',
+        scope: input.actorId,
+        idempotencyKey: input.idempotencyKey,
+      };
+      const stored = await claimCommand(client, {
+        ...command,
+        request: commandDigest,
+        resourceId: destinationId,
+      });
       await context.testHooks?.afterImportStep?.('claim');
-      if (claim.replay !== null) {
+      if (stored !== null) {
+        const replay = importResultSchema.parse(stored);
         const destination = await client.query(
           'select id from app.workflows where workspace_id=$1 and id=$2 for share',
-          [input.workspaceId, claim.replay.workflowId],
+          [input.workspaceId, replay.workflowId],
         );
         if (destination.rowCount !== 1)
           throw new WorkflowNotFoundError(
             'Workflow destination is not visible',
           );
-        return Object.freeze(claim.replay);
+        return Object.freeze(replay);
       }
-      const gate = await client.query<{ import_enabled: boolean }>(
-        'select import_enabled from app.workflow_portability_rollout where singleton for share',
-      );
-      if (gate.rows[0]?.import_enabled !== true)
-        throw new WorkflowPortabilityUnavailableError(
-          'New workflow imports are disabled',
-        );
-      if (input.templateOrigin !== undefined) {
-        const templateGate = await client.query<{ import_enabled: boolean }>(
-          'select import_enabled from app.curated_template_rollout where singleton for share',
-        );
-        if (templateGate.rows[0]?.import_enabled !== true)
-          throw new WorkflowPortabilityUnavailableError(
-            'New template imports are disabled',
-          );
-      }
-      const descriptor = await readCuratedTemplateDescriptor(
-        client,
-        input,
-        true,
-      );
       const selection = await context.selectCatalogs(client);
       if (
         selectedPolicy(selection).fingerprint !==
@@ -365,13 +388,7 @@ function importPortableWorkflow(
       await context.testHooks?.afterImportStep?.('catalog');
       let graph;
       try {
-        const report = await inspectImport(
-          client,
-          context,
-          input,
-          selection,
-          descriptor,
-        );
+        const report = await inspectImport(client, context, input, selection);
         if (report.hard.length !== 0)
           throw new WorkflowPortabilityValidationError(
             report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
@@ -383,18 +400,38 @@ function importPortableWorkflow(
       }
       await context.testHooks?.afterImportStep?.('connections');
       await client.query(
-        'select app.create_workflow_import_draft($1,$2,$3,$4::jsonb,$5,$6,$7)',
-        [
-          claim.destinationId,
-          input.workspaceId,
-          input.actorId,
-          JSON.stringify(graph),
-          claim.keyHash,
-          claim.requestHash,
-          claim.command,
-        ],
+        `insert into app.workflows
+           (id, workspace_id, name, lifecycle_status, activation_status, created_by)
+         values ($1, $2, $3, 'active', 'inactive', $4)`,
+        [destinationId, input.workspaceId, input.name, input.actorId],
       );
       await context.testHooks?.afterImportStep?.('workflow');
+      await client.query(
+        `insert into app.workflow_drafts
+           (workflow_id, workspace_id, revision, schema_version, graph_json, updated_by)
+         values ($1, $2, 1, $3, $4::jsonb, $5)`,
+        [
+          destinationId,
+          input.workspaceId,
+          graph.schemaVersion,
+          JSON.stringify(graph),
+          input.actorId,
+        ],
+      );
+      if (input.templateOrigin !== undefined)
+        await client.query(
+          `insert into app.workflow_template_origins (workspace_id, workflow_id, origin)
+           values ($1, $2, $3::jsonb)`,
+          [
+            input.workspaceId,
+            destinationId,
+            JSON.stringify({
+              ...input.templateOrigin,
+              creationCommandDigest: commandDigest,
+              derivation: 'direct',
+            }),
+          ],
+        );
       await context.testHooks?.afterImportStep?.('draft');
       await client.query(
         `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
@@ -403,18 +440,14 @@ function importPortableWorkflow(
           generatePersistedId(),
           input.workspaceId,
           input.actorId,
-          claim.destinationId,
+          destinationId,
           input.requestId ?? null,
           input.traceId ?? null,
         ],
       );
       await context.testHooks?.afterImportStep?.('audit');
-      const result = await completeWorkflowImport(
-        client,
-        input,
-        claim.keyHash,
-        claim.destinationId,
-      );
+      const result = Object.freeze({ workflowId: destinationId });
+      await completeCommand(client, command, result);
       await context.testHooks?.afterImportStep?.('idempotency');
       return result;
     },

@@ -12,7 +12,6 @@ import type {
 
 /** Variable transaction, authority and compatibility seams shared by writes. */
 export type WorkflowAuthoringWriteContext = Readonly<{
-  keyDigest(key: string): string;
   requireAuthor(
     client: PoolClient,
     workspaceId: string,

@@ -1,6 +1,8 @@
 # ADR063 — Verified historical origin for curated workflow templates
 
-Status: accepted, 2026-10-02, by the roadmap manager after primary and independent
+Status: superseded in part by [ADR 069](069-architecture-reset.md): templates are
+verified in code only, with no database descriptor inventory, SQL validation or
+rollout switch. Accepted, 2026-10-02, by the roadmap manager after primary and independent
 ADR/contract review and closure of the readiness/typed-validation clarifications.
 Implementation is authorized; migration 0133 is allocated against reviewed
 combined F02/F05 base `f5432838`, integrated normally in `69c10d3b`.

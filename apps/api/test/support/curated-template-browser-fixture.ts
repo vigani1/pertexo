@@ -26,7 +26,7 @@ export const curatedTemplateBrowserEvidenceSchema = z.strictObject({
 export async function prepareCuratedTemplateBrowserFixture(
   api: ReturnType<typeof useBetterAuthRealApi>,
   webOrigin: string,
-  enableReviewedWriter: () => Promise<void>,
+  beforeBrowser: () => Promise<void>,
 ) {
   const email = `curated-${randomUUID()}@integration.test`;
   await api.signUp(email, '/workspaces');
@@ -76,7 +76,7 @@ export async function prepareCuratedTemplateBrowserFixture(
       response.json(),
     ).id;
   }
-  await enableReviewedWriter();
+  await beforeBrowser();
   const cookies = browser.cookie.split(';').map((part) => {
     const index = part.indexOf('=');
     return {
