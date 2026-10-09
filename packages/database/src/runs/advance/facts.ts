@@ -5,7 +5,7 @@ import { CoordinatorRunStateCorruptError } from './contract.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
-} from '../../execution/stored-execution-value.js';
+} from '../../platform/stored-execution-value.js';
 import {
   attachPhysicalAttempts,
   readPhysicalAttempts,

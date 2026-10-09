@@ -19,7 +19,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from '../execution/published-workflow-reader.js';
+} from '../runs/published-workflow.js';
 import {
   readHealth,
   refreshWorkflowActivation,

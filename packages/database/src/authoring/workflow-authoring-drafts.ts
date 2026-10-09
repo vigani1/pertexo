@@ -7,7 +7,7 @@ import {
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/graph';
 
-import { canonicalApplicationPayloadChecksum } from '../execution/transport/outbox.js';
+import { canonicalApplicationPayloadChecksum } from '../outbox/events.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,

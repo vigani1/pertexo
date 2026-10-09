@@ -13,7 +13,7 @@ import {
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
 import { rolesForCapability } from '../tenant-access/workspace-policy.js';
-import { serializeStoredExecutionJsonValue } from '../execution/stored-execution-value.js';
+import { serializeStoredExecutionJsonValue } from '../platform/stored-execution-value.js';
 import {
   WorkflowNotFoundError,
   WorkflowIdempotencyConflictError,

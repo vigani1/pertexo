@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,

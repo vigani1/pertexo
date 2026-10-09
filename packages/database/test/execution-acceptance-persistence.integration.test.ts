@@ -18,7 +18,7 @@ import {
 import {
   STORED_EXECUTION_VALUE_LIMITS_V1,
   StoredExecutionValueInvalidError,
-} from '../src/execution/stored-execution-value.js';
+} from '../src/platform/stored-execution-value.js';
 import {
   acceptanceInput,
   apiDatabase,

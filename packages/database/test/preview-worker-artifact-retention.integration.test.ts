@@ -6,12 +6,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   artifactStorageKey,
   createPendingPreviewArtifact,
-} from '../src/execution/artifacts/artifacts.js';
+} from '../src/artifacts/store.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import {
   completePreviewAttempt,
   PREVIEW_STATUS,
-} from '../src/execution/previews/preview-execution.js';
+} from '../src/previews/repository.js';
 import { createPreviewRetentionCoordinator } from '../src/lifecycle/preview-retention.js';
 import { databaseSchema } from '../src/schema.js';
 import {

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../../execution/transport/outbox.js';
+} from '../../outbox/events.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   idempotencyRecords,
@@ -12,8 +12,8 @@ import {
   runEvents,
   workflowRuns,
 } from '../../schema.js';
-import { serializeStoredExecutionValueV1 } from '../../execution/stored-execution-value.js';
-import { resolveWorkflowFailureNotificationPolicy } from '../../execution/notifications/failure-notification-policy.js';
+import { serializeStoredExecutionValueV1 } from '../../platform/stored-execution-value.js';
+import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import { sha256HexSchema as sha256Schema } from '../../validation/persisted-primitives.js';
 import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';

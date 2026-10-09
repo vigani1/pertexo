@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import {
   ArtifactUploadConflictError,
   createArtifactUploadDatabase,
-} from '../src/execution/artifacts/artifact-upload.js';
+} from '../src/artifacts/upload.js';
 import {
   acquireWorkspaceDestructiveOperationLock,
   releaseWorkspaceDestructiveOperationLock,

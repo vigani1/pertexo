@@ -6,13 +6,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
-import { createOutboxDispatcherDatabase } from '../src/execution/transport/dispatcher.js';
-import { consumeInboxMessage } from '../src/execution/testing.js';
+import { createOutboxDispatcherDatabase } from '../src/outbox/dispatcher.js';
+import { consumeInboxMessage } from '../src/testing.js';
 import { OperatorCommandConflictError } from '../src/operator/operator-commands.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../src/execution/transport/outbox.js';
+} from '../src/outbox/events.js';
 import { auditEvents, outboxEvents } from '../src/schema.js';
 import { createPostgresCommitAckProxy } from './support/postgres-commit-ack-proxy.js';
 import { createTransportTestEnvironment } from './support/transport.integration.support.js';

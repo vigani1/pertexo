@@ -9,7 +9,7 @@ import { readWorkflowRunAcceptanceReplay } from './acceptance.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from '../../execution/published-workflow-reader.js';
+} from '../published-workflow.js';
 import type { WorkspaceTransaction } from '../../tenant-access/workspace.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {

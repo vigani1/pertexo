@@ -4,8 +4,8 @@ import { performance } from 'node:perf_hooks';
 import type { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { NODE_ATTEMPT_INPUT_LIMITS } from '../src/execution/node-attempts/node-attempt-run-store-contract.js';
-import { loadNodeAttemptInputs } from '../src/execution/node-attempts/node-attempt-run-store-inputs.js';
+import { NODE_ATTEMPT_INPUT_LIMITS } from '../src/attempts/contract.js';
+import { loadNodeAttemptInputs } from '../src/attempts/inputs.js';
 import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
 
 const inline = (value: unknown) => ({

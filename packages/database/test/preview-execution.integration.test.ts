@@ -15,7 +15,7 @@ import {
   PriorPreviewInputUnavailableError,
   readPreviewRun,
   resolvePreviewReplay,
-} from '../src/execution/previews/preview-execution.js';
+} from '../src/previews/repository.js';
 import {
   auditEvents,
   idempotencyRecords,

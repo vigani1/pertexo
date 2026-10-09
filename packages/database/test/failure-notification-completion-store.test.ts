@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as FailureNotificationStoreSupport from '../src/execution/notifications/failure-notification-store-support.js';
+import type * as FailureNotificationStoreSupport from '../src/notifications/store-support.js';
 
 const tenantState = vi.hoisted<{ client: unknown }>(() => ({
   client: undefined,
@@ -13,16 +13,13 @@ vi.mock('../src/tenant-access/workspace.js', () => ({
   withTenantScopedClient,
 }));
 
-vi.mock(
-  '../src/execution/notifications/failure-notification-store-support.js',
-  async (importOriginal) => ({
-    ...(await importOriginal<typeof FailureNotificationStoreSupport>()),
-    auditFailureNotification,
-    insertFailureNotificationDeliveryOutbox,
-  }),
-);
+vi.mock('../src/notifications/store-support.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof FailureNotificationStoreSupport>()),
+  auditFailureNotification,
+  insertFailureNotificationDeliveryOutbox,
+}));
 
-import { createFailureNotificationCompletionStore } from '../src/execution/notifications/failure-notification-completion-store.js';
+import { createFailureNotificationCompletionStore } from '../src/notifications/completion-store.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const intentId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

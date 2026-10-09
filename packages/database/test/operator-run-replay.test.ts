@@ -13,18 +13,18 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../src/database.js', () => ({
   createWorkspaceDatabase: mocks.createWorkspaceDatabase,
 }));
-vi.mock('../src/execution/transport/inbox.js', () => ({
+vi.mock('../src/outbox/receipts.js', () => ({
   consumeInboxMessage: mocks.consumeInboxMessage,
 }));
 vi.mock('../src/runs/commands/acceptance.js', () => ({
   acceptWorkflowRun: mocks.acceptWorkflowRun,
 }));
-vi.mock('../src/execution/published-workflow-reader.js', () => ({
+vi.mock('../src/runs/published-workflow.js', () => ({
   classifyPublishedWorkflowVersionRow:
     mocks.classifyPublishedWorkflowVersionRow,
 }));
 
-import { canonicalOutboxPayloadChecksum } from '../src/execution/transport/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../src/outbox/events.js';
 import {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
@@ -34,7 +34,7 @@ import {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
-} from '../src/execution/transport/unknown-outcome-reconciliation.js';
+} from '../src/outbox/unknown-outcome-reconciliation.js';
 
 const config = {
   connectionString: 'postgresql://unused.test/pertexo',

@@ -1,6 +1,6 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
 
-import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 

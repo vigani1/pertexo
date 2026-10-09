@@ -146,7 +146,7 @@ export {
 export {
   FailureNotificationDestinationError,
   createFailureNotificationDestinationDatabase,
-} from './execution/notifications/failure-notification-destinations.js';
+} from './notifications/destinations/repository.js';
 export {
   ARTIFACT_UPLOAD_PENDING_MS,
   ARTIFACT_UPLOAD_PURPOSE,
@@ -155,7 +155,7 @@ export {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
   createArtifactUploadDatabase,
-} from './execution/artifacts/artifact-upload.js';
+} from './artifacts/upload.js';
 export type {
   ArtifactUploadDatabase,
   ArtifactUploadActor,
@@ -164,8 +164,8 @@ export type {
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
-} from './execution/artifacts/artifact-upload.js';
-export type { FailureNotificationDestinationDatabase } from './execution/notifications/failure-notification-destinations.js';
+} from './artifacts/upload.js';
+export type { FailureNotificationDestinationDatabase } from './notifications/destinations/repository.js';
 export {
   IdentityConflictError,
   WorkspaceAccessDeniedError,
@@ -224,8 +224,8 @@ export type {
 export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from './execution/previews/preview-execution.js';
-export type { PublishedWorkflowV2Projection } from './execution/published-workflow-reader.js';
+} from './previews/repository.js';
+export type { PublishedWorkflowV2Projection } from './runs/published-workflow.js';
 export {
   ScheduleTriggerError,
   createScheduleTriggerDatabase,
@@ -313,7 +313,7 @@ export type {
   WorkflowStepHealthRecord,
   WorkflowStepRunRecord,
 } from './runs/queries/step-history.js';
-export { createWorkspaceInboxDatabase } from './execution/workspace-inbox/inbox-read-store.js';
+export { createWorkspaceInboxDatabase } from './inbox/read-store.js';
 export type {
   WorkspaceInboxCursor,
   WorkspaceInboxDatabase,
@@ -321,7 +321,7 @@ export type {
   WorkspaceInboxSummary,
   WorkspaceInboxThreadPage,
   WorkspaceInboxThreadRecord,
-} from './execution/workspace-inbox/inbox-read-store.js';
+} from './inbox/read-store.js';
 export type { WorkflowTriggerHealth } from './triggers/workflow-triggers.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';

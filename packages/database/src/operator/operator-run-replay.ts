@@ -12,9 +12,9 @@ import type { DatabaseConfig } from '../config.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
-import { consumeInboxMessage } from '../execution/transport/inbox.js';
-import { canonicalOutboxPayloadChecksum } from '../execution/transport/outbox.js';
-import { classifyPublishedWorkflowVersionRow } from '../execution/published-workflow-reader.js';
+import { consumeInboxMessage } from '../outbox/receipts.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
+import { classifyPublishedWorkflowVersionRow } from '../runs/published-workflow.js';
 
 const inputSchema = z
   .object({

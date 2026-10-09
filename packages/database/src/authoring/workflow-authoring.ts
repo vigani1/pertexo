@@ -35,7 +35,7 @@ import {
   acceptPreviewRun,
   readPreviewRun,
   resolvePreviewReplay,
-} from '../execution/previews/preview-execution.js';
+} from '../previews/repository.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
