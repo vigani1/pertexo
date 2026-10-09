@@ -9,9 +9,9 @@ import {
 } from '@pertexo/integrations';
 import {
   createRegistryRelease,
-  createRegistryReleaseSuccessor,
+  type ExecutorManifest,
+  type NodeManifest,
 } from '@pertexo/node-sdk';
-import type { NodeManifest } from '@pertexo/node-sdk';
 import {
   CORE_CONDITION_MANIFEST,
   CORE_FOR_EACH_MANIFEST,
@@ -21,8 +21,7 @@ import {
   CORE_PARALLEL_MANIFEST,
   CORE_PARALLEL_MANIFEST_V2,
   CORE_PARALLEL_MANIFEST_V3,
-  CORE_REGISTRY_RELEASE_SUPPORT,
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
+  CORE_REGISTRY_RELEASE,
   CORE_SCHEDULE_MANIFEST,
   CORE_SCHEDULE_MANIFEST_V2,
   CORE_SCHEDULE_MANIFEST_V3,
@@ -32,305 +31,55 @@ import {
   CORE_WEBHOOK_MANIFEST,
 } from '@pertexo/nodes-core';
 
-type RegistryRelease = Parameters<
-  typeof createRegistryReleaseSuccessor
->[0]['previous'];
+/** Every node beyond the three in the core release. */
+const PLATFORM_MANIFESTS: readonly NodeManifest[] = [
+  HTTP_REQUEST_MANIFEST,
+  CORE_CONDITION_MANIFEST,
+  CORE_SWITCH_MANIFEST,
+  CORE_PARALLEL_MANIFEST,
+  CORE_PARALLEL_MANIFEST_V2,
+  CORE_PARALLEL_MANIFEST_V3,
+  CORE_MERGE_MANIFEST,
+  CORE_MERGE_MANIFEST_V2,
+  CORE_MERGE_MANIFEST_V3,
+  CORE_FOR_EACH_MANIFEST,
+  CORE_WAIT_MANIFEST,
+  SLACK_SEND_MESSAGE_MANIFEST,
+  EMAIL_SEND_NOTIFICATION_MANIFEST,
+  CORE_WEBHOOK_MANIFEST,
+  CORE_SCHEDULE_MANIFEST,
+  CORE_SCHEDULE_MANIFEST_V2,
+  CORE_SCHEDULE_MANIFEST_V3,
+  CORE_VALIDATE_MANIFEST,
+];
 
-function stageDefinition(
-  previous: RegistryRelease,
-  manifest: NodeManifest,
-  additionalPolicies: RegistryRelease['policies'] = [],
-) {
-  const executorAbi = manifest.executorAbi;
-  if (executorAbi === undefined)
+function executorFor(manifest: NodeManifest): ExecutorManifest {
+  if (manifest.executorAbi === undefined)
     throw new Error(
       `${manifest.definition.key} manifest must pin its executor ABI`,
     );
-  return createRegistryReleaseSuccessor({
-    previous,
-    epoch: previous.epoch + 1,
-    definitions: [...previous.definitions, manifest],
-    executors: [
-      ...previous.executors,
-      {
-        executor: manifest.executor,
-        abiVersion: executorAbi,
-        definitions: [manifest.definition],
-        lifecycle: 'staged' as const,
-        policyReferences: manifest.policyReferences,
-      },
-    ],
-    policies: [...previous.policies, ...additionalPolicies],
-  });
+  return {
+    executor: manifest.executor,
+    abiVersion: manifest.executorAbi,
+    definitions: [manifest.definition],
+    lifecycle: 'active',
+    policyReferences: manifest.policyReferences,
+  };
 }
 
-function activateDefinition(previous: RegistryRelease, manifest: NodeManifest) {
-  return createRegistryReleaseSuccessor({
-    previous,
-    epoch: previous.epoch + 1,
-    definitions: previous.definitions,
-    executors: previous.executors.map((executor) =>
-      executor.executor.key === manifest.executor.key &&
-      executor.executor.version === manifest.executor.version
-        ? { ...executor, lifecycle: 'active' as const }
-        : executor,
-    ),
-    policies: previous.policies,
-  });
-}
-
-export const PLATFORM_REGISTRY_RELEASE_HTTP_STAGED = stageDefinition(
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-  HTTP_REQUEST_MANIFEST,
-  [HTTP_REQUEST_NETWORK_POLICY, HTTP_REQUEST_VALUE_POLICY],
-);
-
-export const PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-  HTTP_REQUEST_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  CORE_CONDITION_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
-  CORE_CONDITION_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  CORE_SWITCH_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
-  CORE_SWITCH_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-  CORE_PARALLEL_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
-  CORE_PARALLEL_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_MERGE_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-  CORE_MERGE_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
-  CORE_MERGE_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  CORE_FOR_EACH_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
-  CORE_FOR_EACH_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_WAIT_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  CORE_WAIT_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
-  CORE_WAIT_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_SLACK_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-  SLACK_SEND_MESSAGE_MANIFEST,
-  [SLACK_SEND_MESSAGE_POLICY],
-);
-
-export const PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
-  SLACK_SEND_MESSAGE_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-  EMAIL_SEND_NOTIFICATION_MANIFEST,
-  [EMAIL_SEND_NOTIFICATION_POLICY],
-);
-
-export const PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
-  EMAIL_SEND_NOTIFICATION_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-  CORE_WEBHOOK_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
-  CORE_WEBHOOK_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
-  CORE_SCHEDULE_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
-  CORE_SCHEDULE_MANIFEST,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
-  CORE_SCHEDULE_MANIFEST_V2,
-);
-export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
-  CORE_SCHEDULE_MANIFEST_V2,
-);
-export const PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
-  CORE_PARALLEL_MANIFEST_V2,
-);
-export const PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED,
-  CORE_PARALLEL_MANIFEST_V2,
-);
-export const PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
-  CORE_MERGE_MANIFEST_V2,
-);
-export const PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED,
-  CORE_MERGE_MANIFEST_V2,
-);
-export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
-  CORE_SCHEDULE_MANIFEST_V3,
-);
-export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_STAGED,
-  CORE_SCHEDULE_MANIFEST_V3,
-);
-export const PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_ACTIVE,
-  CORE_PARALLEL_MANIFEST_V3,
-);
-export const PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_STAGED,
-  CORE_PARALLEL_MANIFEST_V3,
-);
-export const PLATFORM_REGISTRY_RELEASE_MERGE_V3_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_ACTIVE,
-  CORE_MERGE_MANIFEST_V3,
-);
-export const PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_STAGED,
-  CORE_MERGE_MANIFEST_V3,
-);
-
-export const PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED = stageDefinition(
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
-  CORE_VALIDATE_MANIFEST,
-);
-export const PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE = activateDefinition(
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED,
-  CORE_VALIDATE_MANIFEST,
-);
-
-/** Complete audit/test history; never pass this to one serving artifact. */
-export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
-  ...CORE_REGISTRY_RELEASE_SUPPORT,
-  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
-  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
-  PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_STAGED,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_STAGED,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED,
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
-]);
-
-/**
- * The one catalog every API and worker serves: the newest release with every
- * definition and executor active. Release lifecycles (staging, deprecation)
- * are not used before launch, so nothing is hidden or marked for migration.
- */
+/** The one catalog every API and worker serves: every node, all active. */
 export const PLATFORM_REGISTRY_RELEASE = createRegistryRelease({
-  epoch: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.epoch + 1,
-  definitions: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.definitions.map(
-    (manifest) => ({ ...manifest, lifecycle: 'active' as const }),
-  ),
-  executors: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.executors.map(
-    (executor) => ({ ...executor, lifecycle: 'active' as const }),
-  ),
-  policies: PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.policies,
+  epoch: 1,
+  definitions: [...CORE_REGISTRY_RELEASE.definitions, ...PLATFORM_MANIFESTS],
+  executors: [
+    ...CORE_REGISTRY_RELEASE.executors,
+    ...PLATFORM_MANIFESTS.map(executorFor),
+  ],
+  policies: [
+    ...CORE_REGISTRY_RELEASE.policies,
+    HTTP_REQUEST_NETWORK_POLICY,
+    HTTP_REQUEST_VALUE_POLICY,
+    SLACK_SEND_MESSAGE_POLICY,
+    EMAIL_SEND_NOTIFICATION_POLICY,
+  ],
 });
-
-export function platformRegistryReleaseSupport() {
-  return Object.freeze([PLATFORM_REGISTRY_RELEASE]);
-}
-
-const PLATFORM_EXECUTABLE_REGISTRY_HISTORY = Object.freeze([
-  ...PLATFORM_REGISTRY_RELEASE_HISTORY,
-  PLATFORM_REGISTRY_RELEASE,
-]);
-
-/** Releases whose published workflows remain executable. */
-export function platformExecutableRegistryHistory() {
-  return PLATFORM_EXECUTABLE_REGISTRY_HISTORY;
-}
-
-/** Release whose executors the worker dispatches. */
-export function platformServingRegistryRelease() {
-  return PLATFORM_REGISTRY_RELEASE;
-}
-
-export function platformServingReleaseRequiresHttpCapabilities(): boolean {
-  return PLATFORM_REGISTRY_RELEASE.executors.some(
-    ({ executor, lifecycle }) =>
-      executor.key === HTTP_REQUEST_MANIFEST.executor.key &&
-      executor.version === HTTP_REQUEST_MANIFEST.executor.version &&
-      lifecycle === 'active',
-  );
-}

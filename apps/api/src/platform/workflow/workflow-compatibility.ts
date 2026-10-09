@@ -6,10 +6,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
@@ -23,9 +20,7 @@ import {
 } from '@pertexo/workflow-model/server';
 import { platformPortableDefinitionPolicy } from '@pertexo/node-catalog/server';
 
-type PlatformRegistryRelease = ReturnType<
-  typeof platformExecutableRegistryHistory
->[number];
+type PlatformRegistryRelease = typeof PLATFORM_REGISTRY_RELEASE;
 type PlatformDefinitionManifest =
   PlatformRegistryRelease['definitions'][number];
 type ProjectedDefinition = ReturnType<typeof projectDefinition>;
@@ -109,16 +104,16 @@ function projectDefinitionCatalogs(
 }
 
 function buildCoreWorkflowCompatibility() {
-  const registryReleaseSupport = platformExecutableRegistryHistory();
+  const registryReleaseSupport = [PLATFORM_REGISTRY_RELEASE];
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
     registryReleaseSupport.map(composeExecutableCompatibilityRelease),
   );
   const readinessSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   );
   // Authoring always selects the serving release; older releases only need to
   // stay executable, which releaseSupport covers.
-  const variants = platformRegistryReleaseSupport().map((nodeRelease) => {
+  const variants = [PLATFORM_REGISTRY_RELEASE].map((nodeRelease) => {
     const compatibilityRelease =
       composeExecutableCompatibilityRelease(nodeRelease);
     const compatibilityReleaseDescription = releaseSupport.descriptions.find(

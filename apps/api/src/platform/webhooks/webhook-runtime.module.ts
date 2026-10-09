@@ -4,10 +4,7 @@ import {
 } from '@pertexo/database/triggers';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { createAwsWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
-import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseHistory,
@@ -42,12 +39,10 @@ export async function createApiWebhookRuntime(
   factories: ApiWebhookRuntimeFactories = {},
 ): Promise<ApiWebhookRuntime> {
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory().map(
-      composeExecutableCompatibilityRelease,
-    ),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   );
   const compatibility = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   );
   let database: WebhookTriggerDatabase | undefined;
   let envelope: WebhookEnvelopeRuntime | undefined;

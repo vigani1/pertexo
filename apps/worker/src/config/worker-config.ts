@@ -8,7 +8,6 @@ import {
   type DatabaseConfig,
 } from '@pertexo/database/platform';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
-import { platformServingReleaseRequiresHttpCapabilities } from '@pertexo/node-catalog';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import { ACTIVE_QUEUE_JOB_NAMES, JOB_NAME, type JobName } from '@pertexo/queue';
 
@@ -524,7 +523,6 @@ export function parseWorkerConfig(
       deployed,
     );
     if (
-      platformServingReleaseRequiresHttpCapabilities() &&
       result.data.outboxDispatcher.enabledJobNames.includes(
         JOB_NAME.executeNodeAttempt,
       ) &&

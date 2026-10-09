@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { platformServingRegistryRelease } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {
   advanceWorkflow,
@@ -29,9 +29,7 @@ it('the actual reviewed For Each fails its pinned bound before any body admissio
   };
   const executable = buildWorkflowExecutable({
     graph,
-    release: composeExecutableCompatibilityRelease(
-      platformServingRegistryRelease(),
-    ),
+    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
   });
   const version = '00000000-0000-4000-8000-000000000001';
   const base = {

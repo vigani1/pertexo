@@ -5,7 +5,7 @@ import {
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
 import { createWorkflowRunDatabase } from '@pertexo/database/runs';
-import { platformRegistryReleaseSupport } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
@@ -249,9 +249,7 @@ export async function cancelFixtureRun(
       max: 2,
     }),
     createExecutableCompatibilityReleaseSupport(
-      platformRegistryReleaseSupport().map(
-        composeExecutableCompatibilityRelease,
-      ),
+      [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
     ).descriptions,
   );
   try {
@@ -275,9 +273,7 @@ export async function acceptReplayRun(): Promise<AcceptedReplayRun> {
       max: 2,
     }),
     createExecutableCompatibilityReleaseSupport(
-      platformRegistryReleaseSupport().map(
-        composeExecutableCompatibilityRelease,
-      ),
+      [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
     ).descriptions,
   );
   try {
@@ -524,9 +520,7 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
     undefined,
     {
       compatibilityReleases: createExecutableCompatibilityReleaseSupport(
-        platformRegistryReleaseSupport().map(
-          composeExecutableCompatibilityRelease,
-        ),
+        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
       ).descriptions,
     },
   );

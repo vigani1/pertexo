@@ -1,8 +1,4 @@
 import {
-  CORE_REGISTRY_RELEASE,
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-} from '@pertexo/nodes-core';
-import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
   describeExecutableCompatibilityRelease,
@@ -10,14 +6,7 @@ import {
   createExecutableCompatibilityReleaseHistory,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
-import {
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import { WorkflowPublishedVersionConflictError } from '@pertexo/database/runs';
@@ -49,7 +38,7 @@ const workflowVersionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const runId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const actorId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
-function executable(nodeRelease: unknown = CORE_REGISTRY_RELEASE) {
+function executable(nodeRelease: unknown = PLATFORM_REGISTRY_RELEASE) {
   const release = composeExecutableCompatibilityRelease(nodeRelease);
   return buildWorkflowExecutable({
     release,
@@ -91,7 +80,7 @@ function executable(nodeRelease: unknown = CORE_REGISTRY_RELEASE) {
 
 function forEachExecutable() {
   const release = composeExecutableCompatibilityRelease(
-    PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+    PLATFORM_REGISTRY_RELEASE,
   );
   const setNode = (id: string, inputMappings: Record<string, unknown>) => ({
     id,
@@ -192,12 +181,7 @@ function forEachExecutable() {
 }
 
 function parallelExecutable(version: 1 | 2 | 3) {
-  const nodeRelease =
-    version === 1
-      ? PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE
-      : version === 2
-        ? PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE
-        : PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE;
+  const nodeRelease = PLATFORM_REGISTRY_RELEASE;
   const release = composeExecutableCompatibilityRelease(nodeRelease);
   const ordinaryNode = (id: string) => ({
     id,
@@ -789,7 +773,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
 
   it('initializes the checkpoint for a verified Condition executable', () => {
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const compiled = buildWorkflowExecutable({
       release,
@@ -874,7 +858,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
 
   it('initializes the checkpoint for a verified Switch executable', () => {
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const compiled = buildWorkflowExecutable({
       release,
@@ -1003,7 +987,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
   it('initializes the checkpoint for a verified root executable', () => {
     const compiled = executable();
     const release = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const checkpoint = createInitialCheckpoint(
       {
@@ -1019,58 +1003,36 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     expectInitialCheckpoint(checkpoint);
   });
 
-  it.each([
-    'unsupported release',
-    'checksum mismatch',
-    'epoch mismatch',
-  ] as const)('rejects an executable with %s', (failureKind) => {
+  it('rejects an executable whose checksum does not match', () => {
     const compiled = executable();
     const release = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE,
+      PLATFORM_REGISTRY_RELEASE,
     );
-    const successor = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE_SUCCESSOR,
-    );
-    const original = projection(compiled, release);
-    const invalidProjection =
-      failureKind === 'checksum mismatch'
-        ? { ...original, checksum: '0'.repeat(64) }
-        : failureKind === 'epoch mismatch'
-          ? { ...original, compatibilityReleaseEpoch: successor.epoch }
-          : original;
-    const history = createExecutableCompatibilityReleaseHistory(
-      failureKind === 'unsupported release'
-        ? [successor]
-        : [release, successor],
-    );
-
     expect(() =>
       createInitialCheckpoint(
         {
-          ...invalidProjection,
+          ...projection(compiled, release),
+          checksum: '0'.repeat(64),
           currentCompatibilityRelease:
-            describeExecutableCompatibilityRelease(successor),
+            describeExecutableCompatibilityRelease(release),
         },
-        { releaseSupport: history },
+        {
+          releaseSupport: createExecutableCompatibilityReleaseHistory([
+            release,
+          ]),
+        },
       ),
     ).toThrow(WorkflowEngineError);
   });
 
   it('verifies the exact V2 release and creates the initial event-bound checkpoint', async () => {
     const compiled = executable();
-    const targetCompiled = executable(CORE_REGISTRY_RELEASE_SUCCESSOR);
-    expect(
-      describeExecutableCompatibilityRelease(
-        composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE),
-      ).fingerprint,
-    ).toBe(
-      'node-compat:v1:sha256:cf21b2e644563beb8b031481e9d5182b361b4ae2d4abd1d7d86d7b3fe0299f59',
-    );
+    const targetCompiled = executable(PLATFORM_REGISTRY_RELEASE);
     const start = vi.fn<WorkflowRunDatabase['start']>(async (input) => {
       await Promise.resolve();
       for (const [nodeRelease, executableVersion] of [
-        [CORE_REGISTRY_RELEASE, compiled],
-        [CORE_REGISTRY_RELEASE_SUCCESSOR, targetCompiled],
+        [PLATFORM_REGISTRY_RELEASE, compiled],
+        [PLATFORM_REGISTRY_RELEASE, targetCompiled],
       ] as const) {
         const initial = input.checkpointFactory(
           {

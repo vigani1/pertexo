@@ -1,8 +1,4 @@
-import {
-  CORE_REGISTRY_RELEASE,
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-  CORE_REGISTRY_RELEASE_SUPPORT,
-} from '@pertexo/nodes-core';
+import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
@@ -224,11 +220,9 @@ describe('advanceRun decisions', () => {
 
   it('advances the prepared target through the production overlap support', async () => {
     const releaseSupport = createExecutableCompatibilityReleaseSupport(
-      CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+      [CORE_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
     );
-    const target = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE_SUCCESSOR,
-    );
+    const target = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
     const executable = buildWorkflowExecutable({
       graph: graph(),
       release: target,
@@ -275,11 +269,9 @@ describe('advanceRun decisions', () => {
 
   it('fails closed for missing or unsupported overlap release evidence', async () => {
     const releaseSupport = createExecutableCompatibilityReleaseSupport(
-      CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+      [CORE_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
     );
-    const target = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE_SUCCESSOR,
-    );
+    const target = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
     const executable = buildWorkflowExecutable({
       graph: graph(),
       release: target,

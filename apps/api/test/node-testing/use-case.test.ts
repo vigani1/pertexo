@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
@@ -169,7 +165,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       undefined,
       evaluator,
     );
@@ -202,7 +198,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       access,
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     await expect(
       useCase.execute({
@@ -241,7 +237,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -260,7 +256,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -271,7 +267,7 @@ describe('node test application use case', () => {
     ).rejects.toMatchObject({
       name: 'WorkflowRevisionConflictError',
       currentRevision: 4,
-      currentEtag: '"draft-v1.2xCrfKo53NnU7o8d1pjTcNlKM6p4iH2MvkZQ6f9LCSU"',
+      currentEtag: '"draft-v1.pkZI7s2aGUc_Bbvcw_hXCZcjUwzmyRvGf8YlrkeUFUQ"',
     });
   });
 
@@ -283,7 +279,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -325,9 +321,7 @@ describe('node test application use case', () => {
       const useCase = new TestWorkflowNodeUseCase(
         store,
         authorization(),
-        kind === 'http'
-          ? PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE
-          : PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+        PLATFORM_REGISTRY_RELEASE,
       );
 
       const result = await useCase
@@ -385,7 +379,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       access,
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -421,7 +415,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       access,
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -468,7 +462,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       access,
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -498,7 +492,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       persistence(),
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     await expect(
       useCase.execute({
@@ -533,7 +527,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -573,7 +567,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       access,
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -625,7 +619,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -656,7 +650,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -688,7 +682,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
 
     await expect(
@@ -712,7 +706,7 @@ describe('node test application use case', () => {
 
   it('pins the exact release and accepts one identifier-only durable preview', async () => {
     const executionRelease = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const result = accepted();
     const store = persistence({
@@ -722,7 +716,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       access,
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       () => acceptedAt,
     );
     await expect(
@@ -810,7 +804,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       () => acceptedAt,
     );
     const priorPreviewRunId = randomUUID();
@@ -840,7 +834,7 @@ describe('node test application use case', () => {
           graphJson: emailGraph(),
           compatibility: {
             compatible: true,
-            fingerprint: PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE.fingerprint,
+            fingerprint: PLATFORM_REGISTRY_RELEASE.fingerprint,
             issues: [],
           },
         }),
@@ -849,7 +843,7 @@ describe('node test application use case', () => {
     const useCase = new TestWorkflowNodeUseCase(
       store,
       authorization(),
-      PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       () => acceptedAt,
     );
 

@@ -15,70 +15,22 @@ import type {
   SecureHttpRequest,
   SecureHttpResponse,
 } from '@pertexo/integrations/server';
-import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
+import { createRegistryRelease } from '@pertexo/node-sdk';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-import {
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-  CORE_SET_DEFINITION,
-  CORE_SET_EXECUTOR,
-} from '@pertexo/nodes-core';
+import { CORE_SET_DEFINITION, CORE_SET_EXECUTOR } from '@pertexo/nodes-core';
 
-import {
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-} from '../src/registry.js';
+import { PLATFORM_REGISTRY_RELEASE } from '../src/registry.js';
 import { createPlatformNodeRegistryForRelease } from '../src/server.js';
 
 describe('platform server registry composition', () => {
-  it('constructs provider adapters only when the selected release requires them', () => {
-    const coreProviderAccess = vi.fn(() => {
-      throw new Error('core release must not access provider dependencies');
-    });
-    const coreDependencies = Object.defineProperties(
-      {},
-      {
-        httpRequest: { get: coreProviderAccess },
-        slackSendMessage: { get: coreProviderAccess },
-        emailSendNotification: { get: coreProviderAccess },
-      },
-    );
-    expect(() =>
-      createPlatformNodeRegistryForRelease(
-        CORE_REGISTRY_RELEASE_SUCCESSOR,
-        coreDependencies,
-      ),
-    ).not.toThrow();
-    expect(coreProviderAccess).not.toHaveBeenCalled();
-
-    const unrelatedProviderAccess = vi.fn(() => {
-      throw new Error('HTTP release must not access unrelated providers');
-    });
-    const httpDependencies = Object.defineProperties(
-      { httpRequest: { httpClient: { executeStreaming: vi.fn() } as never } },
-      {
-        slackSendMessage: { get: unrelatedProviderAccess },
-        emailSendNotification: { get: unrelatedProviderAccess },
-      },
-    );
-    expect(() =>
-      createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-        httpDependencies,
-      ),
-    ).not.toThrow();
-    expect(unrelatedProviderAccess).not.toHaveBeenCalled();
-  });
-
   it('builds one exact active registry with dispatch-aware HTTP', async () => {
     const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       { httpRequest: { httpClient: { executeStreaming: vi.fn() } as never } },
     );
     expect(registry.compatibility).toEqual({
-      epoch: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.epoch,
-      fingerprint: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.fingerprint,
+      epoch: PLATFORM_REGISTRY_RELEASE.epoch,
+      fingerprint: PLATFORM_REGISTRY_RELEASE.fingerprint,
     });
     expect(registry.historicalCatalog().definitions).toEqual(
       expect.arrayContaining([CORE_SET_DEFINITION, HTTP_REQUEST_DEFINITION]),
@@ -106,24 +58,16 @@ describe('platform server registry composition', () => {
     ).resolves.toMatchObject({ kind: 'succeeded' });
   });
 
-  it('rejects a staged registry and an unshipped identity', () => {
-    expect(() =>
-      createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-        { httpRequest: { httpClient: { executeStreaming: vi.fn() } as never } },
+  it('rejects a release other than the platform release', () => {
+    const unshipped = createRegistryRelease({
+      epoch: PLATFORM_REGISTRY_RELEASE.epoch + 1,
+      definitions: PLATFORM_REGISTRY_RELEASE.definitions.map((manifest) =>
+        manifest.definition.key === HTTP_REQUEST_DEFINITION.key
+          ? { ...manifest, lifecycle: 'deprecated' as const }
+          : manifest,
       ),
-    ).toThrow(/cannot execute this release/u);
-    const unshipped = createRegistryReleaseSuccessor({
-      previous: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-      epoch: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.epoch + 1,
-      definitions: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.definitions.map(
-        (manifest) =>
-          manifest.definition.key === HTTP_REQUEST_DEFINITION.key
-            ? { ...manifest, lifecycle: 'deprecated' as const }
-            : manifest,
-      ),
-      executors: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.executors,
-      policies: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.policies,
+      executors: PLATFORM_REGISTRY_RELEASE.executors,
+      policies: PLATFORM_REGISTRY_RELEASE.policies,
     });
     expect(() => createPlatformNodeRegistryForRelease(unshipped)).toThrow(
       'Platform compatibility release identity is not supported',
@@ -149,7 +93,7 @@ describe('platform server registry composition', () => {
       }),
     );
     const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       { emailSendNotification: { client: { sendNotification } } },
     );
 
@@ -215,7 +159,7 @@ describe('platform server registry composition', () => {
       }),
     );
     const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       { slackSendMessage: { client: { sendMessage } } },
     );
 
@@ -323,7 +267,7 @@ describe('platform server registry composition', () => {
       },
     } satisfies NodeExecutionRuntime;
     const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       {
         httpRequest: { httpClient: { executeStreaming } },
         httpRequestTelemetry: { measure },

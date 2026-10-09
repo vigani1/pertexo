@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -82,7 +82,7 @@ function dependencies() {
       resolvePreviewReplay: vi.fn().mockResolvedValue(null),
       readPreview: vi.fn().mockResolvedValue(null),
     },
-    release: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    release: PLATFORM_REGISTRY_RELEASE,
     expressionEvaluator: { evaluate },
   };
 }
@@ -98,7 +98,7 @@ describe('node testing Nest module', () => {
           resolvePreviewReplay: () => Promise.resolve(null),
           readPreview: () => Promise.resolve(null),
         },
-        release: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+        release: PLATFORM_REGISTRY_RELEASE,
         expressionEvaluator: {
           evaluate: () => Promise.reject(new Error('not exercised')),
         },

@@ -1,5 +1,5 @@
 // Test-only admission proof against built public packages; never browser imports.
-import { platformServingRegistryRelease } from '../../../../../packages/node-catalog/dist/index.js';
+import { PLATFORM_REGISTRY_RELEASE } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
@@ -12,7 +12,7 @@ import { loopStep, step } from '../../support/for-each-fixtures';
 import { etagA } from '../../support/workflow-editor-fixtures';
 
 const release = composeExecutableCompatibilityRelease(
-  platformServingRegistryRelease(),
+  PLATFORM_REGISTRY_RELEASE,
 );
 const groupIds = ['parallel', 'left', 'right', 'merge'];
 

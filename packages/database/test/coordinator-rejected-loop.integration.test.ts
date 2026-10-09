@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE } from '../../node-catalog/dist/index.js';
+import { PLATFORM_REGISTRY_RELEASE } from '../../node-catalog/dist/index.js';
 import { rejectedLoopGraph } from './support/coordinator-rejected-loop-graph.js';
 
 // Test-only compiled facade: do not add the engine to the database runtime graph.
@@ -29,17 +29,13 @@ const graph = () => rejectedLoopGraph(items);
 async function rejectedFixture() {
   const executable = buildWorkflowExecutable({
     graph: graph(),
-    release: composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-    ),
+    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
   });
   const versionId = fixture.randomUUID();
   const workflowId = fixture.randomUUID();
   const pinned = buildWorkflowExecutable({
     graph: graph(),
-    release: composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-    ),
+    release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
   });
   await fixture.asOwner(fixture.workspaceA, async (client) => {
     await client.query(

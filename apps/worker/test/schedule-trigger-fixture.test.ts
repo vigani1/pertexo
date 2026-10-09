@@ -1,5 +1,5 @@
 import type { WorkflowAuthoringDatabaseOptions } from '@pertexo/database/testing';
-import { platformExecutableRegistryHistory } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/server';
@@ -46,7 +46,7 @@ describe('Schedule fixture authoring admission ownership', () => {
         worstCaseLoopIterations: 0,
       });
     try {
-      const releases = platformExecutableRegistryHistory();
+      const releases = [PLATFORM_REGISTRY_RELEASE];
       const command = { signal: new AbortController().signal };
       expect(releases.length).toBeGreaterThan(0);
       expect(variants(fixture)).toHaveLength(releases.length);

@@ -21,7 +21,7 @@ import {
   type SecureHttpTransportResponse,
   type SlackClient,
 } from '@pertexo/integrations/server';
-import { PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE } from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import type { NodeConnectionRuntime } from '@pertexo/node-sdk/server';
 import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
@@ -200,7 +200,7 @@ export async function createHttpNodeAttemptProofRuntime(
       },
     );
     const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
       {
         httpRequest: { httpClient },
         httpRequestTelemetry: createProductionHttpProviderTelemetry({

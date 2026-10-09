@@ -2,21 +2,9 @@ import type {
   NodeAttemptLease,
   PublishedWorkflowV2Projection,
 } from '@pertexo/database/testing';
-import {
-  CORE_REGISTRY_RELEASE,
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-  CORE_REGISTRY_RELEASE_SUPPORT,
-} from '@pertexo/nodes-core';
-import {
-  createCoreNodeRegistry,
-  createCoreNodeRegistryForRelease,
-} from '@pertexo/nodes-core/server';
-import {
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-} from '@pertexo/node-catalog';
+import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import {
   buildWorkflowExecutable,
@@ -426,7 +414,7 @@ describe('node attempt execution engine', () => {
 
   it('uses the parent scope for the branch node that introduces a selected path', () => {
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const executable = buildWorkflowExecutable({
       graph: branchGraph('condition'),
@@ -524,8 +512,8 @@ describe('node attempt execution engine', () => {
   });
 
   it.each([
-    ['condition', PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE, 'true', 'false'],
-    ['switch', PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE, 'case-01', 'default'],
+    ['condition', PLATFORM_REGISTRY_RELEASE, 'true', 'false'],
+    ['switch', PLATFORM_REGISTRY_RELEASE, 'case-01', 'default'],
   ] as const)(
     'requires the exact %s branch path without omissions or duplicates',
     (kind, registryRelease, selectedPort, wrongPort) => {
@@ -586,7 +574,7 @@ describe('node attempt execution engine', () => {
 
   it('preserves ordered nested branch ancestry and only removes the introducing source scope', () => {
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const projection = compiledProjection(nestedBranchGraph(), release);
     const engine = createNodeAttemptExecutionEngine({
@@ -641,7 +629,7 @@ describe('node attempt execution engine', () => {
 
   it('pins Parallel branches while treating Merge and its downstream as unbranched', () => {
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const projection = compiledProjection(parallelMergeGraph(), release);
     const engine = createNodeAttemptExecutionEngine({
@@ -726,11 +714,9 @@ describe('node attempt execution engine', () => {
 
   it('executes the prepared target through the production overlap support', async () => {
     const releaseSupport = createExecutableCompatibilityReleaseSupport(
-      CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+      [CORE_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
     );
-    const target = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE_SUCCESSOR,
-    );
+    const target = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
     const executable = buildWorkflowExecutable({
       graph: graph(),
       release: target,
@@ -764,9 +750,7 @@ describe('node attempt execution engine', () => {
         runInput: { target: true },
         completedNodeOutputs: [],
         abortRequested: false,
-        registry: createCoreNodeRegistryForRelease(
-          CORE_REGISTRY_RELEASE_SUCCESSOR,
-        ),
+        registry: createCoreNodeRegistry(),
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({ kind: 'succeeded', output: { target: true } });
@@ -774,7 +758,7 @@ describe('node attempt execution engine', () => {
 
   it('recursively prepares a For Each body node with exact ordinal-scoped upstream identity', async () => {
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const executable = buildWorkflowExecutable({
       graph: forEachGraph(),
@@ -836,7 +820,7 @@ describe('node attempt execution engine', () => {
         },
         abortRequested: false,
         registry: createPlatformNodeRegistryForRelease(
-          PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+          PLATFORM_REGISTRY_RELEASE,
         ),
         signal: new AbortController().signal,
       }),
@@ -845,7 +829,7 @@ describe('node attempt execution engine', () => {
 
   it('rejects body preparation outside its exact iteration ancestry', () => {
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const executable = buildWorkflowExecutable({
       graph: forEachGraph(),

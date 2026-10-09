@@ -6,7 +6,7 @@ import { catalogReleaseSchema } from '@pertexo/contracts/schemas/catalog';
 import { workflowGraphSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
   platformBrowserNodeDefinitionCatalog,
-  platformServingRegistryRelease,
+  PLATFORM_REGISTRY_RELEASE,
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
@@ -14,7 +14,7 @@ import {
 } from '@pertexo/workflow-engine';
 
 const executable = composeExecutableCompatibilityRelease(
-  platformServingRegistryRelease(),
+  PLATFORM_REGISTRY_RELEASE,
 );
 export const httpScopeSchema = z.strictObject({
   workspaceId: z.uuid(),

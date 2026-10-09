@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   platformBrowserNodeDefinitionCatalog,
-  platformServingRegistryRelease,
+  PLATFORM_REGISTRY_RELEASE,
 } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
@@ -16,7 +16,7 @@ import {
 describe('schedule catalog and executable release evidence', () => {
   const catalog = platformBrowserNodeDefinitionCatalog().release;
   const { epoch, fingerprint } = describeExecutableCompatibilityRelease(
-    composeExecutableCompatibilityRelease(platformServingRegistryRelease()),
+    composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
   );
   const executable = { epoch, fingerprint };
 

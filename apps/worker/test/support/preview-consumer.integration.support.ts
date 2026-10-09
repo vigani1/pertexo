@@ -21,10 +21,7 @@ import {
   type AcceptWorkflowRunInput,
   type AcceptPreviewRunInput,
 } from '@pertexo/database/testing';
-import {
-  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
-  platformExecutableRegistryHistory,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
@@ -246,9 +243,7 @@ async function seedIdentity(): Promise<void> {
     );
     const executable = buildWorkflowExecutable({
       graph: validateWorkflowGraph,
-      release: composeExecutableCompatibilityRelease(
-        PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
-      ),
+      release: composeExecutableCompatibilityRelease(PLATFORM_REGISTRY_RELEASE),
     });
     await client.query(
       `insert into app.workflow_versions (
@@ -281,9 +276,7 @@ let activeRelease = {
 
 export function activateArtifactRelease(): Promise<void> {
   const target = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory().map(
-      composeExecutableCompatibilityRelease,
-    ),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   ).descriptions.at(-1);
   if (target === undefined) throw new Error('release history is empty');
   activeRelease = { epoch: target.epoch, fingerprint: target.fingerprint };

@@ -1,8 +1,4 @@
-import {
-  createRegistryRelease,
-  createRegistryReleaseSuccessor,
-  type NodeManifest,
-} from '@pertexo/node-sdk';
+import { createRegistryRelease, type NodeManifest } from '@pertexo/node-sdk';
 
 import { CORE_MANUAL_MANIFEST } from './manual/index.js';
 import { CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY } from './policies.js';
@@ -41,27 +37,3 @@ export const CORE_REGISTRY_RELEASE = createRegistryRelease({
   ],
   policies: [CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY],
 });
-
-/**
- * The additive baseline-runtime overlap shipped by one API/worker artifact. The
- * successor changes lifecycle metadata only; identities, schemas, policies,
- * and executor implementations remain byte-for-byte compatible.
- */
-export const CORE_REGISTRY_RELEASE_SUCCESSOR = createRegistryReleaseSuccessor({
-  previous: CORE_REGISTRY_RELEASE,
-  epoch: CORE_REGISTRY_RELEASE.epoch + 1,
-  definitions: CORE_REGISTRY_RELEASE.definitions.map((manifest) => ({
-    ...manifest,
-    lifecycle:
-      manifest.definition.key === CORE_MANUAL_MANIFEST.definition.key
-        ? ('deprecated' as const)
-        : manifest.lifecycle,
-  })),
-  executors: CORE_REGISTRY_RELEASE.executors,
-  policies: CORE_REGISTRY_RELEASE.policies,
-});
-
-export const CORE_REGISTRY_RELEASE_SUPPORT = Object.freeze([
-  CORE_REGISTRY_RELEASE,
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-]);

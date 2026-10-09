@@ -14,11 +14,7 @@ import {
   RESEND_API_KEY_CONNECTION_SLOT,
 } from '@pertexo/integrations';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
-import {
-  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-  platformServingRegistryRelease,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
@@ -54,7 +50,7 @@ function leaseFixture(
   executableNode: PreviewAttemptLease['executableNode'],
 ): PreviewAttemptLease {
   const release = composeExecutableCompatibilityRelease(
-    platformServingRegistryRelease(),
+    PLATFORM_REGISTRY_RELEASE,
   );
   return {
     attemptFenceToken: 1,
@@ -201,7 +197,7 @@ describe('platform preview node invoker', () => {
       },
     );
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const lease = {
       ...leaseFixture({
@@ -227,7 +223,7 @@ describe('platform preview node invoker', () => {
     };
     const invoker = createPlatformPreviewNodeInvoker({
       registry: createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+        PLATFORM_REGISTRY_RELEASE,
         {
           emailSendNotification: { client: { sendNotification } },
         },
@@ -305,7 +301,7 @@ describe('platform preview node invoker', () => {
       },
     );
     const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE,
     );
     const lease = {
       ...leaseFixture({
@@ -332,7 +328,7 @@ describe('platform preview node invoker', () => {
     };
     const invoker = createPlatformPreviewNodeInvoker({
       registry: createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+        PLATFORM_REGISTRY_RELEASE,
         { slackSendMessage: { client: { sendMessage } } },
       ),
     });
@@ -511,9 +507,7 @@ describe('platform preview node invoker', () => {
 
   it('rejects a mismatched config version through the real core registry path', async () => {
     const invoker = createPlatformPreviewNodeInvoker({
-      registry: createPlatformNodeRegistryForRelease(
-        platformServingRegistryRelease(),
-      ),
+      registry: createPlatformNodeRegistryForRelease(PLATFORM_REGISTRY_RELEASE),
     });
     const lease = leaseFixture({
       config: {},

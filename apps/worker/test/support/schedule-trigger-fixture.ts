@@ -6,10 +6,7 @@ import {
   parseDatabaseConfig,
   type DatabaseConfig,
 } from '@pertexo/database/testing';
-import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
-} from '@pertexo/node-catalog';
+import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { QUEUE_NAME } from '@pertexo/queue';
 import {
   buildWorkflowExecutable,
@@ -31,12 +28,12 @@ import { createRedisTestNamespace } from './redis-test-namespace.js';
 function scheduleAuthoringOptions(
   validator: Pick<WorkflowAuthoringValidator, 'validate'>,
 ) {
-  const nodeReleases = platformExecutableRegistryHistory();
+  const nodeReleases = [PLATFORM_REGISTRY_RELEASE];
   const history = createExecutableCompatibilityReleaseHistory(
     nodeReleases.map(composeExecutableCompatibilityRelease),
   );
   const readiness = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   );
   const variants = nodeReleases.map((nodeRelease) => {
     const release = composeExecutableCompatibilityRelease(nodeRelease);
@@ -231,7 +228,7 @@ export function createScheduleTriggerFixture(
     },
   });
   const scheduleCompatibility = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport().map(composeExecutableCompatibilityRelease),
+    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
   ).descriptions;
 
   let owner: Pool | undefined;
