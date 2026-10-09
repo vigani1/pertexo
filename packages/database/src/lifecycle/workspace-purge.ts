@@ -6,7 +6,7 @@ import { sha256HexSchema as hashSchema } from '../validation/persisted-primitive
 
 import type { DatabaseConfig } from '../config.js';
 import { workspaceControlRecordHash } from './control-record.js';
-import { retentionQuery as query } from './retention-support.js';
+import { retentionQuery as query } from './retention-transaction.js';
 import {
   inRetentionTransaction,
   withWorkspaceDestructiveOperationLock,

@@ -7,7 +7,7 @@ import { parseOperatorCommandConfig } from '../src/config.js';
 const ids = {
   attempt: '11111111-1111-4111-8111-111111111111',
   command: '22222222-2222-4222-8222-222222222222',
-  purge: '33333333-3333-4333-8333-333333333333',
+  outbox: '33333333-3333-4333-8333-333333333333',
   run: '44444444-4444-4444-8444-444444444444',
   workspace: '55555555-5555-4555-8555-555555555555',
   workflow: '66666666-6666-4666-8666-666666666666',
@@ -23,7 +23,7 @@ function validOutboxEnvironment(): Record<string, string | undefined> {
     OPERATOR_COMMAND_ID: ids.command,
     OPERATOR_COMMAND_TYPE: 'outbox.redispatch',
     OPERATOR_DRY_RUN: 'true',
-    OPERATOR_OUTBOX_EVENT_ID: ids.purge,
+    OPERATOR_OUTBOX_EVENT_ID: ids.outbox,
     OPERATOR_REASON: 'prove safe redispatch',
     OPERATOR_WORKSPACE_ID: ids.workspace,
   };
@@ -179,34 +179,6 @@ describe('operator command config', () => {
     });
   });
 
-  it('parses a maintenance-owned retention rerun request', () => {
-    const commandId = randomUUID();
-    const targetId = randomUUID();
-    const workspaceId = randomUUID();
-    expect(
-      parseOperatorCommandConfig({
-        DATABASE_MAINTENANCE_URL:
-          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
-        OPERATOR_ACTOR_REF: 'ci-test-operator',
-        OPERATOR_COMMAND_ID: commandId,
-        OPERATOR_COMMAND_TYPE: 'retention.rerun',
-        OPERATOR_DRY_RUN: 'false',
-        OPERATOR_REASON: 'wake retained batch',
-        OPERATOR_RETENTION_BATCH_ID: targetId,
-        OPERATOR_WORKSPACE_ID: workspaceId,
-      }).command,
-    ).toEqual({
-      actorRef: 'ci-test-operator',
-      commandId,
-      dryRun: false,
-      reason: 'wake retained batch',
-      targetId,
-      targetType: 'retention_batch',
-      type: 'retention.rerun',
-      workspaceId,
-    });
-  });
-
   it.each([
     {
       label: 'due-work resume',
@@ -259,24 +231,6 @@ describe('operator command config', () => {
         evidenceRef: { receipt: 'safe-ref' },
         reason: 'prove safe redispatch',
         type: 'unknown-outcome.record-evidence',
-        workspaceId: ids.workspace,
-      },
-    },
-    {
-      label: 'purge rerun',
-      environment: {
-        OPERATOR_COMMAND_TYPE: 'purge.rerun',
-        OPERATOR_DRY_RUN: 'false',
-        OPERATOR_PURGE_JOB_ID: ids.purge,
-      },
-      expected: {
-        actorRef: 'ci-test-operator',
-        commandId: ids.command,
-        dryRun: false,
-        reason: 'prove safe redispatch',
-        targetId: ids.purge,
-        targetType: 'workspace_purge_job',
-        type: 'purge.rerun',
         workspaceId: ids.workspace,
       },
     },

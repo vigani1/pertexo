@@ -113,24 +113,6 @@ describe('operator command facade mappings', () => {
     },
     {
       invoke: () =>
-        database().requestMaintenanceRerun({
-          ...base,
-          targetId: randomUUID(),
-          targetType: 'retention_batch',
-        }),
-      sql: 'request_operator_maintenance_rerun',
-      values: () => [
-        base.commandId,
-        workspaceId,
-        'retention_batch',
-        expect.any(String) as unknown,
-        actorRef,
-        reason,
-        false,
-      ],
-    },
-    {
-      invoke: () =>
         database().retryTriggerReconciliation({
           ...base,
           workflowId: randomUUID(),

@@ -7,19 +7,13 @@ export type {
   PreviewRetentionCoordinator,
   PreviewRetentionProcessResult,
 } from './lifecycle/preview-retention.js';
-export {
-  createRetentionDatabase,
-  createRetentionEnforcementCoordinator,
-} from './lifecycle/retention.js';
+export { createRetentionDatabase } from './lifecycle/retention.js';
 export type {
-  OperatorMaintenanceRerunResult,
   RetentionDatabase,
-  RetentionDryRunProcessResult,
-  RetentionEnforcementCoordinator,
-  RetentionEnforcementProcessResult,
-  RetentionScheduleResult,
+  RetentionPassResult,
+  RetentionRuleName,
+  TransientDataReapResult,
 } from './lifecycle/retention.js';
-export type { TransientDataReapResult } from './lifecycle/transient-data-retention.js';
 export { createRunArtifactRetentionCoordinator } from './lifecycle/run-artifact-retention.js';
 export type {
   RunArtifactRetentionCoordinator,

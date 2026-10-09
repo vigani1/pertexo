@@ -25,10 +25,6 @@ const maintenanceUrl = withDatabase(
   process.env.DATABASE_MAINTENANCE_URL ??
     'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
-const operatorUrl = withDatabase(
-  process.env.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-);
 const migrationConfig = {
   connectionString: databaseUrl,
   ownerRole: 'pertexo_owner',
@@ -37,7 +33,6 @@ const migrationConfig = {
 } as const;
 let maintenance: Pool | undefined;
 let owner: Pool | undefined;
-let operator: Pool | undefined;
 
 class MemoryObjectPurgeStore {
   public calls = 0;
@@ -139,13 +134,11 @@ beforeAll(async () => {
   await migrateDatabase(migrationConfig);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
   owner = new Pool({ connectionString: databaseUrl, max: 1 });
-  operator = new Pool({ connectionString: operatorUrl, max: 1 });
 });
 
 afterAll(async () => {
   await maintenance?.end();
   await owner?.end();
-  await operator?.end();
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(admin, databaseName);
@@ -466,11 +459,7 @@ describe('workspace purge foundation', () => {
   });
 
   it('persists one fenced command, starts purge, and removes every tenant row', async () => {
-    if (
-      maintenance === undefined ||
-      owner === undefined ||
-      operator === undefined
-    )
+    if (maintenance === undefined || owner === undefined)
       throw new Error('Database pools unavailable');
     const workspaceId = randomUUID();
     const userId = randomUUID();
@@ -882,20 +871,6 @@ describe('workspace purge foundation', () => {
     expect(Number(retry.rows[0]?.lease_fence)).toBe(
       Number(firstJob?.lease_fence) + 1,
     );
-    const rerunCommandId = randomUUID();
-    await expect(
-      operator.query(
-        "select * from app.request_operator_maintenance_rerun($1,$2,'workspace_purge_job',$3,'operator:purge-test','Prove maintenance rerun tenant cleanup',false)",
-        [rerunCommandId, workspaceId, retry.rows[0]?.job_id],
-      ),
-    ).resolves.toMatchObject({
-      rows: [
-        expect.objectContaining({
-          command_outcome: 'rerun_requested',
-          command_status: 'pending',
-        }),
-      ],
-    });
     const purgeHash = '2'.repeat(64);
     await maintenance.query(
       'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
@@ -1015,20 +990,6 @@ describe('workspace purge foundation', () => {
     }
     expect(tenantRowsCompleted).toBe(true);
     expect(claimScanPositions.size).toBeGreaterThanOrEqual(2);
-    await owner.query('begin');
-    try {
-      await owner.query('set local role pertexo_owner');
-      await expect(
-        owner.query(
-          'select count(*)::int count from app.operator_maintenance_rerun_requests where command_id=$1',
-          [rerunCommandId],
-        ),
-      ).resolves.toMatchObject({ rows: [{ count: 0 }] });
-      await owner.query('commit');
-    } catch (error: unknown) {
-      await owner.query('rollback');
-      throw error;
-    }
     await expect(
       maintenance.query(
         `select app.project_workspace_deletion(

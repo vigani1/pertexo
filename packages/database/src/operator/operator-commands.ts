@@ -63,12 +63,6 @@ const replayRunInputSchema = baseCommandInputSchema
     workflowVersionId: z.uuid(),
   })
   .strict();
-const maintenanceRerunInputSchema = baseCommandInputSchema
-  .extend({
-    targetId: z.uuid(),
-    targetType: z.enum(['retention_batch', 'workspace_purge_job']),
-  })
-  .strict();
 const unknownEvidenceInputSchema = baseCommandInputSchema
   .omit({ dryRun: true })
   .extend({
@@ -95,9 +89,6 @@ export type OperatorWorkflowCommandInput = Readonly<
 >;
 export type ReplayOperatorRunInput = Readonly<
   z.input<typeof replayRunInputSchema>
->;
-export type OperatorMaintenanceRerunInput = Readonly<
-  z.input<typeof maintenanceRerunInputSchema>
 >;
 export type RecordUnknownOutcomeEvidenceInput = Readonly<
   z.input<typeof unknownEvidenceInputSchema>
@@ -132,8 +123,6 @@ type OperatorCommandType =
   | 'attempt.reconcile'
   | 'due-work.resume'
   | 'outbox.redispatch'
-  | 'purge.rerun'
-  | 'retention.rerun'
   | 'run.cancel'
   | 'run.replay'
   | 'trigger.reconcile'
@@ -170,9 +159,6 @@ export interface OperatorCommandDatabase {
   replayRun(
     input: ReplayOperatorRunInput,
   ): Promise<GenericOperatorCommandResult>;
-  requestMaintenanceRerun(
-    input: OperatorMaintenanceRerunInput,
-  ): Promise<GenericOperatorCommandResult>;
   retryTriggerReconciliation(
     input: OperatorWorkflowCommandInput,
   ): Promise<GenericOperatorCommandResult>;
@@ -189,8 +175,6 @@ const commandTypeSchema = z.enum([
   'attempt.reconcile',
   'due-work.resume',
   'outbox.redispatch',
-  'purge.rerun',
-  'retention.rerun',
   'run.cancel',
   'run.replay',
   'trigger.reconcile',
@@ -417,22 +401,6 @@ export function createOperatorCommandDatabase(
           parsed.sourceRunId,
           parsed.workflowVersionId,
           serializedRunInput,
-          parsed.actorRef,
-          parsed.reason,
-          parsed.dryRun,
-        ],
-        parsed.signal,
-      );
-    },
-    requestMaintenanceRerun: async (input: OperatorMaintenanceRerunInput) => {
-      const parsed = maintenanceRerunInputSchema.parse(input);
-      return runtime.execute(
-        'select * from app.request_operator_maintenance_rerun($1::uuid,$2::uuid,$3::varchar,$4::uuid,$5::varchar,$6::varchar,$7::boolean)',
-        [
-          parsed.commandId,
-          parsed.workspaceId,
-          parsed.targetType,
-          parsed.targetId,
           parsed.actorRef,
           parsed.reason,
           parsed.dryRun,

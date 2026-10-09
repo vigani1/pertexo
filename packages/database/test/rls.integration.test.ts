@@ -9,6 +9,7 @@ import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import type { WorkspaceDatabase } from '../src/database.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 import { rlsProbeRecords } from '../src/schema.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
@@ -479,7 +480,7 @@ describe.each([
 describe('database compatibility and readiness', () => {
   it('verifies bounded steady-state migration, PostgreSQL, and role readiness', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0000_baseline.sql',
+      migrationHead: EXPECTED_MIGRATION_HEAD,
       postgresMajor: 18,
       role: 'pertexo_app',
     });

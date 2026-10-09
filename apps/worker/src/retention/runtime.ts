@@ -2,7 +2,6 @@ import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database/lif
 import type {
   PreviewRetentionCoordinator,
   RetentionDatabase,
-  RetentionEnforcementCoordinator,
   RunArtifactRetentionCoordinator,
   WorkspacePurgeCoordinator,
 } from '@pertexo/database/maintenance';
@@ -21,7 +20,6 @@ export const RETENTION_RUNTIME = Symbol('RETENTION_RUNTIME');
 
 export type RetentionRuntimeResources = Readonly<{
   database: RetentionDatabase;
-  enforcement: RetentionEnforcementCoordinator;
   lifecycleCommands: WorkspaceLifecycleCommandCoordinator;
   preview: PreviewRetentionCoordinator;
   runArtifacts: RunArtifactRetentionCoordinator;
@@ -77,28 +75,6 @@ export function createRetentionRuntime(
       },
     ],
     [
-      'operator_rerun',
-      async (signal) =>
-        (await timed(
-          () => resources.database.processOperatorRerun(signal),
-          (result, seconds) => {
-            metrics.recordOperatorRerun(result, seconds);
-          },
-        )) !== null,
-    ],
-    [
-      'schedule',
-      async (signal) =>
-        (
-          await timed(
-            () => resources.database.scheduleEnforcement(signal),
-            (result, seconds) => {
-              metrics.recordSchedule(result, seconds);
-            },
-          )
-        ).capacityLimited,
-    ],
-    [
       'transient_data_reap',
       async (signal) => {
         const result = await timed(
@@ -119,28 +95,16 @@ export function createRetentionRuntime(
       },
     ],
     [
-      'dry_run',
-      async (signal) =>
-        (
-          await timed(
-            () => resources.database.processNext(signal),
-            (result, seconds) => {
-              metrics.record(result, seconds, 'dry_run');
-            },
-          )
-        ).status !== 'idle',
-    ],
-    [
-      'enforce',
-      async (signal) =>
-        (
-          await timed(
-            () => resources.enforcement.processNext(signal),
-            (result, seconds) => {
-              metrics.record(result, seconds, 'enforce');
-            },
-          )
-        ).status === 'completed',
+      'retention',
+      async (signal) => {
+        const result = await timed(
+          () => resources.database.enforce(signal),
+          (result, seconds) => {
+            metrics.recordRetention(result, seconds);
+          },
+        );
+        return result.more;
+      },
     ],
     [
       'preview',
@@ -221,7 +185,6 @@ export function createRetentionRuntime(
         resources.preview.close(),
         resources.runArtifacts.close(),
         resources.workspacePurge.close(),
-        resources.enforcement.close(),
         resources.database.close(),
       ]);
       const failures = closed.flatMap((result) =>

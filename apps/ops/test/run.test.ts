@@ -14,7 +14,6 @@ const operationNames = [
   'recordUnknownOutcomeEvidence',
   'retryTriggerReconciliation',
   'replayRun',
-  'requestMaintenanceRerun',
 ] as const;
 
 const commandBase = () =>
@@ -48,7 +47,6 @@ function createResources(
     resumeDueWork: vi.fn().mockResolvedValue(result),
     retryTriggerReconciliation: vi.fn().mockResolvedValue(result),
     replayRun: vi.fn().mockResolvedValue(result),
-    requestMaintenanceRerun: vi.fn().mockResolvedValue(result),
   };
   const logger = { info: vi.fn(), error: vi.fn() };
   const telemetry = {
@@ -141,28 +139,6 @@ const cases: readonly (readonly [
       workflowVersionId: randomUUID(),
     },
     'replayRun',
-  ],
-  [
-    'retention rerun',
-    {
-      ...commandBase(),
-      dryRun: false,
-      targetId: randomUUID(),
-      targetType: 'retention_batch',
-      type: 'retention.rerun',
-    },
-    'requestMaintenanceRerun',
-  ],
-  [
-    'purge rerun',
-    {
-      ...commandBase(),
-      dryRun: true,
-      targetId: randomUUID(),
-      targetType: 'workspace_purge_job',
-      type: 'purge.rerun',
-    },
-    'requestMaintenanceRerun',
   ],
 ];
 

@@ -172,16 +172,15 @@ signals and are not sufficient by themselves to claim user impact.
 ## PertexoRetentionOperationFailure
 
 Use the finite `operation` label to locate the failed stage: lifecycle
-commands, rerun processing, scheduling, dry run, enforcement, preview,
-run-artifact retention, or workspace purge. The worker runs these stages. Inspect the structured error and durable lease/fence state. After fixing
-the cause, use the audited retention or purge rerun command where applicable.
+commands, retention, transient data, preview, run-artifact retention, or
+workspace purge. The worker runs these stages and retries a failed one on its
+next cycle, so fixing the cause is enough; nothing needs to be rerun by hand.
 
 ## PertexoWorkspacePurgeReleasedOrStale
 
 Inspect the purge job's persisted step, lease, fence, and object deletion
-evidence. A released or stale attempt is retryable and is not a
-completion claim. Use the purge rerun command only after active authority has
-expired and retain the non-sensitive completion tombstone contract.
+evidence. A released or stale attempt is retried by the worker and is not a
+completion claim.
 
 ## PertexoLifecycleCommandFailure
 

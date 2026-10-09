@@ -4,7 +4,6 @@ import {
   createDatabaseRuntime,
   createPreviewRetentionCoordinator,
   createRetentionDatabase,
-  createRetentionEnforcementCoordinator,
   createRunArtifactRetentionCoordinator,
   createWorkspacePurgeCoordinator,
 } from '@pertexo/database/maintenance';
@@ -35,16 +34,7 @@ export function configuredRetentionRuntime(
   try {
     return createRetentionRuntime(
       {
-        database: createRetentionDatabase(
-          database,
-          { leaseOwner },
-          databaseRuntime,
-        ),
-        enforcement: createRetentionEnforcementCoordinator(
-          database,
-          { leaseOwner },
-          databaseRuntime,
-        ),
+        database: createRetentionDatabase(database, {}, databaseRuntime),
         lifecycleCommands: createWorkspaceLifecycleCommandCoordinator(
           retention.maintenanceDatabase,
           { leaseOwner },

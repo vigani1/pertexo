@@ -242,17 +242,16 @@ describe.skipIf(!enabled)(
     afterAll(cleanup, 30_000);
 
     it('requires the current head and preserved 0133 inventory on API and worker; is not an old-image cutover proof', async () => {
-      expect(EXPECTED_MIGRATION_HEAD).toBe('0000_baseline.sql');
       expect(
         (
           await apiPool.query(
             'select name from pertexo_internal.schema_migrations order by name desc limit 1',
           )
         ).rows,
-      ).toEqual([{ name: '0000_baseline.sql' }]);
+      ).toEqual([{ name: EXPECTED_MIGRATION_HEAD }]);
       for (const pool of [apiPool, workerPool])
         await expect(checkDatabaseReadiness(pool)).resolves.toMatchObject({
-          migrationHead: '0000_baseline.sql',
+          migrationHead: EXPECTED_MIGRATION_HEAD,
         });
     });
 

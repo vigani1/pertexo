@@ -5,10 +5,7 @@ export {
   type WorkspaceLifecycleCommandType,
 } from './workspace-lifecycle-commands.js';
 export { workspaceControlRecordHash } from './control-record.js';
-export {
-  createRetentionDatabase,
-  createRetentionEnforcementCoordinator,
-} from './retention.js';
+export { createRetentionDatabase, RETENTION_RULES } from './retention.js';
 export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
 export { createWorkspacePurgeCoordinator } from './workspace-purge.js';
 export type {
@@ -23,20 +20,9 @@ export type {
   RunArtifactRetentionStore,
 } from './run-artifact-retention.js';
 export type {
-  OperatorMaintenanceRerunResult,
   RetentionDatabase,
   RetentionDatabaseOptions,
-  RetentionDryRunClaim,
-  RetentionDryRunPageResult,
-  RetentionDryRunProcessResult,
-  RetentionDryRunTuple,
-  RetentionEnforcementCoordinator,
-  RetentionEnforcementCoordinatorOptions,
-  RetentionEnforcementProcessResult,
-  RetentionKind,
-  RetentionScheduleResult,
-  StartWorkflowRunInputRetentionDryRunInput,
-  StartWorkflowRunInputRetentionInput,
+  RetentionPassResult,
 } from './retention.js';
 export { createPreviewRetentionCoordinator } from './preview-retention.js';
 export type {

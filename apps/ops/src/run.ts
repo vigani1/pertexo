@@ -98,12 +98,6 @@ async function executeConfiguredCommand(
         ...resources.command,
         signal: resources.signal,
       });
-    case 'purge.rerun':
-    case 'retention.rerun':
-      return resources.database.requestMaintenanceRerun({
-        ...resources.command,
-        signal: resources.signal,
-      });
   }
 }
 

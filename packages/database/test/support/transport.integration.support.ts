@@ -147,13 +147,6 @@ export function createTransportTestEnvironment() {
           `transport-b-${workspaceB}`,
         ],
       );
-      if (sharedDatabase)
-        await client.query(
-          `update app.retention_schedule_state
-              set next_scan_at=clock_timestamp()+interval '1 day'
-            where workspace_id=any($1::uuid[])`,
-          [[workspaceA, workspaceB]],
-        );
       await client.query('commit');
     } catch (error: unknown) {
       await client?.query('rollback').catch(() => undefined);

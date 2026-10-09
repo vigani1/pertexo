@@ -1,4 +1,5 @@
 import type { Meter } from '@opentelemetry/api';
+import type { RetentionPassResult } from '@pertexo/database/maintenance';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -64,14 +65,10 @@ describe('retention metrics', () => {
         [RETENTION_METRIC_NAME.failureDuration, 's'],
         [RETENTION_METRIC_NAME.lifecycleCommandCount, '{command}'],
         [RETENTION_METRIC_NAME.lifecycleCommandDuration, 's'],
-        [RETENTION_METRIC_NAME.operatorRerunCount, '{command}'],
-        [RETENTION_METRIC_NAME.operatorRerunDuration, 's'],
         [RETENTION_METRIC_NAME.pageCount, '{page}'],
         [RETENTION_METRIC_NAME.purgeCount, '{attempt}'],
         [RETENTION_METRIC_NAME.purgeDuration, 's'],
         [RETENTION_METRIC_NAME.rowCount, '{row}'],
-        [RETENTION_METRIC_NAME.scheduleScanCount, '{scan}'],
-        [RETENTION_METRIC_NAME.scheduleWorkspaceCount, '{workspace}'],
         [RETENTION_METRIC_NAME.transientDataReapCount, '{row}'],
       ].sort(([left], [right]) => String(left).localeCompare(String(right))),
     );
@@ -119,89 +116,6 @@ describe('retention metrics', () => {
     expect(
       callsFor(instruments, RETENTION_METRIC_NAME.purgeDuration, 'record'),
     ).toEqual([[0.5, { outcome: 'progressed' }]]);
-  });
-
-  it('bounds known, unknown, and idle operator rerun outcomes', () => {
-    const { instruments, metrics } = setupMetrics();
-    metrics.recordOperatorRerun(
-      {
-        commandId: 'ignored-command',
-        outcome: 'rerun_accepted',
-        targetId: 'ignored-target',
-        targetType: 'retention_batch',
-        workspaceId: 'ignored-workspace',
-      },
-      0.1,
-    );
-    metrics.recordOperatorRerun(
-      {
-        commandId: 'ignored-command',
-        outcome: 'future_database_value',
-        targetId: 'ignored-target',
-        targetType: 'workspace_purge_job',
-        workspaceId: 'ignored-workspace',
-      },
-      0.2,
-    );
-    metrics.recordOperatorRerun(null, 0.3);
-    const attributes = [
-      { outcome: 'rerun_accepted', target_type: 'retention_batch' },
-      { outcome: 'unknown', target_type: 'workspace_purge_job' },
-      { outcome: 'idle', target_type: 'none' },
-    ];
-    expect(
-      callsFor(instruments, RETENTION_METRIC_NAME.operatorRerunCount, 'add'),
-    ).toEqual(attributes.map((value) => [1, value]));
-    expect(
-      callsFor(
-        instruments,
-        RETENTION_METRIC_NAME.operatorRerunDuration,
-        'record',
-      ),
-    ).toEqual(attributes.map((value, index) => [(index + 1) / 10, value]));
-  });
-
-  it('records idle and scheduled scans and workspace counts', () => {
-    const { instruments, metrics } = setupMetrics();
-    const cutoffAt = new Date('2026-08-26T00:00:00.000Z');
-    metrics.recordSchedule(
-      { capacityLimited: false, cutoffAt, scannedCount: 4, scheduledCount: 0 },
-      0.4,
-    );
-    metrics.recordSchedule(
-      { capacityLimited: true, cutoffAt, scannedCount: 9, scheduledCount: 3 },
-      0.6,
-    );
-    const idle = { mode: 'schedule', outcome: 'idle', retention_kind: 'all' };
-    const scheduled = {
-      mode: 'schedule',
-      outcome: 'scheduled',
-      retention_kind: 'all',
-    };
-    expect(
-      callsFor(instruments, RETENTION_METRIC_NAME.scheduleScanCount, 'add'),
-    ).toEqual([
-      [1, idle],
-      [1, scheduled],
-    ]);
-    expect(
-      callsFor(
-        instruments,
-        RETENTION_METRIC_NAME.scheduleWorkspaceCount,
-        'add',
-      ),
-    ).toEqual([
-      [4, { ...idle, workspace_outcome: 'scanned' }],
-      [0, { ...idle, workspace_outcome: 'scheduled' }],
-      [9, { ...scheduled, workspace_outcome: 'scanned' }],
-      [3, { ...scheduled, workspace_outcome: 'scheduled' }],
-    ]);
-    expect(
-      callsFor(instruments, RETENTION_METRIC_NAME.batchDuration, 'record'),
-    ).toEqual([
-      [0.4, idle],
-      [0.6, scheduled],
-    ]);
   });
 
   it('records each transient data class and idle versus deleted duration', () => {
@@ -296,48 +210,44 @@ describe('retention metrics', () => {
     ]);
   });
 
-  it('records idle and non-idle retention batches with exact rows and pages', () => {
+  it('records each rule of a retention pass and the pass duration', () => {
     const { instruments, metrics } = setupMetrics();
-    metrics.record({ status: 'idle' }, 0.9, 'dry_run');
-    metrics.record(
+    metrics.recordRetention(
       {
-        batchId: 'ignored-batch',
-        eligibleCount: 3,
-        examinedCount: 7,
-        pageCount: 2,
-        retentionKind: 'workflow_run_input',
-        status: 'completed',
-        workspaceId: 'ignored-workspace',
+        removed: {
+          run_inputs: 3,
+          audit_events: 0,
+        } as RetentionPassResult['removed'],
+        more: false,
       },
       1.1,
-      'enforce',
     );
-    const idle = { mode: 'dry_run', outcome: 'idle', retention_kind: 'none' };
-    const completed = {
+    const deleted = {
       mode: 'enforce',
-      outcome: 'completed',
-      retention_kind: 'workflow_run_input',
+      outcome: 'deleted',
+      retention_kind: 'run_inputs',
+    };
+    const idle = {
+      mode: 'enforce',
+      outcome: 'idle',
+      retention_kind: 'audit_events',
     };
     expect(
       callsFor(instruments, RETENTION_METRIC_NAME.batchCount, 'add'),
     ).toEqual([
+      [1, deleted],
       [1, idle],
-      [1, completed],
     ]);
     expect(
       callsFor(instruments, RETENTION_METRIC_NAME.rowCount, 'add'),
     ).toEqual([
-      [7, { ...completed, row_outcome: 'examined' }],
-      [3, { ...completed, row_outcome: 'eligible' }],
+      [3, { ...deleted, row_outcome: 'deleted' }],
+      [0, { ...idle, row_outcome: 'deleted' }],
     ]);
-    expect(
-      callsFor(instruments, RETENTION_METRIC_NAME.pageCount, 'add'),
-    ).toEqual([[2, completed]]);
     expect(
       callsFor(instruments, RETENTION_METRIC_NAME.batchDuration, 'record'),
     ).toEqual([
-      [0.9, idle],
-      [1.1, completed],
+      [1.1, { mode: 'enforce', outcome: 'deleted', retention_kind: 'all' }],
     ]);
   });
 

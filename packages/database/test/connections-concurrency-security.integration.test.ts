@@ -23,6 +23,7 @@ import {
   workspaceA,
   workspaceB,
 } from './support/connections.integration.support.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 
 const connections = registerCurrentConnectionsFixture();
 
@@ -404,12 +405,12 @@ describe('connection concurrency and security', () => {
       await expect(
         checkDatabaseReadiness(apiReadinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0000_baseline.sql',
+        migrationHead: EXPECTED_MIGRATION_HEAD,
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool),
       ).resolves.toMatchObject({
-        migrationHead: '0000_baseline.sql',
+        migrationHead: EXPECTED_MIGRATION_HEAD,
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);
