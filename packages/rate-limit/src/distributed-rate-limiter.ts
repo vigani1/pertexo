@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 
 import {
-  ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION,
   RATE_LIMIT_ENDPOINT_CLASSES,
   type RateLimitDecision,
   type RateLimitDimensionKind,
@@ -65,7 +64,7 @@ function counterKey(decision: RateLimitDecision, index: number): string {
     .update('\0')
     .update(dimension.identifier)
     .digest('hex');
-  return `pertexo:abuse:v${String(ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION)}:${decision.endpointClass}:${dimension.kind}:${digest}`;
+  return `pertexo:abuse:${decision.endpointClass}:${dimension.kind}:${digest}`;
 }
 
 function assertDecision(decision: RateLimitDecision): void {

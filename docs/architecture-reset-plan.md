@@ -277,9 +277,10 @@ now, as one ordered program — not "whenever we touch it".
         the definition registrations; `browser-catalog.ts` projects it for
         HTTP. The registered template setup check stays here because it
         needs the node schemas.
-  - [ ] templates (new) — the curated templates, their origin schema and
-        setup checks now live in `@pertexo/templates`; the registered setup
-        check still in node-catalog moves with the node-catalog pass.
+  - [x] templates (new) — the curated templates, their origin schema and
+        setup checks live in `@pertexo/templates` (one door, behavior tests);
+        the registered setup check stays in node-catalog because it needs the
+        node schemas.
   - [ ] contracts
     - [x] Two doors: `@pertexo/contracts` (request, response and problem
           schemas, browser-safe) and `@pertexo/contracts/server` (OpenAPI
@@ -298,7 +299,9 @@ now, as one ordered program — not "whenever we touch it".
           (config, process-error classification, telemetry; loaded before
           pino, pg and HTTP so OpenTelemetry can instrument them) and
           `@pertexo/observability`. No runtime guard.
-  - [ ] rate-limit
+  - [x] rate-limit — one policy table, one Redis script, one runtime. The
+        counter "schema version" in Redis keys (a rolling-deploy
+        compatibility identity) goes.
   - [ ] database
     - [x] Every table typed: the 27 tables that existed only in SQL and the
           JSON registry get Drizzle definitions (columns, keys, checks,
