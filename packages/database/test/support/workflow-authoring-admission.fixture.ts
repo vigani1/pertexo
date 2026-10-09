@@ -38,33 +38,16 @@ export function createWorkflowAuthoringFixtureDatabase(
       return validator.validate(graph, projection, command);
     };
   }
-  const variants = options.compatibilityReleaseVariants;
-  const database = createWorkflowAuthoringDatabase(
-    config,
-    variants === undefined
-      ? {
-          ...options,
-          validateAuthoringGraph:
-            options.validateAuthoringGraph ??
-            admission(
-              options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG,
-              options.compatibilityRelease?.fingerprint ??
-                'synthetic-authoring-fixture',
-            ),
-        }
-      : {
-          ...options,
-          compatibilityReleaseVariants: variants.map((variant) => ({
-            ...variant,
-            validateAuthoringGraph:
-              variant.validateAuthoringGraph ??
-              admission(
-                variant.definitionCatalog,
-                variant.compatibilityRelease.fingerprint,
-              ),
-          })),
-        },
-  );
+  const database = createWorkflowAuthoringDatabase(config, {
+    ...options,
+    validateAuthoringGraph:
+      options.validateAuthoringGraph ??
+      admission(
+        options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG,
+        options.definitionCatalog?.releaseFingerprint ??
+          'synthetic-authoring-fixture',
+      ),
+  });
   let closePromise: Promise<void> | undefined;
   async function dispose() {
     const failures: unknown[] = [];

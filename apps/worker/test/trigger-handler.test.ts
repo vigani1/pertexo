@@ -54,7 +54,6 @@ function dependencies() {
         checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
         executableSchemaVersion: 2,
         executableJson: {},
-        compatibilityReleaseEpoch: 1,
       },
     }),
   };

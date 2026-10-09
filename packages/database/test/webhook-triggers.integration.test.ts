@@ -34,7 +34,7 @@ import {
   createScheduleTriggerDatabase,
   ScheduleTriggerError,
 } from '../src/triggers/schedule-triggers.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
+import { BASELINE_RELEASE_FINGERPRINT } from './baseline-compatibility-fixture.js';
 import type { WebhookDeliveryPosition } from '../src/triggers/webhook-trigger-deliveries.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import { withWorkspaceTransaction } from '../src/tenant-access/workspace.js';
@@ -109,7 +109,7 @@ let workerReadinessPool: Pool;
 let workerPool: Pool;
 const triggerCatalog = Object.freeze({
   schemaVersion: 1 as const,
-  releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
   definitions: Object.freeze([
     Object.freeze({ key: 'core.webhook', version: 1 }),
     Object.freeze({ key: 'core.schedule', version: 1 }),
@@ -281,12 +281,8 @@ beforeAll(async () => {
   identity = createIdentityWorkspaceDatabase(apiConfig);
   reconciliation = createWorkflowTriggerReconciliationDatabase(workerConfig);
   schedules = createScheduleTriggerDatabase(apiConfig);
-  webhook = createWebhookTriggerDatabase(
-    apiConfig,
-    BASELINE_COMPATIBILITY_EXPECTATION,
-  );
+  webhook = createWebhookTriggerDatabase(apiConfig);
   authoring = createWorkflowAuthoringDatabase(apiConfig, {
-    compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
     definitionCatalog: triggerCatalog,
     placementDefinitionCatalog: triggerCatalog,
     executableCompiler: (graph) => ({
@@ -297,13 +293,7 @@ beforeAll(async () => {
       executableJson: {
         schemaVersion: 2,
         graph,
-        compatibilityReleaseEpoch: BASELINE_COMPATIBILITY_EXPECTATION.epoch,
-        compatibilityReleaseFingerprint:
-          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
       },
-      compatibilityReleaseEpoch: BASELINE_COMPATIBILITY_EXPECTATION.epoch,
-      compatibilityReleaseFingerprint:
-        BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
     }),
   });
   await identity.createUser({
@@ -332,9 +322,8 @@ beforeAll(async () => {
   );
   await ownerQuery(
     `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
-       schema_version,graph_json,checksum,executable_schema_version,executable_json,
-       compatibility_release_epoch,published_by)
-     values($1,$2,$3,1,1,$4::jsonb,$5,2,'{}'::jsonb,1,$6)`,
+       schema_version,graph_json,checksum,executable_schema_version,executable_json,published_by)
+     values($1,$2,$3,1,1,$4::jsonb,$5,2,'{}'::jsonb,$6)`,
     [
       versionId,
       workspaceId,

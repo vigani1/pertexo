@@ -25,7 +25,6 @@ import {
   type ExpressionEvaluator,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 
 import {
@@ -180,9 +179,6 @@ export class TestWorkflowNodeUseCase {
       throw new NodeTestInvalidError(prepared.issues);
 
     const acceptedAt = this.now();
-    const executionRelease = composeExecutableCompatibilityRelease(
-      this.release,
-    );
     const { keyHash, requestHash } = executionIdentity;
     try {
       const accepted = await this.persistence.acceptPreview({
@@ -196,8 +192,6 @@ export class TestWorkflowNodeUseCase {
         definitionVersion: prepared.definition.version,
         executorKey: prepared.executor.key,
         executorVersion: prepared.executor.version,
-        compatibilityReleaseEpoch: executionRelease.epoch,
-        compatibilityReleaseFingerprint: executionRelease.fingerprint,
         executableNode: canonicalExecutableNode(prepared.executableNode),
         input: request.input,
         sideEffectClass: prepared.disclosure.sideEffectClass,

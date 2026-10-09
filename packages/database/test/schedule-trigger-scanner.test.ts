@@ -27,13 +27,6 @@ vi.mock('../src/runs/published-workflow.js', async (importOriginal) => ({
     workflowVersion: { id: '00000000-0000-4000-8000-000000000005' },
   }),
 }));
-vi.mock(
-  '../src/compatibility/compatibility-release.js',
-  async (importOriginal) => ({
-    ...(await importOriginal<object>()),
-    lockExpectedCompatibilityReleaseSet: () => Promise.resolve({ epoch: 1 }),
-  }),
-);
 
 vi.mock('../src/platform/database-runtime.js', () => ({
   acquireDatabasePool: () => {
@@ -72,12 +65,6 @@ const acceptanceConfig = {
   ...claimConfig,
   connectionString: 'postgresql://api:secret@db/pertexo',
 } satisfies DatabaseConfig;
-const release = Object.freeze({
-  epoch: 1,
-  fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
-  catalogJson:
-    '{"domain":"pertexo.node-compatibility-release","schemaVersion":1}',
-});
 
 const ids = Object.freeze({
   triggerOne: '00000000-0000-4000-8000-000000000001',
@@ -145,11 +132,7 @@ function scannerWithClaims(
   });
   return {
     queries,
-    scanner: createScheduleTriggerScanner(
-      claimConfig,
-      release,
-      acceptanceConfig,
-    ),
+    scanner: createScheduleTriggerScanner(claimConfig, acceptanceConfig),
   };
 }
 

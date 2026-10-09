@@ -15,6 +15,7 @@ import type { ImportWorkflowInput } from '../src/authoring/workflow-authoring-co
 import { workflowImportCommandDigest } from '../src/authoring/workflow-authoring-portability.js';
 import type { WorkflowAuthoringDatabaseOptions } from '../src/authoring/workflow-authoring-types.js';
 import {
+  BASELINE_RELEASE_FINGERPRINT,
   actorId,
   otherActorId,
   workspaceId,
@@ -25,7 +26,6 @@ import {
   migrationUrl,
   createWorkflowAuthoringDatabase,
   parseDatabaseConfig,
-  BASELINE_COMPATIBILITY_EXPECTATION,
   currentRepresentationTag,
   emptyGraph,
   draftNode,
@@ -53,7 +53,7 @@ import {
 
 const catalog = {
   schemaVersion: 1 as const,
-  releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
   definitions: [{ key: 'test.placeholder', version: 1 }],
 };
 const portableCatalog: WorkflowPortabilityCatalog = {
@@ -70,7 +70,6 @@ const portableCatalog: WorkflowPortabilityCatalog = {
   selectionFingerprint: () => `node-select:v1:sha256:${'1'.repeat(64)}`,
 };
 const options: WorkflowAuthoringDatabaseOptions = {
-  compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
   definitionCatalog: catalog,
   placementDefinitionCatalog: catalog,
   portableCatalog,

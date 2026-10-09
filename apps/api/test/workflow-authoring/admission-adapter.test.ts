@@ -40,36 +40,25 @@ const draft = {
 };
 
 describe('authoring API admission adapter', () => {
-  it('binds portable destination CAS to full serving compatibility while retaining definition-selection identity', () => {
+  it('binds the portable catalog to the served release and keeps definition-selection identity', () => {
     const compatibility = createCoreWorkflowCompatibility();
-    const options = createCoreAuthoringOptions(
-      compatibility.variants,
-      compatibility.readinessSupport.descriptions,
-      { validate: () => Promise.resolve(valid) },
+    const options = createCoreAuthoringOptions(compatibility, {
+      validate: () => Promise.resolve(valid),
+    });
+    expect(options.portableCatalog.fingerprint).toBe(
+      options.definitionCatalog.releaseFingerprint,
     );
-    for (const variant of options.compatibilityReleaseVariants) {
-      expect(variant.portableCatalog.fingerprint).toBe(
-        variant.definitionCatalog.releaseFingerprint,
-      );
-      expect(variant.portableCatalog.fingerprint).toBe(
-        variant.compatibilityRelease.fingerprint,
-      );
-      expect(variant.portableCatalog.selectionFingerprint([])).toMatch(
-        /^node-select:v1:sha256:[a-f0-9]{64}$/u,
-      );
-    }
+    expect(options.portableCatalog.fingerprint).toBe(
+      compatibility.release.fingerprint,
+    );
+    expect(options.portableCatalog.selectionFingerprint([])).toMatch(
+      /^node-select:v1:sha256:[a-f0-9]{64}$/u,
+    );
   });
   it('admits through the real compiled parser with the production release projection', async () => {
     const compatibility = createCoreWorkflowCompatibility();
     const validator = new WorkflowAuthoringValidator();
-    const options = createCoreAuthoringOptions(
-      compatibility.variants,
-      compatibility.readinessSupport.descriptions,
-      validator,
-    );
-    const variant = options.compatibilityReleaseVariants.at(-1);
-    expect(variant).toBeDefined();
-    if (variant === undefined) throw new Error('No selected variant');
+    const options = createCoreAuthoringOptions(compatibility, validator);
     const malformed = {
       ...graph,
       nodes: [
@@ -92,7 +81,7 @@ describe('authoring API admission adapter', () => {
       ],
     };
     try {
-      const checked = await variant.validateAuthoringGraph(malformed, {});
+      const checked = await options.validateAuthoringGraph(malformed, {});
       expect(checked.ok).toBe(false);
       expect(checked.issues).toContainEqual({
         code: 'invalid_expression',
@@ -104,30 +93,20 @@ describe('authoring API admission adapter', () => {
       await validator.shutdown();
     }
   });
-  it('closes each retained variant over its exact release policies and the same owner', async () => {
+  it('validates against the served release policies through the shared owner', async () => {
     const compatibility = createCoreWorkflowCompatibility();
     const validate = vi.fn().mockResolvedValue(valid);
-    const options = createCoreAuthoringOptions(
-      compatibility.variants,
-      compatibility.readinessSupport.descriptions,
-      { validate },
-    );
+    const options = createCoreAuthoringOptions(compatibility, { validate });
     const signal = new AbortController().signal;
-    for (const [
-      index,
-      variant,
-    ] of options.compatibilityReleaseVariants.entries()) {
-      await variant.validateAuthoringGraph(graph, { signal });
-      const projected = compatibility.variants[index]?.authoringPolicies;
-      expect(projected?.releaseFingerprint).toBe(
-        variant.compatibilityRelease.fingerprint,
-      );
-      expect(projected?.definitions.length).toBeGreaterThan(0);
-      expect(validate).toHaveBeenLastCalledWith(graph, projected, { signal });
-    }
-    expect(validate).toHaveBeenCalledTimes(
-      options.compatibilityReleaseVariants.length,
+    await options.validateAuthoringGraph(graph, { signal });
+    const projected = compatibility.authoringPolicies;
+    expect(projected.releaseFingerprint).toBe(
+      compatibility.release.fingerprint,
     );
+    expect(projected.definitions.length).toBeGreaterThan(0);
+    expect(validate).toHaveBeenCalledExactlyOnceWith(graph, projected, {
+      signal,
+    });
   });
 
   it('returns the existing strong tag of the same checked snapshot and truthful structural/compatibility findings', () => {

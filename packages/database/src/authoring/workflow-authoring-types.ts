@@ -7,7 +7,6 @@ import type {
 } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import type { WorkflowTemplateOriginRequest } from '@pertexo/templates';
-import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
 
 export type WorkflowAuthoringTestHooks = Readonly<{
   /** Integration-only ordered-lock and atomic rollback seam. */
@@ -27,8 +26,6 @@ export type WorkflowAuthoringTestHooks = Readonly<{
   afterDuplicateStep?: (
     step: 'claim' | 'source' | 'workflow' | 'draft' | 'audit' | 'idempotency',
   ) => Promise<void>;
-  /** Integration-test synchronization seam after the durable release lock. */
-  afterCompatibilityReleaseLock?: () => Promise<void>;
   /** Integration-test synchronization seam; runtime composition must omit it. */
   afterSaveCas?: () => Promise<void>;
   /** Integration-test synchronization/fault seam after both publish locks. */
@@ -61,8 +58,6 @@ export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
   checksum: `wf:v2:sha256:${string}`;
   executableSchemaVersion: 2;
   executableJson: unknown;
-  compatibilityReleaseEpoch: number;
-  compatibilityReleaseFingerprint: string;
 }>;
 
 export type WorkflowAuthoringGraphValidator = (
@@ -79,20 +74,8 @@ export type PortableCatalog = WorkflowPortabilityCatalog &
     ) => boolean;
   }>;
 
-type WorkflowAuthoringCompatibilityVariant = Readonly<{
-  portableCatalog?: PortableCatalog;
-  compatibilityRelease: CompatibilityReleaseExpectation;
-  definitionCatalog: WorkflowDefinitionCatalog;
-  placementDefinitionCatalog: WorkflowDefinitionCatalog;
-  executableCompiler: WorkflowExecutableCompiler;
-  validateAuthoringGraph?: WorkflowAuthoringGraphValidator;
-}>;
-
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
   portableCatalog?: PortableCatalog;
-  compatibilityRelease?: CompatibilityReleaseExpectation;
-  compatibilityReleaseVariants?: readonly WorkflowAuthoringCompatibilityVariant[];
-  compatibilityReadinessReleases?: readonly CompatibilityReleaseExpectation[];
   definitionCatalog?: WorkflowDefinitionCatalog;
   placementDefinitionCatalog?: WorkflowDefinitionCatalog;
   runtime?: DatabaseRuntime;

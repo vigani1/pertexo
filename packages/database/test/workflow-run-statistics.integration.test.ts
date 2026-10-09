@@ -12,7 +12,6 @@ import {
   EXPECTED_MIGRATION_HEAD,
 } from '../src/platform/readiness.js';
 import { WorkspaceAccessDeniedError } from '../src/tenant-access/identity-workspace-errors.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import {
   explainDocument,
@@ -46,7 +45,6 @@ const ownerPool = new Pool({ connectionString: ownerUrl, max: 1 });
 const runtimePool = new Pool({ connectionString: runtimeUrl, max: 1 });
 const runs = createWorkflowRunDatabase(
   parseDatabaseConfig({ connectionString: runtimeUrl, max: 2 }),
-  BASELINE_COMPATIBILITY_EXPECTATION,
 );
 
 const person = randomUUID();
@@ -101,11 +99,11 @@ async function addWorkflows(
      insert into app.workflow_versions
        (id, workspace_id, workflow_id, version_number, schema_version,
         graph_json, checksum, executable_schema_version, executable_json,
-        compatibility_release_epoch, published_by)
+        published_by)
      select gen_random_uuid(), $1, created.id, 1, 1,
             '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
             'wf:v2:sha256:' || repeat('e', 64), 2,
-            '{"schemaVersion":2}'::jsonb, 1, $2
+            '{"schemaVersion":2}'::jsonb, $2
      from created`,
     [
       workspace,

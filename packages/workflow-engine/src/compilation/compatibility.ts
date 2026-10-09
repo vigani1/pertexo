@@ -1,5 +1,4 @@
 import {
-  canonicalCompatibilityReleaseJson,
   createRegistryRelease,
   parseRegistryRelease,
   type RegistryRelease,
@@ -28,85 +27,6 @@ export function composeExecutableCompatibilityRelease(
       ],
     });
   } catch (error) {
-    normalizeError(error);
-  }
-}
-
-export type ExecutableCompatibilityReleaseDescription = Readonly<{
-  epoch: number;
-  fingerprint: string;
-  catalogJson: string;
-}>;
-
-export type ExecutableCompatibilityReleaseSupport = Readonly<{
-  descriptions: readonly ExecutableCompatibilityReleaseDescription[];
-  resolve(epoch: number, fingerprint: string): RegistryRelease;
-}>;
-
-export function describeExecutableCompatibilityRelease(
-  releaseInput: unknown,
-): ExecutableCompatibilityReleaseDescription {
-  try {
-    const release = parseRegistryRelease(releaseInput);
-    return Object.freeze({
-      epoch: release.epoch,
-      fingerprint: release.fingerprint,
-      catalogJson: canonicalCompatibilityReleaseJson(release),
-    });
-  } catch (error: unknown) {
-    normalizeError(error);
-  }
-}
-
-export function createExecutableCompatibilityReleaseSupport(
-  releaseInputs: readonly unknown[],
-): ExecutableCompatibilityReleaseSupport {
-  try {
-    if (releaseInputs.length < 1 || releaseInputs.length > 2)
-      fail('artifact supports only one rolling overlap');
-    return createExecutableCompatibilityReleaseHistory(releaseInputs);
-  } catch (error: unknown) {
-    normalizeError(error);
-  }
-}
-
-/**
- * Every immutable release whose published workflows remain executable by an
- * artifact. Deployment readiness must use the bounded rolling-support factory
- * above; retained execution history is a separate compatibility concern.
- */
-export function createExecutableCompatibilityReleaseHistory(
-  releaseInputs: readonly unknown[],
-): ExecutableCompatibilityReleaseSupport {
-  try {
-    if (releaseInputs.length < 1)
-      fail('executable compatibility history must not be empty');
-    const releases = releaseInputs
-      .map(parseRegistryRelease)
-      .sort((left, right) => left.epoch - right.epoch);
-    if (new Set(releases.map(({ epoch }) => epoch)).size !== releases.length)
-      fail('compatibility release epochs must be unique');
-    const byPair = new Map(
-      releases.map((release) => [
-        `${String(release.epoch)}\u0000${release.fingerprint}`,
-        release,
-      ]),
-    );
-    const descriptions = Object.freeze(
-      releases.map(describeExecutableCompatibilityRelease),
-    );
-    return Object.freeze({
-      descriptions,
-      resolve: (epoch: number, fingerprint: string): RegistryRelease => {
-        if (!Number.isInteger(epoch) || epoch < 1)
-          fail('compatibility release is not supported by this artifact');
-        const release = byPair.get(`${String(epoch)}\u0000${fingerprint}`);
-        if (release === undefined)
-          fail('compatibility release is not supported by this artifact');
-        return release;
-      },
-    });
-  } catch (error: unknown) {
     normalizeError(error);
   }
 }

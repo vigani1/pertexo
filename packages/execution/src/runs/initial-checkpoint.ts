@@ -35,13 +35,9 @@ export function createInitialCheckpoint(
   });
 }
 
-/** The factory every run start takes, bound to this release's support. */
+/** The factory every run start takes, bound to the served release. */
 export function initialCheckpointFactory(
   verification: PersistedWorkflowProjectionVerificationOptions,
 ): InitialCheckpointFactory {
-  return (projection, currentCompatibilityRelease) =>
-    createInitialCheckpoint(
-      { ...projection, currentCompatibilityRelease },
-      verification,
-    );
+  return (projection) => createInitialCheckpoint(projection, verification);
 }

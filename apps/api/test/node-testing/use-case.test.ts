@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import type { AcceptedPreviewRun } from '@pertexo/database/testing';
@@ -704,10 +703,7 @@ describe('node test application use case', () => {
     expect(store.acceptPreview).not.toHaveBeenCalled();
   });
 
-  it('pins the exact release and accepts one identifier-only durable preview', async () => {
-    const executionRelease = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
+  it('accepts one identifier-only durable preview', async () => {
     const result = accepted();
     const store = persistence({
       acceptPreview: vi.fn().mockResolvedValue(result),
@@ -765,8 +761,6 @@ describe('node test application use case', () => {
       definitionVersion: 1,
       executorKey: 'http.request',
       executorVersion: 1,
-      compatibilityReleaseEpoch: executionRelease.epoch,
-      compatibilityReleaseFingerprint: executionRelease.fingerprint,
       executableNode: {
         id: 'http',
         definition: { key: 'http.request', version: 1 },

@@ -10,8 +10,6 @@ import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
@@ -104,67 +102,38 @@ function projectDefinitionCatalogs(
 }
 
 function buildCoreWorkflowCompatibility() {
-  const registryReleaseSupport = [PLATFORM_REGISTRY_RELEASE];
-  const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    registryReleaseSupport.map(composeExecutableCompatibilityRelease),
-  );
-  const readinessSupport = createExecutableCompatibilityReleaseSupport(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-  );
-  // Authoring always selects the serving release; older releases only need to
-  // stay executable, which releaseSupport covers.
-  const variants = [PLATFORM_REGISTRY_RELEASE].map((nodeRelease) => {
-    const compatibilityRelease =
-      composeExecutableCompatibilityRelease(nodeRelease);
-    const compatibilityReleaseDescription = releaseSupport.descriptions.find(
-      ({ epoch, fingerprint }) =>
-        epoch === compatibilityRelease.epoch &&
-        fingerprint === compatibilityRelease.fingerprint,
-    );
-    if (compatibilityReleaseDescription === undefined)
-      throw new Error('Core compatibility release description is missing');
-    const { definitionCatalog, placementDefinitionCatalog } =
-      projectDefinitionCatalogs(nodeRelease, compatibilityRelease.fingerprint);
-    return Object.freeze({
-      compatibilityRelease,
-      compatibilityReleaseDescription,
-      definitionCatalog,
-      placementDefinitionCatalog,
-      portableCatalog: Object.freeze({
-        ...platformPortableDefinitionPolicy(nodeRelease),
-        // Destination CAS belongs to the full serving compatibility release,
-        // while requirements retain the definition-selection projection.
-        fingerprint: compatibilityRelease.fingerprint,
-      }),
-      authoringPolicies: Object.freeze({
-        releaseFingerprint: compatibilityRelease.fingerprint,
-        definitions: Object.freeze(
-          nodeRelease.definitions.map((manifest) =>
-            Object.freeze({
-              definition: Object.freeze({
-                key: manifest.definition.key,
-                version: manifest.definition.version,
-              }),
-              policyReferences: Object.freeze(
-                manifest.policyReferences.map((policy) =>
-                  Object.freeze({
-                    key: policy.key,
-                    version: policy.version,
-                  }),
-                ),
-              ),
-            }),
-          ),
-        ),
-      }),
-    });
-  });
-  if (variants.length === 0)
-    throw new Error('Core compatibility release support is empty');
+  const nodeRelease = PLATFORM_REGISTRY_RELEASE;
+  const release = composeExecutableCompatibilityRelease(nodeRelease);
+  const { definitionCatalog, placementDefinitionCatalog } =
+    projectDefinitionCatalogs(nodeRelease, release.fingerprint);
   return Object.freeze({
-    releaseSupport,
-    readinessSupport,
-    variants: Object.freeze(variants),
+    release,
+    definitionCatalog,
+    placementDefinitionCatalog,
+    portableCatalog: Object.freeze({
+      ...platformPortableDefinitionPolicy(nodeRelease),
+      // Destination CAS belongs to the full served release, while
+      // requirements keep the definition-selection projection.
+      fingerprint: release.fingerprint,
+    }),
+    authoringPolicies: Object.freeze({
+      releaseFingerprint: release.fingerprint,
+      definitions: Object.freeze(
+        nodeRelease.definitions.map((manifest) =>
+          Object.freeze({
+            definition: Object.freeze({
+              key: manifest.definition.key,
+              version: manifest.definition.version,
+            }),
+            policyReferences: Object.freeze(
+              manifest.policyReferences.map((policy) =>
+                Object.freeze({ key: policy.key, version: policy.version }),
+              ),
+            ),
+          }),
+        ),
+      ),
+    }),
   });
 }
 
@@ -178,50 +147,30 @@ export function createCoreWorkflowCompatibility() {
 }
 
 export function createCoreAuthoringOptions(
-  variants: ReturnType<typeof createCoreWorkflowCompatibility>['variants'],
-  readinessReleases: ReturnType<
-    typeof createCoreWorkflowCompatibility
-  >['readinessSupport']['descriptions'],
+  compatibility: ReturnType<typeof createCoreWorkflowCompatibility>,
   validator: Pick<WorkflowAuthoringValidator, 'validate'>,
 ) {
   return {
-    compatibilityReadinessReleases: readinessReleases,
-    compatibilityReleaseVariants: variants.map(
-      ({
-        compatibilityRelease,
-        compatibilityReleaseDescription,
-        definitionCatalog,
-        placementDefinitionCatalog,
-        portableCatalog,
-        authoringPolicies,
-      }) => ({
-        compatibilityRelease: compatibilityReleaseDescription,
-        definitionCatalog,
-        placementDefinitionCatalog,
-        portableCatalog,
-        validateAuthoringGraph: (
-          graph: WorkflowGraph,
-          options: Readonly<{ signal?: AbortSignal }>,
-        ) => validator.validate(graph, authoringPolicies, options),
-        executableCompiler: (
-          graph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
-        ) => {
-          const compiled = buildWorkflowExecutable({
-            graph,
-            release: compatibilityRelease,
-          });
-          return Object.freeze({
-            checksum: compiled.checksum,
-            executableSchemaVersion: 2 as const,
-            executableJson: compiled.envelope,
-            compatibilityReleaseEpoch:
-              compiled.envelope.compatibilityReleaseEpoch,
-            compatibilityReleaseFingerprint:
-              compiled.envelope.compatibilityReleaseFingerprint,
-          });
-        },
-      }),
-    ),
+    definitionCatalog: compatibility.definitionCatalog,
+    placementDefinitionCatalog: compatibility.placementDefinitionCatalog,
+    portableCatalog: compatibility.portableCatalog,
+    validateAuthoringGraph: (
+      graph: WorkflowGraph,
+      options: Readonly<{ signal?: AbortSignal }>,
+    ) => validator.validate(graph, compatibility.authoringPolicies, options),
+    executableCompiler: (
+      graph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
+    ) => {
+      const compiled = buildWorkflowExecutable({
+        graph,
+        release: compatibility.release,
+      });
+      return Object.freeze({
+        checksum: compiled.checksum,
+        executableSchemaVersion: 2 as const,
+        executableJson: compiled.envelope,
+      });
+    },
   } as const;
 }
 
@@ -234,17 +183,13 @@ export function createCoreWorkflowAuthoringDatabase(
   let validator: WorkflowAuthoringValidator | undefined;
   let closed = false;
   const database = createWorkflowAuthoringDatabase(databaseConfig, {
-    ...createCoreAuthoringOptions(
-      compatibility.variants,
-      compatibility.readinessSupport.descriptions,
-      {
-        validate: (...args) => {
-          if (closed) throw new AuthoringValidationUnavailableError('closed');
-          validator ??= new WorkflowAuthoringValidator();
-          return validator.validate(...args);
-        },
+    ...createCoreAuthoringOptions(compatibility, {
+      validate: (...args) => {
+        if (closed) throw new AuthoringValidationUnavailableError('closed');
+        validator ??= new WorkflowAuthoringValidator();
+        return validator.validate(...args);
       },
-    ),
+    }),
     ...(runtime === undefined ? {} : { runtime }),
   });
   let closePromise: Promise<void> | undefined;

@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createRunAdvanceStore } from '../src/runs/advance/store.js';
 import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 
 const noNetworkConfig = {
   connectionString: 'postgresql://invalid.invalid/pertexo',
@@ -24,9 +23,7 @@ const input = (signal: AbortSignal) => ({
 });
 
 function storeWith(runtime: ReturnType<typeof createDatabaseRuntime>) {
-  return createRunAdvanceStore(noNetworkConfig, runtime, {
-    compatibilityReleases: BASELINE_COMPATIBILITY_EXPECTATION,
-  });
+  return createRunAdvanceStore(noNetworkConfig, runtime);
 }
 
 describe('run advance store', () => {

@@ -4,13 +4,6 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import {
-  selectServingCompatibilityRelease,
-  parseCompatibilityReleaseExpectation,
-  parseCompatibilityReleaseExpectationSet,
-  type CompatibilityReleaseExpectation,
-  type CompatibilityReleaseExpectationSet,
-} from '../compatibility/compatibility-release.js';
 import { withWorkspaceTransaction } from '../tenant-access/workspace.js';
 
 const readInputSchema = z
@@ -23,7 +16,6 @@ const readInputSchema = z
 
 const baseRowShape = {
   checksum: z.string(),
-  compatibility_release_epoch: z.unknown(),
   executable_json: z.unknown(),
   executable_schema_version: z.unknown(),
   id: z.uuid(),
@@ -37,7 +29,6 @@ const retainedV1RowSchema = z
   .object({
     ...baseRowShape,
     checksum: z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u),
-    compatibility_release_epoch: z.null(),
     executable_json: z.null(),
     executable_schema_version: z.null(),
   })
@@ -47,7 +38,6 @@ const executableV2RowSchema = z
   .object({
     ...baseRowShape,
     checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
-    compatibility_release_epoch: z.number().int().positive(),
     executable_json: z.custom<Record<string, unknown>>(
       (value) =>
         value !== null && typeof value === 'object' && !Array.isArray(value),
@@ -67,8 +57,6 @@ export type PublishedWorkflowVersionIdentity = Readonly<{
 
 export type PublishedWorkflowV2Projection = PublishedWorkflowVersionIdentity &
   Readonly<{
-    compatibilityReleaseEpoch: number;
-    currentCompatibilityRelease?: CompatibilityReleaseExpectation;
     executableJson: unknown;
     executableSchemaVersion: 2;
   }>;
@@ -137,7 +125,6 @@ export function classifyPublishedWorkflowVersionRow(
     kind: 'v2_projection',
     workflowVersion: Object.freeze({
       checksum: executable.data.checksum,
-      compatibilityReleaseEpoch: executable.data.compatibility_release_epoch,
       executableJson: executable.data.executable_json,
       executableSchemaVersion: executable.data.executable_schema_version,
       id: executable.data.id,
@@ -151,15 +138,8 @@ export function classifyPublishedWorkflowVersionRow(
 
 export function createPublishedWorkflowReader(
   config: DatabaseConfig,
-  compatibilityReleaseInput:
-    CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
   runtime?: DatabaseRuntime,
 ): PublishedWorkflowReader {
-  const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
-    ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
-    : Object.freeze([
-        parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
-      ]);
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
 
@@ -176,9 +156,6 @@ export function createPublishedWorkflowReader(
         pool,
         parsedInput.workspaceId,
         async (transaction) => {
-          const currentCompatibilityRelease = selectServingCompatibilityRelease(
-            compatibilityReleases,
-          );
           const result = await transaction.db.execute(
             sql<Record<string, unknown>>`
               select
@@ -189,26 +166,14 @@ export function createPublishedWorkflowReader(
                 schema_version,
                 checksum,
                 executable_schema_version,
-                executable_json,
-                compatibility_release_epoch
+                executable_json
               from app.workflow_versions
               where workspace_id = ${transaction.workspaceId}
                 and id = ${parsedInput.workflowVersionId}
               limit 1
             `,
           );
-          const classified = classifyPublishedWorkflowVersionRow(
-            result.rows[0],
-          );
-          return classified.kind === 'v2_projection'
-            ? Object.freeze({
-                ...classified,
-                workflowVersion: Object.freeze({
-                  ...classified.workflowVersion,
-                  currentCompatibilityRelease,
-                }),
-              })
-            : classified;
+          return classifyPublishedWorkflowVersionRow(result.rows[0]);
         },
         transactionOptions,
       );

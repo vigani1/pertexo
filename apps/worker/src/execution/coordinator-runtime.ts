@@ -29,11 +29,7 @@ import {
   type RunEventNotificationPublisher,
   unrecoverableQueueError,
 } from '@pertexo/queue';
-import {
-  composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
-} from '@pertexo/workflow-engine';
+import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 
 import {
   createCoordinatorTelemetry,
@@ -175,13 +171,9 @@ export async function createCoordinatorRuntime(
     throw new TypeError(
       'Background task shutdown timeout must be between 1 and 120000',
     );
-  const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
+  const release = composeExecutableCompatibilityRelease(
+    PLATFORM_REGISTRY_RELEASE,
   );
-  const currentReleaseDescriptions =
-    createExecutableCompatibilityReleaseSupport(
-      [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-    ).descriptions;
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();
   let runStore: RunAdvanceStore | undefined;
@@ -193,7 +185,6 @@ export async function createCoordinatorRuntime(
     runStore =
       dependencies.runStore ??
       factories.runStore(options.database, options.databaseRuntime, {
-        compatibilityReleases: currentReleaseDescriptions,
         runTimeoutFailureContextEnabled:
           options.runTimeoutFailureContextEnabled ?? false,
         workspaceInboxProducerEnabled:
@@ -212,7 +203,7 @@ export async function createCoordinatorRuntime(
     const clock = dependencies.clock ?? systemClock();
     const advanceDependencies = Object.freeze({
       runs: runStore,
-      verification: { releaseSupport },
+      verification: { release },
       maximumAdmissions: options.maximumAdmissions,
       now: () => clock.now(),
     });

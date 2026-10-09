@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { count, eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -54,8 +53,6 @@ const actorId = randomUUID();
 const workflowA = randomUUID();
 const workflowB = randomUUID();
 const workflowC = randomUUID();
-let releaseEpoch = 0;
-let releaseFingerprint = '';
 const keyHash = digest('preview-key');
 const requestHash = digest('preview-request');
 const otherRequestHash = digest('preview-request-conflict');
@@ -83,8 +80,6 @@ function input(
     new Date(Math.min(now + 5 * 60 * 1_000, expiresAt.getTime()));
   return {
     actorUserId: actorId,
-    compatibilityReleaseEpoch: releaseEpoch,
-    compatibilityReleaseFingerprint: releaseFingerprint,
     definitionKey: 'http.request',
     definitionVersion: 1,
     draftFingerprint: digest('draft-revision-1'),
@@ -233,8 +228,6 @@ beforeAll(async () => {
     workerDatabase = createWorkspaceDatabase(
       parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
     );
-    releaseEpoch = BASELINE_COMPATIBILITY_EXPECTATION.epoch;
-    releaseFingerprint = BASELINE_COMPATIBILITY_EXPECTATION.fingerprint;
   } catch (error: unknown) {
     await Promise.allSettled([apiDatabase.close(), workerDatabase.close()]);
     await disposableDatabase.drop();
@@ -286,7 +279,6 @@ describe('durable preview acceptance', () => {
         draftRevision: 1,
         definitionKey: 'http.request',
         executorKey: 'http.request',
-        compatibilityReleaseEpoch: releaseEpoch,
         actorUserId: actorId,
         idempotencyKeyHash: keyHash,
         requestHash,

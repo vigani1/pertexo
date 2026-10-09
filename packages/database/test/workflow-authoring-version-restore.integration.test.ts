@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BASELINE_COMPATIBILITY_EXPECTATION,
+  BASELINE_RELEASE_FINGERPRINT,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   actorId,
@@ -41,7 +41,7 @@ function graphWithDuration(duration: number) {
 
 const blockedDefinitionCatalog = Object.freeze({
   schemaVersion: 1 as const,
-  releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
   definitions: Object.freeze([
     Object.freeze({ key: 'test.blocked', version: 1 }),
   ]),
@@ -49,7 +49,7 @@ const blockedDefinitionCatalog = Object.freeze({
 
 const currentDefinitionCatalog = Object.freeze({
   ...testDefinitionCatalog,
-  releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+  releaseFingerprint: BASELINE_RELEASE_FINGERPRINT,
 });
 
 async function createRestoreFixture(
@@ -439,7 +439,6 @@ describe('workflow version restoration persistence', () => {
     const sourceAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
-        compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         definitionCatalog: blockedDefinitionCatalog,
         placementDefinitionCatalog: blockedDefinitionCatalog,
       },
@@ -447,7 +446,6 @@ describe('workflow version restoration persistence', () => {
     const rejectingAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
-        compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         definitionCatalog: currentDefinitionCatalog,
         placementDefinitionCatalog: currentDefinitionCatalog,
       },

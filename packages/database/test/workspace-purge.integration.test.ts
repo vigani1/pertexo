@@ -10,7 +10,6 @@ import {
   PURGE_PRESERVED_TABLES,
   PURGE_STEPS,
 } from '../src/lifecycle/workspace-purge.js';
-import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import { enforceRetention } from './support/retention.js';
 import {
@@ -418,13 +417,12 @@ describe('workspace purge', () => {
         `insert into app.preview_runs(
           id,workspace_id,workflow_id,draft_revision,draft_fingerprint,node_id,
           definition_key,definition_version,executor_key,executor_version,
-          compatibility_release_epoch,compatibility_release_fingerprint,
           actor_user_id,idempotency_key_hash,request_hash,executable_node_json,
           input_ref,side_effect_class,may_contact_provider,
           may_cause_external_side_effect,dry_run,execution_deadline_at,expires_at
         )
         select $1,$2,$3,1,$4,'node-1','core.set',1,'core.set',1,
-          1,$8,$5,$6,$7,
+          $5,$6,$7,
           '{"id":"node-1","type":"core.set"}'::jsonb,
           '{"kind":"inline","schemaVersion":1,"value":null}'::jsonb,
           'safe',false,false,'not_supported',
@@ -438,7 +436,6 @@ describe('workspace purge', () => {
           userId,
           'b'.repeat(64),
           'c'.repeat(64),
-          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
         ],
       );
       await owner.query(

@@ -376,7 +376,7 @@ async function runBypass(kind: 'condition' | 'switch') {
   let executable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(built.envelope)),
     checksum: built.checksum,
-    admissionRelease: release,
+    release: release,
   });
   let checkpoint: WorkflowCheckpoint = createCheckpoint({
     engineVersion: 'engine-v2',
@@ -533,7 +533,7 @@ async function runBypass(kind: 'condition' | 'switch') {
   executable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(executable.envelope)),
     checksum: executable.checksum,
-    admissionRelease: release,
+    release: release,
   });
   checkpoint = parseCheckpoint(
     JSON.parse(JSON.stringify(duplicate.checkpoint)),
@@ -604,7 +604,7 @@ async function runBypass(kind: 'condition' | 'switch') {
   const reconstructedExecutable = verifyWorkflowExecutable({
     envelope: JSON.parse(JSON.stringify(executable.envelope)),
     checksum: executable.checksum,
-    admissionRelease: release,
+    release: release,
   });
   const reconstructedCheckpoint = parseCheckpoint(
     JSON.parse(JSON.stringify(bypass.checkpoint)),

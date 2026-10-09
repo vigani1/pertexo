@@ -1,7 +1,6 @@
 import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
-import type { CompatibilityReleaseExpectation } from '../../compatibility/compatibility-release.js';
 import { classifyPublishedWorkflowVersionRow } from '../published-workflow.js';
 import {
   CoordinatorRunStateCorruptError,
@@ -70,14 +69,12 @@ type LockedRow = CoordinatorCommitRow &
     checksum: string | null;
     executable_schema_version: unknown;
     executable_json: unknown;
-    compatibility_release_epoch: unknown;
   }>;
 
 function publishedVersion(row: LockedRow): unknown {
   if (row.version_id === null) return undefined;
   return {
     checksum: row.checksum,
-    compatibility_release_epoch: row.compatibility_release_epoch,
     executable_json: row.executable_json,
     executable_schema_version: row.executable_schema_version,
     id: row.version_id,
@@ -94,7 +91,6 @@ export async function loadRunForAdvance(
   input: Readonly<{
     workspaceId: string;
     runId: string;
-    servingRelease: CompatibilityReleaseExpectation;
   }>,
 ): Promise<LoadedRunAdvance> {
   const { workspaceId, runId } = input;
@@ -117,8 +113,7 @@ export async function loadRunForAdvance(
             version.id as version_id, version.workspace_id as version_workspace_id,
             version.workflow_id as version_workflow_id, version.version_number,
             version.schema_version, version.checksum,
-            version.executable_schema_version, version.executable_json,
-            version.compatibility_release_epoch
+            version.executable_schema_version, version.executable_json
        from app.workflow_runs run
        join app.run_checkpoints checkpoint
          on checkpoint.workspace_id = run.workspace_id
@@ -240,10 +235,7 @@ export async function loadRunForAdvance(
           completedInlineOutput(fact, controlOutputNodeIds),
         ),
       ),
-      workflow: Object.freeze({
-        ...version.workflowVersion,
-        currentCompatibilityRelease: input.servingRelease,
-      }),
+      workflow: version.workflowVersion,
     }),
   });
 }

@@ -43,12 +43,6 @@ const config = {
   max: 2,
   ownerRole: 'pertexo_owner',
 } as const;
-const release = Object.freeze({
-  catalogJson:
-    '{"domain":"pertexo.node-compatibility-release","schemaVersion":1}',
-  epoch: 1,
-  fingerprint: `node-compat:v1:sha256:${'b'.repeat(64)}`,
-});
 const workspaceId = randomUUID();
 const commandId = randomUUID();
 const outboxEventId = randomUUID();
@@ -132,7 +126,7 @@ function storeWith(results = validResults()) {
     checkpointFactory,
     database,
     execute,
-    store: createOperatorRunReplayStore(config, [release], checkpointFactory),
+    store: createOperatorRunReplayStore(config, checkpointFactory),
   };
 }
 
@@ -200,11 +194,6 @@ describe('operator run replay validation', () => {
       workflowVersion: { workflowId },
     });
     mocks.acceptWorkflowRun.mockResolvedValue({ runId: randomUUID() });
-  });
-
-  it('parses compatibility expectations before creating owned database resources', () => {
-    expect(() => createOperatorRunReplayStore(config, [], vi.fn())).toThrow();
-    expect(mocks.createWorkspaceDatabase).not.toHaveBeenCalled();
   });
 
   it('validates the AbortSignal public input before entering the inbox transaction', async () => {

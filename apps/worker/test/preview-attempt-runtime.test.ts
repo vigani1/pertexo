@@ -17,7 +17,6 @@ import { HttpRequestExecutorError } from '@pertexo/integrations/server';
 import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -49,13 +48,8 @@ afterEach(async () => {
 function leaseFixture(
   executableNode: PreviewAttemptLease['executableNode'],
 ): PreviewAttemptLease {
-  const release = composeExecutableCompatibilityRelease(
-    PLATFORM_REGISTRY_RELEASE,
-  );
   return {
     attemptFenceToken: 1,
-    compatibilityReleaseEpoch: release.epoch,
-    compatibilityReleaseFingerprint: release.fingerprint,
     definitionKey: 'core.set',
     definitionVersion: 1,
     dryRun: 'not_supported',
@@ -81,7 +75,7 @@ function leaseFixture(
 }
 
 describe('platform preview node invoker', () => {
-  it('rejects unsupported releases and artifact-backed preview input before execution', async () => {
+  it('rejects artifact-backed preview input before execution', async () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
       registry: { execute } as never,
@@ -93,18 +87,6 @@ describe('platform preview node invoker', () => {
       definition: { key: 'core.set', version: 1 },
       id: 'node-1',
       inputMappings: {},
-    });
-    await expect(
-      invoker.invoke({
-        lease: {
-          ...lease,
-          compatibilityReleaseEpoch: lease.compatibilityReleaseEpoch + 1,
-        },
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toEqual({
-      safeErrorCode: 'preview.executor_unavailable',
-      status: 'failed',
     });
     await expect(
       invoker.invoke({
@@ -196,9 +178,6 @@ describe('platform preview node invoker', () => {
         };
       },
     );
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
     const lease = {
       ...leaseFixture({
         config: { timeoutMillis: 5_000 },
@@ -212,8 +191,6 @@ describe('platform preview node invoker', () => {
           text: { kind: 'literal' as const, value: 'Preview body' },
         },
       }),
-      compatibilityReleaseEpoch: release.epoch,
-      compatibilityReleaseFingerprint: release.fingerprint,
       definitionKey: EMAIL_SEND_NOTIFICATION_DEFINITION.key,
       dryRun: 'not_supported' as const,
       executorKey: EMAIL_SEND_NOTIFICATION_EXECUTOR.key,
@@ -300,9 +277,6 @@ describe('platform preview node invoker', () => {
         };
       },
     );
-    const release = composeExecutableCompatibilityRelease(
-      PLATFORM_REGISTRY_RELEASE,
-    );
     const lease = {
       ...leaseFixture({
         config: { timeoutMillis: 5_000 },
@@ -317,8 +291,6 @@ describe('platform preview node invoker', () => {
           text: { kind: 'literal' as const, value: 'preview deployment' },
         },
       }),
-      compatibilityReleaseEpoch: release.epoch,
-      compatibilityReleaseFingerprint: release.fingerprint,
       definitionKey: SLACK_SEND_MESSAGE_DEFINITION.key,
       dryRun: 'not_supported' as const,
       executorKey: SLACK_SEND_MESSAGE_EXECUTOR.key,

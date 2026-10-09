@@ -109,7 +109,7 @@ export async function createApiWorkflowRuntime(
   const authoring = overrides.authoring ?? {};
   const persistence = overrides.persistence ?? {};
   const streaming = overrides.streaming ?? {};
-  const { readinessSupport, variants } = createCoreWorkflowCompatibility();
+  const compatibility = createCoreWorkflowCompatibility();
   let database: WorkflowAuthoringDatabase | undefined;
   let metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
@@ -130,11 +130,7 @@ export async function createApiWorkflowRuntime(
       database = (authoring.databaseFactory ?? createWorkflowAuthoringDatabase)(
         databaseConfig,
         {
-          ...createCoreAuthoringOptions(
-            variants,
-            readinessSupport.descriptions,
-            validator,
-          ),
+          ...createCoreAuthoringOptions(compatibility, validator),
           ...(runtime === undefined ? {} : { runtime }),
         },
       );

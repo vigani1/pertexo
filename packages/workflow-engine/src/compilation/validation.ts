@@ -3,7 +3,6 @@ import type {
   DefinitionIdentity,
   NodeManifest,
   PolicyReference,
-  RegistryRelease,
 } from '@pertexo/node-sdk';
 import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
 import type { SideEffectClass } from '../types.js';
@@ -11,7 +10,6 @@ import {
   type ExecutableRuntimePolicies,
   WORKFLOW_EXECUTABLE_LIMITS,
   compareIdentity,
-  compareOrdinal,
   fail,
   token,
 } from './foundation.js';
@@ -241,43 +239,4 @@ export function sideEffectClass(
 
 function unreachableRetryClass(value: never): never {
   fail(`unsupported retry class ${String(value)}`);
-}
-
-export function immutableDefinitionBehavior(manifest: NodeManifest): unknown {
-  return {
-    schemaVersion: manifest.schemaVersion,
-    definition: manifest.definition,
-    family: manifest.family,
-    configVersion: manifest.configVersion,
-    configSchema: manifest.configSchema,
-    inputSchema: manifest.inputSchema,
-    outputSchema: manifest.outputSchema,
-    ports: {
-      inputs: [...manifest.ports.inputs].sort(compareOrdinal),
-      outputs: [...manifest.ports.outputs].sort(compareOrdinal),
-    },
-    credentialRequirements: [...manifest.credentialRequirements].sort(
-      compareOrdinal,
-    ),
-    connectionRequirements: [...manifest.connectionRequirements].sort(
-      compareOrdinal,
-    ),
-    retryClass: manifest.retryClass,
-    resourceClass: manifest.resourceClass,
-    capabilities: [...manifest.capabilities].sort(compareOrdinal),
-    executor: manifest.executor,
-    executorAbi: manifest.executorAbi,
-    policyReferences: [...manifest.policyReferences].sort(compareIdentity),
-  };
-}
-
-export function immutableExecutorBehavior(
-  manifest: RegistryRelease['executors'][number],
-): unknown {
-  return {
-    executor: manifest.executor,
-    abiVersion: manifest.abiVersion,
-    definitions: [...manifest.definitions].sort(compareIdentity),
-    policyReferences: [...manifest.policyReferences].sort(compareIdentity),
-  };
 }

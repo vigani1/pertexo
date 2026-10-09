@@ -103,7 +103,6 @@ function projection(): PublishedWorkflowV2Projection {
       'wf:v2:sha256:1111111111111111111111111111111111111111111111111111111111111111',
     executableSchemaVersion: 2,
     executableJson: { schemaVersion: 2 },
-    compatibilityReleaseEpoch: 1,
   };
 }
 

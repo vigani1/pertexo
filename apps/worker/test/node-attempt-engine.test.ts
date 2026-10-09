@@ -9,7 +9,6 @@ import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/serv
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseSupport,
   invocationKey,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
@@ -294,7 +293,6 @@ function compiledProjection(
     checksum: executable.checksum,
     executableSchemaVersion: 2,
     executableJson: executable.envelope,
-    compatibilityReleaseEpoch: release.epoch,
   };
 }
 
@@ -310,7 +308,6 @@ function fixture(nodeId: 'manual' | 'terminate') {
     checksum: executable.checksum,
     executableSchemaVersion: 2,
     executableJson: executable.envelope,
-    compatibilityReleaseEpoch: release.epoch,
   };
   const lease: NodeAttemptLease = {
     workspaceId: WORKSPACE_ID,
@@ -335,8 +332,7 @@ describe('node attempt execution engine', () => {
   it('verifies the pinned executable and executes Manual using only run input', async () => {
     const { release, projection, lease } = fixture('manual');
     const engine = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     });
     const prepared = engine.prepare({ projection, lease });
 
@@ -371,8 +367,7 @@ describe('node attempt execution engine', () => {
         release,
       );
       const engine = createNodeAttemptExecutionEngine({
-        admissionRelease: release,
-        currentRelease: release,
+        release: release,
       });
       const onInputResolved = vi.fn(() => Promise.resolve());
       await engine
@@ -403,8 +398,7 @@ describe('node attempt execution engine', () => {
       branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
     };
     const engine = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     });
 
     expect(() => engine.prepare({ projection, lease: scopedLease })).toThrow(
@@ -429,7 +423,6 @@ describe('node attempt execution engine', () => {
       checksum: executable.checksum,
       executableSchemaVersion: 2,
       executableJson: executable.envelope,
-      compatibilityReleaseEpoch: release.epoch,
     };
     const branchPath = [{ nodeId: 'condition', outputPort: 'true' }] as const;
     const lease: NodeAttemptLease = {
@@ -445,8 +438,7 @@ describe('node attempt execution engine', () => {
 
     expect(
       createNodeAttemptExecutionEngine({
-        admissionRelease: release,
-        currentRelease: release,
+        release: release,
       }).prepare({ projection, lease }).upstreamNodeOutputs,
     ).toEqual([
       {
@@ -462,8 +454,7 @@ describe('node attempt execution engine', () => {
   it('derives the exact direct-upstream set and rejects a changed side-effect pin', () => {
     const { release, projection, lease } = fixture('terminate');
     const engine = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     });
 
     expect(engine.prepare({ projection, lease }).upstreamNodeOutputs).toEqual([
@@ -480,8 +471,7 @@ describe('node attempt execution engine', () => {
   it('rejects projection drift, a missing node, and a forged invocation pin independently', () => {
     const { release, projection, lease } = fixture('manual');
     const engine = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     });
 
     expect(() =>
@@ -520,8 +510,7 @@ describe('node attempt execution engine', () => {
       const release = composeExecutableCompatibilityRelease(registryRelease);
       const projection = compiledProjection(branchGraph(kind), release);
       const engine = createNodeAttemptExecutionEngine({
-        admissionRelease: release,
-        currentRelease: release,
+        release: release,
       });
       const selectedPath = [
         { nodeId: kind, outputPort: selectedPort },
@@ -578,8 +567,7 @@ describe('node attempt execution engine', () => {
     );
     const projection = compiledProjection(nestedBranchGraph(), release);
     const engine = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     });
     const branchPath = [
       { nodeId: 'condition', outputPort: 'true' },
@@ -633,8 +621,7 @@ describe('node attempt execution engine', () => {
     );
     const projection = compiledProjection(parallelMergeGraph(), release);
     const engine = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     });
     const baseLease = fixture('manual').lease;
     const leftPath = [{ nodeId: 'parallel', outputPort: 'branch-01' }] as const;
@@ -695,8 +682,7 @@ describe('node attempt execution engine', () => {
   it('rejects an already-aborted prepared execution before registry dispatch', async () => {
     const { release, projection, lease } = fixture('manual');
     const prepared = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     }).prepare({ projection, lease });
     const execute = vi.fn();
 
@@ -712,18 +698,14 @@ describe('node attempt execution engine', () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it('executes the prepared target through the production overlap support', async () => {
-    const releaseSupport = createExecutableCompatibilityReleaseSupport(
-      [CORE_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
+  it('executes a prepared core-catalog node', async () => {
+    const release = composeExecutableCompatibilityRelease(
+      CORE_REGISTRY_RELEASE,
     );
-    const target = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
     const executable = buildWorkflowExecutable({
       graph: graph(),
-      release: target,
+      release,
     });
-    const currentCompatibilityRelease = releaseSupport.descriptions.at(-1);
-    if (currentCompatibilityRelease === undefined)
-      throw new Error('target release fixture is missing');
     const { lease } = fixture('manual');
     const projection: PublishedWorkflowV2Projection = {
       id: VERSION_ID,
@@ -734,15 +716,8 @@ describe('node attempt execution engine', () => {
       checksum: executable.checksum,
       executableSchemaVersion: 2,
       executableJson: executable.envelope,
-      compatibilityReleaseEpoch: target.epoch,
-      currentCompatibilityRelease,
     };
-    const engine = createNodeAttemptExecutionEngine({
-      admissionRelease: composeExecutableCompatibilityRelease(
-        CORE_REGISTRY_RELEASE,
-      ),
-      releaseSupport,
-    });
+    const engine = createNodeAttemptExecutionEngine({ release });
     const prepared = engine.prepare({ projection, lease });
 
     await expect(
@@ -773,7 +748,6 @@ describe('node attempt execution engine', () => {
       checksum: executable.checksum,
       executableSchemaVersion: 2,
       executableJson: executable.envelope,
-      compatibilityReleaseEpoch: release.epoch,
     };
     const iterationPath = [{ loopNodeId: 'loop', ordinal: 1 }] as const;
     const bodyInvocationKey = invocationKey({
@@ -793,8 +767,7 @@ describe('node attempt execution engine', () => {
       iterationPath,
     };
     const prepared = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     }).prepare({ projection, lease });
 
     expect(prepared.upstreamNodeOutputs).toEqual([
@@ -844,12 +817,10 @@ describe('node attempt execution engine', () => {
       checksum: executable.checksum,
       executableSchemaVersion: 2,
       executableJson: executable.envelope,
-      compatibilityReleaseEpoch: release.epoch,
     };
 
     const engine = createNodeAttemptExecutionEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      release: release,
     });
     for (const iterationPath of [
       undefined,

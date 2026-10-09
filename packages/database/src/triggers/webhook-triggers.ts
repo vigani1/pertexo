@@ -7,13 +7,6 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type { DatabaseConfig } from '../config.js';
-import {
-  selectServingCompatibilityRelease,
-  parseCompatibilityReleaseExpectation,
-  parseCompatibilityReleaseExpectationSet,
-  type CompatibilityReleaseExpectation,
-  type CompatibilityReleaseExpectationSet,
-} from '../compatibility/compatibility-release.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
@@ -272,7 +265,7 @@ async function executableProjection(
 ): Promise<PublishedWorkflowV2Projection> {
   const result = await transaction.db.execute(sql<Record<string, unknown>>`
     select id,workspace_id,workflow_id,version_number,schema_version,checksum,
-           executable_schema_version,executable_json,compatibility_release_epoch
+           executable_schema_version,executable_json
       from app.workflow_versions where workspace_id=${transaction.workspaceId}
        and id=${workflowVersionId}
   `);
@@ -324,15 +317,8 @@ async function lockEligibleEndpoint(
 
 export function createWebhookTriggerDatabase(
   config: DatabaseConfig,
-  compatibilityReleaseInput:
-    CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
   runtime?: DatabaseRuntime,
 ): WebhookTriggerDatabase {
-  const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
-    ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
-    : Object.freeze([
-        parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
-      ]);
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   const command = <T>(
@@ -569,17 +555,11 @@ export function createWebhookTriggerDatabase(
               clock_timestamp()+case when ${dedupeKind}='keyed'
                 then interval '24 hours' else interval '5 minutes' end)
           `);
-          const currentCompatibilityRelease = selectServingCompatibilityRelease(
-            compatibilityReleases,
-          );
           const projection = await executableProjection(
             transaction,
             verification.workflowVersionId,
           );
-          const initial = input.checkpointFactory(
-            projection,
-            currentCompatibilityRelease,
-          );
+          const initial = input.checkpointFactory(projection);
           const accepted = await acceptWorkflowRun(transaction, {
             engineVersion: initial.engineVersion,
             initialCheckpoint: initial.checkpoint,

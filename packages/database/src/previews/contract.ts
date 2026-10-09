@@ -90,8 +90,6 @@ export type PreviewAttemptLease = Readonly<{
   // The tenant scope travels with every lease so worker code cannot mix
   // workspaces when composing capabilities or completing work.
   workspaceId: string;
-  compatibilityReleaseEpoch: number;
-  compatibilityReleaseFingerprint: string;
   definitionKey: string;
   definitionVersion: number;
   dryRun: 'not_supported' | 'provider_supported';

@@ -157,18 +157,7 @@ describe('inbox caller cancellation', () => {
     const controller = new AbortController();
     const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
     const reason = new Error('cancel replay transaction');
-    const store = createOperatorRunReplayStore(
-      config,
-      [
-        {
-          catalogJson:
-            '{"domain":"pertexo.node-compatibility-release","schemaVersion":1}',
-          epoch: 1,
-          fingerprint: `node-compat:v1:sha256:${'b'.repeat(64)}`,
-        },
-      ],
-      vi.fn(),
-    );
+    const store = createOperatorRunReplayStore(config, vi.fn());
     const replaying = store.replay({
       commandId: randomUUID(),
       delivery: {
@@ -220,18 +209,7 @@ describe('inbox caller cancellation', () => {
     const controller = new AbortController();
     const reason = new Error('replay already canceled');
     controller.abort(reason);
-    const store = createOperatorRunReplayStore(
-      config,
-      [
-        {
-          catalogJson:
-            '{"domain":"pertexo.node-compatibility-release","schemaVersion":1}',
-          epoch: 1,
-          fingerprint: `node-compat:v1:sha256:${'b'.repeat(64)}`,
-        },
-      ],
-      vi.fn(),
-    );
+    const store = createOperatorRunReplayStore(config, vi.fn());
     try {
       await expect(
         store.replay({

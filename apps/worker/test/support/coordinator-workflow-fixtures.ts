@@ -478,8 +478,8 @@ async function insertCompiledWorkflow(
     `insert into app.workflow_versions (
        id, workspace_id, workflow_id, version_number, schema_version,
        graph_json, checksum, executable_schema_version, executable_json,
-       compatibility_release_epoch, published_by
-     ) values ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7, $8)`,
+       published_by
+     ) values ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7)`,
     [
       input.identity.workflowVersionId,
       input.workspaceId,
@@ -487,7 +487,6 @@ async function insertCompiledWorkflow(
       JSON.stringify(input.graph),
       executable.checksum,
       JSON.stringify(executable.envelope),
-      executable.envelope.compatibilityReleaseEpoch,
       input.actorId,
     ],
   );

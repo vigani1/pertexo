@@ -18,8 +18,6 @@ import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { initialCheckpointFactory } from '@pertexo/execution';
 import {
   composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 
@@ -50,18 +48,10 @@ export function createPostgresWorkflowRunPersistence(
   notifications?: RunEventNotificationPublisher,
   runtime?: DatabaseRuntime,
 ): PostgresWorkflowRunPersistence {
-  const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
+  const release = composeExecutableCompatibilityRelease(
+    PLATFORM_REGISTRY_RELEASE,
   );
-  const database =
-    databaseInput ??
-    createWorkflowRunDatabase(
-      config,
-      createExecutableCompatibilityReleaseSupport(
-        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-      ).descriptions,
-      runtime,
-    );
+  const database = databaseInput ?? createWorkflowRunDatabase(config, runtime);
   const persistence: WorkflowRunPersistence = Object.freeze({
     usageCapacity: async (
       input: Parameters<WorkflowRunPersistence['usageCapacity']>[0],
@@ -75,9 +65,9 @@ export function createPostgresWorkflowRunPersistence(
       }
     },
     start: (input: StartWorkflowRunCommand) =>
-      executeAcceptance(database, input, releaseSupport, notifications),
+      executeAcceptance(database, input, release, notifications),
     replay: (input: ReplayWorkflowRunCommand) =>
-      executeAcceptance(database, input, releaseSupport, notifications),
+      executeAcceptance(database, input, release, notifications),
     get: async (input: Readonly<{ workspaceId: string; runId: string }>) => {
       try {
         return await database.get(input);
@@ -177,9 +167,7 @@ type WorkflowRunAcceptanceResult = Awaited<
 async function executeAcceptance(
   database: WorkflowRunDatabase,
   input: StartWorkflowRunCommand | ReplayWorkflowRunCommand,
-  releaseSupport: ReturnType<
-    typeof createExecutableCompatibilityReleaseHistory
-  >,
+  release: ReturnType<typeof composeExecutableCompatibilityRelease>,
   notifications: RunEventNotificationPublisher | undefined,
 ): Promise<WorkflowRunAcceptanceResult> {
   try {
@@ -187,11 +175,11 @@ async function executeAcceptance(
       'workflowId' in input
         ? await database.start({
             ...input,
-            checkpointFactory: initialCheckpointFactory({ releaseSupport }),
+            checkpointFactory: initialCheckpointFactory({ release }),
           })
         : await database.replay({
             ...input,
-            checkpointFactory: initialCheckpointFactory({ releaseSupport }),
+            checkpointFactory: initialCheckpointFactory({ release }),
           });
     if (!result.replayed)
       await publishHint(notifications, {

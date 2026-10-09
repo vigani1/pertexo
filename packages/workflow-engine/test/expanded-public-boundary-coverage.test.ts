@@ -69,7 +69,7 @@ describe('expanded public workflow-engine boundaries', () => {
       expect(() =>
         parseWorkflowExecutable({
           envelope,
-          admissionRelease: release,
+          release: release,
         }),
       ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     }
@@ -176,7 +176,7 @@ describe('expanded public workflow-engine boundaries', () => {
     expect(() =>
       parseWorkflowExecutable({
         envelope: nonBaseline,
-        admissionRelease: releaseWithAlternative,
+        release: releaseWithAlternative,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
 

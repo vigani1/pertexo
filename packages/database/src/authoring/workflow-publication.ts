@@ -22,7 +22,6 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
-import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import {
   WorkflowNotFoundError,
@@ -71,15 +70,10 @@ const executableSchema = z
     checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
     executableSchemaVersion: z.literal(2),
     executableJson: z.record(z.string(), z.unknown()),
-    compatibilityReleaseEpoch: z.number().int().positive(),
-    compatibilityReleaseFingerprint: z
-      .string()
-      .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u),
   })
   .strict();
 
 type PublicationVariant = Readonly<{
-  compatibilityRelease: CompatibilityReleaseExpectation | undefined;
   definitionCatalog: WorkflowDefinitionCatalog;
   executableCompiler: WorkflowExecutableCompiler | undefined;
   validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
@@ -161,9 +155,6 @@ async function lockAndCompilePublication(
   dependencies: WorkflowPublicationDependencies,
 ): Promise<CompiledPublication> {
   const variant = await dependencies.selectVariant(client);
-  const lockedRelease = variant.compatibilityRelease;
-  if (lockedRelease !== undefined)
-    await dependencies.testHooks?.afterCompatibilityReleaseLock?.();
   const workflow = await client.query(
     `select id from app.workflows where workspace_id=$1 and id=$2
        and lifecycle_status='active' for update`,
@@ -206,24 +197,6 @@ async function lockAndCompilePublication(
   const compiled = variant.executableCompiler?.(graph);
   const executable =
     compiled === undefined ? undefined : executableSchema.parse(compiled);
-  if (executable !== undefined) {
-    if (lockedRelease === undefined)
-      throw new Error(
-        'Compiled workflow compatibility release has no locked authority',
-      );
-    if (
-      executable.compatibilityReleaseEpoch !== lockedRelease.epoch ||
-      executable.compatibilityReleaseFingerprint !==
-        lockedRelease.fingerprint ||
-      executable.executableJson.compatibilityReleaseEpoch !==
-        lockedRelease.epoch ||
-      executable.executableJson.compatibilityReleaseFingerprint !==
-        lockedRelease.fingerprint
-    )
-      throw new Error(
-        'Compiled workflow compatibility release does not match the locked authority',
-      );
-  }
   return Object.freeze({
     checksum: checksumSchema.parse(
       executable?.checksum ??
@@ -258,10 +231,9 @@ async function persistVersion(
     const inserted = await client.query<Record<string, unknown>>(
       `insert into app.workflow_versions (
          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-         checksum,executable_schema_version,executable_json,
-         compatibility_release_epoch,published_by)
+         checksum,executable_schema_version,executable_json,published_by)
        select $1,$2,$3,coalesce(max(version_number),0)+1,$4,$5::jsonb,$6,
-         $7,$8::jsonb,$9,$10 from app.workflow_versions
+         $7,$8::jsonb,$9 from app.workflow_versions
        where workspace_id=$2 and workflow_id=$3
        returning ${workflowVersionRowSelection}`,
       [
@@ -275,7 +247,6 @@ async function persistVersion(
         publication.executable === undefined
           ? null
           : JSON.stringify(publication.executable.executableJson),
-        publication.executable?.compatibilityReleaseEpoch ?? null,
         input.actorId,
       ],
     );

@@ -18,11 +18,7 @@ import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
-import {
-  composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
-} from '@pertexo/workflow-engine';
+import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { Pool, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -153,12 +149,9 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   let owner!: Pool;
   let apiPool!: Pool;
   let apiConfig!: ReturnType<typeof parseDatabaseConfig>;
-  let releaseSupport!: ReturnType<
-    typeof createExecutableCompatibilityReleaseSupport
-  >;
-  let releaseHistory!: ReturnType<
-    typeof createExecutableCompatibilityReleaseHistory
-  >;
+  const release = composeExecutableCompatibilityRelease(
+    PLATFORM_REGISTRY_RELEASE,
+  );
   let identity!: ReturnType<typeof createIdentityWorkspaceDatabase>;
   let authoring!: ReturnType<typeof createCoreWorkflowAuthoringDatabase>;
   let reconciliation!: ReturnType<
@@ -236,12 +229,6 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         max: 12,
         ownerRole,
       });
-      releaseSupport = createExecutableCompatibilityReleaseSupport(
-        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-      );
-      releaseHistory = createExecutableCompatibilityReleaseHistory(
-        [PLATFORM_REGISTRY_RELEASE].map(composeExecutableCompatibilityRelease),
-      );
       await migrateDatabase({
         connectionString: configuredDatabaseUrl(migrationBaseUrl),
         ownerRole,
@@ -293,7 +280,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       );
       webhookDatabase = resources.acquire(
         'webhook database',
-        createWebhookTriggerDatabase(apiConfig, releaseSupport.descriptions),
+        createWebhookTriggerDatabase(apiConfig),
         (database) => database.close(),
       );
       workspaceDatabase = resources.acquire(
@@ -348,11 +335,8 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
             ingress: {
               database: ingressDatabase,
               encryption,
-              checkpointFactory: (projection, currentCompatibilityRelease) =>
-                createInitialCheckpoint(
-                  { ...projection, currentCompatibilityRelease },
-                  { releaseSupport: releaseHistory },
-                ),
+              checkpointFactory: (projection) =>
+                createInitialCheckpoint(projection, { release }),
             },
             close: () => Promise.resolve(),
           },

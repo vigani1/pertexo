@@ -1,4 +1,3 @@
-export type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
 export type { DatabaseConfig } from '../config.js';
 export {
   parseMaintenanceDatabaseConfig,

@@ -11,8 +11,6 @@ import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {
-  composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseSupport,
   invocationKey,
   parseCheckpoint,
   type WorkflowTransitionPlan,
@@ -322,14 +320,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
     };
     const retryStore = createRunAdvanceStore(
       parseDatabaseConfig({ connectionString: databaseUrl(workerUrl), max: 2 }),
-      undefined,
-      {
-        compatibilityReleases: createExecutableCompatibilityReleaseSupport(
-          [PLATFORM_REGISTRY_RELEASE].map(
-            composeExecutableCompatibilityRelease,
-          ),
-        ).descriptions,
-      },
     );
     const advance = (input: Parameters<RunAdvanceStore['advance']>[0]) =>
       retryStore.advance(input, retryDecide);

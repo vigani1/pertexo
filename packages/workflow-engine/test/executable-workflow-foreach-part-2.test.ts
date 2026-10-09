@@ -558,7 +558,7 @@ describe('For Each production operations', () => {
       const recovered = verifyWorkflowExecutable({
         envelope: JSON.parse(JSON.stringify(compiled.envelope)),
         checksum: compiled.checksum,
-        admissionRelease: release,
+        release: release,
       });
       const recoveredSink = recovered.envelope.graph.nodes
         .find(({ id }) => id === 'loop')

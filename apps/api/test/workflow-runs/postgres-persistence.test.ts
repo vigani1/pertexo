@@ -1,9 +1,7 @@
 import {
   buildWorkflowExecutable,
   composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
   parseCheckpoint,
-  createExecutableCompatibilityReleaseHistory,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 import { PLATFORM_REGISTRY_RELEASE } from '@pertexo/node-catalog';
@@ -38,8 +36,10 @@ const workflowVersionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const runId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const actorId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
-function executable(nodeRelease: unknown = PLATFORM_REGISTRY_RELEASE) {
-  const release = composeExecutableCompatibilityRelease(nodeRelease);
+function executable() {
+  const release = composeExecutableCompatibilityRelease(
+    PLATFORM_REGISTRY_RELEASE,
+  );
   return buildWorkflowExecutable({
     release,
     graph: {
@@ -286,10 +286,7 @@ function parallelExecutable(version: 1 | 2 | 3) {
   };
 }
 
-function projection(
-  compiled: ReturnType<typeof executable>,
-  release: ReturnType<typeof composeExecutableCompatibilityRelease>,
-) {
+function projection(compiled: ReturnType<typeof executable>) {
   return {
     id: workflowVersionId,
     workspaceId,
@@ -299,7 +296,6 @@ function projection(
     checksum: compiled.checksum,
     executableSchemaVersion: 2 as const,
     executableJson: compiled.envelope,
-    compatibilityReleaseEpoch: release.epoch,
   };
 }
 
@@ -841,12 +837,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         checksum: compiled.checksum,
         executableSchemaVersion: 2,
         executableJson: compiled.envelope,
-        compatibilityReleaseEpoch: release.epoch,
-        currentCompatibilityRelease:
-          describeExecutableCompatibilityRelease(release),
       },
       {
-        releaseSupport: createExecutableCompatibilityReleaseHistory([release]),
+        release,
       },
     );
 
@@ -918,12 +911,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         checksum: compiled.checksum,
         executableSchemaVersion: 2,
         executableJson: compiled.envelope,
-        compatibilityReleaseEpoch: release.epoch,
-        currentCompatibilityRelease:
-          describeExecutableCompatibilityRelease(release),
       },
       {
-        releaseSupport: createExecutableCompatibilityReleaseHistory([release]),
+        release,
       },
     );
 
@@ -945,12 +935,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         checksum: compiled.checksum,
         executableSchemaVersion: 2,
         executableJson: compiled.envelope,
-        compatibilityReleaseEpoch: release.epoch,
-        currentCompatibilityRelease:
-          describeExecutableCompatibilityRelease(release),
       },
       {
-        releaseSupport: createExecutableCompatibilityReleaseHistory([release]),
+        release,
       },
     );
 
@@ -966,14 +953,10 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       const { compiled, release } = parallelExecutable(version);
       const checkpoint = createInitialCheckpoint(
         {
-          ...projection(compiled, release),
-          currentCompatibilityRelease:
-            describeExecutableCompatibilityRelease(release),
+          ...projection(compiled),
         },
         {
-          releaseSupport: createExecutableCompatibilityReleaseHistory([
-            release,
-          ]),
+          release,
         },
       );
 
@@ -991,12 +974,10 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     );
     const checkpoint = createInitialCheckpoint(
       {
-        ...projection(compiled, release),
-        currentCompatibilityRelease:
-          describeExecutableCompatibilityRelease(release),
+        ...projection(compiled),
       },
       {
-        releaseSupport: createExecutableCompatibilityReleaseHistory([release]),
+        release,
       },
     );
 
@@ -1011,56 +992,30 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     expect(() =>
       createInitialCheckpoint(
         {
-          ...projection(compiled, release),
+          ...projection(compiled),
           checksum: '0'.repeat(64),
-          currentCompatibilityRelease:
-            describeExecutableCompatibilityRelease(release),
         },
         {
-          releaseSupport: createExecutableCompatibilityReleaseHistory([
-            release,
-          ]),
+          release,
         },
       ),
     ).toThrow(WorkflowEngineError);
   });
 
-  it('verifies the exact V2 release and creates the initial event-bound checkpoint', async () => {
+  it('verifies the executable and creates the initial event-bound checkpoint', async () => {
     const compiled = executable();
-    const targetCompiled = executable(PLATFORM_REGISTRY_RELEASE);
     const start = vi.fn<WorkflowRunDatabase['start']>(async (input) => {
       await Promise.resolve();
-      for (const [nodeRelease, executableVersion] of [
-        [PLATFORM_REGISTRY_RELEASE, compiled],
-        [PLATFORM_REGISTRY_RELEASE, targetCompiled],
-      ] as const) {
-        const initial = input.checkpointFactory(
-          {
-            id: workflowVersionId,
-            workspaceId,
-            workflowId,
-            versionNumber: 1,
-            schemaVersion: 1,
-            checksum: executableVersion.checksum,
-            executableSchemaVersion: 2,
-            executableJson: executableVersion.envelope,
-            compatibilityReleaseEpoch:
-              executableVersion.envelope.compatibilityReleaseEpoch,
-          },
-          describeExecutableCompatibilityRelease(
-            composeExecutableCompatibilityRelease(nodeRelease),
-          ),
-        );
-        expect(initial.engineVersion).toBe(ENGINE_VERSION);
-        expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
-          schemaVersion: 2,
-          workflowVersionId,
-          engineVersion: ENGINE_VERSION,
-          revision: 0,
-          nextEventSequence: 2,
-          runStatus: 'queued',
-        });
-      }
+      const initial = input.checkpointFactory(projection(compiled));
+      expect(initial.engineVersion).toBe(ENGINE_VERSION);
+      expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
+        schemaVersion: 2,
+        workflowVersionId,
+        engineVersion: ENGINE_VERSION,
+        revision: 0,
+        nextEventSequence: 2,
+        runStatus: 'queued',
+      });
       return { run: run(), replayed: false };
     });
     const close = vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue();
