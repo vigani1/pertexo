@@ -65,7 +65,7 @@ describe('connection lifecycle persistence', () => {
     }
 
     await expect(connections.api.createConnection(create)).rejects.toThrow(
-      'Connection idempotency record is not resumable',
+      'Command claim is not resumable',
     );
     await expect(
       connections.api.rotateConnectionSecret({
@@ -78,9 +78,7 @@ describe('connection lifecycle persistence', () => {
         idempotencyKey: rotateKey,
         requestHash: rotateHash,
       }),
-    ).rejects.toThrow(
-      'Connection rotation idempotency record is not resumable',
-    );
+    ).rejects.toThrow('Command claim is not resumable');
 
     const verifier = new Pool({
       connectionString: databaseUrl(migrationBaseUrl),

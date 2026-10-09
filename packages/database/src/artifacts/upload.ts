@@ -1,6 +1,5 @@
-import { createHash } from 'node:crypto';
-
 import type { Pool, PoolClient } from 'pg';
+import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
 import {
@@ -8,6 +7,7 @@ import {
   type DatabaseRuntime,
 } from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
+import { claimCommand, completeCommand } from '../platform/idempotency.js';
 import {
   checkDatabaseReadiness,
   type DatabaseReadiness,
@@ -70,10 +70,6 @@ function isDatabaseError(
   }
 }
 
-function keyDigest(key: string): string {
-  return createHash('sha256').update(key).digest('hex');
-}
-
 async function requireWorkspaceAccess(
   client: PoolClient,
   workspaceId: string,
@@ -117,6 +113,8 @@ async function loadArtifact(
   return mapArtifact(row);
 }
 
+const storedUploadSchema = z.object({ artifactId: z.uuid() }).strict();
+
 function uploadRequestHash(input: NormalizedBeginArtifactUploadInput): string {
   return canonicalOutboxPayloadChecksum({
     actorId: input.actorId,
@@ -144,46 +142,23 @@ async function beginUpload(
         'upload',
       );
       const artifactId = generatePersistedId();
-      const requestHash = uploadRequestHash(parsed);
-      const scope = `${parsed.actorId}:artifact-upload`;
-      const idempotencyKeyHash = keyDigest(parsed.idempotencyKey);
-      await client.query(
-        `insert into app.idempotency_records
-           (id,workspace_id,operation,scope,key_hash,request_hash,status,
-            resource_id,result_ref)
-         values($1,$2,'artifact.upload',$3,$4,$5,'in_progress',$6,'{}'::jsonb)
-         on conflict(workspace_id,operation,scope,key_hash) do nothing`,
-        [
-          generatePersistedId(),
-          parsed.workspaceId,
-          scope,
-          idempotencyKeyHash,
-          requestHash,
-          artifactId,
-        ],
-      );
-      const claimResult = await client.query<{
-        request_hash: string;
-        resource_id: string;
-        status: string;
-      }>(
-        `select request_hash,resource_id,status
-           from app.idempotency_records
-          where workspace_id=$1 and operation='artifact.upload'
-            and scope=$2 and key_hash=$3
-          for update`,
-        [parsed.workspaceId, scope, idempotencyKeyHash],
-      );
-      const claim = claimResult.rows[0];
-      if (claim === undefined)
-        throw new Error('Artifact upload idempotency claim is unavailable');
-      if (claim.request_hash !== requestHash)
-        throw new ArtifactUploadIdempotencyConflictError();
-      if (claim.status === 'completed') {
+      const command = {
+        workspaceId: parsed.workspaceId,
+        operation: 'artifact.upload',
+        scope: `${parsed.actorId}:artifact-upload`,
+        idempotencyKey: parsed.idempotencyKey,
+        requestHash: uploadRequestHash(parsed),
+        conflict: () => new ArtifactUploadIdempotencyConflictError(),
+      };
+      const stored = await claimCommand(client, {
+        ...command,
+        resourceId: artifactId,
+      });
+      if (stored !== null) {
         const artifact = await loadArtifact(
           client,
           parsed.workspaceId,
-          claim.resource_id,
+          storedUploadSchema.parse(stored).artifactId,
           ['pending', 'available'],
         );
         return Object.freeze({ artifact, replayed: true });
@@ -202,7 +177,7 @@ async function beginUpload(
                      sha256,status,expires_at,finalized_at,deleted_at,
                      retention_retry_at,created_at,updated_at`,
           [
-            claim.resource_id,
+            artifactId,
             parsed.workspaceId,
             parsed.mediaType,
             parsed.byteLength,
@@ -218,19 +193,7 @@ async function beginUpload(
           throw new ArtifactQuotaExceededError();
         throw error;
       }
-      await client.query(
-        `update app.idempotency_records
-            set status='completed',result_ref=$1::jsonb,
-                updated_at=clock_timestamp()
-          where workspace_id=$2 and operation='artifact.upload'
-            and scope=$3 and key_hash=$4`,
-        [
-          JSON.stringify({ artifactId: artifact.id }),
-          parsed.workspaceId,
-          scope,
-          idempotencyKeyHash,
-        ],
-      );
+      await completeCommand(client, command, { artifactId: artifact.id });
       return Object.freeze({ artifact, replayed: false });
     },
   );

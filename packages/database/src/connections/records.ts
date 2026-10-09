@@ -9,6 +9,7 @@ import {
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
+import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
 import { withTenantScopedClient } from '../tenant-access/transactions.js';
 import type { WorkspaceTransactionOptions } from '../tenant-access/transactions.js';
 
@@ -390,6 +391,26 @@ export class ConnectionSecretVersionConflictError extends Error {
 
 export class ConnectionTestInProgressError extends Error {
   public override readonly name = 'ConnectionTestInProgressError';
+}
+
+/** One connection command under its idempotency key and request digest. */
+export function connectionCommand(
+  input: Readonly<{ idempotencyKey: string; requestHash: string }>,
+  workspaceId: string,
+  operation: string,
+  scope: string,
+) {
+  return {
+    workspaceId,
+    operation,
+    scope,
+    idempotencyKey: idempotencyKeySchema.parse(input.idempotencyKey),
+    requestHash: digestSchema.parse(input.requestHash),
+    conflict: () =>
+      new ConnectionIdempotencyConflictError(
+        'Idempotency key request mismatch',
+      ),
+  };
 }
 
 export function keyDigest(value: string): string {

@@ -9,6 +9,7 @@ import { sha256HexSchema as digestSchema } from '../../platform/persisted-primit
 import type { DatabaseConfig } from '../../config.js';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
@@ -134,69 +135,39 @@ export {
   WebhookTriggerNotFoundError,
   WebhookWorkflowPausedError,
 };
-function keyHash(value: string): string {
-  return createHash('sha256')
-    .update(z.string().min(1).max(128).parse(value))
-    .digest('hex');
+function webhookCommand(input: Command, operation: string) {
+  return {
+    workspaceId: input.workspaceId,
+    operation,
+    scope: `${input.actorId}:${input.workflowId}:${input.triggerId}`,
+    idempotencyKey: z.string().min(1).max(128).parse(input.idempotencyKey),
+    requestHash: digestSchema.parse(input.requestHash),
+    conflict: () => new WebhookTriggerIdempotencyConflictError(),
+  };
 }
 
-async function claimCommand(
+/** Claims the command's key; true when an exact retry already completed it. */
+async function claimWebhookCommand(
   client: PoolClient,
   input: Command,
   operation: string,
 ): Promise<boolean> {
-  const digest = keyHash(input.idempotencyKey);
-  const requestHash = digestSchema.parse(input.requestHash);
-  await client.query(
-    `insert into app.idempotency_records
-      (id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref,expires_at)
-     values($1,$2,$3,$4,$5,$6,'in_progress',$7,'{}'::jsonb,clock_timestamp()+interval '24 hours')
-     on conflict(workspace_id,operation,scope,key_hash) do nothing`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      operation,
-      `${input.actorId}:${input.workflowId}:${input.triggerId}`,
-      digest,
-      requestHash,
-      input.triggerId,
-    ],
-  );
-  const result = await client.query<{ request_hash: string; status: string }>(
-    `select request_hash,status from app.idempotency_records
-      where workspace_id=$1 and operation=$2 and scope=$3 and key_hash=$4 for update`,
-    [
-      input.workspaceId,
-      operation,
-      `${input.actorId}:${input.workflowId}:${input.triggerId}`,
-      digest,
-    ],
-  );
-  const claim = result.rows[0];
-  if (claim === undefined)
-    throw new Error('Webhook command claim is unavailable');
-  if (claim.request_hash !== requestHash)
-    throw new WebhookTriggerIdempotencyConflictError();
-  return claim.status === 'completed';
+  const stored = await claimCommand(client, {
+    ...webhookCommand(input, operation),
+    resourceId: input.triggerId,
+  });
+  return stored !== null;
 }
 
-async function completeCommand(
+async function completeWebhookCommand(
   client: PoolClient,
   input: Command,
   operation: string,
 ): Promise<void> {
-  await client.query(
-    `update app.idempotency_records set status='completed',result_ref=$1::jsonb,
-       updated_at=clock_timestamp() where workspace_id=$2 and operation=$3
-       and scope=$4 and key_hash=$5`,
-    [
-      JSON.stringify({ schemaVersion: 1, triggerId: input.triggerId }),
-      input.workspaceId,
-      operation,
-      `${input.actorId}:${input.workflowId}:${input.triggerId}`,
-      keyHash(input.idempotencyKey),
-    ],
-  );
+  await completeCommand(client, webhookCommand(input, operation), {
+    schemaVersion: 1,
+    triggerId: input.triggerId,
+  });
 }
 
 async function insertSecret(
@@ -341,7 +312,7 @@ export function createWebhookTriggerDatabase(
     provision: (input: Parameters<WebhookTriggerDatabase['provision']>[0]) =>
       command(input, async (client) => {
         const operation = 'webhook.trigger.provision';
-        if (await claimCommand(client, input, operation))
+        if (await claimWebhookCommand(client, input, operation))
           return oneHealth(client, input.workspaceId, input.triggerId);
         const trigger = await client.query<{ workflow_id: string }>(
           `select workflow_id from app.workflow_triggers where workspace_id=$1 and id=$2
@@ -374,7 +345,7 @@ export function createWebhookTriggerDatabase(
           input.workspaceId,
           trigger.rows[0].workflow_id,
         );
-        await completeCommand(client, input, operation);
+        await completeWebhookCommand(client, input, operation);
         return oneHealth(client, input.workspaceId, input.triggerId);
       }),
     rotateEndpoint: (
@@ -382,7 +353,7 @@ export function createWebhookTriggerDatabase(
     ) =>
       command(input, async (client) => {
         const operation = 'webhook.trigger.endpoint.rotate';
-        if (await claimCommand(client, input, operation))
+        if (await claimWebhookCommand(client, input, operation))
           return oneHealth(client, input.workspaceId, input.triggerId);
         const result = await client.query(
           `update app.webhook_trigger_endpoints set endpoint_key_hash=$3,updated_at=clock_timestamp()
@@ -394,7 +365,7 @@ export function createWebhookTriggerDatabase(
           ],
         );
         if (result.rowCount !== 1) throw new WebhookTriggerNotFoundError();
-        await completeCommand(client, input, operation);
+        await completeWebhookCommand(client, input, operation);
         return oneHealth(client, input.workspaceId, input.triggerId);
       }),
     rotateSecret: (
@@ -408,7 +379,7 @@ export function createWebhookTriggerDatabase(
             .update(`${input.requestHash}\0${input.endpointKeyHash}`)
             .digest('hex'),
         };
-        if (await claimCommand(client, keyedCommand, operation))
+        if (await claimWebhookCommand(client, keyedCommand, operation))
           return oneHealth(client, input.workspaceId, input.triggerId);
         const endpoint = await client.query<{
           current_secret_version_id: string;
@@ -432,7 +403,7 @@ export function createWebhookTriggerDatabase(
              updated_at=clock_timestamp() where workspace_id=$1 and trigger_id=$2`,
           [input.workspaceId, input.triggerId, secret.id, current],
         );
-        await completeCommand(client, keyedCommand, operation);
+        await completeWebhookCommand(client, keyedCommand, operation);
         return oneHealth(client, input.workspaceId, input.triggerId);
       }),
     getHealth: (input: Parameters<WebhookTriggerDatabase['getHealth']>[0]) =>

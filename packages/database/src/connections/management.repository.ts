@@ -11,8 +11,7 @@ import {
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
   ConnectionConflictError,
-  ConnectionIdempotencyConflictError,
-  keyDigest,
+  connectionCommand,
   mapConnection,
   withConnectionTransaction,
   parseRequestMetadata,
@@ -23,7 +22,11 @@ import {
 } from './records.js';
 import { requireConnectionManager } from './authority.js';
 import { revokeConnectionHealth } from './health/transitions.js';
-import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
+import {
+  claimCommand,
+  completeCommand,
+  findCommandResult,
+} from '../platform/idempotency.js';
 import type { ConnectionDatabase, ConnectionRecord } from './records.js';
 
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */
@@ -48,8 +51,6 @@ export function createConnectionManagementPersistence(
       const name = connectionNameSchema.parse(input.name);
       const authType = z.enum(CONNECTION_AUTH_TYPE).parse(input.authType);
       const sealed = sealedSecretSchema.parse(input.sealed);
-      const requestHash = digestSchema.parse(input.requestHash);
-      const digest = keyDigest(input.idempotencyKey);
       const metadata = parseRequestMetadata(input);
       try {
         return await withConnectionTransaction(
@@ -58,49 +59,22 @@ export function createConnectionManagementPersistence(
           actorId,
           async (client, workspaceId) => {
             await requireConnectionManager(client, workspaceId, actorId);
-            const insertedClaim = await client.query(
-              `insert into app.idempotency_records
-                 (id, workspace_id, operation, scope, key_hash, request_hash,
-                  status, resource_id, result_ref)
-               values ($1, $2, 'connection.create', $3, $4, $5,
-                       'in_progress', $6, '{}'::jsonb)
-               on conflict (workspace_id, operation, scope, key_hash) do nothing
-               returning id`,
-              [
-                generatePersistedId(),
-                workspaceId,
-                actorId,
-                digest,
-                requestHash,
-                connectionId,
-              ],
+            const command = connectionCommand(
+              input,
+              workspaceId,
+              'connection.create',
+              actorId,
             );
-            const claim = await client.query<{
-              request_hash: string;
-              status: string;
-              result_ref: unknown;
-            }>(
-              `select request_hash, status, result_ref
-               from app.idempotency_records
-               where workspace_id = $1 and operation = 'connection.create'
-                 and scope = $2 and key_hash = $3 for update`,
-              [workspaceId, actorId, digest],
-            );
-            const claimed = claim.rows[0];
-            if (claimed === undefined)
-              throw new Error('Connection idempotency claim is unavailable');
-            if (claimed.request_hash !== requestHash)
-              throw new ConnectionIdempotencyConflictError(
-                'Idempotency key request mismatch',
-              );
-            if (claimed.status === 'completed') {
-              const replay = decodeDurableConnectionReplay(claimed.result_ref);
+            const stored = await claimCommand(client, {
+              ...command,
+              resourceId: connectionId,
+            });
+            if (stored !== null) {
+              const replay = decodeDurableConnectionReplay(stored);
               if (replay.workspaceId !== workspaceId)
                 throw new Error('Connection idempotency result is corrupt');
               return replay;
             }
-            if (insertedClaim.rowCount !== 1)
-              throw new Error('Connection idempotency record is not resumable');
             const inserted = await client.query<Record<string, unknown>>(
               `insert into app.connections
                  (id, workspace_id, provider_key, name, auth_type, status,
@@ -176,18 +150,10 @@ export function createConnectionManagementPersistence(
                 JSON.stringify({ providerKey, authType, secretVersionId }),
               ],
             );
-            await client.query(
-              `update app.idempotency_records
-               set status = 'completed', result_ref = $1::jsonb,
-                   updated_at = transaction_timestamp()
-               where workspace_id = $2 and operation = 'connection.create'
-                 and scope = $3 and key_hash = $4`,
-              [
-                JSON.stringify(serializeConnectionSnapshot(connection)),
-                workspaceId,
-                actorId,
-                digest,
-              ],
+            await completeCommand(
+              client,
+              command,
+              serializeConnectionSnapshot(connection),
             );
             return connection;
           },
@@ -207,33 +173,18 @@ export function createConnectionManagementPersistence(
       input,
     ): Promise<ConnectionRecord | null> => {
       const actorId = uuidSchema.parse(input.actorId);
-      const requestHash = digestSchema.parse(input.requestHash);
-      const digest = keyDigest(input.idempotencyKey);
       return withConnectionTransaction(
         pool,
         input.workspaceId,
         actorId,
         async (client, workspaceId) => {
           await requireConnectionManager(client, workspaceId, actorId);
-          const result = await client.query<{
-            request_hash: string;
-            status: string;
-            result_ref: unknown;
-          }>(
-            `select request_hash, status, result_ref
-             from app.idempotency_records
-             where workspace_id = $1 and operation = 'connection.create'
-               and scope = $2 and key_hash = $3`,
-            [workspaceId, actorId, digest],
+          const stored = await findCommandResult(
+            client,
+            connectionCommand(input, workspaceId, 'connection.create', actorId),
           );
-          const record = result.rows[0];
-          if (record === undefined) return null;
-          if (record.request_hash !== requestHash)
-            throw new ConnectionIdempotencyConflictError(
-              'Idempotency key request mismatch',
-            );
-          if (record.status !== 'completed') return null;
-          const replay = decodeDurableConnectionReplay(record.result_ref);
+          if (stored === null) return null;
+          const replay = decodeDurableConnectionReplay(stored);
           if (replay.workspaceId !== workspaceId)
             throw new Error('Connection idempotency result is corrupt');
           return replay;

@@ -1,8 +1,8 @@
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -163,16 +163,10 @@ async function readSchedule(
   return mapScheduleTrigger(row);
 }
 
-function idempotencyKeyHash(value: string): string {
-  return createHash('sha256')
-    .update(z.string().min(1).max(128).parse(value))
-    .digest('hex');
-}
-
 type SetEnabledInput = Parameters<ScheduleTriggerDatabase['setEnabled']>[0];
 
 type ScheduleCommandIdentity = Readonly<{
-  keyHash: string;
+  idempotencyKey: string;
   operation: 'schedule.trigger.setenabled';
   requestHash: string;
   scope: string;
@@ -207,7 +201,7 @@ function scheduleCommandIdentity(
 ): ScheduleCommandIdentity {
   const triggerId = uuidSchema.parse(input.triggerId);
   return Object.freeze({
-    keyHash: idempotencyKeyHash(input.idempotencyKey),
+    idempotencyKey: z.string().min(1).max(128).parse(input.idempotencyKey),
     operation: 'schedule.trigger.setenabled',
     requestHash: digestSchema.parse(input.requestHash),
     scope: `${input.actorId}:${triggerId}`,
@@ -216,46 +210,31 @@ function scheduleCommandIdentity(
   });
 }
 
+function scheduleCommand(
+  input: SetEnabledInput,
+  identity: ScheduleCommandIdentity,
+) {
+  return {
+    workspaceId: input.workspaceId,
+    operation: identity.operation,
+    scope: identity.scope,
+    idempotencyKey: identity.idempotencyKey,
+    requestHash: identity.requestHash,
+    conflict: () => new ScheduleTriggerError('idempotency_conflict'),
+  };
+}
+
 async function claimScheduleCommand(
   client: PoolClient,
   input: SetEnabledInput,
   identity: ScheduleCommandIdentity,
 ): Promise<ScheduleTriggerCommandResult | null> {
-  await client.query(
-    `insert into app.idempotency_records
-      (id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref,expires_at)
-     values($1,$2,$3,$4,$5,$6,'in_progress',$7,'{}'::jsonb,
-       clock_timestamp()+interval '24 hours')
-     on conflict(workspace_id,operation,scope,key_hash) do nothing`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      identity.operation,
-      identity.scope,
-      identity.keyHash,
-      identity.requestHash,
-      identity.triggerId,
-    ],
-  );
-  const command = await client.query<{
-    request_hash: string;
-    status: string;
-    result_ref: unknown;
-  }>(
-    `select request_hash,status,result_ref from app.idempotency_records
-      where workspace_id=$1 and operation=$2 and scope=$3 and key_hash=$4
-      for update`,
-    [input.workspaceId, identity.operation, identity.scope, identity.keyHash],
-  );
-  const claim = command.rows[0];
-  if (claim === undefined)
-    throw new Error('Schedule command claim is unavailable');
-  if (claim.request_hash !== identity.requestHash)
-    throw new ScheduleTriggerError('idempotency_conflict');
-  if (claim.status !== 'completed') return null;
-  const stored = z
-    .looseObject({ trigger: z.unknown() })
-    .parse(claim.result_ref);
+  const claimed = await claimCommand(client, {
+    ...scheduleCommand(input, identity),
+    resourceId: identity.triggerId,
+  });
+  if (claimed === null) return null;
+  const stored = z.looseObject({ trigger: z.unknown() }).parse(claimed);
   return Object.freeze({
     trigger: parseStoredScheduleTrigger(stored.trigger),
     replayed: true,
@@ -389,18 +368,10 @@ async function completeScheduleCommand(
     identity.workflowId,
     identity.triggerId,
   );
-  await client.query(
-    `update app.idempotency_records set status='completed',result_ref=$1::jsonb,
-       updated_at=clock_timestamp() where workspace_id=$2 and operation=$3
-       and scope=$4 and key_hash=$5`,
-    [
-      JSON.stringify({ schemaVersion: 1, trigger }),
-      input.workspaceId,
-      identity.operation,
-      identity.scope,
-      identity.keyHash,
-    ],
-  );
+  await completeCommand(client, scheduleCommand(input, identity), {
+    schemaVersion: 1,
+    trigger,
+  });
   return Object.freeze({ trigger, replayed: false });
 }
 

@@ -321,6 +321,12 @@ describe('snapshot validation and publication ordering', () => {
       .digest('hex'),
   ) {
     const query = vi.fn((sql: string) => {
+      // A new command inserts its claim; a retry finds it completed.
+      if (sql.includes('insert into app.idempotency_records'))
+        return Promise.resolve({
+          rows: [],
+          rowCount: status === 'completed' ? 0 : 1,
+        });
       if (sql.includes('select request_hash'))
         return Promise.resolve({
           rows: [
