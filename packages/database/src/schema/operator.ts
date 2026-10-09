@@ -3,7 +3,7 @@ import {
   char,
   check,
   foreignKey,
-  integer,
+  index,
   jsonb,
   timestamp,
   uuid,
@@ -14,22 +14,18 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from './app-schema.js';
 import { workflowVersions } from './authoring.js';
 import { nodeAttempts, workflowRuns } from './execution.js';
+import { workspaces } from './foundation.js';
 
 export const operatorCommands = appSchema.table(
   'operator_commands',
   {
     id: uuid().primaryKey().notNull(),
+    workspaceId: uuid('workspace_id').notNull(),
     commandType: varchar('command_type', { length: 64 }).notNull(),
     dryRun: boolean('dry_run').notNull(),
     requestFingerprint: char('request_fingerprint', { length: 64 }).notNull(),
     status: varchar({ length: 16 }).notNull(),
     outcome: varchar({ length: 32 }).notNull(),
-    priorPublishAttempts: integer('prior_publish_attempts'),
-    priorFailedAt: timestamp('prior_failed_at', {
-      withTimezone: true,
-      mode: 'string',
-    }),
-    priorErrorCode: varchar('prior_error_code', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
       .notNull(),
@@ -39,7 +35,7 @@ export const operatorCommands = appSchema.table(
     }).default(sql`clock_timestamp()`),
     result: jsonb().notNull(),
   },
-  () => [
+  (table) => [
     check(
       'operator_commands_completion_order',
       sql`((((status)::text = 'pending'::text) AND (completed_at IS NULL)) OR (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text])) AND (completed_at IS NOT NULL) AND (completed_at >= created_at))) IS TRUE`,
@@ -53,10 +49,6 @@ export const operatorCommands = appSchema.table(
       sql`(outcome)::text ~ '^[a-z][a-z0-9_]{0,31}$'::text`,
     ),
     check(
-      'operator_commands_prior_attempts_valid',
-      sql`(prior_publish_attempts IS NULL) OR (prior_publish_attempts >= 0)`,
-    ),
-    check(
       'operator_commands_result_valid',
       sql`(jsonb_typeof(result) = 'object'::text) AND (octet_length((result)::text) <= 16384)`,
     ),
@@ -68,6 +60,12 @@ export const operatorCommands = appSchema.table(
       'operator_commands_type_valid',
       sql`command_type IN ('outbox.redispatch', 'attempt.reconcile', 'due-work.resume', 'unknown-outcome.record-evidence', 'run.cancel', 'run.replay', 'trigger.reconcile')`,
     ),
+    index('operator_commands_workspace_idx').on(table.workspaceId),
+    foreignKey({
+      name: 'operator_commands_workspace_fk',
+      columns: [table.workspaceId],
+      foreignColumns: [workspaces.id],
+    }),
   ],
 );
 

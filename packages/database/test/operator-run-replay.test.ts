@@ -68,7 +68,10 @@ const evidencePayload = Object.freeze({
 });
 const evidencePayloadChecksum = canonicalOutboxPayloadChecksum(evidencePayload);
 
-function validResults(): { rows: Record<string, unknown>[] }[] {
+function validResults(): {
+  rows: Record<string, unknown>[];
+  rowCount?: number;
+}[] {
   return [
     {
       rows: [
@@ -95,7 +98,9 @@ function validResults(): { rows: Record<string, unknown>[] }[] {
       ],
     },
     { rows: [{ id: workflowVersionId }] },
-    { rows: [{ completed: true }] },
+    // The request, then its command, settle.
+    { rows: [], rowCount: 1 },
+    { rows: [], rowCount: 1 },
   ];
 }
 
@@ -223,7 +228,7 @@ describe('operator run replay validation', () => {
         workflowVersionId,
       }),
     );
-    expect(fixture.execute).toHaveBeenCalledTimes(4);
+    expect(fixture.execute).toHaveBeenCalledTimes(5);
   });
 
   it.each([

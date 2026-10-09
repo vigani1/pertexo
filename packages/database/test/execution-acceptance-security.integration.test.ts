@@ -214,10 +214,13 @@ describe('workflow run persistence security and compatibility', () => {
       `);
       expect(privileges.rows).toHaveLength(8);
       for (const row of privileges.rows) {
-        // Maintenance reads and deletes workspace rows for retention and purge.
+        // Maintenance reads and deletes workspace rows for retention and
+        // purge; its operator commands also record run events.
         const maintenance = row.roleName === 'pertexo_maintenance';
         expect(row.canSelect).toBe(true);
-        expect(row.canInsert).toBe(!maintenance);
+        expect(row.canInsert).toBe(
+          !maintenance || row.tableName === 'run_events',
+        );
         expect(row.canUpdate).toBe(false);
         expect(row.canDelete).toBe(maintenance);
       }
