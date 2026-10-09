@@ -22,13 +22,9 @@ function config() {
   });
 }
 
-function runtime(
-  close: () => Promise<void> | void = vi.fn(),
-  whenIdle: () => Promise<void> = () => Promise.resolve(),
-) {
+function runtime(close: () => Promise<void> | void = vi.fn()) {
   return {
     checkReadiness: vi.fn().mockResolvedValue(undefined),
-    whenIdle: vi.fn(whenIdle),
     close,
     consumer: {
       close: vi.fn(),
@@ -222,109 +218,22 @@ describe('preview maintenance provider ownership', () => {
     ]);
   });
 
-  it('closes the runtime before owned delivery dependencies and caches shutdown', async () => {
-    const order: string[] = [];
-    const runtimeClose = vi.fn(() => {
-      order.push('runtime');
-    });
-    const selected = ownedFactories({
-      encryptionClose: () => {
-        order.push('encryption');
-      },
-      runtime: runtime(runtimeClose),
-      storeClose: () => {
-        order.push('store');
-      },
-    });
-    const owned = await createOwnedMaintenanceRuntime(
-      config(),
-      {},
-      observer,
-      selected.factories,
-    );
-    expect(owned).toBeDefined();
+  it('hands the delivery resources to the runtime it builds', async () => {
+    const selected = ownedFactories({});
 
-    const selectedRuntime = owned;
-    const first = selectedRuntime.close();
-    const second = selectedRuntime.close();
-    expect(second).toBe(first);
-    await first;
-
-    expect(order[0]).toBe('runtime');
-    expect(order.slice(1).sort()).toEqual(['encryption', 'store'].sort());
-    expect(runtimeClose).toHaveBeenCalledOnce();
-  });
-
-  it('waits for runtime settlement before cleanup and aggregates every close failure', async () => {
-    let settleRuntime: (() => void) | undefined;
-    const runtimeFailure = new Error('runtime close failed');
-    const storeFailure = new Error('store close failed');
-    const encryptionFailure = new Error('encryption close failed');
-    const selected = ownedFactories({
-      encryptionClose: () => Promise.reject(encryptionFailure),
-      runtime: runtime(() =>
-        new Promise<void>((resolve) => {
-          settleRuntime = () => {
-            resolve();
-          };
-        }).then(() => Promise.reject(runtimeFailure)),
-      ),
-      storeClose: () => {
-        throw storeFailure;
-      },
-    });
-    const owned = await createOwnedMaintenanceRuntime(
+    await createOwnedMaintenanceRuntime(
       config(),
       {},
       observer,
       selected.factories,
     );
 
-    const closing = owned.close();
-    await Promise.resolve();
+    expect(selected.factories.runtime).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deliveryOwners: [selected.store, selected.encryption, undefined],
+      }),
+    );
     expect(selected.storeClose).not.toHaveBeenCalled();
     expect(selected.encryptionClose).not.toHaveBeenCalled();
-    if (settleRuntime === undefined)
-      throw new Error('Runtime close did not begin');
-    settleRuntime();
-    const failure = await closing.catch((error: unknown) => error);
-
-    expect((failure as AggregateError).errors).toEqual([
-      runtimeFailure,
-      storeFailure,
-      encryptionFailure,
-    ]);
-  });
-
-  it('bounds a failed runtime close while deferring delivery dependencies until idle', async () => {
-    const runtimeFailure = new Error('runtime close failed');
-    const idle = Promise.withResolvers<undefined>();
-    const selected = ownedFactories({
-      runtime: runtime(
-        () => Promise.reject(runtimeFailure),
-        () => idle.promise,
-      ),
-    });
-    const owned = await createOwnedMaintenanceRuntime(
-      config(),
-      {},
-      observer,
-      selected.factories,
-    );
-
-    const failure = await owned.close().catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(AggregateError);
-    expect((failure as AggregateError).errors[0]).toBe(runtimeFailure);
-    expect((failure as AggregateError).errors[1]).toMatchObject({
-      name: 'BackgroundTaskShutdownTimeoutError',
-    });
-    expect(selected.storeClose).not.toHaveBeenCalled();
-    expect(selected.encryptionClose).not.toHaveBeenCalled();
-
-    idle.resolve(undefined);
-    await vi.waitFor(() => {
-      expect(selected.storeClose).toHaveBeenCalledOnce();
-      expect(selected.encryptionClose).toHaveBeenCalledOnce();
-    });
   });
 });

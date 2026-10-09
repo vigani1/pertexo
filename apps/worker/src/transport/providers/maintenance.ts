@@ -5,10 +5,7 @@ import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integratio
 import type { QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../../config/worker.js';
-import {
-  wrapOwnedMaintenanceRuntime,
-  closeDeliveryDependencies,
-} from './maintenance-delivery.js';
+import { closeOwners } from '../../runtime/scanner.js';
 import { failureNotificationDeliveryFactories } from '../../notifications/failure-composition.js';
 import { workspaceInvitationDeliveryFactories } from '../../identity/invitation-delivery.js';
 import {
@@ -114,7 +111,7 @@ export async function createOwnedMaintenanceRuntime(
         timeoutMillis: invitationConfig.timeoutMillis,
       });
     }
-    const runtime = await factories.runtime({
+    return await factories.runtime({
       database: config.database,
       ...(dependencies.databaseRuntime === undefined
         ? {}
@@ -127,19 +124,11 @@ export async function createOwnedMaintenanceRuntime(
       ...(workspaceInvitationDelivery === undefined
         ? {}
         : { workspaceInvitationDelivery }),
+      deliveryOwners: [notificationStore, encryptionRuntime, invitationStore],
     });
-    return wrapOwnedMaintenanceRuntime(
-      runtime,
-      notificationStore,
-      encryptionRuntime,
-      invitationStore,
-      config.outboxDispatcher.operationTimeoutMillis,
-    );
   } catch (error: unknown) {
-    const cleanup = await closeDeliveryDependencies(
-      notificationStore,
-      encryptionRuntime,
-      invitationStore,
+    const cleanup = await closeOwners(
+      [notificationStore, encryptionRuntime, invitationStore],
       config.outboxDispatcher.operationTimeoutMillis,
     );
     if (cleanup.length > 0)

@@ -403,10 +403,12 @@ now, as one ordered program — not "whenever we touch it".
           (HTTP adds its response storage). The separate HTTP
           implementation, the per-provider classifiers and the guards around
           OpenTelemetry calls, which never throw, go.
-    - [x] Two loop shapes: the trigger and coordinator runtimes share one
-          scanner runtime (a queue consumer plus a polled scan) instead of
-          two copied lifecycles, and authentication mail delivery uses the
-          polling runtime the inbox, auto-pause and retention loops use.
+    - [x] Two loop shapes: the trigger, coordinator and maintenance runtimes
+          share one scanner runtime (a queue consumer plus a polled scan)
+          instead of three copied lifecycles, and authentication mail
+          delivery uses the polling runtime the inbox, auto-pause and
+          retention loops use. The maintenance runtime closes the delivery
+          resources it is given, so the owner wrapper and `whenIdle` go.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration

@@ -217,7 +217,6 @@ function runtime(close: () => Promise<void> | void) {
   return {
     consumer,
     checkReadiness: () => Promise.resolve(),
-    whenIdle: () => Promise.resolve(),
     close: () => Promise.resolve().then(close),
   };
 }
