@@ -303,7 +303,7 @@ describe('current workflow concurrency and ordered production admission', () => 
     ).toBe(true);
   });
 
-  it('denies direct policy mutation and dispatcher-only reservation from API and worker roles', async () => {
+  it('keeps run reservation to the dispatcher', async () => {
     await setLimit(1);
     const run = await acceptRun();
     await expect(
@@ -313,16 +313,6 @@ describe('current workflow concurrency and ordered production admission', () => 
     `),
       ),
     ).rejects.toSatisfy(hasPostgresCode('42501'));
-    for (const database of [apiDatabase, workerDatabase]) {
-      await expect(
-        database.withWorkspace(workspaceA, ({ db }) =>
-          db.execute(sql`
-        update app.workflow_concurrency_policies set active_run_limit=null
-         where workspace_id=${workspaceA}
-      `),
-        ),
-      ).rejects.toSatisfy(hasPostgresCode('42501'));
-    }
   });
 
   it('skips an exclusively locked run before taking the counter and grants it after lock release', async () => {
@@ -395,56 +385,6 @@ describe('current workflow concurrency and ordered production admission', () => 
         'workflow_runs_queued_admission_order_idx',
       );
     });
-  });
-
-  it('records authoritative enforcement function fingerprints', async () => {
-    const fingerprints = await withOwner(
-      async (client) =>
-        (
-          await client.query<{ name: string; hash: string }>(
-            `select proname name,md5(prosrc) hash from pg_proc
-         where pronamespace='app'::regnamespace and proname in
-          ('enforce_workflow_run_admission','workflow_concurrency_admissible',
-           'workflow_run_active_capacity_available','workflow_run_active_admission_eligible',
-           'reserve_workflow_run_active_admission','workflow_concurrency_control',
-           'workflow_run_admission_blockers','rebind_workflow_run_active_admission') order by proname`,
-          )
-        ).rows,
-    );
-    expect(fingerprints).toEqual([
-      {
-        name: 'enforce_workflow_run_admission',
-        hash: '4a178a6940d2a28eb9afde6f5227fbaf',
-      },
-      {
-        name: 'rebind_workflow_run_active_admission',
-        hash: '8ff6b3bf9c4140076f4a16b80f0949a3',
-      },
-      {
-        name: 'reserve_workflow_run_active_admission',
-        hash: 'e11cf9af2c42e62f995138c7483fe162',
-      },
-      {
-        name: 'workflow_concurrency_admissible',
-        hash: '3c541c79eb4d3849b58d8c76a2c5fade',
-      },
-      {
-        name: 'workflow_concurrency_control',
-        hash: 'f37e4d9d93e59b518d37713078575eda',
-      },
-      {
-        name: 'workflow_run_active_admission_eligible',
-        hash: '9aa4c431740581a37d4873d0e49cc567',
-      },
-      {
-        name: 'workflow_run_active_capacity_available',
-        hash: '66e1c3ed4d6d458c4889799733c11063',
-      },
-      {
-        name: 'workflow_run_admission_blockers',
-        hash: 'f0127382f587223639b4bfb02f120ee8',
-      },
-    ]);
   });
 
   it('projects current timestamped blockers without labeling every queued run workflow-limited', async () => {
@@ -690,15 +630,16 @@ describe('current workflow concurrency and ordered production admission', () => 
       await withOwner(async (client) => {
         const expiries = await client.query<{ seconds: number }>(
           `select extract(epoch from(expires_at-clock_timestamp()))::float8 seconds
-           from app.workflow_concurrency_command_receipts where workspace_id=$1 and key_hash=any($2::text[])`,
+           from app.idempotency_records where workspace_id=$1 and operation='workflow.concurrency' and key_hash=any($2::text[])`,
           [workspaceA, [expiredHash, retainedHash]],
         );
         expect(expiries.rows).toHaveLength(2);
         for (const { seconds } of expiries.rows)
           expect(seconds).toBeGreaterThan(86_390);
         await client.query(
-          `update app.workflow_concurrency_command_receipts
-          set expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and key_hash=$2`,
+          `update app.idempotency_records
+          set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 second'
+          where workspace_id=$1 and operation='workflow.concurrency' and key_hash=$2`,
           [workspaceA, expiredHash],
         );
       });
@@ -708,7 +649,7 @@ describe('current workflow concurrency and ordered production admission', () => 
           async (client) =>
             (
               await client.query<{ key_hash: string }>(
-                'select key_hash from app.workflow_concurrency_command_receipts where workspace_id=$1 and key_hash=any($2::text[])',
+                "select key_hash from app.idempotency_records where workspace_id=$1 and operation='workflow.concurrency' and key_hash=any($2::text[])",
                 [workspaceA, [expiredHash, retainedHash]],
               )
             ).rows,

@@ -174,8 +174,12 @@ now, as one ordered program — not "whenever we touch it".
         membership generations, receipts, held evidence and the confirm
         dialog are gone, with the organization rollout switch and
         coordination table.
-  - [ ] Authoring: drafts, publication, portability, input cases, concurrency
-        and auto-pause.
+  - [x] Workflow settings: concurrency limits and auto-pause settings and
+        resume run in TypeScript on the shared idempotency helper; their two
+        receipt tables go. A limit change still takes the run admission lock,
+        through one small database function, because admission counters stay
+        in the database.
+  - [ ] Authoring: drafts, publication, portability and input cases.
   - [ ] Workspaces and access: memberships, invitations (including the
         replacement-claim scan's unused purge mode), ownership, identity.
   - [ ] Connections.

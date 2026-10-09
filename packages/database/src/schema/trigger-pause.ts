@@ -5,10 +5,8 @@ import {
   foreignKey,
   index,
   integer,
-  jsonb,
   primaryKey,
   timestamp,
-  text,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -16,7 +14,6 @@ import {
 import { appSchema } from './app-schema.js';
 import { workflows } from './authoring.js';
 import { workflowRuns } from './execution.js';
-import { workspaces } from './foundation.js';
 
 // ADR 056. String-mode timestamps preserve PostgreSQL precision.
 /** Closed pauses remain until workflow/tenant deletion, including disabled schedule lag. */
@@ -48,38 +45,6 @@ export const workflowTriggerPausePeriods = appSchema.table(
       table.workflowId,
       table.pausedAt.desc(),
     ),
-  ],
-);
-
-export const workflowAutoPauseCommandReceipts = appSchema.table(
-  'workflow_auto_pause_command_receipts',
-  {
-    workspaceId: uuid('workspace_id')
-      .notNull()
-      .references(() => workspaces.id, { onDelete: 'cascade' }),
-    actorId: uuid('actor_id').notNull(),
-    resourceId: uuid('resource_id').notNull(),
-    operation: text('operation').notNull(),
-    keyHash: text('key_hash').notNull(),
-    requestHash: text('request_hash').notNull(),
-    result: jsonb('result'),
-    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' })
-      .default(sql`clock_timestamp()+interval '24 hours'`)
-      .notNull(),
-  },
-  (table) => [
-    index('workflow_auto_pause_receipts_expiry_idx')
-      .on(table.expiresAt)
-      .where(sql`${table.result} is not null`),
-    primaryKey({
-      columns: [
-        table.workspaceId,
-        table.actorId,
-        table.resourceId,
-        table.operation,
-        table.keyHash,
-      ],
-    }),
   ],
 );
 
