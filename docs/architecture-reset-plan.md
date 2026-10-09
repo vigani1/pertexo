@@ -348,6 +348,14 @@ now, as one ordered program — not "whenever we touch it".
           catalogs per transaction.
   - [ ] execution
   - [ ] worker
+    - [x] Files grouped by the feature they serve: `runs/`, `attempts/`
+          (with `artifacts/`), `previews/`, `providers/`, `notifications/`,
+          `connections/`, `identity/`, `workflows/` and `operator/`;
+          runtime, config, transport and trigger files drop the prefix
+          their folder names.
+    - [x] One database readiness check: `checkCompatibility` goes from the
+          workspace database, the artifact upload store and both Nest
+          database modules; the API and worker check readiness at startup.
   - [ ] api
     - [ ] Decide the legacy authentication migration (legacy OIDC
           identities and opaque sessions, the method-migration journey,
