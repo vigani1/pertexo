@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
-  WorkflowFavoriteRevisionConflictError,
   WorkflowOrganizationUnavailableError,
   WorkflowTagConflictError,
   type WorkflowTagDatabase,
@@ -18,7 +17,6 @@ const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const tagId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const otherTagId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const favoriteRevision = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const actor = createActorContext({
   actorId,
   workspaceId,
@@ -41,7 +39,7 @@ const replaceResult = {
   tagIds: [otherTagId, tagId],
   replayed: true,
 };
-const favoriteResult = { isFavorite: false, favoriteRevision, replayed: true };
+const favoriteResult = { isFavorite: false };
 const base = {
   actor,
   routeWorkspaceId: workspaceId,
@@ -62,7 +60,6 @@ function fixture(role: 'owner' | 'admin' | 'builder' | 'viewer' = 'owner') {
     replaceTags: vi.fn().mockResolvedValue(replaceResult),
   } satisfies WorkflowTagDatabase;
   const favorites = {
-    readFavorite: vi.fn(),
     close: vi.fn(),
     setFavorite: vi.fn().mockResolvedValue(favoriteResult),
   } satisfies WorkflowFavoriteDatabase;
@@ -117,12 +114,8 @@ const cases = [
   },
   {
     method: 'setFavorite',
-    request: { favorite: false, expectedFavoriteRevision: favoriteRevision },
-    expected: {
-      workflowId,
-      favorite: false,
-      expectedFavoriteRevision: favoriteRevision,
-    },
+    request: { favorite: false },
+    expected: { workflowId, favorite: false },
     result: favoriteResult,
   },
 ] as const;
@@ -143,11 +136,14 @@ describe('workflow organization commands', () => {
       expect(await f.commands[method]({ ...base, request, signal })).toEqual(
         result,
       );
+      // Setting a favorite is idempotent by itself and takes no key.
       expect(persistence(f, method)).toHaveBeenCalledExactlyOnceWith({
         workspaceId,
         actorId,
         signal,
-        idempotencyKey: base.idempotencyKey,
+        ...(method === 'setFavorite'
+          ? {}
+          : { idempotencyKey: base.idempotencyKey }),
         ...expected,
       });
       expect(f.authorization.findAccess).toHaveBeenCalledExactlyOnceWith({
@@ -256,7 +252,6 @@ describe('workflow organization commands', () => {
     'does not convert or retry $method persistence errors',
     async ({ method, request }) => {
       for (const error of [
-        new WorkflowFavoriteRevisionConflictError(),
         new WorkflowOrganizationUnavailableError(),
         new WorkflowTagConflictError('organization_revision'),
         new Error('unexpected'),

@@ -204,7 +204,6 @@ describe('accepted folder and general-bulk public contracts', () => {
       folderId: a,
       organizationRevision: 1,
       isFavorite: false,
-      favoriteRevision: b,
     };
     expect(schemas.workflowOrganizationSchema.parse(metadata)).toEqual(
       metadata,

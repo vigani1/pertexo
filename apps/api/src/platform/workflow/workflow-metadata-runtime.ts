@@ -10,7 +10,6 @@ import {
   type WorkflowInputCaseDatabase,
 } from '@pertexo/database/api';
 import {
-  createWorkflowFavoriteAbsenceAuthority,
   createWorkflowOrganizationCursorCodec,
   createWorkflowOrganizationPageCursorCodec,
   type WorkflowAuthoringDependencies,
@@ -75,18 +74,11 @@ export async function createApiWorkflowMetadataRuntime(
       if (parsed === undefined)
         throw new TypeError('Organization configuration is missing');
       const key = Buffer.from(parsed.cursorSigningKey, 'base64');
-      const absenceTokens = createWorkflowFavoriteAbsenceAuthority(key);
       const tags = createWorkflowTagDatabase(config, lease);
       resources.push(tags);
-      const favorites = createWorkflowFavoriteDatabase(config, {
-        ...lease,
-        absenceTokens,
-      });
+      const favorites = createWorkflowFavoriteDatabase(config, lease);
       resources.push(favorites);
-      const reader = createWorkflowOrganizationReadDatabase(config, {
-        ...lease,
-        absenceTokens,
-      });
+      const reader = createWorkflowOrganizationReadDatabase(config, lease);
       resources.push(reader);
       const folders = createWorkflowFolderDatabase(config, lease);
       resources.push(folders);

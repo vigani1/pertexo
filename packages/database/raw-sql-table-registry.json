@@ -7,20 +7,6 @@
     "reason": "Bounded workspace-owned folder hierarchy and placement are maintained only by confined organization SQL commands."
   },
   {
-    "name": "workflow_organization_rollout",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role"],
-    "rls": "not_applicable",
-    "reason": "Owner-controlled global organization writer admission starts off; API has read-only access."
-  },
-  {
-    "name": "workflow_organization_coordination",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Workspace coordination is function-only and orders shared metadata against workflow lifecycle."
-  },
-  {
     "name": "workflow_tags",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role", "maintenance_role"],
@@ -42,32 +28,11 @@
     "reason": "Tenant-readable assignments enforce same-workspace identity and bounded exact-revision command mutation."
   },
   {
-    "name": "workflow_favorite_membership_generations",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Private function-only membership lifetime fence prevents departure/rejoin ABA and unchecked membership deletion."
-  },
-  {
     "name": "workflow_favorites",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role", "maintenance_role"],
     "rls": "forced",
-    "reason": "Only the current active actor and generation can read private current state; bounded command and retention functions own writes."
-  },
-  {
-    "name": "workflow_favorite_held_evidence",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Retired-generation evidence is retained atomically under legal hold with no serving-role read grant and bounded post-hold deletion."
-  },
-  {
-    "name": "workflow_favorite_receipts",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Actor/generation-private receipts are checked before absence-token authentication; retained keys fence retired membership lifetimes."
+    "reason": "Each member reads and writes only their own favorites in their workspace."
   },
   {
     "name": "workflow_portability_rollout",

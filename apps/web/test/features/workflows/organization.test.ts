@@ -43,7 +43,6 @@ const organization = {
   organizationRevision: 1,
   folderId: null,
   isFavorite: true,
-  favoriteRevision: workflowId,
 };
 const projection = {
   workflow: summary(workflowId, 'Operations'),
@@ -579,11 +578,11 @@ describe('workflow organization transport', () => {
         }),
     );
     const attempt = freezeWorkflowOrganizationAttempt({
-      kind: 'favorite',
+      kind: 'replace-tags',
       workspaceId,
       workflowId,
       idempotencyKey: 'canceled-command',
-      body: { favorite: false, expectedFavoriteRevision: workflowId },
+      body: { tagIds: [], expectedOrganizationRevision: 1 },
     });
     const pending = sendWorkflowOrganizationCommand(
       client(fetch),
@@ -690,23 +689,24 @@ describe('workflow organization transport', () => {
     ).rejects.toMatchObject({ kind: 'protocol' });
   });
 
-  it('reuses frozen favorite intent and returns historical receipts without installing cache', async () => {
+  it('reuses a frozen command and returns historical receipts without installing cache', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(() =>
       Promise.resolve(
         json({
-          isFavorite: false,
-          favoriteRevision: secondWorkflowId,
+          workflowId,
+          organizationRevision: 2,
+          tagIds: [],
           replayed: true,
         }),
       ),
     );
     fetch.mockRejectedValueOnce(new TypeError('Connection lost'));
     const attempt = freezeWorkflowOrganizationAttempt({
-      kind: 'favorite',
+      kind: 'replace-tags',
       workspaceId,
       workflowId,
       idempotencyKey: 'same-command',
-      body: { favorite: false, expectedFavoriteRevision: workflowId },
+      body: { tagIds: [], expectedOrganizationRevision: 1 },
     });
     const api = client(fetch);
     const queries = new QueryClient();

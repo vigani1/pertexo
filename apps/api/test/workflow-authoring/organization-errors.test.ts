@@ -1,5 +1,4 @@
 import {
-  WorkflowFavoriteRevisionConflictError,
   WorkflowFolderConflictError,
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
@@ -17,11 +16,6 @@ import { mapWorkflowAuthoringError } from '../../src/workflow-authoring/errors.j
 import { AuthorizationError } from '../../src/workspaces/index.js';
 
 const cases = [
-  [
-    new WorkflowFavoriteRevisionConflictError(),
-    'workflow.favorite_revision_conflict',
-    409,
-  ],
   [
     new WorkflowOrganizationUnavailableError(),
     'workflow.organization_unavailable',
@@ -123,7 +117,7 @@ describe('workflow organization error mapping', () => {
     new AuthorizationError('resource.not_found', 'not authorized'),
     new Error('unrelated failure'),
     { name: 'WorkflowOrganizationUnavailableError' },
-    { code: 'workflow.favorite_revision_conflict' },
+    { code: 'workflow.organization_revision_conflict' },
     { name: 'WorkflowFolderConflictError', kind: 'name' },
     null,
     undefined,

@@ -1,5 +1,4 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
-import { useState } from 'react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
@@ -7,13 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import { workflowOrganizationProjectionResponseSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { WorkflowOrganizationDialog } from '@/features/workflows/components/organization/workflow-organization-dialog';
-import {
-  WorkflowFavoriteButton,
-  WorkflowFavoriteDialog,
-} from '@/features/workflows/components/organization/workflow-favorite-button';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import type { WorkflowOrganizationProjectionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
-import type { ApiClient } from '@/lib/api/client';
+import { WorkflowFavoriteButton } from '@/features/workflows/components/organization/workflow-favorite-button';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';
@@ -41,49 +34,8 @@ function projection(id = workflowId, revision = 1, archived = false) {
       folderId: null,
       organizationRevision: revision,
       isFavorite: true,
-      favoriteRevision: workflowId,
     },
   });
-}
-function FavoriteHarness({
-  apiClient,
-  workspace,
-  workflow,
-  hideTrigger,
-  onClose,
-}: {
-  apiClient: ApiClient;
-  workspace: AccessibleWorkspace;
-  workflow: WorkflowOrganizationProjectionResponse;
-  hideTrigger: boolean;
-  onClose: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      {hideTrigger ? null : (
-        <WorkflowFavoriteButton
-          workspace={workspace}
-          workflow={workflow}
-          onOpen={() => {
-            setOpen(true);
-          }}
-        />
-      )}
-      {open ? (
-        <WorkflowFavoriteDialog
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          workflow={workflow}
-          onClose={() => {
-            onClose();
-            setOpen(false);
-          }}
-        />
-      ) : null}
-    </>
-  );
 }
 function setup({
   role = 'owner',
@@ -121,15 +73,14 @@ function setup({
       HttpResponse.json(projection(String(params.id), 9, archived)),
     ),
   );
-  const tree = (hideTrigger = false) => (
+  const tree = () => (
     <QueryClientProvider client={client}>
       {favorite ? (
-        <FavoriteHarness
+        <WorkflowFavoriteButton
           apiClient={apiClient}
+          userId={userId}
           workspace={workspace}
           workflow={selected[0] ?? projection()}
-          hideTrigger={hideTrigger}
-          onClose={onClose}
         />
       ) : (
         <WorkflowOrganizationDialog
@@ -143,87 +94,9 @@ function setup({
     </QueryClientProvider>
   );
   const rendered = render(tree());
-  return {
-    ...rendered,
-    client,
-    onClose,
-    removeFavoriteRow: () => {
-      rendered.rerender(tree(true));
-    },
-  };
+  return { ...rendered, client, onClose };
 }
 describe('organization editing controls', () => {
-  it('keeps exact favorite recovery in a separate owner after the trigger row disappears', async () => {
-    const captures: { key: string | null; body: unknown }[] = [];
-    mockServer.use(
-      http.post(
-        `${api}/workflows/${workflowId}/favorite`,
-        async ({ request }) => {
-          captures.push({
-            key: request.headers.get('idempotency-key'),
-            body: await request.json(),
-          });
-          return captures.length === 1
-            ? HttpResponse.error()
-            : HttpResponse.json({
-                isFavorite: false,
-                favoriteRevision: secondWorkflowId,
-                replayed: true,
-              });
-        },
-      ),
-    );
-    const { removeFavoriteRow, onClose } = setup({ favorite: true });
-    expect(
-      screen.getByRole('button', {
-        name: 'Manage favorite for First workflow',
-      }),
-    ).toHaveTextContent('Remove favorite');
-    await userEvent.click(
-      screen.getByRole('button', {
-        name: 'Manage favorite for First workflow',
-      }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Remove favorite' }),
-      ).toBeEnabled(),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Remove favorite' }),
-    );
-    await screen.findByRole('button', { name: 'Retry original request' });
-    removeFavoriteRow();
-    expect(
-      screen.queryByRole('button', {
-        name: 'Manage favorite for First workflow',
-        hidden: true,
-      }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('dialog', { name: 'Personal favorite' }),
-    ).toBeVisible();
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Refresh current state' }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Retry original request' }),
-      ).toBeEnabled(),
-    );
-    expect(captures).toHaveLength(1);
-    expect(
-      screen.queryByRole('button', { name: 'Remove favorite' }),
-    ).not.toBeInTheDocument();
-    await userEvent.keyboard('{Escape}');
-    expect(onClose).not.toHaveBeenCalled();
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Retry original request' }),
-    );
-    await screen.findByText(/Favorite command accepted/);
-    expect(captures).toHaveLength(2);
-    expect(captures[1]).toEqual(captures[0]);
-  });
   it('does not expose editing fields to a viewer', async () => {
     setup({ role: 'viewer' });
     await screen.findByRole('alert');
@@ -449,88 +322,42 @@ describe('organization editing controls', () => {
       screen.getByRole('button', { name: 'Replace selected tags' }),
     ).toBeDisabled();
   });
-  it('allows a viewer to set a personal favorite on an archived workflow with the current token', async () => {
-    const bodies: unknown[] = [];
+  it('lets a viewer unfavorite an archived workflow with one click', async () => {
+    const captures: unknown[] = [];
     mockServer.use(
-      http.post(
+      http.put(
         `${api}/workflows/${workflowId}/favorite`,
         async ({ request }) => {
-          bodies.push(await request.json());
-          return HttpResponse.json({
-            isFavorite: false,
-            favoriteRevision: secondWorkflowId,
-            replayed: false,
-          });
+          captures.push(await request.json());
+          return HttpResponse.json({ isFavorite: false });
         },
       ),
     );
     setup({ role: 'viewer', archived: true, favorite: true });
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'Manage favorite for First workflow',
+        name: 'Remove favorite for First workflow',
       }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Remove favorite' }),
-      ).toBeEnabled(),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Remove favorite' }),
     );
     await waitFor(() => {
-      expect(bodies).toEqual([
-        { favorite: false, expectedFavoriteRevision: workflowId },
-      ]);
+      expect(captures).toEqual([{ favorite: false }]);
     });
-    await screen.findByText(/Favorite command accepted/);
   });
-  it('captures the fresh bounded absence token for an explicit desired favorite', async () => {
-    const captures: unknown[] = [];
-    setup({ favorite: true, role: 'viewer' });
-    let reads = 0;
-    const token = (issued: number) =>
-      `absent.v1.${String(issued)}.${String(issued + 86400)}.${'a'.repeat(42)}A`;
+
+  it('says when a favorite was not saved', async () => {
     mockServer.use(
-      http.get(`${api}/workflows/${workflowId}`, () => {
-        reads += 1;
-        const current = projection();
-        return HttpResponse.json({
-          ...current,
-          organization: {
-            ...current.organization,
-            isFavorite: false,
-            favoriteRevision: token(reads),
-          },
-        });
-      }),
-      http.post(
-        `${api}/workflows/${workflowId}/favorite`,
-        async ({ request }) => {
-          captures.push(await request.json());
-          return HttpResponse.json({
-            isFavorite: true,
-            favoriteRevision: secondWorkflowId,
-            replayed: false,
-          });
-        },
+      http.put(`${api}/workflows/${workflowId}/favorite`, () =>
+        problem(503, 'workflow.organization_unavailable'),
       ),
     );
+    setup({ favorite: true });
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'Manage favorite for First workflow',
+        name: 'Remove favorite for First workflow',
       }),
     );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Add favorite' }),
-      ).toBeEnabled(),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Favorite not saved',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Add favorite' }));
-    await screen.findByText(/Favorite command accepted/);
-    expect(reads).toBeGreaterThanOrEqual(2);
-    expect(captures).toEqual([
-      { favorite: true, expectedFavoriteRevision: token(2) },
-    ]);
   });
 });

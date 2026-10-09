@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   normalizeWorkflowTagKey,
-  workflowFavoriteAbsenceRevisionSchema,
   workflowFavoriteRequestSchema,
   workflowFavoriteResponseSchema,
-  workflowFavoriteRevisionSchema,
   workflowOrganizationNameQuerySchema,
   workflowOrganizationRevisionSchema,
   workflowOrganizationSchema,
@@ -24,14 +22,12 @@ import {
 
 const firstId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const secondId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const absence = `absent.v1.1790930096.1791016496.${'A'.repeat(43)}`;
 const tag = { id: firstId, key: 'ops', revision: 1 };
 const organization = {
   tags: [tag],
   organizationRevision: 1,
   folderId: null,
   isFavorite: false,
-  favoriteRevision: absence,
 };
 const identifierAt = (index: number) =>
   `${index.toString(16).padStart(8, '0')}-aaaa-4aaa-8aaa-aaaaaaaaaaaa`;
@@ -44,8 +40,6 @@ describe('ADR064 workflow organization public schemas', () => {
       tagsPerWorkspace: 256,
       cleanupItems: 50,
       nameQueryBytes: 128,
-      favoriteRetryHorizonHours: 24,
-      favoriteAbsenceTokenBytes: 128,
     });
     expect(Object.isFrozen(WORKFLOW_ORGANIZATION_LIMITS)).toBe(true);
   });
@@ -158,7 +152,7 @@ describe('ADR064 workflow organization public schemas', () => {
     {
       name: 'favorite',
       schema: workflowFavoriteRequestSchema,
-      body: { favorite: true, expectedFavoriteRevision: absence },
+      body: { favorite: true },
     },
   ];
   it.each(commands)(
@@ -190,7 +184,7 @@ describe('ADR064 workflow organization public schemas', () => {
     },
   );
 
-  it('uses positive safe revisions independently of opaque favorite tokens', () => {
+  it('uses positive safe revisions', () => {
     for (const revision of [1, Number.MAX_SAFE_INTEGER, 0, -1, 1.5])
       expect(workflowTagRevisionSchema.safeParse(revision)).toEqual(
         workflowOrganizationRevisionSchema.safeParse(revision),
@@ -228,7 +222,6 @@ describe('ADR064 workflow organization public schemas', () => {
         }).success,
       ).toBe(false);
     }
-    expect(workflowFavoriteRevisionSchema.safeParse(1).success).toBe(false);
   });
 
   it('normalizes, sorts and bounds a replacement without mutating caller arrays', () => {
@@ -328,104 +321,32 @@ describe('ADR064 workflow organization public schemas', () => {
       ).toBe(false);
   });
 
-  it('models desired favorites and false-state tombstones without exposing another actor', () => {
-    for (const favorite of [true, false])
-      for (const expectedFavoriteRevision of [absence, firstId.toUpperCase()])
-        expect(
-          workflowFavoriteRequestSchema.parse({
-            favorite,
-            expectedFavoriteRevision,
-          }),
-        ).toEqual({
-          favorite,
-          expectedFavoriteRevision: expectedFavoriteRevision.startsWith(
-            'absent.',
-          )
-            ? expectedFavoriteRevision
-            : expectedFavoriteRevision.toLowerCase(),
-        });
-    for (const favorite of ['true', 'false', 0, 1, null])
+  it("sets a favorite on or off and answers with only the actor's state", () => {
+    for (const favorite of [true, false]) {
+      expect(workflowFavoriteRequestSchema.parse({ favorite })).toEqual({
+        favorite,
+      });
       expect(
-        workflowFavoriteRequestSchema.safeParse({
-          favorite,
-          expectedFavoriteRevision: absence,
+        workflowFavoriteResponseSchema.parse({ isFavorite: favorite }),
+      ).toEqual({ isFavorite: favorite });
+      expect(
+        workflowOrganizationSchema.safeParse({
+          ...organization,
+          isFavorite: favorite,
         }).success,
-      ).toBe(false);
-    for (const revision of ['', 'absent', 'ABSENT', '0', 1, null, 'not-a-uuid'])
-      expect(workflowFavoriteRevisionSchema.safeParse(revision).success).toBe(
-        false,
-      );
-    for (const state of [
-      { isFavorite: false, favoriteRevision: absence },
-      { isFavorite: false, favoriteRevision: firstId },
-      { isFavorite: true, favoriteRevision: firstId },
-    ]) {
-      expect(
-        workflowFavoriteResponseSchema.safeParse({ ...state, replayed: false })
-          .success,
-      ).toBe(state.favoriteRevision !== absence);
-      expect(
-        workflowOrganizationSchema.safeParse({ ...organization, ...state })
-          .success,
       ).toBe(true);
     }
-    expect(
-      workflowFavoriteResponseSchema.safeParse({
-        isFavorite: true,
-        favoriteRevision: absence,
-        replayed: false,
-      }).success,
-    ).toBe(false);
-    expect(
-      workflowOrganizationSchema.safeParse({
-        ...organization,
-        isFavorite: true,
-      }).success,
-    ).toBe(false);
-    for (const field of [
-      'userId',
-      'favoriteCount',
-      'favorites',
-      'organizationRevision',
-    ])
+    for (const favorite of ['true', 'false', 0, 1, null])
+      expect(
+        workflowFavoriteRequestSchema.safeParse({ favorite }).success,
+      ).toBe(false);
+    for (const field of ['userId', 'favoriteCount', 'favorites', 'replayed'])
       expect(
         workflowFavoriteResponseSchema.safeParse({
           isFavorite: false,
-          favoriteRevision: firstId,
-          replayed: true,
           [field]: 1,
         }).success,
       ).toBe(false);
-  });
-
-  it('bounds canonical authenticated absence-token transport without verifying authority or browser time', () => {
-    expect(workflowFavoriteAbsenceRevisionSchema.parse(absence)).toBe(absence);
-    const mac = 'AbC_'.repeat(10) + 'AA' + 'A';
-    const mixedCase = `absent.v1.0.86400.${mac}`;
-    expect(workflowFavoriteRevisionSchema.parse(mixedCase)).toBe(mixedCase);
-    for (const invalid of [
-      'absent',
-      absence + '\n',
-      absence + '\r',
-      absence + '\u2028',
-      absence.replace('v1', 'v2'),
-      absence.replace('1790930096', '01790930096'),
-      absence.replace('1791016496', '1791016495'),
-      `absent.v1.253402300799.253402387199.${'A'.repeat(43)}`,
-      `absent.v1.-1.86399.${'A'.repeat(43)}`,
-      absence + '=',
-      absence.slice(0, -1) + 'B',
-      'x'.repeat(129),
-    ])
-      expect(
-        workflowFavoriteAbsenceRevisionSchema.safeParse(invalid).success,
-      ).toBe(false);
-    expect(
-      workflowOrganizationSchema.safeParse({
-        ...organization,
-        favoriteRevision: 'absent',
-      }).success,
-    ).toBe(false);
   });
 
   it('requires bounded unique strict metadata and slice-1 folder null', () => {

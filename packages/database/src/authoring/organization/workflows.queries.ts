@@ -6,17 +6,14 @@ import {
   type DatabaseRuntime,
 } from '../../platform/database-runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/workspace.js';
+import { ROLES } from '../../tenant-access/workspace-policy.js';
+import { lockWorkflowAuthoringAuthority } from '../workflow-authoring-authority.js';
 import { WorkflowNotFoundError } from '../workflow-authoring-errors.js';
 import {
   mapWorkflow,
   workflowRowSelection,
 } from '../workflow-authoring-rows.js';
 import type { WorkflowRecord } from '../workflow-authoring-records.js';
-import type { WorkflowFavoriteAbsenceTokenAuthority } from './favorites.repository.js';
-import {
-  readWorkflowFavoriteGeneration,
-  issueWorkflowFavoriteAbsenceRevision,
-} from './favorite-metadata.js';
 
 type Scope = Readonly<{
   workspaceId: string;
@@ -36,7 +33,6 @@ export type WorkflowOrganizationMetadata = Readonly<{
   organizationRevision: number;
   folderId: string | null;
   isFavorite: boolean;
-  favoriteRevision: string;
 }>;
 export type WorkflowWithOrganization = Readonly<{
   workflow: WorkflowRecord;
@@ -94,12 +90,10 @@ const rowSchema = z
           new Set(tags.map((tag) => tag.id)).size === tags.length &&
           new Set(tags.map((tag) => tag.key)).size === tags.length,
       ),
-    favorite: z.boolean().nullable(),
-    favoriteRevision: uuid.nullable(),
+    isFavorite: z.boolean(),
     positionAt: z.iso.datetime(),
   })
-  .strict()
-  .refine((row) => (row.favorite === null) === (row.favoriteRevision === null));
+  .strict();
 const filterSchema = z.object({
   query: z
     .string()
@@ -116,10 +110,7 @@ const filterSchema = z.object({
  * bounded keyset page and the organization batch never performs per-row reads. */
 export function createWorkflowOrganizationReadDatabase(
   config: DatabaseConfig,
-  options: Readonly<{
-    absenceTokens: WorkflowFavoriteAbsenceTokenAuthority;
-    runtime?: DatabaseRuntime;
-  }>,
+  options: Readonly<{ runtime?: DatabaseRuntime }> = {},
 ): WorkflowOrganizationReadDatabase {
   const lease = acquireDatabasePool(config, options.runtime);
   async function transact<T>(
@@ -152,12 +143,14 @@ export function createWorkflowOrganizationReadDatabase(
     }> &
       WorkflowOrganizationFilters,
   ) {
-    const current = await readWorkflowFavoriteGeneration(client);
-    const values: unknown[] = [
+    // Any active member reads organization, rechecked on every page.
+    await lockWorkflowAuthoringAuthority(
+      client,
       scope.workspaceId,
       scope.actorId,
-      current.generation,
-    ];
+      ROLES,
+    );
+    const values: unknown[] = [scope.workspaceId, scope.actorId];
     const parameter = (value: unknown) => {
       values.push(value);
       return `$${String(values.length)}`;
@@ -187,7 +180,7 @@ export function createWorkflowOrganizationReadDatabase(
       predicates.push(
         `exists(select 1 from app.workflow_tag_assignments selected where selected.workspace_id=w.workspace_id and selected.workflow_id=w.id and selected.tag_id=${parameter(filters.tagId)}::uuid)`,
       );
-    if (filters.favoritesOnly) predicates.push('f.favorite=true');
+    if (filters.favoritesOnly) predicates.push('f.workflow_id is not null');
     if (filters.folderId === 'root') predicates.push('s.folder_id is null');
     else if (filters.folderId !== undefined)
       predicates.push(`s.folder_id=${parameter(filters.folderId)}::uuid`);
@@ -210,10 +203,10 @@ export function createWorkflowOrganizationReadDatabase(
       'tags',coalesce((select jsonb_agg(jsonb_build_object('id',t.id,'key',t.key,'revision',t.revision) order by t.id)
         from app.workflow_tag_assignments a join app.workflow_tags t on t.workspace_id=a.workspace_id and t.id=a.tag_id
         where a.workspace_id=w.workspace_id and a.workflow_id=w.id),'[]'::jsonb),
-      'favorite',f.favorite,'favoriteRevision',f.revision,
+      'isFavorite',f.workflow_id is not null,
       'positionAt',to_char(w.${orderColumn} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) projection
       from (select ${workflowRowSelection} from app.workflows) w left join app.workflow_organization_state s on s.workspace_id=w.workspace_id and s.workflow_id=w.id
-      left join app.workflow_favorites f on f.workspace_id=w.workspace_id and f.workflow_id=w.id and f.actor_id=$2 and f.generation=$3::uuid
+      left join app.workflow_favorites f on f.workspace_id=w.workspace_id and f.workflow_id=w.id and f.actor_id=$2
       where ${predicates.join(' and ')} order by w.${orderColumn} ${ascending ? 'asc' : 'desc'},w.id ${ascending ? 'asc' : 'desc'} limit ${limit}`,
       values,
     );
@@ -226,18 +219,7 @@ export function createWorkflowOrganizationReadDatabase(
         tags: Object.freeze(row.tags.map((tag) => Object.freeze(tag))),
         organizationRevision: row.organizationRevision,
         folderId: row.folderId,
-        isFavorite: row.favorite === true,
-        favoriteRevision:
-          row.favoriteRevision ??
-          issueWorkflowFavoriteAbsenceRevision(
-            options.absenceTokens,
-            {
-              workspaceId: scope.workspaceId,
-              actorId: scope.actorId,
-              workflowId: workflow.id,
-            },
-            current,
-          ),
+        isFavorite: row.isFavorite,
       });
       return Object.freeze({ workflow, organization });
     });

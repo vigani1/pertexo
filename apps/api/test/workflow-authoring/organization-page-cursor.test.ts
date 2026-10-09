@@ -87,16 +87,10 @@ describe('purpose-bound workflow organization UUID page cursors', () => {
     ).toThrow('Workflow organization page cursor key must contain 32 bytes.');
   });
 
-  it('domain-separates from the root and favorite absence subkey', () => {
+  it('does not accept a cursor signed with the root key', () => {
     const bytes = Buffer.from(JSON.stringify(payload), 'utf8');
     expectInvalid(() =>
       codec().decode(signedBytes(bytes, Buffer.from(key)), context),
-    );
-    const favoriteKey = createHmac('sha256', key)
-      .update('pertexo.workflow.favorite.absence-key.v1')
-      .digest();
-    expectInvalid(() =>
-      codec().decode(signedBytes(bytes, favoriteKey), context),
     );
   });
 

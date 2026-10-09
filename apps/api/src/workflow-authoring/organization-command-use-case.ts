@@ -81,13 +81,17 @@ export class WorkflowOrganizationCommandsUseCase {
     return workflowTagReplaceResponseSchema.parse(result);
   }
 
-  public async setFavorite(input: WorkflowInput) {
+  public async setFavorite(
+    input: WorkflowOrganizationInput &
+      Readonly<{ request: unknown; workflowId: string }>,
+  ) {
     await authorizeWorkflowOrganization(input, this.authorization, 'read');
     const request = workflowFavoriteRequestSchema.parse(input.request);
+    input.signal?.throwIfAborted();
     const result = await this.favorites.setFavorite({
-      ...this.command(input),
+      ...workflowOrganizationContext(input),
       workflowId: input.workflowId,
-      ...request,
+      favorite: request.favorite,
     });
     input.signal?.throwIfAborted();
     return workflowFavoriteResponseSchema.parse(result);

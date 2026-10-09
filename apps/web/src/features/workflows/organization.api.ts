@@ -11,6 +11,7 @@ import {
   workflowTagRenameResponseSchema,
   workflowTagDeleteResponseSchema,
   workflowTagReplaceResponseSchema,
+  workflowFavoriteRequestSchema,
   workflowFavoriteResponseSchema,
   workflowFolderListQuerySchema,
   workflowFolderListResponseSchema,
@@ -136,6 +137,26 @@ export function getWorkflowTagAssignmentsPage(
   });
 }
 
+/** Sets the user's favorite state for one workflow; repeating it is harmless. */
+export function setWorkflowFavorite(
+  api: ApiClient,
+  input: Readonly<{
+    workspaceId: string;
+    workflowId: string;
+    favorite: boolean;
+  }>,
+) {
+  return api.request({
+    method: 'PUT',
+    path: `${workspacePath(input.workspaceId)}/workflows/${encodeURIComponent(input.workflowId)}/favorite`,
+    body: workflowFavoriteRequestSchema.parse({ favorite: input.favorite }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowFavoriteResponseSchema.parse(value),
+    },
+  });
+}
+
 /** Receipts can be historical replays; the caller must reread current projections. */
 export function sendWorkflowOrganizationCommand(
   api: ApiClient,
@@ -185,15 +206,6 @@ export function sendWorkflowOrganizationCommand(
         response: {
           kind: 'json',
           decode: (value) => workflowTagReplaceResponseSchema.parse(value),
-        },
-      });
-    case 'favorite':
-      return api.request({
-        ...request,
-        path: `${base}/workflows/${encodeURIComponent(attempt.workflowId)}/favorite`,
-        response: {
-          kind: 'json',
-          decode: (value) => workflowFavoriteResponseSchema.parse(value),
         },
       });
     case 'create-folder':

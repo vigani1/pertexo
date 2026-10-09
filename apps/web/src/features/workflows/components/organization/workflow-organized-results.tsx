@@ -16,10 +16,7 @@ import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowRowActions } from '../list/workflow-row-actions';
 import { WorkflowRows, WorkflowListFooter } from '../list/workflow-rows';
 import { WorkflowOrganizationDialog } from './workflow-organization-dialog';
-import {
-  WorkflowFavoriteButton,
-  WorkflowFavoriteDialog,
-} from './workflow-favorite-button';
+import { WorkflowFavoriteButton } from './workflow-favorite-button';
 
 /** Selection is explicit, ordered and bounded to loaded rows in one URL scope. */
 export function WorkflowOrganizedResults({
@@ -40,8 +37,6 @@ export function WorkflowOrganizedResults({
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [editing, setEditing] =
     useState<readonly WorkflowOrganizationProjectionResponse[]>();
-  const [favorite, setFavorite] =
-    useState<WorkflowOrganizationProjectionResponse>();
   const currentSelected = selected.flatMap((id) => {
     const item = items.find((entry) => entry.workflow.id === id);
     return item === undefined ? [] : [item];
@@ -66,7 +61,6 @@ export function WorkflowOrganizedResults({
             checked={selected.includes(id)}
             disabled={
               editing !== undefined ||
-              favorite !== undefined ||
               (!selected.includes(id) && selected.length >= 50)
             }
             onCheckedChange={(checked) => {
@@ -79,12 +73,11 @@ export function WorkflowOrganizedResults({
           />
         ) : null}
         <WorkflowFavoriteButton
+          apiClient={apiClient}
+          userId={userId}
           workspace={workspace}
           workflow={item}
-          disabled={editing !== undefined || favorite !== undefined}
-          onOpen={() => {
-            setFavorite(item);
-          }}
+          disabled={editing !== undefined}
         />
         {allowed ? (
           <Button
@@ -93,7 +86,7 @@ export function WorkflowOrganizedResults({
             onClick={() => {
               setEditing([item]);
             }}
-            disabled={editing !== undefined || favorite !== undefined}
+            disabled={editing !== undefined}
           >
             Organize…
           </Button>
@@ -117,11 +110,7 @@ export function WorkflowOrganizedResults({
           </span>
           <Button
             variant="outline"
-            disabled={
-              currentSelected.length === 0 ||
-              editing !== undefined ||
-              favorite !== undefined
-            }
+            disabled={currentSelected.length === 0 || editing !== undefined}
             onClick={() => {
               setEditing(currentSelected);
             }}
@@ -130,11 +119,7 @@ export function WorkflowOrganizedResults({
           </Button>
           <Button
             variant="ghost"
-            disabled={
-              selected.length === 0 ||
-              editing !== undefined ||
-              favorite !== undefined
-            }
+            disabled={selected.length === 0 || editing !== undefined}
             onClick={() => {
               setSelected([]);
             }}
@@ -185,17 +170,6 @@ export function WorkflowOrganizedResults({
           onClose={() => {
             setEditing(undefined);
             setSelected([]);
-          }}
-        />
-      )}
-      {favorite === undefined ? null : (
-        <WorkflowFavoriteDialog
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          workflow={favorite}
-          onClose={() => {
-            setFavorite(undefined);
           }}
         />
       )}

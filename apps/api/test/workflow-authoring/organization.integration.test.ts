@@ -34,16 +34,11 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
         );
       for (const extra of ['actorId', 'generation', 'verifiedAbsence']) {
         const response = await api.send(
-          'POST',
+          'PUT',
           `${f.route}/workflows/${f.workflowId}/favorite`,
           {
             browser: f.browser,
-            headers: { 'idempotency-key': randomUUID() },
-            payload: {
-              favorite: true,
-              expectedFavoriteRevision: randomUUID(),
-              [extra]: 'private-marker',
-            },
+            payload: { favorite: true, [extra]: 'private-marker' },
           },
         );
         expectProblem(response, 400, 'request.invalid');
@@ -51,7 +46,7 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
       }
     });
 
-    it('serves strict default/projected reads and exact tag/favorite command recovery with actual MACs', async () => {
+    it('serves strict default and projected reads, tag command recovery and favorites', async () => {
       const f = await fixture();
       const created = await api.send('POST', `${f.route}/workflow-tags`, {
         browser: f.browser,
@@ -96,43 +91,18 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
       expect(projected.statusCode, projected.payload).toBe(200);
       expect(projected.headers['cache-control']).toBe('private, no-store');
       const organization = projected.json<{
-        organization: {
-          favoriteRevision: string;
-          tags: unknown[];
-          organizationRevision: number;
-        };
+        organization: { tags: unknown[]; organizationRevision: number };
       }>().organization;
       expect(organization.tags).toEqual([tag]);
-      expect(organization.favoriteRevision).toMatch(/^absent\.v1\./u);
       expect(Object.keys(organization).sort()).toEqual([
-        'favoriteRevision',
         'folderId',
         'isFavorite',
         'organizationRevision',
         'tags',
       ]);
-      const favoriteKey = randomUUID();
-      const tampered = organization.favoriteRevision.split('.');
-      tampered[4] = Buffer.alloc(32, 1).toString('base64url');
-      expectProblem(
-        await api.send('POST', `${url}/favorite`, {
-          browser: f.browser,
-          headers: { 'idempotency-key': favoriteKey },
-          payload: {
-            favorite: true,
-            expectedFavoriteRevision: tampered.join('.'),
-          },
-        }),
-        409,
-        'workflow.favorite_revision_conflict',
-      );
-      const favorite = await api.send('POST', `${url}/favorite`, {
+      const favorite = await api.send('PUT', `${url}/favorite`, {
         browser: f.browser,
-        headers: { 'idempotency-key': favoriteKey },
-        payload: {
-          favorite: true,
-          expectedFavoriteRevision: organization.favoriteRevision,
-        },
+        payload: { favorite: true },
       });
       expect(favorite.statusCode, favorite.payload).toBe(200);
       const original = await api.send('GET', url, { browser: f.browser });
@@ -330,23 +300,11 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
     it('keeps viewer favorites private while enforcing current admin/editor roles', async () => {
       const f = await fixture(),
         url = `${f.route}/workflows/${f.workflowId}`;
-      const ownerProjection = await api.send(
-        'GET',
-        `${url}?include=organization`,
-        { browser: f.browser },
-      );
-      const ownerRevision = ownerProjection.json<{
-        organization: { favoriteRevision: string };
-      }>().organization.favoriteRevision;
       expect(
         (
-          await api.send('POST', `${url}/favorite`, {
+          await api.send('PUT', `${url}/favorite`, {
             browser: f.browser,
-            headers: { 'idempotency-key': randomUUID() },
-            payload: {
-              favorite: true,
-              expectedFavoriteRevision: ownerRevision,
-            },
+            payload: { favorite: true },
           })
         ).statusCode,
       ).toBe(200);
@@ -373,7 +331,6 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
         const metadata = projection.json<{
           organization: {
             isFavorite: boolean;
-            favoriteRevision: string;
             organizationRevision: number;
           };
         }>().organization;
@@ -397,13 +354,9 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
         if (role === 'viewer')
           expectProblem(replacement, 404, 'resource.not_found');
         else expect(replacement.statusCode, replacement.payload).toBe(200);
-        const starred = await api.send('POST', `${url}/favorite`, {
+        const starred = await api.send('PUT', `${url}/favorite`, {
           browser: member,
-          headers: { 'idempotency-key': randomUUID() },
-          payload: {
-            favorite: true,
-            expectedFavoriteRevision: metadata.favoriteRevision,
-          },
+          payload: { favorite: true },
         });
         expect(starred.statusCode, starred.payload).toBe(200);
         await api

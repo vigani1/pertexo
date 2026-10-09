@@ -387,8 +387,6 @@ function definitiveMessage(error: unknown) {
       'This tag changed. Refresh it before trying again.',
     'workflow.organization_revision_conflict':
       'Workflow organization changed. Refresh it before trying again.',
-    'workflow.favorite_revision_conflict':
-      'This favorite changed. Refresh it before trying again.',
     'request.idempotency_conflict':
       'This command key was already used for different input. Discard it and refresh before starting a new command.',
   };

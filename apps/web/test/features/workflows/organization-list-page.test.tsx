@@ -27,7 +27,6 @@ const organization = {
   folderId,
   tags: [{ id: tagId, key: 'ops', revision: 1 }],
   isFavorite: true,
-  favoriteRevision: workflowId,
 };
 function install(read: (url: URL) => Record<string, unknown>) {
   mockServer.use(
@@ -93,7 +92,7 @@ describe('owned organization workflow list integration', () => {
     expect(screen.queryByText('Operations')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', {
-        name: 'Manage favorite for Daily intake',
+        name: 'Remove favorite for Daily intake',
       }),
     ).not.toBeInTheDocument();
     expect(
@@ -118,69 +117,9 @@ describe('owned organization workflow list integration', () => {
     });
     expect(screen.getByRole('link', { name: 'Daily intake' })).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Manage favorite for Daily intake' }),
+      screen.getByRole('button', { name: 'Remove favorite for Daily intake' }),
     ).toBeVisible();
     await screen.findByText(/couldn’t refresh/i);
-  });
-  it('retains exact favorite recovery when a background favorites-only read removes its row', async () => {
-    let visible = true;
-    const captures: { key: string | null; body: unknown }[] = [];
-    install(() => (visible ? page() : { items: [], nextCursor: null }));
-    mockServer.use(
-      http.get(`${api}/workflows/${workflowId}`, () =>
-        HttpResponse.json({
-          workflow: summary(workflowId, 'Daily intake'),
-          organization,
-        }),
-      ),
-      http.post(
-        `${api}/workflows/${workflowId}/favorite`,
-        async ({ request }) => {
-          captures.push({
-            key: request.headers.get('idempotency-key'),
-            body: await request.json(),
-          });
-          visible = false;
-          return HttpResponse.error();
-        },
-      ),
-    );
-    const { queryClient } = renderApp(
-      `/w/${workspaceId}/workflows?favoritesOnly=true`,
-    );
-    const event = userEvent.setup();
-    await event.click(
-      await screen.findByRole('button', {
-        name: 'Manage favorite for Daily intake',
-      }),
-    );
-    const submit = await screen.findByRole('button', {
-      name: 'Remove favorite',
-    });
-    await waitFor(() => expect(submit).toBeEnabled());
-    await event.click(submit);
-    await screen.findByRole('button', { name: 'Retry original request' });
-    await queryClient.invalidateQueries({
-      queryKey: [
-        ...workflowOrganizationKeys.scope(userId, workspaceId),
-        'list',
-      ],
-    });
-    await screen.findByText('No workflows match these filters');
-    expect(
-      screen.queryByRole('link', { name: 'Daily intake' }),
-    ).not.toBeInTheDocument();
-    await event.click(
-      screen.getByRole('button', { name: 'Retry original request' }),
-    );
-    await waitFor(() => {
-      expect(captures).toHaveLength(2);
-    });
-    expect(captures[1]).toEqual(captures[0]);
-    expect(captures[0]?.body).toEqual({
-      favorite: false,
-      expectedFavoriteRevision: workflowId,
-    });
   });
   it('binds all filters on the server and retains them through sort and view navigation', async () => {
     const reads: URL[] = [];

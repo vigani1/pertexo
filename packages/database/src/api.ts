@@ -40,19 +40,16 @@ export type {
   WorkflowTagRecord,
   WorkflowTagReplaceResult,
 } from './authoring/organization/tags.repository.js';
-export {
-  createWorkflowFavoriteDatabase,
-  WorkflowFavoriteRevisionConflictError,
-  WorkflowOrganizationUnavailableError,
-  WorkflowOrganizationValidationError,
-} from './authoring/organization/favorites.repository.js';
+export { createWorkflowFavoriteDatabase } from './authoring/organization/favorites.repository.js';
 export type {
-  WorkflowFavoriteAbsenceTokenAuthority,
   WorkflowFavoriteCommand,
   WorkflowFavoriteDatabase,
-  WorkflowFavoriteResult,
   WorkflowFavoriteState,
 } from './authoring/organization/favorites.repository.js';
+export {
+  WorkflowOrganizationUnavailableError,
+  WorkflowOrganizationValidationError,
+} from './authoring/organization/errors.js';
 export {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseRevisionConflictError,

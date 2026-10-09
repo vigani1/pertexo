@@ -9,8 +9,6 @@ export const WORKFLOW_ORGANIZATION_LIMITS = Object.freeze({
   tagsPerWorkspace: 256,
   cleanupItems: 50,
   nameQueryBytes: 128,
-  favoriteRetryHorizonHours: 24,
-  favoriteAbsenceTokenBytes: 128,
 });
 
 /** U+0020 trim and ASCII-only case mapping; no Unicode fold/transliteration. */
@@ -243,42 +241,12 @@ export const workflowTagCleanupDetachResponseSchema = z
   })
   .strict();
 
-/** An opaque private token, not a shared workflow revision or actor selector. */
-export const workflowFavoriteAbsenceRevisionSchema = z
-  .string()
-  .max(WORKFLOW_ORGANIZATION_LIMITS.favoriteAbsenceTokenBytes)
-  .regex(
-    /^absent\.v1\.(0|[1-9][0-9]{0,11})\.(0|[1-9][0-9]{0,11})\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$(?![\s\S])/u,
-  )
-  .refine((value) => {
-    const parts = value.split('.');
-    const issued = Number(parts[2]);
-    const expires = Number(parts[3]);
-    return (
-      Number.isSafeInteger(issued) &&
-      Number.isSafeInteger(expires) &&
-      issued >= 0 &&
-      expires <= 253_402_300_799 &&
-      expires - issued === 86_400
-    );
-  });
-export const workflowFavoriteRevisionSchema = z.union([
-  workflowFavoriteAbsenceRevisionSchema,
-  commandIdentifierSchema,
-]);
+/** Sets the actor's favorite; asking for the current state changes nothing. */
 export const workflowFavoriteRequestSchema = z
-  .object({
-    favorite: z.boolean(),
-    expectedFavoriteRevision: workflowFavoriteRevisionSchema,
-  })
+  .object({ favorite: z.boolean() })
   .strict();
 export const workflowFavoriteResponseSchema = z
-  .object({
-    isFavorite: z.boolean(),
-    // Every successful new command issues a token, including false tombstones.
-    favoriteRevision: commandIdentifierSchema,
-    replayed: z.boolean(),
-  })
+  .object({ isFavorite: z.boolean() })
   .strict();
 
 export const workflowOrganizationSchema = z
@@ -295,13 +263,8 @@ export const workflowOrganizationSchema = z
     organizationRevision: workflowOrganizationRevisionSchema,
     folderId: z.uuid().nullable(),
     isFavorite: z.boolean(),
-    favoriteRevision: workflowFavoriteRevisionSchema,
   })
-  .strict()
-  .refine(
-    (state) =>
-      !state.isFavorite || !state.favoriteRevision.startsWith('absent.'),
-  );
+  .strict();
 
 /** Literal case-sensitive substring. Only outer U+0020 is trimmed. */
 export const workflowOrganizationNameQuerySchema = z

@@ -5,7 +5,6 @@ import {
   workflowTagDeleteRequestSchema,
   workflowTagRenameRequestSchema,
   workflowTagReplaceRequestSchema,
-  workflowFavoriteRequestSchema,
   workflowFolderCreateRequestSchema,
   workflowFolderRenameRequestSchema,
   workflowFolderMoveRequestSchema,
@@ -17,7 +16,6 @@ import {
   type WorkflowTagDeleteRequest,
   type WorkflowTagRenameRequest,
   type WorkflowTagReplaceRequest,
-  type WorkflowFavoriteRequest,
   type WorkflowFolderCreateRequest,
   type WorkflowFolderRenameRequest,
   type WorkflowFolderMoveRequest,
@@ -51,7 +49,6 @@ type Command =
       workflowId: string;
       body: WorkflowTagReplaceRequest;
     }
-  | { kind: 'favorite'; workflowId: string; body: WorkflowFavoriteRequest }
   | { kind: 'create-folder'; body: WorkflowFolderCreateRequest }
   | {
       kind: 'rename-folder';
@@ -104,11 +101,6 @@ export function freezeWorkflowOrganizationAttempt(
       Object.freeze(body.tagIds);
       return Object.freeze({ ...input, body: Object.freeze(body) });
     }
-    case 'favorite':
-      return Object.freeze({
-        ...input,
-        body: Object.freeze(workflowFavoriteRequestSchema.parse(input.body)),
-      });
     case 'create-folder':
       return Object.freeze({
         ...input,

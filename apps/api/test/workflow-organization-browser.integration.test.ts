@@ -295,7 +295,7 @@ describe
         const favorites = await api
           .database()
           .query<{ count: number }>(
-            'select count(*)::int count from app.workflow_favorites where workspace_id=$1 and workflow_id=$2 and favorite',
+            'select count(*)::int count from app.workflow_favorites where workspace_id=$1 and workflow_id=$2',
             [evidence.workspaceId, evidence.workflowIds[0]],
           );
         expect(favorites.rows[0]?.count).toBe(1);
@@ -428,7 +428,7 @@ describe
                    where w.workspace_id=$1 and w.id=$2
                    and exists (select 1 from app.workflow_organization_state s where s.workspace_id=w.workspace_id and s.workflow_id=w.id and s.folder_id=$3)
                    and exists (select 1 from app.workflow_tag_assignments t where t.workspace_id=w.workspace_id and t.workflow_id=w.id and t.tag_id=$4)
-                   and exists (select 1 from app.workflow_favorites f where f.workspace_id=w.workspace_id and f.workflow_id=w.id and f.favorite)`,
+                   and exists (select 1 from app.workflow_favorites f where f.workspace_id=w.workspace_id and f.workflow_id=w.id)`,
                   [
                     evidence.workspaceId,
                     evidence.workflowId,

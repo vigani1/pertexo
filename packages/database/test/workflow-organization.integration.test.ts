@@ -1,8 +1,6 @@
-import { createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { parseDatabaseConfig } from '../src/config.js';
-import { createRetentionDatabase } from '../src/lifecycle/retention.js';
 import {
   commandKey,
   createOrganizationOwnedFixture,
@@ -16,16 +14,9 @@ interface Result {
   tag?: { id: string; key: string; revision: number };
   organizationRevision?: number;
   tagIds?: readonly string[];
-  favoriteRevision?: string;
   isFavorite?: boolean;
   replayed: boolean;
   detachedWorkflowCount?: number;
-}
-interface Absence {
-  token: string;
-  generation: string;
-  issued: number;
-  expires: number;
 }
 let fixture: OrganizationOwnedFixture;
 let fixtureCreated = false;
@@ -34,8 +25,6 @@ function required<T>(value: T | undefined): T {
     throw new Error('Missing expected F07 fixture value');
   return value;
 }
-const signingKey = randomBytes(32); // Internal SQL fixture proof, NOT API MAC qualification.
-
 function api<T>(
   s: Scope,
   actor: string,
@@ -51,11 +40,6 @@ function owner<Row extends Record<string, unknown> = Record<string, unknown>>(
   return fixture.transaction(fixture.owner, s.workspace, s.actor, (client) =>
     client.query<Row>(text, values),
   );
-}
-async function command(client: PoolClient, text: string, values: unknown[]) {
-  const result = await client.query<{ result: Result }>(text, values);
-  if (!result.rows[0]) throw new Error('Missing F07 command result');
-  return result.rows[0].result;
 }
 function tag(
   s: Scope,
@@ -108,101 +92,22 @@ function assignment(
     expectedOrganizationRevision: revision,
   });
 }
-function absenceBody(
-  s: Scope,
-  workflow: string,
-  generation: string,
-  issued: number,
-): Absence {
-  const expires = issued + 86400;
-  const subkey = createHmac('sha256', signingKey)
-    .update('pertexo.workflow.favorite.absence-key.v1')
-    .digest();
-  const mac = createHmac('sha256', subkey)
-    .update(
-      JSON.stringify({
-        v: 1,
-        w: s.workspace,
-        a: s.viewer,
-        id: workflow,
-        g: generation,
-        i: issued,
-        e: expires,
-      }),
-    )
-    .digest('base64url');
-  return {
-    token: `absent.v1.${String(issued)}.${String(expires)}.${mac}`,
-    generation,
-    issued,
-    expires,
-  };
-}
-async function absence(s: Scope, workflow: string) {
-  return api(s, s.viewer, async (client) => {
-    const result = await client.query<{
-      result: { generation: string; readAtSeconds: number };
-    }>('select app.read_workflow_favorite_generation() result');
-    const current = result.rows[0]?.result;
-    if (!current) throw new Error('Missing internal favorite snapshot');
-    return absenceBody(s, workflow, current.generation, current.readAtSeconds);
+function favorite(s: Scope, workflow: string, value: boolean) {
+  return fixture.favorites.setFavorite({
+    workspaceId: s.workspace,
+    actorId: s.viewer,
+    workflowId: workflow,
+    favorite: value,
   });
 }
-async function favoriteOn(
-  client: PoolClient,
-  workflow: string,
-  favorite: boolean,
-  expected: string,
-  proof?: Absence,
-  key = commandKey(),
-) {
-  const body = JSON.stringify({ favorite, expectedFavoriteRevision: expected });
-  const prepared = await client.query<{
-    result: { kind: string; result?: Result };
-  }>('select app.prepare_workflow_favorite_command($1,$2,$3::jsonb) result', [
-    workflow,
-    key,
-    body,
-  ]);
-  const claim = prepared.rows[0]?.result;
-  if (claim?.kind === 'replay' && claim.result) return claim.result;
-  expect(claim?.kind).toBe('new');
-  return command(
-    client,
-    'select app.execute_workflow_favorite_command($1,$2,$3::jsonb,$4,$5,$6) result',
-    [
-      workflow,
-      key,
-      body,
-      proof?.generation ?? null,
-      proof?.issued ?? null,
-      proof?.expires ?? null,
-    ],
-  );
-}
-function favorite(
-  s: Scope,
-  workflow: string,
-  value: boolean,
-  expected: string,
-  proof?: Absence,
-  key = commandKey(),
-) {
-  return api(s, s.viewer, (client) =>
-    favoriteOn(client, workflow, value, expected, proof, key),
-  );
-}
-/** One retention pass; returns the rows each rule removed. */
-async function reap(pageSize = 100) {
-  const retention = createRetentionDatabase(
-    parseDatabaseConfig({ connectionString: fixture.urls.maintenance, max: 1 }),
-    { pageSize },
-  );
-  try {
-    return (await retention.enforce()).removed;
-  } finally {
-    await retention.close();
-  }
+async function favoritesOf(s: Scope, actor: string) {
+  return (
+    await owner<{ workflow_id: string }>(
+      s,
+      'select workflow_id from app.workflow_favorites where workspace_id=$1 and actor_id=$2',
+      [s.workspace, actor],
+    )
+  ).rows.map((row) => row.workflow_id);
 }
 async function removeAndRejoin(s: Scope) {
   await fixture.identity.removeWorkspaceMember({
@@ -221,46 +126,12 @@ async function removeAndRejoin(s: Scope) {
   );
 }
 
-async function begin(
-  client: PoolClient,
-  s: Scope,
-  actor: string,
-  privileged = false,
-) {
-  await client.query('begin');
-  await client.query("set local statement_timeout='8s'");
-  await client.query(
-    "select set_config('app.workspace_id',$1,true),set_config('app.actor_id',$2,true)",
-    [s.workspace, actor],
-  );
-  if (privileged) await client.query('set local role pertexo_owner');
-  return required(
-    (await client.query<{ pid: number }>('select pg_backend_pid() pid'))
-      .rows[0],
-  ).pid;
-}
-
-async function rollbackRelease(client: PoolClient) {
-  try {
-    await client.query('rollback');
-  } finally {
-    client.release();
-  }
-}
-
 describe.skipIf(!organizationFixtureEnabled)(
-  '0134 owned PostgreSQL organization commands',
+  'owned PostgreSQL organization commands',
   () => {
     beforeAll(async () => {
       fixture = await createOrganizationOwnedFixture();
       fixtureCreated = true;
-      expect(
-        (
-          await fixture.owner.query(
-            'select writes_enabled from app.workflow_organization_rollout',
-          )
-        ).rows,
-      ).toEqual([{ writes_enabled: true }]);
     }, 120000);
     afterAll(async () => {
       if (fixtureCreated) await fixture.close();
@@ -516,7 +387,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).toEqual([{ count: 256 }]);
     });
 
-    it('supports viewer favorites and archived bookmarks, with actor-only state/receipts and no private audit', async () => {
+    it('keeps favorites private to each member, also on archived workflows, without audit or receipts', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow();
       await fixture.authoring.transitionWorkflowLifecycle({
@@ -527,269 +398,45 @@ describe.skipIf(!organizationFixtureEnabled)(
         expectedLifecycleRevision: 1,
         idempotencyKey: randomUUID(),
       });
-      const proof = await absence(s, workflow);
-      const first = await favorite(s, workflow, true, proof.token, proof);
-      expect(first).toMatchObject({ isFavorite: true, replayed: false });
-      expect(
-        (
-          await api(s, s.viewer, (client) =>
-            client.query('select workflow_id from app.workflow_favorites'),
-          )
-        ).rows,
-      ).toEqual([{ workflow_id: workflow }]);
-      for (const table of ['workflow_favorites', 'workflow_favorite_receipts'])
-        expect(
-          (
-            await api(s, s.actor, (client) =>
-              client.query(`select * from app.${table}`),
-            )
-          ).rows,
-        ).toEqual([]);
-      expect(
-        (
-          await owner(
-            s,
-            "select * from app.audit_events where workspace_id=$1 and action like '%favorite%'",
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([]);
-      expect(
-        (
-          await owner(
-            s,
-            "select * from app.idempotency_records where workspace_id=$1 and operation like '%favorite%'",
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([]);
-    });
-
-    it('retains suspension state but invalidates departure/rejoin, old receipts and never-recorded internal generation proof without ABA', async () => {
-      const s = await fixture.scope(),
-        workflow = await s.workflow(),
-        key = commandKey();
-      const proof = await absence(s, workflow);
-      const first = await favorite(s, workflow, true, proof.token, proof, key);
-      await owner(
-        s,
-        "update app.workspace_memberships set status='suspended' where workspace_id=$1 and user_id=$2",
-        [s.workspace, s.viewer],
-      );
-      expect(
-        (
-          await api(s, s.viewer, (client) =>
-            client.query('select * from app.workflow_favorites'),
-          )
-        ).rows,
-      ).toEqual([]);
-      await expect(
-        favorite(s, workflow, true, proof.token, proof, key),
-      ).rejects.toMatchObject({ code: '42501' });
-      await owner(
-        s,
-        "update app.workspace_memberships set status='active' where workspace_id=$1 and user_id=$2",
-        [s.workspace, s.viewer],
-      );
-      expect((await absence(s, workflow)).generation).toBe(proof.generation);
-      expect(
-        await favorite(s, workflow, true, proof.token, proof, key),
-      ).toEqual({ ...first, replayed: true });
-      await removeAndRejoin(s);
-      const current = await absence(s, workflow);
-      expect(current.generation).not.toBe(proof.generation);
-      expect(
-        (
-          await api(s, s.viewer, (client) =>
-            client.query('select * from app.workflow_favorites'),
-          )
-        ).rows,
-      ).toEqual([]);
-      await expect(
-        favorite(s, workflow, true, proof.token, proof, key),
-      ).rejects.toMatchObject({ code: '42501' });
-      await expect(
-        favorite(s, workflow, true, proof.token, proof),
-      ).rejects.toMatchObject({ code: 'P7010' });
-      await expect(
-        favorite(s, workflow, false, required(first.favoriteRevision)),
-      ).rejects.toMatchObject({ code: 'P7010' });
-      expect(
-        await favorite(s, workflow, false, current.token, current),
-      ).toMatchObject({ isFavorite: false });
-      // Restrictive lifetime FK cannot silently discard retained generation/state.
-      await expect(
-        owner(
-          s,
-          'delete from app.workspace_memberships where workspace_id=$1 and user_id=$2',
-          [s.workspace, s.viewer],
-        ),
-      ).rejects.toMatchObject({ code: '23503' });
-    });
-
-    it('keeps one false tombstone for 24h, rejects stale token writes, and exact replay does not renew expiry or require writer/proof', async () => {
-      const s = await fixture.scope(),
-        workflow = await s.workflow(),
-        proof = await absence(s, workflow),
-        key = commandKey();
-      const first = await favorite(s, workflow, false, proof.token, proof, key);
-      await expect(
-        favorite(s, workflow, true, proof.token, proof, key),
-      ).rejects.toMatchObject({ code: 'P7002' });
-      const before = (
-        await owner(
-          s,
-          'select expires_at from app.workflow_favorites where workspace_id=$1',
-          [s.workspace],
-        )
-      ).rows;
-      expect(
-        await favorite(s, workflow, false, proof.token, undefined, key),
-      ).toEqual({ ...first, replayed: true });
-      expect(
-        (
-          await owner(
-            s,
-            'select expires_at from app.workflow_favorites where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual(before);
-      expect(
-        (
-          await owner(
-            s,
-            "select expires_at between clock_timestamp()+interval '23 hours 59 minutes' and clock_timestamp()+interval '24 hours 1 minute' valid from app.workflow_favorites where workspace_id=$1",
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([{ valid: true }]);
-      await expect(
-        favorite(s, workflow, true, proof.token, proof),
-      ).rejects.toMatchObject({ code: 'P7010' });
-      const next = await favorite(
-        s,
-        workflow,
-        true,
-        required(first.favoriteRevision),
-      );
-      await expect(
-        favorite(s, workflow, false, required(first.favoriteRevision)),
-      ).rejects.toMatchObject({ code: 'P7010' });
-      const last = await favorite(
-        s,
-        workflow,
-        false,
-        required(next.favoriteRevision),
-      );
-      expect(last.favoriteRevision).not.toBe(first.favoriteRevision);
-      expect(
-        (
-          await owner(
-            s,
-            'select count(*)::int count from app.workflow_favorites where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([{ count: 1 }]);
-      await owner(
-        s,
-        'update app.workflow_organization_rollout set writes_enabled=false',
-      );
-      await owner(
-        s,
-        "update app.workflow_favorite_receipts set created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1 and key_hash=$2",
-        [s.workspace, key],
-      );
-      try {
-        expect(
-          await favorite(s, workflow, false, proof.token, undefined, key),
-        ).toEqual({ ...first, replayed: true });
-        await expect(
-          favorite(s, workflow, true, required(last.favoriteRevision)),
-        ).rejects.toMatchObject({ code: 'P7001' });
-      } finally {
-        await owner(
-          s,
-          'update app.workflow_organization_rollout set writes_enabled=true',
-        );
-      }
-      // Replay preserved the current later state; neither old nor new row expiry is extended.
-      expect(
-        (
-          await owner(
-            s,
-            'select favorite,revision from app.workflow_favorites where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([{ favorite: false, revision: last.favoriteRevision }]);
-      expect(before).toHaveLength(1);
-    });
-
-    it.each([
-      'expired',
-      'future',
-      'wrong-generation',
-      'wrong-ttl',
-      'literal-absent',
-    ] as const)(
-      'checks SQL absence precondition %s and rolls back unfinished claims',
-      async (kind) => {
-        const s = await fixture.scope(),
-          workflow = await s.workflow(),
-          snapshot = await absence(s, workflow),
-          key = commandKey();
-        const proof = absenceBody(
-          s,
-          workflow,
-          kind === 'wrong-generation' ? randomUUID() : snapshot.generation,
-          snapshot.issued +
-            (kind === 'expired' ? -86401 : kind === 'future' ? 60 : 0),
-        );
-        if (kind === 'wrong-ttl') proof.expires++;
-        await expect(
-          favorite(
-            s,
-            workflow,
-            true,
-            kind === 'literal-absent' ? 'absent' : proof.token,
-            proof,
-            key,
-          ),
-        ).rejects.toMatchObject({
-          code: kind === 'literal-absent' ? '22023' : 'P7010',
-        });
+      expect(await favorite(s, workflow, true)).toEqual({ isFavorite: true });
+      expect(await favorite(s, workflow, true)).toEqual({ isFavorite: true });
+      expect(await favoritesOf(s, s.viewer)).toEqual([workflow]);
+      expect(await favoritesOf(s, s.actor)).toEqual([]);
+      for (const table of ['audit_events', 'idempotency_records'])
         expect(
           (
             await owner(
               s,
-              'select * from app.workflow_favorite_receipts where workspace_id=$1 and key_hash=$2',
-              [s.workspace, key],
+              `select 1 from app.${table} where workspace_id=$1 and ${table === 'audit_events' ? 'action' : 'operation'} like '%favorite%'`,
+              [s.workspace],
             )
           ).rows,
         ).toEqual([]);
-      },
-    );
+    });
 
-    it('denies held evidence access and favorites outside the workspace, and scopes tags to it', async () => {
+    it("keeps a suspended member's favorites and drops a removed member's", async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow();
+      await favorite(s, workflow, true);
+      for (const status of ['suspended', 'active'])
+        await owner(
+          s,
+          'update app.workspace_memberships set status=$3 where workspace_id=$1 and user_id=$2',
+          [s.workspace, s.viewer, status],
+        );
+      expect(await favoritesOf(s, s.viewer)).toEqual([workflow]);
+      await removeAndRejoin(s);
+      expect(await favoritesOf(s, s.viewer)).toEqual([]);
+    });
+
+    it('refuses favorites outside the workspace and scopes tags to it', async () => {
+      const s = await fixture.scope();
       await createTag(s);
-      await expect(
-        api(s, s.actor, (client) =>
-          client.query('select * from app.workflow_favorite_held_evidence'),
-        ),
-      ).rejects.toMatchObject({ code: '42501' });
-      await expect(
-        fixture.api.query('select app.read_workflow_favorite_generation()'),
-      ).rejects.toMatchObject({ code: '42501' });
       const other = await fixture.scope(),
-        foreign = await other.workflow(),
-        proof = await absence(s, workflow);
-      await expect(
-        favorite(s, foreign, true, proof.token, proof),
-      ).rejects.toMatchObject({ code: '42501' });
+        foreign = await other.workflow();
+      await expect(favorite(s, foreign, true)).rejects.toMatchObject({
+        name: 'WorkflowNotFoundError',
+      });
       expect(
         (
           await api(other, other.actor, (client) =>
@@ -827,97 +474,10 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).toEqual([{ tag_id: (won === 0 ? firstTag : secondTag).id }]);
     });
 
-    it('membership removal wins before a queued favorite write; locked authority denies rather than resurrecting private state', async () => {
-      const s = await fixture.scope(),
-        workflow = await s.workflow(),
-        proof = await absence(s, workflow);
-      const removal = await fixture.owner.connect(),
-        writer = await fixture.api.connect();
-      let pending: Promise<{ result?: Result; error?: unknown }> | undefined;
-      try {
-        const removalPid = await begin(removal, s, s.actor, true),
-          writerPid = await begin(writer, s, s.viewer);
-        await removal.query(
-          'select id from app.workspaces where id=$1 for update',
-          [s.workspace],
-        );
-        await removal.query(
-          "update app.workspace_memberships set status='removed',role_revision=role_revision+1 where workspace_id=$1 and user_id=$2",
-          [s.workspace, s.viewer],
-        );
-        pending = favoriteOn(writer, workflow, true, proof.token, proof).then(
-          (result) => ({ result }),
-          (error: unknown) => ({ error }),
-        );
-        await fixture.waitForBlocker(removalPid, writerPid);
-        await removal.query('commit');
-        expect((await pending).error).toMatchObject({ code: '42501' });
-      } finally {
-        await rollbackRelease(removal);
-        await pending;
-        await rollbackRelease(writer);
-      }
-      expect(
-        (
-          await owner(
-            s,
-            'select * from app.workflow_favorites where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([]);
-      expect(
-        (
-          await owner(
-            s,
-            'select * from app.workflow_favorite_receipts where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([]);
-    });
-
-    it('pages cleanup and keeps unexpired unfavorites', async () => {
-      const s = await fixture.scope(),
-        workflow = await s.workflow(),
-        proof = await absence(s, workflow);
-      await favorite(s, workflow, false, proof.token, proof);
-      await reap(1);
-      expect(
-        (
-          await owner(
-            s,
-            'select favorite from app.workflow_favorites where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([{ favorite: false }]);
-      await owner(
-        s,
-        "update app.workflow_favorites set expires_at=clock_timestamp()-interval '1 second' where workspace_id=$1",
-        [s.workspace],
-      );
-      for (let index = 0; index < 40; index++) {
-        const counts = Object.values(await reap(2));
-        expect(Math.max(...counts)).toBeLessThanOrEqual(2);
-        if (counts.every((count) => count === 0)) break;
-      }
-      expect(
-        (
-          await owner(
-            s,
-            'select * from app.workflow_favorites where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([]);
-    });
-
     it('purges organization records in pages before the workflows they describe', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow(),
-        t = await createTag(s),
-        old = await absence(s, workflow);
+        t = await createTag(s);
       await assignment(s, workflow, [t.id]);
       const stores = fixture.folderStores();
       const command = () => ({
@@ -950,20 +510,13 @@ describe.skipIf(!organizationFixtureEnabled)(
           items: [{ workflowId: workflow, expectedOrganizationRevision: 3 }],
         },
       });
-      await favorite(s, workflow, true, old.token, old);
-      await removeAndRejoin(s);
-      const fresh = await absence(s, workflow);
-      await favorite(s, workflow, false, fresh.token, fresh);
-      // No legal hold is placed, so no favorite evidence is held.
+      await favorite(s, workflow, true);
       const surfaces = [
-        'workflow_favorite_receipts',
         'workflow_favorites',
         'workflow_tag_assignments',
         'workflow_organization_state',
         'workflow_folders',
         'workflow_tags',
-        'workflow_favorite_membership_generations',
-        'workflow_organization_coordination',
       ];
       const steps = await purgeWorkspace({
         adminUrl: fixture.urls.admin,

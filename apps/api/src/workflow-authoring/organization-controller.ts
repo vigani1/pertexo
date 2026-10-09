@@ -7,6 +7,7 @@ import {
   Optional,
   Param,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -162,7 +163,7 @@ export class WorkflowOrganizationController {
     );
   }
 
-  @Post('workflows/:workflowId/favorite')
+  @Put('workflows/:workflowId/favorite')
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
@@ -178,7 +179,6 @@ export class WorkflowOrganizationController {
         ...input,
         workflowId,
         request: body,
-        idempotencyKey: commandKey(request),
       }),
     );
   }
