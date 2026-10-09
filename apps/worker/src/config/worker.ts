@@ -178,10 +178,6 @@ const workerConfigSchema = z
       .string()
       .regex(/^[A-Za-z0-9._:-]{1,96}$/u)
       .default('worker-local'),
-    AUTH_MAIL_DELIVERY_ENABLED: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((value) => value === 'true'),
     NODE_ENV: z.enum(workerEnvironments).default('development'),
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),

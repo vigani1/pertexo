@@ -26,7 +26,6 @@ describe('parseWorkerConfig', () => {
       parseWorkerConfig({
         ...requiredEnvironment,
         WORKER_INSTANCE_ID: 'mail-worker-1',
-        AUTH_MAIL_DELIVERY_ENABLED: 'true',
         AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
         AUTH_MAIL_KEY: Buffer.alloc(32, 4).toString('base64'),
         AUTH_MAIL_KEY_VERSION: 'mail-v1',
@@ -44,7 +43,6 @@ describe('parseWorkerConfig', () => {
     expect(() =>
       parseWorkerConfig({
         ...requiredEnvironment,
-        AUTH_MAIL_DELIVERY_ENABLED: 'true',
         AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
       }),
     ).toThrow('Invalid worker configuration');
@@ -277,7 +275,6 @@ describe('parseWorkerConfig', () => {
       CONNECTION_KMS_REGION: 'eu-central-1',
       NODE_ENV: 'production',
       OTEL_EXPORTER_OTLP_ENDPOINT: 'https://telemetry.example.test/v1',
-      AUTH_MAIL_DELIVERY_ENABLED: 'true',
       AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
       AUTH_MAIL_KEY: Buffer.alloc(32, 4).toString('base64'),
       AUTH_MAIL_KEY_VERSION: 'mail-v1',
