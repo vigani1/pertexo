@@ -13,10 +13,11 @@ import {
   createConnectionDatabase,
   createHash,
   currentRepresentationTag,
-  deferred,
   draftNode,
+  duplicateWrite,
   emptyGraph,
-  executeAsOwner,
+  failAtWrite,
+  holdAtWrite,
   identity,
   finishControlledScenario,
   otherActorId,
@@ -523,36 +524,19 @@ describe('same-workspace workflow duplication through the runtime database role'
     );
   });
 
-  it.each([
-    'claim',
-    'source',
-    'workflow',
-    'draft',
-    'audit',
-    'idempotency',
-  ] as const)(
-    'rolls back the entire command after an injected %s failure',
+  it.each(['claim', 'workflow', 'draft', 'audit', 'idempotency'] as const)(
+    'rolls back the entire command after a failed %s write',
     async (step) => {
       const original = await source();
       const input = await command(original.workflowId);
       const before = await commandFacts();
-      const faulting = createWorkflowAuthoringDatabase(
-        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-        {
-          testHooks: {
-            afterDuplicateStep: (reached) =>
-              reached === step
-                ? Promise.reject(new Error(`injected-${step}`))
-                : Promise.resolve(),
-          },
-        },
-      );
+      const fault = await failAtWrite(duplicateWrite(step, input.name));
       try {
-        await expect(faulting.duplicateWorkflow(input)).rejects.toThrow(
-          `injected-${step}`,
+        await expect(authoring.duplicateWorkflow(input)).rejects.toThrow(
+          fault.message,
         );
       } finally {
-        await faulting.close();
+        await fault.remove();
       }
       expect(await commandFacts()).toEqual(before);
       const copied = await authoring.duplicateWorkflow(input);
@@ -589,20 +573,9 @@ describe('same-workspace workflow duplication through the runtime database role'
   it('holds the source workflow/draft lock until the copy commits while a source save waits', async () => {
     const original = await source();
     const input = await command(original.workflowId);
-    const entered = deferred(),
-      release = deferred();
+    const hold = await holdAtWrite(duplicateWrite('workflow', input.name));
     const copying = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-      {
-        testHooks: {
-          afterDuplicateStep: async (step) => {
-            if (step === 'source') {
-              entered.resolve();
-              await release.promise;
-            }
-          },
-        },
-      },
     );
     const application = `duplicate-save-${randomUUID()}`;
     const saving = createWorkflowAuthoringDatabase(
@@ -617,7 +590,7 @@ describe('same-workspace workflow duplication through the runtime database role'
     try {
       copy = copying.duplicateWorkflow(input);
       await waitForOperationEntry(
-        entered.promise,
+        hold.reached(),
         copy,
         'duplicate source lock',
       );
@@ -631,7 +604,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       });
       void save.catch(() => undefined);
       await waitForPostgresLock(application);
-      release.resolve();
+      await hold.release();
       const copied = await copy;
       await save;
       expect((await facts(copied.workflowId)).graph).toEqual(emptyGraph);
@@ -642,31 +615,20 @@ describe('same-workspace workflow duplication through the runtime database role'
     await finishControlledScenario({
       label: 'duplicate/source save race',
       primaryError,
-      release: release.resolve,
+      release: () => void hold.release(),
       operations: [copy, save],
-      close: [() => copying.close(), () => saving.close()],
+      close: [() => copying.close(), () => saving.close(), () => hold.remove()],
     });
   });
 
   it('holds authority, source and catalog locks while concurrent archive, membership suspension and release changes wait', async () => {
     for (const race of ['archive', 'membership'] as const) {
       const original = await source();
-      const entered = deferred(),
-        release = deferred();
       const copying = createWorkflowAuthoringDatabase(
         parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-        {
-          testHooks: {
-            afterDuplicateStep: async (step) => {
-              if (step === 'source') {
-                entered.resolve();
-                await release.promise;
-              }
-            },
-          },
-        },
       );
       const input = await command(original.workflowId, copying);
+      const hold = await holdAtWrite(duplicateWrite('workflow', input.name));
       const application = `duplicate-${race}-${randomUUID()}`;
       const pool = new Pool({
         connectionString: withApplicationName(migrationUrl, application),
@@ -680,7 +642,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       try {
         copy = copying.duplicateWorkflow(input);
         await waitForOperationEntry(
-          entered.promise,
+          hold.reached(),
           copy,
           `duplicate ${race} lock`,
         );
@@ -698,7 +660,7 @@ describe('same-workspace workflow duplication through the runtime database role'
         );
         void mutation.catch(() => undefined);
         await waitForPostgresLock(application);
-        release.resolve();
+        await hold.release();
         expect(await copy).toHaveProperty('workflowId');
         await mutation;
         await client.query('rollback');
@@ -709,7 +671,7 @@ describe('same-workspace workflow duplication through the runtime database role'
       await finishControlledScenario({
         label: `duplicate/${race} race`,
         primaryError,
-        release: release.resolve,
+        release: () => void hold.release(),
         operations: [copy, mutation],
         close: [
           async () => {
@@ -721,6 +683,7 @@ describe('same-workspace workflow duplication through the runtime database role'
             }
           },
           () => copying.close(),
+          () => hold.remove(),
         ],
       });
     }
@@ -758,36 +721,6 @@ describe('same-workspace workflow duplication through the runtime database role'
       WorkflowNotFoundError,
     );
     expect(await commandFacts()).toEqual(before);
-  });
-
-  it('rolls back a failure between the workflow and draft inserts', async () => {
-    const original = await source();
-    const input = {
-      ...(await command(original.workflowId)),
-      name: 'Fault between workflow and draft',
-    };
-    await executeAsOwner(`create function app.test_duplicate_draft_failure() returns trigger
-      language plpgsql as $$ begin
-        if exists(select 1 from app.workflows where id=new.workflow_id and name='Fault between workflow and draft')
-          then raise exception 'injected-mid-function'; end if;
-        return new;
-      end $$;
-      create trigger test_duplicate_draft_failure before insert on app.workflow_drafts
-      for each row execute function app.test_duplicate_draft_failure()`);
-    try {
-      const before = await commandFacts();
-      await expect(authoring.duplicateWorkflow(input)).rejects.toThrow(
-        'injected-mid-function',
-      );
-      expect(await commandFacts()).toEqual(before);
-    } finally {
-      await executeAsOwner(
-        'drop trigger test_duplicate_draft_failure on app.workflow_drafts; drop function app.test_duplicate_draft_failure()',
-      );
-    }
-    expect(await authoring.duplicateWorkflow(input)).toHaveProperty(
-      'workflowId',
-    );
   });
 
   it('retains same-workspace connection references without reading or duplicating secrets and rejects foreign refs in arbitrary slots', async () => {

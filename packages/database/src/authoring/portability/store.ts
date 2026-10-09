@@ -235,7 +235,6 @@ function exportPortableWorkflow(
     async (client) => {
       await requirePortabilityAuthority(client, input, false);
       const row = await lockPortableSource(client, input);
-      await context.testHooks?.afterExportSourceLock?.();
       const selection = await context.selectCatalogs(client);
       const graph = reviewedSourceGraph(input, row, selection);
       if ((await portableGraphDigest(graph)) !== input.reviewedGraphDigest)
@@ -347,7 +346,6 @@ function importPortableWorkflow(
     input.actorId,
     async (client) => {
       await requirePortabilityAuthority(client, input, true);
-      await context.testHooks?.afterImportStep?.('authority');
       const destinationId = generatePersistedId();
       const commandDigest = workflowImportCommandDigest(input);
       const command = {
@@ -361,7 +359,6 @@ function importPortableWorkflow(
         request: commandDigest,
         resourceId: destinationId,
       });
-      await context.testHooks?.afterImportStep?.('claim');
       if (stored !== null) {
         const replay = importResultSchema.parse(stored);
         const destination = await client.query(
@@ -382,7 +379,6 @@ function importPortableWorkflow(
         throw new WorkflowPortabilityCompatibilityConflictError(
           'Workflow import catalog changed; preview again',
         );
-      await context.testHooks?.afterImportStep?.('catalog');
       let graph;
       try {
         const report = await inspectImport(client, context, input, selection);
@@ -395,14 +391,12 @@ function importPortableWorkflow(
       } catch (error) {
         portableFailure(error);
       }
-      await context.testHooks?.afterImportStep?.('connections');
       await client.query(
         `insert into app.workflows
            (id, workspace_id, name, lifecycle_status, activation_status, created_by)
          values ($1, $2, $3, 'active', 'inactive', $4)`,
         [destinationId, input.workspaceId, input.name, input.actorId],
       );
-      await context.testHooks?.afterImportStep?.('workflow');
       await client.query(
         `insert into app.workflow_drafts
            (workflow_id, workspace_id, revision, schema_version, graph_json, updated_by)
@@ -429,7 +423,6 @@ function importPortableWorkflow(
             }),
           ],
         );
-      await context.testHooks?.afterImportStep?.('draft');
       await client.query(
         `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
       values($1,$2,$3,'workflow.imported','workflow',$4,$5,$6,'{"revision":1}'::jsonb)`,
@@ -442,10 +435,8 @@ function importPortableWorkflow(
           input.traceId ?? null,
         ],
       );
-      await context.testHooks?.afterImportStep?.('audit');
       const result = Object.freeze({ workflowId: destinationId });
       await completeCommand(client, command, result);
-      await context.testHooks?.afterImportStep?.('idempotency');
       return result;
     },
     input.signal,

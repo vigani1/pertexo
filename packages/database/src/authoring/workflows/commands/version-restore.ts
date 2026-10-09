@@ -89,7 +89,6 @@ async function restoreWorkflowVersion(
     if (sourceRow === undefined)
       throw new WorkflowNotFoundError('Workflow version is not visible');
     const sourceVersion = mapVersion(sourceRow);
-    await context.testHooks?.afterVersionRestoreStep?.('source');
     context.requirePlaceable(
       currentDraft.graphJson,
       sourceVersion.graphJson,
@@ -123,7 +122,6 @@ async function restoreWorkflowVersion(
         currentTag,
       );
     const restoredDraft = mapDraft(updatedRow, definitionCatalog);
-    await context.testHooks?.afterVersionRestoreStep?.('draft');
 
     await client.query(
       `insert into app.audit_events
@@ -144,7 +142,6 @@ async function restoreWorkflowVersion(
         }),
       ],
     );
-    await context.testHooks?.afterVersionRestoreStep?.('audit');
     return restoredDraft;
   });
 }

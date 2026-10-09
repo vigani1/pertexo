@@ -40,10 +40,7 @@ import {
 } from '../../tenant-access/transactions.js';
 import { rolesForCapability } from '../../tenant-access/policy.js';
 import type { WorkflowAuthoringDatabaseOptions } from './types.js';
-export type {
-  WorkflowAuthoringDatabaseOptions,
-  WorkflowAuthoringTestHooks,
-} from './types.js';
+export type { WorkflowAuthoringDatabaseOptions } from './types.js';
 
 const uuidSchema = z.uuid();
 
@@ -222,15 +219,11 @@ export function createWorkflowAuthoringDatabase(
     requireAuthor: requireWorkspaceAuthor,
     requirePlaceable: requirePlaceableDefinitionAdditions,
     selectCatalogs: selectCompatibilityVariant,
-    ...(options.testHooks === undefined
-      ? {}
-      : { testHooks: options.testHooks }),
     transact,
   };
   const publishWorkflow = createWorkflowPublisher({
     requireAuthor: requireWorkspaceAuthor,
     selectVariant: selectCompatibilityVariant,
-    testHooks: options.testHooks,
     transact,
   });
   return Object.freeze({

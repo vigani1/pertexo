@@ -318,6 +318,319 @@ export async function waitForPostgresLock(
   }
 }
 
+/** A row write a command makes; tests hold or fail the command there. */
+export type WritePoint = Readonly<{
+  table: string;
+  operation: 'insert' | 'update' | 'insert or update';
+  /** Trigger condition on the written row, e.g. `NEW.workflow_id = '…'`. */
+  when?: string;
+}>;
+
+let writePointSequence = 0;
+
+async function asAdmin<T>(work: (client: PoolClient) => Promise<T>) {
+  const pool = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+  try {
+    const client = await pool.connect();
+    try {
+      return await work(client);
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+/**
+ * Installs an AFTER ROW trigger at the write in this disposable database, so
+ * tests reach inside a command's transaction without hooks in the code under
+ * test. Returns the trigger's removal.
+ */
+async function installWritePoint(
+  point: WritePoint,
+  body: string,
+): Promise<() => Promise<void>> {
+  writePointSequence += 1;
+  const name = `test_write_point_${String(writePointSequence)}`;
+  await asAdmin(async (client) => {
+    await client.query(
+      `create function app.${name}() returns trigger language plpgsql
+       as $$ begin ${body} return null; end $$`,
+    );
+    await client.query(
+      `create trigger ${name} after ${point.operation} on app.${point.table}
+       for each row ${point.when === undefined ? '' : `when (${point.when})`}
+       execute function app.${name}()`,
+    );
+  });
+  return () =>
+    asAdmin(async (client) => {
+      await client.query(
+        `drop trigger if exists ${name} on app.${point.table}`,
+      );
+      await client.query(`drop function if exists app.${name}()`);
+    });
+}
+
+/** Fails the command at this write, so its transaction rolls back. */
+export async function failAtWrite(
+  point: WritePoint,
+): Promise<Readonly<{ message: string; remove: () => Promise<void> }>> {
+  const message = `injected failure at ${point.table} ${point.operation}`;
+  const remove = await installWritePoint(
+    point,
+    `raise exception '${message}';`,
+  );
+  return { message, remove };
+}
+
+/**
+ * Holds the command just after this write, with every lock it has taken,
+ * until released. Later writes at the point pass once it is released.
+ */
+export async function holdAtWrite(point: WritePoint): Promise<
+  Readonly<{
+    /** Resolves once a command waits at the point. */
+    reached: () => Promise<void>;
+    release: () => Promise<void>;
+    remove: () => Promise<void>;
+  }>
+> {
+  const key = 1_000_000 + Math.floor(Math.random() * 1_000_000_000);
+  const holder = new Pool({ connectionString: adminDatabaseUrl, max: 2 });
+  const client = await holder.connect();
+  await client.query('select pg_advisory_lock($1)', [key]);
+  const remove = await installWritePoint(
+    point,
+    `perform pg_advisory_xact_lock(${String(key)});`,
+  );
+  let released = false;
+  const release = async (): Promise<void> => {
+    if (released) return;
+    released = true;
+    try {
+      await client.query('select pg_advisory_unlock($1)', [key]);
+    } finally {
+      client.release();
+      await holder.end();
+    }
+  };
+  return {
+    reached: async () => {
+      const deadline = performance.now() + 5_000;
+      while (performance.now() < deadline) {
+        const waiting = await holder.query(
+          `select 1 from pg_locks where locktype = 'advisory'
+             and objid = $1 and not granted`,
+          [key],
+        );
+        if (waiting.rowCount !== 0) return;
+        await new Promise<void>((resolve) => setTimeout(resolve, 10));
+      }
+      throw new Error(`No command reached ${point.table} ${point.operation}`);
+    },
+    release,
+    remove: async () => {
+      await release();
+      await remove();
+    },
+  };
+}
+
+/** The writes a publication makes, in order, for one workflow. */
+export function publicationWrite(
+  step:
+    | 'version'
+    | 'integration_usage'
+    | 'trigger_projection'
+    | 'pointer'
+    | 'outbox'
+    | 'audit'
+    | 'idempotency',
+  workflow: string,
+): WritePoint {
+  switch (step) {
+    case 'version':
+      return {
+        table: 'workflow_versions',
+        operation: 'insert',
+        when: `NEW.workflow_id = '${workflow}'`,
+      };
+    case 'integration_usage':
+      return { table: 'workflow_integration_usage', operation: 'insert' };
+    case 'trigger_projection':
+      return {
+        table: 'workflow_triggers',
+        operation: 'insert or update',
+        when: `NEW.workflow_id = '${workflow}'`,
+      };
+    case 'pointer':
+      return {
+        table: 'workflows',
+        operation: 'update',
+        when: `NEW.id = '${workflow}' and NEW.published_version_id is distinct from OLD.published_version_id`,
+      };
+    case 'outbox':
+      return {
+        table: 'outbox_events',
+        operation: 'insert',
+        when: `NEW.aggregate_id = '${workflow}'`,
+      };
+    case 'audit':
+      return {
+        table: 'audit_events',
+        operation: 'insert',
+        when: `NEW.target_id = '${workflow}' and NEW.action = 'workflow.published'`,
+      };
+    case 'idempotency':
+      return {
+        table: 'idempotency_records',
+        operation: 'update',
+        when: `NEW.resource_id = '${workflow}' and NEW.status = 'completed'`,
+      };
+  }
+}
+
+/** The writes an archive makes, in order, for one workflow. */
+export function archiveWrite(
+  step: 'claim' | 'workflow' | 'outbox' | 'audit' | 'idempotency',
+  workflow: string,
+): WritePoint {
+  const claim = `NEW.resource_id = '${workflow}' and NEW.operation = 'workflow.archive'`;
+  switch (step) {
+    case 'claim':
+      return { table: 'idempotency_records', operation: 'insert', when: claim };
+    case 'workflow':
+      return {
+        table: 'workflows',
+        operation: 'update',
+        when: `NEW.id = '${workflow}' and NEW.lifecycle_status is distinct from OLD.lifecycle_status`,
+      };
+    case 'outbox':
+      return {
+        table: 'outbox_events',
+        operation: 'insert',
+        when: `NEW.aggregate_id = '${workflow}'`,
+      };
+    case 'audit':
+      return {
+        table: 'audit_events',
+        operation: 'insert',
+        when: `NEW.target_id = '${workflow}' and NEW.action = 'workflow.archived'`,
+      };
+    case 'idempotency':
+      return {
+        table: 'idempotency_records',
+        operation: 'update',
+        when: `${claim} and NEW.status = 'completed'`,
+      };
+  }
+}
+
+/** The writes a rename makes, in order, for one workflow. */
+export function renameWrite(
+  step: 'claim' | 'workflow' | 'audit' | 'idempotency',
+  workflow: string,
+): WritePoint {
+  const claim = `NEW.resource_id = '${workflow}' and NEW.operation = 'workflow.rename'`;
+  switch (step) {
+    case 'claim':
+      return { table: 'idempotency_records', operation: 'insert', when: claim };
+    case 'workflow':
+      return {
+        table: 'workflows',
+        operation: 'update',
+        when: `NEW.id = '${workflow}' and NEW.name is distinct from OLD.name`,
+      };
+    case 'audit':
+      return {
+        table: 'audit_events',
+        operation: 'insert',
+        when: `NEW.target_id = '${workflow}' and NEW.action = 'workflow.renamed'`,
+      };
+    case 'idempotency':
+      return {
+        table: 'idempotency_records',
+        operation: 'update',
+        when: `${claim} and NEW.status = 'completed'`,
+      };
+  }
+}
+
+/** A workflow's draft save, the write a save or version restore makes. */
+export function draftWrite(workflow: string): WritePoint {
+  return {
+    table: 'workflow_drafts',
+    operation: 'update',
+    when: `NEW.workflow_id = '${workflow}'`,
+  };
+}
+
+/** The writes a duplication makes, in order; one copy runs at a time. */
+export function duplicateWrite(
+  step: 'claim' | 'workflow' | 'draft' | 'audit' | 'idempotency',
+  copyName: string,
+): WritePoint {
+  const claim = `NEW.operation = 'workflow.duplicate'`;
+  switch (step) {
+    case 'claim':
+      return { table: 'idempotency_records', operation: 'insert', when: claim };
+    case 'workflow':
+      return {
+        table: 'workflows',
+        operation: 'insert',
+        when: `NEW.name = '${copyName.replaceAll("'", "''")}'`,
+      };
+    case 'draft':
+      return { table: 'workflow_drafts', operation: 'insert' };
+    case 'audit':
+      return {
+        table: 'audit_events',
+        operation: 'insert',
+        when: `NEW.action = 'workflow.duplicated'`,
+      };
+    case 'idempotency':
+      return {
+        table: 'idempotency_records',
+        operation: 'update',
+        when: `${claim} and NEW.status = 'completed'`,
+      };
+  }
+}
+
+/** The writes an import makes, in order; one import runs at a time. */
+export function importWrite(
+  step: 'claim' | 'workflow' | 'draft' | 'audit' | 'idempotency',
+  name: string,
+): WritePoint {
+  const claim = `NEW.operation = 'workflow.import'`;
+  switch (step) {
+    case 'claim':
+      return { table: 'idempotency_records', operation: 'insert', when: claim };
+    case 'workflow':
+      return {
+        table: 'workflows',
+        operation: 'insert',
+        when: `NEW.name = '${name.replaceAll("'", "''")}'`,
+      };
+    case 'draft':
+      return { table: 'workflow_drafts', operation: 'insert' };
+    case 'audit':
+      return {
+        table: 'audit_events',
+        operation: 'insert',
+        when: `NEW.action = 'workflow.imported'`,
+      };
+    case 'idempotency':
+      return {
+        table: 'idempotency_records',
+        operation: 'update',
+        when: `${claim} and NEW.status = 'completed'`,
+      };
+  }
+}
+
 export async function currentRepresentationTag(
   database: WorkflowAuthoringDatabase,
   scopedWorkspaceId: string,

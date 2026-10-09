@@ -38,7 +38,7 @@ type WorkflowLifecycleStore = Pick<
 
 type WorkflowLifecycleContext = Pick<
   WorkflowAuthoringWriteContext,
-  'requireAuthor' | 'testHooks' | 'transact'
+  'requireAuthor' | 'transact'
 >;
 
 async function transitionWorkflowLifecycle(
@@ -72,7 +72,6 @@ async function transitionWorkflowLifecycle(
       request: { expectedLifecycleRevision },
     };
     const replay = await claimWorkflowCommand(client, claim);
-    await context.testHooks?.afterLifecycleStep?.('claim');
     if (replay !== null) {
       const visible = await client.query(
         `select 1 from app.workflows where workspace_id=$1 and id=$2 for share`,
@@ -124,7 +123,6 @@ async function transitionWorkflowLifecycle(
           current.lifecycleRevision,
         );
       workflow = mapWorkflow(updatedRow);
-      await context.testHooks?.afterLifecycleStep?.('workflow');
 
       if (decision.reconcileTriggers) {
         if (current.publishedVersionId === null)
@@ -154,7 +152,6 @@ async function transitionWorkflowLifecycle(
             canonicalOutboxPayloadChecksum(payload),
           ],
         );
-        await context.testHooks?.afterLifecycleStep?.('outbox');
       }
 
       await client.query(
@@ -181,11 +178,9 @@ async function transitionWorkflowLifecycle(
           }),
         ],
       );
-      await context.testHooks?.afterLifecycleStep?.('audit');
     }
 
     await completeWorkflowCommand(client, claim, workflow);
-    await context.testHooks?.afterLifecycleStep?.('idempotency');
     return Object.freeze({ replayed: false, workflow });
   });
 }

@@ -381,7 +381,6 @@ describe('snapshot validation and publication ordering', () => {
     const publish = createWorkflowPublisher({
       requireAuthor,
       selectVariant,
-      testHooks: undefined,
       transact: <T>(
         workspaceId: string,
         actorId: string,

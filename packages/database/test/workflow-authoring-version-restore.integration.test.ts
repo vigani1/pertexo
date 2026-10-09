@@ -8,10 +8,12 @@ import {
   authoring,
   createWorkflowAuthoringDatabase,
   currentRepresentationTag,
-  deferred,
   draftNode,
+  draftWrite,
   emptyGraph,
+  failAtWrite,
   finishTransactionClient,
+  holdAtWrite,
   otherActorId,
   otherVersionId,
   parseDatabaseConfig,
@@ -512,29 +514,25 @@ describe('workflow version restoration persistence', () => {
     }
   });
 
-  it('rolls back source, draft, and audit failures as one transaction', async () => {
-    for (const step of ['source', 'draft', 'audit'] as const) {
+  it('rolls back draft and audit failures as one transaction', async () => {
+    for (const step of ['draft', 'audit'] as const) {
       const fixture = await createRestoreFixture(`rollback-${step}`);
       const before = await restoreFacts(fixture.workflowId);
-      const faulting = createWorkflowAuthoringDatabase(
-        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-        {
-          testHooks: {
-            afterVersionRestoreStep: (reached) =>
-              reached === step
-                ? Promise.reject(new Error(`injected-${step}`))
-                : Promise.resolve(),
-          },
-        },
+      const fault = await failAtWrite(
+        step === 'draft'
+          ? draftWrite(fixture.workflowId)
+          : {
+              table: 'audit_events',
+              operation: 'insert',
+              when: `NEW.target_id = '${fixture.workflowId}' and NEW.action = 'workflow.version_restored'`,
+            },
       );
       try {
         await expect(
-          faulting.restoreWorkflowVersion(
-            await restoreInput(fixture, faulting),
-          ),
-        ).rejects.toThrow(`injected-${step}`);
+          authoring.restoreWorkflowVersion(await restoreInput(fixture)),
+        ).rejects.toThrow(fault.message);
       } finally {
-        await faulting.close();
+        await fault.remove();
       }
       expect(await restoreFacts(fixture.workflowId)).toEqual(before);
       await expect(
@@ -546,8 +544,9 @@ describe('workflow version restoration persistence', () => {
   it('serializes save-first and restore-first races on the workflow and draft rows', async () => {
     const restoreFirstFixture =
       await createRestoreFixture('race-restore-first');
-    const restoreLocked = deferred();
-    const releaseRestore = deferred();
+    const restoreHold = await holdAtWrite(
+      draftWrite(restoreFirstFixture.workflowId),
+    );
     const restoreApplication = `restore-first-${randomUUID()}`;
     const saveApplication = `save-after-restore-${randomUUID()}`;
     const restoreFirst = createWorkflowAuthoringDatabase(
@@ -555,15 +554,6 @@ describe('workflow version restoration persistence', () => {
         connectionString: withApplicationName(apiUrl, restoreApplication),
         max: 1,
       }),
-      {
-        testHooks: {
-          afterVersionRestoreStep: async (step) => {
-            if (step !== 'source') return;
-            restoreLocked.resolve();
-            await releaseRestore.promise;
-          },
-        },
-      },
     );
     const saveAfterRestore = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({
@@ -582,7 +572,7 @@ describe('workflow version restoration persistence', () => {
         await restoreInput(restoreFirstFixture, restoreFirst, tag),
       );
       await waitForOperationEntry(
-        restoreLocked.promise,
+        restoreHold.reached(),
         restore,
         'restore-first command',
       );
@@ -597,20 +587,20 @@ describe('workflow version restoration persistence', () => {
         WorkflowRevisionConflictError,
       );
       await waitForPostgresLock(saveApplication);
-      releaseRestore.resolve();
+      await restoreHold.release();
       await expect(restore).resolves.toMatchObject({
         revision: 4,
         graphJson: emptyGraph,
       });
       await saveExpectation;
     } finally {
-      releaseRestore.resolve();
+      await restoreHold.release();
       await Promise.all([restoreFirst.close(), saveAfterRestore.close()]);
+      await restoreHold.remove();
     }
 
     const saveFirstFixture = await createRestoreFixture('race-save-first');
-    const saveLocked = deferred();
-    const releaseSave = deferred();
+    const saveHold = await holdAtWrite(draftWrite(saveFirstFixture.workflowId));
     const saveFirstApplication = `save-first-${randomUUID()}`;
     const restoreAfterSaveApplication = `restore-after-save-${randomUUID()}`;
     const saveFirst = createWorkflowAuthoringDatabase(
@@ -618,14 +608,6 @@ describe('workflow version restoration persistence', () => {
         connectionString: withApplicationName(apiUrl, saveFirstApplication),
         max: 1,
       }),
-      {
-        testHooks: {
-          afterSaveCas: async () => {
-            saveLocked.resolve();
-            await releaseSave.promise;
-          },
-        },
-      },
     );
     const restoreAfterSave = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({
@@ -651,7 +633,7 @@ describe('workflow version restoration persistence', () => {
         workspaceId,
       });
       await waitForOperationEntry(
-        saveLocked.promise,
+        saveHold.reached(),
         save,
         'save-first command',
       );
@@ -662,12 +644,13 @@ describe('workflow version restoration persistence', () => {
         currentRevision: 4,
       });
       await waitForPostgresLock(restoreAfterSaveApplication);
-      releaseSave.resolve();
+      await saveHold.release();
       await expect(save).resolves.toMatchObject({ revision: 4 });
       await restoreExpectation;
     } finally {
-      releaseSave.resolve();
+      await saveHold.release();
       await Promise.all([saveFirst.close(), restoreAfterSave.close()]);
+      await saveHold.remove();
     }
   });
 

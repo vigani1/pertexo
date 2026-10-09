@@ -14,8 +14,10 @@ import {
   saveCurrentDraft,
   draftNode,
   emptyGraph,
+  failAtWrite,
   finishTransactionClient,
   parseDatabaseConfig,
+  publicationWrite,
   randomUUID,
   workflowDraftRepresentationTag,
   workflowId,
@@ -148,17 +150,8 @@ describe('workflow publication atomicity', () => {
           name: `Rollback ${step}`,
           workspaceId,
         });
-        const faulting = createWorkflowAuthoringDatabase(
-          parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-          {
-            definitionCatalog: rollbackCatalog,
-            testHooks: {
-              afterPublishStep: (reached) =>
-                reached === step
-                  ? Promise.reject(new Error(`injected-${step}`))
-                  : Promise.resolve(),
-            },
-          },
+        const fault = await failAtWrite(
+          publicationWrite(step, created.workflowId),
         );
         try {
           const representationTag = await currentRepresentationTag(
@@ -169,7 +162,7 @@ describe('workflow publication atomicity', () => {
             rollbackCatalog,
           );
           await expect(
-            faulting.publishWorkflow({
+            rollbackAuthoring.publishWorkflow({
               actorId,
               representationTag,
               idempotencyKey: `publish-rollback-${step}`,
@@ -177,9 +170,9 @@ describe('workflow publication atomicity', () => {
               workflowId: created.workflowId,
               workspaceId,
             }),
-          ).rejects.toThrow(`injected-${step}`);
+          ).rejects.toThrow(fault.message);
         } finally {
-          await faulting.close();
+          await fault.remove();
         }
         const proof = await apiPool.connect();
         let proofOpen = false;
@@ -251,10 +244,9 @@ describe('workflow publication atomicity', () => {
         workspaceId,
       });
       const beforeRebuild = await publicationFacts(reused.workflowId);
-      for (const [index, step] of [
-        'integration_usage',
-        'trigger_projection',
-      ].entries()) {
+      for (const [index, step] of (
+        ['integration_usage', 'trigger_projection'] as const
+      ).entries()) {
         await saveCurrentDraft(rollbackAuthoring, {
           actorId,
           expectedRevision: index + 1,
@@ -268,21 +260,12 @@ describe('workflow publication atomicity', () => {
           workflowId: reused.workflowId,
           workspaceId,
         });
-        const faulting = createWorkflowAuthoringDatabase(
-          parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-          {
-            definitionCatalog: rollbackCatalog,
-            testHooks: {
-              afterPublishStep: (reached) =>
-                reached === step
-                  ? Promise.reject(new Error(`injected-rebuild-${step}`))
-                  : Promise.resolve(),
-            },
-          },
+        const fault = await failAtWrite(
+          publicationWrite(step, reused.workflowId),
         );
         try {
           await expect(
-            faulting.publishWorkflow({
+            rollbackAuthoring.publishWorkflow({
               actorId,
               representationTag: await currentRepresentationTag(
                 rollbackAuthoring,
@@ -296,9 +279,9 @@ describe('workflow publication atomicity', () => {
               workflowId: reused.workflowId,
               workspaceId,
             }),
-          ).rejects.toThrow(`injected-rebuild-${step}`);
+          ).rejects.toThrow(fault.message);
         } finally {
-          await faulting.close();
+          await fault.remove();
         }
         expect(await publicationFacts(reused.workflowId)).toEqual(
           beforeRebuild,
