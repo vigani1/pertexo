@@ -1,3 +1,4 @@
+import { createCheckpoint } from '@pertexo/workflow-engine';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
@@ -117,12 +118,19 @@ export function executionStore(
     }),
     loadInputs: vi.fn().mockResolvedValue({
       abortRequested: false,
-      completedNodeOutputs: {},
+      checkpoint: createCheckpoint({
+        engineVersion: 'phase3-engine-v1',
+        workflowVersionId: lease().workflowVersionId,
+        iterationBudget: 0,
+        nextEventSequence: 2,
+      }),
+      completedNodeOutputs: [],
       runInput: null,
     }),
     markDispatched: vi
       .fn<NodeAttemptRunStore['markDispatched']>()
       .mockResolvedValue({ dispatchedAt: new Date() }),
+    readLoopDeclaration: vi.fn(),
     ...overrides,
   };
 }

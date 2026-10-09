@@ -260,21 +260,27 @@ export type NodeAttemptClaimResult =
   | Readonly<{ kind: 'duplicate' }>
   | Readonly<{ kind: 'claimed'; lease: NodeAttemptLease }>;
 
-export type NodeAttemptInputs = Readonly<{
+/** What the database holds for an attempt; execution projects the rest. */
+export type NodeAttemptStoredInputs = Readonly<{
   runInput: unknown;
-  completedNodeOutputs: unknown;
-  structuredCollection?: Readonly<{
-    loopNodeId: string;
-    ordinal: number;
-    collection: unknown;
-    collectionSize: number;
-    declaredCollectionChecksum: string;
-  }>;
-  coordinatorInput?: unknown;
+  completedNodeOutputs: readonly Readonly<{
+    invocationKey: string;
+    nodeId: string;
+    value: unknown;
+  }>[];
   resumeOutput?: unknown;
   abortRequested: boolean;
   abortReason?: 'canceled' | 'timed_out';
   deadlineAt?: Date;
+  /** The run's stored checkpoint JSON. */
+  checkpoint: unknown;
+}>;
+
+/** The succeeded output of the node that declared a For Each collection. */
+export type NodeAttemptLoopDeclaration = Readonly<{
+  nodeId: string;
+  attemptId: string;
+  output: unknown;
 }>;
 
 export type NodeAttemptCompletion =
@@ -310,7 +316,14 @@ export interface NodeAttemptRunStore {
       }>[];
       signal: AbortSignal;
     }>,
-  ): Promise<NodeAttemptInputs>;
+  ): Promise<NodeAttemptStoredInputs>;
+  readLoopDeclaration(
+    input: Readonly<{
+      lease: NodeAttemptLease;
+      controlInvocationKey: string;
+      signal: AbortSignal;
+    }>,
+  ): Promise<NodeAttemptLoopDeclaration | undefined>;
   markDispatched(
     input: Readonly<{
       lease: NodeAttemptLease;

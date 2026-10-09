@@ -196,7 +196,8 @@ export type {
   CompleteNodeAttemptResult,
   NodeAttemptCompletion,
   NodeAttemptClaimResult,
-  NodeAttemptInputs,
+  NodeAttemptLoopDeclaration,
+  NodeAttemptStoredInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,
 } from './node-attempts/node-attempt-run-store.js';

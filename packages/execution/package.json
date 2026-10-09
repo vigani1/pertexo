@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@pertexo/database": "workspace:*",
-    "@pertexo/workflow-engine": "workspace:*"
+    "@pertexo/workflow-engine": "workspace:*",
+    "@pertexo/workflow-model": "workspace:*"
   },
   "devDependencies": {
     "@pertexo/nodes-core": "workspace:*"

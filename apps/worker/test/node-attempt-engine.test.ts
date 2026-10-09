@@ -356,7 +356,7 @@ describe('node attempt execution engine', () => {
     await expect(
       prepared.execute({
         runInput: { hello: 'world' },
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         abortRequested: false,
         registry: createCoreNodeRegistry(),
         signal: new AbortController().signal,
@@ -391,7 +391,7 @@ describe('node attempt execution engine', () => {
         .prepare({ projection, lease: fixture('manual').lease })
         .execute({
           runInput: { hello: 'world' },
-          completedNodeOutputs: {},
+          completedNodeOutputs: [],
           abortRequested: false,
           registry: createCoreNodeRegistry(),
           signal: new AbortController().signal,
@@ -715,7 +715,7 @@ describe('node attempt execution engine', () => {
     await expect(
       prepared.execute({
         abortRequested: true,
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         registry: { execute },
         runInput: null,
         signal: new AbortController().signal,
@@ -762,7 +762,7 @@ describe('node attempt execution engine', () => {
     await expect(
       prepared.execute({
         runInput: { target: true },
-        completedNodeOutputs: {},
+        completedNodeOutputs: [],
         abortRequested: false,
         registry: createCoreNodeRegistryForRelease(
           CORE_REGISTRY_RELEASE_SUCCESSOR,

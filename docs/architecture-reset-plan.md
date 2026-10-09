@@ -106,8 +106,15 @@ now, as one ordered program — not "whenever we touch it".
         cancel keep their transaction in the database and get the engine's
         part from execution, the same seam as advancing: moving the
         transactions themselves would make execution a pass-through.
-  - [ ] Attempts (claim, heartbeat, decisions), previews, notifications,
-        outbox; the database's checkpoint schema copy goes with the last user.
+  - [x] Attempt inputs: execution's `loadAttemptInputs` projects a join's
+        selection and a For Each item from the checkpoint with the engine's
+        types; the database reads rows only (`loadInputs`,
+        `readLoopDeclaration`). The database's checkpoint schema copy
+        (`compatibility/persisted-workflow-checkpoint*`, ~800 lines) is gone;
+        run acceptance keeps only the check that the checkpoint belongs to the
+        run row.
+  - [ ] Attempts, previews, notifications and outbox move to their own
+        database areas (claim, heartbeat, completion stay storage).
   - [ ] For Each overflow check.
 - [ ] **7. Database feature areas** — authoring, workspaces, connections,
       triggers, notifications, inbox, workspace lifecycle and retention: rules

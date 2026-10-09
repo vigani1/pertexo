@@ -7,3 +7,5 @@ export {
   ENGINE_VERSION,
   initialCheckpointFactory,
 } from './runs/initial-checkpoint.js';
+export { loadAttemptInputs } from './attempts/load-inputs.js';
+export type { NodeAttemptInputs } from './attempts/load-inputs.js';
