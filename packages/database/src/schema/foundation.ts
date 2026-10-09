@@ -53,14 +53,6 @@ export const workspaces = appSchema.table(
     deletionRequestedBy: uuid('deletion_requested_by'),
     deletionReason: varchar('deletion_reason', { length: 512 }),
     purgeAfter: timestamp('purge_after', { withTimezone: true, mode: 'date' }),
-    retentionControlSequence: bigint('retention_control_sequence', {
-      mode: 'number',
-    })
-      .default(0)
-      .notNull(),
-    retentionControlHash: char('retention_control_hash', { length: 64 })
-      .default(sql`repeat('0', 64)`)
-      .notNull(),
     /** ADR 056: failures in a row that pause a workflow's triggers. */
     autoPauseThreshold: smallint('auto_pause_threshold').default(10).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })

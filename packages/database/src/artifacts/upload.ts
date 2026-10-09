@@ -16,7 +16,6 @@ import { rolesForCapability } from '../tenant-access/workspace-policy.js';
 import { canonicalOutboxPayloadChecksum } from '../outbox/events.js';
 import type { ArtifactRecord } from './store.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
-import { withWorkspaceDestructiveOperationLock } from '../lifecycle/retention-transaction.js';
 import { artifactMetadataMatches } from './metadata-contract.js';
 
 import {
@@ -332,43 +331,34 @@ async function finalizeUpload(
   pool: Pool,
   input: FinalizeArtifactUploadInput,
 ): Promise<ArtifactRecord> {
+  input.signal?.throwIfAborted();
   const parsed = normalizeFinalizeInput(input);
-  return withWorkspaceDestructiveOperationLock(
+  const artifact = await readUploadArtifact(
     pool,
-    parsed.workspaceId,
+    { actor: input.actor, identity: input.identity },
+    'upload',
+    ['pending', 'available', 'deleting', 'deleted'],
     input.signal,
-    async () => {
-      const artifact = await readUploadArtifact(
-        pool,
-        { actor: input.actor, identity: input.identity },
-        'upload',
-        ['pending', 'available', 'deleting', 'deleted'],
-        input.signal,
-      );
-      if (artifact === null) throw new ArtifactUploadNotFoundError();
-      const expected = parsed.expectedMetadata;
-      if (!artifactMetadataMatches(artifact, expected))
-        throw new ArtifactUploadConflictError(
-          'Artifact upload metadata does not match the declared object',
-        );
-      if (artifact.status === 'available') return artifact;
-      if (artifact.status !== 'pending')
-        throw new ArtifactUploadConflictError('Artifact upload is not pending');
-      await input.verifyUpload?.();
-      input.signal?.throwIfAborted();
-      return completeUploadFinalization(pool, input, input.signal);
-    },
   );
+  if (artifact === null) throw new ArtifactUploadNotFoundError();
+  if (!artifactMetadataMatches(artifact, parsed.expectedMetadata))
+    throw new ArtifactUploadConflictError(
+      'Artifact upload metadata does not match the declared object',
+    );
+  if (artifact.status === 'available') return artifact;
+  if (artifact.status !== 'pending')
+    throw new ArtifactUploadConflictError('Artifact upload is not pending');
+  await input.verifyUpload?.();
+  input.signal?.throwIfAborted();
+  // Finalizing requires the artifact to still be pending, so an upload that
+  // expiry cleanup started deleting meanwhile fails instead.
+  return completeUploadFinalization(pool, input, input.signal);
 }
 
 export function createArtifactUploadDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): ArtifactUploadDatabase {
-  if (config.max < 2)
-    throw new RangeError(
-      'Artifact upload coordination requires a database pool of at least 2 connections',
-    );
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({

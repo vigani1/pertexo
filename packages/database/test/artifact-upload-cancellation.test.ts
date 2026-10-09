@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const seams = vi.hoisted(() => ({
   withTenantScopedClient: vi.fn(),
-  withWorkspaceDestructiveOperationLock: vi.fn(),
 }));
 
 vi.mock('../src/platform/database-runtime.js', () => ({
@@ -16,11 +15,6 @@ vi.mock('../src/platform/database-runtime.js', () => ({
 
 vi.mock('../src/tenant-access/workspace.js', () => ({
   withTenantScopedClient: seams.withTenantScopedClient,
-}));
-
-vi.mock('../src/lifecycle/retention-transaction.js', () => ({
-  withWorkspaceDestructiveOperationLock:
-    seams.withWorkspaceDestructiveOperationLock,
 }));
 
 import { createArtifactUploadDatabase } from '../src/artifacts/upload.js';
@@ -66,24 +60,12 @@ function input(signal: AbortSignal, verifyUpload?: () => Promise<void>) {
 describe('artifact upload finalization cancellation', () => {
   beforeEach(() => {
     seams.withTenantScopedClient.mockReset();
-    seams.withWorkspaceDestructiveOperationLock.mockReset();
-    seams.withWorkspaceDestructiveOperationLock.mockImplementation(
-      async (
-        _pool: unknown,
-        _workspaceId: string,
-        signal: AbortSignal | undefined,
-        work: () => Promise<unknown>,
-      ) => {
-        signal?.throwIfAborted();
-        return work();
-      },
-    );
     seams.withTenantScopedClient
       .mockResolvedValueOnce(pending)
       .mockResolvedValueOnce(available);
   });
 
-  it('rejects before lock acquisition without starting a transaction', async () => {
+  it('rejects a pre-aborted call without starting a transaction', async () => {
     const controller = new AbortController();
     const reason = new Error('pre-aborted finalization');
     controller.abort(reason);
@@ -124,51 +106,6 @@ describe('artifact upload finalization cancellation', () => {
         }),
       ),
     ).rejects.toBe(reason);
-    expect(seams.withTenantScopedClient).toHaveBeenCalledOnce();
-  });
-
-  it('keeps the lifecycle lock until noncooperative verification settles', async () => {
-    const verification = Promise.withResolvers<undefined>();
-    const verificationStarted = Promise.withResolvers<undefined>();
-    let lockReleased = false;
-    seams.withWorkspaceDestructiveOperationLock.mockImplementation(
-      async (
-        _pool: unknown,
-        _workspaceId: string,
-        _signal: AbortSignal | undefined,
-        work: () => Promise<unknown>,
-      ) => {
-        try {
-          return await work();
-        } finally {
-          lockReleased = true;
-        }
-      },
-    );
-    const controller = new AbortController();
-    const reason = new Error('caller left during verification');
-    const database = createArtifactUploadDatabase(config);
-    const finalizing = database.finalizeUpload(
-      input(controller.signal, async () => {
-        verificationStarted.resolve(undefined);
-        await verification.promise;
-      }),
-    );
-    const outcome = finalizing.then(
-      (value) => ({ status: 'fulfilled' as const, value }),
-      (error: unknown) => ({ error, status: 'rejected' as const }),
-    );
-
-    await verificationStarted.promise;
-    controller.abort(reason);
-    await Promise.resolve();
-    expect(lockReleased).toBe(false);
-    verification.resolve(undefined);
-    await expect(outcome).resolves.toEqual({
-      error: reason,
-      status: 'rejected',
-    });
-    expect(lockReleased).toBe(true);
     expect(seams.withTenantScopedClient).toHaveBeenCalledOnce();
   });
 

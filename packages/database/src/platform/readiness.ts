@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0002_workspace_lifecycle.sql';
+export const EXPECTED_MIGRATION_HEAD = '0003_artifact_retention.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

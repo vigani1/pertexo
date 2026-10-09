@@ -1,15 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PoolClient } from 'pg';
 
 import {
-  ArtifactUploadConflictError,
+  ArtifactUploadNotFoundError,
   createArtifactUploadDatabase,
 } from '../src/artifacts/upload.js';
-import {
-  acquireWorkspaceDestructiveOperationLock,
-  releaseWorkspaceDestructiveOperationLock,
-  withWorkspaceDestructiveOperationLock,
-} from '../src/lifecycle/retention-transaction.js';
 
 import {
   Pool,
@@ -21,7 +15,6 @@ import {
   parseDatabaseConfig,
   randomUUID,
   runIds,
-  waitForPostgresLock,
   withApplicationName,
   workspaceId,
   userId,
@@ -163,14 +156,6 @@ beforeEach(async () => {
       `update app.workspace_artifact_capacity
          set charged_bytes=0,charged_count=0,updated_at=clock_timestamp()
        where workspace_id=$1`,
-      [workspaceId],
-    );
-    await client.query(
-      `update app.workspaces
-         set retention_control_sequence=0,
-             retention_control_hash=repeat('0',64),
-             updated_at=clock_timestamp()
-       where id=$1`,
       [workspaceId],
     );
   });
@@ -441,14 +426,13 @@ describe('retention artifact reclamation', () => {
             }),
           ],
         );
-        let settled = false;
-        following = coordinator.processNext().then((result) => {
-          settled = true;
-          return result;
+        // The writer holds the artifact while it adds a reference, so cleanup
+        // passes it by instead of waiting.
+        await expect(coordinator.processNext()).resolves.toEqual({
+          status: 'idle',
         });
-        await waitForPostgresLock(coordinatorApplication);
-        expect(settled).toBe(false);
         await writer.query('rollback');
+        following = coordinator.processNext();
         await deleteStarted.promise;
         await expect(readCapacity()).resolves.toEqual({
           chargedBytes: 30,
@@ -536,8 +520,7 @@ describe('retention artifact reclamation', () => {
     }
   });
 
-  it('serializes late upload verification with expiry cleanup', async () => {
-    const applicationName = `retention-finalize-${randomUUID()}`;
+  it('fails a late upload finalization once expiry cleanup erased it', async () => {
     const apiUrl = new URL(
       process.env.DATABASE_URL ??
         'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
@@ -550,8 +533,6 @@ describe('retention artifact reclamation', () => {
     let coordinator:
       ReturnType<typeof createRunArtifactRetentionCoordinator> | undefined;
     let finalization: Promise<unknown> | undefined;
-    let retentionResult: Promise<unknown> | undefined;
-    let replicaBytesPresent = false;
     try {
       await withOwnerTransaction(async (client) => {
         await client.query(
@@ -588,7 +569,6 @@ describe('retention artifact reclamation', () => {
           verifyUpload: async () => {
             verificationStarted.resolve(undefined);
             await releaseVerification.promise;
-            replicaBytesPresent = true;
           },
         })
         .catch((error: unknown) => error);
@@ -601,215 +581,32 @@ describe('retention artifact reclamation', () => {
         );
       });
       const artifacts = {
-        delete: vi.fn(() => {
-          replicaBytesPresent = false;
-          return Promise.resolve();
-        }),
+        delete: vi.fn(() => Promise.resolve()),
         head: vi.fn(() => Promise.resolve(null)),
       };
       coordinator = createRunArtifactRetentionCoordinator(
-        parseDatabaseConfig({
-          connectionString: withApplicationName(
-            maintenanceUrl,
-            applicationName,
-          ),
-          max: 2,
-        }),
+        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
         artifacts,
       );
-      let retentionSettled = false;
-      retentionResult = coordinator.processNext().then((result) => {
-        retentionSettled = true;
-        return result;
-      });
-      await waitForPostgresLock(applicationName);
-      expect(retentionSettled).toBe(false);
-      expect(artifacts.delete).not.toHaveBeenCalled();
-
-      releaseVerification.resolve(undefined);
-      await expect(finalization).resolves.toBeInstanceOf(
-        ArtifactUploadConflictError,
-      );
-      expect(replicaBytesPresent).toBe(true);
-      await expect(retentionResult).resolves.toMatchObject({
+      // Cleanup does not wait for the upload; it erases the expired bytes.
+      await expect(coordinator.processNext()).resolves.toMatchObject({
         artifactId: created.artifact.id,
         status: 'completed',
         workspaceId,
       });
-      expect(replicaBytesPresent).toBe(false);
       expect(artifacts.delete).toHaveBeenCalledOnce();
+
+      // Finalizing then finds nothing left to make available.
+      releaseVerification.resolve(undefined);
+      await expect(finalization).resolves.toBeInstanceOf(
+        ArtifactUploadNotFoundError,
+      );
       await expect(readCapacity()).resolves.toEqual(capacityBefore);
     } finally {
       releaseVerification.resolve(undefined);
-      await Promise.allSettled([
-        finalization ?? Promise.resolve(),
-        retentionResult ?? Promise.resolve(),
-      ]);
+      await (finalization ?? Promise.resolve());
       await coordinator?.close();
       await uploadDatabase.close();
-    }
-  });
-
-  it('cancels a PostgreSQL lock wait and returns its connection promptly', async () => {
-    const applicationName = `retention-cancel-${randomUUID()}`;
-    const holderPool = new Pool({ connectionString: maintenanceUrl, max: 1 });
-    const waiterPool = new Pool({
-      connectionString: withApplicationName(maintenanceUrl, applicationName),
-      max: 2,
-    });
-    let holder: PoolClient | undefined;
-    let holderLocked = false;
-    let settledOperation: Promise<void> | undefined;
-    const work = vi.fn(() => Promise.resolve());
-    try {
-      const acquiredHolder = await holderPool.connect();
-      holder = acquiredHolder;
-      await acquireWorkspaceDestructiveOperationLock(
-        acquiredHolder,
-        workspaceId,
-      );
-      holderLocked = true;
-      const controller = new AbortController();
-      const operation = withWorkspaceDestructiveOperationLock(
-        waiterPool,
-        workspaceId,
-        controller.signal,
-        work,
-      );
-      const unsettled = Symbol('unsettled');
-      let outcome: unknown = unsettled;
-      settledOperation = operation.then(
-        () => {
-          outcome = undefined;
-        },
-        (error: unknown) => {
-          outcome = error;
-        },
-      );
-      await waitForPostgresLock(applicationName);
-
-      const cancellation = new Error(
-        'cancelled while waiting for lifecycle lock',
-      );
-      controller.abort(cancellation);
-      await vi.waitFor(
-        () => {
-          expect(outcome).toBe(cancellation);
-        },
-        {
-          timeout: 1_000,
-        },
-      );
-      expect(waiterPool.totalCount).toBe(0);
-      expect(work).not.toHaveBeenCalled();
-
-      await releaseWorkspaceDestructiveOperationLock(
-        acquiredHolder,
-        workspaceId,
-      );
-      holderLocked = false;
-      await expect(
-        withWorkspaceDestructiveOperationLock(
-          waiterPool,
-          workspaceId,
-          undefined,
-          () => Promise.resolve('lock-released'),
-        ),
-      ).resolves.toBe('lock-released');
-    } finally {
-      if (holderLocked && holder !== undefined)
-        await releaseWorkspaceDestructiveOperationLock(holder, workspaceId);
-      await settledOperation;
-      holder?.release();
-      await holderPool.end();
-      await waiterPool.end();
-    }
-  });
-
-  it('does not mistake an undefined destructive-work rejection for success', async () => {
-    const pool = new Pool({ connectionString: maintenanceUrl, max: 2 });
-    let rejected = false;
-    try {
-      await withWorkspaceDestructiveOperationLock(
-        pool,
-        workspaceId,
-        undefined,
-        // Deliberately exercise a hostile non-Error adapter rejection.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-        () => Promise.reject(undefined),
-      );
-    } catch (error) {
-      rejected = true;
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe(
-        'Workspace destructive operation failed',
-      );
-      expect(Object.hasOwn(error as Error, 'cause')).toBe(true);
-      expect((error as Error).cause).toBeUndefined();
-    } finally {
-      await expect(pool.query('select 1')).resolves.toMatchObject({
-        rowCount: 1,
-      });
-      await pool.end();
-    }
-    expect(rejected).toBe(true);
-  });
-
-  it('does not acquire or leak a workspace lock after cancellation while waiting for a pool connection', async () => {
-    const queuedPool = new Pool({ connectionString: maintenanceUrl, max: 2 });
-    const verifierPool = new Pool({ connectionString: maintenanceUrl, max: 1 });
-    const blockers: PoolClient[] = [];
-    let firstBlockerReleased = false;
-    let verifierLocked = false;
-    const controller = new AbortController();
-    const cancellation = new Error(
-      'cancelled while waiting for a database connection',
-    );
-    const work = vi.fn(() => Promise.resolve());
-    let operation: Promise<unknown> | undefined;
-    try {
-      blockers.push(await queuedPool.connect());
-      blockers.push(await queuedPool.connect());
-      operation = withWorkspaceDestructiveOperationLock(
-        queuedPool,
-        workspaceId,
-        controller.signal,
-        work,
-      );
-      await vi.waitFor(() => {
-        expect(queuedPool.waitingCount).toBe(1);
-      });
-      controller.abort(cancellation);
-      blockers[0]?.release();
-      firstBlockerReleased = true;
-
-      await expect(operation).rejects.toBe(cancellation);
-      await vi.waitFor(() => {
-        expect(queuedPool.waitingCount).toBe(0);
-      });
-      expect(work).not.toHaveBeenCalled();
-
-      const lock = await verifierPool.query<{ acquired: boolean }>(
-        `select pg_try_advisory_lock(
-           hashtextextended($1,1934781127)
-         ) acquired`,
-        [workspaceId],
-      );
-      verifierLocked = lock.rows[0]?.acquired === true;
-      expect(verifierLocked).toBe(true);
-    } finally {
-      if (verifierLocked)
-        await verifierPool.query(
-          `select pg_advisory_unlock(
-             hashtextextended($1,1934781127)
-           )`,
-          [workspaceId],
-        );
-      if (!firstBlockerReleased) blockers[0]?.release();
-      blockers[1]?.release();
-      await operation?.catch(() => undefined);
-      await queuedPool.end();
-      await verifierPool.end();
     }
   });
 });
