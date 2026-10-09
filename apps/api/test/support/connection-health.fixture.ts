@@ -300,7 +300,7 @@ export function useConnectionHealthFixture(
     controlOrigin = `http://127.0.0.1:${String(address.port)}`;
     worker = fork(
       new URL(
-        '../../../worker/test/connection-health-worker-process-fixture.ts',
+        '../../../worker/test/connections/health-worker-process.fixture.ts',
         import.meta.url,
       ),
       [],

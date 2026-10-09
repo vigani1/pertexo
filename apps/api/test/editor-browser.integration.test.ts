@@ -294,7 +294,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     );
     worker = ownChild(
       'pure-node worker process',
-      fork('test/editor-browser-worker-process-fixture.ts', [], {
+      fork('test/support/editor-browser/worker-process.fixture.ts', [], {
         cwd: workerDirectory,
         execArgv: ['--import', 'tsx'],
         env: { ...process.env },

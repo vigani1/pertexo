@@ -11,7 +11,7 @@ import type {
 
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
-import { drainScannerActivity } from '../runtime/scanner-shutdown.js';
+import { drainScannerActivity } from '../runtime/shutdown/scanner.js';
 import type { CoordinatorRuntime } from './runtime.js';
 
 export type CoordinatorRuntimeComposition = Readonly<{

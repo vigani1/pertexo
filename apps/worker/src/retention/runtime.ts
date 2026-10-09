@@ -10,7 +10,7 @@ import {
   createPollingRuntime,
   reportDiagnostic,
   type PollingRuntime,
-} from '../runtime/polling-runtime.js';
+} from '../runtime/polling.js';
 import type { RetentionMetrics, RetentionOperation } from './metrics.js';
 
 export type RetentionRuntime = PollingRuntime;

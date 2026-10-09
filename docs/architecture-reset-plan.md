@@ -378,6 +378,11 @@ now, as one ordered program — not "whenever we touch it".
           connection run health always run; their env switches go, and
           migration 0021 drops the stored health mode. Artifact storage and
           retention are required.
+    - [x] Tests mirror the source areas (`runs/`, `attempts/`, `previews/`,
+          `transport/`, `triggers/`, …) instead of 100 flat files, and test
+          support is grouped by what it supports. `transport/` splits into
+          `outbox/` and `providers/`, `runtime/` into `health/` and
+          `shutdown/`.
     - [ ] One message format: queue jobs, outbox rows and run events drop
           their `schemaVersion: 1`, and the outbox payload checksum goes
           with the re-checks built on it.

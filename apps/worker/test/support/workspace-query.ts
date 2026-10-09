@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { lockManualFixtureClient } from './manual-start.fixture.js';
+import { lockManualFixtureClient } from './attempts/manual-start.js';
 
 export async function queryAsWorkspaceRole<Row extends Record<string, unknown>>(
   pool: Pool,

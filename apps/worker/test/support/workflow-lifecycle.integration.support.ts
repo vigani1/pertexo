@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { lockManualFixtureClient } from './manual-start.fixture.js';
+import { lockManualFixtureClient } from './attempts/manual-start.js';
 
 import {
   createIdentityWorkspaceDatabase,
@@ -29,14 +29,14 @@ import {
   type QueryResultRow,
 } from 'pg';
 
-import { dropDisconnectedDatabase } from './disposable-database.js';
-import { WorkerDrainState } from '../../src/runtime/drain-state.js';
-import { OutboxDispatcher } from '../../src/transport/outbox-dispatcher.js';
+import { dropDisconnectedDatabase } from './infrastructure/disposable-database.js';
+import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatcher.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,
 } from '../../src/triggers/runtime.js';
-import { createRedisTestNamespace } from './redis-test-namespace.js';
+import { createRedisTestNamespace } from './infrastructure/redis-test-namespace.js';
 
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 const appRole = process.env.POSTGRES_APP_USER ?? 'pertexo_app';

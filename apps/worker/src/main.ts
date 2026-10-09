@@ -9,7 +9,7 @@ import type * as LoggingModule from '@pertexo/observability';
 
 import type * as WorkerApplicationModule from './app.js';
 import { parseWorkerConfig, type WorkerConfig } from './config/worker.js';
-import { WorkerProcessShutdown } from './runtime/process-shutdown.js';
+import { WorkerProcessShutdown } from './runtime/shutdown/process.js';
 
 interface CloseableApplication {
   close(signal?: string): Promise<void>;
