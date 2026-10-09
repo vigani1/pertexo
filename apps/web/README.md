@@ -1,18 +1,18 @@
 # Pertexo web
 
-React 19 + TypeScript + Vite, in the existing pnpm workspace. Stages 1–6 are
-implemented: browser-safe contracts and transport, provider-only OIDC sign-in,
-session recovery/logout, workspace entry, workflow list/create and discovery,
-workspace creation/display-name editing, a Home with exact run statistics and
-the Loom, bounded recent-activity Overview, the bounded workflow editor with
-conflict-safe draft persistence, validation, node preview, typed visual input
-mappings, exact-version publishing, run start, live run detail and
-contract-backed workflow settings/operations, including automatic trigger-pause
-rules, owner-managed workspace defaults and explicit Resume controls. The first
-read-only Usage slice separates current execution/artifact capacity from ADR 044
-retained run activity, with independent snapshots and exact server-window
-drilldowns (ADR 057). It does not introduce billing, an operation meter,
-warnings, quota editing or calendar reporting.
+React 19 + TypeScript + Vite, in the existing pnpm workspace. Implemented:
+browser-safe contracts and transport, Better Auth sign-in (email and password,
+social providers) with account security, session recovery/logout, workspace
+entry, workflow list/create and discovery, workspace creation/display-name
+editing, a Home with exact run statistics and the Loom, bounded recent-activity
+Overview, the bounded workflow editor with conflict-safe draft persistence,
+validation, node preview, typed visual input mappings, exact-version publishing,
+run start, live run detail and contract-backed workflow settings/operations,
+including automatic trigger-pause rules, owner-managed workspace defaults and
+explicit Resume controls. The first read-only Usage slice separates current
+execution/artifact capacity from ADR 044 retained run activity, with independent
+snapshots and exact server-window drilldowns (ADR 057). It does not introduce
+billing, an operation meter, warnings, quota editing or calendar reporting.
 
 ADR 058's first workflow concurrency slice adds a current queue-only cap to
 workflow Settings and timestamped queued-run blocker explanations. It preserves
@@ -217,7 +217,7 @@ proof; templates and additional non-billing usage insights remain optional
 decision-gated slices beyond the read-only ADR 057 capacity/activity page.
 Payments and billing are outside current scope. Add future surfaces only from
 concrete product demand and existing contracts, following the
-[delivery gates](ARCHITECTURE.md#14-delivery-sequence-and-acceptance-gates) and
+[definition of done](ARCHITECTURE.md#14-definition-of-done-for-each-feature) and
 [coding patterns](ARCHITECTURE.md#2-folders-and-dependency-direction). Do not
 invent discovery contracts or enable artifact uploads without the required
 real-browser signing/CORS/checksum/finalize proof.
@@ -226,19 +226,18 @@ real-browser signing/CORS/checksum/finalize proof.
 
 Every page uses the Weft design system; the binding summary, the status language
 and the table of shared building blocks are in
-[ARCHITECTURE.md](ARCHITECTURE.md#weft-design-system-supersedes-the-aurora-glass-refinement).
-In short: one implementation per concept — `LabelledField` with
-`useFieldValidation` for every form, `ConfirmDialog` for every confirmation,
-`ProgressButton` for every pending command, `CopyButton` (and
-`useCopyToClipboard` in menus) for every copy, `Notice` and `StaleLine` for
-inline messages, `DeadlineField` for every run deadline, `font-display` for
-every condensed title, and `useNow`/`useCountdown` for anything that ticks.
-Motion uses CSS, Canvas 2D (`CanvasScene`) and SVG only, stops off-screen and in
-hidden tabs, and renders still frames under reduced motion. No Motion, dropzone
-or 3D dependency is installed.
+[ARCHITECTURE.md](ARCHITECTURE.md#weft-design-system). In short: one
+implementation per concept — `LabelledField` with `useFieldValidation` for every
+form, `ConfirmDialog` for every confirmation, `ProgressButton` for every pending
+command, `CopyButton` (and `useCopyToClipboard` in menus) for every copy,
+`Notice` and `StaleLine` for inline messages, `DeadlineField` for every run
+deadline, `font-display` for every condensed title, and `useNow`/`useCountdown`
+for anything that ticks. Motion uses CSS, Canvas 2D (`CanvasScene`) and SVG
+only, stops off-screen and in hidden tabs, and renders still frames under
+reduced motion. No Motion, dropzone or 3D dependency is installed.
 
 Verification covers transport failures, browser bundle composition,
-unauthenticated redirects, OIDC start/error, workspace empty/error/deep-link
+unauthenticated redirects, sign-in errors, workspace empty/error/deep-link
 states, confirmed logout cleanup, late-response cancellation, keyboard focus,
 narrow layout and reduced motion. Mocked-boundary Chromium journeys inspect the
 desktop shell and the 390-pixel editor fallback, including keyboard panel
@@ -252,9 +251,9 @@ tab's control, an append-only step story keyed by position, the invitation
 journey's token-handover and StrictMode-safe retirement effects, the Loom's
 pointer shortcut (each run is also a link in the list beside it), and two
 mutations whose cache update the caller supplies or which change nothing cached
-yet. The score remains a triage aid rather than a delivery gate. Firefox/WebKit
-and a live-backend journey through the controlled OIDC provider remain pending;
-the mocked Chromium lane does not prove either integration.
+yet. The score remains a triage aid rather than a delivery gate. Firefox and
+WebKit run the critical smoke journeys; browser journeys against the real stack
+run from the API integration suite.
 
 React Compiler was evaluated with the documented Babel/Vite integration and was
 not adopted: the controlled trial increased build work and emitted bundle size

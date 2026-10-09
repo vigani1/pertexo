@@ -2,9 +2,8 @@
 
 This is a browser-only React/Vite application, not Next.js. Root instructions
 still apply. Read [README.md](README.md) for current scope and
-[ARCHITECTURE.md](ARCHITECTURE.md) for the frontend implementation plan, ownership,
-coding patterns and slice-specific acceptance gates. The plan describes future
-work; it does not mean features or backend prerequisites already exist.
+[ARCHITECTURE.md](ARCHITECTURE.md) for ownership, coding patterns, the visual
+system and tests.
 
 ## Boundaries
 
@@ -32,7 +31,7 @@ work; it does not mean features or backend prerequisites already exist.
   component state stays local. A future editor owns its unsaved draft and scoped
   Zustand store. Never mirror that draft into multiple authoritative stores.
 - Keep credentials and secrets out of browser code and `VITE_*` variables.
-  Implement the existing OIDC/cookie/CSRF contract, not the old app's auth code.
+  Use the Better Auth session cookie and CSRF contract, not the old app's auth code.
 - Keep semantic theme tokens and locally served fonts. Reuse old design only;
   do not copy its backend assumptions or entire feature modules.
 - Put outgoing endpoint calls in feature-local `data/*.api.ts`; keep generic transport
