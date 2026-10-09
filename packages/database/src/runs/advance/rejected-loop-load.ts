@@ -1,12 +1,12 @@
 import type { PoolClient } from 'pg';
 import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
-import type { CoordinatorEventRow } from './coordinator-run-store-fact-physical-state.js';
-import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
-import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
+import type { CoordinatorEventRow } from './fact-attempts.js';
+import type { ParsedTransitionPlan } from './plan.js';
+import { CoordinatorRunStateCorruptError } from './contract.js';
 import {
   deriveRejectedForEachDeclarations,
   type RejectedForEachDeclarations,
-} from './coordinator-rejected-loop-proof.js';
+} from './rejected-loop-proof.js';
 
 /** Load the same-version immutable pin only for a declaration rejection. */
 export async function loadRejectedForEachDeclarations(

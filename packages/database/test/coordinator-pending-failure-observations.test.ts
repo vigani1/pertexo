@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { CoordinatorRunStateCorruptError } from '../src/execution/coordinator/coordinator-run-store-contract.js';
+import { CoordinatorRunStateCorruptError } from '../src/runs/advance/contract.js';
 import {
   appendPendingFailureObservations,
   type PendingFailureRow,
-} from '../src/execution/coordinator/coordinator-pending-failure-observations.js';
+} from '../src/runs/advance/pending-failures.js';
 import { safeErrorCodeSchema } from '../src/execution/node-attempts/node-attempt-run-store-contract.js';
 
 const valid = (): PendingFailureRow => ({

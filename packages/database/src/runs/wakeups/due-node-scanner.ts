@@ -3,17 +3,17 @@ import type { DatabaseRuntime } from '../../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../../config.js';
 import { withPlatformTransaction } from '../../tenant-access/workspace.js';
-import { parseClaimedWakeups } from './coordinator-wakeup-scan-result.js';
+import { parseClaimedWakeups } from './scan-result.js';
 
-export interface DeadlineWakeupScanner {
+export interface DueNodeWakeupScanner {
   claimDueWakeups(limit: number, signal?: AbortSignal): Promise<number>;
   close(): Promise<void>;
 }
 
-export function createDeadlineWakeupScanner(
+export function createDueNodeWakeupScanner(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): DeadlineWakeupScanner {
+): DueNodeWakeupScanner {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
@@ -22,12 +22,12 @@ export function createDeadlineWakeupScanner(
       signal?: AbortSignal,
     ): Promise<number> => {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
-        throw new TypeError('Deadline wakeup limit must be between 1 and 100');
+        throw new TypeError('Due node wakeup limit must be between 1 and 100');
       return withPlatformTransaction(
         pool,
         async (client) => {
           const result = await client.query<{ claimed: number }>(
-            'select app.claim_due_workflow_run_deadlines($1)::integer as claimed',
+            'select app.claim_due_node_run_wakeups($1)::integer as claimed',
             [limit],
           );
           return parseClaimedWakeups(result.rows, limit);

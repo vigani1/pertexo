@@ -1,14 +1,11 @@
 import {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
-} from './coordinator-run-store-contract.js';
-import { terminalStatus } from './coordinator-run-store-observations.js';
-import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
-import { sameKeys } from './coordinator-run-store-plan-validation.js';
-import {
-  assertPlan,
-  sameStoredValue,
-} from './coordinator-run-store-validation-values.js';
+} from './contract.js';
+import { terminalStatus } from './facts.js';
+import type { ParsedTransitionPlan } from './plan.js';
+import { sameKeys } from './plan-validation.js';
+import { assertPlan, sameStoredValue } from './stored-values.js';
 import type { PersistedWorkflowCheckpoint } from '../../compatibility/persisted-workflow-checkpoint.js';
 
 type Invocation = PersistedWorkflowCheckpoint['invocations'][number];

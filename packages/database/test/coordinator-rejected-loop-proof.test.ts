@@ -2,13 +2,13 @@ import { expect, it } from 'vitest';
 import { workflowForEachBoundsV2 } from '@pertexo/workflow-model/graph';
 import { encodeWorkflowInvocationKeyV2 } from '@pertexo/workflow-model/invocation-key-v2';
 import type { PersistedWorkflowCheckpoint } from '../src/compatibility/persisted-workflow-checkpoint.js';
-import type { CoordinatorEventRow } from '../src/execution/coordinator/coordinator-run-store-fact-physical-state.js';
-import type { ParsedTransitionPlan } from '../src/execution/coordinator/coordinator-run-store-plan.js';
+import type { CoordinatorEventRow } from '../src/runs/advance/fact-attempts.js';
+import type { ParsedTransitionPlan } from '../src/runs/advance/plan.js';
 import { CoordinatorPlanInvalidError } from '../src/testing.js';
 import {
   deriveRejectedForEachDeclarations,
   isRejectedForEachCollection,
-} from '../src/execution/coordinator/coordinator-rejected-loop-proof.js';
+} from '../src/runs/advance/rejected-loop-proof.js';
 
 type V2 = Extract<PersistedWorkflowCheckpoint, { schemaVersion: 2 }>;
 type Plan = ParsedTransitionPlan & { checkpoint: V2 };

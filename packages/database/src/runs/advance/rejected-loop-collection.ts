@@ -1,5 +1,5 @@
 import type { workflowForEachBoundsV2 } from '@pertexo/workflow-model/graph';
-import { parseStoredExecutionValueV1 } from '../stored-execution-value.js';
+import { parseStoredExecutionValueV1 } from '../../execution/stored-execution-value.js';
 
 type Bounds = ReturnType<typeof workflowForEachBoundsV2>;
 type IterationPath = readonly Readonly<{

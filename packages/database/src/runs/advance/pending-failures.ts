@@ -1,4 +1,4 @@
-import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
+import { CoordinatorRunStateCorruptError } from './contract.js';
 import { isSafeExecutorErrorCode } from '@pertexo/workflow-model/attempt-failure';
 
 export type PendingFailureRow = Readonly<{

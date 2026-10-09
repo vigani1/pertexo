@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { CoordinatorRunStateCorruptError } from '../src/execution/coordinator/coordinator-run-store-contract.js';
-import { parseClaimedWakeups } from '../src/execution/coordinator/coordinator-wakeup-scan-result.js';
+import { CoordinatorRunStateCorruptError } from '../src/runs/advance/contract.js';
+import { parseClaimedWakeups } from '../src/runs/wakeups/scan-result.js';
 
 describe('coordinator wakeup scan result', () => {
   it.each([0, 1, 100])('accepts an exact bounded count of %i', (claimed) => {

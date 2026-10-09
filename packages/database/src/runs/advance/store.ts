@@ -14,10 +14,10 @@ import {
   type CoordinatorRunStore,
   type LoadAdvanceStateInput,
   type LoadAdvanceStateResult,
-} from './coordinator-run-store-contract.js';
-import { commitCoordinatorAdvancePlan } from './coordinator-run-store-commit.js';
-import { acknowledgeCoordinatorDelivery } from './coordinator-run-store-delivery.js';
-import { loadCoordinatorAdvanceState } from './coordinator-run-store-observations.js';
+} from './contract.js';
+import { commitCoordinatorAdvancePlan } from './commit.js';
+import { acknowledgeCoordinatorDelivery } from './receipts.js';
+import { loadCoordinatorAdvanceState } from './facts.js';
 
 export {
   CoordinatorDeliveryMismatchError,
