@@ -199,13 +199,13 @@ describe('bounded workflow state-machine model', () => {
     ).toBeUndefined();
     expect(
       configuredParallelOutputPorts({
-        definition: { key: 'core.parallel', version: 3 },
+        definition: { key: 'core.parallel', version: 1 },
         config: { branches: 'branch-01' },
       }),
     ).toBeUndefined();
     expect(
       configuredParallelOutputPorts({
-        definition: { key: 'core.parallel', version: 3 },
+        definition: { key: 'core.parallel', version: 1 },
         config: { branches: [null, { id: 'branch-02' }] },
       }),
     ).toBeUndefined();

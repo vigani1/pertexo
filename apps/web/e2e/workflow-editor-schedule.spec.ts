@@ -14,9 +14,9 @@ const misfirePolicy = {
 };
 const scheduleDefinition = {
   ...definition,
-  definition: { key: 'core.schedule', version: 3 },
+  definition: { key: 'core.schedule', version: 1 },
   family: 'trigger',
-  configVersion: 3,
+  configVersion: 1,
   configSchema: {
     oneOf: [
       {
@@ -61,9 +61,9 @@ test('builds a schedule with a sentence preview and saves the step’s own confi
       {
         id: 'nightly',
         label: 'Nightly',
-        definition: { key: 'core.schedule', version: 3 },
+        definition: { key: 'core.schedule', version: 1 },
         position: { x: 80, y: 80 },
-        configVersion: 3,
+        configVersion: 1,
         config: {},
         inputMappings: {},
         connectionRefs: {},

@@ -12,15 +12,12 @@ import {
   CORE_MERGE_DEFINITION,
   CORE_MERGE_EXECUTOR,
   CORE_MERGE_INPUT_SCHEMA,
-  CORE_MERGE_INPUT_SCHEMA_V2,
   CORE_MERGE_MANIFEST,
-  CORE_MERGE_MANIFEST_V3,
   CORE_PARALLEL_CONFIG_SCHEMA,
   CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_EXECUTOR,
   CORE_PARALLEL_MANIFEST,
-  CORE_PARALLEL_MANIFEST_V3,
-  CORE_PARALLEL_OUTPUT_SCHEMA_V2,
+  CORE_PARALLEL_OUTPUT_SCHEMA,
   CORE_SWITCH_CONFIG_SCHEMA,
   CORE_SWITCH_DEFINITION,
   CORE_SWITCH_EXECUTOR,
@@ -270,7 +267,7 @@ describe('core orchestration node contracts', () => {
 
   it('requires unique Parallel output branches', () => {
     expect(
-      CORE_PARALLEL_OUTPUT_SCHEMA_V2.safeParse({
+      CORE_PARALLEL_OUTPUT_SCHEMA.safeParse({
         branchIds: ['branch-01', 'branch-01'],
       }).success,
     ).toBe(false);
@@ -302,7 +299,7 @@ describe('core orchestration node contracts', () => {
       selectedBranchIds: ['branch-02', 'branch-01'],
     },
   ])('rejects impossible Merge state %#', (candidate) => {
-    expect(CORE_MERGE_INPUT_SCHEMA_V2.safeParse(candidate).success).toBe(false);
+    expect(CORE_MERGE_INPUT_SCHEMA.safeParse(candidate).success).toBe(false);
   });
 
   it('accepts every settled disposition and a canonical arrived selection', () => {
@@ -316,25 +313,25 @@ describe('core orchestration node contracts', () => {
       },
       selectedBranchIds: ['branch-01'],
     };
-    expect(CORE_MERGE_INPUT_SCHEMA_V2.parse(candidate)).toEqual(candidate);
+    expect(CORE_MERGE_INPUT_SCHEMA.parse(candidate)).toEqual(candidate);
     expect(
       CORE_MERGE_INPUT_SCHEMA.safeParse({ ledger: {}, selectedBranchIds: [] })
         .success,
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('publishes runtime-only structured-node refinements for browser consumers', () => {
-    expect(CORE_PARALLEL_MANIFEST_V3.configSchema).toMatchObject({
+    expect(CORE_PARALLEL_MANIFEST.configSchema).toMatchObject({
       'x-pertexo-runtime-only-semantics': [
         expect.stringContaining('maxConcurrency'),
       ],
     });
-    expect(CORE_PARALLEL_MANIFEST_V3.outputSchema).toMatchObject({
+    expect(CORE_PARALLEL_MANIFEST.outputSchema).toMatchObject({
       'x-pertexo-runtime-only-semantics': [expect.stringContaining('unique')],
     });
     for (const schema of [
-      CORE_MERGE_MANIFEST_V3.inputSchema,
-      CORE_MERGE_MANIFEST_V3.outputSchema,
+      CORE_MERGE_MANIFEST.inputSchema,
+      CORE_MERGE_MANIFEST.outputSchema,
     ])
       expect(schema).toMatchObject({
         'x-pertexo-runtime-only-semantics': [

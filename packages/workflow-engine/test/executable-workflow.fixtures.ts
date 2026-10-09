@@ -116,13 +116,12 @@ const fixtureDefinitions: Readonly<
 export function manifest(
   key: FixtureDefinitionKey,
   policies: readonly PolicyReference[] = [boundedPolicy],
-  version: 1 | 2 | 3 = 1,
 ): NodeManifest {
   const fixture = fixtureDefinitions[key];
   return {
-    definition: { key, version },
+    definition: { key, version: 1 },
     family: fixture.family,
-    configVersion: version,
+    configVersion: 1,
     configSchema: schema,
     inputSchema: schema,
     outputSchema: schema,
@@ -135,7 +134,7 @@ export function manifest(
     retryClass: 'safe',
     resourceClass: 'cpu',
     capabilities: fixture.capabilities,
-    executor: { key, version },
+    executor: { key, version: 1 },
     executorAbi: 1,
     policyReferences: policies,
   };
@@ -153,10 +152,8 @@ export function nodeCatalog(input?: {
   readonly merge?: boolean;
   readonly forEach?: boolean;
   readonly schedule?: boolean;
-  readonly scheduleVersion?: 1 | 2 | 3;
   readonly webhook?: boolean;
   readonly extraPolicyVersion?: number;
-  readonly structuredVersion?: 1 | 2 | 3;
 }): NodeCatalog {
   const definitions = [
     manifest('core.manual'),
@@ -165,18 +162,12 @@ export function nodeCatalog(input?: {
       input?.mutateSet ? [jsonataPolicy] : [boundedPolicy, jsonataPolicy],
     ),
     manifest('core.terminate'),
-    ...(input?.schedule
-      ? [manifest('core.schedule', [boundedPolicy], input.scheduleVersion)]
-      : []),
+    ...(input?.schedule ? [manifest('core.schedule')] : []),
     ...(input?.webhook ? [manifest('core.webhook')] : []),
     ...(input?.condition ? [manifest('core.condition')] : []),
     ...(input?.switch ? [manifest('core.switch')] : []),
-    ...(input?.parallel
-      ? [manifest('core.parallel', [boundedPolicy], input.structuredVersion)]
-      : []),
-    ...(input?.merge
-      ? [manifest('core.merge', [boundedPolicy], input.structuredVersion)]
-      : []),
+    ...(input?.parallel ? [manifest('core.parallel')] : []),
+    ...(input?.merge ? [manifest('core.merge')] : []),
     ...(input?.forEach ? [manifest('core.foreach')] : []),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];
@@ -297,10 +288,7 @@ export function switchGraph(sourcePort: string) {
   };
 }
 
-export function parallelGraph(
-  secondPort = 'branch-02',
-  version: 1 | 2 | 3 = 1,
-) {
+export function parallelGraph(secondPort = 'branch-02') {
   const base = graph();
   return {
     ...base,
@@ -309,8 +297,8 @@ export function parallelGraph(
       {
         ...base.nodes[1],
         id: 'parallel',
-        definition: { key: 'core.parallel', version },
-        configVersion: version,
+        definition: { key: 'core.parallel', version: 1 },
+        configVersion: 1,
         config: {
           branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
           maxConcurrency: 1,
@@ -350,7 +338,7 @@ export function parallelGraph(
   };
 }
 
-export function pairedParallelGraph(version: 1 | 2 | 3 = 1) {
+export function pairedParallelGraph() {
   const base = graph();
   return {
     ...base,
@@ -359,8 +347,8 @@ export function pairedParallelGraph(version: 1 | 2 | 3 = 1) {
       {
         ...base.nodes[1],
         id: 'parallel',
-        definition: { key: 'core.parallel', version },
-        configVersion: version,
+        definition: { key: 'core.parallel', version: 1 },
+        configVersion: 1,
         config: {
           branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
           maxConcurrency: 1,
@@ -372,8 +360,8 @@ export function pairedParallelGraph(version: 1 | 2 | 3 = 1) {
       {
         ...base.nodes[1],
         id: 'merge',
-        definition: { key: 'core.merge', version },
-        configVersion: version,
+        definition: { key: 'core.merge', version: 1 },
+        configVersion: 1,
         config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
         inputMappings: {},
       },
@@ -423,8 +411,8 @@ export function pairedParallelGraph(version: 1 | 2 | 3 = 1) {
   };
 }
 
-export function directPairedParallelGraph(version: 1 | 2 | 3 = 1) {
-  const paired = pairedParallelGraph(version);
+export function directPairedParallelGraph() {
+  const paired = pairedParallelGraph();
   return {
     ...paired,
     nodes: paired.nodes.filter(({ id }) => id !== 'left' && id !== 'right'),

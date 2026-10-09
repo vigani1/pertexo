@@ -108,7 +108,7 @@ describe('setup lists', () => {
   it('starts new steps with a setup that’s ready where it can be', () => {
     const parallel = {
       id: 'p1',
-      definition: { key: 'core.parallel', version: 3 },
+      definition: { key: 'core.parallel', version: 1 },
     } as WorkflowNode;
     expect(startingConfig('core.parallel', [])).toEqual({
       branches: [{ id: 'branch-01' }, { id: 'branch-02' }],

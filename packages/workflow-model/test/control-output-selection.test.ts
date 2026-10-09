@@ -19,7 +19,7 @@ describe('immutable executable control-output selection', () => {
             { id: 'switch', definition: { key: 'core.switch', version: 1 } },
             {
               id: 'parallel',
-              definition: { key: 'core.parallel', version: 3 },
+              definition: { key: 'core.parallel', version: 1 },
             },
             {
               id: 'set',

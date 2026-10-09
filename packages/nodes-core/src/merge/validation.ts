@@ -12,19 +12,6 @@ const joinPolicySchema = z.discriminatedUnion('kind', [
     })
     .strict(),
 ]);
-const branchLedgerEntrySchema = z
-  .object({
-    disposition: z.enum([
-      'pending',
-      'arrived',
-      'skipped',
-      'missing',
-      'failed',
-      'canceled',
-    ]),
-    output: z.unknown().optional(),
-  })
-  .strict();
 const settledBranchLedgerEntrySchema = z
   .object({
     disposition: z.enum([
@@ -49,19 +36,6 @@ export const CORE_MERGE_CONFIG_SCHEMA = z
   })
   .strict();
 export const CORE_MERGE_INPUT_SCHEMA = z
-  .object({
-    ledger: z.partialRecord(
-      CORE_PARALLEL_BRANCH_PORT_SCHEMA,
-      branchLedgerEntrySchema,
-    ),
-    selectedBranchIds: z.array(CORE_PARALLEL_BRANCH_PORT_SCHEMA).max(16),
-  })
-  .strict();
-export const CORE_MERGE_OUTPUT_SCHEMA = CORE_MERGE_INPUT_SCHEMA.describe(
-  'Core merge node output',
-);
-
-export const CORE_MERGE_INPUT_SCHEMA_V2 = z
   .object({
     ledger: z
       .partialRecord(
@@ -104,6 +78,6 @@ export const CORE_MERGE_INPUT_SCHEMA_V2 = z
     }
   });
 
-export const CORE_MERGE_OUTPUT_SCHEMA_V2 = CORE_MERGE_INPUT_SCHEMA_V2.describe(
-  'Core merge node output version 2',
+export const CORE_MERGE_OUTPUT_SCHEMA = CORE_MERGE_INPUT_SCHEMA.describe(
+  'Core merge node output',
 );

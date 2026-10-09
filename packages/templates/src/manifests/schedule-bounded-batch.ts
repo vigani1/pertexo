@@ -11,13 +11,13 @@ export const SCHEDULE_BOUNDED_BATCH_MANIFEST: WorkflowPortableManifest = {
         id: 'schedule-start',
         definition: {
           key: 'core.schedule',
-          version: 3,
+          version: 1,
         },
         position: {
           x: 0,
           y: 0,
         },
-        configVersion: 3,
+        configVersion: 1,
         config: {
           kind: 'interval',
           intervalMinutes: 60,
@@ -154,8 +154,8 @@ export const SCHEDULE_BOUNDED_BATCH_MANIFEST: WorkflowPortableManifest = {
       },
       {
         key: 'core.schedule',
-        version: 3,
-        configVersion: 3,
+        version: 1,
+        configVersion: 1,
       },
       {
         key: 'core.set',

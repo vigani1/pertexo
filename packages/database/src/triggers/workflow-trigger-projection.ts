@@ -1,9 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import {
-  CORE_SCHEDULE_CONFIG_SCHEMA,
-  CORE_SCHEDULE_CONFIG_SCHEMA_V2,
-} from '@pertexo/nodes-core';
+import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { z } from 'zod';
 
 const webhookConfigSchema = z.object({}).strict();
@@ -12,12 +9,7 @@ function triggerKind(
   identity: string,
 ): WorkflowTriggerProjection['kind'] | null {
   if (identity === 'core.webhook@1') return 'webhook';
-  if (
-    identity === 'core.schedule@1' ||
-    identity === 'core.schedule@2' ||
-    identity === 'core.schedule@3'
-  )
-    return 'schedule';
+  if (identity === 'core.schedule@1') return 'schedule';
   return null;
 }
 
@@ -69,14 +61,10 @@ export function workflowTriggerProjection(
         // identity remains materialized so deliveries/scans retain stable
         // ingress and occurrence semantics; stored trigger configuration has
         // its own independent enable/disable lifecycle.
-        let config: Readonly<Record<string, unknown>>;
-        if (kind === 'webhook') config = webhookConfigSchema.parse(node.config);
-        else if (
-          identity === 'core.schedule@2' ||
-          identity === 'core.schedule@3'
-        )
-          config = CORE_SCHEDULE_CONFIG_SCHEMA_V2.parse(node.config);
-        else config = CORE_SCHEDULE_CONFIG_SCHEMA.parse(node.config);
+        const config: Readonly<Record<string, unknown>> =
+          kind === 'webhook'
+            ? webhookConfigSchema.parse(node.config)
+            : CORE_SCHEDULE_CONFIG_SCHEMA.parse(node.config);
         const digest = createHash('sha256')
           .update(canonicalJson({ config, kind }))
           .digest('hex');

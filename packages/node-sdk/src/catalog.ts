@@ -263,6 +263,16 @@ function sameIdentityLists(
   return left.every((identity) => rightTokens.has(identityToken(identity)));
 }
 
+/** The executor manifest of a node whose executor serves only that definition. */
+export function executorManifestFor(manifest: NodeManifest): ExecutorManifest {
+  return {
+    executor: manifest.executor,
+    abiVersion: manifest.executorAbi,
+    definitions: [manifest.definition],
+    policyReferences: manifest.policyReferences,
+  };
+}
+
 function normalizeCatalog(input: unknown): NodeCatalog {
   const parsed = nodeCatalogSchema.parse(input);
   validateCatalogEdges(parsed);

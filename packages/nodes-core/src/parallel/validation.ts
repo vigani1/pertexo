@@ -55,15 +55,6 @@ export const CORE_PARALLEL_OUTPUT_SCHEMA = z
     branchIds: z
       .array(CORE_PARALLEL_BRANCH_PORT_SCHEMA)
       .min(2)
-      .max(CORE_PARALLEL_BRANCH_PORTS.length),
-  })
-  .strict();
-
-export const CORE_PARALLEL_OUTPUT_SCHEMA_V2 = z
-  .object({
-    branchIds: z
-      .array(CORE_PARALLEL_BRANCH_PORT_SCHEMA)
-      .min(2)
       .max(CORE_PARALLEL_BRANCH_PORTS.length)
       .refine((ids) => new Set(ids).size === ids.length, {
         message: 'Parallel output branch IDs must be unique',

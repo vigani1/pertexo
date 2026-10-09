@@ -6,7 +6,6 @@ import {
   CORE_PARALLEL_CONFIG_SCHEMA,
   CORE_PARALLEL_INPUT_SCHEMA,
   CORE_PARALLEL_OUTPUT_SCHEMA,
-  CORE_PARALLEL_OUTPUT_SCHEMA_V2,
 } from './validation.js';
 
 export const CORE_PARALLEL_DEFINITION = Object.freeze({
@@ -22,9 +21,15 @@ export const CORE_PARALLEL_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_PARALLEL_DEFINITION,
   family: 'logic',
   configVersion: 1,
-  configSchema: generateSchemaDocument(CORE_PARALLEL_CONFIG_SCHEMA),
+  configSchema: generateSchemaDocument(CORE_PARALLEL_CONFIG_SCHEMA, {
+    runtimeOnlySemantics: [
+      'Parallel branch IDs must be unique and maxConcurrency must not exceed the declared branch count.',
+    ],
+  }),
   inputSchema: generateSchemaDocument(CORE_PARALLEL_INPUT_SCHEMA),
-  outputSchema: generateSchemaDocument(CORE_PARALLEL_OUTPUT_SCHEMA),
+  outputSchema: generateSchemaDocument(CORE_PARALLEL_OUTPUT_SCHEMA, {
+    runtimeOnlySemantics: ['Parallel output branch IDs must be unique.'],
+  }),
   ports: Object.freeze({
     inputs: Object.freeze(['in']),
     outputs: CORE_PARALLEL_BRANCH_PORTS,
@@ -37,45 +42,4 @@ export const CORE_PARALLEL_MANIFEST: NodeManifest = Object.freeze({
   executor: CORE_PARALLEL_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
-});
-
-export const CORE_PARALLEL_DEFINITION_V2 = Object.freeze({
-  key: 'core.parallel',
-  version: 2,
-});
-export const CORE_PARALLEL_EXECUTOR_V2 = Object.freeze({
-  key: 'core.parallel',
-  version: 2,
-});
-export const CORE_PARALLEL_DEFINITION_V3 = Object.freeze({
-  key: 'core.parallel',
-  version: 3,
-});
-export const CORE_PARALLEL_EXECUTOR_V3 = Object.freeze({
-  key: 'core.parallel',
-  version: 3,
-});
-export const CORE_PARALLEL_MANIFEST_V2: NodeManifest = Object.freeze({
-  ...CORE_PARALLEL_MANIFEST,
-  definition: CORE_PARALLEL_DEFINITION_V2,
-  configVersion: 2,
-  outputSchema: generateSchemaDocument(CORE_PARALLEL_OUTPUT_SCHEMA_V2),
-  executor: CORE_PARALLEL_EXECUTOR_V2,
-  executorAbi: 1,
-});
-
-export const CORE_PARALLEL_MANIFEST_V3: NodeManifest = Object.freeze({
-  ...CORE_PARALLEL_MANIFEST_V2,
-  definition: CORE_PARALLEL_DEFINITION_V3,
-  configVersion: 3,
-  configSchema: generateSchemaDocument(CORE_PARALLEL_CONFIG_SCHEMA, {
-    runtimeOnlySemantics: [
-      'Parallel branch IDs must be unique and maxConcurrency must not exceed the declared branch count.',
-    ],
-  }),
-  outputSchema: generateSchemaDocument(CORE_PARALLEL_OUTPUT_SCHEMA_V2, {
-    runtimeOnlySemantics: ['Parallel output branch IDs must be unique.'],
-  }),
-  executor: CORE_PARALLEL_EXECUTOR_V3,
-  executorAbi: 1,
 });

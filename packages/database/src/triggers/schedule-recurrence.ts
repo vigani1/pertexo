@@ -1,5 +1,5 @@
 import { CronExpressionParser } from 'cron-parser';
-import { CORE_SCHEDULE_CONFIG_SCHEMA_V2 } from '@pertexo/nodes-core';
+import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { z } from 'zod';
 
 export const SCHEDULE_CRON_PARSER_VERSION = '5.10.0' as const;
@@ -50,7 +50,7 @@ function invalidSchedule(error?: unknown): never {
 export function parseScheduleRecurrence(input: unknown): ScheduleRecurrence {
   const interval = intervalInputSchema.safeParse(input);
   if (interval.success) {
-    const config = CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
+    const config = CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
       ...interval.data,
       misfirePolicy: 'catch_up_once',
     });
@@ -63,7 +63,7 @@ export function parseScheduleRecurrence(input: unknown): ScheduleRecurrence {
   }
   const cron = cronInputSchema.safeParse(input);
   if (!cron.success) return invalidSchedule(cron.error);
-  const config = CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
+  const config = CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
     ...cron.data,
     misfirePolicy: 'catch_up_once',
   });

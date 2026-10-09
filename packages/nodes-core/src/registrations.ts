@@ -9,21 +9,9 @@ import { coreConditionExecutor } from './condition/executor.js';
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
 import { coreForEachExecutor } from './for-each/executor.js';
 import { coreManualExecutor } from './manual/executor.js';
-import {
-  coreMergeExecutor,
-  coreMergeExecutorV2,
-  coreMergeExecutorV3,
-} from './merge/executor.js';
-import {
-  coreParallelExecutor,
-  coreParallelExecutorV2,
-  coreParallelExecutorV3,
-} from './parallel/executor.js';
-import {
-  coreScheduleExecutor,
-  coreScheduleExecutorV2,
-  coreScheduleExecutorV3,
-} from './schedule/executor.js';
+import { coreMergeExecutor } from './merge/executor.js';
+import { coreParallelExecutor } from './parallel/executor.js';
+import { coreScheduleExecutor } from './schedule/executor.js';
 import { coreSetExecutor } from './set/executor.js';
 import { coreSwitchExecutor } from './switch/executor.js';
 import { coreTerminateExecutor } from './terminate/executor.js';
@@ -72,14 +60,8 @@ const CORE_NODE_EXECUTOR_IMPLEMENTATIONS = Object.freeze([
   coreForEachExecutor,
   coreManualExecutor,
   coreMergeExecutor,
-  coreMergeExecutorV2,
-  coreMergeExecutorV3,
   coreParallelExecutor,
-  coreParallelExecutorV2,
-  coreParallelExecutorV3,
   coreScheduleExecutor,
-  coreScheduleExecutorV2,
-  coreScheduleExecutorV3,
   coreSetExecutor,
   coreSwitchExecutor,
   coreTerminateExecutor,

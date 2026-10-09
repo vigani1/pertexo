@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CORE_SCHEDULE_CONFIG_SCHEMA,
-  CORE_SCHEDULE_CONFIG_SCHEMA_V2,
-  CORE_SCHEDULE_INPUT_SCHEMA_V2,
-  CORE_SCHEDULE_MANIFEST_V3,
+  CORE_SCHEDULE_INPUT_SCHEMA,
+  CORE_SCHEDULE_MANIFEST,
 } from '../src/index.js';
 
 describe('core Schedule trigger contract', () => {
@@ -12,7 +11,7 @@ describe('core Schedule trigger contract', () => {
     'accepts strict runtime-compatible cron %s',
     (expression) => {
       expect(
-        CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
+        CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
           expression,
           kind: 'cron',
           misfirePolicy: 'catch_up_once',
@@ -35,7 +34,7 @@ describe('core Schedule trigger contract', () => {
     '0\n 9 * * *',
   ])('rejects cron text that cannot be materialized: %s', (expression) => {
     expect(
-      CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
+      CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
         expression,
         kind: 'cron',
         misfirePolicy: 'catch_up_once',
@@ -44,16 +43,16 @@ describe('core Schedule trigger contract', () => {
     ).toBe(false);
   });
 
-  it('retains version 1 behavior while version 2 advertises the exact event', () => {
+  it('rejects an unparseable cron expression and advertises the exact event', () => {
     expect(
       CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
         expression: '99 99 99 99 99',
         kind: 'cron',
         timezone: 'Europe/Belgrade',
       }).success,
-    ).toBe(true);
+    ).toBe(false);
     expect(
-      CORE_SCHEDULE_INPUT_SCHEMA_V2.parse({
+      CORE_SCHEDULE_INPUT_SCHEMA.parse({
         nodeId: 'schedule',
         scheduledAt: '2026-09-05T01:00:00.000Z',
         schemaVersion: 1,
@@ -61,14 +60,14 @@ describe('core Schedule trigger contract', () => {
       }),
     ).toBeDefined();
     expect(
-      CORE_SCHEDULE_INPUT_SCHEMA_V2.safeParse({
+      CORE_SCHEDULE_INPUT_SCHEMA.safeParse({
         scheduledAt: '2026-09-05T01:00:00.000Z',
       }).success,
     ).toBe(false);
   });
 
   it('publishes the runtime-only cron semantics omitted by JSON Schema', () => {
-    expect(CORE_SCHEDULE_MANIFEST_V3.configSchema).toMatchObject({
+    expect(CORE_SCHEDULE_MANIFEST.configSchema).toMatchObject({
       'x-pertexo-runtime-only-semantics': [
         expect.stringContaining('canonical non-fixed-offset IANA timezone'),
       ],

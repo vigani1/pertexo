@@ -4,16 +4,11 @@ export type WorkflowControlOutputKind = 'branch' | 'parallel' | 'for_each';
 export function workflowControlOutputKind(
   definition: Readonly<{ key: string; version: number }> | undefined,
 ): WorkflowControlOutputKind | undefined {
-  if (definition?.version === 1) {
-    if (definition.key === 'core.condition' || definition.key === 'core.switch')
-      return 'branch';
-    if (definition.key === 'core.foreach') return 'for_each';
-  }
-  if (
-    definition?.key === 'core.parallel' &&
-    [1, 2, 3].includes(definition.version)
-  )
-    return 'parallel';
+  if (definition?.version !== 1) return undefined;
+  if (definition.key === 'core.condition' || definition.key === 'core.switch')
+    return 'branch';
+  if (definition.key === 'core.foreach') return 'for_each';
+  if (definition.key === 'core.parallel') return 'parallel';
   return undefined;
 }
 

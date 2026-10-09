@@ -264,6 +264,11 @@ now, as one ordered program — not "whenever we touch it".
           fingerprint.
   - [ ] node-sdk
   - [ ] nodes-core
+    - [x] One version of each node: Schedule, Parallel and Merge keep only
+          version 1, with the newest semantics (strict cron and timezone,
+          trigger envelope input, unique branch IDs, settled merge ledger).
+          `CORE_NODE_CATALOG` holds every core node, and executor manifests
+          derive from node manifests (`executorManifestFor`).
   - [ ] integrations
   - [ ] node-catalog
   - [ ] templates (new) — the curated templates, their origin schema and
