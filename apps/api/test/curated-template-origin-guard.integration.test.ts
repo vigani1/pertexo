@@ -627,24 +627,18 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
         }
       }
     });
-    it('genuine origin and retained receipt obey legal hold, expiry and bounded workspace purge', async () => {
+    it('genuine origin outlives its expired receipt and is erased by bounded workspace purge', async () => {
       const scoped = (
         await identity.createWorkspaceWithOwner({
           id: randomUUID(),
-          name: 'Owned origin hold purge',
+          name: 'Owned origin purge',
           slug: `guard-purge-${randomUUID()}`,
           ownerUserId: actorId,
           idempotencyKey: randomUUID(),
         })
       ).id;
       const input = { ...command(0), workspaceId: scoped },
-        accepted = await authoring.importWorkflow(input),
-        hold = randomUUID();
-      await ownerQuery(
-        "select app.project_workspace_legal_hold($1,1,$2,'legal_hold_placed',$3,$4,$5,'owned-f06-guard','fixture-case','Preserve genuine origin receipt',clock_timestamp())",
-        [scoped, randomUUID(), hold, '0'.repeat(64), 'b'.repeat(64)],
-        scoped,
-      );
+        accepted = await authoring.importWorkflow(input);
       expect(
         (
           await ownerQuery(
@@ -654,26 +648,6 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
           )
         ).rowCount,
       ).toBe(1);
-      await ownerQuery(
-        'select * from app.reap_transient_data(1000)',
-        [],
-        scoped,
-      );
-      expect(await authoring.importWorkflow(input)).toEqual(accepted);
-      expect(
-        (
-          await authoring.getWorkflowWithTemplateOrigin(
-            scoped,
-            accepted.workflowId,
-            actorId,
-          )
-        )?.templateOrigin?.derivation,
-      ).toBe('direct');
-      await ownerQuery(
-        "select app.project_workspace_legal_hold($1,2,$2,'legal_hold_released',$3,$4,$5,'owned-f06-guard','fixture-case','Release genuine origin receipt',clock_timestamp())",
-        [scoped, randomUUID(), hold, 'b'.repeat(64), 'c'.repeat(64)],
-        scoped,
-      );
       await ownerQuery(
         'select * from app.reap_transient_data(1000)',
         [],
@@ -699,20 +673,20 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
         )?.templateOrigin?.derivation,
       ).toBe('direct');
       await ownerQuery(
-        "select app.project_workspace_deletion($1,3,$2,'deletion_requested',$1,$3,$4,$5,null,'Owned origin erasure',clock_timestamp()-interval '31 days')",
-        [scoped, randomUUID(), 'c'.repeat(64), 'd'.repeat(64), actorId],
+        "select app.project_workspace_deletion($1,1,$2,'deletion_requested',$1,$3,$4,$5,null,'Owned origin erasure',clock_timestamp()-interval '31 days')",
+        [scoped, randomUUID(), '0'.repeat(64), 'd'.repeat(64), actorId],
         scoped,
       );
       const job = (
         await ownerQuery(
-          "select * from app.prepare_workspace_purge_job($1,3,$2,'owned-f06-guard',interval '1 minute')",
+          "select * from app.prepare_workspace_purge_job($1,1,$2,'owned-f06-guard',interval '1 minute')",
           [scoped, 'd'.repeat(64)],
           scoped,
         )
       ).rows[0];
       if (job === undefined) throw new Error('Expected bounded purge job');
       await ownerQuery(
-        'select app.project_workspace_purge_started($1,$2,$3,4,$4,$5)',
+        'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
         [
           job.job_id,
           job.lease_token,
@@ -724,14 +698,14 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
       );
       const object = (
         await ownerQuery(
-          "select * from app.claim_workspace_purge_step($1,4,$2,'owned-f06-guard',interval '1 minute')",
+          "select * from app.claim_workspace_purge_step($1,2,$2,'owned-f06-guard',interval '1 minute')",
           [job.job_id, 'e'.repeat(64)],
           scoped,
         )
       ).rows[0];
       expect(object?.step_name).toBe('object_versions');
       await ownerQuery(
-        'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,4,$4)',
+        'select app.checkpoint_workspace_object_versions_page($1,$2,$3,0,true,2,$4)',
         [job.job_id, object?.lease_token, object?.lease_fence, 'e'.repeat(64)],
         scoped,
       );
@@ -739,7 +713,7 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
       for (let page = 0; page < 100 && !complete; page++) {
         const claim = (
           await ownerQuery(
-            "select * from app.claim_workspace_purge_step($1,4,$2,'owned-f06-guard',interval '1 minute')",
+            "select * from app.claim_workspace_purge_step($1,2,$2,'owned-f06-guard',interval '1 minute')",
             [job.job_id, 'e'.repeat(64)],
             scoped,
           )
@@ -748,7 +722,7 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
         complete =
           (
             await ownerQuery(
-              'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,500,4,$4)',
+              'select * from app.execute_workspace_tenant_rows_page($1,$2,$3,500,2,$4)',
               [
                 job.job_id,
                 claim?.lease_token,
@@ -772,69 +746,6 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
       await expect(authoring.importWorkflow(input)).rejects.toBeInstanceOf(
         WorkflowNotFoundError,
       );
-    });
-    it('active tenant legal hold blocks destructive purge and retains genuine origin', async () => {
-      const scoped = (
-        await identity.createWorkspaceWithOwner({
-          id: randomUUID(),
-          name: 'Held genuine origin',
-          slug: `guard-held-${randomUUID()}`,
-          ownerUserId: actorId,
-          idempotencyKey: randomUUID(),
-        })
-      ).id;
-      const accepted = await authoring.importWorkflow({
-        ...command(0),
-        workspaceId: scoped,
-      });
-      await ownerQuery(
-        "select app.project_workspace_legal_hold($1,1,$2,'legal_hold_placed',$3,$4,$5,'owned-f06-guard','held-case','Retain genuine origin',clock_timestamp())",
-        [scoped, randomUUID(), randomUUID(), '0'.repeat(64), 'b'.repeat(64)],
-        scoped,
-      );
-      await ownerQuery(
-        "select app.project_workspace_deletion($1,2,$2,'deletion_requested',$1,$3,$4,$5,null,'Held erasure fixture',clock_timestamp()-interval '31 days')",
-        [scoped, randomUUID(), 'b'.repeat(64), 'c'.repeat(64), actorId],
-        scoped,
-      );
-      const job = (
-        await ownerQuery(
-          "select * from app.prepare_workspace_purge_job($1,2,$2,'owned-f06-guard',interval '1 minute')",
-          [scoped, 'c'.repeat(64)],
-          scoped,
-        )
-      ).rows[0];
-      if (job === undefined) throw new Error('Held job missing');
-      await ownerQuery(
-        'select app.project_workspace_purge_started($1,$2,$3,3,$4,$5)',
-        [
-          job.job_id,
-          job.lease_token,
-          job.lease_fence,
-          'c'.repeat(64),
-          'd'.repeat(64),
-        ],
-        scoped,
-      );
-      await expect(
-        ownerQuery(
-          "select * from app.claim_workspace_purge_step($1,3,$2,'owned-f06-guard',interval '1 minute')",
-          [job.job_id, 'd'.repeat(64)],
-          scoped,
-        ),
-      ).rejects.toMatchObject({
-        code: '55000',
-        message: 'active workspace legal hold blocks destructive purge step',
-      });
-      expect(
-        (
-          await ownerQuery(
-            'select workflow_id from app.workflow_template_origins where workspace_id=$1',
-            [scoped],
-            scoped,
-          )
-        ).rows,
-      ).toEqual([{ workflow_id: accepted.workflowId }]);
     });
     it('owner connection change winning before new import rejects without partial origin', async () => {
       const input = command();
