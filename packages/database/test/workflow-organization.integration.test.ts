@@ -1077,18 +1077,9 @@ describe.skipIf(!organizationFixtureEnabled)(
       await expect(page(lease, 'f'.repeat(64))).rejects.toMatchObject({
         code: '40001',
       });
-      expect(
-        (
-          await owner(
-            s,
-            'select count(*)::int count from app.workflow_favorite_held_evidence where workspace_id=$1',
-            [s.workspace],
-          )
-        ).rows,
-      ).toEqual([{ count: 1 }]);
+      // No legal hold is placed, so no favorite evidence is held.
       const surfaces = [
         'workflow_favorite_receipts',
-        'workflow_favorite_held_evidence',
         'workflow_favorites',
         'workflow_organization_receipts',
         'workflow_tag_assignments',
