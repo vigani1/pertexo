@@ -7,6 +7,7 @@ import {
   throwApplicationError,
   RequestContextStore,
 } from '../../platform/http/index.js';
+import { firstRequestHeader } from '../../platform/http/request-headers.js';
 import {
   authorizeWorkspace,
   createActorContext,
@@ -72,7 +73,10 @@ export class CsrfProtectionGuard implements CanActivate {
       this.csrf.assertMutationAllowed({
         method: request.method ?? 'GET',
         ...optionalToken('cookieToken', readCookie(request, CSRF_COOKIE_NAME)),
-        ...optionalToken('headerToken', readHeader(request, CSRF_HEADER_NAME)),
+        ...optionalToken(
+          'headerToken',
+          firstRequestHeader(request.headers, CSRF_HEADER_NAME),
+        ),
       });
       return true;
     } catch (error: unknown) {
@@ -198,26 +202,13 @@ function routeWorkspace(request: IdentityWorkspaceRequest): string {
   return params.workspaceId;
 }
 
-export function readHeader(
-  request: IdentityWorkspaceRequest,
-  name: string,
-): string | undefined {
-  const headers = request.headers;
-  if (headers === undefined) return undefined;
-  const key = Object.keys(headers).find(
-    (candidate) => candidate.toLowerCase() === name.toLowerCase(),
-  );
-  const value = key === undefined ? undefined : headers[key];
-  return typeof value === 'string' ? value : value?.[0];
-}
-
 export function readCookie(
   request: IdentityWorkspaceRequest,
   name: string,
 ): string | undefined {
   const direct = request.cookies?.[name];
   if (direct !== undefined) return direct;
-  const header = readHeader(request, 'cookie');
+  const header = firstRequestHeader(request.headers, 'cookie');
   if (header === undefined) return undefined;
   for (const part of header.split(';')) {
     const separator = part.indexOf('=');

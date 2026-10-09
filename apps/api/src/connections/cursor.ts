@@ -1,6 +1,11 @@
 import { connectionStatusSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
+import {
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+} from '../platform/http/opaque-cursor.js';
+
 const connectionCursorPayloadSchema = z
   .object({
     kind: z.literal('connections'),
@@ -26,17 +31,12 @@ export function encodeConnectionCursor(
     id: string;
   }>,
 ): string {
-  return Buffer.from(
-    JSON.stringify(
-      connectionCursorPayloadSchema.parse({
-        kind: 'connections',
-        status: cursor.status,
-        createdAt: cursor.createdAt,
-        id: cursor.id,
-      }),
-    ),
-    'utf8',
-  ).toString('base64url');
+  return encodeOpaqueCursor(connectionCursorPayloadSchema, {
+    kind: 'connections',
+    status: cursor.status,
+    createdAt: cursor.createdAt,
+    id: cursor.id,
+  });
 }
 
 export function decodeConnectionCursor(value: string): Readonly<{
@@ -44,16 +44,11 @@ export function decodeConnectionCursor(value: string): Readonly<{
   createdAt: string;
   id: string;
 }> {
-  try {
-    const payload = connectionCursorPayloadSchema.parse(
-      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-    );
-    return Object.freeze({
-      status: payload.status,
-      createdAt: payload.createdAt,
-      id: payload.id,
-    });
-  } catch {
-    throw new InvalidConnectionCursorError();
-  }
+  const payload = decodeOpaqueCursor(connectionCursorPayloadSchema, value);
+  if (payload === undefined) throw new InvalidConnectionCursorError();
+  return Object.freeze({
+    status: payload.status,
+    createdAt: payload.createdAt,
+    id: payload.id,
+  });
 }

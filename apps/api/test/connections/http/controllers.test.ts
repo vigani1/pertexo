@@ -292,16 +292,31 @@ describe('connections controller public seam', () => {
           credential,
         },
       ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
     await expect(
       instance.rotate(
         request(),
         { workspaceId, connectionId },
         { expectedSecretVersionId: secretVersionId, credential },
       ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
     expect(create.execute).not.toHaveBeenCalled();
     expect(rotate.execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects a repeated idempotency key before delegating', async () => {
+    const { instance, create } = controller();
+    await expect(
+      instance.create(
+        {
+          ...request(),
+          headers: { 'idempotency-key': ['first', 'second'] },
+        },
+        { workspaceId },
+        { providerKey: 'http', name: 'Operations API', credential },
+      ),
+    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+    expect(create.execute).not.toHaveBeenCalled();
   });
 
   it('forwards unknown connection input to the independently safe use case', async () => {

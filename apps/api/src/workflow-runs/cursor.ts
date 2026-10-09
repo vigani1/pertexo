@@ -1,6 +1,11 @@
 import { workflowRunStatusSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
+import {
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+} from '../platform/http/opaque-cursor.js';
+
 const filterSchema = z
   .object({
     workflowId: z.uuid().nullable(),
@@ -43,40 +48,27 @@ export function encodeWorkflowRunCursor(
   context: WorkflowRunCursorContext,
   position: Readonly<{ createdAt: string; id: string }>,
 ): string {
-  return Buffer.from(
-    JSON.stringify(
-      cursorPayloadSchema.parse({
-        kind: 'workflow-runs',
-        workspaceId: context.workspaceId,
-        order: 'created_at_desc_id_desc',
-        filters: cursorFilters(context),
-        ...position,
-      }),
-    ),
-    'utf8',
-  ).toString('base64url');
+  return encodeOpaqueCursor(cursorPayloadSchema, {
+    kind: 'workflow-runs',
+    workspaceId: context.workspaceId,
+    order: 'created_at_desc_id_desc',
+    filters: cursorFilters(context),
+    ...position,
+  });
 }
 
 export function decodeWorkflowRunCursor(
   value: string,
   context: WorkflowRunCursorContext,
 ): Readonly<{ createdAt: string; id: string }> {
-  try {
-    const payload = cursorPayloadSchema.parse(
-      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-    );
-    if (
-      payload.workspaceId !== context.workspaceId ||
-      JSON.stringify(normalizeFilters(payload.filters)) !==
-        JSON.stringify(normalizeFilters(cursorFilters(context)))
-    ) {
-      throw new InvalidWorkflowRunCursorError();
-    }
-    return Object.freeze({ createdAt: payload.createdAt, id: payload.id });
-  } catch (error: unknown) {
-    if (error instanceof InvalidWorkflowRunCursorError) throw error;
+  const payload = decodeOpaqueCursor(cursorPayloadSchema, value);
+  if (
+    payload?.workspaceId !== context.workspaceId ||
+    JSON.stringify(normalizeFilters(payload.filters)) !==
+      JSON.stringify(normalizeFilters(cursorFilters(context)))
+  )
     throw new InvalidWorkflowRunCursorError();
-  }
+  return Object.freeze({ createdAt: payload.createdAt, id: payload.id });
 }
 
 function cursorFilters(context: WorkflowRunCursorContext) {
