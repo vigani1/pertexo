@@ -84,24 +84,13 @@ export function createPreviewReconciliationHandler(
 
 export function mapPreviewReconciliationError(error: unknown): unknown {
   if (
-    isErrorInstance(error, PreviewDeliveryMismatchError) ||
-    isErrorInstance(error, PreviewAttemptStateError)
+    error instanceof PreviewDeliveryMismatchError ||
+    error instanceof PreviewAttemptStateError
   )
     return unrecoverableQueueError(
-      isErrorInstance(error, PreviewDeliveryMismatchError)
+      error instanceof PreviewDeliveryMismatchError
         ? 'Preview reconciliation delivery failed durable state verification'
         : `Preview reconciliation is not recoverable: ${error.code}`,
     );
   return error;
-}
-
-function isErrorInstance<T extends Error>(
-  value: unknown,
-  constructor: abstract new (...arguments_: never[]) => T,
-): value is T {
-  try {
-    return value instanceof constructor;
-  } catch {
-    return false;
-  }
 }

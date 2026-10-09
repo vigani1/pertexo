@@ -118,26 +118,15 @@ describe('operator run replay handler', () => {
     },
   );
 
-  it('preserves transient and hostile rejected values', async () => {
-    for (const error of [
-      new Error('postgres unavailable'),
-      new Proxy(
-        {},
-        {
-          getPrototypeOf() {
-            throw new Error('hostile prototype');
-          },
-        },
-      ),
-    ]) {
-      const selectedStore = store();
-      vi.mocked(selectedStore.replay).mockRejectedValue(error);
-      await expect(
-        createOperatorRunReplayHandler(selectedStore).handle(delivery(), {
-          signal: new AbortController().signal,
-        }),
-      ).rejects.toBe(error);
-      expect(selectedStore.fail).not.toHaveBeenCalled();
-    }
+  it('preserves a transient rejected value', async () => {
+    const error = new Error('postgres unavailable');
+    const selectedStore = store();
+    vi.mocked(selectedStore.replay).mockRejectedValue(error);
+    await expect(
+      createOperatorRunReplayHandler(selectedStore).handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(error);
+    expect(selectedStore.fail).not.toHaveBeenCalled();
   });
 });

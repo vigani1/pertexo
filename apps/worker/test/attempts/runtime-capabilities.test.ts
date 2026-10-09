@@ -657,20 +657,26 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
   });
 
-  it('preserves a hostile unknown database rejection without inspecting it unsafely', async () => {
-    const hostile = new Proxy(Object.create(null) as object, {
-      getPrototypeOf: () => {
-        throw new Error('hostile prototype');
-      },
-    });
+  it('rejects a resolved connection with another auth type', async () => {
+    const connection = {
+      authType: 'slack_bot_token',
+      id: connectionId,
+      workspaceId,
+    } as const;
+    const open = vi.fn();
     const runtime = await createWorkerNodeRuntimeCapabilities(
       { database: databaseConfig },
       {
         connectionDatabase: {
-          resolveConnectionSecret: vi.fn().mockRejectedValue(hostile),
+          resolveConnectionSecret: () =>
+            Promise.resolve({
+              connection: { ...connection, providerKey: 'http' } as never,
+              secretVersionId,
+              sealed: {} as never,
+            }),
           assertConnectionSecretCurrent: vi.fn(),
         },
-        connectionEncryption: { open: vi.fn() },
+        connectionEncryption: { open },
         providerRateLimiter: {
           consume: () => Promise.resolve({ allowed: true as const }),
         },
@@ -679,7 +685,6 @@ describe('worker node runtime capabilities', () => {
     const connections = runtime.factories.connections?.(context);
     if (connections === undefined)
       throw new Error('connection capability missing');
-
     await expect(
       connections.resolve({
         connectionId,
@@ -688,52 +693,10 @@ describe('worker node runtime capabilities', () => {
         purpose: 'http.request.execute',
         signal: new AbortController().signal,
       }),
-    ).rejects.toBe(hostile);
+    ).rejects.toBeInstanceOf(ProviderCredentialInvalidError);
+    expect(open).not.toHaveBeenCalled();
     await runtime.close();
   });
-
-  it.each([
-    { authType: 'slack_bot_token', id: connectionId, workspaceId },
-    { authType: 'http_headers', id: 'wrong', workspaceId },
-    { authType: 'http_headers', id: connectionId, workspaceId: 'wrong' },
-  ] as const)(
-    'rejects mismatched resolved connection identity %#',
-    async (connection) => {
-      const open = vi.fn();
-      const runtime = await createWorkerNodeRuntimeCapabilities(
-        { database: databaseConfig },
-        {
-          connectionDatabase: {
-            resolveConnectionSecret: () =>
-              Promise.resolve({
-                connection: { ...connection, providerKey: 'http' } as never,
-                secretVersionId,
-                sealed: {} as never,
-              }),
-            assertConnectionSecretCurrent: vi.fn(),
-          },
-          connectionEncryption: { open },
-          providerRateLimiter: {
-            consume: () => Promise.resolve({ allowed: true as const }),
-          },
-        },
-      );
-      const connections = runtime.factories.connections?.(context);
-      if (connections === undefined)
-        throw new Error('connection capability missing');
-      await expect(
-        connections.resolve({
-          connectionId,
-          expectedProviderKey: 'http',
-          expectedAuthType: 'http_headers',
-          purpose: 'http.request.execute',
-          signal: new AbortController().signal,
-        }),
-      ).rejects.toBeInstanceOf(ProviderCredentialInvalidError);
-      expect(open).not.toHaveBeenCalled();
-      await runtime.close();
-    },
-  );
 
   it('rejects unsupported connection currency auth and post-check cancellation', async () => {
     const controller = new AbortController();

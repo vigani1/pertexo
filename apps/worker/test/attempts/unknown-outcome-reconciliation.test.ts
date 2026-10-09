@@ -68,17 +68,8 @@ describe('unknown-outcome reconciliation handler', () => {
     });
   });
 
-  it('preserves ordinary and hostile rejected values', () => {
+  it('preserves a transient rejection', () => {
     const transient = new Error('postgres unavailable');
-    const hostile = new Proxy(
-      {},
-      {
-        getPrototypeOf() {
-          throw new Error('hostile prototype');
-        },
-      },
-    );
     expect(mapUnknownOutcomeReconciliationError(transient)).toBe(transient);
-    expect(mapUnknownOutcomeReconciliationError(hostile)).toBe(hostile);
   });
 });

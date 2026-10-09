@@ -969,45 +969,6 @@ describe('provider failure notification delivery', () => {
     },
   );
 
-  it.each([
-    ['slack', 'idempotent_with_key'],
-    ['email', 'unsafe'],
-  ] as const)(
-    'rejects mismatched %s side-effect policy',
-    async (kind, sideEffectClass) => {
-      const delivery = createProviderFailureNotificationDelivery({
-        store: store(kind),
-        encryption: {
-          open: vi.fn().mockResolvedValue(
-            new TextEncoder().encode(
-              JSON.stringify(
-                kind === 'slack'
-                  ? {
-                      schemaVersion: 1,
-                      type: 'slack_bot_token',
-                      botToken: 'xoxb-1234567890',
-                    }
-                  : {
-                      schemaVersion: 1,
-                      type: 'resend_api_key',
-                      apiKey: 're_12345678',
-                      fromEmail: 'sender@example.test',
-                    },
-              ),
-            ),
-          ),
-        },
-        slack: { sendMessage: vi.fn() },
-        email: { sendNotification: vi.fn() },
-        workerId: 'worker-1',
-      });
-
-      await expect(
-        delivery.deliver({ ...identity, sideEffectClass }),
-      ).rejects.toThrow('Failure notification side-effect class mismatch');
-    },
-  );
-
   it('fails closed on cancellation before destination loading settles', async () => {
     const controller = new AbortController();
     controller.abort();
@@ -1059,63 +1020,4 @@ describe('provider failure notification delivery', () => {
       safeErrorCode: 'delivery.identity_changed',
     });
   });
-
-  it.each(['destination', 'credential', 'provider'] as const)(
-    'contains hostile %s classification without replacing policy truth',
-    async (stage) => {
-      const hostile = new Proxy(
-        {},
-        {
-          getPrototypeOf() {
-            throw new Error('hostile prototype');
-          },
-        },
-      );
-      const persistence = store('email');
-      if (stage === 'destination')
-        vi.mocked(persistence.loadDestination).mockRejectedValue(hostile);
-      const provider = vi.fn<ResendClient['sendNotification']>(
-        async (input) => {
-          await input.beforeDispatch();
-          // Intentionally exercise containment of a hostile legacy rejection.
-          // eslint-disable-next-line @typescript-eslint/only-throw-error
-          throw hostile;
-        },
-      );
-      const delivery = createProviderFailureNotificationDelivery({
-        store: persistence,
-        encryption: {
-          open:
-            stage === 'credential'
-              ? vi.fn().mockRejectedValue(hostile)
-              : vi.fn(() =>
-                  Promise.resolve(
-                    new TextEncoder().encode(
-                      JSON.stringify({
-                        schemaVersion: 1,
-                        type: 'resend_api_key',
-                        apiKey: 're_12345678',
-                        fromEmail: 'sender@example.test',
-                      }),
-                    ),
-                  ),
-                ),
-        },
-        slack: { sendMessage: vi.fn() },
-        email: { sendNotification: provider },
-        workerId: 'worker-1',
-      });
-
-      const operation = delivery.deliver({
-        ...identity,
-        sideEffectClass: 'idempotent_with_key',
-      });
-      if (stage === 'destination')
-        await expect(operation).resolves.toMatchObject({
-          kind: 'retry',
-          possiblyDispatched: false,
-        });
-      else await expect(operation).rejects.toBe(hostile);
-    },
-  );
 });

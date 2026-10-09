@@ -223,21 +223,17 @@ function isAbortError(error: unknown): boolean {
 }
 
 export function mapPreviewHandlerError(error: unknown): unknown {
-  try {
-    if (error instanceof PreviewDeliveryMismatchError)
-      return unrecoverableQueueError(
-        'Preview delivery failed durable state verification',
-      );
-    if (error instanceof PreviewAttemptStateError)
-      return unrecoverableQueueError(
-        'Preview delivery failed durable attempt-state verification',
-      );
-    if (error instanceof PreviewAttemptHandlerStateError)
-      return unrecoverableQueueError(
-        `Preview delivery is not recoverable: ${error.code}`,
-      );
-  } catch {
-    // Unknown objects cannot claim a durable error contract through traps.
-  }
+  if (error instanceof PreviewDeliveryMismatchError)
+    return unrecoverableQueueError(
+      'Preview delivery failed durable state verification',
+    );
+  if (error instanceof PreviewAttemptStateError)
+    return unrecoverableQueueError(
+      'Preview delivery failed durable attempt-state verification',
+    );
+  if (error instanceof PreviewAttemptHandlerStateError)
+    return unrecoverableQueueError(
+      `Preview delivery is not recoverable: ${error.code}`,
+    );
   return error;
 }
