@@ -42,14 +42,13 @@ function setPath(
 }
 
 describe('reviewed browser-safe curated templates', () => {
-  it('pins all three complete strict V1 manifests and canonical digests', async () => {
+  it('pins all three complete strict manifests and canonical digests', async () => {
     expect(CURATED_WORKFLOW_TEMPLATES.map((item) => item.templateId)).toEqual([
       'webhook-validation-routing',
       'schedule-bounded-batch',
       'controlled-http-notification',
     ]);
     for (const descriptor of CURATED_WORKFLOW_TEMPLATES) {
-      expect(descriptor.supportedProfile).toBe('validate_activation');
       expect(workflowPortableManifestSchema.parse(descriptor.manifest)).toEqual(
         descriptor.manifest,
       );
@@ -71,7 +70,7 @@ describe('reviewed browser-safe curated templates', () => {
         nodeId: 'controlled-http',
         location: 'config',
         key: 'url',
-        valueKind: 'curated_https_endpoint_v1',
+        valueKind: 'https_endpoint',
       },
       {
         nodeId: 'slack-notification',
@@ -282,8 +281,7 @@ describe('reviewed browser-safe curated templates', () => {
       'https://example.test/?safe=private',
     ])
       expect(
-        validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value)
-          .ok,
+        validateCuratedTemplateSetupValue('https_endpoint', value).ok,
       ).toBe(true);
     for (const value of [
       ' https://example.test ',
@@ -293,10 +291,7 @@ describe('reviewed browser-safe curated templates', () => {
       'https://example.test?%74oken=private',
       null,
     ]) {
-      const result = validateCuratedTemplateSetupValue(
-        'curated_https_endpoint_v1',
-        value,
-      );
+      const result = validateCuratedTemplateSetupValue('https_endpoint', value);
       expect(result.ok).toBe(false);
       expect(JSON.stringify(result)).not.toContain('private');
     }

@@ -327,13 +327,13 @@ export function WorkflowImportDialog({
                       key={`${target.nodeId}:${target.key}`}
                       id={`template-setup-${String(index)}`}
                       label={
-                        target.valueKind === 'curated_https_endpoint_v1'
+                        target.valueKind === 'https_endpoint'
                           ? 'HTTPS endpoint'
                           : 'Slack channel ID'
                       }
                       error={validation.error(`setup-${String(index)}`)}
                       description={
-                        target.valueKind === 'curated_https_endpoint_v1'
+                        target.valueKind === 'https_endpoint'
                           ? 'Curated setup requires lowercase https://, a lowercase ASCII DNS host and an explicit /path. No ports or credentials; use uppercase %HH escapes.'
                           : 'Do not enter credentials or secrets.'
                       }
@@ -344,9 +344,7 @@ export function WorkflowImportDialog({
                           ref={validation.register(`setup-${String(index)}`)}
                           value={setupValues[index] ?? ''}
                           maxLength={
-                            target.valueKind === 'curated_https_endpoint_v1'
-                              ? 2048
-                              : 128
+                            target.valueKind === 'https_endpoint' ? 2048 : 128
                           }
                           disabled={locked}
                           autoComplete="off"

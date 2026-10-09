@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import {
-  isCuratedHttpsEndpointV1,
+  isCuratedHttpsEndpoint,
   validateCuratedTemplateSetupValue,
 } from '../src/index.js';
 
@@ -17,12 +17,12 @@ const corpus = JSON.parse(
   ),
 ) as readonly CorpusCase[];
 
-describe('approved curated HTTPS endpoint v1 grammar', () => {
+describe('approved curated HTTPS endpoint grammar', () => {
   it.each(corpus)('$name', ({ value, accepted }) => {
-    expect(isCuratedHttpsEndpointV1(value)).toBe(accepted);
-    expect(
-      validateCuratedTemplateSetupValue('curated_https_endpoint_v1', value).ok,
-    ).toBe(accepted);
+    expect(isCuratedHttpsEndpoint(value)).toBe(accepted);
+    expect(validateCuratedTemplateSetupValue('https_endpoint', value).ok).toBe(
+      accepted,
+    );
   });
   it('keeps corpus names unique and covers every raw ASCII position and percent byte', () => {
     expect(new Set(corpus.map(({ name }) => name)).size).toBe(corpus.length);
@@ -40,21 +40,13 @@ describe('approved curated HTTPS endpoint v1 grammar', () => {
         256,
       );
   });
-  it('fails closed for obsolete or unknown descriptor value kinds without normalization', () => {
-    expect(
-      validateCuratedTemplateSetupValue(
-        'https_endpoint',
-        'https://example.test/',
-      ).ok,
-    ).toBe(false);
-    expect(
-      validateCuratedTemplateSetupValue(
-        'curated_https_endpoint_v2',
-        'https://example.test/',
-      ).ok,
-    ).toBe(false);
-    expect(isCuratedHttpsEndpointV1(undefined)).toBe(false);
-    expect(isCuratedHttpsEndpointV1(new String('https://example.test/'))).toBe(
+  it('fails closed for unknown descriptor value kinds without normalization', () => {
+    for (const kind of ['url', 'HTTPS_ENDPOINT', 'https_endpoint '])
+      expect(
+        validateCuratedTemplateSetupValue(kind, 'https://example.test/').ok,
+      ).toBe(false);
+    expect(isCuratedHttpsEndpoint(undefined)).toBe(false);
+    expect(isCuratedHttpsEndpoint(new String('https://example.test/'))).toBe(
       false,
     );
   });

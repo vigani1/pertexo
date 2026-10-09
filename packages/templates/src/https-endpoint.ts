@@ -1,5 +1,5 @@
 /** Approved curated-only syntax, not a URL parser, reachability or network-safety claim. */
-export const CURATED_HTTPS_ENDPOINT_V1_LIMITS = Object.freeze({
+const LIMITS = Object.freeze({
   bytes: 2_048,
   hostBytes: 253,
   labelBytes: 63,
@@ -8,7 +8,7 @@ export const CURATED_HTTPS_ENDPOINT_V1_LIMITS = Object.freeze({
 });
 
 function validHost(host: string): boolean {
-  if (host.length > CURATED_HTTPS_ENDPOINT_V1_LIMITS.hostBytes) return false;
+  if (host.length > LIMITS.hostBytes) return false;
   const labels = host.split('.');
   return (
     labels.length >= 2 &&
@@ -34,7 +34,7 @@ function validPath(path: string): boolean {
 function validQuery(query: string): boolean {
   const pairs = query.split('&');
   return (
-    pairs.length <= CURATED_HTTPS_ENDPOINT_V1_LIMITS.queryPairs &&
+    pairs.length <= LIMITS.queryPairs &&
     pairs.every((pair) => {
       const parsed =
         /^([A-Za-z0-9._~-]{1,64})=((?:[A-Za-z0-9._~-]|%[0-9A-F]{2})*)$/u.exec(
@@ -49,11 +49,11 @@ function validQuery(query: string): boolean {
 }
 
 /** ASCII-only, bounded and pure. Never trims, decodes or normalizes submitted bytes. */
-export function isCuratedHttpsEndpointV1(value: unknown): boolean {
+export function isCuratedHttpsEndpoint(value: unknown): boolean {
   if (
     typeof value !== 'string' ||
     value.length < 1 ||
-    value.length > CURATED_HTTPS_ENDPOINT_V1_LIMITS.bytes ||
+    value.length > LIMITS.bytes ||
     /[^\x21-\x7E]/u.test(value) ||
     /[@#\\]/u.test(value) ||
     !value.startsWith('https://')

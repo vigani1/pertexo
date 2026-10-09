@@ -46,7 +46,7 @@ export function templateUnavailableReasons(
 export function setupValueError(target: SetupTarget, value: string) {
   return validateCuratedTemplateSetupValue(target.valueKind, value).ok
     ? undefined
-    : target.valueKind === 'curated_https_endpoint_v1'
+    : target.valueKind === 'https_endpoint'
       ? 'Use lowercase https://, a lowercase ASCII DNS host and an explicit /path (at most 2,048 bytes). No ports, punycode, userinfo, fragments, dot segments or credential query names; escapes must be uppercase %HH.'
       : 'Use a Slack channel ID of 2–128 characters beginning C, D, G or U, followed by uppercase letters or digits.';
 }

@@ -14,7 +14,7 @@ import {
   type CuratedTemplateSetupTarget,
   type CuratedWorkflowTemplate,
 } from './catalog.js';
-import { isCuratedHttpsEndpointV1 } from './https-endpoint.js';
+import { isCuratedHttpsEndpoint } from './https-endpoint.js';
 import { workflowTemplateOriginRequestSchema } from './origin.js';
 
 type ValidationResult =
@@ -52,8 +52,7 @@ export function validateCuratedTemplateSetupValue(
       ? { ok: true }
       : invalid('template_setup_invalid', 'setup');
   }
-  return valueKind === 'curated_https_endpoint_v1' &&
-    isCuratedHttpsEndpointV1(value)
+  return valueKind === 'https_endpoint' && isCuratedHttpsEndpoint(value)
     ? { ok: true }
     : invalid('template_setup_invalid', 'setup');
 }
