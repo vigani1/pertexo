@@ -25,7 +25,6 @@ import {
 } from './schema/foundation.js';
 import { rlsProbeRecords } from './schema/rls-probe.js';
 import { workflowConcurrencyPolicies } from './schema/workflow-concurrency.js';
-import { workspaceLegalHolds } from './schema/retention.js';
 import {
   connections,
   connectionSecretVersions,
@@ -175,7 +174,6 @@ export const databaseSchema = {
   workspaceInvitationDeliveryAttempts,
   workspaceInvitationAcceptanceIntents,
   workspaceInvitationBindingReplacementClaims,
-  workspaceLegalHolds,
   workspaces,
   workflowDrafts,
   workflowIntegrationUsage,
