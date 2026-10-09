@@ -74,19 +74,18 @@ afterAll(async () => {
 });
 
 describe('SQL boundary integrity', () => {
-  it('rejects owner-only malformed operator rows by exact constraint', async () => {
-    const client = await pools.owner.connect();
+  it('rejects malformed operator rows by exact constraint', async () => {
+    const client = await pools.dispatcher.connect();
     try {
       await client.query('begin');
-      await client.query('set local role pertexo_owner');
       await client.query('savepoint malformed_operator');
       await expect(
         client.query(
           `insert into app.operator_commands(
-            id,command_type,dry_run,request_fingerprint,status,outcome,
-            result,completed_at
-          ) values($1,'purge.rerun',false,$2,'completed','not_found','{}',null)`,
-          [randomUUID(), 'e'.repeat(64)],
+            id,workspace_id,command_type,dry_run,request_fingerprint,status,
+            outcome,result,completed_at
+          ) values($1,$2,'purge.rerun',false,$3,'completed','not_found','{}',null)`,
+          [randomUUID(), randomUUID(), 'e'.repeat(64)],
         ),
       ).rejects.toMatchObject({
         code: '23514',

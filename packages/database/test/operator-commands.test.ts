@@ -2,16 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const runtime = vi.hoisted(() => ({
-  checkReadiness: vi.fn(),
-  close: vi.fn(),
-  execute: vi.fn(),
-  transaction: vi.fn(),
-  transactionDecoded: vi.fn(),
-}));
+const transaction = vi.hoisted(() => vi.fn());
 
-vi.mock('../src/operator/operator-command-runtime.js', () => ({
-  createOperatorCommandRuntime: vi.fn(() => runtime),
+vi.mock('../src/tenant-access/workspace.js', () => ({
+  withWorkspaceTransaction: transaction,
 }));
 
 import { createOperatorCommandDatabase } from '../src/operator/operator-commands.js';
@@ -26,17 +20,11 @@ const config = {
 
 const workspaceId = randomUUID();
 const actorRef = 'operator:test';
-const reason = 'Exercise explicit operator mapping';
+const reason = 'Exercise bounded operator input';
 const base = Object.freeze({
   actorRef,
   commandId: randomUUID(),
   dryRun: false,
-  reason,
-  workspaceId,
-});
-const getInput = Object.freeze({
-  actorRef,
-  commandId: base.commandId,
   reason,
   workspaceId,
 });
@@ -45,176 +33,12 @@ function database() {
   return createOperatorCommandDatabase(config);
 }
 
-describe('operator command facade mappings', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    runtime.execute.mockResolvedValue({
-      commandId: base.commandId,
-      outcome: 'completed',
-      replayed: false,
-      result: {},
-      status: 'completed',
-    });
-    runtime.transactionDecoded.mockResolvedValue({
-      conflict: false,
-      result: {
-        commandId: base.commandId,
-        outcome: 'redispatched',
-        replayed: false,
-        status: 'completed',
-      },
-    });
-  });
-
-  it.each([
-    {
-      invoke: () => database().cancelRun({ ...base, runId: randomUUID() }),
-      sql: 'cancel_operator_run',
-      values: () => [
-        base.commandId,
-        workspaceId,
-        expect.any(String) as unknown,
-        actorRef,
-        reason,
-        false,
-      ],
-    },
-    {
-      invoke: () =>
-        database().reconcileAttempt({
-          ...base,
-          action: 'reclaim',
-          attemptId: randomUUID(),
-          expectedFenceToken: 7,
-        }),
-      sql: 'reconcile_operator_attempt',
-      values: () => [
-        base.commandId,
-        workspaceId,
-        expect.any(String) as unknown,
-        7,
-        'reclaim',
-        actorRef,
-        reason,
-        false,
-      ],
-    },
-    {
-      invoke: () => database().resumeDueWork({ ...base, runId: randomUUID() }),
-      sql: 'resume_operator_due_work',
-      values: () => [
-        base.commandId,
-        workspaceId,
-        expect.any(String) as unknown,
-        actorRef,
-        reason,
-        false,
-      ],
-    },
-    {
-      invoke: () =>
-        database().retryTriggerReconciliation({
-          ...base,
-          workflowId: randomUUID(),
-        }),
-      sql: 'retry_operator_trigger_reconciliation',
-      values: () => [
-        base.commandId,
-        workspaceId,
-        expect.any(String) as unknown,
-        actorRef,
-        reason,
-        false,
-      ],
-    },
-  ])('maps $sql arguments in their explicit order', async (scenario) => {
-    await scenario.invoke();
-    expect(runtime.execute).toHaveBeenCalledOnce();
-    expect(runtime.execute.mock.calls[0]?.[0]).toContain(scenario.sql);
-    expect(runtime.execute.mock.calls[0]?.[1]).toEqual(scenario.values());
-  });
-
-  it('maps replay and evidence JSON as stable accepted snapshots', async () => {
-    const sourceRunId = randomUUID();
-    const workflowVersionId = randomUUID();
-    const replay = { z: 2, a: { value: true } };
-    await database().replayRun({
-      ...base,
-      runInput: replay,
-      sourceRunId,
-      workflowVersionId,
-    });
-    expect(runtime.execute.mock.calls[0]?.[0]).toContain(
-      'request_operator_run_replay',
-    );
-    expect(runtime.execute.mock.calls[0]?.[1]).toEqual([
-      base.commandId,
-      workspaceId,
-      sourceRunId,
-      workflowVersionId,
-      '{"a":{"value":true},"z":2}',
-      actorRef,
-      reason,
-      false,
-    ]);
-
-    runtime.execute.mockClear();
-    const attemptId = randomUUID();
-    await database().recordUnknownOutcomeEvidence({
-      actorRef,
-      attemptId,
-      commandId: base.commandId,
-      evidenceKind: 'provider.receipt',
-      evidenceRef: { z: 2, a: 'accepted' },
-      reason,
-      workspaceId,
-    });
-    expect(runtime.execute.mock.calls[0]?.[1]).toEqual([
-      base.commandId,
-      workspaceId,
-      attemptId,
-      'provider.receipt',
-      '{"a":"accepted","z":2}',
-      actorRef,
-      reason,
-    ]);
-  });
-
-  it('maps redispatch and get through pre-COMMIT decoders', async () => {
-    const outboxEventId = randomUUID();
-    await database().redispatchFailedOutbox({ ...base, outboxEventId });
-    expect(runtime.transactionDecoded.mock.calls[0]?.[0]).toContain(
-      'redispatch_failed_outbox_event',
-    );
-    expect(runtime.transactionDecoded.mock.calls[0]?.[1]).toEqual([
-      base.commandId,
-      workspaceId,
-      outboxEventId,
-      actorRef,
-      reason,
-      false,
-    ]);
-
-    runtime.transactionDecoded.mockClear();
-    await database().getCommand(getInput);
-    expect(runtime.transactionDecoded.mock.calls[0]?.[0]).toContain(
-      'get_operator_command',
-    );
-    expect(runtime.transactionDecoded.mock.calls[0]?.[1]).toEqual([
-      base.commandId,
-      workspaceId,
-      actorRef,
-      reason,
-    ]);
-  });
-});
-
 describe('bounded operator JSON', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    runtime.execute.mockResolvedValue({
+    transaction.mockResolvedValue({
       commandId: base.commandId,
-      outcome: 'completed',
+      outcome: 'would_request',
       replayed: false,
       result: {},
       status: 'completed',
@@ -283,7 +107,7 @@ describe('bounded operator JSON', () => {
     for (const invalid of [cyclic, deep, undefined, 1n, () => undefined])
       await expect(replay(invalid)).rejects.toBeInstanceOf(TypeError);
 
-    expect(runtime.execute).toHaveBeenCalledOnce();
+    expect(transaction).toHaveBeenCalledOnce();
   });
 
   it('rejects getters, proxies, symbols, and toJSON hooks without invoking them', async () => {
@@ -308,69 +132,6 @@ describe('bounded operator JSON', () => {
       await expect(replay(invalid)).rejects.toBeInstanceOf(TypeError);
     expect(getter).not.toHaveBeenCalled();
     expect(toJSON).not.toHaveBeenCalled();
-    expect(runtime.execute).not.toHaveBeenCalled();
-  });
-});
-
-describe('operator command row decoding', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  function decodeRows(rows: readonly Record<string, unknown>[]) {
-    runtime.transactionDecoded.mockImplementation(
-      (_text, _values, decode: (value: { rows: typeof rows }) => unknown) =>
-        Promise.resolve(decode({ rows })),
-    );
-  }
-
-  it('returns null for no row and rejects invalid persisted dates', async () => {
-    decodeRows([]);
-    await expect(database().getCommand(getInput)).resolves.toBeNull();
-
-    decodeRows([
-      {
-        command_id: base.commandId,
-        command_type: 'outbox.redispatch',
-        completed_at: null,
-        created_at: 'not-a-date',
-        dry_run: false,
-        command_outcome: 'redispatched',
-        command_status: 'completed',
-        request_fingerprint: 'a'.repeat(64),
-        result: {},
-      },
-    ]);
-    await expect(database().getCommand(getInput)).rejects.toThrow();
-  });
-
-  it('decodes valid nullable and result dates without creating Invalid Date', async () => {
-    decodeRows([
-      {
-        command_id: base.commandId,
-        command_type: 'outbox.redispatch',
-        completed_at: '2026-09-13T12:00:00.000Z',
-        created_at: new Date('2026-09-13T11:00:00.000Z'),
-        dry_run: false,
-        command_outcome: 'redispatched',
-        command_status: 'completed',
-        request_fingerprint: 'a'.repeat(64),
-        result: {
-          priorErrorCode: 'provider.failed',
-          priorFailedAt: '2026-09-13T10:00:00.000Z',
-          priorPublishAttempts: '3',
-        },
-      },
-    ]);
-    const result = await database().getCommand(getInput);
-    expect(result).toMatchObject({
-      priorErrorCode: 'provider.failed',
-      priorPublishAttempts: 3,
-    });
-    expect(result?.createdAt.toISOString()).toBe('2026-09-13T11:00:00.000Z');
-    expect(result?.completedAt?.toISOString()).toBe('2026-09-13T12:00:00.000Z');
-    expect(result?.priorFailedAt?.toISOString()).toBe(
-      '2026-09-13T10:00:00.000Z',
-    );
+    expect(transaction).not.toHaveBeenCalled();
   });
 });

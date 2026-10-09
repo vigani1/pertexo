@@ -2572,14 +2572,17 @@ describeIntegration('active HTTP node attempt', () => {
         expectedFence: 1,
       });
       expect(reclaimed).toMatchObject({
-        command_outcome: 'reclaimed',
+        outcome: 'reclaimed',
         result: {
           fenceToken: 2,
           outcome: 'reclaimed',
           schemaVersion: 1,
         },
       });
-      expect(reclaimed.result.outboxEventId).toMatch(
+      const reclaimedOutboxEventId = reclaimed.result.outboxEventId;
+      if (typeof reclaimedOutboxEventId !== 'string')
+        throw new Error('Reclaim outbox event missing');
+      expect(reclaimedOutboxEventId).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
       );
 
@@ -2630,7 +2633,7 @@ describeIntegration('active HTTP node attempt', () => {
             runId: scenario.accepted.runId,
             nodeRunId: scenario.attempt.node_run_id,
             attemptId: scenario.attempt.attempt_id,
-            outboxEventId: reclaimed.result.outboxEventId,
+            outboxEventId: reclaimedOutboxEventId,
           },
         };
         const recoveredJob = await publishAndWaitForCompletion(
@@ -2665,7 +2668,7 @@ describeIntegration('active HTTP node attempt', () => {
             workspaceId,
             scenario.attempt.attempt_id,
             scenario.attempt.outbox_id,
-            reclaimed.result.outboxEventId,
+            reclaimedOutboxEventId,
             scenario.accepted.runId,
           ],
         );
@@ -2718,7 +2721,7 @@ describeIntegration('active HTTP node attempt', () => {
               workspaceId,
               scenario.attempt.attempt_id,
               scenario.attempt.outbox_id,
-              reclaimed.result.outboxEventId,
+              reclaimedOutboxEventId,
               scenario.accepted.runId,
             ],
           ),

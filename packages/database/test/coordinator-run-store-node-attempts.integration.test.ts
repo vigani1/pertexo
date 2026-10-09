@@ -277,22 +277,30 @@ describe('Coordinator node-attempt persistence invariants', () => {
       ).resolves.toMatchObject({ kind: 'committed' });
 
       const evidenceCommandId = randomUUID();
-      await asOwner(workspaceA, (client) =>
-        client.query(
-          `select * from app.record_operator_unknown_outcome_evidence(
-             $1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::jsonb,$6::varchar,$7::varchar
-           )`,
-          [
-            evidenceCommandId,
-            workspaceA,
-            lease.attemptId,
-            'provider_receipt',
-            JSON.stringify({ reference: `receipt-${suffix}` }),
-            'operator:test',
-            'verify durable provider evidence',
-          ],
-        ),
+      const operator = createOperatorCommandDatabase(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(
+            process.env.DATABASE_MAINTENANCE_URL ??
+              'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+          ),
+          max: 1,
+        }),
       );
+      try {
+        await expect(
+          operator.recordUnknownOutcomeEvidence({
+            actorRef: 'operator:test',
+            attemptId: lease.attemptId,
+            commandId: evidenceCommandId,
+            evidenceKind: 'provider_receipt',
+            evidenceRef: { reference: `receipt-${suffix}` },
+            reason: 'verify durable provider evidence',
+            workspaceId: workspaceA,
+          }),
+        ).resolves.toMatchObject({ outcome: 'evidence_recorded' });
+      } finally {
+        await operator.close();
+      }
       const outbox = await asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query<{ id: string; payload_checksum: string }>(
           `select id,payload_checksum from app.outbox_events
@@ -2034,7 +2042,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
     });
   });
 
-  it('enforces current-head execution command roles and fence dry-run behavior', async () => {
+  it('lets only the operator record commands and replays a fence dry run', async () => {
     const operatorBaseUrl =
       process.env.DATABASE_MAINTENANCE_URL ??
       'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
@@ -2046,21 +2054,16 @@ describe('Coordinator node-attempt persistence invariants', () => {
     );
     try {
       await expect(operator.checkReadiness()).resolves.toBeUndefined();
+      // Only the operator records commands.
       for (const roleUrl of [apiBaseUrl, workerBaseUrl]) {
         await expect(
           asRuntime(roleUrl, workspaceA, (client) =>
             client.query(
-              `select * from app.cancel_operator_run(
-                 $1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::varchar,$6::boolean
-               )`,
-              [
-                randomUUID(),
-                workspaceA,
-                randomUUID(),
-                'role:test',
-                'current-head denial',
-                true,
-              ],
+              `insert into app.operator_commands(
+                 id,workspace_id,command_type,dry_run,request_fingerprint,
+                 status,outcome,result
+               ) values($1,$2,'run.cancel',true,$3,'completed','would_cancel','{}')`,
+              [randomUUID(), workspaceA, 'a'.repeat(64)],
             ),
           ),
         ).rejects.toMatchObject({ code: '42501' });
@@ -2097,7 +2100,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
         }),
       ).rejects.toThrow('conflicts');
 
-      const facts = await asOwner(workspaceA, (client) =>
+      const facts = await asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query<{
           audit_count: number;
           command_count: number;

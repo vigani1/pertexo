@@ -5,6 +5,7 @@ import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../runs/commands/acceptance.js';
 import { consumeInboxMessage } from '../outbox/receipts.js';
@@ -55,6 +56,25 @@ export class OperatorRunReplayNotExecutableError extends Error {
     super('Run replay target is not executable by this worker');
     this.name = 'OperatorRunReplayNotExecutableError';
   }
+}
+
+/** Settles the pending replay command with the request's outcome. */
+async function settleCommand(
+  transaction: WorkspaceTransaction,
+  commandId: string,
+  status: 'completed' | 'failed',
+  outcome: Readonly<{ outcome: string } & Record<string, string>>,
+): Promise<void> {
+  const settled = await transaction.db.execute(sql`
+    update app.operator_commands
+    set status = ${status}, outcome = ${outcome.outcome},
+        completed_at = clock_timestamp(),
+        result = result || ${JSON.stringify(outcome)}::jsonb
+    where workspace_id = ${transaction.workspaceId} and id = ${commandId}
+      and status = 'pending'
+  `);
+  if (settled.rowCount !== 1)
+    throw new Error('Run replay command is no longer pending');
 }
 
 export interface OperatorRunReplayStore {
@@ -170,13 +190,19 @@ export function createOperatorRunReplayStore(
             workflowId: request.data.workflow_id,
             workflowVersionId: request.data.workflow_version_id,
           });
-          await transaction.db.execute(sql`
-            select app.complete_operator_run_replay(
-              ${parsed.commandId}::uuid,
-              ${transaction.workspaceId}::uuid,
-              ${accepted.runId}::uuid
-            )
+          const completed = await transaction.db.execute(sql`
+            update app.operator_run_replay_requests
+            set status = 'completed', result_run_id = ${accepted.runId},
+                completed_at = clock_timestamp()
+            where workspace_id = ${transaction.workspaceId}
+              and command_id = ${parsed.commandId} and status = 'pending'
           `);
+          if (completed.rowCount !== 1)
+            throw new OperatorRunReplayMismatchError();
+          await settleCommand(transaction, parsed.commandId, 'completed', {
+            outcome: 'replay_created',
+            resultRunId: accepted.runId,
+          });
           return accepted.runId;
         },
         parsed.signal === undefined ? {} : { signal: parsed.signal },
@@ -195,13 +221,19 @@ export function createOperatorRunReplayStore(
         .strict()
         .parse(input);
       await database.withWorkspace(parsed.workspaceId, async (transaction) => {
-        await transaction.db.execute(sql`
-          select app.fail_operator_run_replay(
-            ${parsed.commandId}::uuid,
-            ${transaction.workspaceId}::uuid,
-            ${parsed.safeErrorCode}::varchar
-          )
+        const failed = await transaction.db.execute(sql`
+          update app.operator_run_replay_requests
+          set status = 'failed', safe_error_code = ${parsed.safeErrorCode},
+              completed_at = clock_timestamp()
+          where workspace_id = ${transaction.workspaceId}
+            and command_id = ${parsed.commandId} and status = 'pending'
         `);
+        // A request already settled keeps its first outcome.
+        if (failed.rowCount === 1)
+          await settleCommand(transaction, parsed.commandId, 'failed', {
+            outcome: 'replay_failed',
+            safeErrorCode: parsed.safeErrorCode,
+          });
       });
     },
     close: () => database.close(),

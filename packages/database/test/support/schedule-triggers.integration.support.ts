@@ -112,6 +112,28 @@ export function createScheduleTriggerTestEnvironment(
     }
   }
 
+  /** Reads as the runtime role, which sees the workspace's operator rows. */
+  async function workerQuery<Row extends QueryResultRow = QueryResultRow>(
+    statement: string,
+    parameters: unknown[] = [],
+  ) {
+    const client = await worker.connect();
+    try {
+      await client.query('begin');
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      const result = await client.query<Row>(statement, parameters);
+      await client.query('commit');
+      return result;
+    } catch (error: unknown) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   const checkpointFactory = (projection?: { id: string }) => ({
     engineVersion: 'schedule-test-engine',
     checkpoint: {
@@ -349,6 +371,7 @@ export function createScheduleTriggerTestEnvironment(
       return operator;
     },
     ownerQuery,
+    workerQuery,
     get reconciliation() {
       return reconciliation;
     },
