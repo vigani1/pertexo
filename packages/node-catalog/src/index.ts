@@ -1,8 +1,10 @@
 export {
   platformBrowserNodeDefinitionCatalog,
-  resolvePlatformNodeDefinition,
   type PlatformNodeDefinitionBrowserCatalog,
   type PlatformNodeDefinitionBrowserProjection,
+} from './browser-catalog.js';
+export {
+  PLATFORM_NODE_CATALOG,
+  resolvePlatformNodeDefinition,
   type PlatformNodeDefinition,
-} from './definition-resolution.js';
-export * from './registry.js';
+} from './catalog.js';

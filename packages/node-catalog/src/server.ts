@@ -16,10 +16,10 @@ import {
   type EmailSendNotificationExecutorTelemetry,
 } from '@pertexo/integrations/server';
 import {
+  PLATFORM_NODE_CATALOG,
   PLATFORM_NODE_DEFINITION_REGISTRATIONS,
   resolvePlatformNodeDefinition,
-} from './definition-resolution.js';
-import { PLATFORM_NODE_CATALOG } from './registry.js';
+} from './catalog.js';
 import {
   createNodeRegistry,
   type NodeExecutorRegistration,

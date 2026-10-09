@@ -4,7 +4,7 @@ import {
   type WorkflowNode,
   workflowPortableManifestSchema,
 } from '@pertexo/workflow-model';
-import { resolvePlatformNodeDefinition } from './definition-resolution.js';
+import { resolvePlatformNodeDefinition } from './catalog.js';
 
 function nodesIn(graph: WorkflowGraph): readonly WorkflowNode[] {
   return graph.nodes.flatMap((node) => [
