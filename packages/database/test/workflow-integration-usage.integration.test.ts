@@ -55,13 +55,13 @@ describe('workflow integration usage pagination', () => {
         await owner.query(
           `insert into app.workflow_versions
              (id,workspace_id,workflow_id,version_number,schema_version,
-              graph_json,checksum,published_by)
-           values ($1,$2,$3,1,1,'{}'::jsonb,$4,$5)`,
+              graph_json,checksum,executable_json,published_by)
+           values ($1,$2,$3,1,1,'{}'::jsonb,$4,'{}'::jsonb,$5)`,
           [
             versionId,
             workspaceA,
             workflowId,
-            `wf:v1:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
+            `wf:v2:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
             ownerA,
           ],
         );

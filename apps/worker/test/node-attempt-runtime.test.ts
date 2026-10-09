@@ -3,7 +3,7 @@ import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
   PublishedWorkflowReader,
-  PublishedWorkflowV2Projection,
+  PublishedWorkflow,
 } from '@pertexo/database/testing';
 import {
   JOB_NAME,
@@ -92,7 +92,7 @@ function delivery(): Extract<QueueDelivery, { name: 'execute-node-attempt' }> {
   };
 }
 
-function projection(): PublishedWorkflowV2Projection {
+function projection(): PublishedWorkflow {
   return {
     id: VERSION_ID,
     workspaceId: WORKSPACE_ID,
@@ -101,7 +101,6 @@ function projection(): PublishedWorkflowV2Projection {
     schemaVersion: 1,
     checksum:
       'wf:v2:sha256:1111111111111111111111111111111111111111111111111111111111111111',
-    executableSchemaVersion: 2,
     executableJson: { schemaVersion: 2 },
   };
 }
@@ -163,10 +162,7 @@ async function capturedHandler(
       },
       reader: {
         close: vi.fn().mockResolvedValue(undefined),
-        readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: projection(),
-        }),
+        readForExecution: vi.fn().mockResolvedValue(projection()),
       },
       registry: input.registry,
       runStore: input.runStore,

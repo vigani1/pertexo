@@ -148,7 +148,7 @@ export function version(
     versionNumber,
     schemaVersion: 1,
     graph,
-    checksum: `wf:v1:sha256:${'b'.repeat(64)}`,
+    checksum: `wf:v2:sha256:${'b'.repeat(64)}`,
     publishedAt: '2026-09-14T10:00:00.000Z',
   };
 }

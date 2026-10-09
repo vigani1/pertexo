@@ -6,7 +6,7 @@ import {
 } from '@pertexo/database/attempts';
 import type {
   PublishedWorkflowReader,
-  PublishedWorkflowV2Projection,
+  PublishedWorkflow,
 } from '@pertexo/database/runs';
 import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/execution';
 import type {
@@ -62,7 +62,7 @@ export interface NodeAttemptExecutionEngine {
   prepare(
     input: Readonly<{
       lease: NodeAttemptLease;
-      projection: PublishedWorkflowV2Projection;
+      projection: PublishedWorkflow;
     }>,
   ): PreparedNodeAttempt;
 }
@@ -402,20 +402,16 @@ export function createNodeAttemptHandler(
         workflowVersionId: claimed.lease.workflowVersionId,
         signal: context.signal,
       });
-      if (published.kind !== 'v2_projection')
-        throw new NodeAttemptHandlerStateError(
-          published.kind === 'not_found'
-            ? 'workflow_not_found'
-            : 'workflow_non_executable',
-        );
+      if (published === null)
+        throw new NodeAttemptHandlerStateError('workflow_not_found');
       if (
-        published.workflowVersion.id !== claimed.lease.workflowVersionId ||
-        published.workflowVersion.workspaceId !== delivery.data.workspaceId
+        published.id !== claimed.lease.workflowVersionId ||
+        published.workspaceId !== delivery.data.workspaceId
       )
         throw new NodeAttemptHandlerStateError('identity_mismatch');
       const prepared = dependencies.engine.prepare({
         lease: claimed.lease,
-        projection: published.workflowVersion,
+        projection: published,
       });
       const inputs = await loadAttemptInputs(dependencies.runStore, {
         lease: claimed.lease,

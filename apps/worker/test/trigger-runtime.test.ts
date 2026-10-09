@@ -436,9 +436,7 @@ describe('trigger runtime', () => {
 
   it('uses the public queue handler for reconciliation deliveries', async () => {
     const selected = dependencies();
-    vi.mocked(selected.reader.readForExecution).mockResolvedValue({
-      kind: 'not_found',
-    });
+    vi.mocked(selected.reader.readForExecution).mockResolvedValue(null);
     const runtime = await createTriggerRuntime(options, {
       ...selected,
       checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),

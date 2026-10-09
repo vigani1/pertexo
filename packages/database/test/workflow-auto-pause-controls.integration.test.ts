@@ -15,6 +15,7 @@ import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import { createWorkflowTriggerPauseFoldStore } from '../src/triggers/pause/fold-store.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { enforceRetention } from './support/retention.js';
+import { testExecutableCompiler } from '../src/authoring/test-executable-compiler.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -62,6 +63,7 @@ beforeAll(async () => {
   );
   authoring = createWorkflowAuthoringDatabase(
     parseDatabaseConfig({ connectionString: apiUrl, max: 6 }),
+    { executableCompiler: testExecutableCompiler },
   );
   fold = createWorkflowTriggerPauseFoldStore(
     parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),

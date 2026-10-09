@@ -14,7 +14,7 @@ import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
 } from '../../runs/commands/acceptance.js';
-import { classifyPublishedWorkflowVersionRow } from '../../runs/published-workflow.js';
+import { parsePublishedWorkflowRow } from '../../runs/published-workflow.js';
 import {
   scheduleOccurrenceDisposition,
   type ScheduleOccurrenceDisposition,
@@ -207,15 +207,15 @@ async function admitScheduledRun(
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
   const version = await transaction.db.execute(sql<Record<string, unknown>>`
     select id,workspace_id,workflow_id,version_number,schema_version,checksum,
-           executable_schema_version,executable_json
+           executable_json
       from app.workflow_versions
      where workspace_id=${claim.workspace_id}
        and id=${claim.workflow_version_id}
   `);
-  const classified = classifyPublishedWorkflowVersionRow(version.rows[0]);
-  if (classified.kind !== 'v2_projection')
+  const published = parsePublishedWorkflowRow(version.rows[0]);
+  if (published === null)
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
-  const initial = checkpointFactory(classified.workflowVersion);
+  const initial = checkpointFactory(published);
   const identity = `${claim.trigger_id}:${scheduledAt.toISOString()}`;
   const result = await acceptWorkflowRun(transaction, {
     engineVersion: initial.engineVersion,

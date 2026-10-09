@@ -11,8 +11,8 @@ import { acceptWorkflowRun } from '../../runs/commands/acceptance.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import {
-  classifyPublishedWorkflowVersionRow,
-  type PublishedWorkflowV2Projection,
+  parsePublishedWorkflowRow,
+  type PublishedWorkflow,
 } from '../../runs/published-workflow.js';
 import {
   readHealth,
@@ -233,17 +233,16 @@ function mapSecret(
 async function executableProjection(
   transaction: WorkspaceTransaction,
   workflowVersionId: string,
-): Promise<PublishedWorkflowV2Projection> {
+): Promise<PublishedWorkflow> {
   const result = await transaction.db.execute(sql<Record<string, unknown>>`
     select id,workspace_id,workflow_id,version_number,schema_version,checksum,
-           executable_schema_version,executable_json
+           executable_json
       from app.workflow_versions where workspace_id=${transaction.workspaceId}
        and id=${workflowVersionId}
   `);
-  const classified = classifyPublishedWorkflowVersionRow(result.rows[0]);
-  if (classified.kind !== 'v2_projection')
-    throw new WebhookDeliveryIneligibleError();
-  return classified.workflowVersion;
+  const published = parsePublishedWorkflowRow(result.rows[0]);
+  if (published === null) throw new WebhookDeliveryIneligibleError();
+  return published;
 }
 
 /** Locks the verified endpoint and everything that must stay admissible. */

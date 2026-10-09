@@ -102,14 +102,14 @@ describe('authorized published connection usage', () => {
         for (const [index, versionId] of versionIds.entries()) {
           await owner.query(
             `insert into app.workflow_versions
-            (id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,published_by)
-            values ($1,$2,$3,$4,1,'{}'::jsonb,$5,$6)`,
+            (id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,executable_json,published_by)
+            values ($1,$2,$3,$4,1,'{}'::jsonb,$5,'{}'::jsonb,$6)`,
             [
               versionId,
               workspaceA,
               workflowId,
               index + 1,
-              `wf:v1:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
+              `wf:v2:sha256:${createHash('sha256').update(versionId).digest('hex')}`,
               ownerA,
             ],
           );

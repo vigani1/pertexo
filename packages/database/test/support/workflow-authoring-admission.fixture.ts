@@ -6,6 +6,7 @@ import {
 } from '@pertexo/workflow-model/server';
 import type { DatabaseConfig } from '../../src/config.js';
 import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflows/database.js';
+import { testExecutableCompiler } from '../../src/authoring/test-executable-compiler.js';
 import type {
   WorkflowAuthoringDatabaseOptions,
   WorkflowAuthoringGraphValidator,
@@ -17,7 +18,7 @@ import type {
  */
 export function createWorkflowAuthoringFixtureDatabase(
   config: DatabaseConfig,
-  options: WorkflowAuthoringDatabaseOptions = {},
+  options: Partial<WorkflowAuthoringDatabaseOptions> = {},
 ) {
   let validator: WorkflowAuthoringValidator | undefined;
   let closed = false;
@@ -38,6 +39,7 @@ export function createWorkflowAuthoringFixtureDatabase(
   }
   const database = createWorkflowAuthoringDatabase(config, {
     ...options,
+    executableCompiler: options.executableCompiler ?? testExecutableCompiler,
     validateAuthoringGraph:
       options.validateAuthoringGraph ??
       admission(options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG),

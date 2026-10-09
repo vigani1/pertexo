@@ -27,7 +27,6 @@ import {
   workspaceId,
   withApplicationName,
 } from './support/workflow-authoring.integration.support.js';
-import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/server';
 
 type RestoreFixture = Readonly<{
   workflowId: string;
@@ -654,7 +653,7 @@ describe('workflow version restoration persistence', () => {
     }
   });
 
-  it('restores a fresh tag for an identical graph and preserves retained V1 checksum semantics', async () => {
+  it('restores a fresh tag for an identical graph', async () => {
     const created = await authoring.createWorkflow({
       actorId,
       emptyGraph,
@@ -675,9 +674,6 @@ describe('workflow version restoration persistence', () => {
       workflowId: created.workflowId,
       workspaceId,
     });
-    expect(version.version.checksum).toBe(
-      workflowRetainedExecutableChecksum(emptyGraph),
-    );
     const tag = await currentRepresentationTag(
       authoring,
       workspaceId,

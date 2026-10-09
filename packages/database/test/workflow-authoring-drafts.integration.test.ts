@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/server';
-
 import {
   IdempotencyConflictError,
   WorkflowNotFoundError,
@@ -305,13 +303,13 @@ describe('workflow draft persistence', () => {
       [
         `insert into app.workflow_versions
           (id, workspace_id, workflow_id, version_number, schema_version,
-           graph_json, checksum, published_by)
-         values ($1, $2, $3, 999, 1, '{}'::jsonb, $4, $5)`,
+           graph_json, checksum, executable_json, published_by)
+         values ($1, $2, $3, 999, 1, '{}'::jsonb, $4, '{}'::jsonb, $5)`,
         [
           randomUUID(),
           otherWorkspaceId,
           otherWorkflowId,
-          `wf:v1:sha256:${'1'.repeat(64)}`,
+          `wf:v2:sha256:${'1'.repeat(64)}`,
           otherActorId,
         ],
       ],
@@ -483,98 +481,4 @@ describe('workflow draft persistence', () => {
       authoring.getDraft(workspaceId, corrupted.workflowId, actorId),
     ).rejects.toThrow();
   });
-
-  it.each(['first', 'middle', 'last'] as const)(
-    'rejects a corrupt %s retained version before publication mutation',
-    async (position) => {
-      const corrupted = await authoring.createWorkflow({
-        actorId,
-        emptyGraph,
-        idempotencyKey: `create-corrupt-version-${position}`,
-        name: `Corrupt version ${position}`,
-        workspaceId,
-      });
-      const graphs = [
-        emptyGraph,
-        { ...emptyGraph, settings: { maxRunDurationMs: 1_000 } },
-        { ...emptyGraph, settings: { maxRunDurationMs: 2_000 } },
-      ] as const;
-      const corruptIndex =
-        position === 'first' ? 0 : position === 'middle' ? 1 : 2;
-      const versions = graphs.map(() => randomUUID());
-      for (const [index, graph] of graphs.entries())
-        await queryAsOwner(
-          `insert into app.workflow_versions
-             (id,workspace_id,workflow_id,version_number,schema_version,
-              graph_json,checksum,published_by)
-           values($1,$2,$3,$4,1,$5::jsonb,$6,$7)
-           returning id`,
-          [
-            versions[index],
-            workspaceId,
-            corrupted.workflowId,
-            index + 1,
-            JSON.stringify(graph),
-            index === corruptIndex
-              ? `wf:v1:sha256:${'f'.repeat(64)}`
-              : workflowRetainedExecutableChecksum(graph),
-            actorId,
-          ],
-          workspaceId,
-        );
-      const versionId = versions[corruptIndex];
-      if (versionId === undefined)
-        throw new Error('Corruption target is missing');
-
-      await expect(
-        authoring.getVersion(
-          workspaceId,
-          corrupted.workflowId,
-          versionId,
-          actorId,
-        ),
-      ).rejects.toThrow('checksum does not match its graph');
-      await expect(
-        authoring.publishWorkflow({
-          actorId,
-          representationTag: await currentRepresentationTag(
-            authoring,
-            workspaceId,
-            corrupted.workflowId,
-            actorId,
-          ),
-          idempotencyKey: `publish-after-corrupt-version-${position}`,
-          requestHash: 'f'.repeat(64),
-          workflowId: corrupted.workflowId,
-          workspaceId,
-        }),
-      ).rejects.toThrow('checksum does not match its graph');
-
-      const durableState = await queryAsOwner<{
-        audits: string;
-        outbox: string;
-        published_version_id: string | null;
-        versions: string;
-      }>(
-        `select workflow.published_version_id,
-              (select count(*) from app.workflow_versions version
-               where version.workflow_id = workflow.id)::text as versions,
-              (select count(*) from app.audit_events audit
-               where audit.target_id = workflow.id
-                 and audit.action = 'workflow.published')::text as audits,
-              (select count(*) from app.outbox_events event
-               where event.aggregate_id = workflow.id
-                 and event.job_name = 'reconcile-workflow-triggers')::text as outbox
-       from app.workflows workflow where workflow.id = $1`,
-        [corrupted.workflowId],
-        workspaceId,
-      );
-      expect(durableState[0]).toEqual({
-        audits: '0',
-        outbox: '0',
-        published_version_id: null,
-        versions: '3',
-      });
-    },
-  );
 });

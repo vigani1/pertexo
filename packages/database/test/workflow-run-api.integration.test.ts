@@ -288,12 +288,12 @@ async function resetFixture(): Promise<void> {
   await ownerQuery(
     `insert into app.workflow_versions
        (id, workspace_id, workflow_id, version_number, schema_version,
-        graph_json, checksum, executable_schema_version, executable_json, published_by)
+        graph_json, checksum, executable_json, published_by)
      values
-       ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7),
+       ($1, $2, $3, 1, 1, $4::jsonb, $5, $6::jsonb, $7),
        ($8, $2, $3, 2, 1,
         jsonb_set($4::jsonb, '{settings}', '{"maxRunDurationMs":5000}'::jsonb),
-        $9, 2, $10::jsonb, $7)`,
+        $9, $10::jsonb, $7)`,
     [
       workflowVersionId,
       workspaceId,
@@ -314,8 +314,8 @@ async function resetFixture(): Promise<void> {
   await ownerQuery(
     `insert into app.workflow_versions
        (id, workspace_id, workflow_id, version_number, schema_version,
-        graph_json, checksum, executable_schema_version, executable_json, published_by)
-     values ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7)`,
+        graph_json, checksum, executable_json, published_by)
+     values ($1, $2, $3, 1, 1, $4::jsonb, $5, $6::jsonb, $7)`,
     [
       otherWorkflowVersionId,
       otherWorkspaceId,
@@ -580,10 +580,10 @@ describe('workflow run API persistence', () => {
     await ownerQuery(
       `insert into app.workflow_versions
          (id, workspace_id, workflow_id, version_number, schema_version,
-          graph_json, checksum, executable_schema_version, executable_json, published_by)
+          graph_json, checksum, executable_json, published_by)
        select gen_random_uuid(), $1, workflow.id, 1, 1,
               '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
-              'wf:v2:sha256:' || repeat('d', 64), 2,
+              'wf:v2:sha256:' || repeat('d', 64),
               '{"schemaVersion":2}'::jsonb, $2
        from app.workflows workflow
        where workflow.workspace_id = $1
@@ -1644,8 +1644,8 @@ describe('workflow run API persistence', () => {
     await ownerQuery(
       `insert into app.workflow_versions
          (id, workspace_id, workflow_id, version_number, schema_version,
-          graph_json, checksum, executable_schema_version, executable_json, published_by)
-       values ($1, $2, $3, 3, 1, $4::jsonb, $5, 2, $6::jsonb, $7)`,
+          graph_json, checksum, executable_json, published_by)
+       values ($1, $2, $3, 3, 1, $4::jsonb, $5, $6::jsonb, $7)`,
       [
         loopVersionId,
         workspaceId,

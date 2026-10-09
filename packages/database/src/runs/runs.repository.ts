@@ -18,8 +18,8 @@ import {
 } from '../outbox/events.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
-  classifyPublishedWorkflowVersionRow,
-  type PublishedWorkflowV2Projection,
+  parsePublishedWorkflowRow,
+  type PublishedWorkflow,
 } from './published-workflow.js';
 import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
 import { withWorkspaceTransaction } from '../tenant-access/transactions.js';
@@ -338,7 +338,7 @@ async function startInTransaction(
 async function lockPublishedExecution(
   transaction: WorkspaceTransaction,
   workflowId: string,
-): Promise<PublishedWorkflowV2Projection> {
+): Promise<PublishedWorkflow> {
   const result = await transaction.db.execute(sql<Record<string, unknown>>`
     select
       v.id,
@@ -347,7 +347,6 @@ async function lockPublishedExecution(
       v.version_number,
       v.schema_version,
       v.checksum,
-      v.executable_schema_version,
       v.executable_json
     from app.workflows w
     join app.workflow_versions v
@@ -359,15 +358,14 @@ async function lockPublishedExecution(
       and w.lifecycle_status = 'active'
     for share of w
   `);
-  const classified = classifyPublishedWorkflowVersionRow(result.rows[0]);
-  if (classified.kind !== 'v2_projection')
-    throw new WorkflowRunNotExecutableError();
+  // No published version (or an archived workflow) leaves nothing to run.
+  const version = parsePublishedWorkflowRow(result.rows[0]);
   if (
-    classified.workflowVersion.workflowId !== workflowId ||
-    classified.workflowVersion.workspaceId !== transaction.workspaceId
+    version?.workflowId !== workflowId ||
+    version.workspaceId !== transaction.workspaceId
   )
     throw new WorkflowRunNotExecutableError();
-  return classified.workflowVersion;
+  return version;
 }
 
 /**

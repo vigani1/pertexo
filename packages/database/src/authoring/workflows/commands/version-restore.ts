@@ -44,8 +44,7 @@ async function restoreWorkflowVersion(
 
   return context.transact(workspaceId, actorId, async (client) => {
     await context.requireAuthor(client, workspaceId, actorId);
-    const { definitionCatalog, placementDefinitionCatalog } =
-      await context.selectCatalogs(client);
+    const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
 
     const workflowResult = await client.query<Record<string, unknown>>(
       `select ${workflowRowSelection} from app.workflows

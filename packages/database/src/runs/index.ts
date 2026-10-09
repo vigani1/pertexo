@@ -7,7 +7,7 @@ export {
 } from './commands/acceptance.js';
 export type {
   PublishedWorkflowReader,
-  PublishedWorkflowV2Projection,
+  PublishedWorkflow,
 } from './published-workflow.js';
 export type { InitialCheckpointFactory } from './initial-checkpoint.js';
 export {

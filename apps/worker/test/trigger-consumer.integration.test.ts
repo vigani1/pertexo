@@ -103,17 +103,13 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
     const reader: PublishedWorkflowReader = {
       close: vi.fn().mockResolvedValue(undefined),
       readForExecution: vi.fn().mockResolvedValue({
-        kind: 'v2_projection',
-        workflowVersion: {
-          id: publishedVersionId,
-          workspaceId,
-          workflowId,
-          versionNumber: 1,
-          schemaVersion: 1,
-          checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
-          executableSchemaVersion: 2,
-          executableJson: {},
-        },
+        id: publishedVersionId,
+        workspaceId,
+        workflowId,
+        versionNumber: 1,
+        schemaVersion: 1,
+        checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
+        executableJson: {},
       }),
     };
     const scanner: ScheduleTriggerScanner = {

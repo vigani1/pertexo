@@ -9,6 +9,7 @@ import {
   createWorkflowTriggerReconciliationDatabase,
   migrateDatabase,
   parseDatabaseConfig,
+  testExecutableCompiler,
   type DatabaseConfig,
   type IdentityWorkspaceDatabase,
   type WorkflowAuthoringDatabase,
@@ -304,8 +305,8 @@ async function seedWorkflowRows(
   await client.query(
     `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-        checksum,published_by,executable_schema_version,executable_json)
-     values ($1,$2,$3,3,1,$4::jsonb,$5,$6,2,$7::jsonb)`,
+        checksum,published_by,executable_json)
+     values ($1,$2,$3,3,1,$4::jsonb,$5,$6,$7::jsonb)`,
     [
       ids.version,
       workspaceId,
@@ -700,7 +701,9 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       );
       authoring = registerCloseable(
         'authoring database',
-        createWorkflowAuthoringDatabase(apiConfig),
+        createWorkflowAuthoringDatabase(apiConfig, {
+          executableCompiler: testExecutableCompiler,
+        }),
       );
       queue = new Queue(QUEUE_NAME.triggerLifecycle, {
         connection: bullConnection(redisNamespace.redisUrl),

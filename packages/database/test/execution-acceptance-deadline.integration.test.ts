@@ -36,8 +36,8 @@ async function publishDuration(maxRunDurationMs?: number): Promise<void> {
     await client.query(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,
         version_number,schema_version,graph_json,checksum,published_by,
-        executable_schema_version,executable_json)
-       values ($1,$2,$3,1,1,$4::jsonb,$5,$6,2,
+        executable_json)
+       values ($1,$2,$3,1,1,$4::jsonb,$5,$6,
          jsonb_build_object('schemaVersion',2,'graph',$4::jsonb))`,
       [
         workflowVersionId,

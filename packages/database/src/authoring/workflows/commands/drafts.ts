@@ -45,8 +45,7 @@ async function createWorkflow(
     const workflowId = uuidSchema.parse(input.id ?? generatePersistedId());
     const graph = parseWorkflowGraphDraft(input.emptyGraph);
     await context.requireAuthor(client, input.workspaceId, input.actorId);
-    const { definitionCatalog, placementDefinitionCatalog } =
-      await context.selectCatalogs(client);
+    const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
     context.requirePlaceable(
       EMPTY_WORKFLOW_GRAPH,
       graph,
@@ -133,8 +132,7 @@ async function saveDraft(
   );
   return context.transact(input.workspaceId, input.actorId, async (client) => {
     await context.requireAuthor(client, input.workspaceId, input.actorId);
-    const { definitionCatalog, placementDefinitionCatalog } =
-      await context.selectCatalogs(client);
+    const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
     const graph = parseWorkflowGraphDraft(input.graphJson);
     const expected = z.number().int().positive().parse(input.expectedRevision);
     const workflowId = uuidSchema.parse(input.workflowId);

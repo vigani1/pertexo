@@ -2,10 +2,7 @@ import type { PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 
-import type {
-  PortableCatalog,
-  WorkflowAuthoringGraphValidator,
-} from './types.js';
+import type { AuthoringCatalogs } from './catalogs.js';
 
 /** Variable transaction, authority and compatibility seams shared by writes. */
 export type WorkflowAuthoringWriteContext = Readonly<{
@@ -19,14 +16,7 @@ export type WorkflowAuthoringWriteContext = Readonly<{
     next: WorkflowGraph,
     placementCatalog: WorkflowDefinitionCatalog | undefined,
   ): void;
-  selectCatalogs(client: Pick<PoolClient, 'query'>): Promise<
-    Readonly<{
-      definitionCatalog: WorkflowDefinitionCatalog;
-      placementDefinitionCatalog: WorkflowDefinitionCatalog | undefined;
-      portableCatalog: PortableCatalog | undefined;
-      validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
-    }>
-  >;
+  catalogs: AuthoringCatalogs;
   transact<T>(
     workspaceId: string,
     actorId: string,

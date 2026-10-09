@@ -59,13 +59,7 @@ describe('NodeAttemptHandler', () => {
     },
   );
 
-  it.each([
-    [{ kind: 'not_found' as const }, 'workflow_not_found'],
-    [
-      { kind: 'v1_projection' as const, workflowVersion: {} as never },
-      'workflow_non_executable',
-    ],
-  ])(
+  it.each([[null, 'workflow_not_found']])(
     'rejects an unavailable published workflow as %s',
     async (published, code) => {
       const handler = createNodeAttemptHandler({
@@ -123,10 +117,7 @@ describe('NodeAttemptHandler', () => {
       leaseDurationSeconds: 30,
       reader: {
         close: vi.fn(),
-        readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: projection(),
-        }),
+        readForExecution: vi.fn().mockResolvedValue(projection()),
       },
       registry: { execute: vi.fn() },
       runStore,
@@ -137,10 +128,9 @@ describe('NodeAttemptHandler', () => {
       ...dependencies,
       reader: {
         ...dependencies.reader,
-        readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: { ...projection(), workspaceId: ATTEMPT_ID },
-        }),
+        readForExecution: vi
+          .fn()
+          .mockResolvedValue({ ...projection(), workspaceId: ATTEMPT_ID }),
       },
     };
     await expect(
@@ -166,10 +156,7 @@ describe('NodeAttemptHandler', () => {
       leaseDurationSeconds: 30,
       reader: {
         close: vi.fn(),
-        readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: projection(),
-        }),
+        readForExecution: vi.fn().mockResolvedValue(projection()),
       },
       registry: { execute: vi.fn() },
       runStore: {
@@ -208,10 +195,7 @@ describe('NodeAttemptHandler', () => {
         leaseDurationSeconds: 30,
         reader: {
           close: vi.fn(),
-          readForExecution: vi.fn().mockResolvedValue({
-            kind: 'v2_projection',
-            workflowVersion: projection(),
-          }),
+          readForExecution: vi.fn().mockResolvedValue(projection()),
         },
         registry: { execute: vi.fn() },
         runStore: {
@@ -323,10 +307,7 @@ describe('NodeAttemptHandler', () => {
     } satisfies NodeAttemptRunStore;
     const reader = {
       close: vi.fn().mockResolvedValue(undefined),
-      readForExecution: vi.fn().mockResolvedValue({
-        kind: 'v2_projection',
-        workflowVersion: projection(),
-      }),
+      readForExecution: vi.fn().mockResolvedValue(projection()),
     } satisfies PublishedWorkflowReader;
     const execute = vi.fn(
       async ({
@@ -416,10 +397,7 @@ describe('NodeAttemptHandler', () => {
       leaseDurationSeconds: 30,
       reader: {
         close: vi.fn(),
-        readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: projection(),
-        }),
+        readForExecution: vi.fn().mockResolvedValue(projection()),
       },
       registry: {
         execute: vi.fn().mockResolvedValue({
@@ -481,10 +459,7 @@ describe('NodeAttemptHandler', () => {
     } satisfies NodeAttemptRunStore;
     const reader = {
       close: vi.fn().mockResolvedValue(undefined),
-      readForExecution: vi.fn().mockResolvedValue({
-        kind: 'v2_projection',
-        workflowVersion: projection(),
-      }),
+      readForExecution: vi.fn().mockResolvedValue(projection()),
     } satisfies PublishedWorkflowReader;
     const execute = vi.fn(
       async ({
@@ -629,10 +604,7 @@ describe('NodeAttemptHandler', () => {
         leaseDurationSeconds: 30,
         reader: {
           close: vi.fn(),
-          readForExecution: vi.fn().mockResolvedValue({
-            kind: 'v2_projection',
-            workflowVersion: projection(),
-          }),
+          readForExecution: vi.fn().mockResolvedValue(projection()),
         },
         registry: {
           execute: vi

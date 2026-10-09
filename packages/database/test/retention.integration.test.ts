@@ -128,13 +128,13 @@ async function insertScheduleTrigger(): Promise<string> {
   await admin.query(
     `insert into app.workflow_versions
       (id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-       checksum,published_by,published_at)
-     values($1,$2,$3,1,1,'{}',$4,$5,clock_timestamp())`,
+       checksum,executable_json,published_by,published_at)
+     values($1,$2,$3,1,1,'{}',$4,'{}',$5,clock_timestamp())`,
     [
       workflowVersionId,
       workspaceId,
       workflowId,
-      `wf:v1:sha256:${'b'.repeat(64)}`,
+      `wf:v2:sha256:${'b'.repeat(64)}`,
       userId,
     ],
   );

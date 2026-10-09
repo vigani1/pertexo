@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/server';
 
 import {
   createIdentityWorkspaceDatabase,
@@ -9,6 +8,7 @@ import {
   parseDatabaseConfig,
   type IdentityWorkspaceDatabase,
   type WorkspaceDatabase,
+  testExecutableCompiler,
 } from '@pertexo/database/testing';
 import type {
   StructuredLogger,
@@ -437,7 +437,7 @@ async function seedWorkflowRows(
     edges: [],
     settings: {},
   });
-  const checksum = workflowRetainedExecutableChecksum(
+  const compiled = testExecutableCompiler(
     parseWorkflowGraphDraft(JSON.parse(graph)),
   );
   await client.query(
@@ -460,14 +460,15 @@ async function seedWorkflowRows(
   await client.query(
     `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,schema_version,
-        graph_json,checksum,published_by)
-     values ($1,$2,$3,4,1,$4::jsonb,$5,$6)`,
+        graph_json,checksum,executable_json,published_by)
+     values ($1,$2,$3,4,1,$4::jsonb,$5,$6::jsonb,$7)`,
     [
       ids.publishedVersion,
       workspaceId,
       ids.published,
       graph,
-      checksum,
+      compiled.checksum,
+      JSON.stringify(compiled.executableJson),
       ownerUserId,
     ],
   );
@@ -490,7 +491,7 @@ async function createForeignVersionWithOwner(
     edges: [],
     settings: {},
   });
-  const checksum = workflowRetainedExecutableChecksum(graph);
+  const compiled = testExecutableCompiler(graph);
   await withOwnerClient(ownerPool, foreignWorkspaceId, async (client) => {
     await client.query(
       `insert into app.workspaces (id,name,slug,status,created_by)
@@ -511,14 +512,15 @@ async function createForeignVersionWithOwner(
     await client.query(
       `insert into app.workflow_versions
          (id,workspace_id,workflow_id,version_number,schema_version,
-          graph_json,checksum,published_by)
-       values ($1,$2,$3,1,1,$4::jsonb,$5,$6)`,
+          graph_json,checksum,executable_json,published_by)
+       values ($1,$2,$3,1,1,$4::jsonb,$5,$6::jsonb,$7)`,
       [
         foreignVersionId,
         foreignWorkspaceId,
         foreignWorkflowId,
         JSON.stringify(graph),
-        checksum,
+        compiled.checksum,
+        JSON.stringify(compiled.executableJson),
         ownerUserId,
       ],
     );

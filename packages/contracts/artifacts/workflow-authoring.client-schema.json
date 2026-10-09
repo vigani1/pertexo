@@ -1608,7 +1608,7 @@
         },
         "versionChecksum": {
           "type": "string",
-          "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
+          "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
         },
         "name": {
           "type": "string",
@@ -1678,7 +1678,7 @@
             },
             "versionChecksum": {
               "type": "string",
-              "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
             },
             "name": {
               "type": "string",
@@ -1798,7 +1798,7 @@
               },
               "versionChecksum": {
                 "type": "string",
-                "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
+                "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
               },
               "name": {
                 "type": "string",
@@ -7066,7 +7066,7 @@
             },
             "checksum": {
               "type": "string",
-              "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
             },
             "publishedAt": {
               "type": "string",
@@ -7621,7 +7621,7 @@
         },
         "checksum": {
           "type": "string",
-          "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
+          "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
         },
         "publishedAt": {
           "type": "string",
@@ -8172,7 +8172,7 @@
               },
               "checksum": {
                 "type": "string",
-                "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
+                "pattern": "^wf:v2:sha256:[0-9a-f]{64}$"
               },
               "publishedAt": {
                 "type": "string",

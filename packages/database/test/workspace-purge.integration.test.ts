@@ -308,18 +308,18 @@ describe('workspace purge', () => {
       await owner.query(
         `insert into app.workflow_versions(
           id,workspace_id,workflow_id,version_number,schema_version,graph_json,
-          checksum,published_by,published_at
+          checksum,executable_json,published_by,published_at
         ) values
-          ($1,$3,$4,1,1,'{}',$5,$6,clock_timestamp()),
-          ($2,$3,$4,2,1,'{}',$7,$6,clock_timestamp())`,
+          ($1,$3,$4,1,1,'{}',$5,'{}',$6,clock_timestamp()),
+          ($2,$3,$4,2,1,'{}',$7,'{}',$6,clock_timestamp())`,
         [
           historicalVersionId,
           publishedVersionId,
           workspaceId,
           workflowId,
-          `wf:v1:sha256:${'7'.repeat(64)}`,
+          `wf:v2:sha256:${'7'.repeat(64)}`,
           userId,
-          `wf:v1:sha256:${'8'.repeat(64)}`,
+          `wf:v2:sha256:${'8'.repeat(64)}`,
         ],
       );
       await owner.query(

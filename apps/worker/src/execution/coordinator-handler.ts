@@ -20,10 +20,7 @@ export type CoordinatorHandlerResult = Readonly<{
 }>;
 
 export type CoordinatorHandlerStateErrorCode =
-  | 'capacity_exceeded'
-  | 'not_executable'
-  | 'not_found'
-  | 'unsupported_checkpoint';
+  'capacity_exceeded' | 'not_found' | 'unsupported_checkpoint';
 
 export class CoordinatorHandlerStateError extends Error {
   public override readonly name = 'CoordinatorHandlerStateError';

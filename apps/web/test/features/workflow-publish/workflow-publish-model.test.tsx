@@ -141,7 +141,7 @@ describe('publish summary', () => {
       versionNumber: 7,
       schemaVersion: 1,
       graph: live,
-      checksum: `wf:v1:sha256:${'b'.repeat(64)}`,
+      checksum: `wf:v2:sha256:${'b'.repeat(64)}`,
       publishedAt: '2026-09-14T10:02:00.000Z',
     });
     expect(summary.nextVersionNumber).toBe(8);
@@ -316,7 +316,7 @@ describe('publication', () => {
             versionNumber: 3,
             schemaVersion: 1,
             graph: graph([]),
-            checksum: `wf:v1:sha256:${'c'.repeat(64)}`,
+            checksum: `wf:v2:sha256:${'c'.repeat(64)}`,
             publishedAt: '2026-09-15T10:00:00.000Z',
           },
           reused: false,

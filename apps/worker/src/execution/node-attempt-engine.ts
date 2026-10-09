@@ -1,5 +1,5 @@
 import type { NodeAttemptLease } from '@pertexo/database/attempts';
-import type { PublishedWorkflowV2Projection } from '@pertexo/database/runs';
+import type { PublishedWorkflow } from '@pertexo/database/runs';
 import type {
   ExecuteNodeAttemptInput,
   NodeExecutionRegistry,
@@ -143,7 +143,7 @@ function branchReachesTarget(
 }
 
 function assertProjectionIdentity(
-  projection: PublishedWorkflowV2Projection,
+  projection: PublishedWorkflow,
   lease: NodeAttemptLease,
 ): void {
   if (projection.id !== lease.workflowVersionId)
@@ -274,7 +274,7 @@ function deriveUpstreamNodeOutputs(
 }
 
 function prepareNode(
-  projection: PublishedWorkflowV2Projection,
+  projection: PublishedWorkflow,
   lease: NodeAttemptLease,
   options: NodeAttemptExecutionEngineOptions,
 ): PreparedNodeAttempt {
@@ -358,7 +358,7 @@ export function createNodeAttemptExecutionEngine(
   return Object.freeze({
     prepare: (
       input: Readonly<{
-        projection: PublishedWorkflowV2Projection;
+        projection: PublishedWorkflow;
         lease: NodeAttemptLease;
       }>,
     ) => prepareNode(input.projection, input.lease, options),

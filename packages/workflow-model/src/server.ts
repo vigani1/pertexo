@@ -13,8 +13,6 @@ export {
   workflowCompatibilityReport,
   workflowDefinitionCatalogFingerprint,
   workflowDraftRepresentationTag,
-  workflowExecutableChecksum,
   workflowIntegrationUsage,
-  workflowRetainedExecutableChecksum,
   type WorkflowDefinitionCatalog,
 } from './graph/identity.js';

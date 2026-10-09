@@ -34,7 +34,7 @@ it('blocks new case and run commands until a reviewed publication is actually di
     workspaceId,
     workflowId,
     workflowVersionId: versionId,
-    versionChecksum: `wf:v1:sha256:${'a'.repeat(64)}`,
+    versionChecksum: `wf:v2:sha256:${'a'.repeat(64)}`,
     name: 'Original case',
     revision: 1,
     representationTag: `"wic1.${originalId.replaceAll('-', '')}.1"`,

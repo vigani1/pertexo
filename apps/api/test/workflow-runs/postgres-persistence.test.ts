@@ -289,7 +289,6 @@ function projection(compiled: ReturnType<typeof executable>) {
     versionNumber: 1,
     schemaVersion: 1 as const,
     checksum: compiled.checksum,
-    executableSchemaVersion: 2 as const,
     executableJson: compiled.envelope,
   };
 }
@@ -828,7 +827,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         versionNumber: 1,
         schemaVersion: 1,
         checksum: compiled.checksum,
-        executableSchemaVersion: 2,
         executableJson: compiled.envelope,
       },
       {
@@ -900,7 +898,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         versionNumber: 1,
         schemaVersion: 1,
         checksum: compiled.checksum,
-        executableSchemaVersion: 2,
         executableJson: compiled.envelope,
       },
       {
@@ -924,7 +921,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         versionNumber: 1,
         schemaVersion: 1,
         checksum: compiled.checksum,
-        executableSchemaVersion: 2,
         executableJson: compiled.envelope,
       },
       {

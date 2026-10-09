@@ -12,6 +12,7 @@ import {
 } from '../src/tenant-access/transactions.js';
 import { claimedScheduleWorkflowPaused } from '../src/triggers/schedules/pause.js';
 import { createScheduleTriggerTestEnvironment } from './support/schedule-triggers.integration.support.js';
+import { testExecutableCompiler } from '../src/authoring/test-executable-compiler.js';
 
 // Every scenario is relative to PostgreSQL's clock; no occurrence-time waits,
 // external calls, production roles or shared development database are used.
@@ -28,6 +29,7 @@ beforeAll(async () => {
       connectionString: fixture.apiConnectionString,
       max: 2,
     }),
+    { executableCompiler: testExecutableCompiler },
   );
   const adminUrl = new URL(
     process.env.DATABASE_ADMIN_URL ??

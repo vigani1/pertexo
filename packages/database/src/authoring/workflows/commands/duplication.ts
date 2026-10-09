@@ -173,7 +173,7 @@ export function createWorkflowDuplicationStore(
           if (sourceRow.lifecycle_status !== 'active')
             throw new WorkflowNotFoundError('Workflow source is not visible');
           const { definitionCatalog, placementDefinitionCatalog } =
-            await context.selectCatalogs(client);
+            context.catalogs;
           const graph = await selectedGraph(client, input, definitionCatalog);
           context.requirePlaceable(
             EMPTY_WORKFLOW_GRAPH,
