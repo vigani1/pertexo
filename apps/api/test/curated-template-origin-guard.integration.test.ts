@@ -9,6 +9,7 @@ import {
 } from '@pertexo/database/api';
 import {
   createWorkspacePurgeCoordinator,
+  EXPECTED_MIGRATION_HEAD,
   parseDatabaseConfig,
   WorkflowNotFoundError,
   checkDatabaseReadiness,
@@ -386,7 +387,7 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
     it('current compatible API and worker readiness passes without enabling or running providers', async () => {
       for (const pool of [api, worker])
         expect((await checkDatabaseReadiness(pool)).migrationHead).toBe(
-          '0000_baseline.sql',
+          EXPECTED_MIGRATION_HEAD,
         );
     });
     it('records authoritative PostgreSQL helper body and inventory witnesses', async () => {
