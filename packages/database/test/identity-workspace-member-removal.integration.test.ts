@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
+import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import { WorkspaceMemberRemovalCommandConflictError } from '../src/testing.js';
 import { useIdentityCommandDatabase } from './support/identity-command.integration.support.js';
 
@@ -86,7 +87,7 @@ describe('workspace member removal (ADR 042)', () => {
       database
         .identity()
         .removeWorkspaceMember({ ...command, expectedRoleRevision: 2 }),
-    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     await expect(
       database
         .identity()

@@ -1,12 +1,15 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
 import { z } from 'zod';
 
+import {
+  claimCommand,
+  completeCommand,
+  type CommandIdentity,
+} from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   commandKeySchema,
   commandRevisionSchema,
-  hashFlatIdentityCommand,
-  hashIdentityCommandKey,
 } from './identity-command-primitives.js';
 import type {
   IdentityWorkspaceDatabase,
@@ -53,64 +56,17 @@ function durableResult(result: WorkspaceRenameResult) {
   });
 }
 
-function parsedResult(value: unknown): WorkspaceRenameResult | undefined {
-  const result = durableResultSchema.safeParse(value);
-  if (!result.success) return undefined;
+function replayedResult(value: unknown): WorkspaceRenameResult {
+  const { workspace, changed } = durableResultSchema.parse(value);
   return Object.freeze({
     workspace: Object.freeze({
-      ...result.data.workspace,
-      createdAt: new Date(result.data.workspace.createdAt),
-      updatedAt: new Date(result.data.workspace.updatedAt),
+      ...workspace,
+      createdAt: new Date(workspace.createdAt),
+      updatedAt: new Date(workspace.updatedAt),
     }),
-    changed: result.data.changed,
+    changed,
     replayed: true,
   });
-}
-
-async function claimReceipt(
-  client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    actorUserId: string;
-    keyHash: string;
-    requestHash: string;
-  }>,
-): Promise<Readonly<{ id: string }> | WorkspaceRenameResult> {
-  const id = generatePersistedId();
-  const inserted = await client.query(
-    `insert into app.workspace_rename_command_receipts
-       (id,workspace_id,actor_user_id,key_hash,request_hash,status)
-     values($1,$2,$3,$4,$5,'in_progress')
-     on conflict(actor_user_id,workspace_id,key_hash) do nothing`,
-    [
-      id,
-      input.workspaceId,
-      input.actorUserId,
-      input.keyHash,
-      input.requestHash,
-    ],
-  );
-  if (inserted.rowCount === 1) return { id };
-  const existing = await client.query<{
-    request_hash: string;
-    status: string;
-    result_ref: unknown;
-  }>(
-    `select request_hash,status,result_ref
-     from app.workspace_rename_command_receipts
-     where actor_user_id=$1 and workspace_id=$2 and key_hash=$3 for update`,
-    [input.actorUserId, input.workspaceId, input.keyHash],
-  );
-  const row = existing.rows[0];
-  if (row?.request_hash !== input.requestHash)
-    throw new WorkspaceRenameCommandConflictError(
-      'idempotency_conflict',
-      'The idempotency key belongs to another workspace rename',
-    );
-  const result = parsedResult(row.result_ref);
-  if (row.status !== 'completed' || result === undefined)
-    throw new Error('Workspace rename receipt is incomplete');
-  return result;
 }
 
 export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
@@ -122,15 +78,12 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
       const expectedRevision = commandRevisionSchema.parse(
         raw.expectedRevision,
       );
-      const keyHash = hashIdentityCommandKey(
-        commandKeySchema.parse(raw.idempotencyKey),
-      );
-      const requestHash = hashFlatIdentityCommand({
-        actorUserId,
-        expectedRevision,
-        name,
+      const key: CommandIdentity = {
         workspaceId,
-      });
+        operation: 'workspace.rename',
+        scope: actorUserId,
+        idempotencyKey: commandKeySchema.parse(raw.idempotencyKey),
+      };
       return withTenantScopedClient(
         pool,
         { workspaceId, actorId: actorUserId },
@@ -176,13 +129,12 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
               'actor_inactive',
               'The actor cannot manage this workspace',
             );
-          const receipt = await claimReceipt(client, {
-            workspaceId,
-            actorUserId,
-            keyHash,
-            requestHash,
+          const stored = await claimCommand(client, {
+            ...key,
+            request: { name, expectedRevision },
+            resourceId: workspaceId,
           });
-          if ('replayed' in receipt) return receipt;
+          if (stored !== null) return replayedResult(stored);
           const currentWorkspace = mapWorkspace(current);
           if (currentWorkspace.revision !== expectedRevision)
             throw new WorkspaceRenameCommandConflictError(
@@ -227,14 +179,7 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
             changed,
             replayed: false,
           });
-          const completed = await client.query(
-            `update app.workspace_rename_command_receipts
-             set status='completed',result_ref=$2::jsonb,updated_at=clock_timestamp()
-             where id=$1 and status='in_progress'`,
-            [receipt.id, JSON.stringify(durableResult(result))],
-          );
-          if (completed.rowCount !== 1)
-            throw new Error('Workspace rename receipt could not be completed');
+          await completeCommand(client, key, durableResult(result));
           return result;
         },
       );

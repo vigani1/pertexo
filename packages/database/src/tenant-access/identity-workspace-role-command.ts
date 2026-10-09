@@ -51,7 +51,7 @@ export function createIdentityWorkspaceRoleCommandStore(
         raw.expectedRoleRevision,
       );
       return executeMemberCommand(pool, {
-        table: 'workspace_member_role_command_receipts',
+        operation: 'workspace.member.role',
         workspaceId: raw.workspaceId,
         actorUserId: raw.actorUserId,
         targetUserId: raw.targetUserId,

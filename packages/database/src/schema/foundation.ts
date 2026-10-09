@@ -100,69 +100,6 @@ export const workspaceMemberships = appSchema.table(
   ],
 );
 
-export const workspaceMemberRoleCommandReceipts = appSchema.table(
-  'workspace_member_role_command_receipts',
-  {
-    id: uuid('id').primaryKey(),
-    workspaceId: uuid('workspace_id').notNull(),
-    actorUserId: uuid('actor_user_id').notNull(),
-    targetUserId: uuid('target_user_id').notNull(),
-    keyHash: char('key_hash', { length: 64 }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
-    status: varchar('status', { length: 32 }).notNull(),
-    resultRef: jsonb('result_ref'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('workspace_member_role_command_receipts_key_unique').on(
-      table.actorUserId,
-      table.workspaceId,
-      table.keyHash,
-    ),
-    index('workspace_member_role_command_receipts_workspace_idx').on(
-      table.workspaceId,
-      table.createdAt,
-      table.id,
-    ),
-  ],
-);
-
-export const workspaceRenameCommandReceipts = appSchema.table(
-  'workspace_rename_command_receipts',
-  {
-    id: uuid('id').primaryKey(),
-    workspaceId: uuid('workspace_id').notNull(),
-    actorUserId: uuid('actor_user_id').notNull(),
-    keyHash: char('key_hash', { length: 64 }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
-    status: varchar('status', { length: 32 }).notNull(),
-    resultRef: jsonb('result_ref'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('workspace_rename_command_receipts_key_unique').on(
-      table.actorUserId,
-      table.workspaceId,
-      table.keyHash,
-    ),
-    index('workspace_rename_command_receipts_workspace_idx').on(
-      table.workspaceId,
-      table.createdAt,
-      table.id,
-    ),
-  ],
-);
-
 export const workspaceInvitations = appSchema.table(
   'workspace_invitations',
   {
@@ -209,39 +146,6 @@ export const workspaceInvitations = appSchema.table(
     index('workspace_invitations_expiry_idx')
       .on(table.expiresAt, table.id)
       .where(sql`${table.status}='pending'`),
-  ],
-);
-
-export const workspaceInvitationCommandReceipts = appSchema.table(
-  'workspace_invitation_command_receipts',
-  {
-    id: uuid('id').primaryKey(),
-    workspaceId: uuid('workspace_id').notNull(),
-    actorUserId: uuid('actor_user_id').notNull(),
-    operation: varchar('operation', { length: 32 }).notNull(),
-    keyHash: char('key_hash', { length: 64 }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
-    status: varchar('status', { length: 32 }).notNull(),
-    resultRef: jsonb('result_ref'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('workspace_invitation_receipts_key_unique').on(
-      table.actorUserId,
-      table.workspaceId,
-      table.operation,
-      table.keyHash,
-    ),
-    index('workspace_invitation_receipts_workspace_idx').on(
-      table.workspaceId,
-      table.createdAt,
-      table.id,
-    ),
   ],
 );
 

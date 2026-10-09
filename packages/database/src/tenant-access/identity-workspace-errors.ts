@@ -23,10 +23,7 @@ export class WorkspaceAccessDeniedError extends Error {
 }
 
 export type WorkspaceRenameCommandConflictReason =
-  | 'actor_inactive'
-  | 'workspace_inactive'
-  | 'revision_conflict'
-  | 'idempotency_conflict';
+  'actor_inactive' | 'workspace_inactive' | 'revision_conflict';
 
 export class WorkspaceRenameCommandConflictError extends Error {
   public override readonly name = 'WorkspaceRenameCommandConflictError';
@@ -47,8 +44,7 @@ export type WorkspaceMemberRoleCommandConflictReason =
   | 'self_change'
   | 'owner_change'
   | 'transition_forbidden'
-  | 'revision_conflict'
-  | 'idempotency_conflict';
+  | 'revision_conflict';
 
 export class WorkspaceMemberRoleCommandConflictError extends Error {
   public override readonly name = 'WorkspaceMemberRoleCommandConflictError';
@@ -69,8 +65,7 @@ export type WorkspaceMemberRemovalCommandConflictReason =
   | 'self_removal'
   | 'owner_removal'
   | 'removal_forbidden'
-  | 'revision_conflict'
-  | 'idempotency_conflict';
+  | 'revision_conflict';
 
 export class WorkspaceMemberRemovalCommandConflictError extends Error {
   public override readonly name = 'WorkspaceMemberRemovalCommandConflictError';
@@ -94,8 +89,7 @@ export type WorkspaceMembershipCommandConflictReason =
   | 'owner_target'
   | 'owner_departure'
   | 'command_forbidden'
-  | 'revision_conflict'
-  | 'idempotency_conflict';
+  | 'revision_conflict';
 
 export class WorkspaceMembershipCommandConflictError extends Error {
   public override readonly name = 'WorkspaceMembershipCommandConflictError';
@@ -131,8 +125,7 @@ export type WorkspaceInvitationCommandConflictReason =
   | 'invitation_missing'
   | 'invitation_inactive'
   | 'delivery_unresolved'
-  | 'revision_conflict'
-  | 'idempotency_conflict';
+  | 'revision_conflict';
 
 export class WorkspaceInvitationCommandConflictError extends Error {
   public override readonly name = 'WorkspaceInvitationCommandConflictError';
@@ -155,8 +148,7 @@ export type InvitationAcceptanceConflictReason =
   | 'proof_expired'
   | 'workspace_inactive'
   | 'member_inactive'
-  | 'revision_conflict'
-  | 'idempotency_conflict';
+  | 'revision_conflict';
 
 export class InvitationAcceptanceConflictError extends Error {
   public override readonly name = 'InvitationAcceptanceConflictError';

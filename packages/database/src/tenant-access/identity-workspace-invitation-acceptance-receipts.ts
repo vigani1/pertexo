@@ -1,11 +1,14 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
+import {
+  completeCommand,
+  type CommandIdentity,
+} from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type { InvitationAcceptanceResult } from './identity-workspace-contracts.js';
-import { InvitationAcceptanceConflictError } from './identity-workspace-errors.js';
 
-/** Durable acceptance receipt stored on the intent and the command receipt. */
+/** Durable acceptance receipt stored on the intent and as the command's result. */
 export const acceptanceReceiptSchema = z
   .object({
     intentId: z.uuid(),
@@ -16,29 +19,6 @@ export const acceptanceReceiptSchema = z
   .strict();
 
 type AcceptanceReceipt = z.output<typeof acceptanceReceiptSchema>;
-
-type AcceptanceReceiptRow = Readonly<{
-  request_hash: string;
-  status: string;
-  result_ref: unknown;
-}>;
-
-/** Locks the accept-command receipt claimed by an actor's idempotency key. */
-export async function lockAcceptanceReceipt(
-  client: PoolClient,
-  actorUserId: string,
-  workspaceId: string,
-  keyHash: string,
-): Promise<AcceptanceReceiptRow | undefined> {
-  const result = await client.query<AcceptanceReceiptRow>(
-    `select request_hash,status,result_ref
-       from app.workspace_invitation_command_receipts
-      where actor_user_id=$1 and workspace_id=$2 and operation='accept' and key_hash=$3
-      for update`,
-    [actorUserId, workspaceId, keyHash],
-  );
-  return result.rows[0];
-}
 
 export function replayedAcceptance(
   receipt: AcceptanceReceipt,
@@ -51,33 +31,14 @@ export function replayedAcceptance(
 }
 
 /**
- * Replays a completed receipt of the same command. Another command reusing
- * the key is an idempotency conflict; an unfinished receipt is corrupt state.
- */
-export function replayAcceptanceReceipt(
-  row: AcceptanceReceiptRow | undefined,
-  commandHash: string,
-): InvitationAcceptanceResult {
-  if (row?.request_hash !== commandHash)
-    throw new InvitationAcceptanceConflictError(
-      'idempotency_conflict',
-      'The key belongs to another acceptance command',
-    );
-  const prior = acceptanceReceiptSchema.safeParse(row.result_ref);
-  if (row.status !== 'completed' || !prior.success)
-    throw new Error('Invitation acceptance receipt is incomplete');
-  return replayedAcceptance(prior.data);
-}
-
-/**
  * Persists a completed acceptance: the invitation becomes accepted, its
- * delivery tokens are scrubbed, the intent and command receipt record the
+ * delivery tokens are scrubbed, the intent and the command's key record the
  * durable receipt, and the acceptance is audited.
  */
 export async function recordAcceptedInvitation(
   client: PoolClient,
   input: Readonly<{
-    receiptId: string;
+    command: CommandIdentity;
     receipt: AcceptanceReceipt;
     actorUserId: string;
     invitationId: string;
@@ -128,10 +89,5 @@ export async function recordAcceptedInvitation(
       }),
     ],
   );
-  await client.query(
-    `update app.workspace_invitation_command_receipts
-        set status='completed',result_ref=$2::jsonb,updated_at=clock_timestamp()
-      where id=$1 and status='in_progress'`,
-    [input.receiptId, receiptJson],
-  );
+  await completeCommand(client, input.command, receipt);
 }

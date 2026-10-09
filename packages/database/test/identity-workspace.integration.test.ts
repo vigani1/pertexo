@@ -22,6 +22,7 @@ import {
   workspaceMemberships,
 } from '../src/testing.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { IdempotencyConflictError } from '../src/platform/idempotency.js';
 import { createWorkspaceInvitationDeliveryStore } from '../src/execution.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { enforceRetention } from './support/retention.js';
@@ -410,7 +411,7 @@ describe('identity/workspace persistence', () => {
         expectedRevision: 1,
         idempotencyKey: firstKey,
       }),
-    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
 
     const owner = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
     try {
@@ -949,7 +950,7 @@ describe('identity/workspace persistence', () => {
         expectedRoleRevision: 3,
         idempotencyKey: noOpKey,
       }),
-    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     const rows = await identityDatabase.listWorkspaceMembers(
       commandWorkspace.id,
       ownerUserId,
@@ -2052,19 +2053,19 @@ describe('identity/workspace persistence', () => {
     const inspection = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
     try {
       const stored = await inspection.query<{
-        request_hash: string;
         outbox_id: string;
         payload_checksum: string;
         delivery_attempt_id: string;
       }>(
-        `select receipt.request_hash,outbox.id outbox_id,
-                outbox.payload_checksum,
+        `select outbox.id outbox_id,outbox.payload_checksum,
                 outbox.payload->>'deliveryAttemptId' delivery_attempt_id
-           from app.workspace_invitation_command_receipts receipt
+           from app.idempotency_records command
            join app.outbox_events outbox
-             on outbox.aggregate_id=$3 and outbox.workspace_id=$1
-          where receipt.workspace_id=$1 and receipt.actor_user_id=$2
-            and receipt.operation='create' and receipt.key_hash=$4`,
+             on outbox.aggregate_id=command.resource_id
+            and outbox.workspace_id=command.workspace_id
+          where command.workspace_id=$1 and command.scope=$2::text
+            and command.operation='workspace.invitation.create'
+            and command.resource_id=$3 and command.key_hash=$4`,
         [
           invitationWorkspace.id,
           ownerUserId,
@@ -2078,14 +2079,7 @@ describe('identity/workspace persistence', () => {
       expect(row.delivery_attempt_id).toBe(
         '00000000-0000-4000-8000-000000000007',
       );
-      const requestBytes = `{"email":"${command.email}","role":"viewer"}`;
       const outboxBytes = `{"deliveryAttemptId":"${row.delivery_attempt_id}","invitationId":"${first.invitation.id}","outboxEventId":"${row.outbox_id}","schemaVersion":1,"workspaceId":"${invitationWorkspace.id}"}`;
-      const requestGolden =
-        'a9bd47c94a330cf5d0f952f3109862e3175d9743a1a0acf39d9023041297fccf';
-      expect(createHash('sha256').update(requestBytes).digest('hex')).toBe(
-        requestGolden,
-      );
-      expect(row.request_hash).toBe(requestGolden);
       expect(row.payload_checksum).toBe(
         createHash('sha256').update(outboxBytes).digest('hex'),
       );
@@ -2103,7 +2097,7 @@ describe('identity/workspace persistence', () => {
         ...command,
         role: 'builder',
       }),
-    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
 
     const email = `${randomUUID()}@example.test`;
     const results = await Promise.allSettled([
@@ -4090,23 +4084,17 @@ describe('identity/workspace persistence', () => {
     ).resolves.toMatchObject({ membershipCreated: true, replayed: false });
     const inspection = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
     try {
-      const receipt = await inspection.query<{ request_hash: string }>(
-        `select request_hash from app.workspace_invitation_command_receipts
-          where workspace_id=$1 and actor_user_id=$2 and operation='accept'
-            and key_hash=$3`,
+      const accepted = await inspection.query<{ resource_id: string }>(
+        `select resource_id from app.idempotency_records
+          where workspace_id=$1 and scope=$2::text
+            and operation='workspace.invitation.accept' and key_hash=$3`,
         [
           invitationWorkspace.id,
           recipient.id,
           createHash('sha256').update(key).digest('hex'),
         ],
       );
-      const historicalBytes = `{"actorUserId":"${recipient.id}","intentId":"${intentId}","invitationRevision":1,"workspaceId":"${invitationWorkspace.id}"}`;
-      const golden =
-        '151996340d046abeaf2c9b140cd0334647a73c4dc7dcccb02d0c239d157035b3';
-      expect(createHash('sha256').update(historicalBytes).digest('hex')).toBe(
-        golden,
-      );
-      expect(receipt.rows).toEqual([{ request_hash: golden }]);
+      expect(accepted.rows).toEqual([{ resource_id: intentId }]);
     } finally {
       await inspection.end();
     }
@@ -4137,7 +4125,7 @@ describe('identity/workspace persistence', () => {
         ...command,
         invitationRevision: 2,
       }),
-    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     await expect(
       identityDatabase.completeInvitationAcceptance({
         ...command,

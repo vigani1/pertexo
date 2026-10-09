@@ -1,8 +1,11 @@
-import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { generatePersistedId } from '../platform/persisted-id.js';
+import {
+  claimCommand,
+  completeCommand,
+  type CommandIdentity,
+} from '../platform/idempotency.js';
 import type {
   CompleteInvitationAcceptanceInput,
   IdentityWorkspaceDatabase,
@@ -14,9 +17,7 @@ import type {
 import { InvitationAcceptanceConflictError } from './identity-workspace-errors.js';
 import {
   acceptanceReceiptSchema,
-  lockAcceptanceReceipt,
   recordAcceptedInvitation,
-  replayAcceptanceReceipt,
   replayedAcceptance,
 } from './identity-workspace-invitation-acceptance-receipts.js';
 import { expireWorkspaceInvitations } from './identity-workspace-invitation-expiration.js';
@@ -147,22 +148,6 @@ async function selectIntent(
     [...values],
   );
   return result.rows[0] === undefined ? null : mapIntent(result.rows[0]);
-}
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-function requestHash(input: Record<string, unknown>): string {
-  return sha256(
-    JSON.stringify(
-      Object.fromEntries(
-        Object.entries(input).sort(([left], [right]) =>
-          left.localeCompare(right),
-        ),
-      ),
-    ),
-  );
 }
 
 async function replacementLineageIsLive(
@@ -567,13 +552,12 @@ async function completeAcceptance(
     .int()
     .positive()
     .parse(raw.invitationRevision);
-  const keyHash = sha256(key.parse(raw.idempotencyKey));
-  const commandHash = requestHash({
-    actorUserId,
-    intentId,
-    invitationRevision,
+  const command: CommandIdentity = {
     workspaceId,
-  });
+    operation: 'workspace.invitation.accept',
+    scope: actorUserId,
+    idempotencyKey: key.parse(raw.idempotencyKey),
+  };
   return withTenantScopedClient(
     pool,
     { workspaceId, actorId: actorUserId },
@@ -622,44 +606,26 @@ async function completeAcceptance(
           'unavailable',
           'The invitation journey is unavailable',
         );
-      const priorReceipt = await lockAcceptanceReceipt(
-        client,
-        actorUserId,
-        workspaceId,
-        keyHash,
-      );
-      if (priorReceipt !== undefined)
-        return replayAcceptanceReceipt(priorReceipt, commandHash);
+      const stored = await claimCommand(client, {
+        ...command,
+        request: { intentId, invitationRevision },
+        resourceId: intentId,
+      });
+      if (stored !== null)
+        return replayedAcceptance(acceptanceReceiptSchema.parse(stored));
       if (intent.status === 'completed') {
         if (intent.acceptedUserId !== actorUserId || intent.receipt === null)
           throw new InvitationAcceptanceConflictError(
             'unavailable',
             'The invitation receipt is unavailable',
           );
+        await completeCommand(client, command, intent.receipt);
         return replayedAcceptance(intent.receipt);
       }
       if (user.rows[0]?.status !== 'active')
         throw new InvitationAcceptanceConflictError(
           'member_inactive',
           'The accepting user is not active',
-        );
-      const receiptId = generatePersistedId();
-      const claimed = await client.query(
-        `insert into app.workspace_invitation_command_receipts
-           (id,workspace_id,actor_user_id,operation,key_hash,request_hash,status)
-         values($1,$2,$3,'accept',$4,$5,'in_progress')
-         on conflict(actor_user_id,workspace_id,operation,key_hash) do nothing`,
-        [receiptId, workspaceId, actorUserId, keyHash, commandHash],
-      );
-      if (claimed.rowCount !== 1)
-        return replayAcceptanceReceipt(
-          await lockAcceptanceReceipt(
-            client,
-            actorUserId,
-            workspaceId,
-            keyHash,
-          ),
-          commandHash,
         );
       const now = new Date();
       if (intent.expiresAt.getTime() <= now.getTime())
@@ -735,7 +701,7 @@ async function completeAcceptance(
         membershipCreated,
       });
       await recordAcceptedInvitation(client, {
-        receiptId,
+        command,
         receipt,
         actorUserId,
         invitationId: intent.invitationId,

@@ -49,39 +49,11 @@
     "reason": "Accepted completion evidence and application markers are owned by narrow execution functions, with no direct runtime mutation grants."
   },
   {
-    "name": "workspace_member_departure_command_receipts",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Workspace-scoped leave receipts replay exact uncertain retries and are purged with the workspace tenant rows."
-  },
-  {
-    "name": "workspace_member_suspension_command_receipts",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Workspace-scoped suspend and reactivate receipts replay exact uncertain retries and are purged with the workspace tenant rows."
-  },
-  {
-    "name": "workspace_ownership_transfer_command_receipts",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Workspace-scoped ownership transfer receipts replay exact uncertain retries and are purged with the workspace tenant rows."
-  },
-  {
     "name": "user_profile_command_receipts",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role"],
     "rls": "not_applicable",
     "reason": "Identity-scoped display-name command receipts are keyed by the acting user outside any workspace and replay exact self-profile retries."
-  },
-  {
-    "name": "workspace_member_removal_command_receipts",
-    "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "maintenance_role"],
-    "rls": "forced",
-    "reason": "Workspace-scoped member removal receipts replay exact uncertain retries and are purged with the workspace tenant rows."
   },
   {
     "name": "auth_legacy_method_migration_attempts",

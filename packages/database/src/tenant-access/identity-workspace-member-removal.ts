@@ -45,7 +45,7 @@ export function createIdentityWorkspaceMemberRemovalStore(
         raw.expectedRoleRevision,
       );
       return executeMemberCommand(pool, {
-        table: 'workspace_member_removal_command_receipts',
+        operation: 'workspace.member.removal',
         workspaceId: raw.workspaceId,
         actorUserId: raw.actorUserId,
         targetUserId: raw.targetUserId,

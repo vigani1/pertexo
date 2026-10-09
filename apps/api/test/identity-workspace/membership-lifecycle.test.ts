@@ -184,7 +184,6 @@ describe('membership lifecycle commands (ADR 047)', () => {
   it.each([
     ['target_missing', 'resource.not_found'],
     ['revision_conflict', 'workspace.member_role_revision_conflict'],
-    ['idempotency_conflict', 'request.idempotency_conflict'],
     ['target_removed', 'workspace.member_removal_conflict'],
     ['target_inactive', 'workspace.member_status_conflict'],
     ['owner_departure', 'auth.forbidden'],

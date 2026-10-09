@@ -2,6 +2,11 @@ import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
+import {
+  claimCommand,
+  completeCommand,
+  type CommandIdentity,
+} from '../platform/idempotency.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type {
   ChangeWorkspaceInvitationInput,
@@ -167,56 +172,36 @@ async function lockAuthorizedActor(
   return row.role;
 }
 
-async function claimCommand(
+/** An invitation command's key, per actor and workspace. */
+function invitationKey(
+  workspaceId: string,
+  actorUserId: string,
+  operation: 'create' | 'resend' | 'revoke',
+  key: string,
+): CommandIdentity {
+  return {
+    workspaceId,
+    operation: `workspace.invitation.${operation}`,
+    scope: actorUserId,
+    idempotencyKey: idempotencyKey.parse(key),
+  };
+}
+
+/** Claims the key; returns the invitation an exact retry replays. */
+async function claimInvitationCommand(
   client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    actorUserId: string;
-    operation: 'create' | 'resend' | 'revoke';
-    idempotencyKey: string;
-    request: Record<string, unknown>;
-  }>,
-): Promise<Readonly<{ id: string }> | WorkspaceInvitationCommandResult> {
-  const keyHash = sha256(idempotencyKey.parse(input.idempotencyKey));
-  const requestHash = sha256(canonicalJson(input.request));
-  const claimId = generatePersistedId();
-  const inserted = await client.query(
-    `insert into app.workspace_invitation_command_receipts
-       (id,workspace_id,actor_user_id,operation,key_hash,request_hash,status)
-     values($1,$2,$3,$4,$5,$6,'in_progress')
-     on conflict(actor_user_id,workspace_id,operation,key_hash) do nothing`,
-    [
-      claimId,
-      input.workspaceId,
-      input.actorUserId,
-      input.operation,
-      keyHash,
-      requestHash,
-    ],
-  );
-  if (inserted.rowCount === 1) return { id: claimId };
-  const existing = await client.query<{
-    request_hash: string;
-    status: string;
-    result_ref: unknown;
-  }>(
-    `select request_hash,status,result_ref
-       from app.workspace_invitation_command_receipts
-      where actor_user_id=$1 and workspace_id=$2 and operation=$3 and key_hash=$4
-      for update`,
-    [input.actorUserId, input.workspaceId, input.operation, keyHash],
-  );
-  const row = existing.rows[0];
-  if (row?.request_hash !== requestHash)
-    throw new WorkspaceInvitationCommandConflictError(
-      'idempotency_conflict',
-      'The idempotency key belongs to another invitation command',
-    );
-  const parsed = durableResult.safeParse(row.result_ref);
-  if (row.status !== 'completed' || !parsed.success)
-    throw new Error('Workspace invitation command receipt is incomplete');
+  key: CommandIdentity,
+  request: Record<string, unknown>,
+  invitationId: string,
+): Promise<WorkspaceInvitationCommandResult | null> {
+  const stored = await claimCommand(client, {
+    ...key,
+    request,
+    resourceId: invitationId,
+  });
+  if (stored === null) return null;
   return Object.freeze({
-    invitation: mapDurableInvitation(parsed.data.invitation),
+    invitation: mapDurableInvitation(durableResult.parse(stored).invitation),
     replayed: true,
   });
 }
@@ -232,19 +217,14 @@ function mapDurableInvitation(
   });
 }
 
-async function completeCommand(
+async function completeInvitationCommand(
   client: PoolClient,
-  claimId: string,
+  key: CommandIdentity,
   invitation: WorkspaceInvitationRecord,
 ): Promise<WorkspaceInvitationCommandResult> {
-  const completed = await client.query(
-    `update app.workspace_invitation_command_receipts
-        set status='completed',result_ref=$2::jsonb,updated_at=clock_timestamp()
-      where id=$1 and status='in_progress'`,
-    [claimId, JSON.stringify({ invitation: serializeInvitation(invitation) })],
-  );
-  if (completed.rowCount !== 1)
-    throw new Error('Workspace invitation command receipt was not completed');
+  await completeCommand(client, key, {
+    invitation: serializeInvitation(invitation),
+  });
   return Object.freeze({ invitation, replayed: false });
 }
 
@@ -426,14 +406,19 @@ export function createIdentityWorkspaceInvitationStore(
             workspaceId,
             normalizedEmail: email,
           });
-          const claim = await claimCommand(client, {
+          const key = invitationKey(
             workspaceId,
             actorUserId,
-            operation: 'create',
-            idempotencyKey: raw.idempotencyKey,
-            request: { email, role },
-          });
-          if ('replayed' in claim) return claim;
+            'create',
+            raw.idempotencyKey,
+          );
+          const replay = await claimInvitationCommand(
+            client,
+            key,
+            { email, role },
+            invitationId,
+          );
+          if (replay !== null) return replay;
           const duplicate = await client.query(
             `select 1 from app.workspace_invitations
               where workspace_id=$1 and normalized_email=$2 and status='pending' for update`,
@@ -494,7 +479,7 @@ export function createIdentityWorkspaceInvitationStore(
               : { requestId: raw.requestId }),
             ...(raw.traceId === undefined ? {} : { traceId: raw.traceId }),
           });
-          return completeCommand(client, claim.id, invitation);
+          return completeInvitationCommand(client, key, invitation);
         },
       );
     },
@@ -558,14 +543,19 @@ async function changeInvitation(
         await expireWorkspaceInvitations(client, { workspaceId, invitationId });
         return { expired: true } as const;
       }
-      const claim = await claimCommand(client, {
+      const key = invitationKey(
         workspaceId,
         actorUserId,
         operation,
-        idempotencyKey: raw.idempotencyKey,
-        request: { expectedRevision, invitationId },
-      });
-      if ('replayed' in claim) return claim;
+        raw.idempotencyKey,
+      );
+      const replay = await claimInvitationCommand(
+        client,
+        key,
+        { expectedRevision },
+        invitationId,
+      );
+      if (replay !== null) return replay;
       if (current.status !== 'pending')
         throw new WorkspaceInvitationCommandConflictError(
           'invitation_inactive',
@@ -643,7 +633,7 @@ async function changeInvitation(
         ...(raw.requestId === undefined ? {} : { requestId: raw.requestId }),
         ...(raw.traceId === undefined ? {} : { traceId: raw.traceId }),
       });
-      return completeCommand(client, claim.id, invitation);
+      return completeInvitationCommand(client, key, invitation);
     },
   );
   if ('expired' in result)
