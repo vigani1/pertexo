@@ -405,30 +405,26 @@ describe('failure notification handler', () => {
     },
   );
 
-  it('maps malformed delivery results conservatively and removes its queue abort listener', async () => {
+  it('removes its queue abort listener once the delivery settles', async () => {
     const repository = store();
     const controller = new AbortController();
     const add = vi.spyOn(controller.signal, 'addEventListener');
     const remove = vi.spyOn(controller.signal, 'removeEventListener');
     const handler = createFailureNotificationHandler({
       store: repository,
-      delivery: { deliver: vi.fn().mockResolvedValue({ kind: 'delivered' }) },
+      delivery: {
+        deliver: vi.fn().mockResolvedValue({
+          schemaVersion: 1,
+          kind: 'delivered',
+          possiblyDispatched: true,
+        }),
+      },
       timeoutMillis: 100,
       maxAttempts: 3,
       retryDelaySeconds: 1,
     });
 
     await handler.handle(delivery, { signal: controller.signal });
-    expect(repository.completeDelivery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        result: {
-          schemaVersion: 1,
-          kind: 'retry',
-          safeErrorCode: 'delivery.provider_failure',
-          possiblyDispatched: true,
-        },
-      }),
-    );
     expect(add).toHaveBeenCalledWith('abort', expect.any(Function), {
       once: true,
     });

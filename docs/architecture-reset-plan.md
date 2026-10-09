@@ -409,6 +409,12 @@ now, as one ordered program — not "whenever we touch it".
           delivery uses the polling runtime the inbox, auto-pause and
           retention loops use. The maintenance runtime closes the delivery
           resources it is given, so the owner wrapper and `whenIdle` go.
+    - [x] What acceptance settled is trusted: trigger reconciliation no
+          longer reads the publication it only re-checked, the preview
+          invoker no longer re-checks the node, definition and executor
+          acceptance pinned, failure-notification handling no longer
+          re-parses its own delivery result, and invitation delivery leaves
+          the origin check to config.
   - [ ] api
     - [x] Legacy authentication removed: the generic OIDC sign-in, opaque
           sessions and their identities, the legacy-method migration
@@ -465,8 +471,12 @@ now, as one ordered program — not "whenever we touch it".
         failure-notification `policy_version` (always 1) goes. The trigger
         outcome fold loses its always-true `p_enforce` argument. The
         `schemaVersion` fields in graphs, executables, checkpoints, run
-        events, queue jobs, outbox rows and portable manifests, and the
-        `serializeStoredExecutionValueV1` value format, go with them.
+        events, queue jobs, outbox rows, portable manifests and
+        failure-notification delivery results, the versioned idempotency
+        keys and sealing contexts (`authentication-mail:v1:`,
+        `workspace-invitation:v1:`, `pertexo/authentication-mail/v1/`), the
+        checkpoint `engineVersion` and the `serializeStoredExecutionValueV1`
+        value format go with them.
 
 **Package pass checklist** (every package, every file):
 1. Purpose: the package does one clear job; anything else moves to its owner.
