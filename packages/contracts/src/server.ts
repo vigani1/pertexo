@@ -3,8 +3,8 @@
 export {
   artifactTransferClientContract,
   artifactTransferOpenApiDocument,
-} from './openapi/artifact-transfer.js';
-export { CONTRACT_ARTIFACTS } from './openapi/artifacts.js';
+} from './openapi/execution/artifact-transfer.js';
+export { CONTRACT_ARTIFACTS } from './openapi/generated-artifacts.js';
 export {
   catalogClientContract,
   catalogOpenApiDocument,
@@ -16,32 +16,32 @@ export {
 export {
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
-} from './openapi/identity-workspace.js';
+} from './openapi/identity/workspaces.js';
 export {
   nodeTestingClientContract,
   nodeTestingOpenApiDocument,
-} from './openapi/node-testing.js';
+} from './openapi/execution/node-testing.js';
 export {
   schedulesClientContract,
   schedulesOpenApiDocument,
-} from './openapi/schedules.js';
+} from './openapi/triggers/schedules.js';
 export {
   webhooksClientContract,
   webhooksOpenApiDocument,
-} from './openapi/webhooks.js';
+} from './openapi/triggers/webhooks.js';
 export {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
-} from './openapi/workflow-authoring.js';
+} from './openapi/workflows/authoring.js';
 export {
   workflowPortabilityClientContract,
   workflowPortabilityOpenApiDocument,
-} from './openapi/workflow-portability.js';
+} from './openapi/workflows/portability.js';
 export {
   workflowRunsClientContract,
   workflowRunsOpenApiDocument,
-} from './openapi/workflow-runs.js';
+} from './openapi/execution/runs.js';
 export {
   workspaceInboxClientContract,
   workspaceInboxOpenApiDocument,
-} from './openapi/workspace-inbox.js';
+} from './openapi/identity/inbox.js';

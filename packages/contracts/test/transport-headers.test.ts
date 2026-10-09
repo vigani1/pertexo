@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   csrfTokenSchema,
   webhookJsonContentTypeSchema,
-} from '../src/schemas/transport-headers.js';
-import { idempotencyKeySchema } from '../src/schemas/identity-workspace.js';
+} from '../src/schemas/shared/transport-headers.js';
+import { idempotencyKeySchema } from '../src/schemas/identity/workspaces.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,

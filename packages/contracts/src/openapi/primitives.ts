@@ -6,7 +6,7 @@ import {
   csrfTokenSchema,
   idempotencyKeySchema,
   webhookJsonContentTypeSchema,
-} from '../schemas/transport-headers.js';
+} from '../schemas/shared/transport-headers.js';
 
 export function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
   return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });

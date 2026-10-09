@@ -340,52 +340,23 @@ unload warning is not durable recovery.
 
 ## 4. Shared packages, API contracts and types
 
-| Kind                                                    | Source of truth                                               | Browser usage                                             |
-| ------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
-| HTTP request/response schemas and inferred types        | `packages/contracts/src/http/*` and public package exports    | Reviewed public schema/type subpaths only                 |
-| Problem codes and shapes                                | `@pertexo/contracts/errors` plus endpoint-specific extensions | Parse once at the transport/endpoint boundary             |
-| Graph, node, edge, mapping value shapes                 | `@pertexo/workflow-model`                                     | Shared portable validation/types, not copied interfaces   |
-| Definition identities/config schemas/ports/availability | Authenticated catalog API                                     | Query live release; do not bundle an independent registry |
-| UI node appearance, field state, edit commands          | Owning frontend feature                                       | Local types, referring to shared domain types             |
-| ORM records, persistence envelopes, use-case types      | Backend/database packages                                     | Never imported by the web app                             |
-| Executable node implementations, compile/evaluate logic | Backend runtime packages                                      | Never shipped to the browser                              |
+| Kind                                                    | Source of truth                                                                           | Browser usage                                             |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| HTTP request/response schemas and inferred types        | `@pertexo/contracts` (`packages/contracts/src/schemas/<area>/`)                           | Import from the package root                              |
+| Problem codes and shapes                                | `@pertexo/contracts` (`packages/contracts/src/errors/`) plus endpoint-specific extensions | Parse once at the transport/endpoint boundary             |
+| Graph, node, edge, mapping value shapes                 | `@pertexo/workflow-model`                                                                 | Shared portable validation/types, not copied interfaces   |
+| Definition identities/config schemas/ports/availability | Authenticated catalog API                                                                 | Query live release; do not bundle an independent registry |
+| UI node appearance, field state, edit commands          | Owning frontend feature                                                                   | Local types, referring to shared domain types             |
+| ORM records, persistence envelopes, use-case types      | Backend/database packages                                                                 | Never imported by the web app                             |
+| Executable node implementations, compile/evaluate logic | Backend runtime packages                                                                  | Never shipped to the browser                              |
 
-Relevant existing contracts include `/identity-workspace`, `/catalog`,
-`/workflow-authoring`, `/workflow-runs`, `/connections`, `/node-testing`,
-`/artifacts`, `/webhooks`, `/schedules`, `/transport` and `/errors`. Do not
-import the contracts root by habit. `@pertexo/workflow-model` is browser-safe;
-`@pertexo/workflow-model/server` (checksums, expressions, authoring validation)
-is not. Do not import node executors or `@pertexo/node-sdk/server` just to
-obtain a type.
-
-**Package prerequisite:** several contracts entrypoints currently construct
-client/OpenAPI projections at module initialization; see
-[catalog.ts](../../packages/contracts/src/catalog.ts) and
-[schema-projection.ts](../../packages/contracts/src/schema-projection.ts).
-Passing a forbidden-import check is not proof of a lean browser bundle. Before
-the first runtime schema import, provide deliberately schema-only public
-entrypoints (proposed `@pertexo/contracts/schemas/<domain>`) if a
-consumer-bundle test cannot prove projection code is eliminated. Keep existing
-exports backward compatible, reuse the same schema definitions and retain
-generated artifact checks. Choose and record the final public path in this
-document at that gate; do not reach into package source or duplicate schemas as
-a shortcut.
-
-**Stage 1 result:** the selected public convention is
-`@pertexo/contracts/schemas/<domain>`. Each package export resolves directly to
-an existing schema-definition module; current exports remain backward
-compatible. Stage 1 publishes catalog, errors and transport schema paths. A real
-Vite library-mode consumer imports the catalog and common problem schemas and
-verifies that its module graph contains neither `schema-projection` nor
-`openapi-primitives`, no Node builtin, and no catalog OpenAPI document. Web
-production source initially allows only the exact `schemas/errors` and
-`schemas/transport` imports used by `lib/api`; each future feature must review
-and publish or allow its own exact schema path when needed.
-
-Then add only needed workspace dependencies, build references and explicit
-browser lint allowlist entries. A real Vite consumer build must demonstrate no
-Node polyfills, backend code or runtime OpenAPI generation. Type-only imports
-still use permitted public boundaries.
+`@pertexo/contracts` is browser-safe: request, response and problem schemas
+only. `@pertexo/contracts/server` holds the OpenAPI documents and client
+contracts, projected when imported; the web never imports it, and the
+browser-entry check proves the package root reaches no Node module.
+`@pertexo/workflow-model` is browser-safe; `@pertexo/workflow-model/server`
+(checksums, expressions, authoring validation) is not. Do not import node
+executors or `@pertexo/node-sdk/server` just to obtain a type.
 
 Type conventions:
 

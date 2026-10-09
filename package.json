@@ -13,11 +13,6 @@
       "interface": true,
       "type": true
     },
-    "ignoreIssues": {
-      "packages/contracts/src/http/workflow-authoring.ts": [
-        "duplicates"
-      ]
-    },
     "workspaces": {
       ".": {
         "entry": [

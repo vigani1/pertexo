@@ -9,7 +9,7 @@ import { z } from 'zod';
 import {
   boundedNodeTestJsonInputSchema,
   NODE_TEST_JSON_MAX_DEPTH,
-} from '../schemas/bounded-json-input.js';
+} from '../schemas/shared/bounded-json-input.js';
 
 type JsonSchema = Record<string, unknown>;
 
