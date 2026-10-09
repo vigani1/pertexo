@@ -350,7 +350,7 @@ describe('trigger runtime', () => {
     });
 
     await vi.waitFor(() =>
-      expect(runtime.checkReadiness()).rejects.toThrow(/schedule scanner/i),
+      expect(runtime.checkReadiness()).rejects.toThrow(/latest scan/u),
     );
     expect(selected.logger.error).toHaveBeenCalledWith(
       'trigger.schedule_scan_failed',

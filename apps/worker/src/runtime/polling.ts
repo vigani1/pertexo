@@ -12,7 +12,7 @@ export type PollingRuntimeDefinition = Readonly<{
   /** Idle wait between cycles. */
   pollMillis: number;
   /** Checks the runtime's store once, before the first cycle. */
-  checkStore(signal: AbortSignal): Promise<void>;
+  checkStore?(signal: AbortSignal): Promise<void>;
   cycle(signal: AbortSignal): Promise<void>;
   cycleFailed(): void;
   /** Releases the runtime's resources once the loop has stopped. */
@@ -45,7 +45,7 @@ export function createPollingRuntime(
 
   const cycle = async () => {
     if (!storeChecked) {
-      await definition.checkStore(signal);
+      await definition.checkStore?.(signal);
       storeChecked = true;
     }
     await definition.cycle(signal);

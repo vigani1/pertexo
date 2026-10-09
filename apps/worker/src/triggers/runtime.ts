@@ -32,17 +32,14 @@ import {
   type TriggerRuntimeTelemetry,
 } from './telemetry.js';
 import { initialCheckpointFactory } from '@pertexo/execution';
+import { reportDiagnostic } from '../runtime/polling.js';
 import {
-  closeTriggerDependencies,
-  createTriggerRuntimeLifecycle,
-  recordTriggerTelemetry,
-} from './runtime-lifecycle.js';
+  closeOwners,
+  createScannerRuntime,
+  type ScannerRuntime,
+} from '../runtime/scanner.js';
 
-export interface TriggerRuntime {
-  readonly consumer: QueueConsumer;
-  checkReadiness(): Promise<void>;
-  close(): Promise<void>;
-}
+export type TriggerRuntime = ScannerRuntime;
 
 export type TriggerRuntimeOptions = Readonly<{
   batchSize: number;
@@ -138,11 +135,11 @@ export async function createTriggerRuntime(
           );
         try {
           await handler.handle(delivery, context);
-          recordTriggerTelemetry(() => {
+          reportDiagnostic(() => {
             telemetry.reconciliationCompleted('succeeded');
           });
         } catch (error: unknown) {
-          recordTriggerTelemetry(() => {
+          reportDiagnostic(() => {
             telemetry.reconciliationCompleted('failed');
           });
           throw error;
@@ -152,12 +149,8 @@ export async function createTriggerRuntime(
       traceRunner,
     });
   } catch (error: unknown) {
-    const cleanup = await closeTriggerDependencies(
-      {
-        scanner,
-        reader,
-        reconciliation,
-      },
+    const cleanup = await closeOwners(
+      [scanner, reader, reconciliation],
       backgroundTaskShutdownTimeoutMillis,
     );
     if (cleanup.length > 0)
@@ -168,20 +161,42 @@ export async function createTriggerRuntime(
     throw error;
   }
 
-  return createTriggerRuntimeLifecycle(
-    { consumer, reader, reconciliation, scanner },
-    {
-      batchSize: options.batchSize,
-      checkpointFactory,
-      leaseDurationSeconds: options.leaseDurationSeconds,
-      leaseOwner: options.leaseOwner,
-      ...(dependencies.logger === undefined
-        ? {}
-        : { logger: dependencies.logger }),
-      onTimeWindowSeconds: options.onTimeWindowSeconds,
-      pollIntervalMillis: options.pollIntervalMillis,
-      shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
-      telemetry,
+  const scheduleScanner = scanner;
+  return createScannerRuntime({
+    name: 'Trigger',
+    consumer,
+    owners: [scanner, reader, reconciliation],
+    pollIntervalMillis: options.pollIntervalMillis,
+    shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
+    scan: async (signal) => {
+      const started = performance.now();
+      const seconds = () => (performance.now() - started) / 1_000;
+      try {
+        const result = await scheduleScanner.scanDue({
+          leaseOwner: options.leaseOwner,
+          limit: options.batchSize,
+          leaseSeconds: options.leaseDurationSeconds,
+          onTimeWindowSeconds: options.onTimeWindowSeconds,
+          checkpointFactory,
+          signal,
+        });
+        reportDiagnostic(() => {
+          telemetry.scanCompleted(result, seconds());
+        });
+      } catch (error: unknown) {
+        if (!signal.aborted)
+          reportDiagnostic(() => {
+            telemetry.scanFailed(seconds());
+          });
+        throw error;
+      }
     },
-  );
+    scanFailed: (error) => {
+      dependencies.logger?.error(
+        'trigger.schedule_scan_failed',
+        { safeErrorCode: 'trigger.schedule_scan_failed' },
+        error,
+      );
+    },
+  });
 }

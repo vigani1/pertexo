@@ -42,15 +42,12 @@ import {
   CoordinatorHandlerStateError,
 } from './handler.js';
 import {
-  closeCoordinatorDependencies,
-  createCoordinatorRuntimeLifecycle,
-} from './runtime-lifecycle.js';
+  closeOwners,
+  createScannerRuntime,
+  type ScannerRuntime,
+} from '../runtime/scanner.js';
 
-export interface CoordinatorRuntime {
-  readonly consumer: QueueConsumer;
-  checkReadiness(): Promise<void>;
-  close(): Promise<void>;
-}
+export type CoordinatorRuntime = ScannerRuntime;
 
 export type CoordinatorRuntimeOptions = Readonly<{
   database: DatabaseConfig;
@@ -178,13 +175,8 @@ export async function createCoordinatorRuntime(
       traceRunner,
     });
   } catch (error: unknown) {
-    const cleanup = await closeCoordinatorDependencies(
-      {
-        deadlineWakeupScanner,
-        dueWakeupScanner,
-        notifications,
-        runStore,
-      },
+    const cleanup = await closeOwners(
+      [dueWakeupScanner, deadlineWakeupScanner, notifications, runStore],
       backgroundTaskShutdownTimeoutMillis,
     );
     if (cleanup.length > 0)
@@ -194,21 +186,25 @@ export async function createCoordinatorRuntime(
       );
     throw error;
   }
-  return createCoordinatorRuntimeLifecycle(
-    {
-      consumer,
-      deadlineWakeupScanner,
-      dueWakeupScanner,
-      notifications,
-      runStore,
+  const dueScanner = dueWakeupScanner;
+  const deadlineScanner = deadlineWakeupScanner;
+  return createScannerRuntime({
+    name: 'Coordinator',
+    consumer,
+    owners: [dueWakeupScanner, deadlineWakeupScanner, notifications, runStore],
+    pollIntervalMillis: dueWakeupPollIntervalMillis,
+    shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
+    scan: async (signal) => {
+      await dueScanner.claimDueWakeups(dueWakeupBatchSize, signal);
+      if (signal.aborted) return;
+      await deadlineScanner.claimDueWakeups(dueWakeupBatchSize, signal);
     },
-    {
-      batchSize: dueWakeupBatchSize,
-      ...(dependencies.logger === undefined
-        ? {}
-        : { logger: dependencies.logger }),
-      pollIntervalMillis: dueWakeupPollIntervalMillis,
-      shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
+    scanFailed: (error) => {
+      dependencies.logger?.error(
+        'coordinator.wakeup_scan_failed',
+        { safeErrorCode: 'coordinator.wakeup_scan_failed' },
+        error,
+      );
     },
-  );
+  });
 }
