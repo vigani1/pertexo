@@ -7,7 +7,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkflowRunDatabase } from '../src/runs/runs.repository.js';
 import { migrateDatabase } from '../src/migrations.js';
-import { checkDatabaseReadiness } from '../src/platform/readiness.js';
+import {
+  checkDatabaseReadiness,
+  EXPECTED_MIGRATION_HEAD,
+} from '../src/platform/readiness.js';
 import { WorkspaceAccessDeniedError } from '../src/tenant-access/identity-workspace-errors.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
@@ -264,7 +267,7 @@ describe('ADR 057 current capacity authority', () => {
     });
     expect(result.asOf).toMatch(/\.\d{6}Z$/u);
     await expect(checkDatabaseReadiness(runtimePool)).resolves.toMatchObject({
-      migrationHead: '0000_baseline.sql',
+      migrationHead: EXPECTED_MIGRATION_HEAD,
     });
     const grants = await runtimePool.query(`select
       has_function_privilege('pertexo_app','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as app,

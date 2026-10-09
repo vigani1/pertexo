@@ -3,7 +3,7 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import { retentionQuery as query } from './retention-support.js';
+import { retentionQuery as query } from './retention-transaction.js';
 import {
   inRetentionTransaction,
   type RetentionTransactionOptions,

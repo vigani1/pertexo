@@ -10,7 +10,6 @@ export {
   type GetOperatorCommandInput,
   type GenericOperatorCommandResult,
   type OperatorRunCommandInput,
-  type OperatorMaintenanceRerunInput,
   type OperatorWorkflowCommandInput,
   type ReplayOperatorRunInput,
   type OperatorCommandDatabase,

@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool, PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import { withPlatformTransaction } from '../tenant-access/workspace.js';
@@ -374,4 +374,19 @@ export async function inRetentionTransaction<T>(
     signal?.throwIfAborted();
     throw error;
   }
+}
+
+/** One parameterized query that stops when the caller's signal aborts. */
+export function retentionQuery<Row extends Record<string, unknown>>(
+  client: PoolClient,
+  text: string,
+  values: readonly unknown[],
+  signal?: AbortSignal,
+): Promise<QueryResult<Row>> {
+  signal?.throwIfAborted();
+  return client.query<Row>({
+    text,
+    values: [...values],
+    ...(signal === undefined ? {} : { signal }),
+  });
 }

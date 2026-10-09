@@ -188,7 +188,7 @@ describe('workflow run persistence security and compatibility', () => {
         tableName: string;
       }>(`
         with runtime_roles(role_name) as (
-          values ('pertexo_app'), ('pertexo_maintenance'), ('pertexo_app')
+          values ('pertexo_app'), ('pertexo_maintenance')
         ), execution_tables(table_oid, table_name) as (
           select c.oid, c.relname
           from pg_class c
@@ -212,14 +212,16 @@ describe('workflow run persistence security and compatibility', () => {
         cross join execution_tables
         order by role_name, table_name
       `);
-      expect(privileges.rows).toHaveLength(12);
+      expect(privileges.rows).toHaveLength(8);
       for (const row of privileges.rows) {
-        expect(row.canSelect).toBe(row.roleName !== 'pertexo_maintenance');
-        expect(row.canInsert).toBe(
-          row.roleName === 'pertexo_app' || row.roleName === 'pertexo_app',
-        );
+        // Maintenance reads and deletes only what retention removes.
+        const retained =
+          row.roleName === 'pertexo_maintenance' &&
+          row.tableName !== 'idempotency_records';
+        expect(row.canSelect).toBe(row.roleName === 'pertexo_app' || retained);
+        expect(row.canInsert).toBe(row.roleName === 'pertexo_app');
         expect(row.canUpdate).toBe(false);
-        expect(row.canDelete).toBe(false);
+        expect(row.canDelete).toBe(retained);
       }
 
       const idempotencyUpdatePrivileges = await owner.query<{

@@ -49,13 +49,6 @@ const pools = {
     ),
     max: 1,
   }),
-  operator: new Pool({
-    connectionString: roleUrl(
-      'DATABASE_MAINTENANCE_URL',
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-    ),
-    max: 1,
-  }),
   worker: new Pool({
     connectionString: roleUrl(
       'DATABASE_URL',
@@ -228,16 +221,5 @@ describe('SQL boundary integrity', () => {
           [operationId, candidateToken, fence],
         ),
       ).rejects.toSatisfy(hasCode('22023'));
-  });
-
-  it('rejects a NULL maintenance-rerun target before durable side effects', async () => {
-    await expect(
-      pools.operator.query(
-        `select * from app.request_operator_maintenance_rerun(
-          $1,$2,null,$3,'operator:q10','invalid target',false
-        )`,
-        [randomUUID(), randomUUID(), randomUUID()],
-      ),
-    ).rejects.toSatisfy(hasCode('22023'));
   });
 });

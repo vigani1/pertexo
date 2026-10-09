@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createRetentionEnforcementCoordinator } from '../src/lifecycle/retention.js';
+import { createRetentionDatabase } from '../src/lifecycle/retention.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import {
   actorId,
@@ -255,53 +255,21 @@ describe('connection health retention and tenant purge', () => {
         'alter table app.workflow_runs force row level security',
       );
     });
-    const coordinator = createRetentionEnforcementCoordinator(
+    const retention = createRetentionDatabase(
       parseDatabaseConfig({
         connectionString: databaseUrl(maintenanceBase),
         max: 2,
       }),
-      {
-        leaseOwner: 'health-boundary-retention',
-        leaseSeconds: 60,
-        maxPagesPerBatch: 20,
-        pageSize: 1,
-      },
+      { pageSize: 1 },
     );
     try {
-      const retentionBatch = randomUUID();
-      await maintenance.query(
-        "select app.start_retention_batch($1,$2,$3,'execution_detail','2026-08-01',false,'owned-boundary','Health evidence retention')",
-        [retentionBatch, workspaceA, `batch-${retentionBatch}`],
-      );
       expect(
         await evidenceCounts(
           evidence.lease.attemptId,
           evidence.command.delivery.outboxEventId,
         ),
       ).toEqual({ dispatches: 1, observations: 1, commands: 1 });
-      await expect(coordinator.processNext()).resolves.toMatchObject({
-        batchId: retentionBatch,
-        status: 'completed',
-      });
-      for (const forgedToken of [null, randomUUID()]) {
-        await expect(
-          asOwner(workspaceA, async (client) => {
-            await client.query(
-              "select set_config('app.retention_batch_transition','on',true)",
-            );
-            if (forgedToken !== null) {
-              await client.query(
-                "select set_config('app.workspace_purge_delete_token',$1,true)",
-                [forgedToken],
-              );
-            }
-            return client.query(
-              'delete from app.retention_batches where workspace_id=$1 and id=$2',
-              [workspaceA, retentionBatch],
-            );
-          }),
-        ).rejects.toMatchObject({ code: '55000' });
-      }
+      while ((await retention.enforce()).more);
       expect(
         await evidenceCounts(
           evidence.lease.attemptId,
@@ -347,7 +315,7 @@ describe('connection health retention and tenant purge', () => {
         before,
       );
     } finally {
-      await coordinator.close();
+      await retention.close();
     }
   });
 

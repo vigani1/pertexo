@@ -1,11 +1,8 @@
 import { metrics, type Meter } from '@opentelemetry/api';
 import type { WorkspaceLifecycleCommandOutcome } from '@pertexo/database/lifecycle';
 import type {
-  OperatorMaintenanceRerunResult,
-  RetentionDryRunProcessResult,
-  RetentionEnforcementProcessResult,
   PreviewRetentionProcessResult,
-  RetentionScheduleResult,
+  RetentionPassResult,
   RunArtifactRetentionProcessResult,
   WorkspacePurgeProcessResult,
   TransientDataReapResult,
@@ -16,24 +13,17 @@ export const RETENTION_METRIC_NAME = Object.freeze({
   batchDuration: 'pertexo.retention.batch.duration',
   failureCount: 'pertexo.retention.operation.failure.count',
   failureDuration: 'pertexo.retention.operation.failure.duration',
-  operatorRerunCount: 'pertexo.maintenance.operator_rerun.count',
-  operatorRerunDuration: 'pertexo.maintenance.operator_rerun.duration',
   lifecycleCommandCount: 'pertexo.lifecycle_command.process.count',
   lifecycleCommandDuration: 'pertexo.lifecycle_command.process.duration',
   pageCount: 'pertexo.retention.page.count',
   purgeCount: 'pertexo.purge.batch.count',
   purgeDuration: 'pertexo.purge.batch.duration',
   rowCount: 'pertexo.retention.rows.count',
-  scheduleScanCount: 'pertexo.retention.schedule.scan.count',
-  scheduleWorkspaceCount: 'pertexo.retention.schedule.workspace.count',
   transientDataReapCount: 'pertexo.retention.transient_data_reap.count',
 } as const);
 
 export type RetentionOperation =
-  | 'operator_rerun'
-  | 'schedule'
-  | 'dry_run'
-  | 'enforce'
+  | 'retention'
   | 'preview'
   | 'run_artifact'
   | 'workspace_purge'
@@ -45,24 +35,13 @@ export interface RetentionMetrics {
     result: WorkspaceLifecycleCommandOutcome,
     durationSeconds: number,
   ): void;
-  recordSchedule(
-    result: RetentionScheduleResult,
-    durationSeconds: number,
-  ): void;
   recordTransientDataReap(
     result: TransientDataReapResult,
     durationSeconds: number,
   ): void;
-  record(
-    result: RetentionDryRunProcessResult | RetentionEnforcementProcessResult,
-    durationSeconds: number,
-    mode: 'dry_run' | 'enforce',
-  ): void;
+  /** One pass of the retention rules: rows each rule removed. */
+  recordRetention(result: RetentionPassResult, durationSeconds: number): void;
   recordFailure(operation: RetentionOperation, durationSeconds: number): void;
-  recordOperatorRerun(
-    result: OperatorMaintenanceRerunResult | null,
-    durationSeconds: number,
-  ): void;
   recordPreview(
     result: PreviewRetentionProcessResult,
     durationSeconds: number,
@@ -150,11 +129,11 @@ export function createRetentionMetrics(
   meter: Meter = metrics.getMeter('@pertexo/retention', '0.0.0'),
 ): RetentionMetrics {
   const batches = meter.createCounter(RETENTION_METRIC_NAME.batchCount, {
-    description: 'Retention batches processed by bounded kind and outcome',
+    description: 'Retention pages processed by kind and outcome',
     unit: '{batch}',
   });
   const rows = meter.createCounter(RETENTION_METRIC_NAME.rowCount, {
-    description: 'Retention rows examined or eligible for bounded deletion',
+    description: 'Rows retention removed or cleared, by rule',
     unit: '{row}',
   });
   const pages = meter.createCounter(RETENTION_METRIC_NAME.pageCount, {
@@ -166,20 +145,6 @@ export function createRetentionMetrics(
       'Duration of one retention operation, excluding other poll work',
     unit: 's',
   });
-  const scheduleScans = meter.createCounter(
-    RETENTION_METRIC_NAME.scheduleScanCount,
-    {
-      description: 'Retention scheduling scans by bounded outcome',
-      unit: '{scan}',
-    },
-  );
-  const scheduleWorkspaces = meter.createCounter(
-    RETENTION_METRIC_NAME.scheduleWorkspaceCount,
-    {
-      description: 'Workspaces scanned or scheduled for retention enforcement',
-      unit: '{workspace}',
-    },
-  );
   const failures = meter.createCounter(RETENTION_METRIC_NAME.failureCount, {
     description: 'Retention worker failures attributed to the active operation',
     unit: '{failure}',
@@ -202,21 +167,6 @@ export function createRetentionMetrics(
       unit: 's',
     },
   );
-  const operatorRerunCount = meter.createCounter(
-    RETENTION_METRIC_NAME.operatorRerunCount,
-    {
-      description:
-        'Operator maintenance rerun processing by target and bounded outcome',
-      unit: '{command}',
-    },
-  );
-  const operatorRerunDuration = meter.createHistogram(
-    RETENTION_METRIC_NAME.operatorRerunDuration,
-    {
-      description: 'Duration of one operator maintenance rerun poll',
-      unit: 's',
-    },
-  );
   const lifecycleCommandCount = meter.createCounter(
     RETENTION_METRIC_NAME.lifecycleCommandCount,
     { description: 'Lifecycle command processing outcomes', unit: '{command}' },
@@ -234,72 +184,28 @@ export function createRetentionMetrics(
       lifecycleCommandCount.add(1, attributes);
       lifecycleCommandDuration.record(durationSeconds, attributes);
     },
-    recordSchedule: (result, durationSeconds) => {
-      const attributes = {
-        mode: 'schedule',
-        outcome: result.scheduledCount > 0 ? 'scheduled' : 'idle',
-        retention_kind: 'all',
-      };
-      scheduleScans.add(1, attributes);
-      scheduleWorkspaces.add(result.scannedCount, {
-        ...attributes,
-        workspace_outcome: 'scanned',
-      });
-      scheduleWorkspaces.add(result.scheduledCount, {
-        ...attributes,
-        workspace_outcome: 'scheduled',
-      });
-      duration.record(durationSeconds, attributes);
-    },
     recordTransientDataReap: createTransientDataReapRecorder(meter, duration),
-    record: (
-      result: RetentionDryRunProcessResult | RetentionEnforcementProcessResult,
-      durationSeconds: number,
-      mode: 'dry_run' | 'enforce',
-    ) => {
-      const attributes = {
-        mode,
-        outcome: result.status,
-        retention_kind:
-          result.status === 'idle' ? 'none' : result.retentionKind,
-      };
-      batches.add(1, attributes);
-      duration.record(durationSeconds, attributes);
-      if (result.status !== 'idle') {
-        rows.add(result.examinedCount, {
-          ...attributes,
-          row_outcome: 'examined',
-        });
-        rows.add(result.eligibleCount, {
-          ...attributes,
-          row_outcome: 'eligible',
-        });
-        pages.add(result.pageCount, attributes);
+    recordRetention: (result, durationSeconds) => {
+      let removed = 0;
+      for (const [rule, count] of Object.entries(result.removed)) {
+        const attributes = {
+          mode: 'enforce',
+          outcome: count > 0 ? 'deleted' : 'idle',
+          retention_kind: rule,
+        };
+        batches.add(1, attributes);
+        rows.add(count, { ...attributes, row_outcome: 'deleted' });
+        removed += count;
       }
+      duration.record(durationSeconds, {
+        mode: 'enforce',
+        outcome: removed > 0 ? 'deleted' : 'idle',
+        retention_kind: 'all',
+      });
     },
     recordFailure: (operation, durationSeconds) => {
       failures.add(1, { operation });
       failureDuration.record(durationSeconds, { operation });
-    },
-    recordOperatorRerun: (result, durationSeconds) => {
-      const knownOutcomes = new Set([
-        'already_completed',
-        'legal_hold',
-        'lease_active',
-        'not_found',
-        'rerun_accepted',
-      ]);
-      const attributes = {
-        outcome:
-          result === null
-            ? 'idle'
-            : knownOutcomes.has(result.outcome)
-              ? result.outcome
-              : 'unknown',
-        target_type: result?.targetType ?? 'none',
-      };
-      operatorRerunCount.add(1, attributes);
-      operatorRerunDuration.record(durationSeconds, attributes);
     },
     recordPreview: (
       result: PreviewRetentionProcessResult,

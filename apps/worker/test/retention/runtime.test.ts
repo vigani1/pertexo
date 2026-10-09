@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { RetentionMetrics } from '../../src/retention/metrics.js';
-import {
-  createRetentionRuntime,
-  type RetentionRuntimeResources,
-} from '../../src/retention/runtime.js';
+import { createRetentionRuntime } from '../../src/retention/runtime.js';
 
 const idleReap = {
   authenticationLegacyAttemptsDeleted: 0,
@@ -26,19 +23,8 @@ function setup() {
     database: {
       checkReadiness: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
-      processNext: vi.fn().mockResolvedValue({ status: 'idle' }),
-      processOperatorRerun: vi.fn().mockResolvedValue(null),
+      enforce: vi.fn().mockResolvedValue({ removed: {}, more: false }),
       reapTransientData: vi.fn().mockResolvedValue(idleReap),
-      scheduleEnforcement: vi.fn().mockResolvedValue({
-        capacityLimited: false,
-        cutoffAt: new Date(0),
-        scannedCount: 0,
-        scheduledCount: 0,
-      }),
-    },
-    enforcement: {
-      close: vi.fn().mockResolvedValue(undefined),
-      processNext: vi.fn().mockResolvedValue({ status: 'idle' }),
     },
     lifecycleCommands: {
       checkReadiness: vi.fn().mockResolvedValue(undefined),
@@ -60,19 +46,17 @@ function setup() {
     release: vi.fn().mockResolvedValue(undefined),
   };
   const metrics = {
-    record: vi.fn(),
     recordFailure: vi.fn(),
     recordLifecycleCommand: vi.fn(),
-    recordOperatorRerun: vi.fn(),
     recordPreview: vi.fn(),
+    recordRetention: vi.fn(),
     recordRunArtifact: vi.fn(),
-    recordSchedule: vi.fn(),
     recordTransientDataReap: vi.fn(),
     recordWorkspacePurge: vi.fn(),
   } satisfies RetentionMetrics;
   const logger = { error: vi.fn() };
   const runtime = createRetentionRuntime(
-    resources as unknown as RetentionRuntimeResources,
+    resources,
     metrics,
     logger as never,
     60_000,
@@ -110,6 +94,7 @@ describe('retention runtime', () => {
     expect(resources.lifecycleCommands.checkReadiness).toHaveBeenCalledOnce();
     expect(resources.lifecycleCommands.processNext).toHaveBeenCalledTimes(2);
     expect(resources.workspacePurge.processNext).toHaveBeenCalledTimes(3);
+    expect(resources.database.enforce).toHaveBeenCalledOnce();
     expect(metrics.recordLifecycleCommand).toHaveBeenCalledTimes(2);
     expect(metrics.recordWorkspacePurge).toHaveBeenCalledTimes(3);
     await runtime.close();
@@ -145,7 +130,6 @@ describe('retention runtime', () => {
 
     for (const resource of [
       resources.database,
-      resources.enforcement,
       resources.lifecycleCommands,
       resources.preview,
       resources.runArtifacts,

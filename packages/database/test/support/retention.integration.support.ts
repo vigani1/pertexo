@@ -5,11 +5,7 @@ import { afterAll, beforeAll } from 'vitest';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { createOperatorCommandDatabase } from '../../src/operator/operator-commands.js';
-import {
-  createRetentionDatabase,
-  createRetentionEnforcementCoordinator,
-} from '../../src/lifecycle/retention.js';
+import { createRetentionDatabase } from '../../src/lifecycle/retention.js';
 import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/run-artifact-retention.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 
@@ -71,10 +67,6 @@ export const apiUrl = withDatabase(
   process.env.DATABASE_URL ??
     'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
 );
-export const operatorUrl = withDatabase(
-  process.env.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-);
 export const workspaceId = randomUUID();
 export const userId = randomUUID();
 export const runIds = [
@@ -83,14 +75,10 @@ export const runIds = [
   randomUUID(),
   randomUUID(),
 ] as const;
-export const cutoffAt = new Date('2026-08-01T00:00:00.000Z');
-export const zeroHash = '0'.repeat(64);
 export let retention!: ReturnType<typeof createRetentionDatabase>;
-export let operator!: ReturnType<typeof createOperatorCommandDatabase>;
 export let owner!: Pool;
 let databaseCreated = false;
 let retentionCreated = false;
-let operatorCreated = false;
 let ownerCreated = false;
 const disposable = createDisposableDatabaseFixture({
   adminUrl,
@@ -113,18 +101,9 @@ beforeAll(async () => {
     }
     retention = createRetentionDatabase(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-      {
-        leaseOwner: 'retention-integration',
-        leaseSeconds: 60,
-        maxPagesPerBatch: 10,
-        pageSize: 2,
-      },
+      { pageSize: 2 },
     );
     retentionCreated = true;
-    operator = createOperatorCommandDatabase(
-      parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
-    );
-    operatorCreated = true;
     owner = new Pool({ connectionString: migrationUrl, max: 1 });
     ownerCreated = true;
     await owner.query('begin');
@@ -173,13 +152,11 @@ beforeAll(async () => {
     if (ownerCreated) await owner.query('rollback').catch(() => undefined);
     const closed = await Promise.allSettled([
       ...(retentionCreated ? [retention.close()] : []),
-      ...(operatorCreated ? [operator.close()] : []),
       ...(ownerCreated ? [owner.end()] : []),
     ]);
     for (const result of closed)
       if (result.status === 'rejected') failures.push(result.reason);
     retentionCreated = false;
-    operatorCreated = false;
     ownerCreated = false;
     if (!sharedDatabase && databaseCreated) {
       try {
@@ -197,7 +174,6 @@ afterAll(async () => {
   const failures: unknown[] = [];
   const closed = await Promise.allSettled([
     ...(retentionCreated ? [retention.close()] : []),
-    ...(operatorCreated ? [operator.close()] : []),
     ...(ownerCreated ? [owner.end()] : []),
   ]);
   for (const outcome of closed)
@@ -216,8 +192,6 @@ afterAll(async () => {
 
 export {
   Pool,
-  createRetentionDatabase,
-  createRetentionEnforcementCoordinator,
   createRunArtifactRetentionCoordinator,
   parseDatabaseConfig,
   randomUUID,

@@ -104,16 +104,6 @@ const environmentSchema = z
       OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_WORKFLOW_ID: z.uuid(),
     }),
-    baseEnvironmentSchema.extend({
-      OPERATOR_COMMAND_TYPE: z.literal('retention.rerun'),
-      OPERATOR_DRY_RUN: dryRunSchema,
-      OPERATOR_RETENTION_BATCH_ID: z.uuid(),
-    }),
-    baseEnvironmentSchema.extend({
-      OPERATOR_COMMAND_TYPE: z.literal('purge.rerun'),
-      OPERATOR_DRY_RUN: dryRunSchema,
-      OPERATOR_PURGE_JOB_ID: z.uuid(),
-    }),
   ])
   .superRefine((value, context) => {
     if (
@@ -194,16 +184,6 @@ export interface OperatorCommandConfig {
         type: 'trigger.reconcile';
         workflowId: string;
         workspaceId: string;
-      }>
-    | Readonly<{
-        actorRef: string;
-        commandId: string;
-        dryRun: boolean;
-        reason: string;
-        targetId: string;
-        targetType: 'retention_batch' | 'workspace_purge_job';
-        type: 'purge.rerun' | 'retention.rerun';
-        workspaceId: string;
       }>;
   readonly database: DatabaseConfig;
   readonly observability: ObservabilityConfig;
@@ -274,22 +254,6 @@ function toOperatorCommand(
         sourceRunId: parsed.OPERATOR_RUN_ID,
         type: parsed.OPERATOR_COMMAND_TYPE,
         workflowVersionId: parsed.OPERATOR_WORKFLOW_VERSION_ID,
-      });
-    case 'retention.rerun':
-      return Object.freeze({
-        ...auditIdentity,
-        dryRun: parsed.OPERATOR_DRY_RUN,
-        targetId: parsed.OPERATOR_RETENTION_BATCH_ID,
-        targetType: 'retention_batch',
-        type: parsed.OPERATOR_COMMAND_TYPE,
-      });
-    case 'purge.rerun':
-      return Object.freeze({
-        ...auditIdentity,
-        dryRun: parsed.OPERATOR_DRY_RUN,
-        targetId: parsed.OPERATOR_PURGE_JOB_ID,
-        targetType: 'workspace_purge_job',
-        type: parsed.OPERATOR_COMMAND_TYPE,
       });
   }
 }

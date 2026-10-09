@@ -257,22 +257,6 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "Operator maintenance rerun command processing, including idle polls, by bounded target type and normalized outcome.",
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 31 },
-      "id": 13,
-      "targets": [
-        {
-          "expr": "sum by (target_type, outcome) (increase(pertexo_maintenance_operator_rerun_count_total[15m]))",
-          "legendFormat": "{{target_type}} {{outcome}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Operator Maintenance Reruns",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Workspace deletion and restore command outcomes.",
       "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 39 },

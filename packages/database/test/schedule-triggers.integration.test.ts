@@ -3,7 +3,10 @@ import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { canonicalOutboxPayloadChecksum } from '../src/outbox/events.js';
-import { checkDatabaseReadiness } from '../src/platform/readiness.js';
+import {
+  checkDatabaseReadiness,
+  EXPECTED_MIGRATION_HEAD,
+} from '../src/platform/readiness.js';
 import { createScheduleTriggerTestEnvironment } from './support/schedule-triggers.integration.support.js';
 
 const schedule = createScheduleTriggerTestEnvironment({
@@ -571,7 +574,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     await expect(
       checkDatabaseReadiness(schedule.worker),
     ).resolves.toMatchObject({
-      migrationHead: '0000_baseline.sql',
+      migrationHead: EXPECTED_MIGRATION_HEAD,
       role: 'pertexo_app',
     });
     const crashed = await schedule.worker.query<{ trigger_id: string }>(

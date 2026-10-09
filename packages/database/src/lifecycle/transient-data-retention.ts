@@ -1,8 +1,10 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { inRetentionTransaction } from './retention-transaction.js';
-import type { ParsedRetentionDatabaseOptions } from './retention-support.js';
+import {
+  inRetentionTransaction,
+  type RetentionTransactionOptions,
+} from './retention-transaction.js';
 
 export type TransientDataReapResult = Readonly<{
   authenticationMailDeleted: number;
@@ -24,7 +26,7 @@ const deletedCountSchema = z.coerce.number().int().nonnegative();
 
 export async function reapTransientData(
   pool: Pool,
-  options: ParsedRetentionDatabaseOptions,
+  options: RetentionTransactionOptions & Readonly<{ pageSize: number }>,
   signal?: AbortSignal,
 ): Promise<TransientDataReapResult> {
   // Own short transaction: destruction coordination must precede workspace or

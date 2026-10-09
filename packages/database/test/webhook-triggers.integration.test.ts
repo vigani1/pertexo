@@ -13,7 +13,10 @@ import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/graph';
-import { checkDatabaseReadiness } from '../src/platform/readiness.js';
+import {
+  checkDatabaseReadiness,
+  EXPECTED_MIGRATION_HEAD,
+} from '../src/platform/readiness.js';
 import {
   createWebhookTriggerDatabase,
   WebhookDeliveryIneligibleError,
@@ -1187,7 +1190,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0000_baseline.sql',
+      migrationHead: EXPECTED_MIGRATION_HEAD,
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),
