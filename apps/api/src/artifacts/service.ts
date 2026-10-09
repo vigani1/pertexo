@@ -20,7 +20,7 @@ import {
   AuthorizationError,
   authorizeWorkspaceOperation,
   type AuthorizationCapability,
-} from '../workspaces/index.js';
+} from '../authorization/index.js';
 import {
   ArtifactApiCapacityExceededError,
   ArtifactApiConflictError,

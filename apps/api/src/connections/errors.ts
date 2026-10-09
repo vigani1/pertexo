@@ -18,8 +18,8 @@ import {
   InvalidIdempotencyKeyError,
   type ApplicationError,
 } from '../platform/http/index.js';
-import { AuthorizationError } from '../workspaces/index.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../identity-workspace/authenticated-command-context-error.js';
+import { AuthorizationError } from '../authorization/index.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../workspaces/request/authenticated-context-error.js';
 import { InvalidConnectionCursorError } from './cursor.js';
 
 export function mapConnectionError(error: unknown): ApplicationError {

@@ -2,7 +2,7 @@ import type { ConnectionReadPersistence } from '../../src/connections/ports.js';
 import {
   GetConnectionUseCase,
   ListConnectionsUseCase,
-} from '../../src/connections/use-cases.js';
+} from '../../src/connections/use-cases/management.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   actor,

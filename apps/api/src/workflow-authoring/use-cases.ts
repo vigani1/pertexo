@@ -7,7 +7,7 @@ import {
   authorizeWorkspaceOperation,
   type AuthorizationCapability,
   type WorkspaceAuthorizationSource,
-} from '../workspaces/index.js';
+} from '../authorization/index.js';
 import {
   decodeVersionCursor,
   decodeWorkflowCursor,
@@ -47,8 +47,8 @@ import {
   type WorkflowCreateResult,
   type WorkflowDraftResult,
   type WorkflowValidationResult,
-} from './serializers.js';
-import { createDraftRepresentationTag } from './etag.js';
+} from './http/serializers.js';
+import { createDraftRepresentationTag } from './http/etag.js';
 import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts';
 import {
   applicationError,

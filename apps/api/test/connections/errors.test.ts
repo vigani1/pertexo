@@ -15,9 +15,9 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { mapConnectionError } from '../../src/connections/errors.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../../src/identity-workspace/authenticated-command-context-error.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context-error.js';
 import { InvalidIdempotencyKeyError } from '../../src/platform/http/index.js';
-import { AuthorizationError } from '../../src/workspaces/index.js';
+import { AuthorizationError } from '../../src/authorization/index.js';
 
 describe('connection error mapping', () => {
   it.each([

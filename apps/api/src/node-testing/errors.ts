@@ -9,7 +9,7 @@ import {
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-import { AuthorizationError } from '../workspaces/index.js';
+import { AuthorizationError } from '../authorization/index.js';
 import {
   applicationError,
   InvalidIdempotencyKeyError,
@@ -17,7 +17,7 @@ import {
   type ApplicationError,
 } from '../platform/http/index.js';
 import type { NodeValidationIssue } from './validation.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../identity-workspace/authenticated-command-context-error.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../workspaces/request/authenticated-context-error.js';
 
 export class NodeTestRequestError extends Error {
   public override readonly name = 'NodeTestRequestError';

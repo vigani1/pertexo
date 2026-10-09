@@ -3,7 +3,7 @@ import {
   normalizeConcurrencyConflict,
   projectConcurrencyConflict,
   type ConcurrencyConflict,
-} from './concurrency-conflict.js';
+} from './problems/concurrency-conflict.js';
 
 import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts';
 import {
@@ -35,13 +35,13 @@ import {
   setResponseHeader,
 } from './request-context.js';
 import { firstRequestHeader } from './request-headers.js';
-import { normalizeWorkflowMetadataConflict } from './workflow-metadata-conflict.js';
+import { normalizeWorkflowMetadataConflict } from './problems/workflow-metadata-conflict.js';
 import {
   normalizeAutoPauseConflict,
   projectAutoPauseConflict,
   type AutoPauseConflictProblem,
   type AutoPauseConflictRevision,
-} from './auto-pause-conflict.js';
+} from './problems/auto-pause-conflict.js';
 
 export const HTTP_ERROR_LOGGER = Symbol('HTTP_ERROR_LOGGER');
 export const HTTP_APPLICATION_ERROR_MAPPERS = Symbol(

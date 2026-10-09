@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
-import { SESSION_AUTHORITY } from '../../src/identity-workspace/index.js';
+import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
 import { WebhookManagementController } from '../../src/webhooks/controllers.js';
 import {

@@ -35,7 +35,7 @@ import type {
   WorkflowRunPersistence,
 } from './ports.js';
 import { WorkflowRunNotFoundError } from './use-cases.js';
-import type { RunEventNotificationPublisher } from '../executions/index.js';
+import type { RunEventNotificationPublisher } from './events/index.js';
 
 export type PostgresWorkflowRunPersistence = Readonly<{
   persistence: WorkflowRunPersistence;

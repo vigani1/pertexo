@@ -5,7 +5,7 @@ import {
   isApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
-import { AuthorizationError } from '../workspaces/index.js';
+import { AuthorizationError } from '../authorization/index.js';
 import { InvalidWorkspaceInboxCursorError } from './cursor.js';
 import { WorkspaceInboxThreadNotFoundError } from './service.js';
 

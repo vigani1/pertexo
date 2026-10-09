@@ -188,14 +188,14 @@ jobs:
             --exclude test/workflow-concurrency-browser.integration.test.ts \
             --exclude test/connection-health-browser.integration.test.ts \
             --exclude test/workflow-organization-browser.integration.test.ts \
-            --exclude test/workflow-authoring/organization.integration.test.ts \
-            --exclude test/workflow-authoring/favorite-persistence.integration.test.ts \
-            --exclude test/workflow-authoring/folders-bulk.integration.test.ts
+            --exclude test/workflow-authoring/organization/organization.integration.test.ts \
+            --exclude test/workflow-authoring/organization/favorite-persistence.integration.test.ts \
+            --exclude test/workflow-authoring/organization/folders-bulk.integration.test.ts
           EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/workflow-authoring/organization.integration.test.ts \
-            test/workflow-authoring/favorite-persistence.integration.test.ts \
-            test/workflow-authoring/folders-bulk.integration.test.ts
+            test/workflow-authoring/organization/organization.integration.test.ts \
+            test/workflow-authoring/organization/favorite-persistence.integration.test.ts \
+            test/workflow-authoring/organization/folders-bulk.integration.test.ts
       - name: Service logs
         if: failure()
         run: docker compose logs --no-color --timestamps

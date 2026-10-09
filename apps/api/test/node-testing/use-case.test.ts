@@ -17,7 +17,7 @@ import {
 import {
   authorizeWorkspace,
   createActorContext,
-} from '../../src/workspaces/index.js';
+} from '../../src/authorization/index.js';
 import type { NodeTestingPersistence } from '../../src/node-testing/ports.js';
 import {
   httpNodeTestingGraph,

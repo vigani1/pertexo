@@ -5,7 +5,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
-import { SESSION_AUTHORITY } from '../../src/identity-workspace/index.js';
+import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
 import { NodeTestingController } from '../../src/node-testing/controller.js';
 import { NodeTestingModule } from '../../src/node-testing/module.js';
 import {

@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
 import type { ConnectionDependencies } from '../../src/connections/index.js';
-import type { IdentityWorkspaceDependencies } from '../../src/identity-workspace/index.js';
+import type { IdentityWorkspaceDependencies } from '../../src/workspaces/index.js';
 import type { ApiConnectionRuntime } from '../../src/platform/connections/connection-runtime.module.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import {

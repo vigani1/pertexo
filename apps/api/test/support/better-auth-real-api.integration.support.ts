@@ -15,7 +15,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
 import type { createApiApplication } from '../../src/app.js';
-import { LocalAuthenticationMailSink } from '../../src/identity-infrastructure/index.js';
+import { LocalAuthenticationMailSink } from '../../src/authentication/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { FixtureResourceOwner } from './fixture-resource-owner.js';

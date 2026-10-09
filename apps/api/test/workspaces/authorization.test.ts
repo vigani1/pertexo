@@ -13,7 +13,7 @@ import {
   createActorContext,
   hasCapability,
   type WorkspaceAccess,
-} from '../../src/workspaces/index.js';
+} from '../../src/authorization/index.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

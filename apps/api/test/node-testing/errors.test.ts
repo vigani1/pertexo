@@ -13,7 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import { APPLICATION_ERROR_MAPPERS } from '../../src/application-error-mappers.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../../src/identity-workspace/authenticated-command-context-error.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context-error.js';
 import {
   mapNodeTestingError,
   NodeTestInvalidError,
@@ -25,7 +25,7 @@ import {
   ProblemDetailsFilter,
   RequestContextStore,
 } from '../../src/platform/http/index.js';
-import { AuthorizationError } from '../../src/workspaces/index.js';
+import { AuthorizationError } from '../../src/authorization/index.js';
 
 describe('node testing error mapping', () => {
   it.each([

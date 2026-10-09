@@ -1,0 +1,454 @@
+import {
+  FailureNotificationDestinationError,
+  type FailureNotificationDestinationDatabase,
+} from '@pertexo/database/testing';
+import { describe, expect, it, vi } from 'vitest';
+
+import { FailureNotificationDestinationsController } from '../../../src/connections/failure-notifications/controller.js';
+import { FailureNotificationDestinationUseCases } from '../../../src/connections/failure-notifications/destinations.js';
+import { createActorContext } from '../../../src/authorization/index.js';
+import { hashRequest } from '../../../src/connections/use-cases/support.js';
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method -- assertions target injected Vitest spies */
+
+const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const destinationId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const connectionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const workflowId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+
+const record = {
+  id: destinationId,
+  workspaceId,
+  kind: 'slack' as const,
+  status: 'enabled' as const,
+  currentVersion: 1,
+  config: { kind: 'slack' as const, connectionId, channelId: 'C12345' },
+  createdAt: new Date('2026-08-25T10:00:00.000Z'),
+  updatedAt: new Date('2026-08-25T10:00:00.000Z'),
+  internalMetadata: 'must-not-escape',
+};
+
+function request(headers: Record<string, string | readonly string[]> = {}) {
+  return {
+    requestId: 'request-42',
+    traceId: 'trace-42',
+    headers,
+    identitySession: {
+      userId: actorId,
+      sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      expiresAt: new Date('2026-08-25T20:00:00.000Z'),
+      clientMetadata: {},
+    },
+  } as const;
+}
+
+const command = {
+  actor: createActorContext({
+    actorId,
+    workspaceId,
+    sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    requestId: 'request-42',
+    traceId: 'trace-42',
+  }),
+  routeWorkspaceId: workspaceId,
+  requestId: 'request-42',
+  traceId: 'trace-42',
+};
+
+function persistence(): FailureNotificationDestinationDatabase {
+  return {
+    create: vi.fn().mockResolvedValue(record),
+    get: vi.fn().mockResolvedValue(record),
+    list: vi.fn().mockResolvedValue([record]),
+    appendVersion: vi.fn().mockResolvedValue(record),
+    setStatus: vi.fn().mockResolvedValue(record),
+    setWorkflowPolicy: vi.fn(),
+    clearWorkflowPolicy: vi.fn(),
+    getWorkflowPolicy: vi.fn().mockResolvedValue(record),
+    close: vi.fn(),
+  };
+}
+
+describe('failure notification destination API seams', () => {
+  it('accepts typed application commands for all seven operations', async () => {
+    const database = persistence();
+    const useCases = new FailureNotificationDestinationUseCases(database);
+    const mutation = { ...command, idempotencyKey: 'typed-command-42' };
+
+    const created = await useCases.create({ ...mutation, body: record.config });
+    const listed = await useCases.list(command);
+    const fetched = await useCases.get({ ...command, destinationId });
+    const appended = await useCases.append({
+      ...mutation,
+      destinationId,
+      body: { expectedVersion: 1, config: record.config },
+    });
+    const status = await useCases.status({
+      ...mutation,
+      destinationId,
+      body: { status: 'disabled' },
+    });
+    await useCases.setPolicy({
+      ...mutation,
+      workflowId,
+      body: { destinationId },
+    });
+    await useCases.clearPolicy({ ...mutation, workflowId });
+
+    const exactResponse = {
+      id: destinationId,
+      workspaceId,
+      kind: 'slack',
+      status: 'enabled',
+      currentVersion: 1,
+      config: record.config,
+      createdAt: '2026-08-25T10:00:00.000Z',
+      updatedAt: '2026-08-25T10:00:00.000Z',
+    };
+    expect(created).toEqual(exactResponse);
+    expect(listed).toEqual({ items: [exactResponse] });
+    expect(fetched).toEqual(exactResponse);
+    expect(appended).toEqual(exactResponse);
+    expect(status).toEqual(exactResponse);
+    expect(
+      JSON.stringify({ created, listed, fetched, appended, status }),
+    ).not.toContain('must-not-escape');
+
+    expect(database.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId,
+        workspaceId,
+        requestId: 'request-42',
+        requestHash: hashRequest(record.config),
+      }),
+    );
+    expect(database.appendVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestHash: hashRequest({
+          destinationId,
+          expectedVersion: 1,
+          config: record.config,
+        }),
+      }),
+    );
+    expect(database.setStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestHash: hashRequest({ destinationId, status: 'disabled' }),
+      }),
+    );
+    expect(database.setWorkflowPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestHash: hashRequest({ workflowId, destinationId }),
+      }),
+    );
+    expect(database.clearWorkflowPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId,
+        workspaceId,
+        idempotencyKey: 'typed-command-42',
+        requestHash: hashRequest({ workflowId }),
+      }),
+    );
+  });
+
+  it('uses guarded actor identifiers consistently in destination commands', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+    const guardedActor = createActorContext({
+      actorId: '99999999-9999-4999-8999-999999999999',
+      workspaceId,
+      sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      requestId: 'guard-request',
+      traceId: 'guard-trace',
+    });
+    const authorizedWorkspace = {
+      actor: guardedActor,
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'connection:manage' as const,
+    };
+
+    await controller.create(
+      {
+        ...request({ 'idempotency-key': 'guarded-destination' }),
+        authorizedWorkspace,
+      },
+      { workspaceId },
+      record.config,
+    );
+
+    expect(database.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: guardedActor.actorId,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+    );
+  });
+
+  it.each([[['duplicate-one', 'duplicate-two']], ['contains,comma'], ['']])(
+    'rejects invalid or duplicate idempotency header values %j',
+    async (value) => {
+      const controller = new FailureNotificationDestinationsController(
+        new FailureNotificationDestinationUseCases(persistence()),
+      );
+
+      await expect(
+        controller.create(
+          request({ 'idempotency-key': value }),
+          { workspaceId },
+          record.config,
+        ),
+      ).rejects.toThrow(/Idempotency-Key/u);
+    },
+  );
+
+  it('parses a command, requires idempotency, and forwards canonical metadata', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+
+    await expect(
+      controller.create(
+        request({ 'idempotency-key': 'destination-create-42' }),
+        { workspaceId },
+        { kind: 'slack', connectionId, channelId: 'C12345' },
+      ),
+    ).resolves.toMatchObject({
+      id: destinationId,
+      createdAt: expect.any(String),
+    });
+    expect(database.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        actorId,
+        idempotencyKey: 'destination-create-42',
+        requestHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+        requestId: 'request-42',
+        traceId: 'trace-42',
+      }),
+    );
+
+    await expect(
+      controller.create(request(), { workspaceId }, record.config),
+    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+  });
+
+  it('keeps GET idempotency-free and measures destination-specific commands', async () => {
+    const database = persistence();
+    const measured: string[] = [];
+    const useCases = new FailureNotificationDestinationUseCases(database, {
+      measure: <T>(operation: string, work: () => Promise<T>) => {
+        measured.push(operation);
+        return work();
+      },
+    });
+
+    await useCases.list(command);
+    await useCases.status({
+      ...command,
+      idempotencyKey: 'destination-status-42',
+      destinationId,
+      body: { status: 'disabled' },
+    });
+
+    expect(database.list).toHaveBeenCalledWith(
+      expect.not.objectContaining({ idempotencyKey: expect.anything() }),
+    );
+    expect(measured).toEqual(['failure_notification_destination.status']);
+  });
+
+  it('gets one destination through the controller without command metadata', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+
+    await expect(
+      controller.get(request(), { workspaceId, destinationId }),
+    ).resolves.toMatchObject({
+      id: destinationId,
+      createdAt: '2026-08-25T10:00:00.000Z',
+    });
+    expect(database.get).toHaveBeenCalledWith({
+      workspaceId,
+      destinationId,
+      actorId,
+      requestId: 'request-42',
+      traceId: 'trace-42',
+    });
+  });
+
+  it('reads the current workflow policy through the safe destination projection', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+
+    const current = await controller.getPolicy(request(), {
+      workspaceId,
+      workflowId,
+    });
+    expect(current).toEqual({
+      destination: {
+        id: destinationId,
+        workspaceId,
+        kind: 'slack',
+        status: 'enabled',
+        currentVersion: 1,
+        config: record.config,
+        createdAt: '2026-08-25T10:00:00.000Z',
+        updatedAt: '2026-08-25T10:00:00.000Z',
+      },
+    });
+    expect(JSON.stringify(current)).not.toContain('must-not-escape');
+    expect(database.getWorkflowPolicy).toHaveBeenCalledWith({
+      workspaceId,
+      workflowId,
+      actorId,
+      requestId: 'request-42',
+      traceId: 'trace-42',
+    });
+
+    vi.mocked(database.getWorkflowPolicy).mockResolvedValueOnce(null);
+    await expect(
+      controller.getPolicy(request(), { workspaceId, workflowId }),
+    ).resolves.toEqual({ destination: null });
+    await expect(
+      controller.getPolicy(request(), { workspaceId, workflowId: 'nope' }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+  });
+
+  it('appends a version and propagates optimistic and idempotency conflicts', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+    const body = {
+      expectedVersion: 1,
+      config: { ...record.config, channelId: 'C67890' },
+    } as const;
+
+    await expect(
+      controller.append(
+        request({ 'idempotency-key': 'destination-append-42' }),
+        { workspaceId, destinationId },
+        body,
+      ),
+    ).resolves.toMatchObject({ id: destinationId });
+    expect(database.appendVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        destinationId,
+        expectedVersion: 1,
+        config: body.config,
+        idempotencyKey: 'destination-append-42',
+      }),
+    );
+
+    vi.mocked(database.appendVersion).mockRejectedValueOnce(
+      new FailureNotificationDestinationError('conflict'),
+    );
+    await expect(
+      controller.append(
+        request({ 'idempotency-key': 'destination-append-43' }),
+        { workspaceId, destinationId },
+        body,
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      name: 'FailureNotificationDestinationError',
+    });
+
+    vi.mocked(database.appendVersion).mockRejectedValueOnce(
+      new FailureNotificationDestinationError('idempotency_conflict'),
+    );
+    await expect(
+      controller.append(
+        request({ 'idempotency-key': 'destination-append-44' }),
+        { workspaceId, destinationId },
+        body,
+      ),
+    ).rejects.toMatchObject({
+      code: 'idempotency_conflict',
+      name: 'FailureNotificationDestinationError',
+    });
+  });
+
+  it('sets and clears workflow policy with exact idempotent replay metadata', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+    const setRequest = request({ 'idempotency-key': 'policy-set-42' });
+    const clearRequest = request({ 'idempotency-key': 'policy-clear-42' });
+
+    await controller.setPolicy(
+      setRequest,
+      { workspaceId, workflowId },
+      { destinationId },
+    );
+    await controller.setPolicy(
+      setRequest,
+      { workspaceId, workflowId },
+      { destinationId },
+    );
+    await controller.clearPolicy(clearRequest, { workspaceId, workflowId });
+    await controller.clearPolicy(clearRequest, { workspaceId, workflowId });
+
+    expect(database.setWorkflowPolicy).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(database.setWorkflowPolicy).mock.calls[0]?.[0]).toEqual(
+      vi.mocked(database.setWorkflowPolicy).mock.calls[1]?.[0],
+    );
+    expect(database.setWorkflowPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        workflowId,
+        destinationId,
+        idempotencyKey: 'policy-set-42',
+        requestHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+      }),
+    );
+    expect(database.clearWorkflowPolicy).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(database.clearWorkflowPolicy).mock.calls[0]?.[0]).toEqual(
+      vi.mocked(database.clearWorkflowPolicy).mock.calls[1]?.[0],
+    );
+  });
+
+  it('propagates hidden destination read and write failures', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+    vi.mocked(database.get).mockRejectedValueOnce(
+      new FailureNotificationDestinationError('not_found'),
+    );
+    await expect(
+      controller.get(request(), { workspaceId, destinationId }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      name: 'FailureNotificationDestinationError',
+    });
+
+    vi.mocked(database.appendVersion).mockRejectedValueOnce(
+      new FailureNotificationDestinationError('not_found'),
+    );
+    await expect(
+      controller.append(
+        request({ 'idempotency-key': 'destination-hidden-42' }),
+        { workspaceId, destinationId },
+        {
+          expectedVersion: 1,
+          config: { ...record.config, channelId: 'C67890' },
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      name: 'FailureNotificationDestinationError',
+    });
+  });
+});

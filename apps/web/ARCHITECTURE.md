@@ -486,12 +486,12 @@ stable Idempotency-Key for that logical command, not a new key per retry.
 | Create / rotate / revoke / test connection | `POST W/connections`; `PUT W/connections/:id/secret`; `DELETE W/connections/:id`; `POST W/connections/:id/test` | Keys except revoke; rotation needs expectedSecretVersionId                |
 
 Source:
-[identity controllers](../../apps/api/src/identity-workspace/controllers.ts),
-[auth controllers](../../apps/api/src/identity-workspace/auth-controllers.ts),
-[authoring controller](../../apps/api/src/workflow-authoring/controllers.ts),
-[run controllers](../../apps/api/src/workflow-runs/controllers.ts),
-[connection controllers](../../apps/api/src/connections/controllers.ts), and
-[public contracts](../../packages/contracts/package.json).
+[identity controllers](../../apps/api/src/workspaces/http/controllers.ts),
+[auth controllers](../../apps/api/src/workspaces/http/session-controller.ts),
+[authoring controller](../../apps/api/src/workflow-authoring/http/controllers.ts),
+[run controllers](../../apps/api/src/workflow-runs/http/controllers.ts),
+[connection controllers](../../apps/api/src/connections/http/controllers.ts),
+and [public contracts](../../packages/contracts/package.json).
 
 Connection and run-list discovery are implemented through browser-safe shared
 contracts and workspace-authorized cursor reads. Do not persist created IDs as a

@@ -8,7 +8,7 @@ import {
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,
 } from '../../src/catalog/use-cases.js';
-import { SESSION_AUTHORITY } from '../../src/identity-workspace/index.js';
+import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
 
 // Nest dynamic modules require a class token.

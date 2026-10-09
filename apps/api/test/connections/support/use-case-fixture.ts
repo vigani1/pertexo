@@ -5,8 +5,8 @@ import type {
   ConnectionCommandPersistence,
   ConnectionTestPersistence,
 } from '../../../src/connections/ports.js';
-import { createActorContext } from '../../../src/workspaces/index.js';
-import type { WorkspaceAuthorizationPort } from '../../../src/workspaces/index.js';
+import { createActorContext } from '../../../src/authorization/index.js';
+import type { WorkspaceAuthorizationPort } from '../../../src/authorization/index.js';
 
 type AuthorizationFixture = Readonly<{
   findAccess: ReturnType<

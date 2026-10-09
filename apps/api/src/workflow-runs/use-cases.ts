@@ -17,7 +17,7 @@ import {
   type WorkspaceAuthorizationSource,
   type WorkspaceStatus,
   type AuthorizedWorkspaceContext,
-} from '../workspaces/index.js';
+} from '../authorization/index.js';
 import type {
   WorkflowRunApplicationInput,
   WorkflowRunEventFrame,
@@ -35,18 +35,18 @@ import {
   createStreamAuthorizationLifetime,
   nextFrameOrAuthorizationLoss,
   type StreamAuthorizationLifetime,
-} from './sse-authorization-lifetime.js';
+} from './events/sse-authorization-lifetime.js';
 import {
   NO_STREAM_FAILURE,
   preserveFailureDuringStreamCleanup,
   streamProducerFailureReason,
   type StreamFailure,
-} from './stream-cleanup.js';
+} from './events/stream-cleanup.js';
 import {
   replayRequestHash,
   sha256,
   startRequestHash,
-} from './request-hashes.js';
+} from './http/request-hashes.js';
 
 export class WorkflowRunNotFoundError extends Error {
   public override readonly name = 'WorkflowRunNotFoundError';

@@ -6,31 +6,31 @@ import {
   SSE_VISIBILITY_METRICS,
   type SseVisibilityMetrics,
 } from '../platform/observability/sse-visibility-metrics.js';
-import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { ApiLifecycleModule } from '../platform/health/drain-state.js';
-import { WorkflowRunsController } from './controllers.js';
+import { WorkflowRunsController } from './http/controllers.js';
 import {
   UsageCapacityArtifactReadGuard,
   WorkflowRunCancelGuard,
   WorkflowRunReplayGuard,
   WorkflowRunReadGuard,
   WorkflowRunStartGuard,
-} from './guards.js';
+} from './http/guards.js';
 import type {
   WorkflowRunEventStreamer,
   WorkflowRunPersistence,
 } from './ports.js';
-import { WorkflowRunDataController } from './run-data-controller.js';
+import { WorkflowRunDataController } from './run-data/controller.js';
 import {
   GetWorkflowNodeRunInputUseCase,
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
   GetWorkflowStepHealthUseCase,
   ListWorkflowStepRunsUseCase,
-} from './run-data-use-cases.js';
-import { GetWorkflowRunStatisticsUseCase } from './statistics-use-case.js';
-import { GetUsageCapacityUseCase } from './usage-capacity-use-case.js';
-import { UsageCapacityController } from './usage-capacity-controller.js';
+} from './run-data/use-cases.js';
+import { GetWorkflowRunStatisticsUseCase } from './statistics.js';
+import { GetUsageCapacityUseCase } from './usage/capacity.js';
+import { UsageCapacityController } from './usage/capacity-controller.js';
 import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
 import {
   CancelWorkflowRunUseCase,

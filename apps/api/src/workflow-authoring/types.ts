@@ -17,7 +17,7 @@ import {
   type WorkflowVersionsResponse,
   type WorkflowSummary,
 } from '@pertexo/contracts';
-import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 
 export {

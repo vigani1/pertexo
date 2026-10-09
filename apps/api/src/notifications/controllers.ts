@@ -21,14 +21,14 @@ import {
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 
-import { projectAuthenticatedWorkspaceContext } from '../identity-workspace/authenticated-command-context.js';
+import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   authenticatedSession,
-} from '../identity-workspace/index.js';
-import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
-import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+} from '../workspaces/index.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { ApiDrainState } from '../platform/health/drain-state.js';
 import {
   applicationError,
@@ -36,7 +36,7 @@ import {
 } from '../platform/http/index.js';
 import { prepareSseResponse } from '../platform/http/sse-response.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { createStreamAuthorizationLifetime } from '../workflow-runs/sse-authorization-lifetime.js';
+import { createStreamAuthorizationLifetime } from '../workflow-runs/events/sse-authorization-lifetime.js';
 import { mapNotificationError } from './errors.js';
 import { NotificationReadGuard } from './guards.js';
 import { writeInboxHintStream } from './hint-stream.js';

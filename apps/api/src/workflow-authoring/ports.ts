@@ -12,12 +12,12 @@ import type {
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,
-} from '../workspaces/index.js';
-import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
+} from '../authorization/index.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import type { WorkflowAuthoringTelemetry } from './telemetry.js';
 import type { WorkflowTemplateOriginProjectionResponse } from '@pertexo/contracts';
-import type { WorkflowOrganizationCursorCodec } from './organization-cursor.js';
-import type { WorkflowOrganizationPageCursorCodec } from './organization-page-cursor.js';
+import type { WorkflowOrganizationCursorCodec } from './organization/cursors/organization.js';
+import type { WorkflowOrganizationPageCursorCodec } from './organization/cursors/page.js';
 
 /** Narrow persistence seam; runtime owns lifecycle, and callers preserve single-snapshot CAS conflicts. */
 export type WorkflowAuthoringPersistence = Pick<

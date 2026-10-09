@@ -1,17 +1,17 @@
 import { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
 
-import { ConnectionsController } from '../../src/connections/controllers.js';
+import { ConnectionsController } from '../../src/connections/http/controllers.js';
 import { ArtifactsController } from '../../src/artifacts/controllers.js';
 import { CatalogController } from '../../src/catalog/controllers.js';
-import { FailureNotificationDestinationsController } from '../../src/connections/failure-notification-destinations.controller.js';
-import { SessionController } from '../../src/identity-workspace/auth-controllers.js';
+import { FailureNotificationDestinationsController } from '../../src/connections/failure-notifications/controller.js';
+import { SessionController } from '../../src/workspaces/http/session-controller.js';
 import {
   UserController,
   WorkspaceMembersController,
   WorkspaceController,
-} from '../../src/identity-workspace/controllers.js';
-import { WorkspaceMembershipController } from '../../src/identity-workspace/membership-lifecycle-controller.js';
+} from '../../src/workspaces/http/controllers.js';
+import { WorkspaceMembershipController } from '../../src/workspaces/members/lifecycle-controller.js';
 import { NodeTestingController } from '../../src/node-testing/controller.js';
 import { LiveController } from '../../src/platform/health/live.controller.js';
 import { ReadyController } from '../../src/platform/health/ready.controller.js';
@@ -22,8 +22,8 @@ import {
 import type { RateLimitEndpointClass } from '@pertexo/rate-limit';
 import { ScheduleManagementController } from '../../src/schedules/controllers.js';
 import { WebhookManagementController } from '../../src/webhooks/controllers.js';
-import { WorkflowAuthoringController } from '../../src/workflow-authoring/controllers.js';
-import { WorkflowRunsController } from '../../src/workflow-runs/controllers.js';
+import { WorkflowAuthoringController } from '../../src/workflow-authoring/http/controllers.js';
+import { WorkflowRunsController } from '../../src/workflow-runs/http/controllers.js';
 
 type ControllerType = abstract new (...arguments_: never[]) => unknown;
 type ExpectedClassification = RateLimitEndpointClass | typeof RATE_LIMIT_EXEMPT;

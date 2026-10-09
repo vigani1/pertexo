@@ -1,55 +1,97 @@
-import {
-  AUTHORIZATION_CAPABILITIES,
-  ROLES,
-  type AuthorizationCapability,
-  type Role,
-} from '@pertexo/database/tenant-access';
+export {
+  accessibleWorkspacesQuerySchema,
+  accessibleWorkspacesResponseSchema,
+  accountSecurityLinkStartRequestSchema,
+  accountSecurityLinkStartResponseSchema,
+  accountSecurityMethodUnlinkRequestSchema,
+  accountSecurityMethodUnlinkResponseSchema,
+  accountSecurityPasswordChangeRequestSchema,
+  accountSecurityPasswordChangeResponseSchema,
+  accountSecurityPasswordSetupRequestSchema,
+  accountSecurityPasswordSetupResponseSchema,
+  accountSecurityResponseSchema,
+  accountSecurityRevokeOthersResponseSchema,
+  accountSecuritySessionRevokeRequestSchema,
+  accountSecuritySessionRevokeResponseSchema,
+  accountSecuritySessionsResponseSchema,
+  authenticationCapabilitiesResponseSchema,
+  idempotencyKeySchema,
+  invitationAcceptanceCompleteRequestSchema,
+  invitationAcceptanceJourneySchema,
+  invitationAcceptanceReceiptSchema,
+  invitationAcceptanceResolveRequestSchema,
+  workspaceInvitationCommandRequestSchema,
+  workspaceInvitationCommandResponseSchema,
+  workspaceInvitationCreateRequestSchema,
+  workspaceInvitationParamsSchema,
+  workspaceInvitationsQuerySchema,
+  workspaceInvitationsResponseSchema,
+  workspaceCreateRequestSchema,
+  workspaceRenameRequestSchema,
+  workspaceRenameResponseSchema,
+  workspaceDeletionRequestSchema,
+  workspaceIdParamSchema,
+  workspaceLifecycleOperationParamsSchema,
+  workspaceLifecycleOperationResponseSchema,
+  workspaceMembersQuerySchema,
+  workspaceMembersResponseSchema,
+  workspaceMemberRoleParamsSchema,
+  workspaceMemberRoleChangeRequestSchema,
+  workspaceMemberRoleChangeResponseSchema,
+  workspaceMemberRemovalRequestSchema,
+  workspaceMemberRemovalResponseSchema,
+  workspaceLeaveRequestSchema,
+  workspaceLeaveResponseSchema,
+  workspaceMemberStatusRequestSchema,
+  workspaceMemberStatusResponseSchema,
+  workspaceOwnershipTransferRequestSchema,
+  workspaceOwnershipTransferResponseSchema,
+  userProfileResponseSchema,
+  userProfileUpdateRequestSchema,
+  userProfileUpdateResponseSchema,
+  invitationAcceptanceSessionRequestSchema,
+  workspaceResponseSchema,
+  type WorkspaceLifecycleOperationResponse,
+  type AccessibleWorkspacesResponse,
+  type WorkspaceResponse,
+  type WorkspaceRenameResponse,
+  type UserProfileResponse,
+  type UserProfileUpdateResponse,
+  type WorkspaceMemberRemovalResponse,
+  type WorkspaceLeaveResponse,
+  type WorkspaceMemberStatusResponse,
+  type WorkspaceOwnershipTransferResponse,
+  type WorkspaceMembersResponse,
+  type WorkspaceMemberRoleChangeResponse,
+  type WorkspaceInvitationCommandResponse,
+  type WorkspaceInvitationsResponse,
+  type InvitationAcceptanceJourney,
+  type InvitationAcceptanceReceipt,
+} from '@pertexo/contracts';
+import type { AuthorizedWorkspaceContext } from '../authorization/index.js';
 
-export { AUTHORIZATION_CAPABILITIES, ROLES };
-export type { AuthorizationCapability };
+export interface CookieResponse {
+  header(name: string, value: string | readonly string[]): unknown;
+}
 
-export const MEMBERSHIP_STATUSES = Object.freeze([
-  'active',
-  'suspended',
-  'removed',
-] as const);
-
-export type MembershipStatus = (typeof MEMBERSHIP_STATUSES)[number];
-
-export const WORKSPACE_STATUSES = Object.freeze([
-  'active',
-  'suspended',
-  'pending_deletion',
-  'purging',
-  'deleted',
-] as const);
-
-export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number];
-
-export type WorkspaceId = string;
-
-export type ActorContext = Readonly<{
-  actorId: string;
-  kind: 'user';
-  workspaceId: WorkspaceId;
-  sessionId: string;
-  requestId: string;
+export interface IdentityWorkspaceRequest {
+  method?: string;
+  headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
+  cookies?: Readonly<Record<string, string | undefined>>;
+  requestId?: string;
   traceId?: string;
-}>;
+  params?: unknown;
+  query?: unknown;
+  identitySession?: AuthenticatedRequestSession;
+  reauthorizeIdentitySession?: (
+    signal: AbortSignal,
+  ) => Promise<AuthenticatedRequestSession>;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
+}
 
-export type WorkspaceAccess = Readonly<{
-  actorId: string;
-  workspaceId: WorkspaceId;
-  role: Role;
-  membershipStatus: MembershipStatus;
-  workspaceStatus: WorkspaceStatus;
-}>;
-
-export type DisclosurePolicy = 'forbidden' | 'not_found';
-
-export type AuthorizedWorkspaceContext = Readonly<{
-  actor: ActorContext;
-  workspaceId: WorkspaceId;
-  role: Role;
-  capability: AuthorizationCapability;
-}>;
+export interface AuthenticatedRequestSession {
+  readonly userId: string;
+  readonly sessionId: string;
+  readonly expiresAt: Date;
+  readonly clientMetadata: Readonly<Record<string, string>>;
+}

@@ -11,11 +11,11 @@ import {
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
 } from '../../src/workflow-authoring/use-cases.js';
-import { createDraftRepresentationTag } from '../../src/workflow-authoring/etag.js';
+import { createDraftRepresentationTag } from '../../src/workflow-authoring/http/etag.js';
 import {
   authorizeWorkspace,
   createActorContext,
-} from '../../src/workspaces/index.js';
+} from '../../src/authorization/index.js';
 import type { WorkflowAuthoringPersistence } from '../../src/workflow-authoring/ports.js';
 import type {
   PublishWorkflowInput as DatabasePublishWorkflowInput,
@@ -27,9 +27,9 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '@pertexo/database/testing';
-import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/lifecycle-use-case.js';
-import { RenameWorkflowUseCase } from '../../src/workflow-authoring/rename-use-case.js';
-import { RestoreWorkflowVersionUseCase } from '../../src/workflow-authoring/restore-version-use-case.js';
+import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/commands/lifecycle.js';
+import { RenameWorkflowUseCase } from '../../src/workflow-authoring/commands/rename.js';
+import { RestoreWorkflowVersionUseCase } from '../../src/workflow-authoring/commands/restore-version.js';
 import { validateWorkflowGraph } from '@pertexo/workflow-model';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

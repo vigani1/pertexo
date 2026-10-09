@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-} from '../../src/identity-workspace/index.js';
-import type { IdentityWorkspaceRequest } from '../../src/identity-workspace/types.js';
+} from '../../src/workspaces/index.js';
+import type { IdentityWorkspaceRequest } from '../../src/workspaces/types.js';
 import { WebhookManagementController } from '../../src/webhooks/controllers.js';
 import {
   WebhookReadGuard,

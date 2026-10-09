@@ -29,7 +29,7 @@ import {
   AuthorizationError,
   createActorContext,
   type WorkspaceAccess,
-} from '../../src/workspaces/index.js';
+} from '../../src/authorization/index.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const actorId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

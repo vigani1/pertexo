@@ -14,7 +14,7 @@ import type {
   ResendClient,
 } from '@pertexo/integrations/server';
 
-import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
+import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import type { ConnectionTelemetry } from './telemetry.js';
 
 export type ConnectionCommandPersistence = ConnectionManagementDatabase;
