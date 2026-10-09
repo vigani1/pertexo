@@ -280,7 +280,7 @@ describe('PublishedWorkflowReader', () => {
     }
   });
 
-  it('rejects partial, malformed, oversized, and mutable executable rows', async () => {
+  it('rejects partial, malformed and oversized executable rows and keeps versions append-only', async () => {
     const insertPrefix = `insert into app.workflow_versions
       (id, workspace_id, workflow_id, version_number, schema_version,
        graph_json, checksum, executable_schema_version, executable_json,
@@ -312,17 +312,18 @@ describe('PublishedWorkflowReader', () => {
         ],
       ),
     ).rejects.toSatisfy(expectPgCode('23514'));
+    // Published versions are append-only for the app role.
     await expect(
-      executeAsOwner(
+      apiPool.query(
         `update app.workflow_versions set executable_json = '{}'
          where id = $1`,
         [v1VersionId],
       ),
-    ).rejects.toSatisfy(expectPgCode('55000'));
+    ).rejects.toSatisfy(expectPgCode('42501'));
     await expect(
-      executeAsOwner('delete from app.workflow_versions where id = $1', [
+      apiPool.query('delete from app.workflow_versions where id = $1', [
         v2VersionId,
       ]),
-    ).rejects.toSatisfy(expectPgCode('55000'));
+    ).rejects.toSatisfy(expectPgCode('42501'));
   });
 });

@@ -15,7 +15,6 @@ import {
   migrationBaseUrl,
   ownerA,
   ownerB,
-  pgCode,
   randomUUID,
   registerCurrentConnectionsFixture,
   sealed,
@@ -375,7 +374,7 @@ describe('connection concurrency and security', () => {
     }
   });
 
-  it('forces RLS, hides other workspaces, and withholds history mutation', async () => {
+  it('forces RLS, hides other workspaces, and withholds history mutation from the app role', async () => {
     const input = createInput();
     await connections.api.createConnection(input);
     await expect(
@@ -455,13 +454,6 @@ describe('connection concurrency and security', () => {
         secrets_rls: true,
         worker_secret_select: true,
       });
-      await expect(
-        client.query(
-          `update app.connection_secret_versions
-           set ciphertext = ciphertext where id = $1`,
-          [input.secretVersionId],
-        ),
-      ).rejects.toSatisfy(pgCode('55000'));
     } finally {
       await client?.query('rollback').catch(() => undefined);
       client?.release();

@@ -15,7 +15,6 @@ import {
   draftNode,
   emptyGraph,
   finishTransactionClient,
-  ownerPool,
   parseDatabaseConfig,
   randomUUID,
   workflowDraftRepresentationTag,
@@ -459,32 +458,12 @@ describe('workflow publication atomicity', () => {
       authoring.publishWorkflow({ ...input, requestHash: 'c'.repeat(64) }),
     ).rejects.toBeInstanceOf(IdempotencyConflictError);
 
-    const owner = await ownerPool.connect();
-    let ownerOpen = false;
-    let ownerError: unknown;
-    try {
-      await owner.query('begin');
-      ownerOpen = true;
-      await owner.query('set local role pertexo_owner');
-      await owner.query("select set_config('app.workspace_id', $1, true)", [
-        workspaceId,
-      ]);
-      await expect(
-        owner.query(
-          'update app.workflow_versions set version_number = 99 where id = $1',
-          [published.version.id],
-        ),
-      ).rejects.toMatchObject({ code: '55000' });
-      await owner.query('rollback');
-      ownerOpen = false;
-    } catch (error: unknown) {
-      ownerError = error;
-    }
-    await finishTransactionClient(owner, {
-      label: 'Workflow-version immutability proof',
-      primaryError: ownerError,
-      transactionOpen: ownerOpen,
-    });
+    await expect(
+      apiPool.query(
+        'update app.workflow_versions set version_number = 99 where id = $1',
+        [published.version.id],
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
 
     const api = await apiPool.connect();
     let apiOpen = false;

@@ -202,6 +202,8 @@ now, as one ordered program — not "whenever we touch it".
           retention rule. The session-revocation triggers stay because
           Better Auth writes users and sessions too.
   - [ ] Connections.
+    - [x] History and version tables are append-only through grants alone;
+          the eight immutability triggers and the purge "armed" check go.
   - [ ] Triggers: schedules and webhooks.
   - [ ] Notifications and inbox.
   - [ ] Consumer-named entry points (`/api`, `/worker`, `/maintenance`,
