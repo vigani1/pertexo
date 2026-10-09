@@ -116,7 +116,7 @@ export function createScheduleTriggerTestEnvironment(
   const checkpointFactory = (projection?: { id: string }) => ({
     engineVersion: 'schedule-test-engine',
     checkpoint: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       engineVersion: 'schedule-test-engine',
       workflowVersionId: projection?.id ?? versionId,
       revision: 0,
@@ -130,6 +130,7 @@ export function createScheduleTriggerTestEnvironment(
       remainingIterationBudget: 0,
       cancelRequested: false,
       deadlineExpired: false,
+      branchSelections: [],
     },
   });
   let replayStore: ReturnType<typeof createOperatorRunReplayStore> | undefined;

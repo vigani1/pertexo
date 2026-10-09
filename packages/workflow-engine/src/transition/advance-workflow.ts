@@ -99,8 +99,7 @@ export function advanceWorkflowFromSchedulerState(
     loops: new Map(
       current.loops.map((loop) => [loop.controlInvocationKey, loop]),
     ),
-    branchSelections:
-      current.schemaVersion === 2 ? [...current.branchSelections] : [],
+    branchSelections: [...current.branchSelections],
     remainingIterationBudget: current.remainingIterationBudget,
     eventDrafts: [],
     nodeRunAdmissionKeys: new Set(),

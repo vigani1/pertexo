@@ -79,7 +79,7 @@ function digest(value: string): string {
 
 function checkpoint(versionId: string = workflowVersionId) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion: 'phase3-engine-v1',
     workflowVersionId: versionId,
     revision: 0,
@@ -93,6 +93,7 @@ function checkpoint(versionId: string = workflowVersionId) {
     remainingIterationBudget: 1_000,
     cancelRequested: false,
     deadlineExpired: false,
+    branchSelections: [],
   } as const;
 }
 

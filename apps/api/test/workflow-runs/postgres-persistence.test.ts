@@ -321,11 +321,10 @@ function projection(
 
 function expectInitialCheckpoint(
   checkpoint: ReturnType<typeof createInitialCheckpoint>,
-  schemaVersion: 1 | 2,
 ): void {
   expect(checkpoint.engineVersion).toBe(ENGINE_VERSION);
   expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
-    schemaVersion,
+    schemaVersion: 2,
     workflowVersionId,
     engineVersion: ENGINE_VERSION,
     revision: 0,
@@ -788,7 +787,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     });
   });
 
-  it('initializes checkpoint V2 for a verified Condition executable', () => {
+  it('initializes the checkpoint for a verified Condition executable', () => {
     const release = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
     );
@@ -867,13 +866,13 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       },
     );
 
-    expectInitialCheckpoint(checkpoint, 2);
+    expectInitialCheckpoint(checkpoint);
     expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
       branchSelections: [],
     });
   });
 
-  it('initializes checkpoint V2 for a verified Switch executable', () => {
+  it('initializes the checkpoint for a verified Switch executable', () => {
     const release = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
     );
@@ -944,13 +943,13 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       },
     );
 
-    expectInitialCheckpoint(checkpoint, 2);
+    expectInitialCheckpoint(checkpoint);
     expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
       branchSelections: [],
     });
   });
 
-  it('initializes checkpoint V2 for a verified For Each executable', () => {
+  it('initializes the checkpoint for a verified For Each executable', () => {
     const { compiled, release } = forEachExecutable();
     const checkpoint = createInitialCheckpoint(
       {
@@ -971,14 +970,14 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       },
     );
 
-    expectInitialCheckpoint(checkpoint, 2);
+    expectInitialCheckpoint(checkpoint);
     expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
       branchSelections: [],
     });
   });
 
   it.each([1, 2, 3] as const)(
-    'initializes checkpoint V2 for a verified Parallel V%s executable',
+    'initializes the checkpoint for a verified Parallel V%s executable',
     (version) => {
       const { compiled, release } = parallelExecutable(version);
       const checkpoint = createInitialCheckpoint(
@@ -994,14 +993,14 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         },
       );
 
-      expectInitialCheckpoint(checkpoint, 2);
+      expectInitialCheckpoint(checkpoint);
       expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
         branchSelections: [],
       });
     },
   );
 
-  it('initializes checkpoint V1 for a verified root executable', () => {
+  it('initializes the checkpoint for a verified root executable', () => {
     const compiled = executable();
     const release = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,
@@ -1017,7 +1016,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       },
     );
 
-    expectInitialCheckpoint(checkpoint, 1);
+    expectInitialCheckpoint(checkpoint);
   });
 
   it.each([
@@ -1092,7 +1091,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         );
         expect(initial.engineVersion).toBe(ENGINE_VERSION);
         expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
-          schemaVersion: 1,
+          schemaVersion: 2,
           workflowVersionId,
           engineVersion: ENGINE_VERSION,
           revision: 0,

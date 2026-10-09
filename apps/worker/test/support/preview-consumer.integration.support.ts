@@ -28,7 +28,7 @@ import {
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
   createExecutableCompatibilityReleaseHistory,
 } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
@@ -491,7 +491,7 @@ export async function acceptWorkflowDelivery(
     .digest('hex');
   const acceptance: AcceptWorkflowRunInput = {
     engineVersion,
-    initialCheckpoint: createCheckpointV2({
+    initialCheckpoint: createCheckpoint({
       engineVersion,
       workflowVersionId,
       iterationBudget: 0,

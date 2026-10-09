@@ -81,7 +81,7 @@ async function acceptRun(): Promise<string> {
     const accepted = await acceptWorkflowRun(transaction, {
       engineVersion: 'run-events-v1',
       initialCheckpoint: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         engineVersion: 'run-events-v1',
         workflowVersionId,
         revision: 0,
@@ -95,6 +95,7 @@ async function acceptRun(): Promise<string> {
         remainingIterationBudget: 0,
         cancelRequested: false,
         deadlineExpired: false,
+        branchSelections: [],
       },
       keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
       operation: 'workflow.run.accept',

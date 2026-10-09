@@ -5,7 +5,7 @@ import {
   type NodeAttemptLease,
   type NodeAttemptStoredInputs,
 } from '@pertexo/database/attempts';
-import { createCheckpointV2, invocationKey } from '@pertexo/workflow-engine';
+import { createCheckpoint, invocationKey } from '@pertexo/workflow-engine';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -34,7 +34,7 @@ function lease(overrides: Partial<NodeAttemptLease> = {}): NodeAttemptLease {
 
 function checkpoint(overrides: Record<string, unknown> = {}) {
   return {
-    ...createCheckpointV2({
+    ...createCheckpoint({
       engineVersion: 'phase3-engine-v1',
       workflowVersionId: VERSION_ID,
       iterationBudget: 10,

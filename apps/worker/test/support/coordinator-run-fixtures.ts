@@ -10,7 +10,6 @@ import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
   createCheckpoint,
-  createCheckpointV2,
   createExecutableCompatibilityReleaseSupport,
   invocationKey,
   parseCheckpoint,
@@ -219,10 +218,7 @@ async function acceptFixtureRun(
     (transaction) =>
       acceptManualFixtureRun(transaction, actorId, {
         engineVersion,
-        initialCheckpoint:
-          input.iterationBudget === 0
-            ? createCheckpoint(checkpointInput)
-            : createCheckpointV2(checkpointInput),
+        initialCheckpoint: createCheckpoint(checkpointInput),
         keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
         operation: 'workflow.run.accept',
         runInput: input.workflowId === workflowId ? { name: 'Ada' } : {},

@@ -3,7 +3,6 @@ import fc from 'fast-check';
 
 import {
   createCheckpoint,
-  createCheckpointV2,
   invocationKey,
   type WorkflowCheckpoint,
 } from '../src/index.js';
@@ -90,7 +89,7 @@ function startStructuredLoop(input: {
   const schedulerState = structuredGraph(input.bodyNodeCount);
   const initialIterationBudget = input.collectionSize + input.reserveBudget;
   const started = advanceWorkflow({
-    checkpoint: createCheckpointV2({
+    checkpoint: createCheckpoint({
       engineVersion: 'engine-v2',
       workflowVersionId: WORKFLOW_VERSION_ID,
       iterationBudget: initialIterationBudget,

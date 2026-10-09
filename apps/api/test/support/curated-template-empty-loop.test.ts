@@ -5,7 +5,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
 } from '@pertexo/workflow-engine';
 import { curatedScheduleInputCase } from './curated-template-worker-evidence.js';
 
@@ -41,7 +41,7 @@ it('admits the reviewed schedule successor after an empty For Each declaration',
     maximumAdmissions: 1,
     signal: new AbortController().signal,
   } as const;
-  const checkpoint = createCheckpointV2({
+  const checkpoint = createCheckpoint({
     engineVersion: 'engine-v1',
     workflowVersionId: version,
     iterationBudget: 3,

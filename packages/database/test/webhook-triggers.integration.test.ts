@@ -241,7 +241,7 @@ async function apiQuery<Row extends QueryResultRow = QueryResultRow>(
 const checkpointFactory = (projection?: { id: string }) => ({
   engineVersion: 'webhook-test-engine',
   checkpoint: {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion: 'webhook-test-engine',
     workflowVersionId: projection?.id ?? versionId,
     revision: 0,
@@ -255,6 +255,7 @@ const checkpointFactory = (projection?: { id: string }) => ({
     remainingIterationBudget: 0,
     cancelRequested: false,
     deadlineExpired: false,
+    branchSelections: [],
   },
 });
 

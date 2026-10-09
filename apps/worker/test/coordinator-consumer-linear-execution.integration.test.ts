@@ -320,7 +320,7 @@ describeIntegration('Linear node execution resilience', () => {
         invocationKey({ workflowVersionId, nodeId }),
       );
       expect(terminal[0]?.scheduler_state).toEqual({
-        schemaVersion: 1,
+        schemaVersion: 2,
         engineVersion,
         workflowVersionId,
         revision: 4,
@@ -340,6 +340,8 @@ describeIntegration('Linear node execution resilience', () => {
         remainingIterationBudget: 0,
         cancelRequested: false,
         deadlineExpired: false,
+        branchSelections: [],
+        initialIterationBudget: 0,
       });
       const epoch2 = composeExecutableCompatibilityRelease(
         CORE_REGISTRY_RELEASE_SUCCESSOR,

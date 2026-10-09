@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWorkflow,
   createCheckpoint,
-  createCheckpointV2,
   invocationKey,
   type WorkflowCheckpoint,
   type WorkflowObservation,
@@ -32,8 +31,8 @@ function advance(
   });
 }
 
-function checkpoint(): ReturnType<typeof createCheckpointV2> {
-  return createCheckpointV2({
+function checkpoint(): ReturnType<typeof createCheckpoint> {
+  return createCheckpoint({
     engineVersion: 'engine-v2',
     workflowVersionId: '00000000-0000-4000-8000-000000000001',
     iterationBudget: 100,

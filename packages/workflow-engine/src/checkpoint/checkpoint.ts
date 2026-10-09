@@ -1,16 +1,10 @@
-import type {
-  WorkflowCheckpoint,
-  WorkflowCheckpointV2,
-  WorkflowCheckpointV1,
-} from '../types.js';
+import type { WorkflowCheckpoint } from '../types.js';
 import { WorkflowEngineError } from '../errors.js';
 import {
   assertBoundedCheckpointJson,
   assertCheckpoint,
-  isRecord,
 } from './checkpoint-shared.js';
-import { parseCheckpointV1Boundary } from './checkpoint-v1.js';
-import { parseCheckpointV2Boundary } from './checkpoint-v2.js';
+import { parseCheckpointRecord } from './checkpoint-v1.js';
 import {
   assertPersistedEngineVersion,
   assertPersistedWorkflowVersionId,
@@ -19,14 +13,7 @@ import {
 export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
   try {
     assertBoundedCheckpointJson(value);
-    if (isRecord(value) && value.schemaVersion === 1)
-      return parseCheckpointV1Boundary(value);
-    if (isRecord(value) && value.schemaVersion === 2)
-      return parseCheckpointV2Boundary(value);
-    throw new WorkflowEngineError(
-      'checkpoint_unsupported',
-      `Unsupported checkpoint schema version: ${String(isRecord(value) ? value.schemaVersion : undefined)}`,
-    );
+    return parseCheckpointRecord(value);
   } catch (error) {
     if (error instanceof WorkflowEngineError) throw error;
     throw new WorkflowEngineError(
@@ -45,26 +32,12 @@ export function reconstructReadySet(
     .sort();
 }
 
-export function createCheckpointV2(input: {
-  readonly engineVersion: string;
-  readonly workflowVersionId: string;
-  readonly iterationBudget: number;
-  readonly nextEventSequence?: number;
-}): WorkflowCheckpointV2 {
-  return {
-    ...createCheckpoint(input),
-    schemaVersion: 2,
-    branchSelections: [],
-    initialIterationBudget: input.iterationBudget,
-  };
-}
-
 export function createCheckpoint(input: {
   readonly engineVersion: string;
   readonly workflowVersionId: string;
   readonly iterationBudget: number;
   readonly nextEventSequence?: number;
-}): WorkflowCheckpointV1 {
+}): WorkflowCheckpoint {
   const engineVersion = assertPersistedEngineVersion(input.engineVersion);
   const workflowVersionId = assertPersistedWorkflowVersionId(
     input.workflowVersionId,
@@ -80,7 +53,7 @@ export function createCheckpoint(input: {
     'nextEventSequence is invalid',
   );
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion,
     workflowVersionId,
     revision: 0,
@@ -94,6 +67,8 @@ export function createCheckpoint(input: {
     remainingIterationBudget: input.iterationBudget,
     cancelRequested: false,
     deadlineExpired: false,
+    branchSelections: [],
+    initialIterationBudget: input.iterationBudget,
   };
 }
 

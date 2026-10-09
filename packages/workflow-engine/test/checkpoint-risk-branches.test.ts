@@ -2,14 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createCheckpoint,
-  createCheckpointV2,
   invocationKey,
   parseCheckpoint,
 } from '../src/testing.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 
-function baseV1() {
+function base() {
   return createCheckpoint({
     engineVersion: 'engine-v1',
     workflowVersionId,
@@ -23,7 +22,7 @@ function rootKey(nodeId: string): string {
 
 function pendingJoin(join: Record<string, unknown>, status = 'pending') {
   return {
-    ...baseV1(),
+    ...base(),
     invocations: [
       {
         invocationKey: rootKey('join'),
@@ -42,8 +41,9 @@ function loopCheckpoint(
   flags: { cancelRequested?: boolean; deadlineExpired?: boolean } = {},
 ) {
   return {
-    ...baseV1(),
+    ...base(),
     ...flags,
+    remainingIterationBudget: 100 - Number(loop.collectionSize),
     invocations: [
       {
         invocationKey: rootKey('loop'),
@@ -88,7 +88,7 @@ describe('checkpoint risk branches', () => {
     const input =
       subject === 'invocation'
         ? {
-            ...createCheckpointV2({
+            ...createCheckpoint({
               engineVersion: 'engine-v2',
               workflowVersionId,
               iterationBudget: 100,
@@ -119,7 +119,7 @@ describe('checkpoint risk branches', () => {
   it.each(['\u001f', '\u007f', '\u07ff', '\u0800', '\ud800', '\udc00', '-0'])(
     'rejects a persistence-invalid engine version containing %j',
     (engineVersion) => {
-      expect(() => parseCheckpoint({ ...baseV1(), engineVersion })).toThrow(
+      expect(() => parseCheckpoint({ ...base(), engineVersion })).toThrow(
         expect.objectContaining({ code: 'checkpoint_invalid' }),
       );
     },
@@ -127,7 +127,7 @@ describe('checkpoint risk branches', () => {
 
   it('preserves a negative-zero numeric field', () => {
     expect(
-      Object.is(parseCheckpoint({ ...baseV1(), revision: -0 }).revision, -0),
+      Object.is(parseCheckpoint({ ...base(), revision: -0 }).revision, -0),
     ).toBe(true);
   });
 
@@ -141,14 +141,14 @@ describe('checkpoint risk branches', () => {
     };
     expect(
       parseCheckpoint({
-        ...baseV1(),
+        ...base(),
         readySet: [ready.invocationKey],
         invocations: [ready],
       }),
     ).toMatchObject({ readySet: [ready.invocationKey] });
     expect(() =>
       parseCheckpoint({
-        ...baseV1(),
+        ...base(),
         invocations: [{ ...ready, status: 'succeeded', waitKind: 'node_wait' }],
       }),
     ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
@@ -166,7 +166,7 @@ describe('checkpoint risk branches', () => {
   ])('rejects malformed V2 invocation scope %#', (scope) => {
     expect(() =>
       parseCheckpoint({
-        ...createCheckpointV2({
+        ...createCheckpoint({
           engineVersion: 'engine-v2',
           workflowVersionId,
           iterationBudget: 100,
@@ -362,7 +362,7 @@ describe('checkpoint risk branches', () => {
   it('uses node identity to order duplicate invocation keys before rejecting them', () => {
     expect(() =>
       parseCheckpoint({
-        ...baseV1(),
+        ...base(),
         invocations: [
           {
             invocationKey: 'same',

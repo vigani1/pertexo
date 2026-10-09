@@ -84,7 +84,7 @@ const sleep = (milliseconds: number): Promise<void> =>
 
 function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion,
     workflowVersionId,
     revision: 0,
@@ -98,6 +98,7 @@ function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
     remainingIterationBudget: 0,
     cancelRequested: false,
     deadlineExpired: false,
+    branchSelections: [],
   } as const;
 }
 

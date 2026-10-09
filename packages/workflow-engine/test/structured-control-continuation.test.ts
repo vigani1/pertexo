@@ -7,7 +7,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
   type WorkflowCheckpoint,
 } from '../src/index.js';
 import {
@@ -36,7 +36,7 @@ async function drive(
       }),
     ),
   });
-  let checkpoint: WorkflowCheckpoint = createCheckpointV2({
+  let checkpoint: WorkflowCheckpoint = createCheckpoint({
     engineVersion: 'engine-v1',
     workflowVersionId,
     iterationBudget: 100,

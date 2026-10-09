@@ -10,7 +10,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
   executeNodeAttempt,
   invocationKey,
   parseCheckpoint,
@@ -378,7 +378,7 @@ async function runBypass(kind: 'condition' | 'switch') {
     checksum: built.checksum,
     admissionRelease: release,
   });
-  let checkpoint: WorkflowCheckpoint = createCheckpointV2({
+  let checkpoint: WorkflowCheckpoint = createCheckpoint({
     engineVersion: 'engine-v2',
     workflowVersionId,
     iterationBudget: 0,

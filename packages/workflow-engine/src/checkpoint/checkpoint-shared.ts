@@ -2,7 +2,7 @@ import { WorkflowEngineError } from '../errors.js';
 import {
   type InvocationState,
   NODE_STATUSES,
-  type WorkflowCheckpointV1,
+  type RunStatus,
   RUN_STATUSES,
   type BranchLedgerEntry,
   type OutputReference,
@@ -69,9 +69,7 @@ function isNodeStatus(value: unknown): value is InvocationState['status'] {
   );
 }
 
-export function isRunStatus(
-  value: unknown,
-): value is WorkflowCheckpointV1['runStatus'] {
+export function isRunStatus(value: unknown): value is RunStatus {
   return (
     typeof value === 'string' &&
     RUN_STATUSES.some((candidate) => candidate === value)
@@ -294,7 +292,7 @@ export function parseOutputReference(
   assertCheckpoint(false, `${label} kind is invalid`);
 }
 
-export function parseInvocation(value: unknown): InvocationState {
+function parseInvocation(value: unknown): InvocationState {
   assertCheckpoint(isRecord(value), 'invocation must be an object');
   assertExactKeys(
     value,
@@ -411,7 +409,7 @@ export function parseIterationPath(
   });
 }
 
-export function parseV2Invocations(
+export function parseInvocations(
   value: unknown,
   workflowVersionId: string,
 ): readonly InvocationState[] {

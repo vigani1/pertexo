@@ -1,4 +1,8 @@
-import type { WorkflowCheckpointV1 } from '../types.js';
+import type {
+  BranchSelection,
+  InvocationState,
+  WorkflowCheckpoint,
+} from '../types.js';
 import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '../ordering.js';
 import { invocationKey } from '../transition/scheduling.js';
@@ -8,7 +12,7 @@ import {
   isInteger,
   isRecord,
   isRunStatus,
-  parseInvocation,
+  parseInvocations,
   sortedUnique,
 } from './checkpoint-shared.js';
 import {
@@ -18,8 +22,8 @@ import {
 import { parseJoin } from './checkpoint-v1-join.js';
 import { parseLoop } from './checkpoint-v1-loop.js';
 
-type CheckpointLoop = WorkflowCheckpointV1['loops'][number];
-type CheckpointInvocation = WorkflowCheckpointV1['invocations'][number];
+type CheckpointLoop = WorkflowCheckpoint['loops'][number];
+type CheckpointInvocation = WorkflowCheckpoint['invocations'][number];
 
 function loopParentStatusIsConsistent(
   loop: CheckpointLoop,
@@ -39,16 +43,69 @@ function loopParentStatusIsConsistent(
     : parent.status === 'pending' || parent.status === 'waiting';
 }
 
-export function parseCheckpointV1Boundary(
+function parseBranchSelections(
   value: unknown,
-): WorkflowCheckpointV1 {
-  if (isRecord(value) && value.schemaVersion !== 1) {
+  invocations: readonly InvocationState[],
+): readonly BranchSelection[] {
+  assertCheckpoint(Array.isArray(value), 'branchSelections must be an array');
+  const invocationByKey = new Map(
+    invocations.map((invocation) => [invocation.invocationKey, invocation]),
+  );
+  const selections = new Map<string, BranchSelection>();
+  for (const selection of value) {
+    assertCheckpoint(isRecord(selection), 'branch selection must be an object');
+    assertExactKeys(selection, [
+      'invocationKey',
+      'nodeId',
+      'selectedOutputPort',
+    ]);
+    assertCheckpoint(
+      typeof selection.invocationKey === 'string' &&
+        selection.invocationKey.length > 0,
+      'branch selection invocationKey is required',
+    );
+    assertCheckpoint(
+      typeof selection.nodeId === 'string' && selection.nodeId.length > 0,
+      'branch selection nodeId is required',
+    );
+    assertCheckpoint(
+      typeof selection.selectedOutputPort === 'string' &&
+        selection.selectedOutputPort.length > 0,
+      'branch selection output port is required',
+    );
+    const invocation = invocationByKey.get(selection.invocationKey);
+    assertCheckpoint(
+      invocation?.nodeId === selection.nodeId &&
+        invocation.status === 'succeeded' &&
+        invocation.output !== undefined,
+      'branch selection requires a succeeded output-bearing invocation',
+    );
+    const key = `${selection.invocationKey}\u0000${selection.nodeId}`;
+    const existing = selections.get(key);
+    assertCheckpoint(
+      existing === undefined ||
+        existing.selectedOutputPort === selection.selectedOutputPort,
+      'branch selection conflicts with an existing selection',
+    );
+    selections.set(key, {
+      invocationKey: selection.invocationKey,
+      nodeId: selection.nodeId,
+      selectedOutputPort: selection.selectedOutputPort,
+    });
+  }
+  return [...selections.values()].sort(
+    (left, right) =>
+      compareOrdinal(left.invocationKey, right.invocationKey) ||
+      compareOrdinal(left.nodeId, right.nodeId),
+  );
+}
+
+export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
+  if (!isRecord(value) || value.schemaVersion !== 2)
     throw new WorkflowEngineError(
       'checkpoint_unsupported',
-      `Unsupported checkpoint schema version: ${String(value.schemaVersion)}`,
+      `Unsupported checkpoint schema version: ${String(isRecord(value) ? value.schemaVersion : undefined)}`,
     );
-  }
-  assertCheckpoint(isRecord(value), 'checkpoint must be an object');
   assertExactKeys(
     value,
     [
@@ -65,12 +122,9 @@ export function parseCheckpointV1Boundary(
       'loops',
       'remainingIterationBudget',
       'cancelRequested',
+      'branchSelections',
     ],
-    ['deadlineExpired'],
-  );
-  assertCheckpoint(
-    value.schemaVersion === 1,
-    'checkpoint schemaVersion must be 1',
+    ['deadlineExpired', 'initialIterationBudget'],
   );
   const engineVersion = assertPersistedEngineVersion(value.engineVersion);
   const workflowVersionId = assertPersistedWorkflowVersionId(
@@ -111,11 +165,11 @@ export function parseCheckpointV1Boundary(
     'deadlineExpired is invalid',
   );
 
-  const invocations = value.invocations
-    .map(parseInvocation)
-    .sort((left, right) =>
-      compareOrdinal(left.invocationKey, right.invocationKey),
-    );
+  const invocations = [
+    ...parseInvocations(value.invocations, workflowVersionId),
+  ].sort((left, right) =>
+    compareOrdinal(left.invocationKey, right.invocationKey),
+  );
   assertCheckpoint(
     new Set(invocations.map(({ invocationKey }) => invocationKey)).size ===
       invocations.length,
@@ -267,8 +321,26 @@ export function parseCheckpointV1Boundary(
     'ordinary waiting invocation requires resumeAt',
   );
 
+  const initialIterationBudget = value.initialIterationBudget;
+  assertCheckpoint(
+    initialIterationBudget === undefined ||
+      (isInteger(initialIterationBudget) && initialIterationBudget >= 0),
+    'initialIterationBudget is invalid',
+  );
+  assertCheckpoint(
+    loops.length === 0 || initialIterationBudget !== undefined,
+    'loop checkpoint requires initialIterationBudget',
+  );
+  if (initialIterationBudget !== undefined)
+    assertCheckpoint(
+      value.remainingIterationBudget +
+        loops.reduce((total, loop) => total + loop.collectionSize, 0) ===
+        initialIterationBudget,
+      'iteration budget accounting is inconsistent',
+    );
+
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion,
     workflowVersionId,
     revision: value.revision,
@@ -285,5 +357,10 @@ export function parseCheckpointV1Boundary(
     remainingIterationBudget: value.remainingIterationBudget,
     cancelRequested: value.cancelRequested,
     deadlineExpired: value.deadlineExpired ?? false,
+    branchSelections: parseBranchSelections(
+      value.branchSelections,
+      invocations,
+    ),
+    ...(initialIterationBudget === undefined ? {} : { initialIterationBudget }),
   };
 }

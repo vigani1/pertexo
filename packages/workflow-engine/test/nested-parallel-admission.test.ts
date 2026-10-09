@@ -12,7 +12,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createCheckpointV2,
+  createCheckpoint,
   parseCheckpoint,
   type AdvanceWorkflowInput,
   type WorkflowCheckpoint,
@@ -259,7 +259,7 @@ async function createDriver(
     occurredAt: '2026-08-24T00:00:00.000Z',
     signal: new AbortController().signal,
   };
-  let checkpoint: WorkflowCheckpoint = createCheckpointV2({
+  let checkpoint: WorkflowCheckpoint = createCheckpoint({
     engineVersion: 'engine-v2',
     workflowVersionId: base.workflowVersionId,
     iterationBudget: 2,
@@ -397,7 +397,7 @@ describe('nested Parallel admission through the public engine', () => {
         maximumAdmissions: 16,
         signal: new AbortController().signal,
       } as const;
-      let checkpoint: WorkflowCheckpoint = createCheckpointV2({
+      let checkpoint: WorkflowCheckpoint = createCheckpoint({
         engineVersion: 'engine-v2',
         workflowVersionId: base.workflowVersionId,
         iterationBudget: 2,
@@ -527,7 +527,7 @@ describe('nested Parallel admission through the public engine', () => {
       maximumAdmissions: 16,
       signal: new AbortController().signal,
     } as const;
-    let checkpoint: WorkflowCheckpoint = createCheckpointV2({
+    let checkpoint: WorkflowCheckpoint = createCheckpoint({
       engineVersion: 'engine-v2',
       workflowVersionId: base.workflowVersionId,
       iterationBudget: 6,

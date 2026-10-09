@@ -51,7 +51,7 @@ function populations(upper: number): readonly number[] {
 
 function baseCheckpoint(workflowVersionId: string) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     engineVersion: '1',
     workflowVersionId,
     revision: 0,
@@ -65,6 +65,7 @@ function baseCheckpoint(workflowVersionId: string) {
     remainingIterationBudget: 0,
     cancelRequested: false,
     deadlineExpired: false,
+    branchSelections: [],
   } as const;
 }
 
