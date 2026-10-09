@@ -363,6 +363,20 @@ now, as one ordered program — not "whenever we touch it".
           page go (migration 0020, ADR 039 amendment). Better Auth is the
           one session authority; tests sign in through it or receive a
           server-issued session for an existing user.
+    - [x] Files grouped by feature area, at most about ten per folder:
+          `authentication/` (Better Auth, account security, mail),
+          `authorization/`, `workspaces/` (members, invitations, request,
+          commands, http, persistence), `workflow-authoring/` (commands,
+          organization, portability, settings, input cases, http),
+          `workflow-runs/` (events, usage, run data, http) and
+          `connections/` (failure notifications, use cases, http).
+    - [x] Workflow organization is always available: its cursors are
+          opaque like every other cursor, so the dedicated signing key, the
+          optional organization dependencies and the
+          `workflow.organization_unavailable` problem go (ADR 064
+          amendment).
+    - [ ] Workspace deletion and restore complete in the request: answer
+          once instead of `202` plus an operation the web polls.
   - [ ] web
     - [x] Feature folders by role: only public entry files stay at a
           feature's root; screens go to `pages/`, hooks to `hooks/`, server
