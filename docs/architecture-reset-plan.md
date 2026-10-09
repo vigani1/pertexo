@@ -411,6 +411,13 @@ now, as one ordered program — not "whenever we touch it".
           `mutations/`), other logic to `model/` or `components/`. Routes are
           grouped into `root/`, `auth/`, `workspace/` and `workflow/`; shared
           hooks and formatters in `lib/hooks/` and `lib/format/`.
+    - [x] `ARCHITECTURE.md` is a guide (4,864 lines to 1,468): the
+          delivery stages and their evidence, the roadmap and delivery plans,
+          the finished structure plan and the legacy-design inventory go (git
+          keeps them). Sign-in is described as Better Auth, the custom
+          module-cycle, complexity and duplication gates removed in step 2
+          are no longer claimed, and the grouping rules join section 2. The
+          README and AGENTS lose their OIDC references.
   - [ ] ops
 - [ ] **9. Finish** — final re-squash of migrations, `docs/architecture.md`
       map completed, root scripts and README final.
