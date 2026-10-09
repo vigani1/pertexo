@@ -14,7 +14,7 @@ describe('branch and join scheduling', () => {
   const decide = (
     policy: JoinPolicy,
     entries: readonly [string, BranchLedgerEntry['disposition']][],
-  ) => settleJoin({ joinId: 'join', policy, ledger: ledger(entries) });
+  ) => settleJoin({ policy, ledger: ledger(entries) });
 
   it('waits for explicit dispositions including skipped and missing branches', () => {
     expect(

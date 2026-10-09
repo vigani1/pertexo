@@ -1,5 +1,4 @@
 import type { LoopState } from '../types.js';
-import { invocationKey } from '../transition/scheduling.js';
 import {
   assertCheckpoint,
   assertExactKeys,
@@ -11,15 +10,17 @@ import {
   sortedUnique,
 } from './checkpoint-shared.js';
 
-export function parseLoop(
-  value: unknown,
-  workflowVersionId: string,
-): LoopState {
+export function parseLoop(value: unknown): LoopState {
   assertCheckpoint(isRecord(value), 'loop must be an object');
   assertExactKeys(
     value,
     [
       'loopId',
+      'controlInvocationKey',
+      'branchPath',
+      'iterationPath',
+      'bodyRootNodeIds',
+      'bodySinkNodeId',
       'collection',
       'collectionChecksum',
       'collectionSize',
@@ -29,14 +30,7 @@ export function parseLoop(
       'activeOrdinals',
       'terminalOrdinals',
     ],
-    [
-      'controlInvocationKey',
-      'branchPath',
-      'iterationPath',
-      'bodyRootNodeIds',
-      'bodySinkNodeId',
-      'terminalStatus',
-    ],
+    ['terminalStatus'],
   );
   assertCheckpoint(
     typeof value.loopId === 'string' && value.loopId.length > 0,
@@ -44,49 +38,30 @@ export function parseLoop(
   );
   const collection = parseOutputReference(value.collection, 'loop collection');
   assertCheckpoint(
-    value.controlInvocationKey === undefined ||
-      (typeof value.controlInvocationKey === 'string' &&
-        value.controlInvocationKey.length > 0),
+    typeof value.controlInvocationKey === 'string' &&
+      value.controlInvocationKey.length > 0,
     'loop control key is invalid',
   );
-  const controlInvocationKey =
-    value.controlInvocationKey ??
-    invocationKey({ workflowVersionId, nodeId: value.loopId });
-  assertCheckpoint(
-    controlInvocationKey.length > 0,
-    'loop control key is required',
-  );
+  const controlInvocationKey = value.controlInvocationKey;
   const branchPath = parseBranchPath(value.branchPath, 'loop');
   const iterationPath = parseIterationPath(value.iterationPath, 'loop');
   assertCheckpoint(
-    value.bodyRootNodeIds === undefined || Array.isArray(value.bodyRootNodeIds),
-    'loop body roots must be an array',
-  );
-  const bodyRootNodeIds = Array.isArray(value.bodyRootNodeIds)
-    ? sortedUnique(
-        value.bodyRootNodeIds.filter(
-          (item): item is string => typeof item === 'string',
-        ),
-        'loop body roots',
-      )
-    : [value.loopId];
-  const rawBodyRootCount = Array.isArray(value.bodyRootNodeIds)
-    ? value.bodyRootNodeIds.length
-    : undefined;
-  assertCheckpoint(
-    bodyRootNodeIds.length > 0 &&
-      (rawBodyRootCount === undefined ||
-        bodyRootNodeIds.length === rawBodyRootCount),
+    Array.isArray(value.bodyRootNodeIds) &&
+      value.bodyRootNodeIds.length > 0 &&
+      value.bodyRootNodeIds.every(
+        (item): item is string => typeof item === 'string',
+      ),
     'loop body roots are invalid',
   );
+  const bodyRootNodeIds = sortedUnique(
+    value.bodyRootNodeIds,
+    'loop body roots',
+  );
   assertCheckpoint(
-    value.bodySinkNodeId === undefined ||
-      (typeof value.bodySinkNodeId === 'string' &&
-        value.bodySinkNodeId.length > 0),
+    typeof value.bodySinkNodeId === 'string' && value.bodySinkNodeId.length > 0,
     'loop body sink is invalid',
   );
-  const bodySinkNodeId = value.bodySinkNodeId ?? value.loopId;
-  assertCheckpoint(bodySinkNodeId.length > 0, 'loop body sink is invalid');
+  const bodySinkNodeId = value.bodySinkNodeId;
   const terminalStatus = value.terminalStatus;
   assertCheckpoint(
     terminalStatus === undefined ||

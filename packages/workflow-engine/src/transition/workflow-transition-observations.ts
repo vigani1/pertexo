@@ -12,7 +12,6 @@ import {
   declaredJoin,
   isTerminalNodeStatus,
   nodeEventName,
-  rootInvocationKey,
   sameJoinDeclaration,
   transitionEvent as event,
   type MutableWorkflowTransition,
@@ -23,10 +22,8 @@ function applyJoinDeclaration(
   observation: Extract<WorkflowObservation, { kind: 'join_declared' }>,
 ): void {
   if (state.cancelRequested) return;
-  const joinInvocationKey =
-    observation.joinInvocationKey ??
-    rootInvocationKey(state.current.workflowVersionId, observation.joinId);
-  const declared = declaredJoin({ ...observation, joinInvocationKey });
+  const joinInvocationKey = observation.joinInvocationKey;
+  const declared = declaredJoin(observation);
   const existingJoin = state.joins.get(joinInvocationKey);
   if (existingJoin !== undefined) {
     if (!sameJoinDeclaration(existingJoin, declared))
@@ -58,27 +55,16 @@ function applyBranchDisposition(
   state: MutableWorkflowTransition,
   observation: Extract<WorkflowObservation, { kind: 'branch_disposition' }>,
 ): void {
-  const join =
-    observation.joinInvocationKey === undefined
-      ? [...state.joins.values()].find(
-          ({ joinId }) => joinId === observation.joinId,
-        )
-      : state.joins.get(observation.joinInvocationKey);
+  const join = state.joins.get(observation.joinInvocationKey);
   if (join === undefined)
     throw new WorkflowEngineError(
       'join_invalid',
       `join ${observation.joinId} is not declared`,
     );
-  state.joins.set(
-    join.joinInvocationKey === undefined ||
-      join.joinInvocationKey === join.joinId
-      ? rootInvocationKey(state.current.workflowVersionId, join.joinId)
-      : join.joinInvocationKey,
-    {
-      ...join,
-      ledger: recordBranchDisposition(join.ledger, observation.branch),
-    },
-  );
+  state.joins.set(join.joinInvocationKey, {
+    ...join,
+    ledger: recordBranchDisposition(join.ledger, observation.branch),
+  });
 }
 
 function applyBranchSelection(

@@ -7,9 +7,18 @@ import {
   invocationKey,
 } from '../src/testing.js';
 
+const scope = {
+  controlInvocationKey: 'loop-control',
+  branchPath: [],
+  iterationPath: [],
+  bodyRootNodeIds: ['body'],
+  bodySinkNodeId: 'body',
+} as const;
+
 describe('bounded ForEach scheduling', () => {
   it('pins a collection reference and admits canonical bounded batches', () => {
     const loop = createLoopState({
+      ...scope,
       loopId: 'loop',
       collection: {
         kind: 'artifact',
@@ -34,6 +43,7 @@ describe('bounded ForEach scheduling', () => {
   it('rejects an over-limit collection before admitting any iteration', () => {
     expect(() =>
       createLoopState({
+        ...scope,
         loopId: 'loop',
         collection: {
           kind: 'inline',
@@ -50,6 +60,7 @@ describe('bounded ForEach scheduling', () => {
 
   it('completes an empty collection without admissions', () => {
     const loop = createLoopState({
+      ...scope,
       loopId: 'empty',
       collection: {
         kind: 'inline',
@@ -70,6 +81,7 @@ describe('bounded ForEach scheduling', () => {
   it('rejects nested expansion when the pinned run-wide budget is exhausted', () => {
     expect(() =>
       createLoopState({
+        ...scope,
         loopId: 'nested',
         collection: {
           kind: 'inline',

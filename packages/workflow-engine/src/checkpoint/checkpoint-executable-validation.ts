@@ -62,17 +62,11 @@ function assertCheckpointJoinIdentity(
       ? {}
       : { iterationPath: join.iterationPath }),
   });
-  if (join.joinInvocationKey !== expectedJoinKey) {
-    const isLegacyRootJoin =
-      join.joinInvocationKey === join.joinId &&
-      (join.branchPath?.length ?? 0) === 0 &&
-      (join.iterationPath?.length ?? 0) === 0;
-    if (!isLegacyRootJoin)
-      operationError(
-        'workflow_identity_invalid',
-        'checkpoint join scope is invalid',
-      );
-  }
+  if (join.joinInvocationKey !== expectedJoinKey)
+    operationError(
+      'workflow_identity_invalid',
+      'checkpoint join scope is invalid',
+    );
 }
 
 function expectedInvocationKey(

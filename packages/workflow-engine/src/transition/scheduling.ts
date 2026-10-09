@@ -33,7 +33,9 @@ export type JoinDecision =
       readonly ledger: readonly BranchLedgerEntry[];
     };
 
-export function settleJoin(join: JoinState): JoinDecision {
+export function settleJoin(
+  join: Pick<JoinState, 'policy' | 'ledger'>,
+): JoinDecision {
   const ledger = [...join.ledger].sort((left, right) =>
     compareOrdinal(left.branchId, right.branchId),
   );
@@ -127,12 +129,12 @@ export interface LoopAdmission {
 }
 
 export function createLoopState(input: {
-  readonly controlInvocationKey?: string;
+  readonly controlInvocationKey: string;
   readonly loopId: string;
-  readonly branchPath?: readonly BranchScopePart[];
-  readonly iterationPath?: readonly IterationScopePart[];
-  readonly bodyRootNodeIds?: readonly string[];
-  readonly bodySinkNodeId?: string;
+  readonly branchPath: readonly BranchScopePart[];
+  readonly iterationPath: readonly IterationScopePart[];
+  readonly bodyRootNodeIds: readonly string[];
+  readonly bodySinkNodeId: string;
   readonly collection: OutputReference;
   readonly collectionChecksum: string;
   readonly collectionSize: number;
@@ -165,12 +167,12 @@ export function createLoopState(input: {
     );
   }
   return {
-    controlInvocationKey: input.controlInvocationKey ?? input.loopId,
+    controlInvocationKey: input.controlInvocationKey,
     loopId: input.loopId,
-    branchPath: input.branchPath ?? [],
-    iterationPath: input.iterationPath ?? [],
-    bodyRootNodeIds: input.bodyRootNodeIds ?? [input.loopId],
-    bodySinkNodeId: input.bodySinkNodeId ?? input.loopId,
+    branchPath: input.branchPath,
+    iterationPath: input.iterationPath,
+    bodyRootNodeIds: input.bodyRootNodeIds,
+    bodySinkNodeId: input.bodySinkNodeId,
     collection: input.collection,
     collectionChecksum: input.collectionChecksum,
     collectionSize: input.collectionSize,

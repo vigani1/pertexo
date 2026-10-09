@@ -11,7 +11,6 @@ import { buildWorkflowTransitionPlan } from './workflow-transition-plan.js';
 import {
   observationOrder,
   indexTransitionNodes,
-  rootInvocationKey,
   type MutableWorkflowTransition,
 } from './workflow-transition-state.js';
 import { applyWorkflowStops } from './workflow-transition-stops.js';
@@ -87,15 +86,7 @@ export function advanceWorkflowFromSchedulerState(
         invocation,
       ]),
     ),
-    joins: new Map(
-      current.joins.map((join) => [
-        join.joinInvocationKey === undefined ||
-        join.joinInvocationKey === join.joinId
-          ? rootInvocationKey(current.workflowVersionId, join.joinId)
-          : join.joinInvocationKey,
-        join,
-      ]),
-    ),
+    joins: new Map(current.joins.map((join) => [join.joinInvocationKey, join])),
     loops: new Map(
       current.loops.map((loop) => [loop.controlInvocationKey, loop]),
     ),

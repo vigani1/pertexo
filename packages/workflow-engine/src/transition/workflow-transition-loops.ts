@@ -1,9 +1,5 @@
 import { WorkflowEngineError } from '../errors.js';
-import {
-  completeLoopIteration,
-  createLoopState,
-  invocationKey as createInvocationKey,
-} from './scheduling.js';
+import { completeLoopIteration, createLoopState } from './scheduling.js';
 import { sameOutputReference } from '../output-reference.js';
 import { assertNodeTransition } from './transitions.js';
 import type {
@@ -14,9 +10,7 @@ import type {
 import {
   isTerminalNodeStatus,
   nodeEventName,
-  rootInvocationKey,
   sameLoopDeclaration,
-  scopedLoopSinkInvocation,
   transitionEvent as event,
   type MutableWorkflowTransition,
 } from './workflow-transition-state.js';
@@ -27,9 +21,7 @@ export function applyLoopStart(
   occurredAt: string,
 ): void {
   if (state.cancelRequested) return;
-  const controlInvocationKey =
-    observation.controlInvocationKey ??
-    rootInvocationKey(state.current.workflowVersionId, observation.loopId);
+  const controlInvocationKey = observation.controlInvocationKey;
   const existingLoop = state.loops.get(controlInvocationKey);
   if (existingLoop !== undefined) {
     const declared = createLoopState({
@@ -107,36 +99,13 @@ export function applyLoopCompletion(
   >,
   occurredAt: string,
 ): void {
-  const loop =
-    observation.controlInvocationKey === undefined
-      ? [...state.loops.values()].find(
-          ({ loopId }) => loopId === observation.loopId,
-        )
-      : state.loops.get(observation.controlInvocationKey);
+  const loop = state.loops.get(observation.controlInvocationKey);
   if (loop === undefined)
     throw new WorkflowEngineError(
       'loop_state_invalid',
       `loop ${observation.loopId} is not declared`,
     );
-  const iterationPath = [
-    ...loop.iterationPath,
-    { loopNodeId: loop.loopId, ordinal: observation.ordinal },
-  ];
-  const iterationKey =
-    observation.invocationKey ??
-    scopedLoopSinkInvocation(
-      loop,
-      observation.ordinal,
-      state.invocations.values(),
-    )?.invocationKey ??
-    createInvocationKey({
-      workflowVersionId: state.current.workflowVersionId,
-      nodeId: loop.bodySinkNodeId,
-      branchPath: loop.branchPath.map(
-        ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-      ),
-      iterationPath,
-    });
+  const iterationKey = observation.invocationKey;
   const iteration = state.invocations.get(iterationKey);
   if (iteration === undefined)
     throw new WorkflowEngineError(

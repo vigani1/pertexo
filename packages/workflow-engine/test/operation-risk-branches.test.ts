@@ -551,6 +551,10 @@ describe('node operation risk branches', () => {
         joins: [
           {
             joinId: 'set',
+            joinInvocationKey: invocationKey({
+              workflowVersionId: '00000000-0000-4000-8000-000000000001',
+              nodeId: 'set',
+            }),
             policy: { kind: 'all' },
             ledger: [{ branchId: 'branch', disposition: 'pending' }],
           },
@@ -574,6 +578,14 @@ describe('node operation risk branches', () => {
         loops: [
           {
             loopId: 'set',
+            controlInvocationKey: invocationKey({
+              workflowVersionId: '00000000-0000-4000-8000-000000000001',
+              nodeId: 'set',
+            }),
+            branchPath: [],
+            iterationPath: [],
+            bodyRootNodeIds: ['body'],
+            bodySinkNodeId: 'body',
             collection: {
               kind: 'inline',
               attemptId: '00000000-0000-4000-8000-000000000001',

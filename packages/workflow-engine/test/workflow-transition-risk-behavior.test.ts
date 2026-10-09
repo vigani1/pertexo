@@ -31,10 +31,20 @@ function advance(
   });
 }
 
+const workflowVersionId = '00000000-0000-4000-8000-000000000001';
+const rootKey = (nodeId: string) =>
+  invocationKey({ workflowVersionId, nodeId });
+const loopBody = {
+  branchPath: [],
+  iterationPath: [],
+  bodyRootNodeIds: ['body'],
+  bodySinkNodeId: 'body',
+} as const;
+
 function checkpoint(): ReturnType<typeof createCheckpoint> {
   return createCheckpoint({
     engineVersion: 'engine-v2',
-    workflowVersionId: '00000000-0000-4000-8000-000000000001',
+    workflowVersionId,
     iterationBudget: 100,
   });
 }
@@ -105,7 +115,13 @@ describe('workflow transition public risk behavior', () => {
     },
   ])('rejects an invalid join declaration %#', (observation) => {
     expect(() =>
-      advance(checkpoint(), [{ kind: 'join_declared', ...observation }]),
+      advance(checkpoint(), [
+        {
+          kind: 'join_declared',
+          joinInvocationKey: rootKey('join'),
+          ...observation,
+        },
+      ]),
     ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
   });
 
@@ -113,6 +129,7 @@ describe('workflow transition public risk behavior', () => {
     const declaration = {
       kind: 'join_declared' as const,
       joinId: 'join',
+      joinInvocationKey: rootKey('join'),
       branchIds: ['a'],
       policy: { kind: 'all' as const },
     };
@@ -145,6 +162,7 @@ describe('workflow transition public risk behavior', () => {
     const declaration = {
       kind: 'join_declared' as const,
       joinId: 'join',
+      joinInvocationKey: rootKey('join'),
       branchIds: ['a'],
       policy: { kind: 'all' as const },
     };
@@ -181,6 +199,7 @@ describe('workflow transition public risk behavior', () => {
         {
           kind: 'branch_disposition',
           joinId: 'missing',
+          joinInvocationKey: rootKey('missing'),
           branch: { branchId: 'a', disposition: 'arrived' },
         },
       ]),
@@ -194,12 +213,15 @@ describe('workflow transition public risk behavior', () => {
       {
         kind: 'join_declared',
         joinId: 'join',
+        joinInvocationKey: rootKey('join'),
         branchIds: ['a'],
         policy: { kind: 'all' },
       },
       {
         kind: 'loop_started',
         loopId: 'loop',
+        controlInvocationKey: rootKey('loop'),
+        ...loopBody,
         collection: inline(ATTEMPT_ID),
         collectionChecksum: 'sum',
         collectionSize: 0,
@@ -228,6 +250,7 @@ describe('workflow transition public risk behavior', () => {
       kind: 'loop_started' as const,
       loopId: 'loop',
       controlInvocationKey: 'loop-control',
+      ...loopBody,
       collection: inline(ATTEMPT_ID),
       collectionChecksum: 'sum',
       collectionSize: 1,
@@ -266,36 +289,6 @@ describe('workflow transition public risk behavior', () => {
     expect(() =>
       advance(checkpoint(), [declaration, { ...declaration, ...changed }]),
     ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
-  });
-
-  it.each([
-    { controlInvocationKey: 'scoped' },
-    { branchPath: [] },
-    { iterationPath: [] },
-    { bodyRootNodeIds: ['body'] },
-    { bodySinkNodeId: 'body' },
-  ])('rejects structured loop state in a V1 checkpoint %#', (field) => {
-    expect(() =>
-      advance(
-        createCheckpoint({
-          engineVersion: 'engine-v1',
-          workflowVersionId: '00000000-0000-4000-8000-000000000001',
-          iterationBudget: 100,
-        }),
-        [
-          {
-            kind: 'loop_started',
-            loopId: 'loop',
-            collection: inline(ATTEMPT_ID),
-            collectionChecksum: 'sum',
-            collectionSize: 1,
-            maxConcurrency: 1,
-            maxIterations: 1,
-            ...field,
-          },
-        ],
-      ),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
   });
 
   it('rejects observations for an unknown invocation', () => {
@@ -380,11 +373,13 @@ describe('workflow transition public risk behavior', () => {
       {
         kind: 'branch_disposition',
         joinId: 'join',
+        joinInvocationKey: rootKey('join'),
         branch: { branchId: 'a', disposition: 'arrived' },
       },
       {
         kind: 'join_declared',
         joinId: 'join',
+        joinInvocationKey: rootKey('join'),
         branchIds: ['a'],
         policy: { kind: 'all' },
       },
@@ -407,7 +402,7 @@ describe('workflow transition public risk behavior', () => {
 
   it('accepts an identical terminal loop replay through checkpoint state', () => {
     const iterationInvocationKey = invocationKey({
-      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      workflowVersionId,
       nodeId: 'body',
       branchPath: [],
       iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }],
@@ -485,6 +480,7 @@ describe('workflow transition public risk behavior', () => {
           kind: 'loop_iteration_completed',
           loopId: 'loop',
           controlInvocationKey: 'loop-control',
+          invocationKey: 'missing-iteration',
           ordinal: 1,
         },
       ]),
@@ -523,26 +519,6 @@ describe('workflow transition public risk behavior', () => {
     ).toThrow(expect.objectContaining({ code: 'transition_invalid' }));
   });
 
-  it('rejects branch selection against a V1 checkpoint', () => {
-    expect(() =>
-      advance(
-        createCheckpoint({
-          engineVersion: 'engine-v1',
-          workflowVersionId: '00000000-0000-4000-8000-000000000001',
-          iterationBudget: 100,
-        }),
-        [
-          {
-            kind: 'branch_selected',
-            invocationKey: 'condition',
-            nodeId: 'condition',
-            selectedOutputPort: 'true',
-          },
-        ],
-      ),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
-  });
-
   it('rejects a loop declaration whose existing control is not running', () => {
     const persisted = {
       ...checkpoint(),
@@ -561,6 +537,7 @@ describe('workflow transition public risk behavior', () => {
           kind: 'loop_started',
           loopId: 'loop',
           controlInvocationKey: 'loop-control',
+          ...loopBody,
           collection: inline(ATTEMPT_ID),
           collectionChecksum: 'sum',
           collectionSize: 1,
@@ -574,7 +551,13 @@ describe('workflow transition public risk behavior', () => {
   it('rejects completion for an undeclared loop', () => {
     expect(() =>
       advance(checkpoint(), [
-        { kind: 'loop_iteration_completed', loopId: 'missing', ordinal: 0 },
+        {
+          kind: 'loop_iteration_completed',
+          loopId: 'missing',
+          controlInvocationKey: rootKey('missing'),
+          invocationKey: 'missing-iteration',
+          ordinal: 0,
+        },
       ]),
     ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
   });

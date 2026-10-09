@@ -10,8 +10,6 @@ import { assertNodeTransition } from './transitions.js';
 import type { InvocationState } from '../types.js';
 import {
   assertLoopInvocations,
-  isSyntheticLegacyLoop,
-  rootInvocationKey,
   schedulerNodeDisabled,
   transitionEvent as event,
   type MutableWorkflowTransition,
@@ -79,7 +77,6 @@ function deriveLoopBodyReadiness(
     const body = graph.structuredBodies?.find(
       ({ loopNodeId }) => loopNodeId === loop.loopId,
     );
-    if (body === undefined && isSyntheticLegacyLoop(loop)) continue;
     if (body === undefined) {
       throw new WorkflowEngineError(
         'checkpoint_invalid',
@@ -125,7 +122,7 @@ function settlePendingJoins(
   state: MutableWorkflowTransition,
   input: TransitionInput,
 ): void {
-  const { current, invocations, eventDrafts, joins } = state;
+  const { invocations, eventDrafts, joins } = state;
   for (const join of [...joins.values()].sort((left, right) =>
     compareOrdinal(left.joinId, right.joinId),
   )) {
@@ -137,11 +134,7 @@ function settlePendingJoins(
     }
     const decision = settleJoin(join);
     if (decision.kind === 'waiting') continue;
-    const joinKey =
-      join.joinInvocationKey === undefined ||
-      join.joinInvocationKey === join.joinId
-        ? rootInvocationKey(current.workflowVersionId, join.joinId)
-        : join.joinInvocationKey;
+    const joinKey = join.joinInvocationKey;
     const invocation = invocations.get(joinKey);
     if (invocation === undefined) {
       throw new WorkflowEngineError(
@@ -230,11 +223,7 @@ function advanceLoopIterations(
   for (const loop of [...state.loops.values()].sort((left, right) =>
     compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
   )) {
-    assertLoopInvocations(
-      state.current.workflowVersionId,
-      loop,
-      state.invocations,
-    );
+    assertLoopInvocations(loop, state.invocations);
     if (loop.terminalStatus !== undefined) continue;
     const admission = admitLoopIterations(loop, state.remainingIterationBudget);
     state.remainingIterationBudget = admission.remainingIterationBudget;
@@ -245,7 +234,6 @@ function advanceLoopIterations(
         { loopNodeId: loop.loopId, ordinal },
       ];
       for (const nodeId of loop.bodyRootNodeIds) {
-        const legacy = isSyntheticLegacyLoop(loop);
         const iterationKey = createInvocationKey({
           workflowVersionId: state.current.workflowVersionId,
           nodeId,
@@ -268,7 +256,8 @@ function advanceLoopIterations(
             ? 'skipped'
             : 'ready',
           attemptNumber: 0,
-          ...(legacy ? {} : { branchPath: loop.branchPath, iterationPath }),
+          branchPath: loop.branchPath,
+          iterationPath,
         };
         state.invocations.set(iterationKey, ready);
         state.nodeRunAdmissionKeys.add(iterationKey);
