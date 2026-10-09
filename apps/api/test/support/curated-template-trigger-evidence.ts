@@ -31,7 +31,7 @@ export function curatedAutomaticScheduleVariation(
       (node) =>
         node.id === 'schedule-start' &&
         node.definition.key === 'core.schedule' &&
-        node.definition.version === 3,
+        node.definition.version === 1,
     ).length !== 1 ||
     graph.nodes.filter((node) => node.id === 'batch-items').length !== 1
   )

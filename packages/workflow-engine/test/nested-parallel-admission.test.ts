@@ -38,13 +38,9 @@ type MutableWorkflowGraph = Omit<WorkflowGraph, 'nodes' | 'edges'> & {
   edges: WorkflowEdge[];
 };
 
-function executableWithNestedParallel(
-  maxConcurrency: number,
-  version: 1 | 2 | 3,
-  branchCount = 2,
-) {
+function executableWithNestedParallel(maxConcurrency: number, branchCount = 2) {
   const outer = forEachGraph();
-  const parallel = parallelGraphWithBranches(version, branchCount);
+  const parallel = parallelGraphWithBranches(branchCount);
   const bodyNodes = parallel.nodes
     .filter(({ id }) => id !== 'manual' && id !== 'terminate')
     .map((node) => ({
@@ -90,16 +86,13 @@ function executableWithNestedParallel(
         forEach: true,
         parallel: true,
         merge: true,
-        structuredVersion: version,
       }),
     ),
   });
 }
 
-function parallelGraphWithBranches(version: 1 | 2 | 3, branchCount: number) {
-  const graph = structuredClone(
-    pairedParallelGraph(version),
-  ) as MutableWorkflowGraph;
+function parallelGraphWithBranches(branchCount: number) {
+  const graph = structuredClone(pairedParallelGraph()) as MutableWorkflowGraph;
   const parallel = graph.nodes.find(({ id }) => id === 'parallel');
   const branchTemplate = graph.nodes.find(({ id }) => id === 'left');
   const merge = graph.nodes.find(({ id }) => id === 'merge');
@@ -137,13 +130,8 @@ function parallelGraphWithBranches(version: 1 | 2 | 3, branchCount: number) {
   return graph;
 }
 
-function rootParallelWithDescendantLoop(
-  maxConcurrency: number,
-  version: 1 | 2 | 3,
-) {
-  const graph = structuredClone(
-    pairedParallelGraph(version),
-  ) as MutableWorkflowGraph;
+function rootParallelWithDescendantLoop(maxConcurrency: number) {
+  const graph = structuredClone(pairedParallelGraph()) as MutableWorkflowGraph;
   const loopGraph = structuredClone(forEachGraph()) as MutableWorkflowGraph;
   const loop = loopGraph.nodes.find(({ id }) => id === 'loop');
   const parallel = graph.nodes.find(({ id }) => id === 'parallel');
@@ -175,7 +163,7 @@ function rootParallelWithDescendantLoop(
   return { ...graph, nodes, edges };
 }
 
-function parallelInsideNestedLoops(maxConcurrency: number, version: 1 | 2 | 3) {
+function parallelInsideNestedLoops(maxConcurrency: number) {
   const graph = structuredClone(
     nestedForEachGraphForAdmission(),
   ) as MutableWorkflowGraph;
@@ -187,7 +175,7 @@ function parallelInsideNestedLoops(maxConcurrency: number, version: 1 | 2 | 3) {
   );
   if (inner?.structured === undefined)
     throw new Error('inner For Each fixture is incomplete');
-  const parallel = parallelGraphWithBranches(version, 2);
+  const parallel = parallelGraphWithBranches(2);
   const parallelNodes = parallel.nodes.filter(
     ({ id }) => id !== 'manual' && id !== 'terminate',
   );
@@ -242,19 +230,11 @@ function nestedForEachGraphForAdmission() {
   };
 }
 
-async function createDriver(
-  maxConcurrency: number,
-  version: 1 | 2 | 3,
-  branchCount = 2,
-) {
+async function createDriver(maxConcurrency: number, branchCount = 2) {
   const base = {
     runId: 'nested-parallel',
     workflowVersionId: '00000000-0000-4000-8000-000000000101',
-    executable: executableWithNestedParallel(
-      maxConcurrency,
-      version,
-      branchCount,
-    ),
+    executable: executableWithNestedParallel(maxConcurrency, branchCount),
     maximumAdmissions: 16,
     occurredAt: '2026-08-24T00:00:00.000Z',
     signal: new AbortController().signal,
@@ -319,33 +299,30 @@ async function createDriver(
 }
 
 describe('nested Parallel admission through the public engine', () => {
-  it.each([1, 2, 3] as const)(
-    'enforces a limit of one independently in both loop iterations for version %s',
-    async (version) => {
-      const driver = await createDriver(1, version);
-      const branches = await driver.complete('parallel', {
-        branchIds: ['branch-01', 'branch-02'],
-      });
-      expect(
-        branches.attempts.map(({ nodeId, iterationPath }) => [
-          nodeId,
-          iterationPath?.at(-1)?.ordinal,
-        ]),
-      ).toEqual([
-        ['left', 0],
-        ['left', 1],
-      ]);
-      expect((await driver.advance()).attempts).toEqual([]);
-      const next = await driver.complete('left', {}, 0);
-      expect(
-        next.attempts.map(({ nodeId, iterationPath }) => [
-          nodeId,
-          iterationPath?.at(-1)?.ordinal,
-        ]),
-      ).toEqual([['right', 0]]);
-      expect((await driver.advance()).attempts).toEqual([]);
-    },
-  );
+  it('enforces a limit of one independently in both loop iterations', async () => {
+    const driver = await createDriver(1);
+    const branches = await driver.complete('parallel', {
+      branchIds: ['branch-01', 'branch-02'],
+    });
+    expect(
+      branches.attempts.map(({ nodeId, iterationPath }) => [
+        nodeId,
+        iterationPath?.at(-1)?.ordinal,
+      ]),
+    ).toEqual([
+      ['left', 0],
+      ['left', 1],
+    ]);
+    expect((await driver.advance()).attempts).toEqual([]);
+    const next = await driver.complete('left', {}, 0);
+    expect(
+      next.attempts.map(({ nodeId, iterationPath }) => [
+        nodeId,
+        iterationPath?.at(-1)?.ordinal,
+      ]),
+    ).toEqual([['right', 0]]);
+    expect((await driver.advance()).attempts).toEqual([]);
+  });
 
   it.each([
     { branchCount: 3, maxConcurrency: 1 },
@@ -354,7 +331,7 @@ describe('nested Parallel admission through the public engine', () => {
   ])(
     'enforces configured limit $maxConcurrency independently for every loop iteration',
     async ({ branchCount, maxConcurrency }) => {
-      const driver = await createDriver(maxConcurrency, 1, branchCount);
+      const driver = await createDriver(maxConcurrency, branchCount);
       const branches = await driver.complete('parallel', {
         branchIds: Array.from(
           { length: branchCount },
@@ -377,7 +354,7 @@ describe('nested Parallel admission through the public engine', () => {
   it.each([1, 2] as const)(
     'keeps a root Parallel cap global across descendant loop iterations ($maxConcurrency)',
     async (maxConcurrency) => {
-      const graph = rootParallelWithDescendantLoop(maxConcurrency, 1);
+      const graph = rootParallelWithDescendantLoop(maxConcurrency);
       const executable = buildWorkflowExecutable({
         graph,
         catalog: composeExecutableCatalog(
@@ -385,7 +362,6 @@ describe('nested Parallel admission through the public engine', () => {
             forEach: true,
             parallel: true,
             merge: true,
-            structuredVersion: 1,
           }),
         ),
       });
@@ -514,7 +490,7 @@ describe('nested Parallel admission through the public engine', () => {
 
   it('keys a nested Parallel cap by the complete enclosing loop path', async () => {
     const executable = buildWorkflowExecutable({
-      graph: parallelInsideNestedLoops(1, 1),
+      graph: parallelInsideNestedLoops(1),
       catalog: composeExecutableCatalog(
         nodeCatalog({ forEach: true, parallel: true, merge: true }),
       ),
@@ -632,7 +608,7 @@ describe('nested Parallel admission through the public engine', () => {
   });
 
   it('releases nested Parallel capacity for retry and reuses the same scope on due', async () => {
-    const driver = await createDriver(1, 1);
+    const driver = await createDriver(1);
     const branches = await driver.complete('parallel', {
       branchIds: ['branch-01', 'branch-02'],
     });

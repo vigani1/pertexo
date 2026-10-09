@@ -1,35 +1,15 @@
-import { createNodeCatalog, type NodeManifest } from '@pertexo/node-sdk';
+import { createNodeCatalog, executorManifestFor } from '@pertexo/node-sdk';
 
-import { CORE_MANUAL_MANIFEST } from './manual/index.js';
+import { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
 import { CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY } from './policies.js';
-import { CORE_SET_MANIFEST } from './set/index.js';
-import { CORE_TERMINATE_MANIFEST } from './terminate/index.js';
 
-export const CORE_DEFINITION_MANIFESTS: readonly NodeManifest[] = Object.freeze(
-  [CORE_MANUAL_MANIFEST, CORE_SET_MANIFEST, CORE_TERMINATE_MANIFEST],
+const CORE_NODE_MANIFESTS = CORE_NODE_DEFINITION_REGISTRATIONS.map(
+  ({ manifest }) => manifest,
 );
 
+/** Every core node, each with its own executor. */
 export const CORE_NODE_CATALOG = createNodeCatalog({
-  definitions: CORE_DEFINITION_MANIFESTS,
-  executors: [
-    {
-      executor: CORE_MANUAL_MANIFEST.executor,
-      abiVersion: 1,
-      definitions: [CORE_MANUAL_MANIFEST.definition],
-      policyReferences: [CORE_BOUNDED_JSON_POLICY],
-    },
-    {
-      executor: CORE_SET_MANIFEST.executor,
-      abiVersion: 1,
-      definitions: [CORE_SET_MANIFEST.definition],
-      policyReferences: [CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY],
-    },
-    {
-      executor: CORE_TERMINATE_MANIFEST.executor,
-      abiVersion: 1,
-      definitions: [CORE_TERMINATE_MANIFEST.definition],
-      policyReferences: [CORE_BOUNDED_JSON_POLICY],
-    },
-  ],
+  definitions: CORE_NODE_MANIFESTS,
+  executors: CORE_NODE_MANIFESTS.map(executorManifestFor),
   policies: [CORE_BOUNDED_JSON_POLICY, CORE_JSONATA_POLICY],
 });

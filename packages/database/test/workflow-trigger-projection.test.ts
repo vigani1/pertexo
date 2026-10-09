@@ -58,133 +58,69 @@ describe('workflow trigger projection', () => {
     ]);
   });
 
-  it.each([2, 3] as const)(
-    'projects strict Schedule V%s definitions for reconciliation',
-    (version) => {
-      const projected = workflowTriggerProjection({
-        schemaVersion: 1,
-        settings: {},
-        nodes: [
-          node(
-            `schedule-v${String(version)}`,
-            'core.schedule',
-            {
-              kind: 'cron',
-              expression: '0 9 * * 1',
-              timezone: 'Europe/Zurich',
-              misfirePolicy: 'skip',
-            },
-            version,
-          ),
-        ],
-        edges: [],
-      });
-
-      expect(projected).toEqual([
-        expect.objectContaining({
-          nodeId: `schedule-v${String(version)}`,
-          kind: 'schedule',
+  it('projects strict Schedule definitions for reconciliation', () => {
+    const projected = workflowTriggerProjection({
+      schemaVersion: 1,
+      settings: {},
+      nodes: [
+        node('schedule', 'core.schedule', {
+          kind: 'cron',
+          expression: '0 9 * * 1',
+          timezone: 'Europe/Zurich',
+          misfirePolicy: 'skip',
         }),
-      ]);
-      expect(() =>
-        workflowTriggerProjection({
-          schemaVersion: 1,
-          settings: {},
-          nodes: [
-            node(
-              `schedule-v${String(version)}`,
-              'core.schedule',
-              {
-                kind: 'cron',
-                expression: '0 9 * * 1',
-                timezone: 'Etc/GMT+1',
-                misfirePolicy: 'skip',
-              },
-              version,
-            ),
-          ],
-          edges: [],
-        }),
-      ).toThrow();
-    },
-  );
+      ],
+      edges: [],
+    });
 
-  it('preserves the retained Schedule V1 fingerprint for an explicit legacy cron configuration', () => {
-    const config = {
-      kind: 'cron',
-      expression: '0 9 * * 1',
-      timezone: 'Europe/Paris',
-      misfirePolicy: 'skip',
-    };
-    expect(
+    expect(projected).toEqual([
+      expect.objectContaining({
+        nodeId: 'schedule',
+        kind: 'schedule',
+      }),
+    ]);
+    expect(() =>
       workflowTriggerProjection({
         schemaVersion: 1,
         settings: {},
-        nodes: [node('retained-schedule', 'core.schedule', config, 1)],
+        nodes: [
+          node('schedule', 'core.schedule', {
+            kind: 'cron',
+            expression: '0 9 * * 1',
+            timezone: 'Etc/GMT+1',
+            misfirePolicy: 'skip',
+          }),
+        ],
         edges: [],
       }),
-    ).toEqual([
-      expect.objectContaining({
-        config,
-        configFingerprint:
-          'trigger:v1:sha256:62855b2ad1080c80e85570079b8afc4d3791adc3a362cfedbbd650d38f9de7db',
-      }),
-    ]);
+    ).toThrow();
   });
 
-  it.each([1, 2, 3] as const)(
-    'rejects an oversized Schedule V%s recurrence before materialization',
-    (version) => {
-      const expression = `${Array(150).fill('0').join(',')} * * * *`;
-      expect(() =>
-        workflowTriggerProjection({
-          schemaVersion: 1,
-          settings: {},
-          nodes: [
-            node(
-              'oversized',
-              'core.schedule',
-              {
-                kind: 'cron',
-                expression,
-                timezone: 'Europe/Paris',
-                misfirePolicy: 'skip',
-              },
-              version,
-            ),
-          ],
-          edges: [],
-        }),
-      ).toThrow();
-    },
-  );
+  it('rejects an oversized Schedule recurrence before materialization', () => {
+    const expression = `${Array(150).fill('0').join(',')} * * * *`;
+    expect(() =>
+      workflowTriggerProjection({
+        schemaVersion: 1,
+        settings: {},
+        nodes: [
+          node('oversized', 'core.schedule', {
+            kind: 'cron',
+            expression,
+            timezone: 'Europe/Paris',
+            misfirePolicy: 'skip',
+          }),
+        ],
+        edges: [],
+      }),
+    ).toThrow();
+  });
 
   it.each([
     ['webhook', 'core.webhook', 1, {}],
     [
-      'schedule-v1',
+      'schedule',
       'core.schedule',
       1,
-      {
-        kind: 'interval',
-        intervalMinutes: 5,
-        misfirePolicy: 'catch_up_once',
-      },
-    ],
-    [
-      'schedule-v2',
-      'core.schedule',
-      2,
-      {
-        kind: 'interval',
-        intervalMinutes: 5,
-        misfirePolicy: 'catch_up_once',
-      },
-    ],
-    [
-      'schedule-v3',
-      'core.schedule',
-      3,
       {
         kind: 'interval',
         intervalMinutes: 5,

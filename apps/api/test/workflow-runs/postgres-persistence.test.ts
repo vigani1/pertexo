@@ -176,9 +176,8 @@ function forEachExecutable() {
   };
 }
 
-function parallelExecutable(version: 1 | 2 | 3) {
-  const nodeRelease = PLATFORM_NODE_CATALOG;
-  const catalog = composeExecutableCatalog(nodeRelease);
+function parallelExecutable() {
+  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const ordinaryNode = (id: string) => ({
     id,
     definition: { key: 'core.set', version: 1 },
@@ -207,9 +206,9 @@ function parallelExecutable(version: 1 | 2 | 3) {
           },
           {
             id: 'parallel',
-            definition: { key: 'core.parallel', version },
+            definition: { key: 'core.parallel', version: 1 },
             position: { x: 10, y: 0 },
-            configVersion: version,
+            configVersion: 1,
             config: {
               branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
               maxConcurrency: 1,
@@ -221,8 +220,8 @@ function parallelExecutable(version: 1 | 2 | 3) {
           ordinaryNode('right'),
           {
             ...ordinaryNode('merge'),
-            definition: { key: 'core.merge', version },
-            configVersion: version,
+            definition: { key: 'core.merge', version: 1 },
+            configVersion: 1,
             config: {
               parallelNodeId: 'parallel',
               policy: { kind: 'all' },
@@ -939,25 +938,22 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     });
   });
 
-  it.each([1, 2, 3] as const)(
-    'initializes the checkpoint for a verified Parallel V%s executable',
-    (version) => {
-      const { compiled, catalog } = parallelExecutable(version);
-      const checkpoint = createInitialCheckpoint(
-        {
-          ...projection(compiled),
-        },
-        {
-          catalog,
-        },
-      );
+  it('initializes the checkpoint for a verified Parallel executable', () => {
+    const { compiled, catalog } = parallelExecutable();
+    const checkpoint = createInitialCheckpoint(
+      {
+        ...projection(compiled),
+      },
+      {
+        catalog,
+      },
+    );
 
-      expectInitialCheckpoint(checkpoint);
-      expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
-        branchSelections: [],
-      });
-    },
-  );
+    expectInitialCheckpoint(checkpoint);
+    expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
+      branchSelections: [],
+    });
+  });
 
   it('initializes the checkpoint for a verified root executable', () => {
     const compiled = executable();

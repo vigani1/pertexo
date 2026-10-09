@@ -50,64 +50,59 @@ function mappedExecutable() {
 }
 
 describe('input resolution production operations', () => {
-  it.each([2, 3] as const)(
-    'treats Schedule V%s envelopes as coordinator-owned trigger input',
-    async (version) => {
-      const catalog = composeExecutableCatalog(
-        nodeCatalog({ schedule: true, scheduleVersion: version }),
-      );
-      const scheduledGraph = graph();
-      const trigger = scheduledGraph.nodes[0];
-      Object.assign(trigger, {
-        definition: { key: 'core.schedule', version },
-        configVersion: version,
-        config: {
-          kind: 'interval',
-          intervalMinutes: 5,
-          misfirePolicy: 'skip',
-        },
-        inputMappings: {},
-      });
-      const executable = buildWorkflowExecutable({
-        graph: scheduledGraph,
-        catalog,
-      });
-      const envelope = {
-        schemaVersion: 1,
-        triggerId: '00000000-0000-4000-8000-000000000010',
-        nodeId: 'manual',
-        scheduledAt: '2026-08-20T10:00:00.000Z',
-      } as const;
-      let received: unknown;
+  it('treats Schedule envelopes as coordinator-owned trigger input', async () => {
+    const catalog = composeExecutableCatalog(nodeCatalog({ schedule: true }));
+    const scheduledGraph = graph();
+    const trigger = scheduledGraph.nodes[0];
+    Object.assign(trigger, {
+      definition: { key: 'core.schedule', version: 1 },
+      configVersion: 1,
+      config: {
+        kind: 'interval',
+        intervalMinutes: 5,
+        misfirePolicy: 'skip',
+      },
+      inputMappings: {},
+    });
+    const executable = buildWorkflowExecutable({
+      graph: scheduledGraph,
+      catalog,
+    });
+    const envelope = {
+      schemaVersion: 1,
+      triggerId: '00000000-0000-4000-8000-000000000010',
+      nodeId: 'manual',
+      scheduledAt: '2026-08-20T10:00:00.000Z',
+    } as const;
+    let received: unknown;
 
-      await executeNodeAttempt({
-        runId: `run-schedule-v${String(version)}`,
-        nodeRunId: `node-run-schedule-v${String(version)}`,
-        attemptId: `attempt-schedule-v${String(version)}`,
-        executable,
+    await executeNodeAttempt({
+      runId: 'run-schedule',
+      nodeRunId: 'node-run-schedule',
+      attemptId: 'attempt-schedule',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      invocationKey: invocationKey({
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
-        invocationKey: invocationKey({
-          workflowVersionId: '00000000-0000-4000-8000-000000000001',
-          nodeId: 'manual',
-        }),
         nodeId: 'manual',
-        runInput: envelope,
-        completedNodeOutputs: [],
-        registry: {
-          execute: (request) => {
-            received = request.input;
-            return Promise.resolve({
-              kind: 'succeeded',
-              output: envelope,
-            });
-          },
+      }),
+      nodeId: 'manual',
+      runInput: envelope,
+      completedNodeOutputs: [],
+      registry: {
+        execute: (request) => {
+          received = request.input;
+          return Promise.resolve({
+            kind: 'succeeded',
+            output: envelope,
+          });
         },
-        signal: new AbortController().signal,
-      });
+      },
+      signal: new AbortController().signal,
+    });
 
-      expect(received).toEqual(envelope);
-    },
-  );
+    expect(received).toEqual(envelope);
+  });
 
   it('requires canonical UUID output locators bound to inline attempt identity', async () => {
     const catalog = composeExecutableCatalog(nodeCatalog());

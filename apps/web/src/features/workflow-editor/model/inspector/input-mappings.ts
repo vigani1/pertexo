@@ -335,10 +335,7 @@ export function nodeUsesRunInputDirectly(
   return (
     (definition.key === 'core.manual' && definition.version === 1) ||
     (definition.key === 'core.webhook' && definition.version === 1) ||
-    (definition.key === 'core.schedule' &&
-      (definition.version === 1 ||
-        definition.version === 2 ||
-        definition.version === 3))
+    (definition.key === 'core.schedule' && definition.version === 1)
   );
 }
 

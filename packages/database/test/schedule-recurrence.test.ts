@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CORE_SCHEDULE_CONFIG_SCHEMA,
-  CORE_SCHEDULE_CONFIG_SCHEMA_V2,
-} from '@pertexo/nodes-core';
+import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 
 import {
   parsePersistedScheduleRecurrence,
@@ -75,7 +72,7 @@ describe('schedule recurrence', () => {
     }
   });
 
-  it('keeps current node and recurrence acceptance aligned while retaining legacy validation', () => {
+  it('keeps node and recurrence acceptance aligned', () => {
     const longExpression = `${Array(150).fill('0').join(',')} * * * *`;
     const corpus = [
       { kind: 'cron', expression: '0 9 * * 1', timezone: 'Europe/Paris' },
@@ -86,7 +83,7 @@ describe('schedule recurrence', () => {
       { kind: 'interval', intervalMinutes: 43_201 },
     ] as const;
     for (const recurrence of corpus) {
-      const node = CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
+      const node = CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
         ...recurrence,
         misfirePolicy: 'catch_up_once',
       });
@@ -101,10 +98,10 @@ describe('schedule recurrence', () => {
         timezone: 'Europe/Paris',
         misfirePolicy: 'catch_up_once',
       }).success,
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it('continues materializing the retained V1-compatible recurrence subset', () => {
+  it('materializes an accepted cron recurrence and refuses unsupported tokens', () => {
     const accepted = CORE_SCHEDULE_CONFIG_SCHEMA.parse({
       kind: 'cron',
       expression: '0 9 * * 1',
@@ -123,15 +120,6 @@ describe('schedule recurrence', () => {
       expression: '0 9 * * 1',
       timezone: 'Europe/Paris',
     });
-    // V1 node parsing accepted this token, but the previous runtime parser
-    // already refused it; the shared V2 admission does not broaden that subset.
-    const unsupportedV1 = CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
-      kind: 'cron',
-      expression: '0 9 ? * 1',
-      timezone: 'Europe/Paris',
-      misfirePolicy: 'skip',
-    });
-    expect(unsupportedV1.success).toBe(true);
     expect(() =>
       parseScheduleRecurrence({
         kind: 'cron',

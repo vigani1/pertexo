@@ -27,16 +27,12 @@ describe('persisted control-output selection', () => {
       catalog: nodeCatalog({ switch: true }),
       expected: ['switch'],
     },
-    ...([1, 2, 3] as const).map((version) => ({
-      name: `Parallel v${String(version)}`,
-      graph: pairedParallelGraph(version),
-      catalog: nodeCatalog({
-        parallel: true,
-        merge: true,
-        structuredVersion: version,
-      }),
+    {
+      name: 'Parallel',
+      graph: pairedParallelGraph(),
+      catalog: nodeCatalog({ parallel: true, merge: true }),
       expected: ['parallel'],
-    })),
+    },
     {
       name: 'nested For Each',
       graph: nestedForEachGraph(),

@@ -115,20 +115,17 @@ describe('workflow executable V2 identity', () => {
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
-  it.each([1, 2, 3] as const)(
-    'accepts direct Parallel V%s branches into paired Merge inputs',
-    (structuredVersion) => {
-      const catalog = composeExecutableCatalog(
-        nodeCatalog({ parallel: true, merge: true, structuredVersion }),
-      );
-      expect(() =>
-        buildWorkflowExecutable({
-          graph: directPairedParallelGraph(structuredVersion),
-          catalog,
-        }),
-      ).not.toThrow();
-    },
-  );
+  it('accepts direct Parallel branches into paired Merge inputs', () => {
+    const catalog = composeExecutableCatalog(
+      nodeCatalog({ parallel: true, merge: true }),
+    );
+    expect(() =>
+      buildWorkflowExecutable({
+        graph: directPairedParallelGraph(),
+        catalog,
+      }),
+    ).not.toThrow();
+  });
 
   it('composes engine-owned policies and produces the pre-publication golden checksum', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());

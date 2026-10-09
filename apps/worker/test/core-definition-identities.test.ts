@@ -9,12 +9,12 @@ describe('worker core definition identities', () => {
   it.each([
     [undefined, false, false],
     [{ key: 'core.merge', version: 1 }, true, false],
-    [{ key: 'core.merge', version: 2 }, true, false],
-    [{ key: 'core.merge', version: 3 }, true, false],
+    [{ key: 'core.merge', version: 1 }, true, false],
+    [{ key: 'core.merge', version: 1 }, true, false],
     [{ key: 'core.merge', version: 4 }, false, false],
     [{ key: 'core.parallel', version: 1 }, false, true],
-    [{ key: 'core.parallel', version: 2 }, false, true],
-    [{ key: 'core.parallel', version: 3 }, false, true],
+    [{ key: 'core.parallel', version: 1 }, false, true],
+    [{ key: 'core.parallel', version: 1 }, false, true],
     [{ key: 'core.parallel', version: 0 }, false, false],
     [{ key: 'core.condition', version: 1 }, false, false],
   ] as const)(

@@ -9,7 +9,7 @@ import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { resolveSingleNodePreviewInput } from '@pertexo/workflow-engine';
 import {
   CORE_VALIDATE_CONFIG_SCHEMA,
-  CORE_SCHEDULE_INPUT_SCHEMA_V2,
+  CORE_SCHEDULE_INPUT_SCHEMA,
   evaluateCoreValidate,
 } from '@pertexo/nodes-core';
 
@@ -26,14 +26,14 @@ describe('owned curated worker IPC evidence', () => {
       (item) => item.id === 'schedule-start',
     );
     if (node === undefined) throw new Error('Reviewed schedule node missing');
-    expect(node.definition).toEqual({ key: 'core.schedule', version: 3 });
+    expect(node.definition).toEqual({ key: 'core.schedule', version: 1 });
     const input = await resolveSingleNodePreviewInput({
       node,
       runInput: curatedScheduleInputCase,
       signal: new AbortController().signal,
     });
     expect(input).toEqual(curatedScheduleInputCase);
-    expect(CORE_SCHEDULE_INPUT_SCHEMA_V2.safeParse(input).success).toBe(true);
+    expect(CORE_SCHEDULE_INPUT_SCHEMA.safeParse(input).success).toBe(true);
   });
   it('emits only bounded reviewed terminal metadata, not private input/config/error messages', () => {
     const diagnostic = curatedRunDiagnostic('failed', [

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CORE_BOUNDED_JSON_POLICY,
-  CORE_DEFINITION_MANIFESTS,
   CORE_NODE_DEFINITION_REGISTRATIONS,
   CORE_NODE_CATALOG,
 } from '../src/index.js';
@@ -19,7 +18,7 @@ function expectRecursivelyFrozen(
     expectRecursivelyFrozen(nested, visited);
 }
 
-describe('core node retained registry', () => {
+describe('core node catalog', () => {
   it('binds one exact executor to every definition in canonical order', () => {
     expect(
       CORE_NODE_EXECUTOR_REGISTRATIONS.map(({ executor }) => executor),
@@ -42,27 +41,20 @@ describe('core node retained registry', () => {
       expectRecursivelyFrozen(manifest);
   });
 
-  it('publishes exactly the first three active definitions with exact executors', () => {
-    expect(CORE_DEFINITION_MANIFESTS.map((item) => item.definition)).toEqual([
-      { key: 'core.manual', version: 1 },
-      { key: 'core.set', version: 1 },
-      { key: 'core.terminate', version: 1 },
-    ]);
-    expect(CORE_DEFINITION_MANIFESTS.map((item) => item.executor)).toEqual([
-      { key: 'core.manual', version: 1 },
-      { key: 'core.set', version: 1 },
-      { key: 'core.terminate', version: 1 },
-    ]);
+  it('catalogs every core definition with its own executor', () => {
+    expect(CORE_NODE_CATALOG.definitions).toHaveLength(
+      CORE_NODE_DEFINITION_REGISTRATIONS.length,
+    );
+    expect(CORE_NODE_CATALOG.executors.map(({ executor }) => executor)).toEqual(
+      CORE_NODE_CATALOG.definitions.map(({ executor }) => executor),
+    );
     expect(CORE_NODE_CATALOG.policies).toContainEqual(CORE_BOUNDED_JSON_POLICY);
     expect(Object.isFrozen(CORE_NODE_CATALOG)).toBe(true);
     expect(
-      CORE_DEFINITION_MANIFESTS.every(
-        (manifest) => manifest.credentialRequirements.length === 0,
-      ),
-    ).toBe(true);
-    expect(
-      CORE_DEFINITION_MANIFESTS.every(
-        (manifest) => manifest.connectionRequirements.length === 0,
+      CORE_NODE_CATALOG.definitions.every(
+        (manifest) =>
+          manifest.credentialRequirements.length === 0 &&
+          manifest.connectionRequirements.length === 0,
       ),
     ).toBe(true);
   });

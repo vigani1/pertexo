@@ -55,7 +55,7 @@ const templates: CuratedWorkflowTemplate[] = [
     templateId: 'schedule-bounded-batch',
     templateVersion: 1,
     baseManifestDigest:
-      '61834099ac86c6898837c7968bf03e165a50bb9de152c75711488740596e95ff',
+      'bec00fc0249043603d5d9ceb5f7e11246ccfd0a47fabebc2508dd164a93b7c78',
     title: 'Schedule a bounded example batch',
     description: 'Process two fixed instructional items in a sequential loop.',
     inputSummary:

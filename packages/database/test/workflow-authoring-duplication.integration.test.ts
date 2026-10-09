@@ -157,8 +157,8 @@ describe('same-workspace workflow duplication through the runtime database role'
       definitions: [
         { key: 'test.placeholder', version: 1 },
         { key: 'core.foreach', version: 1 },
-        { key: 'core.parallel', version: 3 },
-        { key: 'core.merge', version: 3 },
+        { key: 'core.parallel', version: 1 },
+        { key: 'core.merge', version: 1 },
       ],
     };
     const database = createWorkflowAuthoringDatabase(
@@ -205,12 +205,12 @@ describe('same-workspace workflow duplication through the runtime database role'
         },
         {
           ...draftNode('parallel'),
-          definition: { key: 'core.parallel', version: 3 },
+          definition: { key: 'core.parallel', version: 1 },
           config: { branches: ['left', 'right'] },
         },
         {
           ...draftNode('merge'),
-          definition: { key: 'core.merge', version: 3 },
+          definition: { key: 'core.merge', version: 1 },
           config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
           inputMappings: {
             dynamic: {

@@ -112,14 +112,14 @@ function copyStep(
   const parallelId = node.config.parallelNodeId;
   const parallel =
     node.definition.key === 'core.merge' &&
-    [1, 2, 3].includes(node.definition.version) &&
+    node.definition.version === 1 &&
     typeof parallelId === 'string' &&
     idMap.has(parallelId)
       ? levelNodes.find((candidate) => candidate.id === parallelId)
       : undefined;
   const remapParallel =
     parallel?.definition.key === 'core.parallel' &&
-    parallel.definition.version === node.definition.version &&
+    parallel.definition.version === 1 &&
     typeof parallelId === 'string';
   const copy: WorkflowNode = {
     ...node,

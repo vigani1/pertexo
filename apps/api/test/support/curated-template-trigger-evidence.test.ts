@@ -44,7 +44,7 @@ describe('owned genuine curated trigger qualification', () => {
         ...graph,
         nodes: graph.nodes.map((node) =>
           node.id === 'schedule-start'
-            ? { ...node, definition: { ...node.definition, version: 1 } }
+            ? { ...node, definition: { ...node.definition, version: 2 } }
             : node,
         ),
       }),

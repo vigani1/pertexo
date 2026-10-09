@@ -14,13 +14,13 @@ import { etagA } from '../../support/workflow-editor-fixtures';
 const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
 const groupIds = ['parallel', 'left', 'right', 'merge'];
 
-function parallelGroup(version: 1 | 2 | 3) {
+function parallelGroup() {
   return {
     nodes: [
       {
         ...step('parallel', 'Parallel'),
-        definition: { key: 'core.parallel', version },
-        configVersion: version,
+        definition: { key: 'core.parallel', version: 1 },
+        configVersion: 1,
         config: {
           branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
           maxConcurrency: 1,
@@ -30,8 +30,8 @@ function parallelGroup(version: 1 | 2 | 3) {
       step('right', 'Right'),
       {
         ...step('merge', 'Merge'),
-        definition: { key: 'core.merge', version },
-        configVersion: version,
+        definition: { key: 'core.merge', version: 1 },
+        configVersion: 1,
         config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
       },
     ],
@@ -58,8 +58,8 @@ function edge(
   };
 }
 
-function graph(version: 1 | 2 | 3, nested: boolean): WorkflowGraphContract {
-  const group = parallelGroup(version);
+function graph(nested: boolean): WorkflowGraphContract {
+  const group = parallelGroup();
   const start = {
     ...step('start', 'Start'),
     definition: { key: 'core.manual', version: 1 },
@@ -97,76 +97,67 @@ function admit(graph: WorkflowGraphContract) {
 
 describe('duplicating a paired Parallel/Merge group', () => {
   for (const nested of [false, true]) {
-    it.each([1, 2, 3] as const)(
-      `remaps version %i in ${nested ? 'a body' : 'the root'} and admits both complete groups`,
-      (version) => {
-        const original = graph(version, nested);
-        expect(() => admit(original)).not.toThrow();
-        let sequence = 0;
-        const result = duplicateWorkflowNodes(
-          original,
-          groupIds,
-          () => `copy-${String(++sequence)}`,
-        );
-        const copied = nested
-          ? result.graph.nodes[1]?.structured?.body
-          : result.graph;
-        const parallel = copied?.nodes.find(
-          (node) => node.id === result.nodeIds[0],
-        );
-        const merge = copied?.nodes.find(
-          (node) => node.id === result.nodeIds[3],
-        );
-        expect(merge?.config.parallelNodeId).toBe(parallel?.id);
-        expect(merge?.definition.version).toBe(version);
-        expect(merge?.config.policy).toEqual({ kind: 'all' });
-        if (
-          parallel === undefined ||
-          merge === undefined ||
-          copied === undefined
-        )
-          throw new Error('Copied group is missing');
-        const connected = {
-          ...copied,
-          edges: [
-            ...copied.edges.filter((item) => item.id !== 'm-end'),
-            edge('between-groups', 'merge', parallel.id),
-            ...(nested ? [] : [edge('copy-end', merge.id, 'end')]),
-          ],
-        };
-        const finalGraph = nested
-          ? {
-              ...result.graph,
-              nodes: result.graph.nodes.map((node) =>
-                node.structured === undefined
-                  ? node
-                  : {
-                      ...node,
-                      structured: {
-                        ...node.structured,
-                        body: { ...node.structured.body, ...connected },
-                      },
+    it(`remaps ${nested ? 'a body' : 'the root'} and admits both complete groups`, () => {
+      const original = graph(nested);
+      expect(() => admit(original)).not.toThrow();
+      let sequence = 0;
+      const result = duplicateWorkflowNodes(
+        original,
+        groupIds,
+        () => `copy-${String(++sequence)}`,
+      );
+      const copied = nested
+        ? result.graph.nodes[1]?.structured?.body
+        : result.graph;
+      const parallel = copied?.nodes.find(
+        (node) => node.id === result.nodeIds[0],
+      );
+      const merge = copied?.nodes.find((node) => node.id === result.nodeIds[3]);
+      expect(merge?.config.parallelNodeId).toBe(parallel?.id);
+      expect(merge?.definition.version).toBe(1);
+      expect(merge?.config.policy).toEqual({ kind: 'all' });
+      if (parallel === undefined || merge === undefined || copied === undefined)
+        throw new Error('Copied group is missing');
+      const connected = {
+        ...copied,
+        edges: [
+          ...copied.edges.filter((item) => item.id !== 'm-end'),
+          edge('between-groups', 'merge', parallel.id),
+          ...(nested ? [] : [edge('copy-end', merge.id, 'end')]),
+        ],
+      };
+      const finalGraph = nested
+        ? {
+            ...result.graph,
+            nodes: result.graph.nodes.map((node) =>
+              node.structured === undefined
+                ? node
+                : {
+                    ...node,
+                    structured: {
+                      ...node.structured,
+                      body: { ...node.structured.body, ...connected },
                     },
-              ),
-            }
-          : { ...result.graph, edges: connected.edges };
-        expect(() => admit(finalGraph)).not.toThrow();
-        const store = createEditorStore({
-          graph: original,
-          etag: etagA,
-          revision: 1,
-        });
-        store.getState().transact(finalGraph);
-        store.getState().undo();
-        expect(store.getState().graph).toEqual(original);
-        store.getState().redo();
-        expect(store.getState().graph).toEqual(finalGraph);
-      },
-    );
+                  },
+            ),
+          }
+        : { ...result.graph, edges: connected.edges };
+      expect(() => admit(finalGraph)).not.toThrow();
+      const store = createEditorStore({
+        graph: original,
+        etag: etagA,
+        revision: 1,
+      });
+      store.getState().transact(finalGraph);
+      store.getState().undo();
+      expect(store.getState().graph).toEqual(original);
+      store.getState().redo();
+      expect(store.getState().graph).toEqual(finalGraph);
+    });
   }
 
   it('remaps inside a copied body, preserves unknown config and leaves a merge-only reference alone', () => {
-    const original = graph(3, true);
+    const original = graph(true);
     const result = duplicateWorkflowNodes(original, ['loop']);
     const body = result.graph.nodes.at(-1)?.structured?.body;
     const parallel = body?.nodes.find(
@@ -176,7 +167,7 @@ describe('duplicating a paired Parallel/Merge group', () => {
       body?.nodes.find((node) => node.definition.key === 'core.merge')?.config
         .parallelNodeId,
     ).toBe(parallel?.id);
-    const root = graph(2, false);
+    const root = graph(false);
     const extended = {
       ...root,
       nodes: root.nodes.map((node) =>
@@ -196,7 +187,7 @@ describe('duplicating a paired Parallel/Merge group', () => {
   });
 
   it('does not rewrite opaque, unknown-version or invalid references', () => {
-    const original = graph(3, false);
+    const original = graph(false);
     for (const override of [
       { definition: { key: 'future.merge', version: 3 } },
       { definition: { key: 'core.merge', version: 99 } },
