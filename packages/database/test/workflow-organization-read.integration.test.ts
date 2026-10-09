@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { WorkflowFavoriteAbsenceTokenAuthority } from '../src/authoring/workflow-favorites.js';
+import type { WorkflowFavoriteAbsenceTokenAuthority } from '../src/authoring/organization/favorites.repository.js';
 import { WorkflowNotFoundError } from '../src/authoring/workflow-authoring-errors.js';
 import {
   commandKey,

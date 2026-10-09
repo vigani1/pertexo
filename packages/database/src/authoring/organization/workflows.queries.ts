@@ -1,22 +1,22 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import type { DatabaseConfig } from '../config.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
-import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
+} from '../../platform/database-runtime.js';
+import { withTenantScopedClient } from '../../tenant-access/workspace.js';
+import { WorkflowNotFoundError } from '../workflow-authoring-errors.js';
 import {
   mapWorkflow,
   workflowRowSelection,
-} from './workflow-authoring-rows.js';
-import type { WorkflowRecord } from './workflow-authoring-records.js';
-import type { WorkflowFavoriteAbsenceTokenAuthority } from './workflow-favorites.js';
+} from '../workflow-authoring-rows.js';
+import type { WorkflowRecord } from '../workflow-authoring-records.js';
+import type { WorkflowFavoriteAbsenceTokenAuthority } from './favorites.repository.js';
 import {
   readWorkflowFavoriteGeneration,
   issueWorkflowFavoriteAbsenceRevision,
-} from './workflow-favorite-metadata.js';
+} from './favorite-metadata.js';
 
 type Scope = Readonly<{
   workspaceId: string;

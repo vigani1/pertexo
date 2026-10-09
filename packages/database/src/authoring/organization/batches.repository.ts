@@ -1,14 +1,14 @@
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import type { DatabaseConfig } from '../config.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
-import { workflowFolderDatabaseFailure } from './workflow-folders.js';
-import { WorkflowOrganizationValidationError } from './workflow-organization-errors.js';
+} from '../../platform/database-runtime.js';
+import { withTenantScopedClient } from '../../tenant-access/workspace.js';
+import { workflowFolderDatabaseFailure } from './folders.repository.js';
+import { WorkflowOrganizationValidationError } from './errors.js';
 
 type Scope = Readonly<{
   workspaceId: string;

@@ -3,26 +3,26 @@ import type { PoolClient } from 'pg';
 import {
   readWorkflowFavoriteGeneration,
   issueWorkflowFavoriteAbsenceRevision,
-} from './workflow-favorite-metadata.js';
+} from './favorite-metadata.js';
 import { z } from 'zod';
-import type { DatabaseConfig } from '../config.js';
+import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-} from '../platform/database-runtime.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+} from '../../platform/database-runtime.js';
+import { withTenantScopedClient } from '../../tenant-access/workspace.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
-} from './workflow-authoring-errors.js';
+} from '../workflow-authoring-errors.js';
 import {
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
-} from './workflow-organization-errors.js';
+} from './errors.js';
 export {
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
-} from './workflow-organization-errors.js';
+} from './errors.js';
 
 type FavoriteScope = Readonly<{
   workspaceId: string;

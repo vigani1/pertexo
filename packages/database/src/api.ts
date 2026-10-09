@@ -2,7 +2,7 @@ export type { CompatibilityReleaseExpectation } from './compatibility/compatibil
 export {
   createWorkflowFolderDatabase,
   WorkflowFolderConflictError,
-} from './authoring/workflow-folders.js';
+} from './authoring/organization/folders.repository.js';
 export type {
   WorkflowFolderDatabase,
   WorkflowFolderRecord,
@@ -10,26 +10,26 @@ export type {
   WorkflowFolderDeleteResult,
   WorkflowFolderPlacementResult,
   WorkflowFolderConflictKind,
-} from './authoring/workflow-folders.js';
-export { createWorkflowOrganizationBatchDatabase } from './authoring/workflow-organization-batches.js';
+} from './authoring/organization/folders.repository.js';
+export { createWorkflowOrganizationBatchDatabase } from './authoring/organization/batches.repository.js';
 export type {
   WorkflowOrganizationBatchDatabase,
   WorkflowOrganizationBatchRequest,
   WorkflowOrganizationBatchInput,
   WorkflowOrganizationBatchItem,
   WorkflowOrganizationBatchItemResult,
-} from './authoring/workflow-organization-batches.js';
-export { createWorkflowOrganizationReadDatabase } from './authoring/workflow-organization-read.js';
+} from './authoring/organization/batches.repository.js';
+export { createWorkflowOrganizationReadDatabase } from './authoring/organization/workflows.queries.js';
 export type {
   WorkflowOrganizationFilters,
   WorkflowOrganizationMetadata,
   WorkflowOrganizationReadDatabase,
   WorkflowWithOrganization,
-} from './authoring/workflow-organization-read.js';
+} from './authoring/organization/workflows.queries.js';
 export {
   createWorkflowTagDatabase,
   WorkflowTagConflictError,
-} from './authoring/workflow-tags.js';
+} from './authoring/organization/tags.repository.js';
 export type {
   WorkflowTagAssignment,
   WorkflowTagAssignmentResult,
@@ -39,20 +39,20 @@ export type {
   WorkflowTagDeleteResult,
   WorkflowTagRecord,
   WorkflowTagReplaceResult,
-} from './authoring/workflow-tags.js';
+} from './authoring/organization/tags.repository.js';
 export {
   createWorkflowFavoriteDatabase,
   WorkflowFavoriteRevisionConflictError,
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
-} from './authoring/workflow-favorites.js';
+} from './authoring/organization/favorites.repository.js';
 export type {
   WorkflowFavoriteAbsenceTokenAuthority,
   WorkflowFavoriteCommand,
   WorkflowFavoriteDatabase,
   WorkflowFavoriteResult,
   WorkflowFavoriteState,
-} from './authoring/workflow-favorites.js';
+} from './authoring/organization/favorites.repository.js';
 export {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseRevisionConflictError,

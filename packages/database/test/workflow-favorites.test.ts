@@ -6,7 +6,7 @@ import {
   WorkflowOrganizationUnavailableError,
   WorkflowOrganizationValidationError,
   type WorkflowFavoriteAbsenceTokenAuthority,
-} from '../src/authoring/workflow-favorites.js';
+} from '../src/authoring/organization/favorites.repository.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
