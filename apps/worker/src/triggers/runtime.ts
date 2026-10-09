@@ -1,8 +1,4 @@
-import {
-  createPublishedWorkflowReader,
-  type PublishedWorkflowReader,
-  type InitialCheckpointFactory,
-} from '@pertexo/database/runs';
+import type { InitialCheckpointFactory } from '@pertexo/database/runs';
 import {
   createScheduleTriggerScanner,
   createWorkflowTriggerReconciliationDatabase,
@@ -56,7 +52,6 @@ export type TriggerRuntimeOptions = Readonly<{
 
 export type TriggerCompositionFactories = Readonly<{
   consumer: typeof createQueueConsumer;
-  reader: typeof createPublishedWorkflowReader;
   reconciliation: typeof createWorkflowTriggerReconciliationDatabase;
   scanner: typeof createScheduleTriggerScanner;
   telemetry: typeof createTriggerRuntimeTelemetry;
@@ -65,7 +60,6 @@ export type TriggerCompositionFactories = Readonly<{
 
 const productionFactories: TriggerCompositionFactories = {
   consumer: createQueueConsumer,
-  reader: createPublishedWorkflowReader,
   reconciliation: createWorkflowTriggerReconciliationDatabase,
   scanner: createScheduleTriggerScanner,
   telemetry: createTriggerRuntimeTelemetry,
@@ -75,7 +69,6 @@ const productionFactories: TriggerCompositionFactories = {
 export type TriggerRuntimeDependencies = Readonly<{
   checkpointFactory?: InitialCheckpointFactory;
   consumerFactory?: typeof createQueueConsumer;
-  reader?: PublishedWorkflowReader;
   reconciliation?: WorkflowTriggerReconciliationDatabase;
   scanner?: ScheduleTriggerScanner;
   logger?: StructuredLogger;
@@ -99,16 +92,12 @@ export async function createTriggerRuntime(
   const telemetry = dependencies.telemetry ?? factories.telemetry();
   const traceRunner = factories.traceRunner();
   let reconciliation: WorkflowTriggerReconciliationDatabase | undefined;
-  let reader: PublishedWorkflowReader | undefined;
   let scanner: ScheduleTriggerScanner | undefined;
   let consumer: QueueConsumer | undefined;
   try {
     reconciliation =
       dependencies.reconciliation ??
       factories.reconciliation(options.database, options.databaseRuntime);
-    reader =
-      dependencies.reader ??
-      factories.reader(options.database, options.databaseRuntime);
     scanner =
       dependencies.scanner ??
       factories.scanner(
@@ -121,10 +110,7 @@ export async function createTriggerRuntime(
               claim: options.databaseRuntime,
             },
       );
-    const handler = createTriggerReconciliationHandler({
-      reader,
-      reconciliation,
-    });
+    const handler = createTriggerReconciliationHandler({ reconciliation });
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.triggerLifecycle,
       redisUrl: options.redisUrl,
@@ -150,7 +136,7 @@ export async function createTriggerRuntime(
     });
   } catch (error: unknown) {
     const cleanup = await closeOwners(
-      [scanner, reader, reconciliation],
+      [scanner, reconciliation],
       backgroundTaskShutdownTimeoutMillis,
     );
     if (cleanup.length > 0)
@@ -165,7 +151,7 @@ export async function createTriggerRuntime(
   return createScannerRuntime({
     name: 'Trigger',
     consumer,
-    owners: [scanner, reader, reconciliation],
+    owners: [scanner, reconciliation],
     pollIntervalMillis: options.pollIntervalMillis,
     shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
     scan: async (signal) => {

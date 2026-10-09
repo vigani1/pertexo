@@ -1,7 +1,4 @@
-import type {
-  PublishedWorkflowReader,
-  WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database/testing';
+import type { WorkflowTriggerReconciliationDatabase } from '@pertexo/database/testing';
 import {
   canonicalOutboxPayloadChecksum,
   WorkflowTriggerReconciliationMismatchError,
@@ -41,28 +38,16 @@ function delivery() {
 }
 
 function dependencies() {
-  const reader: PublishedWorkflowReader = {
-    close: vi.fn().mockResolvedValue(undefined),
-    readForExecution: vi.fn().mockResolvedValue({
-      id: VERSION_ID,
-      workspaceId: WORKSPACE_ID,
-      workflowId: WORKFLOW_ID,
-      versionNumber: 1,
-      schemaVersion: 1,
-      checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
-      executableJson: {},
-    }),
-  };
   const reconciliation: WorkflowTriggerReconciliationDatabase = {
     close: vi.fn().mockResolvedValue(undefined),
     reconcile: vi.fn().mockResolvedValue([]),
     recordFailure: vi.fn().mockResolvedValue(undefined),
   };
-  return { reader, reconciliation };
+  return { reconciliation };
 }
 
 describe('trigger reconciliation handler', () => {
-  it('loads the immutable publication and reconciles a durably identified delivery', async () => {
+  it('reconciles a durably identified delivery', async () => {
     const selected = dependencies();
     const handler = createTriggerReconciliationHandler(selected);
 
@@ -70,11 +55,6 @@ describe('trigger reconciliation handler', () => {
       kind: 'reconciled',
     });
 
-    expect(selected.reader.readForExecution).toHaveBeenCalledWith({
-      workspaceId: WORKSPACE_ID,
-      workflowVersionId: VERSION_ID,
-      signal: context.signal,
-    });
     expect(selected.reconciliation.reconcile).toHaveBeenCalledWith({
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
@@ -87,58 +67,10 @@ describe('trigger reconciliation handler', () => {
     });
   });
 
-  it.each([
-    ['id', { id: crypto.randomUUID() }],
-    ['workflowId', { workflowId: crypto.randomUUID() }],
-    ['workspaceId', { workspaceId: crypto.randomUUID() }],
-  ] as const)(
-    'rejects a publication %s identity mismatch before reconciliation',
-    async (_field, override) => {
-      const selected = dependencies();
-      const current = await selected.reader.readForExecution({
-        workspaceId: WORKSPACE_ID,
-        workflowVersionId: VERSION_ID,
-      });
-      if (current === null) throw new Error('fixture projection is missing');
-      vi.mocked(selected.reader.readForExecution).mockResolvedValue({
-        ...current,
-        ...override,
-      });
-
-      await expect(
-        createTriggerReconciliationHandler(selected).handle(
-          delivery(),
-          context,
-        ),
-      ).rejects.toMatchObject({ name: 'UnrecoverableError' });
-      expect(selected.reconciliation.reconcile).not.toHaveBeenCalled();
-      expect(selected.reconciliation.recordFailure).not.toHaveBeenCalled();
-    },
-  );
-
-  it('preserves reader failure without writing reconciliation health', async () => {
-    const selected = dependencies();
-    const failure = new Error('published reader unavailable');
-    vi.mocked(selected.reader.readForExecution).mockRejectedValue(failure);
-
-    await expect(
-      createTriggerReconciliationHandler(selected).handle(delivery(), context),
-    ).rejects.toBe(failure);
-    expect(selected.reconciliation.reconcile).not.toHaveBeenCalled();
-    expect(selected.reconciliation.recordFailure).not.toHaveBeenCalled();
-  });
-
-  it('does not start a reconciliation transaction after delivery cancellation', async () => {
+  it('does not start a reconciliation transaction for a canceled delivery', async () => {
     const selected = dependencies();
     const controller = new AbortController();
-    const current = await selected.reader.readForExecution({
-      workspaceId: WORKSPACE_ID,
-      workflowVersionId: VERSION_ID,
-    });
-    vi.mocked(selected.reader.readForExecution).mockImplementation(() => {
-      controller.abort(new Error('delivery canceled'));
-      return Promise.resolve(current);
-    });
+    controller.abort(new Error('delivery canceled'));
 
     await expect(
       createTriggerReconciliationHandler(selected).handle(delivery(), {

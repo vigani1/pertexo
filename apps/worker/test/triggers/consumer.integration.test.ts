@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  PublishedWorkflowReader,
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationDatabase,
 } from '@pertexo/database/testing';
@@ -100,18 +99,6 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
         .mockResolvedValue([]),
       recordFailure: vi.fn().mockResolvedValue(undefined),
     };
-    const reader: PublishedWorkflowReader = {
-      close: vi.fn().mockResolvedValue(undefined),
-      readForExecution: vi.fn().mockResolvedValue({
-        id: publishedVersionId,
-        workspaceId,
-        workflowId,
-        versionNumber: 1,
-        schemaVersion: 1,
-        checksum: `wf:v2:sha256:${'a'.repeat(64)}`,
-        executableJson: {},
-      }),
-    };
     const scanner: ScheduleTriggerScanner = {
       close: vi.fn().mockResolvedValue(undefined),
       scanDue: vi.fn().mockResolvedValue({
@@ -149,7 +136,6 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
               engineVersion: 'test',
               checkpoint: {},
             }),
-            reader,
             reconciliation,
             scanner,
           },

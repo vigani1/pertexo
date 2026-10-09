@@ -1,5 +1,4 @@
 import type {
-  PublishedWorkflowReader,
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationDatabase,
 } from '@pertexo/database/testing';
@@ -36,10 +35,6 @@ function dependencies() {
       maxLagSeconds: 0,
     }),
   };
-  const reader: PublishedWorkflowReader = {
-    close: vi.fn().mockResolvedValue(undefined),
-    readForExecution: vi.fn(),
-  };
   const reconciliation: WorkflowTriggerReconciliationDatabase = {
     close: vi.fn().mockResolvedValue(undefined),
     reconcile: vi.fn(),
@@ -62,7 +57,6 @@ function dependencies() {
   return {
     consumer,
     scanner,
-    reader,
     reconciliation,
     logger,
     telemetry,
@@ -95,9 +89,8 @@ describe('trigger runtime', () => {
     ['telemetry', []],
     ['traceRunner', []],
     ['reconciliation', []],
-    ['reader', ['reconciliation']],
-    ['scanner', ['reconciliation', 'reader']],
-    ['consumer', ['reconciliation', 'reader', 'scanner']],
+    ['scanner', ['reconciliation']],
+    ['consumer', ['reconciliation', 'scanner']],
   ] as const)(
     'rolls back owners acquired before %s construction fails',
     async (failedStage, expectedClosed) => {
@@ -110,13 +103,6 @@ describe('trigger runtime', () => {
         }),
         reconcile: vi.fn(),
         recordFailure: vi.fn(),
-      };
-      const reader = {
-        close: vi.fn(() => {
-          closed.push('reader');
-          return Promise.resolve();
-        }),
-        readForExecution: vi.fn(),
       };
       const scanner = {
         close: vi.fn(() => {
@@ -137,7 +123,6 @@ describe('trigger runtime', () => {
             waitUntilReady: vi.fn(),
           }),
         ),
-        reader: vi.fn(() => acquire('reader', reader)),
         reconciliation: vi.fn(() => acquire('reconciliation', reconciliation)),
         scanner: vi.fn(() => acquire('scanner', scanner)),
         telemetry: vi.fn(() => acquire('telemetry', {})),
@@ -276,7 +261,6 @@ describe('trigger runtime', () => {
       name: 'BackgroundTaskShutdownTimeoutError',
     });
     expect(selected.scanner.close).not.toHaveBeenCalled();
-    expect(selected.reader.close).not.toHaveBeenCalled();
     expect(selected.reconciliation.close).not.toHaveBeenCalled();
 
     scan.resolve({
@@ -289,7 +273,6 @@ describe('trigger runtime', () => {
     });
     await vi.waitFor(() => {
       expect(selected.scanner.close).toHaveBeenCalledOnce();
-      expect(selected.reader.close).toHaveBeenCalledOnce();
       expect(selected.reconciliation.close).toHaveBeenCalledOnce();
     });
   });
@@ -374,7 +357,6 @@ describe('trigger runtime', () => {
     expect(selected.scanner.scanDue).toHaveBeenCalledTimes(callsAfterClose);
     expect(selected.consumer.close).toHaveBeenCalledOnce();
     expect(selected.scanner.close).toHaveBeenCalledOnce();
-    expect(selected.reader.close).toHaveBeenCalledOnce();
     expect(selected.reconciliation.close).toHaveBeenCalledOnce();
   });
 
@@ -392,13 +374,11 @@ describe('trigger runtime', () => {
       }),
     ).rejects.toBe(startupFailure);
     expect(selected.scanner.close).toHaveBeenCalledOnce();
-    expect(selected.reader.close).toHaveBeenCalledOnce();
     expect(selected.reconciliation.close).toHaveBeenCalledOnce();
   });
 
   it('uses the public queue handler for reconciliation deliveries', async () => {
     const selected = dependencies();
-    vi.mocked(selected.reader.readForExecution).mockResolvedValue(null);
     const runtime = await createTriggerRuntime(options, {
       ...selected,
       checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
