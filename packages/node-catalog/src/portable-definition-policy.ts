@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
 
 import { isDeepStrictEqual } from 'node:util';

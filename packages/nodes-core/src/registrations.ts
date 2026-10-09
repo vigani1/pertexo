@@ -1,5 +1,3 @@
-import './server-only.js';
-
 import type {
   NodeDefinitionRegistration,
   NodeExecutorRegistration,
