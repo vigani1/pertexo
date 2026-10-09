@@ -230,7 +230,6 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     'workspace_invitation_delivery_attempts',
     'workspace_invitations',
     'workspace_memberships',
-    'workspace_legal_holds',
     'rls_probe_records',
   ].map(deleteRows),
   {

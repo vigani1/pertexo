@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0010_workspace_access_commands.sql';
+export const EXPECTED_MIGRATION_HEAD = '0011_drop_legal_holds.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

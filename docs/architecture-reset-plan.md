@@ -159,9 +159,9 @@ now, as one ordered program — not "whenever we touch it".
         acceptances, replacement claims and recipient addresses, input-case
         leftovers and favorites. The reaper functions, the claim scan cursor
         and the per-fact legal hold are gone.
-  - [ ] Legal-hold table: nothing places holds any more. Drop it with the
-        last checks of it: replacement-claim reapability (Workspaces and
-        access) and inbox expiry (Notifications and inbox).
+  - [x] Legal-hold table: nothing places holds any more. It is dropped with
+        its last two checks, in replacement-claim reapability and inbox
+        thread expiry.
   - [x] Organization commands (folders, tags, placement, batches) run in
         TypeScript (`authoring/organization/`). An advisory lock per workspace
         orders them, and their keys use `idempotency_records` through the
