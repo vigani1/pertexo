@@ -14,7 +14,7 @@ Transport dedupe, idempotency, distributed rate limiting and fair admission exis
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [packages/queue/src/contracts.ts](../../packages/queue/src/contracts.ts)
+- [packages/queue/src/jobs/contracts.ts](../../packages/queue/src/jobs/contracts.ts)
 - [packages/rate-limit/src/policy.ts](../../packages/rate-limit/src/policy.ts)
 - docs/workflow-platform-backend-plan.md
 
