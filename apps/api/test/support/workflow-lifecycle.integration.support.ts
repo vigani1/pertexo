@@ -33,7 +33,7 @@ import {
 } from './fixture-resource-owner.js';
 import { assertIntegrationGateConfigured } from './integration-gate.js';
 
-const apiUrl = process.env.DATABASE_API_URL;
+const apiUrl = process.env.DATABASE_URL;
 const migrationUrl = process.env.DATABASE_MIGRATION_URL;
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 const redisUrl = process.env.REDIS_URL;
@@ -43,7 +43,7 @@ assertIntegrationGateConfigured({
   name: 'workflow lifecycle HTTP integration',
   requested: workflowLifecycleIntegrationRequested,
   required: {
-    DATABASE_API_URL: apiUrl,
+    DATABASE_URL: apiUrl,
     DATABASE_MIGRATION_URL: migrationUrl,
     REDIS_URL: redisUrl,
   },

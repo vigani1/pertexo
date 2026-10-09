@@ -54,11 +54,11 @@ const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo';
 const apiUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@127.0.0.1:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@127.0.0.1:5432/pertexo';
 const dispatcherUrl =
-  process.env.DATABASE_DISPATCHER_URL ??
-  'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@127.0.0.1:5432/pertexo';
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
 const redisPassword = process.env.REDIS_PASSWORD ?? 'pertexo-local-redis';
@@ -122,10 +122,10 @@ const localMigrationBaseUrl = localUrl(
   'DATABASE_MIGRATION_URL',
   'postgresql:',
 );
-const localApiBaseUrl = localUrl(apiUrl, 'DATABASE_API_URL', 'postgresql:');
+const localApiBaseUrl = localUrl(apiUrl, 'DATABASE_URL', 'postgresql:');
 const localDispatcherBaseUrl = localUrl(
   dispatcherUrl,
-  'DATABASE_DISPATCHER_URL',
+  'DATABASE_MAINTENANCE_URL',
   'postgresql:',
 );
 function disposableDatabaseUrl(baseUrl: URL): URL {
@@ -184,8 +184,8 @@ async function createProofDatabase(): Promise<void> {
     await admin.query(
       `grant connect on database ${quoteIdentifier(databaseName)} to ${[
         process.env.POSTGRES_MIGRATION_USER ?? 'pertexo_migration',
-        process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api',
-        process.env.POSTGRES_DISPATCHER_RUNTIME_USER ?? 'pertexo_dispatcher',
+        process.env.POSTGRES_APP_USER ?? 'pertexo_app',
+        process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
       ]
         .map(quoteIdentifier)
         .join(',')}`,

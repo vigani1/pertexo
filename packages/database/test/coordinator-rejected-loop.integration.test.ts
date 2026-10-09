@@ -15,8 +15,7 @@ import {
 for (const name of [
   'DATABASE_ADMIN_URL',
   'DATABASE_MIGRATION_URL',
-  'DATABASE_WORKER_URL',
-  'DATABASE_API_URL',
+  'DATABASE_URL',
 ]) {
   if (!process.env[name])
     throw new Error(`${name} must be explicitly supplied`);
@@ -303,7 +302,6 @@ describe('independently derived bounded For Each rejection settlement', () => {
         connectionString: fixture.databaseUrl(fixture.workerBaseUrl),
         max: 1,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
     try {
@@ -425,7 +423,6 @@ describe('independently derived bounded For Each rejection settlement', () => {
           connectionString: fixture.databaseUrl(fixture.workerBaseUrl),
           max: 1,
           ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
         }),
       );
       try {

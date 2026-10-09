@@ -107,14 +107,14 @@ export function createWorkerTransportTestEnvironment() {
     process.env.DATABASE_MIGRATION_URL ??
     'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
   const configuredApiUrl =
-    process.env.DATABASE_API_URL ??
-    'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+    process.env.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
   const configuredWorkerUrl =
-    process.env.DATABASE_WORKER_URL ??
-    'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+    process.env.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
   const configuredDispatcherUrl =
-    process.env.DATABASE_DISPATCHER_URL ??
-    'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+    process.env.DATABASE_MAINTENANCE_URL ??
+    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
   const configuredRedisUrl =
     process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 
@@ -188,7 +188,7 @@ export function createWorkerTransportTestEnvironment() {
       databaseCreated = true;
       await admin.query(`revoke all on database "${databaseName}" from public`);
       await admin.query(
-        `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+        `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_app, pertexo_maintenance`,
       );
     } finally {
       await admin.end();
@@ -267,8 +267,8 @@ export function createWorkerTransportTestEnvironment() {
       'utf8',
     );
     const fixture = source
-      .replaceAll('{{api_runtime_role}}', 'pertexo_api')
-      .replaceAll('{{worker_runtime_role}}', 'pertexo_worker');
+      .replaceAll('{{api_runtime_role}}', 'pertexo_app')
+      .replaceAll('{{worker_runtime_role}}', 'pertexo_app');
     const pool = new Pool({ connectionString: migrationUrl, max: 1 });
     let client: PoolClient | undefined;
     try {

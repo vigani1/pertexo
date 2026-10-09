@@ -37,7 +37,6 @@ const config = {
     idleTimeoutMillis: 30_000,
     max: 1,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   host: '127.0.0.1',
   nodeCompatibilityCohort: 'core',

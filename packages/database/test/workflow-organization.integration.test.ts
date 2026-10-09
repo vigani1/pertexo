@@ -774,21 +774,19 @@ describe.skipIf(!organizationFixtureEnabled)(
       },
     );
 
-    it('denies raw mutations, held evidence access, worker/dispatcher execution and missing tenant scope', async () => {
+    it('denies raw mutations, held evidence access, maintenance execution and missing tenant scope', async () => {
       const s = await fixture.scope(),
         workflow = await s.workflow(),
         t = await createTag(s);
-      for (const selected of [fixture.worker, fixture.dispatcher]) {
-        await expect(
-          selected.query('select * from app.workflow_favorites'),
-        ).rejects.toMatchObject({ code: '42501' });
-        await expect(
-          selected.query(
-            'select app.execute_workflow_tag_command($1,null,$2,$3)',
-            ['tag.create', commandKey(), JSON.stringify({ key: 'worker' })],
-          ),
-        ).rejects.toMatchObject({ code: '42501' });
-      }
+      await expect(
+        fixture.dispatcher.query('select * from app.workflow_favorites'),
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        fixture.dispatcher.query(
+          'select app.execute_workflow_tag_command($1,null,$2,$3)',
+          ['tag.create', commandKey(), JSON.stringify({ key: 'maintenance' })],
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
       for (const statement of [
         "update app.workflow_tags set key='forged' where id=$1",
         'delete from app.workflow_tag_assignments where tag_id=$1',

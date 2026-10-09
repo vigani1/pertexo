@@ -46,7 +46,7 @@ export function configuredRetentionRuntime(
           databaseRuntime,
         ),
         lifecycleCommands: createWorkspaceLifecycleCommandCoordinator(
-          retention.lifecycleDatabase,
+          retention.maintenanceDatabase,
           { leaseOwner },
         ),
         preview: createPreviewRetentionCoordinator(

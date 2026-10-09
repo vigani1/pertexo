@@ -651,7 +651,7 @@ describe.skipIf(!organizationFixtureEnabled)(
         }),
       ).toEqual({ admitted: true });
     });
-    it('keeps folder RLS and helpers read-only/current-scoped across serving roles', async () => {
+    it('keeps folder RLS and helpers read-only/current-scoped for the app role', async () => {
       const scope = await fixture.scope(),
         target = await create(scope, 'private scope'),
         other = await fixture.scope();
@@ -682,9 +682,6 @@ describe.skipIf(!organizationFixtureEnabled)(
       ).rejects.toMatchObject({ code: '42501' });
       await expect(
         fixture.api.query("update app.workflow_folders set name='forged'"),
-      ).rejects.toMatchObject({ code: '42501' });
-      await expect(
-        fixture.worker.query('select * from app.workflow_folders'),
       ).rejects.toMatchObject({ code: '42501' });
       await expect(
         fixture.api.query("select app.workflow_organization_batch_body('{}')"),

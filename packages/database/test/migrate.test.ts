@@ -4,14 +4,10 @@ import type { MigrationConfig } from '../src/config.js';
 import { runMigrationCli } from '../src/migrate.js';
 
 const config: MigrationConfig = {
-  apiRuntimeRole: 'api',
+  appRole: 'api',
   connectionString: 'postgresql://migration@example.test/database',
-  dispatcherRole: 'dispatcher',
-  lifecycleCommandRole: 'lifecycle',
   maintenanceRole: 'maintenance',
-  operatorRole: 'operator',
   ownerRole: 'owner',
-  workerRuntimeRole: 'worker',
 };
 
 describe('migration CLI', () => {

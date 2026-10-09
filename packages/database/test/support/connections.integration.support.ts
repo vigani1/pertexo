@@ -37,11 +37,11 @@ export const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 export const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 export const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 export const databaseName = `pertexo_test_connections_${randomUUID().replaceAll('-', '')}`;
 export const workspaceA = randomUUID();
 export const workspaceB = randomUUID();
@@ -91,7 +91,7 @@ export async function createDatabase(name: string): Promise<void> {
     await admin.query(`create database "${name}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${name}" from public`);
     await admin.query(
-      `grant connect on database "${name}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+      `grant connect on database "${name}" to pertexo_migration, pertexo_app, pertexo_app, pertexo_maintenance`,
     );
   } finally {
     await admin.end();
@@ -109,14 +109,10 @@ export async function dropDatabase(name: string): Promise<void> {
 
 export function migrationConfig(name = databaseName) {
   return {
-    apiRuntimeRole: 'pertexo_api',
+    appRole: 'pertexo_app',
     connectionString: databaseUrl(migrationBaseUrl, name),
-    dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
-    operatorRole: 'pertexo_operator',
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   } as const;
 }
 

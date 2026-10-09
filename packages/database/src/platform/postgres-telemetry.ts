@@ -234,39 +234,10 @@ function stateFor(meter: Meter): MeterState {
 const databasePoolRoles: readonly DatabasePoolRole[] = [
   'api',
   'dispatcher',
-  'lifecycle_command',
   'maintenance',
-  'operator',
   'other',
   'worker',
 ];
-
-function databasePoolRole(config: PoolConfig): DatabasePoolRole {
-  let user = config.user;
-  if (user === undefined && config.connectionString !== undefined) {
-    try {
-      user = decodeURIComponent(new URL(config.connectionString).username);
-    } catch {
-      return 'other';
-    }
-  }
-  switch (user) {
-    case 'pertexo_api':
-      return 'api';
-    case 'pertexo_dispatcher':
-      return 'dispatcher';
-    case 'pertexo_lifecycle_command':
-      return 'lifecycle_command';
-    case 'pertexo_maintenance':
-      return 'maintenance';
-    case 'pertexo_operator':
-      return 'operator';
-    case 'pertexo_worker':
-      return 'worker';
-    default:
-      return 'other';
-  }
-}
 
 function queryText(query: unknown): string | undefined {
   if (typeof query === 'string') return query;
@@ -563,7 +534,7 @@ export function createDatabasePool(
   const meter =
     options.meter ?? metrics.getMeter('@pertexo/database.postgres', '0.0.0');
   const state = stateFor(meter);
-  const role = options.role ?? databasePoolRole(config);
+  const role = options.role ?? 'other';
   const boundedConfig = withDatabaseDeadlineBudget(config, role);
   const pool = new Pool(boundedConfig);
   pool.on('error', (error) => {

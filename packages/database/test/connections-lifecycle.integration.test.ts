@@ -569,7 +569,7 @@ describe('connection lifecycle persistence', () => {
           "update app.connections set status='reauthorization_required' where id=$1",
           [input.connectionId],
         ),
-      ).rejects.toSatisfy(pgCode('42501'));
+      ).rejects.toThrow('connection health requires revision-aware writer');
       await expect(
         worker.query(
           `insert into app.connection_events(id,workspace_id,connection_id,event_type,actor_kind,actor_id,metadata)

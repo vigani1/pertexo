@@ -66,15 +66,23 @@ now, as one ordered program — not "whenever we touch it".
         unexercised deployment validators and E01 evidence packet are removed.
   - [x] `operator-command` becomes `apps/ops`; `pnpm dev` starts the services,
         migrates, seeds a development account and runs the API, worker and web.
-- [ ] **5. Database foundation** — tables defined once, one baseline migration,
+- [x] **5. Database foundation** — tables defined once, one baseline migration,
       three database roles, repository layout.
   - [x] One baseline: `0000_baseline.sql` (generated from a database migrated
         through 0137, roles templated) replaces 135 migrations. The runner
         drops the execution plan, data-migration jobs and published checksums,
         and refuses a database built from the old history. Migration structure
         and upgrade-path tests are removed.
-  - [ ] Three database roles.
-  - [ ] Repository layout.
+  - [x] Three database roles: `owner` (migrations), `app` (API and worker)
+        and `maintenance` (outbox dispatch, retention, workspace lifecycle
+        commands, ops). Two runtime URLs (`DATABASE_URL`,
+        `DATABASE_MAINTENANCE_URL`) replace five. Tests of the old API, worker
+        and dispatcher privilege splits are removed; app/maintenance and
+        tenant isolation tests stay.
+  - Repository layout moves into steps 6 and 7: each area gets its final
+    folder (`runs/`, `queue/`, `outbox/`, …) and entry point when it is moved
+    or ported, so no file moves twice. The consumer-named entry points
+    (`/api`, `/worker`, `/maintenance`, `/lifecycle`) go at the end of step 7.
   - Tables defined once: the 42 raw-SQL tables get Drizzle definitions as their
     areas are ported in step 7 (tables that step 7 deletes are never typed);
     drizzle-kit generates migrations once every table is typed (step 9).
@@ -210,8 +218,10 @@ payload, provider response). Inner layers trust typed values.
   step 9.
 - **Three roles:** `owner` (migrations), `app` (API and worker; row security
   forced, workspace set per transaction), `maintenance` (cross-workspace jobs:
-  schedule scans, retention purge, operator commands). Today there are six
-  logins and 269 elevated-rights functions.
+  outbox dispatch, retention purge, workspace lifecycle commands, operator
+  commands). The outbox dispatcher is maintenance because its policies span
+  every workspace. Before step 5 there were six logins and 269
+  elevated-rights functions.
 - **Workspace isolation stays** as row security policies — limited to
   isolation, never business rules.
 - **What stays in SQL:** constraints (unique, foreign key, check), queue claiming

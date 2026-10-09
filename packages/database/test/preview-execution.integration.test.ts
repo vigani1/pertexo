@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
-import { count, eq, sql } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -32,23 +32,15 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_preview_${randomUUID().replaceAll('-', '')}`;
 const disposableDatabase = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: [
-    'pertexo_migration',
-    'pertexo_api',
-    'pertexo_worker',
-    'pertexo_dispatcher',
-    'pertexo_maintenance',
-    'pertexo_lifecycle_command',
-    'pertexo_operator',
-  ],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -71,14 +63,10 @@ let apiDatabase!: ReturnType<typeof createWorkspaceDatabase>;
 let workerDatabase!: ReturnType<typeof createWorkspaceDatabase>;
 let databaseCreated = false;
 const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
+  appRole: 'pertexo_app',
   connectionString: migrationUrl,
-  dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 function digest(value: string): string {
@@ -748,38 +736,13 @@ describe('durable preview acceptance', () => {
     ).resolves.toBeNull();
   });
 
-  it('gives the worker only scoped reads and execution-state updates', async () => {
+  it('scopes preview reads and keeps the provider idempotency key fixed', async () => {
     const accepted = await apiDatabase.withWorkspace(
       workspaceA,
       (transaction) => acceptPreviewRun(transaction, input()),
     );
     await workerDatabase.withWorkspace(workspaceA, async ({ db }) => {
       expect(await db.select().from(previewRuns)).toHaveLength(1);
-      const grants = await db.execute<{
-        canInsert: boolean;
-        canUpdateProviderKey: boolean;
-      }>(sql`
-        select
-          has_table_privilege(current_user, 'app.preview_attempts', 'INSERT') as "canInsert",
-          has_column_privilege(
-            current_user,
-            'app.preview_attempts',
-            'provider_idempotency_key',
-            'UPDATE'
-          ) as "canUpdateProviderKey"
-      `);
-      expect(grants.rows).toEqual([
-        { canInsert: false, canUpdateProviderKey: false },
-      ]);
-      await expect(
-        db.insert(previewAttempts).values({
-          id: randomUUID(),
-          workspaceId: workspaceA,
-          previewRunId: accepted.previewRunId,
-          status: 'queued',
-          sideEffectClass: 'unsafe',
-        }),
-      ).rejects.toThrow();
     });
     await workerDatabase.withWorkspace(workspaceA, async ({ db }) => {
       await expect(

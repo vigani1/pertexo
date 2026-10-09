@@ -6,7 +6,7 @@ import { parseApiConfig } from '../src/platform/config/api-config.js';
 
 function validDeployedEnvironment(): Record<string, string> {
   return {
-    DATABASE_API_URL: 'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+    DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     NODE_ENV: 'production',
     OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
     OIDC_ISSUER: 'https://identity.example.test',
@@ -42,8 +42,7 @@ function validDeployedEnvironment(): Record<string, string> {
 describe('parseApiConfig', () => {
   it('enables Better Auth without requiring legacy OIDC configuration', () => {
     const config = parseApiConfig({
-      DATABASE_API_URL:
-        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       BETTER_AUTH_SECRET:
         'standalone-better-auth-secret-at-least-32-characters',
       AUTH_MAIL_MODE: 'local',
@@ -62,8 +61,7 @@ describe('parseApiConfig', () => {
   it('requires a public browser origin for standalone Better Auth', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         BETTER_AUTH_SECRET:
           'standalone-better-auth-secret-at-least-32-characters',
       }),
@@ -73,8 +71,7 @@ describe('parseApiConfig', () => {
   it('rejects secure browser cookies on an HTTP public origin', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         BETTER_AUTH_SECRET:
           'standalone-better-auth-secret-at-least-32-characters',
         AUTH_MAIL_MODE: 'local',
@@ -131,7 +128,7 @@ describe('parseApiConfig', () => {
   it('rejects SameSite=None with an insecure test cookie independently', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL: validDeployedEnvironment().DATABASE_API_URL,
+        DATABASE_URL: validDeployedEnvironment().DATABASE_URL,
         NODE_ENV: 'test',
         OIDC_ISSUER: 'http://127.0.0.1:4400',
         OIDC_AUTHORIZATION_ENDPOINT: 'http://127.0.0.1:4400/authorize',
@@ -171,19 +168,17 @@ describe('parseApiConfig', () => {
 
   it('uses safe development defaults when optional values are absent', () => {
     const config = parseApiConfig({
-      DATABASE_API_URL:
-        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     });
 
     expect(config).toEqual({
       database: {
         connectionString:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+          'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         connectionTimeoutMillis: 5_000,
         idleTimeoutMillis: 30_000,
         max: 5,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       host: '0.0.0.0',
       nodeEnv: 'development',
@@ -204,8 +199,7 @@ describe('parseApiConfig', () => {
   it('rejects Redis URLs without a network host before runtime allocation', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         REDIS_URL: 'redis:///0',
       }),
     ).toThrow('REDIS_URL must use redis:// or rediss:// with a hostname');
@@ -213,23 +207,21 @@ describe('parseApiConfig', () => {
 
   it('parses valid environment values into the typed public config', () => {
     const config = parseApiConfig({
-      DATABASE_API_URL:
-        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       HOST: '127.0.0.1',
       NODE_ENV: 'test',
       PORT: '4312',
-      POSTGRES_WORKER_RUNTIME_USER: 'custom_worker',
+      POSTGRES_APP_USER: 'custom_worker',
     });
 
     expect(config).toEqual({
       database: {
         connectionString:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+          'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         connectionTimeoutMillis: 5_000,
         idleTimeoutMillis: 30_000,
         max: 5,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'custom_worker',
       },
       host: '127.0.0.1',
       nodeEnv: 'test',
@@ -248,8 +240,7 @@ describe('parseApiConfig', () => {
 
   it('parses an optional complete artifact configuration locally', () => {
     const config = parseApiConfig({
-      DATABASE_API_URL:
-        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-key',
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
       ARTIFACT_STORE_BUCKET: 'pertexo-primary',
@@ -264,8 +255,7 @@ describe('parseApiConfig', () => {
   it('rejects partial artifact configuration without exposing credentials', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         ARTIFACT_STORE_ACCESS_KEY_ID: 'sensitive-access-key',
       }),
     ).toThrow('Artifact store configuration is incomplete');
@@ -274,8 +264,7 @@ describe('parseApiConfig', () => {
   it('requires identity configuration in a deployed environment', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         NODE_ENV: 'staging',
       }),
     ).toThrow('Better Auth configuration is incomplete');
@@ -283,8 +272,7 @@ describe('parseApiConfig', () => {
 
   it('parses and freezes complete identity configuration', () => {
     const config = parseApiConfig({
-      DATABASE_API_URL:
-        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       NODE_ENV: 'staging',
       OIDC_ISSUER: 'https://identity.example.test',
       OIDC_AUTHORIZATION_ENDPOINT:
@@ -362,8 +350,7 @@ describe('parseApiConfig', () => {
     let message = '';
     try {
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         OIDC_CLIENT_SECRET: secret,
       });
     } catch (error: unknown) {
@@ -375,8 +362,7 @@ describe('parseApiConfig', () => {
 
   it('permits insecure OIDC endpoints only in the test environment', () => {
     const config = parseApiConfig({
-      DATABASE_API_URL:
-        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       NODE_ENV: 'test',
       OIDC_ISSUER: 'http://127.0.0.1:4400',
       OIDC_AUTHORIZATION_ENDPOINT: 'http://127.0.0.1:4400/authorize',
@@ -395,8 +381,7 @@ describe('parseApiConfig', () => {
   it('rejects insecure identity endpoints in a deployed environment', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         NODE_ENV: 'production',
         OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
         OIDC_ISSUER: 'http://identity.example.test',
@@ -421,8 +406,7 @@ describe('parseApiConfig', () => {
   it('rejects a port outside the TCP port range', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         PORT: '70000',
       }),
     ).toThrow();
@@ -431,15 +415,13 @@ describe('parseApiConfig', () => {
   it('accepts only explicit trusted proxy IP and CIDR networks', () => {
     expect(
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         TRUST_PROXY_CIDRS: '127.0.0.1, 10.0.0.0/8, 2001:db8::/32',
       }).trustedProxyCidrs,
     ).toEqual(['127.0.0.1', '10.0.0.0/8', '2001:db8::/32']);
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         TRUST_PROXY_CIDRS: '10.0.0.0/99',
       }),
     ).toThrow();
@@ -448,8 +430,7 @@ describe('parseApiConfig', () => {
   it('requires a Redis event-hint endpoint when deployed', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         NODE_ENV: 'staging',
         OIDC_ISSUER: 'https://identity.example.test',
         OIDC_AUTHORIZATION_ENDPOINT:
@@ -479,8 +460,7 @@ describe('parseApiConfig', () => {
     let message = '';
     try {
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         CONNECTION_KMS_KEY_REFERENCE: keyReference,
       });
     } catch (error: unknown) {
@@ -493,8 +473,7 @@ describe('parseApiConfig', () => {
   it('rejects an insecure deployed connection KMS endpoint', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         NODE_ENV: 'production',
         OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
         OIDC_ISSUER: 'https://identity.example.test',
@@ -524,7 +503,7 @@ describe('parseApiConfig', () => {
 
 function standaloneBetterAuthEnvironment(): Record<string, string> {
   return {
-    DATABASE_API_URL: 'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+    DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     BETTER_AUTH_SECRET: 'standalone-better-auth-secret-at-least-32-characters',
     AUTH_MAIL_MODE: 'local',
     PUBLIC_WEB_ORIGIN: 'https://app.example.test',
@@ -594,8 +573,7 @@ describe('parseApiConfig identity boundary', () => {
   it('requires Better Auth once any session setting enables identity', () => {
     expect(() =>
       parseApiConfig({
-        DATABASE_API_URL:
-          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         SESSION_TTL_MILLIS: '60000',
       }),
     ).toThrow('Better Auth configuration is incomplete');

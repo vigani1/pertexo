@@ -32,15 +32,15 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_identity_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_api', 'pertexo_worker'],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_app'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -50,14 +50,10 @@ const apiUrl = fixture.databaseUrl(apiBaseUrl);
 const workerUrl = fixture.databaseUrl(workerBaseUrl);
 
 const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
+  appRole: 'pertexo_app',
   connectionString: migrationUrl,
-  dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 let identityDatabase: ReturnType<typeof createIdentityWorkspaceDatabase>;
@@ -1420,74 +1416,6 @@ describe('identity/workspace persistence', () => {
     }
   });
 
-  it('keeps worker identity access least-privilege while allowing workspace status reads', async () => {
-    const catalog = new Pool({ connectionString: migrationUrl, max: 1 });
-    const catalogClient = await catalog.connect();
-    try {
-      await catalogClient.query('begin');
-      await catalogClient.query('set local role pertexo_owner');
-      const privileges = await catalogClient.query<{
-        authIdentities: boolean;
-        sessions: boolean;
-        users: boolean;
-        workspaceId: boolean;
-        workspaceName: boolean;
-        workspaceStatus: boolean;
-      }>(`
-        select
-          has_table_privilege('pertexo_worker', 'app.users', 'SELECT') as "users",
-          has_table_privilege('pertexo_worker', 'app.auth_identities', 'SELECT') as "authIdentities",
-          has_table_privilege('pertexo_worker', 'app.sessions', 'SELECT') as "sessions",
-          has_column_privilege('pertexo_worker', 'app.workspaces', 'id', 'SELECT') as "workspaceId",
-          has_column_privilege('pertexo_worker', 'app.workspaces', 'status', 'SELECT') as "workspaceStatus",
-          has_column_privilege('pertexo_worker', 'app.workspaces', 'name', 'SELECT') as "workspaceName"
-      `);
-      expect(privileges.rows[0]).toEqual({
-        users: false,
-        authIdentities: false,
-        sessions: false,
-        workspaceId: true,
-        workspaceStatus: true,
-        workspaceName: false,
-      });
-      await catalogClient.query('commit');
-    } catch (error: unknown) {
-      await catalogClient.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      catalogClient.release();
-      await catalog.end();
-    }
-
-    const worker = new Pool({ connectionString: workerUrl, max: 1 });
-    try {
-      await expect(
-        worker.query('select id, status from app.workspaces'),
-      ).resolves.toBeTruthy();
-      for (const statement of [
-        'select email from app.users',
-        'select issuer from app.auth_identities',
-        'select token_digest from app.sessions',
-        'select name from app.workspaces',
-        'select workspace_id from app.workspace_memberships',
-        'select workspace_id from app.audit_events',
-      ]) {
-        await expect(worker.query(statement)).rejects.toSatisfy(
-          (error: unknown) => {
-            let current: unknown = error;
-            while (current instanceof Error) {
-              if ((current as { code?: string }).code === '42501') return true;
-              current = current.cause;
-            }
-            return false;
-          },
-        );
-      }
-    } finally {
-      await worker.end();
-    }
-  });
-
   it('fails closed without context and prevents cross-workspace reads', async () => {
     const secondUser = await identityDatabase.createUser({
       email: `${randomUUID()}@example.test`,
@@ -2009,9 +1937,8 @@ describe('identity/workspace persistence', () => {
               )
             )
             from (values
-              ('pertexo_api'),
-              ('pertexo_worker'),
-              ('pertexo_dispatcher')
+              ('pertexo_app'),
+              ('pertexo_maintenance')
             ) as runtime(role_name)
           ) as runtime_roles_restricted,
           trig.tgenabled as trigger_enabled

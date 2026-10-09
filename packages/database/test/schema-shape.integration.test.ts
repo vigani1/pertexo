@@ -18,15 +18,7 @@ const migrationBaseUrl =
 const databaseName = `pertexo_test_schema_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: [
-    'pertexo_migration',
-    'pertexo_api',
-    'pertexo_dispatcher',
-    'pertexo_lifecycle_command',
-    'pertexo_maintenance',
-    'pertexo_operator',
-    'pertexo_worker',
-  ],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -53,25 +45,21 @@ function expectedColumnShape(value: unknown): Readonly<{
 }
 
 const roleNames: Readonly<Record<string, string>> = Object.freeze({
-  api_runtime_role: 'pertexo_api',
-  dispatcher_role: 'pertexo_dispatcher',
-  lifecycle_command_role: 'pertexo_lifecycle_command',
+  api_runtime_role: 'pertexo_app',
+  dispatcher_role: 'pertexo_maintenance',
+  lifecycle_command_role: 'pertexo_maintenance',
   maintenance_role: 'pertexo_maintenance',
-  operator_role: 'pertexo_operator',
-  worker_runtime_role: 'pertexo_worker',
+  operator_role: 'pertexo_maintenance',
+  worker_runtime_role: 'pertexo_app',
 });
 
 beforeAll(async () => {
   await fixture.create();
   await migrateDatabase({
-    apiRuntimeRole: roleNames.api_runtime_role ?? '',
+    appRole: roleNames.api_runtime_role ?? '',
     connectionString: migrationUrl,
-    dispatcherRole: roleNames.dispatcher_role ?? '',
-    lifecycleCommandRole: roleNames.lifecycle_command_role ?? '',
     maintenanceRole: roleNames.maintenance_role ?? '',
-    operatorRole: roleNames.operator_role ?? '',
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: roleNames.worker_runtime_role ?? '',
   });
 }, 60_000);
 

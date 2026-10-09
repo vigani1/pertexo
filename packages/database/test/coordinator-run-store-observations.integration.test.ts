@@ -205,7 +205,6 @@ function observedCoordinatorStore(afterQuery?: (kind: string) => void) {
         connectionString: connectionUrl.toString(),
         max: 1,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
   } catch (error: unknown) {

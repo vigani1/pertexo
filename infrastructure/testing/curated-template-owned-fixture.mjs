@@ -6,9 +6,8 @@ const execute = promisify(execFile);
 const roleUrls = Object.freeze({
   DATABASE_ADMIN_URL: 'postgres',
   DATABASE_MIGRATION_URL: 'pertexo_migration',
-  DATABASE_API_URL: 'pertexo_api',
-  DATABASE_WORKER_URL: 'pertexo_worker',
-  DATABASE_DISPATCHER_URL: 'pertexo_dispatcher',
+  DATABASE_URL: 'pertexo_app',
+  DATABASE_MAINTENANCE_URL: 'pertexo_maintenance',
 });
 
 /** Reuses the canonical editor-fixture attestation; never discovers/adopts services. */
@@ -50,9 +49,9 @@ export async function verifyCuratedFixtureOwnership(
     redisPort: manifest.redis.port,
     adminUrl: environment.DATABASE_ADMIN_URL,
     migrationUrl: environment.DATABASE_MIGRATION_URL,
-    apiUrl: environment.DATABASE_API_URL,
-    workerUrl: environment.DATABASE_WORKER_URL,
-    dispatcherUrl: environment.DATABASE_DISPATCHER_URL,
+    apiUrl: environment.DATABASE_URL,
+    workerUrl: environment.DATABASE_URL,
+    dispatcherUrl: environment.DATABASE_MAINTENANCE_URL,
     redisUrl: environment.REDIS_URL,
   });
 }

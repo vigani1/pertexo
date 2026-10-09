@@ -251,8 +251,7 @@ describe('API bootstrap ownership and health', () => {
 
   it('rejects development HTTP OIDC at the real provider adapter boundary', async () => {
     const httpIdentityConfig = parseApiConfig({
-      DATABASE_API_URL:
-        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       NODE_ENV: 'development',
       OIDC_ISSUER: 'http://127.0.0.1:4400',
       OIDC_AUTHORIZATION_ENDPOINT: 'http://127.0.0.1:4400/authorize',
@@ -579,7 +578,7 @@ describe('API bootstrap ownership and health', () => {
     const readiness = {
       migrationHead: '0000_rls_probe.sql',
       postgresMajor: 18,
-      role: 'pertexo_api',
+      role: 'pertexo_app',
     } as const;
     const unavailableDatabase: WorkspaceDatabase = {
       ...database,
@@ -662,7 +661,7 @@ describe('API bootstrap ownership and health', () => {
     resolveReadiness({
       migrationHead: '0000_rls_probe.sql',
       postgresMajor: 18,
-      role: 'pertexo_api',
+      role: 'pertexo_app',
     });
 
     await expect(response).rejects.toMatchObject({ status: 503 });

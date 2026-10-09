@@ -433,13 +433,11 @@ describe('connection concurrency and security', () => {
         events_rls: boolean;
         secrets_force_rls: boolean;
         secrets_rls: boolean;
-        worker_connection_insert: boolean;
         worker_secret_select: boolean;
       }>(`
         select
-          has_table_privilege('pertexo_api', 'app.connection_secret_versions', 'UPDATE') as api_secret_update,
-          has_table_privilege('pertexo_worker', 'app.connections', 'INSERT') as worker_connection_insert,
-          has_table_privilege('pertexo_worker', 'app.connection_secret_versions', 'SELECT') as worker_secret_select,
+          has_table_privilege('pertexo_app', 'app.connection_secret_versions', 'UPDATE') as api_secret_update,
+          has_table_privilege('pertexo_app', 'app.connection_secret_versions', 'SELECT') as worker_secret_select,
           secret.relrowsecurity as secrets_rls,
           secret.relforcerowsecurity as secrets_force_rls,
           event.relrowsecurity as events_rls,
@@ -454,7 +452,6 @@ describe('connection concurrency and security', () => {
         events_rls: true,
         secrets_force_rls: true,
         secrets_rls: true,
-        worker_connection_insert: false,
         worker_secret_select: true,
       });
       await expect(

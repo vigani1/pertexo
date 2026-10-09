@@ -15,11 +15,11 @@ const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
   'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const maintenanceBaseUrl =
   process.env.DATABASE_MAINTENANCE_URL ??
   'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
@@ -28,12 +28,7 @@ const migrationBaseUrl =
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const database = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: [
-    'pertexo_migration',
-    'pertexo_api',
-    'pertexo_worker',
-    'pertexo_maintenance',
-  ],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName: `pertexo_test_auth_mail_${randomUUID().replaceAll('-', '')}`,
   ownerRole: 'pertexo_owner',
 });
@@ -43,20 +38,15 @@ const databaseConfig = (connectionString: string): DatabaseConfig => ({
   idleTimeoutMillis: 5_000,
   max: 2,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 });
 
 beforeAll(async () => {
   await database.create();
   await migrateDatabase({
-    apiRuntimeRole: 'pertexo_api',
+    appRole: 'pertexo_app',
     connectionString: database.databaseUrl(migrationBaseUrl),
-    dispatcherRole: 'pertexo_dispatcher',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
     maintenanceRole: 'pertexo_maintenance',
-    operatorRole: 'pertexo_operator',
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   });
 }, 30_000);
 afterAll(database.drop);
@@ -154,22 +144,12 @@ describe('durable authentication mail', () => {
         connectionString: database.databaseUrl(apiBaseUrl),
         max: 1,
       });
-      const workerPool = new Pool({
-        connectionString: database.databaseUrl(workerBaseUrl),
-        max: 1,
-      });
       try {
         await expect(
           apiPool.query('select * from app.authentication_mail_deliveries'),
         ).rejects.toMatchObject({ code: '42501' });
-        await expect(
-          workerPool.query(
-            `select app.enqueue_authentication_mail($1,'verification',clock_timestamp()+interval '1 hour','x','n','t','v1')`,
-            [randomUUID()],
-          ),
-        ).rejects.toMatchObject({ code: '42501' });
       } finally {
-        await Promise.all([apiPool.end(), workerPool.end()]);
+        await apiPool.end();
       }
     } finally {
       await Promise.all([api.close(), worker.close()]);

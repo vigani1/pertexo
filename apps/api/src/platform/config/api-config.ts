@@ -48,11 +48,9 @@ const trustedProxyCidrsSchema = z
 
 const apiEnvironmentSchema = z
   .object({
-    DATABASE_API_URL: z
-      .url()
-      .refine((value) => value.startsWith('postgresql://'), {
-        message: 'DATABASE_API_URL must be a postgresql:// URL',
-      }),
+    DATABASE_URL: z.url().refine((value) => value.startsWith('postgresql://'), {
+      message: 'DATABASE_URL must be a postgresql:// URL',
+    }),
     DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
       .number()
       .int()
@@ -91,10 +89,6 @@ const apiEnvironmentSchema = z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
       .default('pertexo_owner'),
-    POSTGRES_WORKER_RUNTIME_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_worker'),
   })
   .superRefine((value, context) => {
     if (
@@ -128,7 +122,6 @@ export type ApiConfig = Readonly<{
     idleTimeoutMillis: number;
     max: number;
     ownerRole: string;
-    workerRuntimeRole: string;
   }>;
   host: string;
   identity?: ApiIdentityConfig;
@@ -179,12 +172,11 @@ export function parseApiConfig(
     ...(connections === undefined ? {} : { connections }),
     ...(connections === undefined ? {} : { webhooks: connections }),
     database: Object.freeze({
-      connectionString: parsed.DATABASE_API_URL,
+      connectionString: parsed.DATABASE_URL,
       connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
       idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
       max: parsed.DATABASE_POOL_MAX,
       ownerRole: parsed.POSTGRES_OWNER_USER,
-      workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
     }),
     host: parsed.HOST,
     ...(identity === undefined ? {} : { identity }),

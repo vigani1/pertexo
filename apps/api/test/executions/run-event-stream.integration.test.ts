@@ -27,8 +27,8 @@ import {
   type StreamFailure,
 } from '../../src/workflow-runs/stream-cleanup.js';
 
-const apiUrl = process.env.DATABASE_API_URL;
-const workerUrl = process.env.DATABASE_WORKER_URL;
+const apiUrl = process.env.DATABASE_URL;
+const workerUrl = process.env.DATABASE_URL;
 const redisUrl = process.env.REDIS_URL;
 const enabled =
   process.env.API_SSE_INTEGRATION === 'true' &&

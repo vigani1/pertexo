@@ -33,12 +33,11 @@ function runtimeOptions(
   return {
     database: {
       connectionString:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
       max: 5,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     },
     maximumAdmissions: 32,
     redisUrl: 'redis://unreachable.invalid:6379/0',
@@ -338,12 +337,11 @@ describe('coordinator runtime', () => {
       {
         database: {
           connectionString:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           connectionTimeoutMillis: 5_000,
           idleTimeoutMillis: 30_000,
           max: 5,
           ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
         },
         dueWakeupBatchSize: 10,
         dueWakeupPollIntervalMillis: 20,
@@ -519,12 +517,11 @@ describe('coordinator runtime', () => {
       {
         database: {
           connectionString:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           connectionTimeoutMillis: 5_000,
           idleTimeoutMillis: 30_000,
           max: 5,
           ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
         },
         maximumAdmissions: 32,
         redisUrl: 'redis://unreachable.invalid:6379/0',

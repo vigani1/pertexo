@@ -145,7 +145,7 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
             const waiting = await client.query<{
               count: number;
             }>(`select count(*)::int count from pg_stat_activity
-          where datname=current_database() and usename='pertexo_worker' and wait_event_type='Lock'
+          where datname=current_database() and usename='pertexo_app' and wait_event_type='Lock'
             and query like '%apply_connection_health_observation%'`);
             return waiting.rows[0]?.count;
           }),

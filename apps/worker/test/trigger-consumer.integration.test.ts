@@ -142,7 +142,6 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
               idleTimeoutMillis: 1_000,
               max: 1,
               ownerRole: 'pertexo_owner',
-              workerRuntimeRole: 'pertexo_worker',
             },
             leaseDurationSeconds: 5,
             leaseOwner: 'schedule:redis-integration',

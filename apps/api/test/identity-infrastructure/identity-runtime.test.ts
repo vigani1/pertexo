@@ -41,7 +41,6 @@ const databaseConfig = {
   idleTimeoutMillis: 1_000,
   max: 2,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 };
 
 function identityDatabase(close = vi.fn().mockResolvedValue(undefined)) {

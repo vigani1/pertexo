@@ -148,7 +148,7 @@ describe
       // Compose the compiled production invitation handler and worker-scoped
       // store; only the external mail provider is captured locally. No token
       // is synthesized or decrypted outside the delivery handler.
-      const workerBase = process.env.DATABASE_WORKER_URL;
+      const workerBase = process.env.DATABASE_URL;
       if (workerBase === undefined)
         throw new Error('Explicit owned worker database authority required');
       const databaseName = (

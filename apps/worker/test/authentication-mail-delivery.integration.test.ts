@@ -17,11 +17,11 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 
 function databaseUrl(base: string): string {
   const url = new URL(base);
@@ -35,7 +35,6 @@ const storeConfig = (connectionString: string) => ({
   idleTimeoutMillis: 5_000,
   max: 1,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 });
 
 beforeAll(async () => {
@@ -44,20 +43,16 @@ beforeAll(async () => {
     await admin.query(`create database "${databaseName}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker`,
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_app`,
     );
   } finally {
     await admin.end();
   }
   await migrateDatabase({
-    apiRuntimeRole: 'pertexo_api',
+    appRole: 'pertexo_app',
     connectionString: databaseUrl(migrationBaseUrl),
-    dispatcherRole: 'pertexo_dispatcher',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
     maintenanceRole: 'pertexo_maintenance',
-    operatorRole: 'pertexo_operator',
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   });
 }, 60_000);
 

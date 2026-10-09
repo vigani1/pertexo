@@ -58,8 +58,7 @@ function recordBenchmarkOperation(startedAt: number): void {
 
 const adminBaseUrl = process.env.DATABASE_ADMIN_URL;
 const migrationBaseUrl = process.env.DATABASE_MIGRATION_URL;
-const apiBaseUrl = process.env.DATABASE_API_URL;
-const workerBaseUrl = process.env.DATABASE_WORKER_URL;
+const apiBaseUrl = process.env.DATABASE_URL;
 const requested = process.env.API_WEBHOOK_INTEGRATION === 'true';
 assertIntegrationGateConfigured({
   name: 'direct webhook HTTP integration',
@@ -67,8 +66,7 @@ assertIntegrationGateConfigured({
   required: {
     DATABASE_ADMIN_URL: adminBaseUrl,
     DATABASE_MIGRATION_URL: migrationBaseUrl,
-    DATABASE_API_URL: apiBaseUrl,
-    DATABASE_WORKER_URL: workerBaseUrl,
+    DATABASE_URL: apiBaseUrl,
   },
 });
 if (requested)
@@ -94,10 +92,9 @@ const configuredDatabaseUrl = (base: string | undefined): string =>
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 const migrationRole =
   process.env.POSTGRES_MIGRATION_USER ?? 'pertexo_migration';
-const apiRole = process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api';
-const workerRole = process.env.POSTGRES_WORKER_RUNTIME_USER ?? 'pertexo_worker';
-const dispatcherRole =
-  process.env.POSTGRES_DISPATCHER_USER ?? 'pertexo_dispatcher';
+const appRole = process.env.POSTGRES_APP_USER ?? 'pertexo_app';
+const maintenanceRole =
+  process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance';
 
 const logger: StructuredLogger = {
   debug: () => undefined,
@@ -212,9 +209,8 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         await admin.query(
           `grant connect on database ${quoteIdentifier(databaseName)} to ${[
             migrationRole,
-            apiRole,
-            workerRole,
-            dispatcherRole,
+            appRole,
+            maintenanceRole,
           ]
             .map(quoteIdentifier)
             .join(', ')}`,
@@ -242,7 +238,6 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         idleTimeoutMillis: 2_000,
         max: 12,
         ownerRole,
-        workerRuntimeRole: workerRole,
       });
       releaseSupport = createExecutableCompatibilityReleaseSupport(
         platformRegistryReleaseSupport().map(
@@ -257,12 +252,8 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       await migrateDatabase({
         connectionString: configuredDatabaseUrl(migrationBaseUrl),
         ownerRole,
-        apiRuntimeRole: apiRole,
-        workerRuntimeRole: workerRole,
-        dispatcherRole,
-        maintenanceRole: 'pertexo_maintenance',
-        lifecycleCommandRole: 'pertexo_lifecycle_command',
-        operatorRole: 'pertexo_operator',
+        appRole,
+        maintenanceRole,
       });
       identity = resources.acquire(
         'identity database',

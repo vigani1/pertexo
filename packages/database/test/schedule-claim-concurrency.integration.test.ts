@@ -165,13 +165,13 @@ describe('schedule claim concurrency', () => {
     const databasePath = new URL(workerConnectionString).pathname;
     const acceptanceApplicationName = `schedule-cancel-${randomUUID()}`;
     const workerUrl = scopedConnectionUrl(
-      process.env.DATABASE_WORKER_URL ??
-        'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo',
+      process.env.DATABASE_URL ??
+        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
       databasePath,
     );
     const apiUrl = scopedConnectionUrl(
-      process.env.DATABASE_API_URL ??
-        'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
+      process.env.DATABASE_URL ??
+        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
       databasePath,
       acceptanceApplicationName,
     );

@@ -188,7 +188,7 @@ describe('workflow run persistence security and compatibility', () => {
         tableName: string;
       }>(`
         with runtime_roles(role_name) as (
-          values ('pertexo_api'), ('pertexo_dispatcher'), ('pertexo_worker')
+          values ('pertexo_app'), ('pertexo_maintenance'), ('pertexo_app')
         ), execution_tables(table_oid, table_name) as (
           select c.oid, c.relname
           from pg_class c
@@ -214,9 +214,9 @@ describe('workflow run persistence security and compatibility', () => {
       `);
       expect(privileges.rows).toHaveLength(12);
       for (const row of privileges.rows) {
-        expect(row.canSelect).toBe(row.roleName !== 'pertexo_dispatcher');
+        expect(row.canSelect).toBe(row.roleName !== 'pertexo_maintenance');
         expect(row.canInsert).toBe(
-          row.roleName === 'pertexo_api' || row.roleName === 'pertexo_worker',
+          row.roleName === 'pertexo_app' || row.roleName === 'pertexo_app',
         );
         expect(row.canUpdate).toBe(false);
         expect(row.canDelete).toBe(false);
@@ -228,7 +228,7 @@ describe('workflow run persistence security and compatibility', () => {
         roleName: string;
       }>(`
         with runtime_roles(role_name) as (
-          values ('pertexo_api'), ('pertexo_dispatcher'), ('pertexo_worker')
+          values ('pertexo_app'), ('pertexo_maintenance'), ('pertexo_app')
         ), idempotency_columns(column_name) as (
           values
             ('status'),
@@ -261,8 +261,7 @@ describe('workflow run persistence security and compatibility', () => {
       expect(idempotencyUpdatePrivileges.rows).toHaveLength(15);
       for (const row of idempotencyUpdatePrivileges.rows) {
         expect(row.canUpdate).toBe(
-          (row.roleName === 'pertexo_api' ||
-            row.roleName === 'pertexo_worker') &&
+          (row.roleName === 'pertexo_app' || row.roleName === 'pertexo_app') &&
             ['result_ref', 'status', 'updated_at'].includes(row.columnName),
         );
       }
@@ -302,7 +301,7 @@ describe('workflow run persistence security and compatibility', () => {
         role_name: string;
       }>(`
         with roles(role_name) as (
-          values ('pertexo_api'),('pertexo_worker'),('pertexo_dispatcher')
+          values ('pertexo_app'),('pertexo_maintenance')
         ) select role_name,
           has_table_privilege(role_name,'app.workspace_execution_entitlement_versions','SELECT') can_select,
           has_table_privilege(role_name,'app.workspace_execution_entitlement_versions','INSERT') can_insert,
@@ -311,20 +310,14 @@ describe('workflow run persistence security and compatibility', () => {
       `);
       expect(grants.rows).toEqual([
         {
-          role_name: 'pertexo_api',
+          role_name: 'pertexo_app',
           can_select: true,
           can_insert: false,
           can_update: false,
         },
         {
-          role_name: 'pertexo_dispatcher',
+          role_name: 'pertexo_maintenance',
           can_select: false,
-          can_insert: false,
-          can_update: false,
-        },
-        {
-          role_name: 'pertexo_worker',
-          can_select: true,
           can_insert: false,
           can_update: false,
         },

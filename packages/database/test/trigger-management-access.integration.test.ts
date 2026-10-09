@@ -27,8 +27,8 @@ describe('trigger management authority linearization', () => {
     const commandApplicationName = `trigger-command-${randomUUID()}`;
     const suspensionApplicationName = `trigger-suspension-${randomUUID()}`;
     const apiUrl = scopedConnectionUrl(
-      process.env.DATABASE_API_URL ??
-        'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
+      process.env.DATABASE_URL ??
+        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
       databasePath,
       commandApplicationName,
     );

@@ -27,14 +27,14 @@ export function createScheduleTriggerTestEnvironment(
     process.env.DATABASE_MIGRATION_URL ??
     'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
   const apiBaseUrl =
-    process.env.DATABASE_API_URL ??
-    'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+    process.env.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
   const workerBaseUrl =
-    process.env.DATABASE_WORKER_URL ??
-    'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+    process.env.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
   const operatorBaseUrl =
-    process.env.DATABASE_OPERATOR_URL ??
-    'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
+    process.env.DATABASE_MAINTENANCE_URL ??
+    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
   const databaseName = `pertexo_test_schedule_${randomUUID().replaceAll('-', '')}`;
   const url = (base: string): string => {
     const parsed = new URL(base);
@@ -55,12 +55,8 @@ export function createScheduleTriggerTestEnvironment(
   const migrationConfig = {
     connectionString: url(migrationBaseUrl),
     ownerRole: 'pertexo_owner',
-    apiRuntimeRole: 'pertexo_api',
-    workerRuntimeRole: 'pertexo_worker',
-    dispatcherRole: 'pertexo_dispatcher',
+    appRole: 'pertexo_app',
     maintenanceRole: 'pertexo_maintenance',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
-    operatorRole: 'pertexo_operator',
   } as const;
   const apiConfig = parseDatabaseConfig({ connectionString: url(apiBaseUrl) });
   const workerConfig = parseDatabaseConfig({
@@ -147,7 +143,7 @@ export function createScheduleTriggerTestEnvironment(
       );
       await admin.query(`revoke all on database "${databaseName}" from public`);
       await admin.query(
-        `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher,pertexo_operator`,
+        `grant connect on database "${databaseName}" to pertexo_migration,pertexo_app,pertexo_app,pertexo_maintenance,pertexo_maintenance`,
       );
     } finally {
       await admin.end();

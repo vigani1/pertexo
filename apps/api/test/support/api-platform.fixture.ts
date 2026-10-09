@@ -19,25 +19,24 @@ export function createApiPlatformFixture(migrationHead: string) {
       Promise.resolve({
         migrationHead,
         postgresMajor: 18,
-        role: 'pertexo_api',
+        role: 'pertexo_app',
       }),
     checkReadiness: () =>
       Promise.resolve({
         migrationHead,
         postgresMajor: 18,
-        role: 'pertexo_api',
+        role: 'pertexo_app',
       }),
     close: () => Promise.resolve(),
   };
   const config: ApiConfig = {
     database: {
       connectionString:
-        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
       max: 5,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     },
     host: '127.0.0.1',
     nodeEnv: 'test',

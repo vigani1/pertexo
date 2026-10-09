@@ -481,13 +481,6 @@ describe('current workflow concurrency and ordered production admission', () => 
     `),
       ),
     ).rejects.toSatisfy(hasPostgresCode('42501'));
-    await expect(
-      workerDatabase.withWorkspace(workspaceA, ({ db }) =>
-        db.execute(sql`
-      select app.workflow_run_admission_blockers(${workspaceA},${second.runId})
-    `),
-      ),
-    ).rejects.toSatisfy(hasPostgresCode('42501'));
   });
 
   it('skips a workspace lifecycle lock before grants while settings wait without holding the counter', async () => {

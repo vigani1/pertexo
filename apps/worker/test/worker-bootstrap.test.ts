@@ -36,13 +36,13 @@ const database: WorkspaceDatabase = {
     Promise.resolve({
       migrationHead: '0000_rls_probe.sql',
       postgresMajor: 18,
-      role: 'pertexo_worker',
+      role: 'pertexo_app',
     }),
   checkReadiness: () =>
     Promise.resolve({
       migrationHead: '0000_rls_probe.sql',
       postgresMajor: 18,
-      role: 'pertexo_worker',
+      role: 'pertexo_app',
     }),
   close: () => Promise.resolve(),
 };
@@ -72,22 +72,19 @@ const workerConfig = {
     workerId: 'worker-test',
   },
   database: {
-    connectionString:
-      'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+    connectionString: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 30_000,
     max: 5,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   dispatcherDatabase: {
     connectionString:
-      'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+      'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 30_000,
     max: 2,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   },
   nodeEnv: 'test' as const,
   connectionRunHealthMode: 'off' as const,
@@ -207,29 +204,6 @@ function dependencies(
 }
 
 describe('worker application bootstrap', () => {
-  it('fails readiness when the connection is not the configured worker role', async () => {
-    const wrongRoleDatabase: WorkspaceDatabase = {
-      ...database,
-      checkReadiness: () =>
-        Promise.resolve({
-          migrationHead: '0013_published_workflow_execution.sql',
-          postgresMajor: 18,
-          role: 'pertexo_api',
-        }),
-    };
-    const wrapped = new NestWorkspaceDatabase(
-      wrongRoleDatabase,
-      'pertexo_worker',
-    );
-
-    await expect(wrapped.checkReadiness()).rejects.toThrow(
-      'Worker database role is incompatible',
-    );
-    await expect(wrapped.checkCompatibility()).resolves.toMatchObject({
-      role: 'pertexo_worker',
-    });
-  });
-
   it('forwards workspace transaction identity and options without adding a transaction', async () => {
     const signal = new AbortController().signal;
     const options = { signal, statementTimeoutMillis: 1_234 } as const;
@@ -246,10 +220,7 @@ describe('worker application bootstrap', () => {
       expect(selectedOptions).toBe(options);
       return selectedOperation(undefined as unknown as WorkspaceTransaction);
     };
-    const wrapped = new NestWorkspaceDatabase(
-      { ...database, withWorkspace },
-      'pertexo_worker',
-    );
+    const wrapped = new NestWorkspaceDatabase({ ...database, withWorkspace });
 
     await expect(
       wrapped.withWorkspace(
@@ -276,10 +247,7 @@ describe('worker application bootstrap', () => {
       expect(options?.signal).toBe(controller.signal);
       return Promise.reject(failure);
     };
-    const wrapped = new NestWorkspaceDatabase(
-      { ...database, withWorkspace },
-      'pertexo_worker',
-    );
+    const wrapped = new NestWorkspaceDatabase({ ...database, withWorkspace });
 
     await expect(
       wrapped.withWorkspace('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', vi.fn(), {

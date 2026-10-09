@@ -16,7 +16,6 @@ const config = {
   idleTimeoutMillis: 1_000,
   max: 1,
   ownerRole: 'pertexo_owner' as const,
-  workerRuntimeRole: 'pertexo_worker' as const,
 };
 const catalogProjection = Object.freeze({
   domain: 'pertexo.node-compatibility-release',

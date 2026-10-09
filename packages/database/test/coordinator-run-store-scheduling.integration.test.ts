@@ -215,7 +215,6 @@ function createTestFailureNotificationStore(
     connectionString: deliveryConnectionUrl.toString(),
     max: 4,
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   });
   if (failure === undefined) {
     // This fixture qualifies repository checkout, not independent telemetry
@@ -606,7 +605,6 @@ describe('Coordinator scheduling and notification invariants', () => {
       connectionString: connectionUrl.toString(),
       max: 1,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     let resolveMetric!: (result: QueryResult<{ observed_at: Date }>) => void;
     const metric = new Promise<QueryResult<{ observed_at: Date }>>(
@@ -951,7 +949,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         connectionString: databaseUrl(workerBaseUrl),
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
     try {
@@ -979,7 +976,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         connectionString: databaseUrl(workerBaseUrl),
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
     try {
@@ -1066,7 +1062,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         connectionString: databaseUrl(workerBaseUrl),
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
     );
     try {
@@ -1135,7 +1130,6 @@ describe('Coordinator scheduling and notification invariants', () => {
         connectionString: databaseUrl(workerBaseUrl),
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       }),
       undefined,
       { workspaceInboxProducerEnabled: true },

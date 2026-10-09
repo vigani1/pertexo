@@ -61,7 +61,6 @@ describe('persisted Parallel output material', () => {
           connectionString: databaseUrl(workerBaseUrl),
           max: 1,
           ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
         }),
       );
       try {

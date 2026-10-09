@@ -7,7 +7,7 @@ const key = Buffer.from(
   Array.from({ length: 32 }, (_, index) => index),
 ).toString('base64');
 const baseEnvironment = {
-  DATABASE_API_URL: 'postgresql://pertexo_api:synthetic@localhost:5432/pertexo',
+  DATABASE_URL: 'postgresql://pertexo_app:synthetic@localhost:5432/pertexo',
 };
 
 describe('workflow organization cursor configuration', () => {

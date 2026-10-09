@@ -20,7 +20,7 @@ const adminUrl =
   'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_api', 'pertexo_worker'],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_app'],
   databaseName: `pertexo_test_pause_controls_${randomUUID().replaceAll('-', '')}`,
   ownerRole: 'pertexo_owner',
 });
@@ -31,12 +31,12 @@ const migrationUrl = url(
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
 );
 const apiUrl = url(
-  'DATABASE_API_URL',
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
+  'DATABASE_URL',
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
 );
 const workerUrl = url(
-  'DATABASE_WORKER_URL',
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo',
+  'DATABASE_URL',
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
 );
 let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
 let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
@@ -49,12 +49,8 @@ beforeAll(async () => {
   await migrateDatabase({
     connectionString: migrationUrl,
     ownerRole: 'pertexo_owner',
-    apiRuntimeRole: 'pertexo_api',
-    workerRuntimeRole: 'pertexo_worker',
-    dispatcherRole: 'pertexo_dispatcher',
+    appRole: 'pertexo_app',
     maintenanceRole: 'pertexo_maintenance',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
-    operatorRole: 'pertexo_operator',
   });
   identity = createIdentityWorkspaceDatabase(
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -453,7 +449,7 @@ describe('workflow auto pause operational controls', () => {
         `select app.workflow_auto_pause_control($1,$2,$3,'read','{}',null,null,null,null)`,
         [scope.workspaceId, scope.actorId, scope.workflowId],
       ),
-    ).rejects.toThrow(/permission denied/u);
+    ).rejects.toThrow('auto pause context denied');
     const client = await api.connect();
     try {
       for (const request of [

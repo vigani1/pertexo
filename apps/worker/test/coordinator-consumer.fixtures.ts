@@ -29,14 +29,14 @@ const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const dispatcherUrl =
-  process.env.DATABASE_DISPATCHER_URL ??
-  'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 const databaseName = `pertexo_test_retained_core_${randomUUID().replaceAll('-', '')}`;
@@ -119,7 +119,7 @@ async function createDatabase(): Promise<void> {
     databaseCreated = true;
     await pool.query(`revoke all on database "${databaseName}" from public`);
     await pool.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_app, pertexo_maintenance`,
     );
   } catch (error: unknown) {
     operationError = error;

@@ -40,11 +40,8 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_auth_${randomUUID().replaceAll('-', '')}`;
 
 function databaseUrl(base: string): string {
@@ -61,7 +58,6 @@ function required<T>(value: T | null | undefined): T {
 
 const migrationUrl = databaseUrl(migrationBaseUrl);
 const apiUrl = databaseUrl(apiBaseUrl);
-const workerUrl = databaseUrl(workerBaseUrl);
 const mail = new LocalAuthenticationMailSink();
 let runtime: BetterAuthRuntime;
 
@@ -71,20 +67,16 @@ beforeAll(async () => {
     await admin.query(`create database "${databaseName}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker`,
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_app`,
     );
   } finally {
     await admin.end();
   }
   await migrateDatabase({
-    apiRuntimeRole: 'pertexo_api',
+    appRole: 'pertexo_app',
     connectionString: migrationUrl,
-    dispatcherRole: 'pertexo_dispatcher',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
     maintenanceRole: 'pertexo_maintenance',
-    operatorRole: 'pertexo_operator',
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   });
   runtime = createBetterAuthRuntime({
     baseUrl: 'http://pertexo.test',
@@ -205,7 +197,6 @@ describe('Better Auth PostgreSQL cutover', () => {
         idleTimeoutMillis: 5_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       createOidcSecretEncryptionAdapter({
         current: {
@@ -919,7 +910,6 @@ describe('Better Auth PostgreSQL cutover', () => {
       idleTimeoutMillis: 5_000,
       max: 1,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     const owner = new Pool({ connectionString: databaseUrl(adminUrl), max: 1 });
     try {
@@ -988,7 +978,6 @@ describe('Better Auth PostgreSQL cutover', () => {
       idleTimeoutMillis: 5_000,
       max: 1,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     const durable = createBetterAuthRuntime({
       baseUrl: 'http://pertexo.test',
@@ -2220,18 +2209,9 @@ describe('Better Auth PostgreSQL cutover', () => {
     expect(await runtime.sessions.authenticate(cookie ?? '')).toBeUndefined();
   });
 
-  it('keeps authentication tables outside the worker runtime role', async () => {
-    const worker = new Pool({ connectionString: workerUrl, max: 1 });
+  it('withholds email proof digests and audit deletion from the app role', async () => {
     const api = new Pool({ connectionString: apiUrl, max: 1 });
     try {
-      await expect(
-        worker.query('select id from app.auth_sessions'),
-      ).rejects.toMatchObject({
-        code: '42501',
-      });
-      await expect(
-        worker.query('select id from app.auth_email_proofs'),
-      ).rejects.toMatchObject({ code: '42501' });
       await expect(
         api.query('select token_digest from app.auth_email_proofs'),
       ).rejects.toMatchObject({ code: '42501' });
@@ -2239,7 +2219,7 @@ describe('Better Auth PostgreSQL cutover', () => {
         api.query('delete from app.identity_security_audit_facts'),
       ).rejects.toMatchObject({ code: '42501' });
     } finally {
-      await Promise.all([worker.end(), api.end()]);
+      await api.end();
     }
   });
 });

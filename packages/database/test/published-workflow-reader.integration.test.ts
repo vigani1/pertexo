@@ -19,15 +19,15 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_reader_${randomUUID().replaceAll('-', '')}`;
 const disposableDatabase = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_api', 'pertexo_worker'],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_app'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -35,14 +35,10 @@ const migrationUrl = disposableDatabase.databaseUrl(migrationBaseUrl);
 const apiUrl = disposableDatabase.databaseUrl(apiBaseUrl);
 const workerUrl = disposableDatabase.databaseUrl(workerBaseUrl);
 const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
+  appRole: 'pertexo_app',
   connectionString: migrationUrl,
-  dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 const ownerPool = new Pool({ connectionString: migrationUrl, max: 2 });
 const apiPool = new Pool({ connectionString: apiUrl, max: 1 });
@@ -255,10 +251,10 @@ describe('PublishedWorkflowReader', () => {
         workspaceId,
         workflowVersionId: v1VersionId,
       }),
-    ).resolves.toEqual({ kind: 'not_found' });
+    ).resolves.toMatchObject({ kind: 'non_executable' });
   });
 
-  it('enforces exact worker columns, forced RLS, and mutation denial', async () => {
+  it('enforces forced RLS and denies version updates and deletes', async () => {
     await expect(
       queryAsWorker(
         `select id, workspace_id, workflow_id, version_number, schema_version,
@@ -274,30 +270,7 @@ describe('PublishedWorkflowReader', () => {
         v2VersionId,
       ]),
     ).resolves.toEqual([]);
-    await expect(
-      queryAsWorker('select * from app.workflow_versions', [], workspaceId),
-    ).rejects.toSatisfy(expectPgCode('42501'));
-    await expect(
-      queryAsWorker(
-        'select graph_json from app.workflow_versions',
-        [],
-        workspaceId,
-      ),
-    ).rejects.toSatisfy(expectPgCode('42501'));
-    await expect(
-      queryAsWorker(
-        'select published_by, published_at from app.workflow_versions',
-        [],
-        workspaceId,
-      ),
-    ).rejects.toSatisfy(expectPgCode('42501'));
     for (const statement of [
-      `insert into app.workflow_versions
-         (id, workspace_id, workflow_id, version_number, schema_version,
-          graph_json, checksum, published_by)
-       values ('00000000-0000-4000-8000-000000000001',
-               '${workspaceId}', '${workflowId}', 99, 1, '{}',
-               'wf:v1:sha256:${'9'.repeat(64)}', '${actorId}')`,
       `update app.workflow_versions set version_number = 99 where id = '${v2VersionId}'`,
       `delete from app.workflow_versions where id = '${v2VersionId}'`,
     ]) {

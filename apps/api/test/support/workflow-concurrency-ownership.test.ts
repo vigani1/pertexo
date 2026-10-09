@@ -1,15 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { verifyWorkflowConcurrencyOwnership } from './workflow-concurrency-ownership.js';
 
-const roleNames = [
-  'ADMIN',
-  'MIGRATION',
-  'API',
-  'WORKER',
-  'DISPATCHER',
-  'MAINTENANCE',
-  'LIFECYCLE_COMMAND',
-  'OPERATOR',
+const urlNames = [
+  'DATABASE_ADMIN_URL',
+  'DATABASE_MIGRATION_URL',
+  'DATABASE_URL',
+  'DATABASE_MAINTENANCE_URL',
 ] as const;
 const postgresId = 'a'.repeat(64),
   redisId = 'b'.repeat(64);
@@ -26,9 +22,8 @@ function fixture(selectedProject: string | null = 'pertexo-ci-1234-2-browser') {
     env.WORKFLOW_CONCURRENCY_COMPOSE_PROJECT = project;
     env.COMPOSE_PROJECT_NAME = project;
   }
-  for (const role of roleNames)
-    env[`DATABASE_${role}_URL`] =
-      `postgresql://runtime@localhost:${postgresPort}/fixture`;
+  for (const name of urlNames)
+    env[name] = `postgresql://runtime@localhost:${postgresPort}/fixture`;
   const containers = {
     postgres: {
       Id: postgresId,
@@ -143,24 +138,21 @@ describe('workflow concurrency ownership attestation', () => {
       expect(docker).not.toHaveBeenCalled();
     },
   );
-  it.each(roleNames)(
-    'requires explicit %s role URL before Docker',
-    async (role) => {
-      const { env, docker } = fixture();
-      env[`DATABASE_${role}_URL`] = undefined;
-      await expect(
-        verifyWorkflowConcurrencyOwnership(env, docker),
-      ).rejects.toThrow();
-      expect(docker).not.toHaveBeenCalled();
-    },
-  );
+  it.each(urlNames)('requires explicit %s before Docker', async (name) => {
+    const { env, docker } = fixture();
+    env[name] = undefined;
+    await expect(
+      verifyWorkflowConcurrencyOwnership(env, docker),
+    ).rejects.toThrow();
+    expect(docker).not.toHaveBeenCalled();
+  });
   it.each([
     'postgres://runtime@127.0.0.1:55441/fixture',
     'postgresql://runtime@remote.test:55441/fixture',
     'postgresql://runtime@127.0.0.1:5432/fixture',
   ])('rejects unowned role URL %s before Docker', async (url) => {
     const { env, docker } = fixture();
-    env.DATABASE_OPERATOR_URL = url;
+    env.DATABASE_MAINTENANCE_URL = url;
     await expect(
       verifyWorkflowConcurrencyOwnership(env, docker),
     ).rejects.toThrow();
@@ -257,8 +249,7 @@ describe('workflow concurrency ownership attestation', () => {
       if (reason === 'task-label')
         containers.postgres.Config.Labels['pertexo.task'] = 'other';
       if (reason === 'url-port')
-        env.DATABASE_WORKER_URL =
-          'postgresql://runtime@127.0.0.1:55441/fixture';
+        env.DATABASE_URL = 'postgresql://runtime@127.0.0.1:55441/fixture';
       await expect(
         verifyWorkflowConcurrencyOwnership(env, docker),
       ).rejects.toThrow();

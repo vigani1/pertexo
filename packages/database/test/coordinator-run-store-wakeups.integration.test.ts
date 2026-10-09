@@ -23,7 +23,6 @@ describe('Coordinator durable wakeup invariants', () => {
       connectionString: databaseUrl(workerBaseUrl),
       max: 1,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     const scannerA = createDeadlineWakeupScanner(config);
     const scannerB = createDeadlineWakeupScanner(config);

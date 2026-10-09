@@ -20,7 +20,7 @@ describe('integration gate configuration', () => {
         requested: true,
         required: {
           DATABASE_ADMIN_URL: undefined,
-          DATABASE_API_URL: 'postgresql://configured',
+          DATABASE_URL: 'postgresql://configured',
         },
       });
     }).toThrow(

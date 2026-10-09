@@ -23,7 +23,6 @@ const config = {
   idleTimeoutMillis: 2_000,
   max: 5,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 function lease() {

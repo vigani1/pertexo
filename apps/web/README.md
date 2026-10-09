@@ -82,8 +82,8 @@ disposable database, API and browser processes; its JSON report must contain one
 passing test and no skips. The ordinary API integration job and mirrored
 local-quality cohort exclude that browser-only file. To run it locally, install
 Chromium, build with `pnpm --filter @pertexo/api... build`, provide isolated
-`DATABASE_ADMIN_URL`, `DATABASE_MIGRATION_URL`, `DATABASE_API_URL` and
-`REDIS_URL`, then run
+`DATABASE_ADMIN_URL`, `DATABASE_MIGRATION_URL`, `DATABASE_URL` and `REDIS_URL`,
+then run
 `USAGE_BROWSER_INTEGRATION=true pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts test/usage-browser.integration.test.ts`.
 
 Root build/typecheck/lint/test commands include this workspace. CI runs both its

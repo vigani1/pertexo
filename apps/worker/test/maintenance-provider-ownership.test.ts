@@ -16,10 +16,9 @@ function config(jobNames: string = JOB_NAME.deliverRunFailureNotification) {
   return parseWorkerConfig({
     CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
     CONNECTION_KMS_REGION: 'eu-central-1',
-    DATABASE_DISPATCHER_URL:
-      'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-    DATABASE_WORKER_URL:
-      'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+    DATABASE_MAINTENANCE_URL:
+      'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+    DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     OUTBOX_DISPATCH_JOB_NAMES: jobNames,
     OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS: '100',
     REDIS_URL: 'redis://localhost:6379/0',
@@ -176,10 +175,9 @@ describe('preview maintenance provider ownership', () => {
   it('rejects incomplete notification composition before acquiring resources', async () => {
     const selected = ownedFactories({});
     const withoutEncryption = parseWorkerConfig({
-      DATABASE_DISPATCHER_URL:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-      DATABASE_WORKER_URL:
-        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
       OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.deliverRunFailureNotification,
       REDIS_URL: 'redis://localhost:6379/0',
     });

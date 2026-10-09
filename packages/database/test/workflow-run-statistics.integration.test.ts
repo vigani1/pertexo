@@ -28,7 +28,7 @@ const statisticsDatabaseName = `pertexo_test_run_statistics_${randomUUID().slice
 const statisticsDatabase = createDisposableDatabaseFixture({
   databaseName: statisticsDatabaseName,
   ownerRole: 'pertexo_owner',
-  connectRoles: ['pertexo_migration', 'pertexo_api'],
+  connectRoles: ['pertexo_migration', 'pertexo_app'],
   adminUrl: superuserUrl,
 });
 const ownerUrl = statisticsDatabase.databaseUrl(
@@ -36,8 +36,8 @@ const ownerUrl = statisticsDatabase.databaseUrl(
     'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
 );
 const runtimeUrl = statisticsDatabase.databaseUrl(
-  process.env.DATABASE_API_URL ??
-    'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
+  process.env.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
 );
 const ownerPool = new Pool({ connectionString: ownerUrl, max: 1 });
 const runtimePool = new Pool({ connectionString: runtimeUrl, max: 1 });
@@ -165,12 +165,8 @@ beforeAll(async () => {
     await migrateDatabase({
       connectionString: ownerUrl,
       ownerRole: 'pertexo_owner',
-      apiRuntimeRole: 'pertexo_api',
-      workerRuntimeRole: 'pertexo_worker',
-      dispatcherRole: 'pertexo_dispatcher',
+      appRole: 'pertexo_app',
       maintenanceRole: 'pertexo_maintenance',
-      lifecycleCommandRole: 'pertexo_lifecycle_command',
-      operatorRole: 'pertexo_operator',
     });
   } catch (error: unknown) {
     await statisticsDatabase.drop().catch(() => undefined);
@@ -271,13 +267,9 @@ describe('ADR 057 current capacity authority', () => {
       migrationHead: '0000_baseline.sql',
     });
     const grants = await runtimePool.query(`select
-      has_function_privilege('pertexo_api','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as api,
-      has_function_privilege('pertexo_worker','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as worker,
-      has_function_privilege('pertexo_dispatcher','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as dispatcher,
-      has_function_privilege('pertexo_operator','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as operator`);
-    expect(grants.rows).toEqual([
-      { api: true, worker: false, dispatcher: false, operator: false },
-    ]);
+      has_function_privilege('pertexo_app','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as app,
+      has_function_privilege('pertexo_maintenance','app.workspace_reserved_active_slot_count(uuid)','EXECUTE') as maintenance`);
+    expect(grants.rows).toEqual([{ app: true, maintenance: false }]);
   });
 
   it('counts active reservations without double counting queued runs or other tenants', async () => {

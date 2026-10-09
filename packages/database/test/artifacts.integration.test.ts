@@ -28,23 +28,15 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_artifacts_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: [
-    'pertexo_migration',
-    'pertexo_api',
-    'pertexo_worker',
-    'pertexo_dispatcher',
-    'pertexo_maintenance',
-    'pertexo_lifecycle_command',
-    'pertexo_operator',
-  ],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -55,14 +47,10 @@ let database!: ReturnType<typeof createWorkspaceDatabase>;
 let databaseCreated = false;
 let databaseAcquired = false;
 const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
+  appRole: 'pertexo_app',
   connectionString: migrationUrl,
-  dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 let workspaceA = randomUUID();
@@ -182,14 +170,14 @@ describe('artifact metadata lifecycle', () => {
         select
           table_class.relrowsecurity,
           table_class.relforcerowsecurity,
-          has_table_privilege('pertexo_api', table_class.oid, 'DELETE') as api_delete,
-          has_table_privilege('pertexo_api', table_class.oid, 'TRUNCATE') as api_truncate,
-          has_table_privilege('pertexo_api', table_class.oid, 'UPDATE') as api_update,
-          has_column_privilege('pertexo_api', table_class.oid, 'status', 'UPDATE') as api_update_status,
-          has_table_privilege('pertexo_worker', table_class.oid, 'DELETE') as worker_delete,
-          has_table_privilege('pertexo_worker', table_class.oid, 'TRUNCATE') as worker_truncate,
-          has_table_privilege('pertexo_worker', table_class.oid, 'UPDATE') as worker_update,
-          has_column_privilege('pertexo_worker', table_class.oid, 'status', 'UPDATE') as worker_update_status
+          has_table_privilege('pertexo_app', table_class.oid, 'DELETE') as api_delete,
+          has_table_privilege('pertexo_app', table_class.oid, 'TRUNCATE') as api_truncate,
+          has_table_privilege('pertexo_app', table_class.oid, 'UPDATE') as api_update,
+          has_column_privilege('pertexo_app', table_class.oid, 'status', 'UPDATE') as api_update_status,
+          has_table_privilege('pertexo_app', table_class.oid, 'DELETE') as worker_delete,
+          has_table_privilege('pertexo_app', table_class.oid, 'TRUNCATE') as worker_truncate,
+          has_table_privilege('pertexo_app', table_class.oid, 'UPDATE') as worker_update,
+          has_column_privilege('pertexo_app', table_class.oid, 'status', 'UPDATE') as worker_update_status
         from pg_class table_class
         where table_class.oid = 'app.artifacts'::regclass
       `);

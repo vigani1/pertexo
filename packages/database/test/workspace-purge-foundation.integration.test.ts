@@ -26,18 +26,14 @@ const maintenanceUrl = withDatabase(
     'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 const operatorUrl = withDatabase(
-  process.env.DATABASE_OPERATOR_URL ??
-    'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo',
+  process.env.DATABASE_MAINTENANCE_URL ??
+    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 const migrationConfig = {
   connectionString: databaseUrl,
   ownerRole: 'pertexo_owner',
-  apiRuntimeRole: 'pertexo_api',
-  workerRuntimeRole: 'pertexo_worker',
-  dispatcherRole: 'pertexo_dispatcher',
+  appRole: 'pertexo_app',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
 } as const;
 let maintenance: Pool | undefined;
 let owner: Pool | undefined;
@@ -134,8 +130,8 @@ beforeAll(async () => {
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
       `grant connect on database "${databaseName}" to pertexo_migration,
-       pertexo_maintenance,pertexo_api,pertexo_worker,pertexo_dispatcher,
-       pertexo_lifecycle_command,pertexo_operator`,
+       pertexo_maintenance,pertexo_app,pertexo_app,pertexo_maintenance,
+       pertexo_maintenance,pertexo_maintenance`,
     );
   } finally {
     await admin.end();
@@ -176,7 +172,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       objectStore,
       coordinatorOptions,
@@ -188,7 +183,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       objectStore,
       { ...coordinatorOptions, leaseOwner: 'purge-integration-b' },
@@ -266,7 +260,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       objectStore,
       options,
@@ -278,7 +271,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       objectStore,
       { ...options, leaseOwner: 'purge-stale-step-b' },
@@ -427,7 +419,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       objectStore,
       {
@@ -1151,7 +1142,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       objectStore,
       {
@@ -1208,7 +1198,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       objectStore,
       {
@@ -1265,7 +1254,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       new MemoryObjectPurgeStore(),
       {
@@ -1332,7 +1320,6 @@ describe('workspace purge foundation', () => {
         idleTimeoutMillis: 1_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       new MemoryObjectPurgeStore(),
       {

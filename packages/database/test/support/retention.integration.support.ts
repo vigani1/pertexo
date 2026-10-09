@@ -68,12 +68,12 @@ export const maintenanceUrl = withDatabase(
     'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 export const apiUrl = withDatabase(
-  process.env.DATABASE_API_URL ??
-    'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
+  process.env.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
 );
 export const operatorUrl = withDatabase(
-  process.env.DATABASE_OPERATOR_URL ??
-    'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo',
+  process.env.DATABASE_MAINTENANCE_URL ??
+    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 export const workspaceId = randomUUID();
 export const userId = randomUUID();
@@ -94,15 +94,7 @@ let operatorCreated = false;
 let ownerCreated = false;
 const disposable = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: [
-    'pertexo_migration',
-    'pertexo_maintenance',
-    'pertexo_api',
-    'pertexo_worker',
-    'pertexo_dispatcher',
-    'pertexo_lifecycle_command',
-    'pertexo_operator',
-  ],
+  connectRoles: ['pertexo_migration', 'pertexo_maintenance', 'pertexo_app'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -113,14 +105,10 @@ beforeAll(async () => {
       await disposable.create();
       databaseCreated = true;
       await migrateDatabase({
-        apiRuntimeRole: 'pertexo_api',
+        appRole: 'pertexo_app',
         connectionString: migrationUrl,
-        dispatcherRole: 'pertexo_dispatcher',
-        lifecycleCommandRole: 'pertexo_lifecycle_command',
-        operatorRole: 'pertexo_operator',
         maintenanceRole: 'pertexo_maintenance',
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       });
     }
     retention = createRetentionDatabase(

@@ -118,13 +118,13 @@ describe('compiled API main process', () => {
     async () => {
       const result = await runChild(entrypointPath, {
         ...process.env,
-        DATABASE_API_URL: '',
+        DATABASE_URL: '',
       });
 
       expect(result).toMatchObject({ code: 1, signal: null });
       expect(result.output).toContain('"event":"api.process_failed"');
       expect(result.output).toContain('"errorType":"Error"');
-      expect(result.output).not.toContain('DATABASE_API_URL');
+      expect(result.output).not.toContain('DATABASE_URL');
     },
     PROCESS_TEST_TIMEOUT_MILLIS,
   );

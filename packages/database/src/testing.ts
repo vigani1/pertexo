@@ -11,7 +11,6 @@ export * from './triggers/testing.js';
 export {
   parseDatabaseConfig,
   parseMaintenanceDatabaseConfig,
-  parseLifecycleCommandDatabaseConfig,
   parseMigrationConfig,
   parseOperatorDatabaseConfig,
   parseOutboxDispatcherConfig,

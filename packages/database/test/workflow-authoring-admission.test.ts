@@ -147,7 +147,6 @@ describe('snapshot validation and publication ordering', () => {
       idleTimeoutMillis: 1000,
       max: 1,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     } as const;
     const database = createWorkflowAuthoringDatabase(config);
     const connect = vi
@@ -175,7 +174,6 @@ describe('snapshot validation and publication ordering', () => {
       idleTimeoutMillis: 1000,
       max: 1,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     } as const;
     let transaction = false;
     let finishRollback: () => void = () => {

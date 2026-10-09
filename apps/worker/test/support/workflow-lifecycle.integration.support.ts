@@ -43,10 +43,9 @@ import {
 import { createRedisTestNamespace } from './redis-test-namespace.js';
 
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
-const apiRole = process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api';
-const workerRole = process.env.POSTGRES_WORKER_RUNTIME_USER ?? 'pertexo_worker';
-const dispatcherRole =
-  process.env.POSTGRES_DISPATCHER_RUNTIME_USER ?? 'pertexo_dispatcher';
+const appRole = process.env.POSTGRES_APP_USER ?? 'pertexo_app';
+const maintenanceRole =
+  process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance';
 const migrationRole =
   process.env.POSTGRES_MIGRATION_USER ?? 'pertexo_migration';
 const adminUrl =
@@ -56,14 +55,14 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const dispatcherBaseUrl =
-  process.env.DATABASE_DISPATCHER_URL ??
-  'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 
@@ -659,9 +658,8 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
         await admin.query(
           `grant connect on database ${quoteIdentifier(databaseName)} to ${[
             migrationRole,
-            apiRole,
-            workerRole,
-            dispatcherRole,
+            appRole,
+            maintenanceRole,
           ]
             .map(quoteIdentifier)
             .join(',')}`,
@@ -690,15 +688,8 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       await migrateDatabase({
         connectionString: migrationUrl,
         ownerRole,
-        apiRuntimeRole: apiRole,
-        workerRuntimeRole: workerRole,
-        dispatcherRole,
-        maintenanceRole:
-          process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
-        lifecycleCommandRole:
-          process.env.POSTGRES_LIFECYCLE_COMMAND_USER ??
-          'pertexo_lifecycle_command',
-        operatorRole: process.env.POSTGRES_OPERATOR_USER ?? 'pertexo_operator',
+        appRole,
+        maintenanceRole,
       });
 
       owner = registerResource(

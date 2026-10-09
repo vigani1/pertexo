@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   parseDatabaseConfig,
-  parseLifecycleCommandDatabaseConfig,
   parseMaintenanceDatabaseConfig,
   parseMigrationConfig,
   parseOperatorDatabaseConfig,
@@ -22,7 +21,6 @@ describe('database configuration', () => {
       idleTimeoutMillis: 30_000,
       max: 10,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     expect(Object.isFrozen(config)).toBe(true);
   });
@@ -45,7 +43,6 @@ describe('database configuration', () => {
     { max: 101 },
     { ownerRole: 'invalid-role' },
     { ownerRole: '1invalid' },
-    { workerRuntimeRole: 'invalid role' },
   ])('rejects invalid direct runtime boundary %#', (override) => {
     expect(() =>
       parseDatabaseConfig({
@@ -65,7 +62,6 @@ describe('database configuration', () => {
     ['DATABASE_MAINTENANCE_POOL_MAX', '0'],
     ['DATABASE_MAINTENANCE_POOL_MAX', '11'],
     ['POSTGRES_OWNER_USER', 'invalid-role'],
-    ['POSTGRES_WORKER_RUNTIME_USER', 'invalid role'],
   ] as const)('rejects invalid maintenance environment %s=%s', (key, value) => {
     expect(() =>
       parseMaintenanceDatabaseConfig({
@@ -81,36 +77,25 @@ describe('database configuration', () => {
       parseMigrationConfig({
         DATABASE_MIGRATION_URL:
           'postgresql://pertexo_migration:secret@localhost:5432/pertexo',
-        POSTGRES_API_RUNTIME_USER: 'api_role',
-        POSTGRES_DISPATCHER_RUNTIME_USER: 'dispatcher_role',
+        POSTGRES_APP_USER: 'app_role',
         POSTGRES_MAINTENANCE_USER: 'maintenance_role',
-        POSTGRES_OPERATOR_USER: 'operator_role',
-        POSTGRES_LIFECYCLE_COMMAND_USER: 'lifecycle_role',
         POSTGRES_OWNER_USER: 'pertexo_owner',
-        POSTGRES_WORKER_RUNTIME_USER: 'worker_role',
       }),
     ).toEqual({
-      apiRuntimeRole: 'api_role',
+      appRole: 'app_role',
       connectionString:
         'postgresql://pertexo_migration:secret@localhost:5432/pertexo',
-      dispatcherRole: 'dispatcher_role',
       maintenanceRole: 'maintenance_role',
-      lifecycleCommandRole: 'lifecycle_role',
-      operatorRole: 'operator_role',
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'worker_role',
     });
   });
 
   it.each([
     ['DATABASE_MIGRATION_URL', 'https://example.test/pertexo'],
-    ['POSTGRES_API_RUNTIME_USER', 'invalid-role'],
-    ['POSTGRES_DISPATCHER_RUNTIME_USER', 'invalid role'],
+    ['POSTGRES_APP_USER', 'invalid-role'],
+    ['POSTGRES_MAINTENANCE_USER', 'invalid role'],
     ['POSTGRES_MAINTENANCE_USER', '1maintenance'],
-    ['POSTGRES_OPERATOR_USER', 'operator-role'],
-    ['POSTGRES_LIFECYCLE_COMMAND_USER', 'lifecycle role'],
     ['POSTGRES_OWNER_USER', 'owner-role'],
-    ['POSTGRES_WORKER_RUNTIME_USER', 'worker-role'],
   ] as const)('rejects invalid migration environment %s=%s', (key, value) => {
     expect(() =>
       parseMigrationConfig({
@@ -134,59 +119,38 @@ describe('database configuration', () => {
       idleTimeoutMillis: 30_000,
       max: 2,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
   });
 
-  it('parses a dedicated lifecycle command pool', () => {
-    expect(
-      parseLifecycleCommandDatabaseConfig({
-        DATABASE_LIFECYCLE_COMMAND_URL:
-          'postgresql://pertexo_lifecycle_command:secret@localhost:5432/pertexo',
-      }),
-    ).toEqual({
-      connectionString:
-        'postgresql://pertexo_lifecycle_command:secret@localhost:5432/pertexo',
-      connectionTimeoutMillis: 5_000,
-      idleTimeoutMillis: 30_000,
-      max: 2,
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    });
-  });
-
-  it('parses a one-connection operator-only pool', () => {
+  it('parses a one-connection ops pool on the maintenance login', () => {
     expect(
       parseOperatorDatabaseConfig({
-        DATABASE_OPERATOR_URL:
-          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       }),
     ).toEqual({
       connectionString:
-        'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
       max: 1,
-      operatorRole: 'pertexo_operator',
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
   });
 
-  it('parses a conservative dispatcher-only pool', () => {
+  it('parses a conservative dispatcher pool on the maintenance login', () => {
     expect(
       parseOutboxDispatcherConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       }),
     ).toEqual({
       connectionString:
-        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
       max: 2,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
   });
 
@@ -194,7 +158,7 @@ describe('database configuration', () => {
     [
       'dispatcher',
       parseOutboxDispatcherConfig,
-      'DATABASE_DISPATCHER_URL',
+      'DATABASE_MAINTENANCE_URL',
       'DATABASE_DISPATCHER_POOL_MAX',
     ],
     [
@@ -203,14 +167,8 @@ describe('database configuration', () => {
       'DATABASE_MAINTENANCE_URL',
       'DATABASE_MAINTENANCE_POOL_MAX',
     ],
-    [
-      'lifecycle command',
-      parseLifecycleCommandDatabaseConfig,
-      'DATABASE_LIFECYCLE_COMMAND_URL',
-      'DATABASE_LIFECYCLE_COMMAND_POOL_MAX',
-    ],
   ] as const)(
-    'preserves shared pool boundaries for the %s role',
+    'preserves shared pool settings for the %s pool',
     (_name, parser, urlKey, poolKey) => {
       const environment = {
         [urlKey]: 'postgresql://runtime:secret@localhost:5432/pertexo',

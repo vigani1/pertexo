@@ -24,9 +24,7 @@ import {
 const roles = {
   DATABASE_ADMIN_URL: 'postgres',
   DATABASE_MIGRATION_URL: 'pertexo_migration',
-  DATABASE_API_URL: 'pertexo_api',
-  DATABASE_WORKER_URL: 'pertexo_worker',
-  DATABASE_DISPATCHER_URL: 'pertexo_dispatcher',
+  DATABASE_URL: 'pertexo_app',
   DATABASE_MAINTENANCE_URL: 'pertexo_maintenance',
 } as const;
 
@@ -126,14 +124,12 @@ export async function createOrganizationOwnedFixture() {
       return value;
     }
     const owner = pool(attestation.urls.DATABASE_ADMIN_URL);
-    const api = pool(attestation.urls.DATABASE_API_URL);
-    const worker = pool(attestation.urls.DATABASE_WORKER_URL);
-    const dispatcher = pool(attestation.urls.DATABASE_DISPATCHER_URL);
+    const api = pool(attestation.urls.DATABASE_URL);
+    const worker = pool(attestation.urls.DATABASE_URL);
+    const dispatcher = pool(attestation.urls.DATABASE_MAINTENANCE_URL);
     const maintenance = pool(attestation.urls.DATABASE_MAINTENANCE_URL);
     const config = parseDatabaseConfig({
-      connectionString: disposable.databaseUrl(
-        attestation.urls.DATABASE_API_URL,
-      ),
+      connectionString: disposable.databaseUrl(attestation.urls.DATABASE_URL),
       max: 4,
     });
     const identity = createIdentityWorkspaceDatabase(config);

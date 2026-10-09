@@ -19,11 +19,11 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_rls_${randomUUID().replaceAll('-', '')}`;
 const inheritedRole = `pertexo_test_inherited_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
@@ -31,8 +31,7 @@ const fixture = createDisposableDatabaseFixture({
   connectRoles: [
     new URL(adminUrl).username,
     'pertexo_migration',
-    'pertexo_api',
-    'pertexo_worker',
+    'pertexo_app',
   ],
   databaseName,
   ownerRole: 'pertexo_owner',
@@ -54,14 +53,10 @@ let database: WorkspaceDatabase;
 let ownerPool: Pool;
 
 const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
+  appRole: 'pertexo_app',
   connectionString: migrationUrl,
-  dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 function expectPgCode(code: string): (error: unknown) => boolean {
@@ -486,7 +481,7 @@ describe('database compatibility and readiness', () => {
     await expect(database.checkReadiness()).resolves.toEqual({
       migrationHead: '0000_baseline.sql',
       postgresMajor: 18,
-      role: 'pertexo_api',
+      role: 'pertexo_app',
     });
   });
 

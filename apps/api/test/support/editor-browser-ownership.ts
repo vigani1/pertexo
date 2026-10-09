@@ -42,9 +42,8 @@ export async function verifyEditorBrowserOwnership(
   for (const name of [
     'DATABASE_ADMIN_URL',
     'DATABASE_MIGRATION_URL',
-    'DATABASE_API_URL',
-    'DATABASE_WORKER_URL',
-    'DATABASE_DISPATCHER_URL',
+    'DATABASE_URL',
+    'DATABASE_MAINTENANCE_URL',
   ] as const) {
     const configured = env[name];
     if (configured === undefined)

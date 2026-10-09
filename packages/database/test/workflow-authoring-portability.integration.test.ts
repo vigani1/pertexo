@@ -1171,7 +1171,7 @@ describe('portable workflow persistence under the API role', () => {
   });
 
   it('qualifies the API-only creator and rejects SQL-level graph substitution under an exact claim', async () => {
-    expect((await checkDatabaseReadiness(apiPool)).role).toBe('pertexo_api');
+    expect((await checkDatabaseReadiness(apiPool)).role).toBe('pertexo_app');
     const db = database({
       testHooks: {
         afterImportStep: (step) =>

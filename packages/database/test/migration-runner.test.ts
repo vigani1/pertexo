@@ -24,13 +24,9 @@ vi.mock('pg', () => ({
 
 const config: MigrationConfig = {
   connectionString: 'postgresql://migration@example.test/database',
-  apiRuntimeRole: 'api',
-  dispatcherRole: 'dispatcher',
+  appRole: 'api',
   maintenanceRole: 'maintenance',
-  lifecycleCommandRole: 'lifecycle',
-  operatorRole: 'operator',
   ownerRole: 'owner',
-  workerRuntimeRole: 'worker',
 };
 const temporaryDirectories = new Set<string>();
 

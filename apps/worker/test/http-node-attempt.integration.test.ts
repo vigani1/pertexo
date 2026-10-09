@@ -2748,7 +2748,7 @@ describeIntegration('active HTTP node attempt', () => {
         operator = createOperatorCommandDatabase(
           parseOperatorDatabaseConfig({
             ...process.env,
-            DATABASE_OPERATOR_URL: databaseUrl(operatorUrl),
+            DATABASE_MAINTENANCE_URL: databaseUrl(operatorUrl),
           }),
         );
         replayStore = createDatabaseOperatorRunReplayStore(

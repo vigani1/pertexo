@@ -17,22 +17,16 @@ import {
   workspaceB,
   ConnectionNotFoundError,
   createHash,
-  workerBaseUrl,
-  pgCode,
 } from './support/connections.integration.support.js';
 
 const connections = registerCurrentConnectionsFixture();
 
 describe('authorized published connection usage', () => {
-  it('rechecks source-bound active membership and rejects worker reads', async () => {
+  it('rechecks source-bound active membership', async () => {
     const input = createInput();
     await connections.api.createConnection(input);
     const apiPool = new Pool({
       connectionString: databaseUrl(apiBaseUrl),
-      max: 1,
-    });
-    const workerPool = new Pool({
-      connectionString: databaseUrl(workerBaseUrl),
       max: 1,
     });
     const ownerPool = new Pool({
@@ -41,13 +35,6 @@ describe('authorized published connection usage', () => {
     });
     try {
       const usage = createConnectionUsagePersistence(apiPool);
-      await expect(
-        createConnectionUsagePersistence(workerPool).listConnectionUsage({
-          workspaceId: workspaceA,
-          actorId: ownerA,
-          connectionId: input.connectionId,
-        }),
-      ).rejects.toSatisfy(pgCode('42501'));
       const owner = await ownerPool.connect();
       try {
         await owner.query('begin');
@@ -83,7 +70,6 @@ describe('authorized published connection usage', () => {
       }
     } finally {
       await apiPool.end();
-      await workerPool.end();
       await ownerPool.end();
     }
   });

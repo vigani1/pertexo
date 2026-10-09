@@ -572,7 +572,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       checkDatabaseReadiness(schedule.worker),
     ).resolves.toMatchObject({
       migrationHead: '0000_baseline.sql',
-      role: 'pertexo_worker',
+      role: 'pertexo_app',
     });
     const crashed = await schedule.worker.query<{ trigger_id: string }>(
       'select * from app.claim_due_trigger_schedules($1,1,1)',

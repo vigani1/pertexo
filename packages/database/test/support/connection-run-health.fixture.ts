@@ -431,8 +431,8 @@ export function createHealthDispatcher() {
   return createOutboxDispatcherDatabase(
     parseDatabaseConfig({
       connectionString: databaseUrl(
-        process.env.DATABASE_DISPATCHER_URL ??
-          'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo',
+        process.env.DATABASE_MAINTENANCE_URL ??
+          'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
       ),
     }),
   );

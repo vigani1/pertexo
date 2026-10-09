@@ -22,13 +22,13 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const databaseName = `pertexo_test_runtime_${randomUUID().replaceAll('-', '')}`;
 const applicationName = `runtime-${randomUUID()}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_api'],
+  connectRoles: ['pertexo_migration', 'pertexo_app'],
   databaseName,
   ownerRole: 'pertexo_owner',
 });
@@ -66,12 +66,8 @@ beforeAll(async () => {
   await migrateDatabase({
     connectionString: databaseUrl(migrationBaseUrl),
     ownerRole: 'pertexo_owner',
-    apiRuntimeRole: 'pertexo_api',
-    workerRuntimeRole: 'pertexo_worker',
-    dispatcherRole: 'pertexo_dispatcher',
+    appRole: 'pertexo_app',
     maintenanceRole: 'pertexo_maintenance',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
-    operatorRole: 'pertexo_operator',
   });
 }, 60_000);
 
@@ -100,7 +96,6 @@ describe('database process runtime integration', () => {
       connectionString: databaseUrl(apiBaseUrl, true),
       max: 2,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     const runtime = createDatabaseRuntime(config, { role: 'api' });
     const lease = acquireDatabasePool(config, runtime);
@@ -137,7 +132,6 @@ describe('database process runtime integration', () => {
       connectionString: databaseUrl(apiBaseUrl, true),
       max: 5,
       ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
     });
     const runtime = createDatabaseRuntime(config, { role: 'api' });
     const lease = acquireDatabasePool(config, runtime);

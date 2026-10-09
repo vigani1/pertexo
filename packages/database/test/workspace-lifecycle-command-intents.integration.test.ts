@@ -14,11 +14,11 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+  process.env.DATABASE_URL ??
+  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 const lifecycleBaseUrl =
-  process.env.DATABASE_LIFECYCLE_COMMAND_URL ??
-  'postgresql://pertexo_lifecycle_command:pertexo-local-lifecycle-command@localhost:5432/pertexo';
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const databaseName = `pertexo_test_lifecycle_intents_${randomUUID().replaceAll('-', '')}`;
 const withDatabase = (baseUrl: string) => {
   const url = new URL(baseUrl);
@@ -75,21 +75,17 @@ beforeAll(async () => {
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
       `grant connect on database "${databaseName}" to pertexo_migration,
-       pertexo_api,pertexo_worker,pertexo_dispatcher,pertexo_maintenance,
-       pertexo_lifecycle_command`,
+       pertexo_app,pertexo_app,pertexo_maintenance,pertexo_maintenance,
+       pertexo_maintenance`,
     );
   } finally {
     await admin.end();
   }
   await migrateDatabase({
-    apiRuntimeRole: 'pertexo_api',
+    appRole: 'pertexo_app',
     connectionString: migrationUrl,
-    dispatcherRole: 'pertexo_dispatcher',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
-    operatorRole: 'pertexo_operator',
     maintenanceRole: 'pertexo_maintenance',
     ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
   });
   const owner = new Pool({ connectionString: migrationUrl, max: 1 });
   try {
@@ -611,7 +607,6 @@ describe('workspace lifecycle command intents', () => {
         idleTimeoutMillis: 30_000,
         max: 2,
         ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
       },
       {
         leaseDurationMs: 60_000,

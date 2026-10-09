@@ -10,18 +10,13 @@ function fixture() {
     REDIS_PORT: '56385',
     REDIS_URL: 'redis://127.0.0.1:56385/13',
   };
-  for (const role of [
-    'ADMIN',
-    'MIGRATION',
-    'API',
-    'WORKER',
-    'DISPATCHER',
-    'MAINTENANCE',
-    'OPERATOR',
-    'LIFECYCLE_COMMAND',
+  for (const name of [
+    'DATABASE_ADMIN_URL',
+    'DATABASE_MIGRATION_URL',
+    'DATABASE_URL',
+    'DATABASE_MAINTENANCE_URL',
   ])
-    env[`DATABASE_${role}_URL`] =
-      'postgresql://runtime@127.0.0.1:55442/postgres';
+    env[name] = 'postgresql://runtime@127.0.0.1:55442/postgres';
   const read = vi.fn((args: readonly string[]) => {
     if (args[0] === 'compose')
       return Promise.resolve(
@@ -66,7 +61,7 @@ describe('connection health ownership preflight', () => {
       if (reason === 'selector') delete env.CONNECTION_HEALTH_COMPOSE_PROJECT;
       if (reason === 'project') env.COMPOSE_PROJECT_NAME = 'pertexo';
       if (reason === 'port') env.POSTGRES_PORT = '0';
-      if (reason === 'role') delete env.DATABASE_OPERATOR_URL;
+      if (reason === 'role') delete env.DATABASE_MAINTENANCE_URL;
       await expect(
         verifyConnectionHealthOwnership(env, read),
       ).rejects.toThrow();

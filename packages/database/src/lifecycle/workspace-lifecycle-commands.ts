@@ -150,12 +150,15 @@ export function createWorkspaceLifecycleCommandCoordinator(
       'Workspace lifecycle coordination requires a database pool of at least 2 connections',
     );
   const options = optionsSchema.parse(input);
-  const pool = createDatabasePool({
-    connectionString: config.connectionString,
-    connectionTimeoutMillis: config.connectionTimeoutMillis,
-    idleTimeoutMillis: config.idleTimeoutMillis,
-    max: config.max,
-  });
+  const pool = createDatabasePool(
+    {
+      connectionString: config.connectionString,
+      connectionTimeoutMillis: config.connectionTimeoutMillis,
+      idleTimeoutMillis: config.idleTimeoutMillis,
+      max: config.max,
+    },
+    { role: 'maintenance' },
+  );
   const transactionOptions = {
     lockTimeoutMs: options.lockTimeoutMs,
     statementTimeoutMs: options.statementTimeoutMs,

@@ -16,8 +16,8 @@ const ids = {
 
 function validOutboxEnvironment(): Record<string, string | undefined> {
   return {
-    DATABASE_OPERATOR_URL:
-      'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+    DATABASE_MAINTENANCE_URL:
+      'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
     NODE_ENV: 'test',
     OPERATOR_ACTOR_REF: 'ci-test-operator',
     OPERATOR_COMMAND_ID: ids.command,
@@ -35,8 +35,8 @@ describe('operator command config', () => {
     const outboxEventId = randomUUID();
     const workspaceId = randomUUID();
     const config = parseOperatorCommandConfig({
-      DATABASE_OPERATOR_URL:
-        'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       NODE_ENV: 'test',
       OPERATOR_ACTOR_REF: 'ci-test-operator',
       OPERATOR_COMMAND_ID: commandId,
@@ -62,8 +62,8 @@ describe('operator command config', () => {
   it('rejects an implicit or unbounded operator invocation', () => {
     expect(() =>
       parseOperatorCommandConfig({
-        DATABASE_OPERATOR_URL:
-          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
       }),
     ).toThrow();
   });
@@ -72,8 +72,8 @@ describe('operator command config', () => {
     const commandId = randomUUID();
     expect(
       parseOperatorCommandConfig({
-        DATABASE_OPERATOR_URL:
-          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
         OPERATOR_ACTOR_REF: 'ci-test-operator',
         OPERATOR_COMMAND_ID: commandId,
         OPERATOR_COMMAND_TYPE: 'operator.status',
@@ -95,8 +95,8 @@ describe('operator command config', () => {
     const workspaceId = randomUUID();
     expect(
       parseOperatorCommandConfig({
-        DATABASE_OPERATOR_URL:
-          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
         OPERATOR_ACTOR_REF: 'ci-test-operator',
         OPERATOR_ATTEMPT_ACTION: 'reclaim',
         OPERATOR_ATTEMPT_ID: attemptId,
@@ -126,8 +126,8 @@ describe('operator command config', () => {
     const workspaceId = randomUUID();
     expect(
       parseOperatorCommandConfig({
-        DATABASE_OPERATOR_URL:
-          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
         OPERATOR_ACTOR_REF: 'ci-test-operator',
         OPERATOR_COMMAND_ID: commandId,
         OPERATOR_COMMAND_TYPE: 'trigger.reconcile',
@@ -154,8 +154,8 @@ describe('operator command config', () => {
     const workspaceId = randomUUID();
     expect(
       parseOperatorCommandConfig({
-        DATABASE_OPERATOR_URL:
-          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
         OPERATOR_ACTOR_REF: 'ci-test-operator',
         OPERATOR_COMMAND_ID: commandId,
         OPERATOR_COMMAND_TYPE: 'run.replay',
@@ -185,8 +185,8 @@ describe('operator command config', () => {
     const workspaceId = randomUUID();
     expect(
       parseOperatorCommandConfig({
-        DATABASE_OPERATOR_URL:
-          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
         OPERATOR_ACTOR_REF: 'ci-test-operator',
         OPERATOR_COMMAND_ID: commandId,
         OPERATOR_COMMAND_TYPE: 'retention.rerun',

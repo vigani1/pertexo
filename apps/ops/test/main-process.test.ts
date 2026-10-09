@@ -99,7 +99,7 @@ describe('compiled operator command main process', () => {
   it('executes the actual main guard and fixed invalid-config formatter', async () => {
     const fixture = start(entrypointPath, [], {
       ...process.env,
-      DATABASE_OPERATOR_URL: '',
+      DATABASE_MAINTENANCE_URL: '',
       OPERATOR_COMMAND_TYPE: '',
     });
     const result = await waitForExit(fixture.child, fixture.output);
@@ -109,6 +109,6 @@ describe('compiled operator command main process', () => {
       '"event":"operator_command.process_failed"',
     );
     expect(fixture.output()).toContain('"errorType":"Error"');
-    expect(fixture.output()).not.toContain('DATABASE_OPERATOR_URL');
+    expect(fixture.output()).not.toContain('DATABASE_MAINTENANCE_URL');
   });
 });

@@ -47,7 +47,7 @@ import {
   rethrowFixtureSetupFailure,
 } from '../support/fixture-resource-owner.js';
 
-const apiUrl = process.env.DATABASE_API_URL;
+const apiUrl = process.env.DATABASE_URL;
 const redisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 const enabled =

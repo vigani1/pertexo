@@ -1,4 +1,4 @@
-import type { Pool, QueryResult } from 'pg';
+import type { QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
@@ -87,13 +87,12 @@ export function createOperatorCommandRuntime(
   config: DatabaseConfig,
   inputOptions: OperatorCommandDatabaseOptions,
 ): OperatorCommandRuntime {
-  const {
-    ownerRole: _ownerRole,
-    workerRuntimeRole: _workerRole,
-    ...poolConfig
-  } = config;
+  const { ownerRole: _ownerRole, ...poolConfig } = config;
   const options = parseOptions(inputOptions);
-  const pool = createDatabasePool({ ...poolConfig, max: 1 });
+  const pool = createDatabasePool(
+    { ...poolConfig, max: 1 },
+    { role: 'maintenance' },
+  );
   pool.on('error', () => undefined);
   let closePromise: Promise<void> | undefined;
 

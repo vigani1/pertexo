@@ -42,12 +42,11 @@ const VERSION_ID = '66666666-6666-4666-8666-666666666666';
 const WORKFLOW_ID = '77777777-7777-4777-8777-777777777777';
 
 const database = {
-  connectionString: 'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+  connectionString: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 30_000,
   max: 5,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 
 function activationConfig(enabledJobNames: readonly string[]): WorkerConfig {
@@ -778,12 +777,11 @@ describe('node-attempt runtime', () => {
       {
         database: {
           connectionString:
-            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+            'postgresql://pertexo_app:secret@localhost:5432/pertexo',
           connectionTimeoutMillis: 5_000,
           idleTimeoutMillis: 30_000,
           max: 5,
           ownerRole: 'pertexo_owner',
-          workerRuntimeRole: 'pertexo_worker',
         },
         heartbeatIntervalMillis: 10_000,
         leaseDurationSeconds: 30,
@@ -872,12 +870,11 @@ describe('node-attempt runtime', () => {
         {
           database: {
             connectionString:
-              'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+              'postgresql://pertexo_app:secret@localhost:5432/pertexo',
             connectionTimeoutMillis: 5_000,
             idleTimeoutMillis: 30_000,
             max: 5,
             ownerRole: 'pertexo_owner',
-            workerRuntimeRole: 'pertexo_worker',
           },
           heartbeatIntervalMillis: 10_000,
           leaseDurationSeconds: 30,

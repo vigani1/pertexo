@@ -348,7 +348,7 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
           });
       },
     );
-    it('API and worker inventory return only exact digest match; worker row and lock privileges stay forbidden', async () => {
+    it('API and worker inventory return only exact digest match; descriptor updates stay forbidden', async () => {
       const digest =
         'b2c003431f093031cdaebb97b78f8a9ddae81f8ce5fa14efd4035b639a3e9f75';
       for (const pool of [api, worker])
@@ -359,14 +359,11 @@ describe.skipIf(process.env.F06_ORIGIN_GUARD_OWNED_FIXTURE !== 'true')(
           );
           expect(result.rows[0]?.matches).toBe(value === digest);
         }
-      for (const sql of [
-        'select * from app.curated_template_descriptors',
-        'update app.curated_template_descriptors set selection_enabled=false',
-        "select app.lock_curated_template_descriptor('webhook-validation-routing',1)",
-      ])
-        await expect(worker.query(sql)).rejects.toMatchObject({
-          code: '42501',
-        });
+      await expect(
+        worker.query(
+          'update app.curated_template_descriptors set selection_enabled=false',
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
       try {
         await ownerQuery(
           'update app.curated_template_descriptors set selection_enabled=false',

@@ -10,18 +10,10 @@ services:
       POSTGRES_OWNER_USER: ${POSTGRES_OWNER_USER:-pertexo_owner}
       POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:-pertexo_migration}
       POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:-pertexo-local-migration}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-pertexo_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-pertexo-local-app}
       POSTGRES_MAINTENANCE_USER: ${POSTGRES_MAINTENANCE_USER:-pertexo_maintenance}
       POSTGRES_MAINTENANCE_PASSWORD: ${POSTGRES_MAINTENANCE_PASSWORD:-pertexo-local-maintenance}
-      POSTGRES_LIFECYCLE_COMMAND_USER: ${POSTGRES_LIFECYCLE_COMMAND_USER:-pertexo_lifecycle_command}
-      POSTGRES_LIFECYCLE_COMMAND_PASSWORD: ${POSTGRES_LIFECYCLE_COMMAND_PASSWORD:-pertexo-local-lifecycle-command}
-      POSTGRES_OPERATOR_USER: ${POSTGRES_OPERATOR_USER:-pertexo_operator}
-      POSTGRES_OPERATOR_PASSWORD: ${POSTGRES_OPERATOR_PASSWORD:-pertexo-local-operator}
-      POSTGRES_API_RUNTIME_USER: ${POSTGRES_API_RUNTIME_USER:-pertexo_api}
-      POSTGRES_API_RUNTIME_PASSWORD: ${POSTGRES_API_RUNTIME_PASSWORD:-pertexo-local-api}
-      POSTGRES_WORKER_RUNTIME_USER: ${POSTGRES_WORKER_RUNTIME_USER:-pertexo_worker}
-      POSTGRES_WORKER_RUNTIME_PASSWORD: ${POSTGRES_WORKER_RUNTIME_PASSWORD:-pertexo-local-worker}
-      POSTGRES_DISPATCHER_RUNTIME_USER: ${POSTGRES_DISPATCHER_RUNTIME_USER:-pertexo_dispatcher}
-      POSTGRES_DISPATCHER_RUNTIME_PASSWORD: ${POSTGRES_DISPATCHER_RUNTIME_PASSWORD:-pertexo-local-dispatcher}
     command:
       - postgres
       - -c
@@ -38,7 +30,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready -U "$${POSTGRES_API_RUNTIME_USER}" -d "$${POSTGRES_DB}"
+        - pg_isready -U "$${POSTGRES_APP_USER}" -d "$${POSTGRES_DB}"
       interval: 5s
       timeout: 5s
       retries: 12

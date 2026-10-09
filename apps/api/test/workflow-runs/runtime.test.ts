@@ -22,7 +22,6 @@ const databaseConfig: DatabaseConfig = {
   idleTimeoutMillis: 30_000,
   max: 5,
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 };
 
 const authorization = {

@@ -11,7 +11,8 @@ import {
 } from '../src/main.js';
 
 const config = parseOperatorCommandConfig({
-  DATABASE_OPERATOR_URL: 'postgresql://operator:secret@localhost:5432/pertexo',
+  DATABASE_MAINTENANCE_URL:
+    'postgresql://operator:secret@localhost:5432/pertexo',
   NODE_ENV: 'test',
   OPERATOR_ACTOR_REF: 'main-test',
   OPERATOR_COMMAND_ID: randomUUID(),

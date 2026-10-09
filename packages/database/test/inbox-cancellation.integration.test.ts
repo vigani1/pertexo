@@ -29,22 +29,18 @@ const withDatabase = (baseUrl: string) => {
 const migrationUrl = withDatabase(migrationBaseUrl);
 const workerUrlValue = new URL(
   withDatabase(
-    process.env.DATABASE_WORKER_URL ??
-      'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo',
+    process.env.DATABASE_URL ??
+      'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
   ),
 );
 const workerApplicationName = `inbox-cancellation-${randomUUID()}`;
 workerUrlValue.searchParams.set('application_name', workerApplicationName);
 const workerUrl = workerUrlValue.toString();
 const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
+  appRole: 'pertexo_app',
   connectionString: migrationUrl,
-  dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
 } as const;
 const workspaceId = randomUUID();
 const userId = randomUUID();
@@ -61,8 +57,8 @@ beforeAll(async () => {
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
       `grant connect on database "${databaseName}" to pertexo_migration,
-       pertexo_api,pertexo_worker,pertexo_dispatcher,pertexo_maintenance,
-       pertexo_lifecycle_command,pertexo_operator`,
+       pertexo_app,pertexo_app,pertexo_maintenance,pertexo_maintenance,
+       pertexo_maintenance,pertexo_maintenance`,
     );
   } finally {
     await admin.end();
@@ -150,7 +146,7 @@ describe('inbox PostgreSQL cancellation', () => {
             const observed = await observer.query<{ running: boolean }>(
               `select exists(
                select 1 from pg_stat_activity
-                where datname=$1 and usename='pertexo_worker'
+                where datname=$1 and usename='pertexo_app'
                   and query like '%pg_sleep%'
                   and state='active'
              ) running`,
